@@ -2208,3 +2208,302 @@ a{text-decoration:none}
 }
 .user-table th:nth-child(7),
 .user-table td:nth-child(7){width:112px}
+
+
+/* Account table visual repair + density polish */
+.account-screen .page-head h1{
+  font-size:18px;
+  letter-spacing:-.012em;
+}
+.account-screen .page-head p{
+  margin-top:2px;
+  font-size:9.5px;
+  color:#6F7C8E;
+}
+
+.account-kpi-grid.compact{
+  gap:6px;
+}
+.account-kpi-grid.compact .account-kpi{
+  min-height:40px;
+  padding:0 10px;
+  border-color:#E1E7EE;
+  border-radius:6px;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(23,33,47,.025);
+}
+.account-kpi-grid.compact .account-kpi:hover{
+  border-color:#C8D3DF;
+  background:#FBFCFE;
+}
+.account-kpi-grid.compact .account-kpi.active{
+  border-color:#AFC0D1;
+  background:#F7FAFD;
+  box-shadow:0 0 0 1px rgba(54,80,114,.045) inset;
+}
+.account-kpi-grid.compact .account-kpi span{
+  color:#667487;
+  font-size:8px;
+  font-weight:650;
+}
+.account-kpi-grid.compact .account-kpi b{
+  color:#22324A;
+  font-size:15px;
+  font-weight:750;
+}
+
+.account-filter-bar.one-line{
+  min-height:34px;
+  height:34px;
+  padding:3px 4px;
+  gap:4px;
+  border-color:#E0E6ED;
+  border-radius:6px;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(23,33,47,.02);
+}
+.account-filter-bar.one-line .search,
+.account-filter-bar.one-line select{
+  height:26px;
+  min-height:26px;
+  border-color:#DDE4EC;
+  border-radius:5px;
+  background:#FAFBFC;
+  font-size:8px;
+  color:#4E5D71;
+}
+.account-filter-bar.one-line .search{
+  padding-left:8px;
+}
+.account-filter-bar.one-line .search:focus,
+.account-filter-bar.one-line select:focus{
+  background:#fff;
+  border-color:#A8B8CA;
+  box-shadow:0 0 0 2px rgba(49,93,138,.055);
+}
+.account-filter-bar.one-line .button{
+  height:26px;
+  min-height:26px;
+  border-radius:5px;
+  font-size:8.5px;
+}
+
+.account-toolbar{
+  padding:0 7px;
+  border:1px solid #E2E8EF;
+  border-bottom:0;
+  border-radius:6px 6px 0 0;
+  background:#FBFCFD;
+}
+.account-toolbar .toolbar-note{
+  font-size:7.5px;
+  color:#97A1AE;
+}
+
+.account-table-card{
+  border-radius:0 0 6px 6px!important;
+  border-color:#E2E8EF!important;
+  box-shadow:none!important;
+}
+.account-table-card .table{
+  font-size:9px;
+}
+.account-table-card .table th{
+  height:29px;
+  padding:0 8px;
+  background:#F6F8FA;
+  border-bottom:1px solid #DDE4EB;
+  color:#697688;
+  text-transform:none;
+  letter-spacing:0;
+  font-size:7.75px;
+  font-weight:700;
+}
+.account-table-card .table td{
+  height:35px;
+  padding:0 8px;
+  color:#465568;
+  border-bottom-color:#EEF2F5;
+}
+.account-table-card .table tbody tr:hover td{
+  background:#F8FAFC;
+}
+.account-table-card .selected-row td{
+  background:#EEF5FB!important;
+}
+.account-table-card .table-link{
+  color:#284C73;
+  font-size:9px;
+  font-weight:700;
+}
+.account-table-card .table-link:hover{
+  color:#1F3E60;
+  text-decoration:none;
+}
+.account-table-card .sortable-head{
+  gap:3px;
+}
+.account-table-card .sortable-head span{
+  color:#8C98A7;
+  font-size:7px;
+}
+.account-table-card .platform-cell{
+  min-height:18px;
+  padding:0 6px;
+  border-color:#EDC8BB;
+  background:#FFF7F3;
+  color:#B65A3A;
+  font-size:6.75px;
+}
+.account-table-card .status-pill{
+  min-height:18px;
+  padding:0 6px;
+  font-size:7px;
+}
+.account-table-card .count-cell{
+  color:#34465A;
+  font-weight:700;
+  text-align:center;
+}
+.account-table-card td:nth-child(5){
+  max-width:175px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.account-table-card td:last-child{
+  max-width:235px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* Deployment-safe 4-in-1 device indicators */
+.device-icon-cell{
+  width:106px!important;
+  min-width:106px;
+}
+.device-state-set{
+  display:inline-flex;
+  align-items:center;
+  gap:3px;
+  white-space:nowrap;
+}
+.device-state-chip{
+  width:20px;
+  height:19px;
+  flex:0 0 20px;
+  display:inline-grid;
+  place-items:center;
+  box-sizing:border-box;
+  overflow:hidden;
+  border:1px solid #E0E5EB;
+  border-radius:4px;
+  background:#F3F5F7;
+  color:#A4ADB9;
+  font-size:6.75px;
+  line-height:1;
+  font-weight:750;
+}
+.device-state-chip.session{
+  width:23px;
+  flex-basis:23px;
+  letter-spacing:-.01em;
+}
+.device-state-chip svg{
+  display:block!important;
+  width:12px!important;
+  height:12px!important;
+  max-width:12px!important;
+  max-height:12px!important;
+  overflow:visible!important;
+  fill:none!important;
+  stroke:currentColor!important;
+}
+.device-state-chip svg *{
+  fill:none!important;
+  stroke:currentColor!important;
+}
+.device-state-chip.on{
+  border-color:#BDD2E6;
+  background:#EDF5FC;
+  color:#2E5F8D;
+}
+.device-state-chip.on.session{
+  border-color:#BFD7CA;
+  background:#EFF8F2;
+  color:#28704A;
+}
+
+/* Voucher tags stay on a single table row */
+.account-table-card .voucher-cell{
+  min-width:150px;
+  max-width:205px;
+}
+.account-table-card .voucher-tags.compact{
+  display:flex;
+  flex-wrap:nowrap!important;
+  gap:3px;
+  overflow:hidden;
+  white-space:nowrap;
+}
+.account-table-card .voucher-tag{
+  min-height:17px;
+  padding:0 5px;
+  font-size:6.75px;
+}
+.voucher-tag.more{
+  border-color:#DDE3EA;
+  background:#F1F4F7;
+  color:#6D7989;
+  font-weight:700;
+}
+
+/* Column manager stays visually quiet */
+.column-manager{
+  top:-28px;
+}
+.column-manager .icon-button{
+  width:25px;
+  height:25px;
+  border-color:#DCE3EA;
+  background:#fff;
+  color:#708095;
+}
+.column-manager .icon-button:hover{
+  border-color:#BFCBD8;
+  background:#F7F9FB;
+  color:#2F5278;
+}
+.column-manager-menu{
+  width:178px;
+  padding:5px;
+  border-radius:6px;
+}
+
+/* Use internal scrollbars; keep the page itself visually stable */
+.account-table-card::-webkit-scrollbar,
+.account-detail-panel .panel-scroll::-webkit-scrollbar,
+.device-card-scroll::-webkit-scrollbar,
+.user-order-list.detailed::-webkit-scrollbar{
+  width:6px;
+  height:6px;
+}
+.account-table-card::-webkit-scrollbar-thumb,
+.account-detail-panel .panel-scroll::-webkit-scrollbar-thumb,
+.device-card-scroll::-webkit-scrollbar-thumb,
+.user-order-list.detailed::-webkit-scrollbar-thumb{
+  background:#CDD5DF;
+  border-radius:999px;
+}
+.account-table-card::-webkit-scrollbar-track,
+.account-detail-panel .panel-scroll::-webkit-scrollbar-track,
+.device-card-scroll::-webkit-scrollbar-track,
+.user-order-list.detailed::-webkit-scrollbar-track{
+  background:transparent;
+}
+
+@media(max-width:1440px){
+  .account-table-card .table th,
+  .account-table-card .table td{padding-left:7px;padding-right:7px}
+  .account-table-card .voucher-cell{max-width:175px}
+  .device-icon-cell{width:101px!important;min-width:101px}
+}
