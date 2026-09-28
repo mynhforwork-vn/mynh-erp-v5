@@ -2172,3 +2172,39 @@ a{text-decoration:none}
   .account-filter-bar.one-line select:nth-of-type(4),
   .account-filter-bar.one-line select:nth-of-type(5){display:block!important}
 }
+
+
+/* User table device status icons only */
+.device-icon-cell{width:112px}
+.device-icon-set{
+  display:inline-flex;
+  align-items:center;
+  gap:3px;
+}
+.device-icon{
+  width:22px;
+  height:20px;
+  display:grid;
+  place-items:center;
+  border:1px solid #E0E5EB;
+  border-radius:4px;
+  background:#F3F5F7;
+  color:#A3ACB7;
+}
+.device-icon svg{
+  width:12px;
+  height:12px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.device-icon.on{
+  border-color:#BCD0E3;
+  background:#EDF4FB;
+  color:#315D8A;
+  box-shadow:0 0 0 1px rgba(49,93,138,.03) inset;
+}
+.user-table th:nth-child(7),
+.user-table td:nth-child(7){width:112px}
