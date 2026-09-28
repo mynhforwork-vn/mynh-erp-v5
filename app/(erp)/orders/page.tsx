@@ -6,7 +6,41 @@ import { replaceShipment } from '@/lib/actions/core'
 import { CopyOrderButton } from '@/components/copy-order-button'
 import { OrderEditorForm } from '@/components/order-editor-form'
 
-type SP={order?:string,receive?:string,mode?:string,tab?:string}
+type RangeKey='today'|'7d'|'30d'|'month'|'custom'
+type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string}
+
+const HOUR=60*60*1000
+const DAY=24*HOUR
+
+function vnDateParts(date=new Date()){
+  const shifted=new Date(date.getTime()+7*HOUR)
+  return {year:shifted.getUTCFullYear(),month:shifted.getUTCMonth()+1,day:shifted.getUTCDate()}
+}
+function ymd(y:number,m:number,d:number){return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
+function shiftLocalDay(y:number,m:number,d:number,days:number){
+  const x=new Date(Date.UTC(y,m-1,d)+days*DAY)
+  return ymd(x.getUTCFullYear(),x.getUTCMonth()+1,x.getUTCDate())
+}
+function resolveRange(sp:SP){
+  const key:RangeKey=sp.range??'today'
+  const p=vnDateParts()
+  const today=ymd(p.year,p.month,p.day)
+  let from=today,to=today,label='Hôm nay'
+  if(key==='7d'){from=shiftLocalDay(p.year,p.month,p.day,-6);label='7 ngày'}
+  if(key==='30d'){from=shiftLocalDay(p.year,p.month,p.day,-29);label='30 ngày'}
+  if(key==='month'){from=ymd(p.year,p.month,1);label='Tháng này'}
+  if(key==='custom'){
+    from=/^\d{4}-\d{2}-\d{2}$/.test(sp.from??'')?String(sp.from):today
+    to=/^\d{4}-\d{2}-\d{2}$/.test(sp.to??'')?String(sp.to):today
+    if(from>to)[from,to]=[to,from]
+    label=`${from.split('-').reverse().join('/')} → ${to.split('-').reverse().join('/')}`
+  }
+  return {
+    key,from,to,label,
+    start:new Date(`${from}T00:00:00+07:00`).toISOString(),
+    end:new Date(`${to}T23:59:59.999+07:00`).toISOString(),
+  }
+}
 
 function toLocalInput(value?:string|null){
   if(!value)return ''
@@ -41,16 +75,53 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const {supabase,user}=await requireUser()
   const role=String(user.app_metadata?.role??'viewer')
 
-  let q=supabase.from('orders').select(
-    'id,shopee_order_id,erp_user_id,order_date,area,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
-  ).order('order_date',{ascending:false}).limit(100)
-  if(sp.receive)q=q.eq('receive_status',sp.receive)
+  const range=resolveRange(sp)
+  const queryText=String(sp.q??'').trim().toLowerCase()
 
   const [{data,error},{data:userOptions}]=await Promise.all([
-    q,
+    supabase.from('orders').select(
+      'id,shopee_order_id,erp_user_id,order_date,area,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
+    ).gte('order_date',range.start).lte('order_date',range.end).order('order_date',{ascending:false}).limit(1000),
     supabase.from('erp_users').select('id,username').order('username').limit(500)
   ])
-  const rows=(data??[]) as any[]
+
+  const dateRows=(data??[]) as any[]
+  const rows=dateRows.filter((o:any)=>{
+    if(sp.receive&&o.receive_status!==sp.receive)return false
+    if(!queryText)return true
+    const s=activeShipment(o)
+    const hay=[
+      o.shopee_order_id,o.erp_users?.username,s?.tracking_number,s?.carrier,
+      o.recipient_name,o.recipient_phone,o.area,o.destination_hub,
+      ...(o.order_items??[]).flatMap((x:any)=>[x.product_name,x.variant]),
+      ...(o.order_vouchers??[]).flatMap((x:any)=>[x.voucher_code,x.voucher_name,x.voucher_tag,x.voucher_type]),
+    ].filter(Boolean).join(' ').toLowerCase()
+    return hay.includes(queryText)
+  })
+
+  const totalOrders=dateRows.length
+  const totalCod=dateRows.reduce((sum:number,o:any)=>sum+Number(o.cod??0),0)
+  const shipping=dateRows.filter((o:any)=>{
+    const s=activeShipment(o)?.current_tracking_status
+    return s&&!['DELIVERED','CANCELLED','RETURNED'].includes(s)
+  }).length
+  const delivered=dateRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='DELIVERED').length
+  const waiting=dateRows.filter((o:any)=>o.receive_status==='WAITING_RECEIVE').length
+  const missingTracking=dateRows.filter((o:any)=>!activeShipment(o)?.tracking_number).length
+
+  function listHref(extra:Record<string,string|undefined|null>={}){
+    const p=new URLSearchParams()
+    if(range.key!=='today')p.set('range',range.key)
+    if(range.key==='custom'){p.set('from',range.from);p.set('to',range.to)}
+    if(queryText)p.set('q',sp.q??'')
+    if(sp.receive)p.set('receive',sp.receive)
+    for(const [k,v] of Object.entries(extra)){
+      if(v===null||v===undefined||v==='')p.delete(k)
+      else p.set(k,v)
+    }
+    const qs=p.toString()
+    return `/purchase/orders${qs?`?${qs}`:''}`
+  }
 
   let detail:any=null
   let items:any[]=[]
@@ -89,25 +160,59 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   return <>
     <header className="page-head">
       <div>
-        <h1>Quản lý đơn hàng</h1>
-        <p>Đơn hàng, sản phẩm, voucher, vận đơn và hành trình được quản lý theo một luồng thống nhất</p>
+        <span className="module-eyebrow">MUA HÀNG</span>
+        <h1>Đơn nhập hàng</h1>
+        <p>Lưu trữ toàn bộ đơn mua, sản phẩm, voucher, vận đơn và lịch sử xử lý</p>
       </div>
       <div className="head-actions">
-        <button className="button" disabled>Lọc theo ngày</button>
-        <Link className="button primary" href="/purchase/orders?mode=create">+ Tạo đơn</Link>
+        <Link className="button primary" href={listHref({mode:'create'})}>+ Tạo đơn nhập</Link>
       </div>
     </header>
 
+    <div className="order-date-filter">
+      <div className="command-range">
+        <Link className={range.key==='today'?'active':''} href="/purchase/orders?range=today">Hôm nay</Link>
+        <Link className={range.key==='7d'?'active':''} href="/purchase/orders?range=7d">7 ngày</Link>
+        <Link className={range.key==='30d'?'active':''} href="/purchase/orders?range=30d">30 ngày</Link>
+        <Link className={range.key==='month'?'active':''} href="/purchase/orders?range=month">Tháng này</Link>
+        <Link className={range.key==='custom'?'active':''} href={`/purchase/orders?range=custom&from=${range.from}&to=${range.to}`}>Tùy chọn</Link>
+      </div>
+      <form className="custom-range-form" action="/purchase/orders">
+        <input type="hidden" name="range" value="custom"/>
+        <input type="date" name="from" defaultValue={range.from} aria-label="Từ ngày"/>
+        <span>→</span>
+        <input type="date" name="to" defaultValue={range.to} aria-label="Đến ngày"/>
+        <button className="button small">Áp dụng</button>
+      </form>
+      <div className="range-meta"><span>Đang xem</span><b>{range.label}</b></div>
+    </div>
+
+    <section className="kpi-grid order-kpi-grid">
+      <div className="kpi-card"><span>Tổng đơn</span><b>{totalOrders}</b><small>Trong khoảng đã chọn</small></div>
+      <div className="kpi-card"><span>Tổng COD</span><b className="kpi-money">{formatMoney(totalCod)}</b><small>Giá trị đơn nhập</small></div>
+      <div className="kpi-card"><span>Đang vận chuyển</span><b>{shipping}</b><small>Chưa ở trạng thái kết thúc</small></div>
+      <div className="kpi-card"><span>Giao thành công</span><b>{delivered}</b><small>Đã có trạng thái giao thành công</small></div>
+      <Link className="kpi-card warning" href={listHref({receive:'WAITING_RECEIVE'})}><span>Chờ nhận</span><b>{waiting}</b><small>Cần xác nhận vật lý</small></Link>
+      <div className="kpi-card danger"><span>Chưa có MVĐ</span><b>{missingTracking}</b><small>Cần bổ sung vận đơn</small></div>
+    </section>
+
     <div className={`split-view ${panelOpen?'with-panel':''}`}>
       <section>
-        <div className="toolbar">
-          <input className="search" placeholder="Tìm mã đơn / mã vận đơn / Username" disabled/>
+        <div className="toolbar order-toolbar">
+          <form className="order-search-form" action="/purchase/orders">
+            {range.key!=='today'&&<input type="hidden" name="range" value={range.key}/>}
+            {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
+            {sp.receive&&<input type="hidden" name="receive" value={sp.receive}/>}
+            <input className="search" name="q" defaultValue={sp.q??''} placeholder="Mã đơn / MVĐ / Username / sản phẩm / voucher"/>
+            <button className="button small">Tìm</button>
+            {queryText&&<Link className="button small" href={listHref({q:null})}>Xóa tìm</Link>}
+          </form>
           <div className="segmented">
-            <Link className={!sp.receive?'active':''} href="/purchase/orders">Tất cả</Link>
-            <Link className={sp.receive==='WAITING_RECEIVE'?'active':''} href="/purchase/orders?receive=WAITING_RECEIVE">Chờ nhận</Link>
-            <Link className={sp.receive==='RECEIVED'?'active':''} href="/purchase/orders?receive=RECEIVED">Đã nhận</Link>
+            <Link className={!sp.receive?'active':''} href={listHref({receive:null})}>Tất cả</Link>
+            <Link className={sp.receive==='WAITING_RECEIVE'?'active':''} href={listHref({receive:'WAITING_RECEIVE'})}>Chờ nhận</Link>
+            <Link className={sp.receive==='RECEIVED'?'active':''} href={listHref({receive:'RECEIVED'})}>Đã nhận</Link>
           </div>
-          <span className="toolbar-note">{rows.length} đơn</span>
+          <span className="toolbar-note">{rows.length} / {totalOrders} đơn</span>
         </div>
 
         <div className="card table-card">
@@ -127,7 +232,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               {error
                 ? <tr><td colSpan={9} className="error-text">{error.message}</td></tr>
                 : !rows.length
-                  ? <tr><td colSpan={9} className="empty">Chưa có đơn hàng trong hệ thống.</td></tr>
+                  ? <tr><td colSpan={9} className="empty">Không có đơn phù hợp với bộ lọc hiện tại.</td></tr>
                   : rows.map((o:any,i:number)=>{
                       const s=activeShipment(o)
                       return <tr key={o.id} className={sp.order===o.id?'selected-row':''}>
@@ -155,7 +260,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       {createMode&&
         <aside className="detail-panel order-panel">
           <div className="panel-head">
-            <div><span className="eyebrow">ĐƠN HÀNG</span><h2>Tạo đơn mới</h2></div>
+            <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Tạo đơn mới</h2></div>
             <Link className="close" href="/purchase/orders">×</Link>
           </div>
           <OrderEditorForm
@@ -170,7 +275,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       {detail&&editMode&&
         <aside className="detail-panel order-panel">
           <div className="panel-head">
-            <div><span className="eyebrow">ĐƠN HÀNG</span><h2>Sửa {detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
+            <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Sửa {detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
             <Link className="close" href={`/purchase/orders?order=${detail.id}`}>×</Link>
           </div>
           <OrderEditorForm
