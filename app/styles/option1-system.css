@@ -1398,3 +1398,127 @@ a{text-decoration:none}
   .receive-confirm-bar{grid-template-columns:1fr 1fr}
   .tracking-technical-grid{grid-template-columns:1fr!important}
 }
+
+
+/* Purchase custom date filter — explicit inline UX */
+.purchase-date-filter{
+  margin-bottom:8px;
+  border:1px solid var(--mynh-border);
+  border-radius:7px;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(23,33,47,.025);
+  overflow:hidden;
+}
+.purchase-date-filter-top{
+  min-height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:5px 6px;
+}
+.purchase-date-filter .command-range{
+  display:flex;
+  align-items:center;
+  gap:1px;
+  padding:2px;
+  border-radius:5px;
+  background:#F1F4F7;
+  flex-wrap:wrap;
+}
+.purchase-date-filter .command-range a,
+.purchase-date-filter .command-range button{
+  min-height:25px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  padding:0 8px;
+  border:0;
+  border-radius:4px;
+  background:transparent;
+  color:var(--mynh-text-2);
+  font-size:8.5px;
+  line-height:1;
+  font-weight:650;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.purchase-date-filter .command-range a:hover,
+.purchase-date-filter .command-range button:hover{
+  background:#fff;
+  color:var(--mynh-brand);
+}
+.purchase-date-filter .command-range a.active,
+.purchase-date-filter .command-range button.active{
+  background:var(--mynh-brand);
+  color:#fff;
+  box-shadow:0 1px 2px rgba(23,33,47,.08);
+}
+.filter-caret{font-size:7px;opacity:.8}
+.purchase-custom-range{
+  min-height:58px;
+  display:flex;
+  align-items:flex-end;
+  gap:7px;
+  padding:8px 10px 9px;
+  border-top:1px solid var(--mynh-border);
+  background:#F8FAFC;
+}
+.purchase-custom-range label{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+.purchase-custom-range label>span{
+  color:var(--mynh-text-3);
+  font-size:7.75px;
+  font-weight:600;
+}
+.purchase-custom-range input{
+  width:142px;
+  height:30px;
+  padding:0 7px;
+  border:1px solid var(--mynh-border-2);
+  border-radius:5px;
+  background:#fff;
+  color:var(--mynh-text);
+  font-size:9px;
+  outline:none;
+}
+.purchase-custom-range input:focus{
+  border-color:#95A8BF;
+  box-shadow:0 0 0 2px rgba(49,93,138,.08);
+}
+.date-range-arrow{
+  align-self:flex-end;
+  height:30px;
+  display:flex;
+  align-items:center;
+  color:var(--mynh-text-3);
+  font-size:9px;
+}
+.purchase-custom-range-actions{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  margin-left:2px;
+}
+.purchase-custom-range-actions .button{height:30px}
+@media(max-width:1180px){
+  .purchase-date-filter-top{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .purchase-date-filter .range-meta{
+    display:flex;
+    align-items:flex-start;
+    justify-self:auto;
+  }
+  .purchase-custom-range{
+    flex-wrap:wrap;
+  }
+  .purchase-custom-range input{
+    width:130px;
+  }
+}
