@@ -11,7 +11,7 @@ type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'device'|'vo
 const ALL:ColKey[]=['number','username','platform','phone','email','status','device','voucher','orders','createdAt','note']
 const LABELS:Record<ColKey,string>={
   number:'#',username:'Username',platform:'Nền tảng',phone:'SĐT',email:'Email',
-  status:'Trạng thái',device:'Thiết bị',voucher:'Voucher',orders:'Số đơn',
+  status:'Trạng thái',device:'Thiết bị hoạt động',voucher:'Voucher đã dùng',orders:'Số đơn',
   createdAt:'Thời gian tạo',note:'Ghi chú'
 }
 const STORAGE_KEY='mynh-v5-purchase-account-columns'
@@ -22,26 +22,42 @@ function statusClass(status?:string|null){
   if(['M01','M02','M03','M04','Captcha','Auto Hủy'].includes(String(status)))return 'orange'
   return ''
 }
-function hasST(row:Row){return Boolean(row.spc_st_secret_id||row.spc_st_encrypted)}
-function hasF(row:Row){return Boolean(row.spc_f_secret_id||row.spc_f_encrypted)}
 
-function DeviceSet({row}:{row:Row}){
-  return <div className="device-set" aria-label="Thiết bị và phiên">
-    <span className={hasST(row)?'on':''} title="SPC_ST">ST</span>
-    <span className={hasF(row)?'on':''} title="SPC_F">F</span>
-    <span className={row.mobile?'on':''} title="Mobile">M</span>
-    <span className={row.web?'on':''} title={'Web'+(row.browser_name?' · '+row.browser_name:'')}>W</span>
-  </div>
+function deviceLabel(row:Row){
+  const active=(row.active_devices??[]).filter((d:any)=>d.is_active)
+  if(!active.length)return 'Chưa có thiết bị active'
+  const first=active[0]
+  const browser=[first.browser_name,first.browser_profile].filter(Boolean).join(' · ')
+  const more=active.length>1?'+'+(active.length-1)+' máy':null
+  return [first.device_name,browser,more].filter(Boolean).join(' · ')
+}
+
+function sortHref(baseQuery:string,nextSort:string){
+  const p=new URLSearchParams(baseQuery)
+  p.set('sort',nextSort)
+  p.delete('user')
+  p.delete('mode')
+  p.delete('tab')
+  return '/purchase/accounts?'+p.toString()
+}
+
+function ColumnIcon(){
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="5" width="18" height="14" rx="2"/>
+    <path d="M9 5v14M15 5v14"/>
+  </svg>
 }
 
 export function PurchaseAccountTable({
   rows,
   selectedId,
   detailQuery='',
+  sort='newest',
 }:{
   rows:Row[]
   selectedId?:string|null
   detailQuery?:string
+  sort?:string
 }){
   const [visible,setVisible]=useState<ColKey[]>(ALL)
   const [open,setOpen]=useState(false)
@@ -67,9 +83,7 @@ export function PurchaseAccountTable({
     const next=visible.includes(key)?visible.filter(x=>x!==key):ALL.filter(x=>x===key||visible.includes(x))
     persist(next)
   }
-  function reset(){
-    persist(ALL)
-  }
+  function reset(){persist(ALL)}
   function isVisible(k:ColKey){return visible.includes(k)}
   const colSpan=useMemo(()=>visible.length,[visible])
 
@@ -80,10 +94,13 @@ export function PurchaseAccountTable({
     return '/purchase/accounts?'+p.toString()
   }
 
+  const nameNext=sort==='name_asc'?'name_desc':'name_asc'
+  const timeNext=sort==='oldest'?'newest':'oldest'
+
   return <div className="account-table-shell">
     <div className="column-manager">
-      <button className="button small" type="button" onClick={()=>setOpen(v=>!v)} aria-expanded={open}>
-        Cột · {visible.length}/{ALL.length}
+      <button className="icon-button" type="button" onClick={()=>setOpen(v=>!v)} aria-expanded={open} title="Ẩn / hiện cột">
+        <ColumnIcon/>
       </button>
       {open&&<div className="column-manager-menu">
         <div className="column-manager-head"><b>Ẩn / hiện cột</b><button type="button" onClick={reset}>↺ Mặc định</button></div>
@@ -98,15 +115,15 @@ export function PurchaseAccountTable({
       <table className="table user-table">
         <thead><tr>
           {isVisible('number')&&<th>#</th>}
-          {isVisible('username')&&<th>Username</th>}
+          {isVisible('username')&&<th><Link className="sortable-head" href={sortHref(detailQuery,nameNext)}>Username <span>{sort==='name_asc'?'↑':sort==='name_desc'?'↓':'↕'}</span></Link></th>}
           {isVisible('platform')&&<th>Nền tảng</th>}
           {isVisible('phone')&&<th>SĐT</th>}
           {isVisible('email')&&<th>Email</th>}
           {isVisible('status')&&<th>Trạng thái</th>}
-          {isVisible('device')&&<th>Thiết bị</th>}
-          {isVisible('voucher')&&<th>Voucher</th>}
+          {isVisible('device')&&<th>Thiết bị hoạt động</th>}
+          {isVisible('voucher')&&<th>Voucher đã dùng</th>}
           {isVisible('orders')&&<th>Số đơn</th>}
-          {isVisible('createdAt')&&<th>Thời gian tạo</th>}
+          {isVisible('createdAt')&&<th><Link className="sortable-head" href={sortHref(detailQuery,timeNext)}>Thời gian tạo <span>{sort==='newest'?'↓':sort==='oldest'?'↑':'↕'}</span></Link></th>}
           {isVisible('note')&&<th>Ghi chú</th>}
         </tr></thead>
         <tbody>
@@ -119,8 +136,8 @@ export function PurchaseAccountTable({
                 {isVisible('phone')&&<td>{formatPhone(u.phone)}</td>}
                 {isVisible('email')&&<td>{u.email??'—'}</td>}
                 {isVisible('status')&&<td><span className={'status-pill '+statusClass(u.status)}>{statusLabel(u.status)}</span></td>}
-                {isVisible('device')&&<td><DeviceSet row={u}/></td>}
-                {isVisible('voucher')&&<td className="voucher-cell"><VoucherTags value={u.voucher_summary}/></td>}
+                {isVisible('device')&&<td className="device-name-cell" title={deviceLabel(u)}>{deviceLabel(u)}</td>}
+                {isVisible('voucher')&&<td className="voucher-cell"><VoucherTags value={u.voucher_used_summary}/></td>}
                 {isVisible('orders')&&<td className="count-cell">{u.order_count??0}</td>}
                 {isVisible('createdAt')&&<td>{formatDateTime(u.created_at)}</td>}
                 {isVisible('note')&&<td className="truncate">{u.note??'—'}</td>}
