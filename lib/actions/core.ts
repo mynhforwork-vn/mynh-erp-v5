@@ -154,14 +154,43 @@ export async function updateOrder(formData:FormData){
 }
 
 export async function replaceShipment(formData:FormData){
-  const {supabase}=await actor(); const orderId=text(formData.get('order_id')); const trackingNumber=text(formData.get('tracking_number')); const carrier=text(formData.get('carrier'))||null
+  const {supabase,user}=await actor()
+  const orderId=text(formData.get('order_id'))
+  const trackingNumber=text(formData.get('tracking_number'))
+  const carrier=text(formData.get('carrier'))||null
   if(!orderId||!trackingNumber)throw new Error('Thiếu đơn hàng hoặc mã vận đơn')
-  const {data:old,error:oldError}=await supabase.from('shipments').select('id').eq('order_id',orderId).eq('is_active',true)
+
+  const {data:old,error:oldError}=await supabase.from('shipments').select('id,tracking_number,carrier').eq('order_id',orderId).eq('is_active',true)
   if(oldError)throw new Error(oldError.message)
   const ids=(old??[]).map(x=>x.id)
-  if(ids.length){const {error}=await supabase.from('shipments').update({is_active:false,replaced_at:new Date().toISOString(),tracking_enabled:false,next_track_at:null}).in('id',ids);if(error)throw new Error(error.message)}
+  const previous=(old??[])[0]??null
+
+  if(ids.length){
+    const {error}=await supabase.from('shipments').update({
+      is_active:false,replaced_at:new Date().toISOString(),tracking_enabled:false,next_track_at:null
+    }).in('id',ids)
+    if(error)throw new Error(error.message)
+  }
+
   const next=nextTrackAt(new Date(),'READY_TO_SHIP')
-  const {error:newError}=await supabase.from('shipments').insert({order_id:orderId,tracking_number:trackingNumber,carrier,current_tracking_status:'READY_TO_SHIP',tracking_enabled:true,tracking_interval_minutes:120,next_track_at:next?.toISOString()??null,is_active:true})
-  if(newError){if(ids.length)await supabase.from('shipments').update({is_active:true,tracking_enabled:true}).in('id',ids);throw new Error(newError.message)}
-  revalidatePath('/orders'); revalidatePath('/tracking'); redirect(`/orders?order=${orderId}&tab=tracking`)
+  const {error:newError}=await supabase.from('shipments').insert({
+    order_id:orderId,tracking_number:trackingNumber,carrier,
+    current_tracking_status:'READY_TO_SHIP',tracking_enabled:true,
+    tracking_interval_minutes:120,next_track_at:next?.toISOString()??null,is_active:true
+  })
+  if(newError){
+    if(ids.length)await supabase.from('shipments').update({is_active:true,tracking_enabled:true}).in('id',ids)
+    throw new Error(newError.message)
+  }
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,module:'ORDERS',action:'UPDATE_TRACKING_NUMBER',
+    entity_type:'ORDER',entity_id:orderId,
+    old_value:{tracking_number:previous?.tracking_number??null,carrier:previous?.carrier??null},
+    new_value:{tracking_number:trackingNumber,carrier},
+    source:'USER'
+  })
+
+  revalidatePath('/orders'); revalidatePath('/tracking'); revalidatePath('/')
+  redirect(`/orders?order=${orderId}&tab=tracking`)
 }
