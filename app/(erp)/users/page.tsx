@@ -90,9 +90,10 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     if(session==='missing'&&(st&&sf))return false
     if(session==='none'&&(st||sf))return false
 
-    const voucherText=String(u.voucher_summary??'').toLowerCase()
-    if(voucher==='has'&&!voucherText)return false
-    if(voucher==='none'&&voucherText)return false
+    const voucherText=String(u.voucher_summary??'').toLowerCase().trim()
+    const hasVoucher=Boolean(voucherText)&&!['chưa có voucher','không có voucher','không voucher'].includes(voucherText)
+    if(voucher==='has'&&!hasVoucher)return false
+    if(voucher==='none'&&hasVoucher)return false
     if(voucher==='freeship'&&!voucherText.includes('free'))return false
     if(voucher==='discount'&&!voucherText.includes('giảm'))return false
     if(voucher==='cashback'&&!(voucherText.includes('hoàn')||voucherText.includes('xu')))return false
