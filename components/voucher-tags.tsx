@@ -1,6 +1,9 @@
 export function VoucherTags({value}:{value?:string|null}){
   const raw=String(value??'').trim()
-  if(!raw)return <span className="voucher-tag neutral">Không có</span>
+  const normalized=raw.toLowerCase()
+  if(!raw||normalized==='chưa có voucher'||normalized==='không có voucher'||normalized==='không voucher'){
+    return <span className="voucher-tag neutral">Không có</span>
+  }
   const tags=raw.split(/[·,;|]+/).map(x=>x.trim()).filter(Boolean)
   return <div className="voucher-tags">
     {tags.map((tag,i)=>{
