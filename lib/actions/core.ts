@@ -2,7 +2,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/supabase/auth'
-import { nextTrackAt } from '@/lib/purchase/tracking/schedule'
+import { nextTrackAt } from '@/lib/tracking/schedule'
 
 function text(v:FormDataEntryValue|null){return String(v??'').trim()}
 async function actor(){
