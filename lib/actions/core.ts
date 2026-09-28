@@ -153,6 +153,30 @@ export async function updateOrder(formData:FormData){
   redirect(`/purchase/orders?order=${data}`)
 }
 
+
+export async function confirmReceiveOrders(formData:FormData){
+  const {supabase}=await actor()
+  const orderIds=formData.getAll('order_ids').map(v=>text(v)).filter(Boolean)
+  const warehouseId=text(formData.get('warehouse_id'))
+  const note=text(formData.get('note'))||null
+  if(!orderIds.length)throw new Error('Chưa chọn đơn cần xác nhận nhận hàng')
+  if(!warehouseId)throw new Error('Chưa chọn kho nhận')
+
+  const {data,error}=await supabase.rpc('confirm_receive_orders',{
+    p_order_ids:orderIds,
+    p_warehouse_id:warehouseId,
+    p_note:note,
+  })
+  if(error)throw new Error(error.message)
+
+  revalidatePath('/purchase/tracking')
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase')
+  revalidatePath('/warehouse')
+  revalidatePath('/warehouse/receive')
+  redirect(`/purchase/tracking?received=${encodeURIComponent(String(data?.receive_batch_id??''))}`)
+}
+
 export async function replaceShipment(formData:FormData){
   const {supabase,user}=await actor()
   const orderId=text(formData.get('order_id'))
