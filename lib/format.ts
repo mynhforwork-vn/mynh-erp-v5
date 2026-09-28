@@ -15,9 +15,19 @@ const STATUS_LABELS: Record<string, string> = {
   WAITING_RECEIVE: 'Chờ nhận',
   RECEIVED: 'Đã nhận',
   TRANSFERRED: 'Đã chuyển kho',
+  READY_TO_TRANSFER: 'Sẵn sàng chuyển kho',
+  IN_TRANSFER: 'Đang chuyển kho',
   WAREHOUSE_RECEIVED: 'Đã nhập kho',
   PENDING: 'Đang chờ',
+  CONFIRMED: 'Đã xác nhận',
   PROCESSING: 'Đang xử lý',
+  COMPLETED: 'Hoàn thành',
+  UNPAID: 'Chưa thanh toán',
+  PARTIAL: 'Thanh toán một phần',
+  PAID: 'Đã thanh toán',
+  REFUNDED: 'Đã hoàn tiền',
+  QUEUED: 'Đang xếp hàng',
+  DONE: 'Hoàn tất',
   SUCCESS: 'Thành công',
   FAILED: 'Thất bại',
   RUNNING: 'Đang chạy',
@@ -31,6 +41,7 @@ const STATUS_LABELS: Record<string, string> = {
   M02: 'Lỗi M02',
   M03: 'Lỗi M03',
   M04: 'Lỗi M04',
+  'Không xác định': 'Không xác định',
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -47,6 +58,7 @@ const SOURCE_LABELS: Record<string, string> = {
   PROVIDER: 'Đơn vị vận chuyển',
   USER: 'Người dùng',
   CRON: 'Lịch tự động',
+  DEMO: 'Dữ liệu demo',
 }
 
 const ALERT_LABELS: Record<string, string> = {
