@@ -93,6 +93,24 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       </div>
     </header>
 
+    <section className="account-kpi-grid">
+      <Link className={`account-kpi ${state==='all'?'active':''}`} href="/purchase/accounts">
+        <span>Tất cả</span><b>{counts.all}</b><small>Tài khoản</small>
+      </Link>
+      <Link className={`account-kpi success ${state==='active'?'active':''}`} href="/purchase/accounts?state=active">
+        <span>Hoạt động</span><b>{counts.active}</b><small>Sẵn sàng sử dụng</small>
+      </Link>
+      <Link className={`account-kpi warning ${state==='error'?'active':''}`} href="/purchase/accounts?state=error">
+        <span>Cần xử lý</span><b>{counts.error}</b><small>M01–M04 / Captcha / Auto Hủy</small>
+      </Link>
+      <Link className={`account-kpi danger ${state==='blocked'?'active':''}`} href="/purchase/accounts?state=blocked">
+        <span>Đã khóa</span><b>{counts.blocked}</b><small>Blocked</small>
+      </Link>
+      <Link className={`account-kpi ${state==='unknown'?'active':''}`} href="/purchase/accounts?state=unknown">
+        <span>Không xác định</span><b>{counts.unknown}</b><small>Cần kiểm tra</small>
+      </Link>
+    </section>
+
     <div className={`split-view ${panelOpen?'with-panel':''}`}>
       <section>
         <div className="toolbar account-toolbar">
@@ -123,7 +141,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               {error
                 ? <tr><td colSpan={11} className="error-text">Không thể tải dữ liệu tài khoản.</td></tr>
                 : !rows.length
-                  ? <tr><td colSpan={10} className="empty">Không có tài khoản phù hợp với bộ lọc hiện tại.</td></tr>
+                  ? <tr><td colSpan={11} className="empty">Không có tài khoản phù hợp với bộ lọc hiện tại.</td></tr>
                   : rows.map((u:any,i:number)=><tr key={u.id} className={selected?.id===u.id?'selected-row':''}>
                       <td>{i+1}</td>
                       <td><Link className="table-link" href={`/purchase/accounts?user=${u.id}`}>{u.username}</Link></td>
@@ -151,6 +169,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
           <form action={createERPUser} className="panel-form panel-scroll">
             <section className="form-section">
               <h3>Thông tin tài khoản</h3>
+              <label>Nền tảng<select disabled defaultValue="SHOPEE"><option value="SHOPEE">Shopee</option></select></label>
               <label>Username<input name="username" required/></label>
               <div className="form-grid">
                 <label>Số điện thoại<input name="phone"/></label>
@@ -239,13 +258,14 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       {selected&&isEdit&&
         <aside className="detail-panel">
           <div className="panel-head">
-            <div><span className="eyebrow">TÀI KHOẢN SHOPEE</span><h2>Sửa {selected.username}</h2></div>
+            <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Sửa {selected.username}</h2></div>
             <Link className="close" href={`/purchase/accounts?user=${selected.id}`}>×</Link>
           </div>
           <form action={updateERPUser} className="panel-form panel-scroll">
             <input type="hidden" name="user_id" value={selected.id}/>
             <section className="form-section">
               <h3>Thông tin tài khoản</h3>
+              <label>Nền tảng<select disabled defaultValue={selected.platform??'SHOPEE'}><option value="SHOPEE">Shopee</option></select></label>
               <label>Username<input name="username" required defaultValue={selected.username}/></label>
               <div className="form-grid">
                 <label>Số điện thoại<input name="phone" defaultValue={selected.phone??''}/></label>
