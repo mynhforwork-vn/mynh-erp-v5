@@ -1205,3 +1205,58 @@ a{text-decoration:none}
   .account-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
   .account-search-form .search{min-width:210px}
 }
+
+
+/* Purchase orders */
+.order-date-filter{
+  min-height:40px;
+  display:grid;
+  grid-template-columns:auto auto 1fr;
+  align-items:center;
+  gap:8px;
+  padding:5px 6px;
+  margin-bottom:7px;
+  border:1px solid var(--mynh-border);
+  border-radius:7px;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(23,33,47,.025);
+}
+.order-date-filter .command-range a{
+  padding:5px 8px;
+  border-radius:4px;
+  color:var(--mynh-text-2);
+  font-size:8.5px;
+  line-height:1;
+  font-weight:650;
+  white-space:nowrap;
+}
+.order-date-filter .command-range a.active{background:var(--mynh-brand);color:#fff}
+.order-kpi-grid{margin-bottom:7px}
+.order-kpi-grid .kpi-card{min-height:72px;padding-top:9px;padding-bottom:8px}
+.order-kpi-grid .kpi-card b{font-size:18px;margin-top:6px}
+.order-kpi-grid .kpi-money{font-size:14px!important}
+.order-toolbar{justify-content:space-between}
+.order-search-form{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  min-width:0;
+  flex:1;
+}
+.order-search-form .search{
+  min-width:310px;
+  max-width:420px;
+  width:38vw;
+}
+@media(max-width:1440px){
+  .order-date-filter{grid-template-columns:1fr auto}
+  .order-date-filter .range-meta{display:none}
+  .order-search-form .search{min-width:240px;width:30vw}
+}
+@media(max-width:1180px){
+  .order-date-filter{grid-template-columns:1fr}
+  .order-date-filter .custom-range-form{display:none}
+  .order-toolbar{height:auto;min-height:40px;flex-wrap:wrap}
+  .order-search-form{order:1;flex-basis:100%}
+  .order-search-form .search{max-width:none;width:100%}
+}
