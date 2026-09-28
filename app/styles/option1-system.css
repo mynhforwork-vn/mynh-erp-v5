@@ -1139,3 +1139,69 @@ a{text-decoration:none}
   .purchase-dashboard-grid,
   .purchase-dashboard-grid.second-row{grid-template-columns:1fr}
 }
+
+
+/* Purchase accounts */
+.account-kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:6px;
+  margin-bottom:8px;
+}
+.account-kpi{
+  min-height:56px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:2px;
+  padding:7px 9px;
+  border:1px solid var(--mynh-border);
+  border-radius:6px;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(23,33,47,.025);
+}
+.account-kpi:hover{border-color:#C7D2DF;background:#FBFCFD}
+.account-kpi.active{
+  border-color:#A9B9CA;
+  box-shadow:0 0 0 1px rgba(54,80,114,.08);
+}
+.account-kpi span{color:var(--mynh-text-2);font-size:8.5px;font-weight:650}
+.account-kpi b{
+  color:var(--mynh-text);
+  font-size:17px;
+  line-height:1.05;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+.account-kpi small{color:var(--mynh-text-3);font-size:7.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-kpi.success.active{border-color:#B8DAC4;background:#F8FCF9}
+.account-kpi.warning.active{border-color:#E5C997;background:#FFFBF4}
+.account-kpi.danger.active{border-color:#E1B3B3;background:#FFF9F9}
+.platform-badge,
+.platform-cell{
+  min-height:20px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 7px;
+  border:1px solid #E6B9AA;
+  border-radius:999px;
+  background:#FFF4F0;
+  color:#B74C2B;
+  font-size:7.75px;
+  line-height:1;
+  font-weight:750;
+  letter-spacing:.025em;
+}
+.platform-badge{min-height:24px}
+.account-toolbar{justify-content:space-between}
+.account-search-form{display:flex;align-items:center;gap:5px;min-width:0}
+.account-search-form .search{min-width:260px}
+.user-table th:nth-child(3),.user-table td:nth-child(3){width:74px}
+.user-table th:nth-child(7),.user-table td:nth-child(7){width:112px}
+.user-table th:nth-child(9),.user-table td:nth-child(9){width:58px;text-align:center}
+.user-table th:nth-child(10),.user-table td:nth-child(10){width:126px}
+@media(max-width:1180px){
+  .account-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .account-search-form .search{min-width:210px}
+}
