@@ -2,7 +2,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/supabase/auth'
-import { nextTrackAt } from '@/lib/tracking/schedule'
+import { nextTrackAt } from '@/lib/purchase/tracking/schedule'
 
 function text(v:FormDataEntryValue|null){return String(v??'').trim()}
 async function actor(){
@@ -27,8 +27,8 @@ export async function createERPUser(formData:FormData){
     p_spc_f:text(formData.get('spc_f'))||null,
   })
   if(error)throw new Error(error.message)
-  revalidatePath('/users')
-  redirect(`/users?user=${data}`)
+  revalidatePath('/purchase/accounts')
+  redirect(`/purchase/accounts?user=${data}`)
 }
 
 export async function updateERPUser(formData:FormData){
@@ -50,8 +50,8 @@ export async function updateERPUser(formData:FormData){
     p_spc_f:text(formData.get('spc_f'))||null,
   })
   if(error)throw new Error(error.message)
-  revalidatePath('/users')
-  redirect(`/users?user=${data}`)
+  revalidatePath('/purchase/accounts')
+  redirect(`/purchase/accounts?user=${data}`)
 }
 
 function numberOrNull(v:FormDataEntryValue|null){
@@ -122,8 +122,8 @@ export async function createOrder(formData:FormData){
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  revalidatePath('/orders'); revalidatePath('/tracking'); revalidatePath('/users'); revalidatePath('/')
-  redirect(`/orders?order=${data}`)
+  revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/')
+  redirect(`/purchase/orders?order=${data}`)
 }
 
 export async function updateOrder(formData:FormData){
@@ -149,8 +149,8 @@ export async function updateOrder(formData:FormData){
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  revalidatePath('/orders'); revalidatePath('/tracking'); revalidatePath('/users'); revalidatePath('/')
-  redirect(`/orders?order=${data}`)
+  revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/')
+  redirect(`/purchase/orders?order=${data}`)
 }
 
 export async function replaceShipment(formData:FormData){
@@ -191,6 +191,6 @@ export async function replaceShipment(formData:FormData){
     source:'USER'
   })
 
-  revalidatePath('/orders'); revalidatePath('/tracking'); revalidatePath('/')
-  redirect(`/orders?order=${orderId}&tab=tracking`)
+  revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/')
+  redirect(`/purchase/orders?order=${orderId}&tab=tracking`)
 }

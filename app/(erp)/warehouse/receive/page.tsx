@@ -1,0 +1,2 @@
+import { ModulePlaceholder } from '@/components/module-placeholder'
+export default function Page(){return <ModulePlaceholder group="QUẢN LÝ KHO" title="Nhập kho" description="Nhập kho sau khi đơn đã được xác nhận nhận hàng." bullets={["Danh sách đơn đủ điều kiện nhập kho","Kiểm tra SKU / phân loại / số lượng","Chọn kho và xác nhận nhập","Dự phòng quét QR trên điện thoại"]} backHref="/warehouse"/>}

@@ -841,3 +841,102 @@ a{text-decoration:none}
   .order-table .product-cell{max-width:170px}
   .order-table .voucher-cell{max-width:150px}
 }
+
+
+/* Navigation Freeze V5 */
+.sidebar{overflow:hidden}
+.nav{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding-right:2px;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(255,255,255,.13) transparent;
+}
+.nav::-webkit-scrollbar{width:4px}
+.nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.13);border-radius:99px}
+.nav-group{margin:0 0 7px}
+.nav-group:last-child{margin-bottom:2px}
+.nav-group-items{display:flex;flex-direction:column;gap:1px}
+.nav-section-label{
+  padding:7px 9px 4px;
+  color:#7F96B0;
+  font-size:7px;
+  font-weight:750;
+  letter-spacing:.13em;
+}
+.nav a{
+  height:30px;
+  min-height:30px;
+  gap:7px;
+  padding:0 8px;
+  border-radius:5px;
+  font-size:9.6px;
+}
+.nav-icon{
+  width:20px;
+  height:20px;
+  flex-basis:20px;
+  border-radius:4px;
+}
+.sidebar-foot{
+  flex:0 0 auto;
+  margin-top:7px;
+  padding-top:8px;
+  background:linear-gradient(180deg,rgba(31,45,66,0),#1F2D42 14%);
+}
+.module-eyebrow{
+  display:block;
+  margin-bottom:2px;
+  color:#7A8798;
+  font-size:7.5px;
+  font-weight:750;
+  letter-spacing:.12em;
+}
+.module-placeholder{
+  min-height:220px;
+  display:flex;
+  align-items:flex-start;
+  gap:14px;
+  padding:18px;
+}
+.module-placeholder-mark{
+  width:42px;height:42px;
+  flex:0 0 42px;
+  display:grid;place-items:center;
+  border-radius:7px;
+  background:#EEF3F8;
+  color:#365072;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.06em;
+}
+.module-placeholder h2{margin:0 0 5px;font-size:13px;color:#17212F}
+.module-placeholder p{max-width:660px;margin:0;color:#657286;font-size:10px}
+.module-scope{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.module-scope span{
+  padding:5px 7px;
+  border:1px solid #E5EAF1;
+  border-radius:5px;
+  background:#F8FAFC;
+  color:#526174;
+  font-size:8.5px;
+}
+.module-shortcut{
+  min-height:78px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:4px;
+  transition:border-color .12s ease,transform .12s ease;
+}
+.module-shortcut:hover{border-color:#C6D2DF;transform:translateY(-1px)}
+.module-shortcut b{color:#22324A;font-size:10.5px}
+.module-shortcut span{color:#748094;font-size:9px}
+.kpi-money{font-size:16px!important}
+@media(max-width:1180px){
+  .nav-section-label{display:none}
+  .nav-group{margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.07)}
+  .nav a{height:31px;min-height:31px}
+}

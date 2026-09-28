@@ -57,7 +57,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       </div>
       <div className="head-actions">
         <button className="button" disabled>Nhập hàng loạt</button>
-        <Link className="button primary" href="/users?mode=create">+ Thêm tài khoản</Link>
+        <Link className="button primary" href="/purchase/accounts?mode=create">+ Thêm tài khoản</Link>
       </div>
     </header>
 
@@ -88,7 +88,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                   ? <tr><td colSpan={10} className="empty">Chưa có tài khoản Shopee trong hệ thống.</td></tr>
                   : rows.map((u:any,i:number)=><tr key={u.id} className={selected?.id===u.id?'selected-row':''}>
                       <td>{i+1}</td>
-                      <td><Link className="table-link" href={`/users?user=${u.id}`}>{u.username}</Link></td>
+                      <td><Link className="table-link" href={`/purchase/accounts?user=${u.id}`}>{u.username}</Link></td>
                       <td>{formatPhone(u.phone)}</td>
                       <td>{u.email??'—'}</td>
                       <td><span className={`status-pill ${statusClass(u.status)}`}>{statusLabel(u.status)}</span></td>
@@ -107,7 +107,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         <aside className="detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">TÀI KHOẢN SHOPEE</span><h2>Thêm tài khoản</h2></div>
-            <Link className="close" href="/users">×</Link>
+            <Link className="close" href="/purchase/accounts">×</Link>
           </div>
           <form action={createERPUser} className="panel-form panel-scroll">
             <section className="form-section">
@@ -142,7 +142,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             </section>
 
             <div className="form-actions">
-              <Link className="button" href="/users">Hủy</Link>
+              <Link className="button" href="/purchase/accounts">Hủy</Link>
               <button className="button primary">Tạo tài khoản</button>
             </div>
           </form>
@@ -153,11 +153,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         <aside className="detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT USER</span><h2>{selected.username}</h2></div>
-            <Link className="close" href="/users">×</Link>
+            <Link className="close" href="/purchase/accounts">×</Link>
           </div>
           <div className="panel-tabs">
-            <Link className={!sp.tab||sp.tab==='info'?'active':''} href={`/users?user=${selected.id}&tab=info`}>Thông tin</Link>
-            <Link className={sp.tab==='history'?'active':''} href={`/users?user=${selected.id}&tab=history`}>Lịch sử</Link>
+            <Link className={!sp.tab||sp.tab==='info'?'active':''} href={`/purchase/accounts?user=${selected.id}&tab=info`}>Thông tin</Link>
+            <Link className={sp.tab==='history'?'active':''} href={`/purchase/accounts?user=${selected.id}&tab=history`}>Lịch sử</Link>
           </div>
           <div className="panel-scroll">
             {(!sp.tab||sp.tab==='info')&&<>
@@ -175,7 +175,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                 <div className="full"><span>Ghi chú</span><b>{selected.note??'—'}</b></div>
               </div>
               <div className="panel-action-row">
-                <Link className="button primary" href={`/users?user=${selected.id}&mode=edit`}>Sửa tài khoản</Link>
+                <Link className="button primary" href={`/purchase/accounts?user=${selected.id}&mode=edit`}>Sửa tài khoản</Link>
               </div>
             </>}
             {sp.tab==='history'&&<>
@@ -200,7 +200,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         <aside className="detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">TÀI KHOẢN SHOPEE</span><h2>Sửa {selected.username}</h2></div>
-            <Link className="close" href={`/users?user=${selected.id}`}>×</Link>
+            <Link className="close" href={`/purchase/accounts?user=${selected.id}`}>×</Link>
           </div>
           <form action={updateERPUser} className="panel-form panel-scroll">
             <input type="hidden" name="user_id" value={selected.id}/>
@@ -237,7 +237,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             </section>
 
             <div className="form-actions">
-              <Link className="button" href={`/users?user=${selected.id}`}>Hủy</Link>
+              <Link className="button" href={`/purchase/accounts?user=${selected.id}`}>Hủy</Link>
               <button className="button primary">Lưu thay đổi</button>
             </div>
           </form>

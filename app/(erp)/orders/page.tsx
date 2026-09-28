@@ -94,7 +94,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       </div>
       <div className="head-actions">
         <button className="button" disabled>Lọc theo ngày</button>
-        <Link className="button primary" href="/orders?mode=create">+ Tạo đơn</Link>
+        <Link className="button primary" href="/purchase/orders?mode=create">+ Tạo đơn</Link>
       </div>
     </header>
 
@@ -103,9 +103,9 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         <div className="toolbar">
           <input className="search" placeholder="Tìm mã đơn / mã vận đơn / Username" disabled/>
           <div className="segmented">
-            <Link className={!sp.receive?'active':''} href="/orders">Tất cả</Link>
-            <Link className={sp.receive==='WAITING_RECEIVE'?'active':''} href="/orders?receive=WAITING_RECEIVE">Chờ nhận</Link>
-            <Link className={sp.receive==='RECEIVED'?'active':''} href="/orders?receive=RECEIVED">Đã nhận</Link>
+            <Link className={!sp.receive?'active':''} href="/purchase/orders">Tất cả</Link>
+            <Link className={sp.receive==='WAITING_RECEIVE'?'active':''} href="/purchase/orders?receive=WAITING_RECEIVE">Chờ nhận</Link>
+            <Link className={sp.receive==='RECEIVED'?'active':''} href="/purchase/orders?receive=RECEIVED">Đã nhận</Link>
           </div>
           <span className="toolbar-note">{rows.length} đơn</span>
         </div>
@@ -132,7 +132,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                       const s=activeShipment(o)
                       return <tr key={o.id} className={sp.order===o.id?'selected-row':''}>
                         <td>{i+1}</td>
-                        <td><Link className="table-link" href={`/orders?order=${o.id}`}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
+                        <td><Link className="table-link" href={`/purchase/orders?order=${o.id}`}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
                         <td>{o.erp_users?.username??'—'}</td>
                         <td className="truncate product-cell">{productSummary(o.order_items??[])}</td>
                         <td className="money">{formatMoney(o.cod)}</td>
@@ -156,13 +156,13 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         <aside className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN HÀNG</span><h2>Tạo đơn mới</h2></div>
-            <Link className="close" href="/orders">×</Link>
+            <Link className="close" href="/purchase/orders">×</Link>
           </div>
           <OrderEditorForm
             mode="create"
             users={(userOptions??[]) as any[]}
             values={{order_status:'PENDING',payment_status:'UNPAID',cod:0}}
-            cancelHref="/orders"
+            cancelHref="/purchase/orders"
           />
         </aside>
       }
@@ -171,7 +171,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         <aside className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN HÀNG</span><h2>Sửa {detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
-            <Link className="close" href={`/orders?order=${detail.id}`}>×</Link>
+            <Link className="close" href={`/purchase/orders?order=${detail.id}`}>×</Link>
           </div>
           <OrderEditorForm
             mode="edit"
@@ -194,7 +194,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             }}
             initialItems={items}
             initialVouchers={vouchers}
-            cancelHref={`/orders?order=${detail.id}`}
+            cancelHref={`/purchase/orders?order=${detail.id}`}
           />
         </aside>
       }
@@ -203,13 +203,13 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         <aside className="detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT ĐƠN</span><h2>{detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
-            <Link className="close" href={sp.receive?`/orders?receive=${sp.receive}`:'/orders'}>×</Link>
+            <Link className="close" href={sp.receive?`/purchase/orders?receive=${sp.receive}`:'/purchase/orders'}>×</Link>
           </div>
 
           <div className="panel-tabs">
-            <Link className={!sp.tab||sp.tab==='info'?'active':''} href={`/orders?order=${detail.id}&tab=info`}>Thông tin</Link>
-            <Link className={sp.tab==='tracking'?'active':''} href={`/orders?order=${detail.id}&tab=tracking`}>Tracking</Link>
-            <Link className={sp.tab==='history'?'active':''} href={`/orders?order=${detail.id}&tab=history`}>Lịch sử</Link>
+            <Link className={!sp.tab||sp.tab==='info'?'active':''} href={`/purchase/orders?order=${detail.id}&tab=info`}>Thông tin</Link>
+            <Link className={sp.tab==='tracking'?'active':''} href={`/purchase/orders?order=${detail.id}&tab=tracking`}>Tracking</Link>
+            <Link className={sp.tab==='history'?'active':''} href={`/purchase/orders?order=${detail.id}&tab=history`}>Lịch sử</Link>
           </div>
 
           <div className="panel-scroll">
@@ -233,7 +233,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
               <div className="panel-action-row split-actions">
                 <CopyOrderButton text={`Mã đơn: ${detail.shopee_order_id??''}\nMã vận đơn: ${currentShip?.tracking_number??''}\nCOD: ${detail.cod??0}\nNgười nhận: ${detail.recipient_name??''}\nSĐT: ${detail.recipient_phone??''}\nĐịa chỉ: ${detail.recipient_address??''}`}/>
-                {['admin','operator'].includes(role)&&<Link className="button primary" href={`/orders?order=${detail.id}&mode=edit`}>Sửa đơn</Link>}
+                {['admin','operator'].includes(role)&&<Link className="button primary" href={`/purchase/orders?order=${detail.id}&mode=edit`}>Sửa đơn</Link>}
               </div>
 
               <h3>Sản phẩm</h3>
