@@ -3,7 +3,7 @@ import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 
-type RangeKey='today'|'7d'|'30d'|'month'|'quarter'|'year'|'custom'
+type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'
 type SP={range?:RangeKey,from?:string,to?:string}
 
 const HOUR=60*60*1000
@@ -25,10 +25,19 @@ function ymd(y:number,m:number,d:number){
 function localStartIso(dateText:string){return new Date(`${dateText}T00:00:00+07:00`).toISOString()}
 function localEndIso(dateText:string){return new Date(`${dateText}T23:59:59.999+07:00`).toISOString()}
 
-function subtractLocalDays(y:number,m:number,d:number,days:number){
+function shiftLocalDays(y:number,m:number,d:number,days:number){
   const base=Date.UTC(y,m-1,d)
-  const x=new Date(base-days*DAY)
+  const x=new Date(base+days*DAY)
   return ymd(x.getUTCFullYear(),x.getUTCMonth()+1,x.getUTCDate())
+}
+
+function currentWeekRange(y:number,m:number,d:number){
+  const weekday=new Date(Date.UTC(y,m-1,d)).getUTCDay()
+  const daysFromMonday=(weekday+6)%7
+  return {
+    from:shiftLocalDays(y,m,d,-daysFromMonday),
+    to:shiftLocalDays(y,m,d,6-daysFromMonday),
+  }
 }
 
 function resolveRange(sp:SP){
@@ -40,8 +49,14 @@ function resolveRange(sp:SP){
   let to=today
   let label='Hôm nay'
 
-  if(key==='7d'){from=subtractLocalDays(p.year,p.month,p.day,6);label='7 ngày'}
-  if(key==='30d'){from=subtractLocalDays(p.year,p.month,p.day,29);label='30 ngày'}
+  if(key==='week'){
+    const week=currentWeekRange(p.year,p.month,p.day)
+    from=week.from
+    to=week.to
+    label='Tuần này'
+  }
+  if(key==='7d'){from=shiftLocalDays(p.year,p.month,p.day,-6);label='7 ngày'}
+  if(key==='30d'){from=shiftLocalDays(p.year,p.month,p.day,-29);label='30 ngày'}
   if(key==='month'){from=ymd(p.year,p.month,1);label='Tháng này'}
   if(key==='quarter'){
     const qStart=Math.floor((p.month-1)/3)*3+1
