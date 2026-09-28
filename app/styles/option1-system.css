@@ -1610,3 +1610,230 @@ a{text-decoration:none}
     width:128px;
   }
 }
+
+
+/* Purchase account advanced filters */
+.account-filter-bar{
+  min-height:42px;
+  display:grid;
+  grid-template-columns:minmax(220px,1.35fr) repeat(5,minmax(105px,.72fr)) auto auto;
+  align-items:end;
+  gap:5px;
+  padding:6px;
+  margin-bottom:7px;
+  border:1px solid var(--mynh-border);
+  border-radius:7px;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(23,33,47,.025);
+}
+.account-filter-bar .search,
+.account-filter-bar select{
+  height:29px;
+  min-width:0;
+  padding:0 7px;
+  border:1px solid var(--mynh-border-2);
+  border-radius:5px;
+  background:#fff;
+  color:var(--mynh-text);
+  font-size:8.5px;
+  outline:none;
+}
+.account-filter-bar .search:focus,
+.account-filter-bar select:focus{
+  border-color:#95A8BF;
+  box-shadow:0 0 0 2px rgba(49,93,138,.07);
+}
+.account-result-meta{display:flex;align-items:center;gap:4px}
+.account-result-meta b{font-size:10px;color:var(--mynh-text);font-weight:700}
+.account-result-meta span{font-size:8px;color:var(--mynh-text-3)}
+
+/* Account column manager */
+.account-table-shell{position:relative}
+.column-manager{
+  position:absolute;
+  right:6px;
+  top:-35px;
+  z-index:18;
+}
+.column-manager-menu{
+  position:absolute;
+  right:0;
+  top:33px;
+  width:190px;
+  padding:6px;
+  border:1px solid #D7E0E9;
+  border-radius:7px;
+  background:#fff;
+  box-shadow:0 12px 28px rgba(29,44,63,.12);
+}
+.column-manager-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  padding:2px 3px 6px;
+  border-bottom:1px solid #EDF1F5;
+  margin-bottom:3px;
+}
+.column-manager-head b{font-size:8.5px;color:var(--mynh-text)}
+.column-manager-head button{
+  border:0;background:transparent;color:#607085;
+  font-size:7.75px;font-weight:650;cursor:pointer;
+}
+.column-manager-menu label{
+  min-height:25px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:0 4px;
+  border-radius:4px;
+  color:#4C5B6E;
+  font-size:8.5px;
+  cursor:pointer;
+}
+.column-manager-menu label:hover{background:#F7F9FB}
+.column-manager-menu label.locked{opacity:.58;cursor:default}
+.column-manager-menu input{width:12px;height:12px;margin:0;accent-color:#365072}
+.account-table-card{overflow:auto}
+
+/* Voucher semantic tags */
+.voucher-tags{
+  display:flex;
+  align-items:center;
+  gap:3px;
+  flex-wrap:wrap;
+}
+.voucher-tag{
+  min-height:19px;
+  display:inline-flex;
+  align-items:center;
+  padding:0 6px;
+  border:1px solid #E0E5EB;
+  border-radius:999px;
+  background:#F7F9FB;
+  color:#687487;
+  font-size:7.5px;
+  line-height:1;
+  font-weight:650;
+  white-space:nowrap;
+}
+.voucher-tag.blue{border-color:#C9DAEC;background:#EEF5FC;color:#315D8A}
+.voucher-tag.orange{border-color:#ECD5AE;background:#FFF6E9;color:#A86408}
+.voucher-tag.green{border-color:#C9E3D2;background:#EEF8F1;color:#28724A}
+.voucher-tag.purple{border-color:#DCCFE9;background:#F7F1FC;color:#74518E}
+.voucher-tag.neutral{border-color:#E1E6EC;background:#F7F9FB;color:#778395}
+.user-table .voucher-cell{min-width:150px;max-width:220px}
+
+/* Explicit device / browser details */
+.device-detail-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:5px;
+  margin-bottom:11px;
+}
+.device-detail-grid>div{
+  min-height:42px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:2px;
+  padding:6px 8px;
+  border:1px solid #E5EAF1;
+  border-radius:6px;
+  background:#FAFBFC;
+}
+.device-detail-grid>div.full{grid-column:1/-1}
+.device-detail-grid span{color:var(--mynh-text-3);font-size:7.5px}
+.device-detail-grid b{color:var(--mynh-text);font-size:9px;font-weight:650}
+.device-detail-grid b.yes{color:var(--mynh-success)}
+.device-detail-grid b.no{color:#8994A3}
+.detail-voucher-box{
+  min-height:40px;
+  display:flex;
+  align-items:center;
+  padding:7px 8px;
+  margin-bottom:10px;
+  border:1px solid #E5EAF1;
+  border-radius:6px;
+  background:#FAFBFC;
+}
+.account-meta-grid{margin-top:1px}
+.user-panel-tabs a span{
+  min-width:18px;
+  height:16px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-left:3px;
+  padding:0 4px;
+  border-radius:999px;
+  background:#EEF2F6;
+  color:#617084;
+  font-size:7px;
+}
+
+/* User order history in detail panel */
+.panel-section-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:7px;
+}
+.panel-section-head>div{display:flex;flex-direction:column;gap:1px}
+.panel-section-head h3{margin:0}
+.panel-section-head span{color:var(--mynh-text-3);font-size:7.75px}
+.user-order-list{display:flex;flex-direction:column;gap:6px}
+.user-order-card{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  padding:7px 8px;
+  border:1px solid #E5EAF1;
+  border-radius:6px;
+  background:#fff;
+  transition:border-color .12s ease,background .12s ease;
+}
+.user-order-card:hover{border-color:#C8D4E0;background:#FBFCFD}
+.user-order-card-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+}
+.user-order-card-top>div{display:flex;flex-direction:column;gap:1px;min-width:0}
+.user-order-card-top b{color:var(--mynh-brand);font-size:9.5px;font-weight:700}
+.user-order-card-top span{color:var(--mynh-text-3);font-size:7.5px}
+.user-order-card-top strong{color:var(--mynh-text);font-size:9px;font-weight:700;white-space:nowrap}
+.user-order-product{
+  color:#435267;
+  font-size:8.5px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.user-order-meta{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+}
+.user-order-meta>span{color:var(--mynh-text-3);font-size:7.75px}
+.user-order-meta>div{display:flex;align-items:center;gap:3px;flex-wrap:wrap;justify-content:flex-end}
+
+@media(max-width:1440px){
+  .account-filter-bar{
+    grid-template-columns:minmax(210px,1.3fr) repeat(3,minmax(100px,.72fr)) auto auto;
+  }
+  .account-filter-bar select:nth-of-type(4),
+  .account-filter-bar select:nth-of-type(5){display:none}
+}
+@media(max-width:1180px){
+  .account-filter-bar{
+    grid-template-columns:1fr 1fr 1fr;
+  }
+  .account-filter-bar .search{grid-column:1/-1}
+  .account-filter-bar select:nth-of-type(4),
+  .account-filter-bar select:nth-of-type(5){display:block}
+  .column-manager{top:-34px}
+}
