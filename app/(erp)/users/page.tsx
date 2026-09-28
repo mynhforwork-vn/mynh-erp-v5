@@ -7,15 +7,9 @@ import Link from 'next/link'
 
 type SP={
   mode?:string,user?:string,tab?:string,q?:string,state?:string,platform?:string,
-  device?:string,session?:string,voucher?:string,orders?:string,browser?:string
+  device?:string,session?:string,voucher?:string,orders?:string,browser?:string,sort?:string
 }
 
-function statusClass(status?:string|null){
-  if(status==='Active') return 'green'
-  if(status==='Blocked') return 'red'
-  if(['M01','M02','M03','M04','Captcha','Auto Hủy'].includes(String(status))) return 'orange'
-  return ''
-}
 function hasST(row:any){return Boolean(row?.spc_st_secret_id||row?.spc_st_encrypted)}
 function hasF(row:any){return Boolean(row?.spc_f_secret_id||row?.spc_f_encrypted)}
 function activeShipment(order:any){
@@ -25,15 +19,25 @@ function productSummary(items:any[]){
   if(!items?.length)return '—'
   const first=items[0]
   const firstName=[first.product_name,first.variant].filter(Boolean).join(' · ')
-  return items.length>1?`${firstName} +${items.length-1}`:firstName
+  return items.length>1?firstName+' +'+(items.length-1):firstName
 }
-function browserBucket(value?:string|null){
+function voucherLabel(v:any){
+  return String(v?.voucher_tag||v?.voucher_type||v?.voucher_name||v?.voucher_code||'').trim()
+}
+function deviceBrowserBucket(value?:string|null){
   const v=String(value??'').toLowerCase()
   if(v.includes('chrome'))return 'chrome'
   if(v.includes('safari'))return 'safari'
   if(v.includes('edge'))return 'edge'
+  if(v.includes('shopee app'))return 'app'
   if(!v)return 'none'
   return 'other'
+}
+function deviceTypeLabel(type?:string|null){
+  if(type==='MOBILE')return 'Điện thoại'
+  if(type==='TABLET')return 'Máy tính bảng'
+  if(type==='BROWSER_PROFILE')return 'Browser Profile'
+  return 'Máy tính'
 }
 
 const actionLabels:Record<string,string>={
@@ -51,7 +55,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const sp=await searchParams
   const {supabase}=await requireUser()
 
-  const fields='id,username,phone,email,status,platform,browser_name,note,created_at,updated_at,mobile,web,voucher_summary,order_count,created_at_source,password_secret_id,spc_st_secret_id,spc_f_secret_id,password_encrypted,spc_st_encrypted,spc_f_encrypted'
+  const fields='id,username,phone,email,status,platform,browser_name,note,created_at,updated_at,mobile,web,order_count,created_at_source,password_secret_id,spc_st_secret_id,spc_f_secret_id,password_encrypted,spc_st_encrypted,spc_f_encrypted'
   const platform=sp.platform??'SHOPEE'
   const state=sp.state??'all'
   const device=sp.device??'all'
@@ -59,29 +63,77 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const voucher=sp.voucher??'all'
   const orders=sp.orders??'all'
   const browser=sp.browser??'all'
+  const sort=sp.sort??'newest'
   const queryText=String(sp.q??'').trim().toLowerCase()
 
-  const {data,error}=await supabase.from('erp_users').select(fields).eq('platform',platform).order('created_at',{ascending:false}).limit(2000)
-  const allRows=(data??[]) as any[]
+  const [{data:userData,error},{data:deviceData},{data:voucherOrderData}]=await Promise.all([
+    supabase.from('erp_users').select(fields).eq('platform',platform).limit(2000),
+    supabase.from('purchase_account_devices')
+      .select('id,erp_user_id,device_key,device_name,device_type,browser_name,browser_profile,is_active,last_seen_at,source,note')
+      .order('last_seen_at',{ascending:false,nullsFirst:false})
+      .limit(5000),
+    supabase.from('orders')
+      .select('erp_user_id,order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)')
+      .not('erp_user_id','is',null)
+      .limit(5000),
+  ])
 
-  const counts={
-    all:allRows.length,
-    active:allRows.filter(x=>x.status==='Active').length,
-    error:allRows.filter(x=>['M01','M02','M03','M04','Captcha','Auto Hủy'].includes(x.status)).length,
-    blocked:allRows.filter(x=>x.status==='Blocked').length,
-    unknown:allRows.filter(x=>x.status==='Không xác định').length,
+  const allRows=(userData??[]) as any[]
+  const devices=(deviceData??[]) as any[]
+  const voucherOrders=(voucherOrderData??[]) as any[]
+
+  const deviceMap=new Map<string,any[]>()
+  for(const d of devices){
+    const arr=deviceMap.get(d.erp_user_id)??[]
+    arr.push(d)
+    deviceMap.set(d.erp_user_id,arr)
   }
 
-  const rows=allRows.filter((u:any)=>{
+  const voucherMap=new Map<string,any[]>()
+  for(const o of voucherOrders){
+    if(!o.erp_user_id)continue
+    const arr=voucherMap.get(o.erp_user_id)??[]
+    for(const v of (o.order_vouchers??[]))arr.push(v)
+    voucherMap.set(o.erp_user_id,arr)
+  }
+
+  const enriched=allRows.map((u:any)=>{
+    const activeDevices=(deviceMap.get(u.id)??[]).filter((d:any)=>d.is_active)
+    const voucherRows=voucherMap.get(u.id)??[]
+    const uniqueVoucherLabels=[...new Set(voucherRows.map(voucherLabel).filter(Boolean))]
+    return {
+      ...u,
+      active_devices:activeDevices,
+      all_devices:deviceMap.get(u.id)??[],
+      voucher_used_rows:voucherRows,
+      voucher_used_summary:uniqueVoucherLabels.join(' · '),
+    }
+  })
+
+  const counts={
+    all:enriched.length,
+    active:enriched.filter(x=>x.status==='Active').length,
+    error:enriched.filter(x=>['M01','M02','M03','M04','Captcha','Auto Hủy'].includes(x.status)).length,
+    blocked:enriched.filter(x=>x.status==='Blocked').length,
+    unknown:enriched.filter(x=>x.status==='Không xác định').length,
+  }
+
+  let rows=enriched.filter((u:any)=>{
     if(state==='active'&&u.status!=='Active')return false
     if(state==='error'&&!['M01','M02','M03','M04','Captcha','Auto Hủy'].includes(u.status))return false
     if(state==='blocked'&&u.status!=='Blocked')return false
     if(state==='unknown'&&u.status!=='Không xác định')return false
 
-    if(device==='mobile'&&!u.mobile)return false
-    if(device==='web'&&!u.web)return false
-    if(device==='both'&&!(u.mobile&&u.web))return false
-    if(device==='none'&&(u.mobile||u.web))return false
+    const activeDevices=u.active_devices??[]
+    const allDevices=u.all_devices??[]
+    if(device==='active'&&!activeDevices.length)return false
+    if(device==='desktop'&&!activeDevices.some((d:any)=>d.device_type==='DESKTOP'||d.device_type==='BROWSER_PROFILE'))return false
+    if(device==='mobile'&&!activeDevices.some((d:any)=>d.device_type==='MOBILE'))return false
+    if(device==='multi'&&activeDevices.length<2)return false
+    if(device==='inactive'&&!allDevices.some((d:any)=>!d.is_active))return false
+    if(device==='none'&&allDevices.length)return false
+
+    if(browser!=='all'&&!activeDevices.some((d:any)=>deviceBrowserBucket(d.browser_name)===browser))return false
 
     const st=hasST(u), sf=hasF(u)
     if(session==='full'&&!(st&&sf))return false
@@ -90,10 +142,10 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     if(session==='missing'&&(st&&sf))return false
     if(session==='none'&&(st||sf))return false
 
-    const voucherText=String(u.voucher_summary??'').toLowerCase().trim()
-    const hasVoucher=Boolean(voucherText)&&!['chưa có voucher','không có voucher','không voucher'].includes(voucherText)
-    if(voucher==='has'&&!hasVoucher)return false
-    if(voucher==='none'&&hasVoucher)return false
+    const voucherLabels=(u.voucher_used_rows??[]).map(voucherLabel).filter(Boolean)
+    const voucherText=voucherLabels.join(' ').toLowerCase()
+    if(voucher==='has'&&!voucherLabels.length)return false
+    if(voucher==='none'&&voucherLabels.length)return false
     if(voucher==='freeship'&&!voucherText.includes('free'))return false
     if(voucher==='discount'&&!voucherText.includes('giảm'))return false
     if(voucher==='cashback'&&!(voucherText.includes('hoàn')||voucherText.includes('xu')))return false
@@ -104,13 +156,19 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     if(orders==='6-10'&&(n<6||n>10))return false
     if(orders==='11+'&&n<11)return false
 
-    if(browser!=='all'&&browserBucket(u.browser_name)!==browser)return false
-
     if(queryText){
-      const hay=[u.username,u.phone,u.email,u.note,u.browser_name,u.voucher_summary].filter(Boolean).join(' ').toLowerCase()
+      const deviceSearch=allDevices.flatMap((d:any)=>[d.device_name,d.browser_name,d.browser_profile]).filter(Boolean)
+      const hay=[u.username,u.phone,u.email,u.note,...deviceSearch,...voucherLabels].filter(Boolean).join(' ').toLowerCase()
       if(!hay.includes(queryText))return false
     }
     return true
+  })
+
+  rows=[...rows].sort((a:any,b:any)=>{
+    if(sort==='name_asc')return String(a.username).localeCompare(String(b.username),'vi')
+    if(sort==='name_desc')return String(b.username).localeCompare(String(a.username),'vi')
+    if(sort==='oldest')return new Date(a.created_at).getTime()-new Date(b.created_at).getTime()
+    return new Date(b.created_at).getTime()-new Date(a.created_at).getTime()
   })
 
   function filterHref(overrides:Record<string,string|null|undefined>={}){
@@ -119,7 +177,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       q:sp.q,state:state!=='all'?state:undefined,device:device!=='all'?device:undefined,
       session:session!=='all'?session:undefined,voucher:voucher!=='all'?voucher:undefined,
       orders:orders!=='all'?orders:undefined,browser:browser!=='all'?browser:undefined,
-      platform:platform!=='SHOPEE'?platform:undefined,
+      sort:sort!=='newest'?sort:undefined,platform:platform!=='SHOPEE'?platform:undefined,
     }
     for(const [k,v] of Object.entries(current))if(v)p.set(k,v)
     for(const [k,v] of Object.entries(overrides)){
@@ -129,16 +187,20 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     const qs=p.toString()
     return '/purchase/accounts'+(qs?'?'+qs:'')
   }
-  const detailQuery=new URL(filterHref().replace('/purchase/accounts',''),'https://x.local').searchParams.toString()
+
+  const detailParams=new URLSearchParams()
+  if(sp.q)detailParams.set('q',sp.q)
+  if(state!=='all')detailParams.set('state',state)
+  if(device!=='all')detailParams.set('device',device)
+  if(session!=='all')detailParams.set('session',session)
+  if(voucher!=='all')detailParams.set('voucher',voucher)
+  if(orders!=='all')detailParams.set('orders',orders)
+  if(browser!=='all')detailParams.set('browser',browser)
+  if(sort!=='newest')detailParams.set('sort',sort)
+  const detailQuery=detailParams.toString()
 
   let selected:any=null
-  if(sp.user){
-    selected=allRows.find((x:any)=>x.id===sp.user)??null
-    if(!selected){
-      const s=await supabase.from('erp_users').select(fields).eq('id',sp.user).maybeSingle()
-      selected=s.data
-    }
-  }
+  if(sp.user)selected=enriched.find((x:any)=>x.id===sp.user)??null
 
   let history:any[]=[]
   let userOrders:any[]=[]
@@ -148,21 +210,31 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   }
   if(selected&&sp.tab==='orders'){
     const o=await supabase.from('orders').select(
-      'id,shopee_order_id,order_date,cod,receive_status,order_status,order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code),shipments(id,tracking_number,carrier,current_tracking_status,is_active)'
+      'id,shopee_order_id,order_date,area,destination_hub,cod,receive_status,warehouse_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,source,order_items(sku,product_name,variant,quantity,original_price,final_price),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active)'
     ).eq('erp_user_id',selected.id).order('order_date',{ascending:false}).limit(100)
     userOrders=(o.data??[]) as any[]
   }
 
+  const selectedDevices=selected?.all_devices??[]
+  const primaryDevice=selectedDevices.find((d:any)=>d.device_key==='manual-primary')??selectedDevices.find((d:any)=>d.is_active)??null
+  const selectedVoucherRows=selected?.voucher_used_rows??[]
+  const voucherCounts=new Map<string,number>()
+  for(const v of selectedVoucherRows){
+    const label=voucherLabel(v)
+    if(label)voucherCounts.set(label,(voucherCounts.get(label)??0)+1)
+  }
+  const selectedVoucherSummary=[...voucherCounts.keys()].join(' · ')
+
   const panelOpen=sp.mode==='create'||Boolean(selected)
   const isEdit=Boolean(selected&&sp.mode==='edit')
-  const filtersActive=Boolean(queryText||state!=='all'||device!=='all'||session!=='all'||voucher!=='all'||orders!=='all'||browser!=='all')
+  const filtersActive=Boolean(queryText||state!=='all'||device!=='all'||session!=='all'||voucher!=='all'||orders!=='all'||browser!=='all'||sort!=='newest')
 
-  return <>
+  return <div className="account-screen">
     <header className="page-head">
       <div>
         <span className="module-eyebrow">MUA HÀNG</span>
         <h1>Tài khoản mua hàng</h1>
-        <p>Lưu trữ tài khoản mua hàng theo nền tảng; hiện tại đang vận hành Shopee</p>
+        <p>Tài khoản, thiết bị hoạt động, đơn hàng và voucher đã sử dụng</p>
       </div>
       <div className="head-actions">
         <span className="platform-badge">SHOPEE</span>
@@ -171,84 +243,74 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       </div>
     </header>
 
-    <section className="account-kpi-grid">
-      <Link className={`account-kpi ${state==='all'?'active':''}`} href={filterHref({state:null})}>
-        <span>Tất cả</span><b>{counts.all}</b><small>Tài khoản</small>
-      </Link>
-      <Link className={`account-kpi success ${state==='active'?'active':''}`} href={filterHref({state:'active'})}>
-        <span>Hoạt động</span><b>{counts.active}</b><small>Sẵn sàng sử dụng</small>
-      </Link>
-      <Link className={`account-kpi warning ${state==='error'?'active':''}`} href={filterHref({state:'error'})}>
-        <span>Cần xử lý</span><b>{counts.error}</b><small>M01–M04 / Captcha / Auto Hủy</small>
-      </Link>
-      <Link className={`account-kpi danger ${state==='blocked'?'active':''}`} href={filterHref({state:'blocked'})}>
-        <span>Đã khóa</span><b>{counts.blocked}</b><small>Blocked</small>
-      </Link>
-      <Link className={`account-kpi ${state==='unknown'?'active':''}`} href={filterHref({state:'unknown'})}>
-        <span>Không xác định</span><b>{counts.unknown}</b><small>Cần kiểm tra</small>
-      </Link>
+    <section className="account-kpi-grid compact">
+      <Link className={`account-kpi ${state==='all'?'active':''}`} href="/purchase/accounts"><span>Tất cả</span><b>{counts.all}</b></Link>
+      <Link className={`account-kpi success ${state==='active'?'active':''}`} href="/purchase/accounts?state=active"><span>Hoạt động</span><b>{counts.active}</b></Link>
+      <Link className={`account-kpi warning ${state==='error'?'active':''}`} href="/purchase/accounts?state=error"><span>Cần xử lý</span><b>{counts.error}</b></Link>
+      <Link className={`account-kpi danger ${state==='blocked'?'active':''}`} href="/purchase/accounts?state=blocked"><span>Đã khóa</span><b>{counts.blocked}</b></Link>
+      <Link className={`account-kpi ${state==='unknown'?'active':''}`} href="/purchase/accounts?state=unknown"><span>Không xác định</span><b>{counts.unknown}</b></Link>
     </section>
 
-    <form className="account-filter-bar" action="/purchase/accounts">
-      <input className="search" name="q" defaultValue={sp.q??''} placeholder="Username / SĐT / Email / Browser / Voucher"/>
+    <form className="account-filter-bar one-line" action="/purchase/accounts">
+      <input className="search" name="q" defaultValue={sp.q??''} placeholder="Tìm User / SĐT / Email / máy / voucher"/>
       <select name="device" defaultValue={device}>
-        <option value="all">Tất cả thiết bị</option>
-        <option value="mobile">Có Mobile</option>
-        <option value="web">Có Web</option>
-        <option value="both">Mobile + Web</option>
-        <option value="none">Chưa gắn thiết bị</option>
+        <option value="all">Thiết bị: Tất cả</option>
+        <option value="active">Có máy đang hoạt động</option>
+        <option value="desktop">Máy tính</option>
+        <option value="mobile">Điện thoại</option>
+        <option value="multi">Nhiều máy active</option>
+        <option value="inactive">Có máy ngừng hoạt động</option>
+        <option value="none">Chưa có thiết bị</option>
       </select>
       <select name="browser" defaultValue={browser}>
-        <option value="all">Tất cả Browser</option>
+        <option value="all">Browser: Tất cả</option>
         <option value="chrome">Chrome</option>
         <option value="safari">Safari</option>
         <option value="edge">Edge</option>
-        <option value="other">Browser khác</option>
-        <option value="none">Chưa khai báo Browser</option>
+        <option value="app">Shopee App</option>
+        <option value="other">Khác</option>
       </select>
       <select name="session" defaultValue={session}>
-        <option value="all">Tất cả phiên</option>
-        <option value="full">Đủ SPC_ST + SPC_F</option>
+        <option value="all">SPC: Tất cả</option>
+        <option value="full">Đủ ST + F</option>
         <option value="st">Có SPC_ST</option>
         <option value="f">Có SPC_F</option>
-        <option value="missing">Thiếu ít nhất 1 SPC</option>
-        <option value="none">Không có SPC</option>
+        <option value="missing">Thiếu SPC</option>
+        <option value="none">Không SPC</option>
       </select>
       <select name="voucher" defaultValue={voucher}>
-        <option value="all">Tất cả Voucher</option>
-        <option value="has">Có Voucher</option>
-        <option value="none">Không Voucher</option>
+        <option value="all">Voucher: Tất cả</option>
+        <option value="has">Đã dùng Voucher</option>
+        <option value="none">Chưa dùng Voucher</option>
         <option value="freeship">Freeship</option>
         <option value="discount">Giảm giá</option>
         <option value="cashback">Hoàn xu</option>
       </select>
       <select name="orders" defaultValue={orders}>
-        <option value="all">Tất cả số đơn</option>
+        <option value="all">Đơn: Tất cả</option>
         <option value="0">0 đơn</option>
         <option value="1-5">1–5 đơn</option>
         <option value="6-10">6–10 đơn</option>
         <option value="11+">11+ đơn</option>
       </select>
       {state!=='all'&&<input type="hidden" name="state" value={state}/>}
-      <button className="button primary small">Áp dụng</button>
-      {filtersActive&&<Link className="button small" href="/purchase/accounts">Xóa lọc</Link>}
+      {sort!=='newest'&&<input type="hidden" name="sort" value={sort}/>}
+      <button className="button primary small">Lọc</button>
+      {filtersActive&&<Link className="button small filter-clear" href="/purchase/accounts">×</Link>}
     </form>
 
-    <div className={`split-view ${panelOpen?'with-panel':''}`}>
-      <section>
+    <div className={`split-view account-workspace ${panelOpen?'with-panel':''}`}>
+      <section className="account-list-pane">
         <div className="toolbar account-toolbar">
-          <div className="account-result-meta">
-            <b>{rows.length}</b><span>/ {counts.all} tài khoản phù hợp</span>
-          </div>
-          <span className="toolbar-note">Bấm Username để mở chi tiết</span>
+          <div className="account-result-meta"><b>{rows.length}</b><span>/ {counts.all} tài khoản</span></div>
+          <span className="toolbar-note">Sắp xếp trực tiếp tại cột Username / Thời gian tạo</span>
         </div>
-
         {error&&<div className="error-box">Không thể tải dữ liệu tài khoản: {error.message}</div>}
-        {!error&&<PurchaseAccountTable rows={rows} selectedId={selected?.id} detailQuery={detailQuery}/>}
+        {!error&&<PurchaseAccountTable rows={rows} selectedId={selected?.id} detailQuery={detailQuery} sort={sort}/>}
       </section>
 
       {sp.mode==='create'&&
-        <aside className="detail-panel">
+        <aside className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Thêm tài khoản</h2></div>
             <Link className="close" href="/purchase/accounts">×</Link>
@@ -256,47 +318,33 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
           <form action={createERPUser} className="panel-form panel-scroll">
             <section className="form-section">
               <h3>Thông tin tài khoản</h3>
-              <label>Nền tảng<select disabled defaultValue="SHOPEE"><option value="SHOPEE">Shopee</option></select></label>
               <label>Username<input name="username" required/></label>
-              <div className="form-grid">
-                <label>Số điện thoại<input name="phone"/></label>
-                <label>Email<input name="email" type="email"/></label>
-              </div>
-              <label>Trạng thái
-                <select name="status" defaultValue="Active">
-                  {['Active','M01','M02','M03','M04','Captcha','Auto Hủy','Blocked','Không xác định'].map(s=><option key={s} value={s}>{statusLabel(s)}</option>)}
-                </select>
-              </label>
+              <div className="form-grid"><label>Số điện thoại<input name="phone"/></label><label>Email<input name="email" type="email"/></label></div>
+              <label>Trạng thái<select name="status" defaultValue="Active">{['Active','M01','M02','M03','M04','Captcha','Auto Hủy','Blocked','Không xác định'].map(s=><option key={s} value={s}>{statusLabel(s)}</option>)}</select></label>
             </section>
-
             <section className="form-section">
               <h3>Đăng nhập & phiên</h3>
-              <label>Mật khẩu<input name="password" type="password" autoComplete="new-password" placeholder="Được lưu trong Supabase Vault"/></label>
-              <label>SPC_ST<textarea name="spc_st" rows={3} placeholder="Không bắt buộc"/></label>
-              <label>SPC_F<textarea name="spc_f" rows={3} placeholder="Không bắt buộc"/></label>
+              <label>Mật khẩu<input name="password" type="password" autoComplete="new-password"/></label>
+              <label>SPC_ST<textarea name="spc_st" rows={2}/></label>
+              <label>SPC_F<textarea name="spc_f" rows={2}/></label>
             </section>
-
             <section className="form-section">
-              <h3>Thiết bị, Browser & Voucher</h3>
-              <div className="check-grid">
-                <label className="check-row"><input type="checkbox" name="mobile"/> Mobile</label>
-                <label className="check-row"><input type="checkbox" name="web"/> Web</label>
+              <h3>Thiết bị đang hoạt động</h3>
+              <label>Tên máy<input name="device_name" placeholder="Ví dụ: MacBook M1 · Máy mua 01"/></label>
+              <div className="form-grid">
+                <label>Loại<select name="device_type" defaultValue="DESKTOP"><option value="DESKTOP">Máy tính</option><option value="MOBILE">Điện thoại</option><option value="BROWSER_PROFILE">Browser Profile</option></select></label>
+                <label>Browser<input name="browser_name" placeholder="Chrome"/></label>
               </div>
-              <label>Browser<input name="browser_name" placeholder="Ví dụ: Chrome, Safari, Edge"/></label>
-              <label>Voucher<input name="voucher_summary" placeholder="Ví dụ: Freeship · Giảm giá · Hoàn xu"/></label>
-              <label>Ghi chú<textarea name="note" rows={3}/></label>
+              <label>Profile<input name="browser_profile" placeholder="Profile A / NST Profile..."/></label>
+              <label>Ghi chú<textarea name="note" rows={2}/></label>
             </section>
-
-            <div className="form-actions">
-              <Link className="button" href="/purchase/accounts">Hủy</Link>
-              <button className="button primary">Tạo tài khoản</button>
-            </div>
+            <div className="form-actions"><Link className="button" href="/purchase/accounts">Hủy</Link><button className="button primary">Tạo tài khoản</button></div>
           </form>
         </aside>
       }
 
       {selected&&!isEdit&&
-        <aside className="detail-panel">
+        <aside className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT USER</span><h2>{selected.username}</h2></div>
             <Link className="close" href={filterHref()}>×</Link>
@@ -308,63 +356,85 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
           </div>
           <div className="panel-scroll">
             {(!sp.tab||sp.tab==='info')&&<>
-              <div className="detail-grid">
+              <div className="detail-grid compact-detail-grid">
                 <div><span>Username</span><b>{selected.username}</b></div>
-                <div><span>Nền tảng</span><b>{selected.platform??'SHOPEE'}</b></div>
                 <div><span>Trạng thái</span><b>{statusLabel(selected.status)}</b></div>
-                <div><span>Số điện thoại</span><b>{formatPhone(selected.phone)}</b></div>
-                <div className="full"><span>Email</span><b>{selected.email??'—'}</b></div>
-              </div>
-
-              <h3>Thiết bị & Browser</h3>
-              <div className="device-detail-grid">
-                <div><span>Mobile</span><b className={selected.mobile?'yes':'no'}>{selected.mobile?'Có':'Không'}</b></div>
-                <div><span>Web</span><b className={selected.web?'yes':'no'}>{selected.web?'Có':'Không'}</b></div>
-                <div className="full"><span>Browser</span><b>{selected.browser_name??'Chưa khai báo'}</b></div>
-                <div><span>SPC_ST</span><b className={hasST(selected)?'yes':'no'}>{hasST(selected)?'Đã có':'Chưa có'}</b></div>
-                <div><span>SPC_F</span><b className={hasF(selected)?'yes':'no'}>{hasF(selected)?'Đã có':'Chưa có'}</b></div>
-              </div>
-
-              <h3>Voucher</h3>
-              <div className="detail-voucher-box"><VoucherTags value={selected.voucher_summary}/></div>
-
-              <div className="detail-grid account-meta-grid">
+                <div><span>SĐT</span><b>{formatPhone(selected.phone)}</b></div>
+                <div><span>Email</span><b>{selected.email??'—'}</b></div>
+                <div><span>SPC_ST</span><b>{hasST(selected)?'Đã có':'Chưa có'}</b></div>
+                <div><span>SPC_F</span><b>{hasF(selected)?'Đã có':'Chưa có'}</b></div>
                 <div><span>Số đơn</span><b>{selected.order_count??0} đơn</b></div>
-                <div><span>Mật khẩu</span><b>{selected.password_secret_id||selected.password_encrypted?'Đã lưu bảo mật':'Chưa có'}</b></div>
-                <div><span>Thời gian tạo</span><b>{formatDateTime(selected.created_at)}</b></div>
-                <div><span>Nguồn thời gian</span><b>{selected.created_at_source??'MANUAL'}</b></div>
-                <div className="full"><span>Ghi chú</span><b>{selected.note??'—'}</b></div>
+                <div><span>Ngày tạo</span><b>{formatDateTime(selected.created_at)}</b></div>
               </div>
 
-              <div className="panel-action-row">
-                <Link className="button primary" href={`/purchase/accounts?user=${selected.id}&mode=edit`}>Sửa tài khoản</Link>
+              <div className="panel-section-head"><div><h3>Thiết bị hoạt động</h3><span>{selectedDevices.filter((d:any)=>d.is_active).length} active / {selectedDevices.length} đã ghi nhận</span></div></div>
+              <div className="device-card-scroll">
+                {!selectedDevices.length
+                  ? <div className="empty compact">Chưa ghi nhận thiết bị.</div>
+                  : selectedDevices.map((d:any)=><div className={`device-activity-card ${d.is_active?'active':''}`} key={d.id}>
+                      <div className="device-activity-main">
+                        <div><b>{d.device_name}</b><span>{deviceTypeLabel(d.device_type)}</span></div>
+                        <span className={`device-live-dot ${d.is_active?'on':''}`}>{d.is_active?'Đang hoạt động':'Ngừng hoạt động'}</span>
+                      </div>
+                      <div className="device-activity-meta">
+                        <span>Browser <b>{d.browser_name??'—'}</b></span>
+                        <span>Profile <b>{d.browser_profile??'—'}</b></span>
+                        <span>Hoạt động gần nhất <b>{formatDateTime(d.last_seen_at)}</b></span>
+                      </div>
+                    </div>)}
               </div>
+
+              <div className="panel-section-head voucher-section-title"><div><h3>Voucher đã dùng</h3><span>Tự tổng hợp từ đơn hàng của User</span></div></div>
+              <div className="voucher-usage-box">
+                <VoucherTags value={selectedVoucherSummary}/>
+                {!!voucherCounts.size&&<div className="voucher-counts">{[...voucherCounts.entries()].map(([label,count])=><span key={label}>{label} <b>×{count}</b></span>)}</div>}
+              </div>
+
+              <div className="panel-note-row"><span>Ghi chú</span><b>{selected.note??'—'}</b></div>
+              <div className="panel-action-row"><Link className="button primary" href={`/purchase/accounts?user=${selected.id}&mode=edit`}>Sửa tài khoản</Link></div>
             </>}
 
             {sp.tab==='orders'&&<>
               <div className="panel-section-head">
-                <div><h3>Đơn hàng của User</h3><span>{userOrders.length} đơn đang hiển thị</span></div>
-                <Link className="button small" href={`/purchase/orders?q=${encodeURIComponent(selected.username)}`}>Mở danh sách đơn</Link>
+                <div><h3>Đơn hàng của User</h3><span>{userOrders.length} đơn · chi tiết sản phẩm, voucher, giao nhận</span></div>
+                <Link className="button small" href={`/purchase/orders?q=${encodeURIComponent(selected.username)}`}>Mở toàn bộ</Link>
               </div>
-              <div className="user-order-list">
+              <div className="user-order-list detailed">
                 {!userOrders.length
                   ? <div className="empty compact">User này chưa có đơn hàng.</div>
                   : userOrders.map((o:any)=>{
                       const s=activeShipment(o)
-                      return <Link className="user-order-card" href={`/purchase/orders?order=${o.id}`} key={o.id}>
+                      const voucherText=(o.order_vouchers??[]).map(voucherLabel).filter(Boolean).join(' · ')
+                      return <Link className="user-order-card detailed" href={`/purchase/orders?order=${o.id}`} key={o.id}>
                         <div className="user-order-card-top">
-                          <div><b>{o.shopee_order_id??o.id.slice(0,8)}</b><span>{formatDateTime(o.order_date)}</span></div>
+                          <div><b>{o.shopee_order_id??o.id.slice(0,8)}</b><span>{formatDateTime(o.order_date)} · {o.area??'Chưa rõ khu vực'}</span></div>
                           <strong>{formatMoney(o.cod)}</strong>
                         </div>
-                        <div className="user-order-product">{productSummary(o.order_items??[])}</div>
-                        <div className="user-order-meta">
-                          <span>{s?.tracking_number??'Chưa có MVĐ'}{s?.carrier?` · ${s.carrier}`:''}</span>
-                          <div>
-                            <span className={`status-pill status-${String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}`}>{statusLabel(s?.current_tracking_status)}</span>
-                            {o.receive_status!=='NOT_READY'&&<span className={`status-pill ${o.receive_status==='RECEIVED'?'green':'orange'}`}>{statusLabel(o.receive_status)}</span>}
-                          </div>
+
+                        <div className="order-detail-strip">
+                          <span>Đơn <b>{statusLabel(o.order_status)}</b></span>
+                          <span>Thanh toán <b>{statusLabel(o.payment_status)}</b></span>
+                          <span>Nhận <b>{statusLabel(o.receive_status)}</b></span>
                         </div>
-                        {!!o.order_vouchers?.length&&<VoucherTags value={o.order_vouchers.map((v:any)=>v.voucher_tag||v.voucher_type||v.voucher_code).filter(Boolean).join(' · ')}/>}
+
+                        <div className="user-order-products">
+                          {(o.order_items??[]).map((it:any,i:number)=><div key={i}>
+                            <span>{it.product_name??'Sản phẩm'}{it.variant?' · '+it.variant:''}</span>
+                            <b>{it.sku??'—'} · ×{it.quantity??1} · {formatMoney(it.final_price??it.original_price)}</b>
+                          </div>)}
+                        </div>
+
+                        <div className="user-order-recipient">
+                          <span>{o.recipient_name??'—'} · {formatPhone(o.recipient_phone)}</span>
+                          <small>{o.recipient_address??'—'}</small>
+                        </div>
+
+                        <div className="user-order-shipping">
+                          <div><span>MVĐ</span><b>{s?.tracking_number??'Chưa có'}</b><small>{s?.carrier??'—'} · {o.destination_hub??'Chưa rõ kho đích'}</small></div>
+                          <span className={`status-pill status-${String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}`}>{statusLabel(s?.current_tracking_status)}</span>
+                        </div>
+
+                        {voucherText&&<VoucherTags value={voucherText}/>}
                       </Link>
                     })}
               </div>
@@ -372,16 +442,10 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
             {sp.tab==='history'&&<>
               <h3>Lịch sử User</h3>
-              <div className="timeline">
+              <div className="timeline user-history-scroll">
                 {!history.length
                   ? <div className="empty compact">Chưa có lịch sử thay đổi.</div>
-                  : history.map((h:any)=><div className="timeline-item" key={h.id}>
-                      <i></i><div>
-                        <b>{actionLabels[h.action]??h.action}</b>
-                        <span>{sourceLabel(h.source)}</span>
-                        <small>{formatDateTime(h.created_at)}</small>
-                      </div>
-                    </div>)}
+                  : history.map((h:any)=><div className="timeline-item" key={h.id}><i></i><div><b>{actionLabels[h.action]??h.action}</b><span>{sourceLabel(h.source)}</span><small>{formatDateTime(h.created_at)}</small></div></div>)}
               </div>
             </>}
           </div>
@@ -389,7 +453,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       }
 
       {selected&&isEdit&&
-        <aside className="detail-panel">
+        <aside className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Sửa {selected.username}</h2></div>
             <Link className="close" href={`/purchase/accounts?user=${selected.id}`}>×</Link>
@@ -398,45 +462,31 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             <input type="hidden" name="user_id" value={selected.id}/>
             <section className="form-section">
               <h3>Thông tin tài khoản</h3>
-              <label>Nền tảng<select disabled defaultValue={selected.platform??'SHOPEE'}><option value="SHOPEE">Shopee</option></select></label>
               <label>Username<input name="username" required defaultValue={selected.username}/></label>
-              <div className="form-grid">
-                <label>Số điện thoại<input name="phone" defaultValue={selected.phone??''}/></label>
-                <label>Email<input name="email" type="email" defaultValue={selected.email??''}/></label>
-              </div>
-              <label>Trạng thái
-                <select name="status" defaultValue={selected.status}>
-                  {['Active','M01','M02','M03','M04','Captcha','Auto Hủy','Blocked','Không xác định'].map(s=><option key={s} value={s}>{statusLabel(s)}</option>)}
-                </select>
-              </label>
+              <div className="form-grid"><label>Số điện thoại<input name="phone" defaultValue={selected.phone??''}/></label><label>Email<input name="email" type="email" defaultValue={selected.email??''}/></label></div>
+              <label>Trạng thái<select name="status" defaultValue={selected.status}>{['Active','M01','M02','M03','M04','Captcha','Auto Hủy','Blocked','Không xác định'].map(s=><option key={s} value={s}>{statusLabel(s)}</option>)}</select></label>
             </section>
-
             <section className="form-section">
               <h3>Đăng nhập & phiên</h3>
-              <div className="secret-state">Mật khẩu: <b>{selected.password_secret_id||selected.password_encrypted?'Đã có':'Chưa có'}</b> · SPC_ST: <b>{hasST(selected)?'Đã có':'Chưa có'}</b> · SPC_F: <b>{hasF(selected)?'Đã có':'Chưa có'}</b></div>
+              <div className="secret-state">SPC_ST: <b>{hasST(selected)?'Đã có':'Chưa có'}</b> · SPC_F: <b>{hasF(selected)?'Đã có':'Chưa có'}</b></div>
               <label>Mật khẩu mới<input name="password" type="password" autoComplete="new-password" placeholder="Để trống nếu không đổi"/></label>
-              <label>SPC_ST mới<textarea name="spc_st" rows={3} placeholder="Để trống nếu không đổi"/></label>
-              <label>SPC_F mới<textarea name="spc_f" rows={3} placeholder="Để trống nếu không đổi"/></label>
+              <label>SPC_ST mới<textarea name="spc_st" rows={2} placeholder="Để trống nếu không đổi"/></label>
+              <label>SPC_F mới<textarea name="spc_f" rows={2} placeholder="Để trống nếu không đổi"/></label>
             </section>
-
             <section className="form-section">
-              <h3>Thiết bị, Browser & Voucher</h3>
-              <div className="check-grid">
-                <label className="check-row"><input type="checkbox" name="mobile" defaultChecked={selected.mobile}/> Mobile</label>
-                <label className="check-row"><input type="checkbox" name="web" defaultChecked={selected.web}/> Web</label>
+              <h3>Thiết bị chính</h3>
+              <label>Tên máy<input name="device_name" defaultValue={primaryDevice?.device_name??''} placeholder="MacBook M1 · Máy mua 01"/></label>
+              <div className="form-grid">
+                <label>Loại<select name="device_type" defaultValue={primaryDevice?.device_type??'DESKTOP'}><option value="DESKTOP">Máy tính</option><option value="MOBILE">Điện thoại</option><option value="BROWSER_PROFILE">Browser Profile</option></select></label>
+                <label>Browser<input name="browser_name" defaultValue={primaryDevice?.browser_name??selected.browser_name??''}/></label>
               </div>
-              <label>Browser<input name="browser_name" defaultValue={selected.browser_name??''} placeholder="Ví dụ: Chrome, Safari, Edge"/></label>
-              <label>Voucher<input name="voucher_summary" defaultValue={selected.voucher_summary??''}/></label>
-              <label>Ghi chú<textarea name="note" rows={3} defaultValue={selected.note??''}/></label>
+              <label>Profile<input name="browser_profile" defaultValue={primaryDevice?.browser_profile??''}/></label>
+              <label>Ghi chú<textarea name="note" rows={2} defaultValue={selected.note??''}/></label>
             </section>
-
-            <div className="form-actions">
-              <Link className="button" href={`/purchase/accounts?user=${selected.id}`}>Hủy</Link>
-              <button className="button primary">Lưu thay đổi</button>
-            </div>
+            <div className="form-actions"><Link className="button" href={`/purchase/accounts?user=${selected.id}`}>Hủy</Link><button className="button primary">Lưu thay đổi</button></div>
           </form>
         </aside>
       }
     </div>
-  </>
+  </div>
 }
