@@ -27,6 +27,9 @@ export async function createERPUser(formData:FormData){
     p_spc_f:text(formData.get('spc_f'))||null,
   })
   if(error)throw new Error(error.message)
+  const browserName=text(formData.get('browser_name'))||null
+  const {error:browserError}=await supabase.from('erp_users').update({browser_name:browserName}).eq('id',data)
+  if(browserError)throw new Error(browserError.message)
   revalidatePath('/purchase/accounts')
   redirect(`/purchase/accounts?user=${data}`)
 }
@@ -50,6 +53,9 @@ export async function updateERPUser(formData:FormData){
     p_spc_f:text(formData.get('spc_f'))||null,
   })
   if(error)throw new Error(error.message)
+  const browserName=text(formData.get('browser_name'))||null
+  const {error:browserError}=await supabase.from('erp_users').update({browser_name:browserName}).eq('id',userId)
+  if(browserError)throw new Error(browserError.message)
   revalidatePath('/purchase/accounts')
   redirect(`/purchase/accounts?user=${data}`)
 }
