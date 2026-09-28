@@ -11,7 +11,7 @@ type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'device'|'vo
 const ALL:ColKey[]=['number','username','platform','phone','email','status','device','voucher','orders','createdAt','note']
 const LABELS:Record<ColKey,string>={
   number:'#',username:'Username',platform:'Nền tảng',phone:'SĐT',email:'Email',
-  status:'Trạng thái',device:'Thiết bị hoạt động',voucher:'Voucher đã dùng',orders:'Số đơn',
+  status:'Trạng thái',device:'Thiết bị',voucher:'Voucher đã dùng',orders:'Số đơn',
   createdAt:'Thời gian tạo',note:'Ghi chú'
 }
 const STORAGE_KEY='mynh-v5-purchase-account-columns'
@@ -23,13 +23,30 @@ function statusClass(status?:string|null){
   return ''
 }
 
-function deviceLabel(row:Row){
+function hasST(row:Row){return Boolean(row.spc_st_secret_id||row.spc_st_encrypted)}
+function hasF(row:Row){return Boolean(row.spc_f_secret_id||row.spc_f_encrypted)}
+
+function DeviceIcons({row}:{row:Row}){
   const active=(row.active_devices??[]).filter((d:any)=>d.is_active)
-  if(!active.length)return 'Chưa có thiết bị active'
-  const first=active[0]
-  const browser=[first.browser_name,first.browser_profile].filter(Boolean).join(' · ')
-  const more=active.length>1?'+'+(active.length-1)+' máy':null
-  return [first.device_name,browser,more].filter(Boolean).join(' · ')
+  const hasMobile=active.some((d:any)=>d.device_type==='MOBILE')
+  const hasWeb=active.some((d:any)=>d.device_type==='DESKTOP'||d.device_type==='BROWSER_PROFILE')
+
+  const cls=(on:boolean)=>'device-icon '+(on?'on':'')
+
+  return <div className="device-icon-set" aria-label="Trạng thái phiên và thiết bị">
+    <span className={cls(hasST(row))} title={hasST(row)?'Có SPC_ST':'Chưa có SPC_ST'}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5.5 5.5v5.8c0 4.3 2.6 7.7 6.5 9.7 3.9-2 6.5-5.4 6.5-9.7V5.5L12 3Z"/><path d="m9.5 12 1.7 1.7 3.5-3.7"/></svg>
+    </span>
+    <span className={cls(hasF(row))} title={hasF(row)?'Có SPC_F':'Chưa có SPC_F'}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="11.5" r="4"/><path d="m12 11.5 8-8M16 7.5l2 2M14 9.5l2 2"/></svg>
+    </span>
+    <span className={cls(hasMobile)} title={hasMobile?'Có thiết bị Mobile đang hoạt động':'Không có Mobile đang hoạt động'}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M10 5h4M11 18.5h2"/></svg>
+    </span>
+    <span className={cls(hasWeb)} title={hasWeb?'Có máy/Browser đang hoạt động':'Không có máy/Browser đang hoạt động'}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    </span>
+  </div>
 }
 
 function sortHref(baseQuery:string,nextSort:string){
@@ -120,7 +137,7 @@ export function PurchaseAccountTable({
           {isVisible('phone')&&<th>SĐT</th>}
           {isVisible('email')&&<th>Email</th>}
           {isVisible('status')&&<th>Trạng thái</th>}
-          {isVisible('device')&&<th>Thiết bị hoạt động</th>}
+          {isVisible('device')&&<th>Thiết bị</th>}
           {isVisible('voucher')&&<th>Voucher đã dùng</th>}
           {isVisible('orders')&&<th>Số đơn</th>}
           {isVisible('createdAt')&&<th><Link className="sortable-head" href={sortHref(detailQuery,timeNext)}>Thời gian tạo <span>{sort==='newest'?'↓':sort==='oldest'?'↑':'↕'}</span></Link></th>}
@@ -136,7 +153,7 @@ export function PurchaseAccountTable({
                 {isVisible('phone')&&<td>{formatPhone(u.phone)}</td>}
                 {isVisible('email')&&<td>{u.email??'—'}</td>}
                 {isVisible('status')&&<td><span className={'status-pill '+statusClass(u.status)}>{statusLabel(u.status)}</span></td>}
-                {isVisible('device')&&<td className="device-name-cell" title={deviceLabel(u)}>{deviceLabel(u)}</td>}
+                {isVisible('device')&&<td className="device-icon-cell"><DeviceIcons row={u}/></td>}
                 {isVisible('voucher')&&<td className="voucher-cell"><VoucherTags value={u.voucher_used_summary}/></td>}
                 {isVisible('orders')&&<td className="count-cell">{u.order_count??0}</td>}
                 {isVisible('createdAt')&&<td>{formatDateTime(u.created_at)}</td>}
