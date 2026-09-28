@@ -765,3 +765,79 @@ a{text-decoration:none}
   line-height:1.45;
 }
 .secret-state b{color:#31435A;font-weight:650}
+
+
+/* Order module */
+.order-table th:nth-child(1),.order-table td:nth-child(1){width:34px}
+.order-table th:nth-child(2),.order-table td:nth-child(2){width:112px}
+.order-table th:nth-child(3),.order-table td:nth-child(3){width:116px}
+.order-table .product-cell{max-width:220px}
+.order-table .voucher-cell{max-width:190px}
+.order-table th:nth-child(5),.order-table td:nth-child(5){width:92px}
+.order-table th:nth-child(6),.order-table td:nth-child(6){width:126px}
+.order-table th:nth-child(7),.order-table td:nth-child(7){width:112px}
+.order-state-cell{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.order-panel .panel-form{gap:8px}
+.form-grid.three{grid-template-columns:.55fr 1fr 1fr}
+.form-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.form-section-head h3{margin:0}
+.mini-add{
+  height:23px;
+  padding:0 7px;
+  border:1px solid #D6DEE8;
+  border-radius:5px;
+  background:#fff;
+  color:#425064;
+  font-size:8.5px;
+  font-weight:600;
+  cursor:pointer;
+}
+.mini-add:hover{background:#F8FAFC;border-color:#BCC8D6;color:#22324A}
+.repeat-stack{display:flex;flex-direction:column;gap:7px}
+.repeat-card{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  padding:8px;
+  border:1px solid #E5EAF1;
+  border-radius:6px;
+  background:#FAFBFC;
+}
+.repeat-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.repeat-card-head b{color:#425064;font-size:8.75px;font-weight:700}
+.repeat-card-head button{
+  border:0;
+  background:transparent;
+  color:#B65A5A;
+  font-size:8px;
+  font-weight:600;
+  cursor:pointer;
+}
+.repeat-card .form-grid{gap:6px}
+.repeat-card label{gap:3px}
+.repeat-card input{background:#fff}
+.voucher-list{
+  overflow:hidden;
+  border:1px solid #E5EAF1;
+  border-radius:6px;
+  background:#fff;
+}
+.voucher-row{
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:6px 8px;
+  border-top:1px solid #EDF1F5;
+}
+.voucher-row:first-child{border-top:0}
+.voucher-row>div{display:flex;flex-direction:column;gap:1px}
+.voucher-row>div:last-child{text-align:right}
+.voucher-row b{color:#25364D;font-size:9px;font-weight:650}
+.voucher-row span{color:#7C8797;font-size:8px}
+.split-actions{align-items:center;justify-content:space-between}
+@media(max-width:1440px){
+  .order-table .product-cell{max-width:170px}
+  .order-table .voucher-cell{max-width:150px}
+}
