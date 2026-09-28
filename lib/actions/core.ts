@@ -13,23 +13,45 @@ async function actor(){
 
 export async function createERPUser(formData:FormData){
   const {supabase}=await actor()
+  const deviceName=text(formData.get('device_name'))
+  const deviceType=text(formData.get('device_type'))||'DESKTOP'
+  const browserName=text(formData.get('browser_name'))||null
+  const browserProfile=text(formData.get('browser_profile'))||null
+
   const {data,error}=await supabase.rpc('create_erp_user_full',{
     p_username:text(formData.get('username')),
     p_phone:text(formData.get('phone'))||null,
     p_email:text(formData.get('email'))||null,
     p_status:text(formData.get('status'))||'Active',
-    p_mobile:formData.get('mobile')==='on',
-    p_web:formData.get('web')==='on',
-    p_voucher_summary:text(formData.get('voucher_summary'))||null,
+    p_mobile:deviceType==='MOBILE',
+    p_web:deviceType!=='MOBILE'&&Boolean(deviceName||browserName),
+    p_voucher_summary:null,
     p_note:text(formData.get('note'))||null,
     p_password:text(formData.get('password'))||null,
     p_spc_st:text(formData.get('spc_st'))||null,
     p_spc_f:text(formData.get('spc_f'))||null,
   })
   if(error)throw new Error(error.message)
-  const browserName=text(formData.get('browser_name'))||null
+
   const {error:browserError}=await supabase.from('erp_users').update({browser_name:browserName}).eq('id',data)
   if(browserError)throw new Error(browserError.message)
+
+  if(deviceName){
+    const {error:deviceError}=await supabase.from('purchase_account_devices').upsert({
+      erp_user_id:data,
+      device_key:'manual-primary',
+      device_name:deviceName,
+      device_type:deviceType,
+      browser_name:browserName,
+      browser_profile:browserProfile,
+      is_active:true,
+      last_seen_at:new Date().toISOString(),
+      source:'MANUAL',
+      updated_at:new Date().toISOString(),
+    },{onConflict:'erp_user_id,device_key'})
+    if(deviceError)throw new Error(deviceError.message)
+  }
+
   revalidatePath('/purchase/accounts')
   redirect(`/purchase/accounts?user=${data}`)
 }
@@ -38,24 +60,47 @@ export async function updateERPUser(formData:FormData){
   const {supabase}=await actor()
   const userId=text(formData.get('user_id'))
   if(!userId)throw new Error('Thiếu tài khoản cần cập nhật')
+
+  const deviceName=text(formData.get('device_name'))
+  const deviceType=text(formData.get('device_type'))||'DESKTOP'
+  const browserName=text(formData.get('browser_name'))||null
+  const browserProfile=text(formData.get('browser_profile'))||null
+
   const {data,error}=await supabase.rpc('update_erp_user_full',{
     p_user_id:userId,
     p_username:text(formData.get('username')),
     p_phone:text(formData.get('phone'))||null,
     p_email:text(formData.get('email'))||null,
     p_status:text(formData.get('status'))||'Active',
-    p_mobile:formData.get('mobile')==='on',
-    p_web:formData.get('web')==='on',
-    p_voucher_summary:text(formData.get('voucher_summary'))||null,
+    p_mobile:deviceType==='MOBILE',
+    p_web:deviceType!=='MOBILE'&&Boolean(deviceName||browserName),
+    p_voucher_summary:null,
     p_note:text(formData.get('note'))||null,
     p_password:text(formData.get('password'))||null,
     p_spc_st:text(formData.get('spc_st'))||null,
     p_spc_f:text(formData.get('spc_f'))||null,
   })
   if(error)throw new Error(error.message)
-  const browserName=text(formData.get('browser_name'))||null
+
   const {error:browserError}=await supabase.from('erp_users').update({browser_name:browserName}).eq('id',userId)
   if(browserError)throw new Error(browserError.message)
+
+  if(deviceName){
+    const {error:deviceError}=await supabase.from('purchase_account_devices').upsert({
+      erp_user_id:userId,
+      device_key:'manual-primary',
+      device_name:deviceName,
+      device_type:deviceType,
+      browser_name:browserName,
+      browser_profile:browserProfile,
+      is_active:true,
+      last_seen_at:new Date().toISOString(),
+      source:'MANUAL',
+      updated_at:new Date().toISOString(),
+    },{onConflict:'erp_user_id,device_key'})
+    if(deviceError)throw new Error(deviceError.message)
+  }
+
   revalidatePath('/purchase/accounts')
   redirect(`/purchase/accounts?user=${data}`)
 }
