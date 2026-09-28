@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
+import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 
 type RangeKey='today'|'7d'|'30d'|'month'|'quarter'|'year'|'custom'
 type SP={range?:RangeKey,from?:string,to?:string}
@@ -129,9 +130,6 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
     return ['ARRIVED_DESTINATION_HUB','OUT_FOR_DELIVERY','DELIVERY_FAILED','DELIVERED'].includes(status)||o.receive_status==='WAITING_RECEIVE'
   }).slice(0,10)
 
-  const ranges:[RangeKey,string][]=[
-    ['today','Hôm nay'],['7d','7 ngày'],['30d','30 ngày'],['month','Tháng này'],['quarter','Quý này'],['year','Năm nay']
-  ]
 
   return <>
     <header className="page-head">
@@ -146,20 +144,12 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       </div>
     </header>
 
-    <div className="purchase-filter">
-      <div className="command-range">
-        {ranges.map(([key,label])=><Link key={key} className={range.key===key?'active':''} href={`/purchase?range=${key}`}>{label}</Link>)}
-        <Link className={range.key==='custom'?'active':''} href={`/purchase?range=custom&from=${range.from}&to=${range.to}`}>Tùy chọn</Link>
-      </div>
-      <form className="custom-range-form" action="/purchase">
-        <input type="hidden" name="range" value="custom"/>
-        <input aria-label="Từ ngày" type="date" name="from" defaultValue={range.from}/>
-        <span>→</span>
-        <input aria-label="Đến ngày" type="date" name="to" defaultValue={range.to}/>
-        <button className="button small">Áp dụng</button>
-      </form>
-      <div className="range-meta"><span>Khoảng đang xem</span><b>{range.label}</b></div>
-    </div>
+    <PurchaseDateFilter
+      activeRange={range.key}
+      from={range.from}
+      to={range.to}
+      label={range.label}
+    />
 
     {error&&<div className="error-box">Không thể tải dữ liệu mua hàng: {error.message}</div>}
 
