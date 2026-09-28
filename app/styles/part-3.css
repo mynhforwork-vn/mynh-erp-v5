@@ -1,0 +1,81 @@
+@media(max-width:1180px){.kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.split-view.with-panel{grid-template-columns:minmax(0,1fr) 340px}.content-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.shell{grid-template-columns:62px minmax(0,1fr)}.sidebar{padding:10px 7px}.brand{justify-content:center;padding:4px 0 12px}.brand>span:last-child{display:none}.nav a{justify-content:center;padding:0}.nav a>span:last-child{display:none}.nav-icon{width:28px;height:26px}.account{display:none}.main{padding:12px}.split-view.with-panel{grid-template-columns:1fr}.detail-panel{position:relative;top:auto;height:auto;max-height:70vh}.content-grid.two,.content-grid.three{grid-template-columns:1fr}.small-grid,.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.search{min-width:180px}}
+.detail-panel.floating{position:fixed;right:16px;top:15px;width:390px;z-index:20;box-shadow:0 16px 40px rgba(16,24,40,.14)}.panel-form{display:flex;flex-direction:column;gap:9px;padding:10px 12px 14px}.panel-form label{display:flex;flex-direction:column;gap:4px;font-size:9px;color:#697386;font-weight:800}.panel-form input,.panel-form select,.panel-form textarea{width:100%;border:1px solid #dce2e8;border-radius:6px;background:#fff;min-height:31px;padding:6px 8px;color:#27313f;font-size:10.5px;outline:none}.panel-form textarea{resize:vertical}.panel-form input:focus,.panel-form select:focus,.panel-form textarea:focus{border-color:#9aabc1;box-shadow:0 0 0 3px rgba(44,65,94,.05)}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.form-actions{display:flex;justify-content:flex-end;gap:7px;padding-top:5px;border-top:1px solid #eef0f3;margin-top:4px}
+.panel-tabs a{display:flex;align-items:center;font-size:9.5px;font-weight:700;color:#8b94a3;text-decoration:none}.panel-tabs a.active{color:#27364f;border-bottom:2px solid #27364f}.panel-action-row{display:flex;justify-content:flex-end;margin-top:7px}.active-shipment{border-color:#bdc9d8;background:#fbfcfe}.replace-form{border:1px solid #e4e8ee;background:#f8f9fb;border-radius:7px;padding:8px;margin-top:8px;display:flex;flex-direction:column;gap:7px}.replace-form>b{font-size:9.5px}.replace-form input{min-width:0;height:29px;border:1px solid #dbe1e7;border-radius:6px;padding:0 7px;font-size:9.5px}.timeline{display:flex;flex-direction:column}.timeline-item{display:grid;grid-template-columns:15px 1fr;gap:6px;position:relative;padding:2px 0 11px}.timeline-item:before{content:"";position:absolute;left:5px;top:12px;bottom:-2px;width:1px;background:#dfe4ea}.timeline-item:last-child:before{display:none}.timeline-item>i{width:11px;height:11px;border:2px solid #8091a9;background:#fff;border-radius:50%;z-index:1}.timeline-item>div{display:flex;flex-direction:column;gap:2px}.timeline-item b{font-size:9.5px}.timeline-item span{font-size:9px;color:#566171}.timeline-item small{font-size:8px;color:#98a2b3}
+
+/* ========================================================================== */
+/* MYNH ERP V5 — OPTION 1 DESIGN FREEZE                                      */
+/* Hiện đại & Chuyên nghiệp · Inter only · Vietnamese operations console     */
+/* ========================================================================== */
+:root{
+  --background:#F5F7FA;
+  --surface:#FFFFFF;
+  --surface-soft:#F8FAFC;
+  --text:#17212F;
+  --text-secondary:#5B6778;
+  --text-tertiary:#8A94A6;
+  --brand:#22324A;
+  --brand-2:#365072;
+  --brand-info:#315D8A;
+  --line:#E5EAF1;
+  --line-strong:#D6DEE8;
+  --success-bg:#EAF7EF;
+  --success-text:#1F7A45;
+  --warning-bg:#FFF4E5;
+  --warning-text:#B26A00;
+  --error-bg:#FDECEC;
+  --error-text:#C73A3A;
+  --info-bg:#EEF4FB;
+  --info-text:#315D8A;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:var(--text);
+  background:var(--background);
+}
+html,body{background:var(--background);color:var(--text)}
+body,button,input,select,textarea{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+
+.shell{grid-template-columns:208px minmax(0,1fr)}
+.sidebar{background:var(--brand);border-right:1px solid #1B293D;padding:12px 10px;color:#fff}
+.brand{border-bottom:1px solid rgba(255,255,255,.10);padding:4px 6px 13px;margin-bottom:7px}
+.brand .brand-mark,.sidebar .brand-mark{background:#fff;color:var(--brand);border-radius:8px}
+.brand b{font-size:13.5px;color:#fff;letter-spacing:.01em}
+.brand small{font-size:7.5px;color:#B9C8D9;letter-spacing:.08em}
+.nav{gap:2px}
+.nav a{height:34px;border-radius:6px;color:#DCE5EF;font-size:11px;font-weight:600;padding:0 9px}
+.nav a:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav a.active{background:var(--brand-info);color:#fff}
+.nav-icon{border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#DCE5EF;border-radius:5px}
+.nav a.active .nav-icon{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.12)}
+.sidebar-foot{border-top:1px solid rgba(255,255,255,.10);padding-top:11px}
+.account b{font-size:9.5px;color:#fff}
+.account span{font-size:8px;color:#AEBdCE;text-transform:none;letter-spacing:0}
+.sidebar .button.ghost{border-color:rgba(255,255,255,.16);color:#DCE5EF;background:transparent}
+.sidebar .button.ghost:hover{background:rgba(255,255,255,.07);color:#fff}
+
+.main{padding:14px 16px 24px}
+.page-head{margin-bottom:12px}
+.page-head h1{font-size:20px;line-height:1.2;letter-spacing:-.01em;color:var(--text);font-weight:700}
+.page-head p{font-size:11px;color:var(--text-secondary);margin-top:4px}
+.head-actions{gap:7px}
+
+.button{height:30px;border-radius:6px;border:1px solid var(--line-strong);background:#fff;color:var(--text);padding:0 10px;font-size:10.5px;font-weight:600;box-shadow:none}
+.button:hover{background:#F8FAFC;border-color:#B9C6D6}
+.button.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.button.primary:hover{background:#2B3F5C;border-color:#2B3F5C}
+.button.small{height:27px;font-size:10px;padding:0 8px}
+.button.ghost{height:29px;border-radius:6px}
+
+.card{border-color:var(--line);border-radius:7px;box-shadow:0 1px 2px rgba(34,50,74,.04);background:#fff}
+.card-head{min-height:28px;margin-bottom:8px}
+.card-head h2{font-size:12px;font-weight:600;color:var(--text)}
+
+.kpi-grid{gap:6px;margin-bottom:8px}
+.kpi-card{min-height:76px;border-color:var(--line);border-radius:7px;padding:9px 10px;box-shadow:0 1px 2px rgba(34,50,74,.04);background:#fff}
+.kpi-card:hover{border-color:#C8D3E0;transform:none;background:#FCFDFE}
+.kpi-card span{font-size:10px;color:var(--text-secondary);font-weight:600}
+.kpi-card b{font-size:20px;color:var(--text);margin:5px 0 2px;font-variant-numeric:tabular-nums}
+.kpi-card small{font-size:8.5px;color:var(--text-tertiary)}
+.kpi-card.warning{border-left:3px solid var(--warning-text)}
+.kpi-card.danger{border-left:3px solid var(--error-text)}
+
+.toolbar{height:40px;border-color:var(--line);border-radius:7px 7px 0 0;padding:5px 8px;background:#fff}
