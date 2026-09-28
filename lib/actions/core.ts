@@ -12,10 +12,46 @@ async function actor(){
 }
 
 export async function createERPUser(formData:FormData){
-  const {supabase}=await actor(); const username=text(formData.get('username'))
-  if(!username)throw new Error('Tên đăng nhập là bắt buộc')
-  const {error}=await supabase.from('erp_users').insert({username,phone:text(formData.get('phone'))||null,email:text(formData.get('email'))||null,status:text(formData.get('status'))||'Active',note:text(formData.get('note'))||null})
-  if(error)throw new Error(error.message); revalidatePath('/users'); redirect('/users')
+  const {supabase}=await actor()
+  const {data,error}=await supabase.rpc('create_erp_user_full',{
+    p_username:text(formData.get('username')),
+    p_phone:text(formData.get('phone'))||null,
+    p_email:text(formData.get('email'))||null,
+    p_status:text(formData.get('status'))||'Active',
+    p_mobile:formData.get('mobile')==='on',
+    p_web:formData.get('web')==='on',
+    p_voucher_summary:text(formData.get('voucher_summary'))||null,
+    p_note:text(formData.get('note'))||null,
+    p_password:text(formData.get('password'))||null,
+    p_spc_st:text(formData.get('spc_st'))||null,
+    p_spc_f:text(formData.get('spc_f'))||null,
+  })
+  if(error)throw new Error(error.message)
+  revalidatePath('/users')
+  redirect(`/users?user=${data}`)
+}
+
+export async function updateERPUser(formData:FormData){
+  const {supabase}=await actor()
+  const userId=text(formData.get('user_id'))
+  if(!userId)throw new Error('Thiếu tài khoản cần cập nhật')
+  const {data,error}=await supabase.rpc('update_erp_user_full',{
+    p_user_id:userId,
+    p_username:text(formData.get('username')),
+    p_phone:text(formData.get('phone'))||null,
+    p_email:text(formData.get('email'))||null,
+    p_status:text(formData.get('status'))||'Active',
+    p_mobile:formData.get('mobile')==='on',
+    p_web:formData.get('web')==='on',
+    p_voucher_summary:text(formData.get('voucher_summary'))||null,
+    p_note:text(formData.get('note'))||null,
+    p_password:text(formData.get('password'))||null,
+    p_spc_st:text(formData.get('spc_st'))||null,
+    p_spc_f:text(formData.get('spc_f'))||null,
+  })
+  if(error)throw new Error(error.message)
+  revalidatePath('/users')
+  redirect(`/users?user=${data}`)
 }
 
 export async function createOrder(formData:FormData){
