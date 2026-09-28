@@ -3,7 +3,7 @@ import { formatDateTime, formatPhone, sourceLabel, statusLabel } from '@/lib/for
 import { createERPUser, updateERPUser } from '@/lib/actions/core'
 import Link from 'next/link'
 
-type SP={mode?:string,user?:string,tab?:string}
+type SP={mode?:string,user?:string,tab?:string,q?:string,state?:string,platform?:string}
 
 function statusClass(status?:string|null){
   if(status==='Active') return 'green'
@@ -37,10 +37,40 @@ const actionLabels:Record<string,string>={
 export default async function UsersPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
   const {supabase}=await requireUser()
-  const fields='id,username,phone,email,status,note,created_at,updated_at,mobile,web,voucher_summary,order_count,created_at_source,password_secret_id,spc_st_secret_id,spc_f_secret_id,password_encrypted,spc_st_encrypted,spc_f_encrypted'
-  const {data,error}=await supabase.from('erp_users').select(fields).order('created_at',{ascending:false}).limit(100)
+  const fields='id,username,phone,email,status,platform,note,created_at,updated_at,mobile,web,voucher_summary,order_count,created_at_source,password_secret_id,spc_st_secret_id,spc_f_secret_id,password_encrypted,spc_st_encrypted,spc_f_encrypted'
+  const platform=sp.platform??'SHOPEE'
+  const state=sp.state??'all'
+  const queryText=String(sp.q??'').trim()
+  let query=supabase.from('erp_users').select(fields).eq('platform',platform).order('created_at',{ascending:false}).limit(200)
+  if(state==='active')query=query.eq('status','Active')
+  if(state==='error')query=query.in('status',['M01','M02','M03','M04','Captcha','Auto Hủy'])
+  if(state==='blocked')query=query.eq('status','Blocked')
+  if(state==='unknown')query=query.eq('status','Không xác định')
+  if(queryText){
+    const safe=queryText.replace(/[,%]/g,' ').trim()
+    if(safe)query=query.or(`username.ilike.%${safe}%,phone.ilike.%${safe}%,email.ilike.%${safe}%`)
+  }
+  const [{data,error},{data:statusData}]=await Promise.all([
+    query,
+    supabase.from('erp_users').select('status,platform').eq('platform',platform).limit(2000)
+  ])
   const rows=(data??[]) as any[]
-  const selected=sp.user?rows.find((x:any)=>x.id===sp.user)??null:null
+  const allStatuses=(statusData??[]) as any[]
+  const counts={
+    all:allStatuses.length,
+    active:allStatuses.filter(x=>x.status==='Active').length,
+    error:allStatuses.filter(x=>['M01','M02','M03','M04','Captcha','Auto Hủy'].includes(x.status)).length,
+    blocked:allStatuses.filter(x=>x.status==='Blocked').length,
+    unknown:allStatuses.filter(x=>x.status==='Không xác định').length,
+  }
+  let selected:any=null
+  if(sp.user){
+    selected=rows.find((x:any)=>x.id===sp.user)??null
+    if(!selected){
+      const s=await supabase.from('erp_users').select(fields).eq('id',sp.user).maybeSingle()
+      selected=s.data
+    }
+  }
   let history:any[]=[]
   if(selected){
     const h=await supabase.from('audit_logs').select('id,action,old_value,new_value,source,created_at').eq('module','USERS').eq('entity_id',selected.id).order('created_at',{ascending:false}).limit(100)
@@ -52,10 +82,12 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   return <>
     <header className="page-head">
       <div>
-        <h1>Quản lý tài khoản Shopee</h1>
-        <p>Quản lý phiên, thiết bị, trạng thái và lịch sử thay đổi tài khoản Shopee</p>
+        <span className="module-eyebrow">MUA HÀNG</span>
+        <h1>Tài khoản mua hàng</h1>
+        <p>Lưu trữ tài khoản mua hàng theo nền tảng; hiện tại đang vận hành Shopee</p>
       </div>
       <div className="head-actions">
+        <span className="platform-badge">SHOPEE</span>
         <button className="button" disabled>Nhập hàng loạt</button>
         <Link className="button primary" href="/purchase/accounts?mode=create">+ Thêm tài khoản</Link>
       </div>
@@ -63,15 +95,21 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
     <div className={`split-view ${panelOpen?'with-panel':''}`}>
       <section>
-        <div className="toolbar">
-          <input className="search" placeholder="Tìm Username / SĐT / Email" disabled/>
-          <span className="toolbar-note">{rows.length} tài khoản</span>
+        <div className="toolbar account-toolbar">
+          <form action="/purchase/accounts" className="account-search-form">
+            {state!=='all'&&<input type="hidden" name="state" value={state}/>}
+            <input className="search" name="q" defaultValue={queryText} placeholder="Tìm Username / SĐT / Email"/>
+            <button className="button small">Tìm</button>
+            {(queryText||state!=='all')&&<Link className="button small" href="/purchase/accounts">Xóa lọc</Link>}
+          </form>
+          <span className="toolbar-note">{rows.length} / {counts.all} tài khoản Shopee</span>
         </div>
         <div className="card table-card">
           <table className="table user-table">
             <thead><tr>
               <th>#</th>
               <th>Username</th>
+              <th>Nền tảng</th>
               <th>SĐT</th>
               <th>Email</th>
               <th>Trạng thái</th>
@@ -83,12 +121,13 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             </tr></thead>
             <tbody>
               {error
-                ? <tr><td colSpan={10} className="error-text">Không thể tải dữ liệu tài khoản.</td></tr>
+                ? <tr><td colSpan={11} className="error-text">Không thể tải dữ liệu tài khoản.</td></tr>
                 : !rows.length
-                  ? <tr><td colSpan={10} className="empty">Chưa có tài khoản Shopee trong hệ thống.</td></tr>
+                  ? <tr><td colSpan={10} className="empty">Không có tài khoản phù hợp với bộ lọc hiện tại.</td></tr>
                   : rows.map((u:any,i:number)=><tr key={u.id} className={selected?.id===u.id?'selected-row':''}>
                       <td>{i+1}</td>
                       <td><Link className="table-link" href={`/purchase/accounts?user=${u.id}`}>{u.username}</Link></td>
+                      <td><span className="platform-cell">{u.platform??'SHOPEE'}</span></td>
                       <td>{formatPhone(u.phone)}</td>
                       <td>{u.email??'—'}</td>
                       <td><span className={`status-pill ${statusClass(u.status)}`}>{statusLabel(u.status)}</span></td>
@@ -106,7 +145,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       {sp.mode==='create'&&
         <aside className="detail-panel">
           <div className="panel-head">
-            <div><span className="eyebrow">TÀI KHOẢN SHOPEE</span><h2>Thêm tài khoản</h2></div>
+            <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Thêm tài khoản</h2></div>
             <Link className="close" href="/purchase/accounts">×</Link>
           </div>
           <form action={createERPUser} className="panel-form panel-scroll">
@@ -163,6 +202,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             {(!sp.tab||sp.tab==='info')&&<>
               <div className="detail-grid">
                 <div><span>Username</span><b>{selected.username}</b></div>
+                <div><span>Nền tảng</span><b>{selected.platform??'SHOPEE'}</b></div>
                 <div><span>Trạng thái</span><b>{statusLabel(selected.status)}</b></div>
                 <div><span>Số điện thoại</span><b>{formatPhone(selected.phone)}</b></div>
                 <div><span>Email</span><b>{selected.email??'—'}</b></div>
