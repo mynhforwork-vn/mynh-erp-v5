@@ -1522,3 +1522,91 @@ a{text-decoration:none}
     width:130px;
   }
 }
+
+
+/* Purchase date filter — always visible */
+.purchase-date-filter.flat{
+  min-height:44px;
+  display:grid;
+  grid-template-columns:auto auto minmax(120px,1fr);
+  align-items:center;
+  gap:9px;
+  padding:6px 7px;
+  margin-bottom:8px;
+  overflow:visible;
+}
+.purchase-date-filter.flat .command-range{
+  flex-wrap:nowrap;
+}
+.purchase-date-filter.flat .command-range a{
+  min-height:27px;
+  padding:0 10px;
+  display:inline-flex;
+  align-items:center;
+}
+.purchase-date-inline-form{
+  display:flex;
+  align-items:flex-end;
+  gap:6px;
+  min-width:0;
+}
+.purchase-date-inline-form label{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.purchase-date-inline-form label>span{
+  color:var(--mynh-text-3);
+  font-size:7.5px;
+  font-weight:600;
+  line-height:1;
+}
+.purchase-date-inline-form input{
+  width:132px;
+  height:29px;
+  padding:0 7px;
+  border:1px solid var(--mynh-border-2);
+  border-radius:5px;
+  background:#fff;
+  color:var(--mynh-text);
+  font-size:8.75px;
+  outline:none;
+}
+.purchase-date-inline-form input:focus{
+  border-color:#95A8BF;
+  box-shadow:0 0 0 2px rgba(49,93,138,.08);
+}
+.purchase-date-inline-form .date-range-arrow{
+  height:29px;
+  align-self:flex-end;
+}
+.purchase-date-inline-form .button{
+  height:29px;
+  align-self:flex-end;
+}
+@media(max-width:1440px){
+  .purchase-date-filter.flat{
+    grid-template-columns:auto 1fr;
+  }
+  .purchase-date-filter.flat .range-meta{
+    display:none;
+  }
+  .purchase-date-inline-form{
+    justify-self:end;
+  }
+}
+@media(max-width:1180px){
+  .purchase-date-filter.flat{
+    grid-template-columns:1fr;
+  }
+  .purchase-date-filter.flat .command-range{
+    width:max-content;
+  }
+  .purchase-date-inline-form{
+    width:100%;
+    justify-self:stretch;
+  }
+  .purchase-date-inline-form input{
+    width:128px;
+  }
+}
