@@ -5519,3 +5519,22 @@ a{text-decoration:none}
     grid-template-rows:minmax(220px,1.7fr) minmax(145px,.75fr);
   }
 }
+
+
+/* Allow the Add HUB editor to float over the two internal panes without
+   reopening outer page scrolling. */
+.settings-screen .destination-hub-manager,
+.settings-modal.destination-hub-modal .destination-hub-manager{
+  position:relative;
+  z-index:10;
+  overflow:visible!important;
+}
+.settings-screen .destination-settings-section:not(.destination-hub-manager),
+.settings-modal.destination-hub-modal .destination-settings-section:not(.destination-hub-manager){
+  position:relative;
+  z-index:1;
+}
+.settings-screen .destination-settings.redesigned,
+.settings-modal.destination-hub-modal .destination-settings.redesigned{
+  overflow:visible;
+}
