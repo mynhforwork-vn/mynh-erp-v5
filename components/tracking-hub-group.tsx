@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { confirmReceiveOrders } from '@/lib/actions/core'
 import { ManualSyncButton } from '@/components/manual-sync-button'
@@ -38,7 +38,16 @@ export function TrackingHubGroup({
   const selectedSet=useMemo(()=>new Set(selected),[selected])
   const selectedRows=eligible.filter(r=>selectedSet.has(r.id))
   const selectedCod=selectedRows.reduce((s,r)=>s+Number(r.cod??0),0)
+  const [shipperName,setShipperName]=useState('')
+  const [actualTransferred,setActualTransferred]=useState('')
+  const actualValue=Number(actualTransferred||0)
+  const tip=Math.max(0,actualValue-selectedCod)
+  const transferValid=Boolean(selected.length&&shipperName.trim()&&actualValue>=selectedCod)
   const allSelected=eligible.length>0&&selected.length===eligible.length
+
+  useEffect(()=>{
+    setActualTransferred(selectedCod>0?String(selectedCod):'')
+  },[selectedCod])
 
   function toggleAll(){
     setSelected(allSelected?[]:eligible.map(r=>r.id))
@@ -126,14 +135,16 @@ export function TrackingHubGroup({
     </div>
 
     {eligible.length>0&&
-      <form action={confirmReceiveOrders} className="receive-confirm-bar">
+      <form action={confirmReceiveOrders} className="receive-confirm-bar receive-payment-bar">
         <input type="hidden" name="return_query" value={contextQuery}/>
         {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
+
         <div className="receive-selection">
           <span>Đã chọn</span>
           <b>{selected.length} đơn</b>
-          <small>COD {formatMoney(selectedCod)}</small>
+          <small>Tổng COD {formatMoney(selectedCod)}</small>
         </div>
+
         <label>
           <span>Kho nhận</span>
           <select name="warehouse_id" required defaultValue="">
@@ -141,12 +152,50 @@ export function TrackingHubGroup({
             {warehouses.map(w=><option value={w.id} key={w.id}>{(w.code?w.code+' · ':'')+(w.name??'Kho')}</option>)}
           </select>
         </label>
+
+        <div className="shipper-payment-inline">
+          <label>
+            <span>Shipper</span>
+            <input
+              name="shipper_name"
+              value={shipperName}
+              onChange={e=>setShipperName(e.target.value)}
+              placeholder="Tên Shipper"
+            />
+          </label>
+          <label>
+            <span>Thực chuyển</span>
+            <input
+              name="actual_transferred"
+              type="number"
+              min={selectedCod}
+              step="1"
+              value={actualTransferred}
+              onChange={e=>setActualTransferred(e.target.value)}
+              placeholder="0"
+            />
+          </label>
+          <div className={'shipper-tip-preview '+(actualValue<selectedCod&&actualTransferred?'invalid':'')}>
+            <span>Tip</span>
+            <b>{actualValue>=selectedCod?formatMoney(tip):'Thấp hơn COD'}</b>
+          </div>
+        </div>
+
         <label className="receive-note">
           <span>Ghi chú</span>
           <input name="note" placeholder="Không bắt buộc"/>
         </label>
-        <button className="button primary" disabled={!selected.length}>Xác nhận đã nhận</button>
+
+        <div className="receive-actions">
+          <button className="button" name="payment_mode" value="receive_only" disabled={!selected.length}>
+            Chỉ xác nhận đã nhận
+          </button>
+          <button className="button primary" name="payment_mode" value="with_payment" disabled={!transferValid}>
+            Xác nhận + ghi chuyển
+          </button>
+        </div>
       </form>
+    }
     }
   </section>
 }
