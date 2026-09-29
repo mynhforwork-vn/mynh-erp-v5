@@ -309,8 +309,7 @@ export async function saveDestinationHubConfig(formData:FormData){
     province_keywords:keywordList(formData.get('province_keywords')),
     district_keywords:keywordList(formData.get('district_keywords')),
     address_keywords:keywordList(formData.get('address_keywords')),
-    shipper_name:text(formData.get('shipper_name'))||null,
-    shipper_phone:text(formData.get('shipper_phone'))||null,
+    shipper_id:text(formData.get('shipper_id'))||null,
     priority:Number.isFinite(priorityRaw)?Math.max(0,Math.round(priorityRaw)):100,
     is_active:formData.get('is_active')==='on',
     updated_at:new Date().toISOString(),
@@ -320,11 +319,40 @@ export async function saveDestinationHubConfig(formData:FormData){
     : supabase.from('destination_hub_configs').insert(payload)
   const {error}=await query
   if(error)throw new Error(error.message)
-  revalidatePath('/warehouse')
+  revalidatePath('/settings')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase/tracking')
   revalidatePath('/purchase')
 }
+
+export async function saveDestinationShipper(formData:FormData){
+  const {supabase}=await actor()
+  const id=text(formData.get('shipper_id'))
+  const name=text(formData.get('name'))
+  const phone=text(formData.get('phone'))||null
+  const note=text(formData.get('note'))||null
+  if(!name)throw new Error('Thiếu tên Shipper')
+
+  const payload={
+    name,
+    phone,
+    note,
+    is_active:formData.get('is_active')==='on',
+    updated_at:new Date().toISOString(),
+  }
+  const query=id
+    ? supabase.from('destination_shippers').update(payload).eq('id',id)
+    : supabase.from('destination_shippers').insert(payload)
+
+  const {error}=await query
+  if(error)throw new Error(error.message)
+
+  revalidatePath('/settings')
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase/tracking')
+  revalidatePath('/purchase')
+}
+
 
 export async function confirmReceiveOrders(formData:FormData){
   const {supabase}=await actor()
