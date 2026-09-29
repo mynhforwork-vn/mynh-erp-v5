@@ -7,7 +7,8 @@ import Link from 'next/link'
 
 type SP={
   mode?:string,user?:string,tab?:string,q?:string,state?:string,platform?:string,
-  device?:string,session?:string,voucher?:string,orders?:string,browser?:string,sort?:string
+  device?:string,session?:string,voucher?:string,orders?:string,browser?:string,sort?:string,
+  range?:string,from?:string,to?:string
 }
 
 function hasST(row:any){return Boolean(row?.spc_st_secret_id||row?.spc_st_encrypted)}
@@ -178,6 +179,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       session:session!=='all'?session:undefined,voucher:voucher!=='all'?voucher:undefined,
       orders:orders!=='all'?orders:undefined,browser:browser!=='all'?browser:undefined,
       sort:sort!=='newest'?sort:undefined,platform:platform!=='SHOPEE'?platform:undefined,
+      range:sp.range,from:sp.range==='custom'?sp.from:undefined,to:sp.range==='custom'?sp.to:undefined,
     }
     for(const [k,v] of Object.entries(current))if(v)p.set(k,v)
     for(const [k,v] of Object.entries(overrides)){
@@ -197,7 +199,36 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   if(orders!=='all')detailParams.set('orders',orders)
   if(browser!=='all')detailParams.set('browser',browser)
   if(sort!=='newest')detailParams.set('sort',sort)
+  if(sp.range)detailParams.set('range',sp.range)
+  if(sp.range==='custom'&&sp.from)detailParams.set('from',sp.from)
+  if(sp.range==='custom'&&sp.to)detailParams.set('to',sp.to)
   const detailQuery=detailParams.toString()
+
+  function contextHref(path:string,extra:Record<string,string|null|undefined>={}){
+    const p=new URLSearchParams()
+    if(sp.range)p.set('range',sp.range)
+    if(sp.range==='custom'&&sp.from)p.set('from',sp.from)
+    if(sp.range==='custom'&&sp.to)p.set('to',sp.to)
+    for(const [k,v] of Object.entries(extra)){
+      if(v===null||v===undefined||v==='')p.delete(k)
+      else p.set(k,v)
+    }
+    const qs=p.toString()
+    return path+(qs?'?'+qs:'')
+  }
+
+  function detailHref(extra:Record<string,string|null|undefined>={}){
+    const p=new URLSearchParams(detailQuery)
+    for(const [k,v] of Object.entries(extra)){
+      if(v===null||v===undefined||v==='')p.delete(k)
+      else p.set(k,v)
+    }
+    return '/purchase/accounts?'+p.toString()
+  }
+
+  function kpiHref(nextState?:string){
+    return contextHref('/purchase/accounts',nextState&&nextState!=='all'?{state:nextState}:{})
+  }
 
   let selected:any=null
   if(sp.user)selected=enriched.find((x:any)=>x.id===sp.user)??null
@@ -239,16 +270,16 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       <div className="head-actions">
         <span className="platform-badge">SHOPEE</span>
         <button className="button" disabled>Nhập hàng loạt</button>
-        <Link className="button primary" href="/purchase/accounts?mode=create">+ Thêm tài khoản</Link>
+        <Link className="button primary" href={contextHref('/purchase/accounts',{mode:'create'})}>+ Thêm tài khoản</Link>
       </div>
     </header>
 
     <section className="account-kpi-grid compact">
-      <Link className={`account-kpi ${state==='all'?'active':''}`} href="/purchase/accounts"><span>Tất cả</span><b>{counts.all}</b></Link>
-      <Link className={`account-kpi success ${state==='active'?'active':''}`} href="/purchase/accounts?state=active"><span>Hoạt động</span><b>{counts.active}</b></Link>
-      <Link className={`account-kpi warning ${state==='error'?'active':''}`} href="/purchase/accounts?state=error"><span>Cần xử lý</span><b>{counts.error}</b></Link>
-      <Link className={`account-kpi danger ${state==='blocked'?'active':''}`} href="/purchase/accounts?state=blocked"><span>Đã khóa</span><b>{counts.blocked}</b></Link>
-      <Link className={`account-kpi ${state==='unknown'?'active':''}`} href="/purchase/accounts?state=unknown"><span>Không xác định</span><b>{counts.unknown}</b></Link>
+      <Link className={`account-kpi ${state==='all'?'active':''}`} href={kpiHref('all')}><span>Tất cả</span><b>{counts.all}</b></Link>
+      <Link className={`account-kpi success ${state==='active'?'active':''}`} href={kpiHref('active')}><span>Hoạt động</span><b>{counts.active}</b></Link>
+      <Link className={`account-kpi warning ${state==='error'?'active':''}`} href={kpiHref('error')}><span>Cần xử lý</span><b>{counts.error}</b></Link>
+      <Link className={`account-kpi danger ${state==='blocked'?'active':''}`} href={kpiHref('blocked')}><span>Đã khóa</span><b>{counts.blocked}</b></Link>
+      <Link className={`account-kpi ${state==='unknown'?'active':''}`} href={kpiHref('unknown')}><span>Không xác định</span><b>{counts.unknown}</b></Link>
     </section>
 
     <form className="account-filter-bar one-line" action="/purchase/accounts">
@@ -295,8 +326,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       </select>
       {state!=='all'&&<input type="hidden" name="state" value={state}/>}
       {sort!=='newest'&&<input type="hidden" name="sort" value={sort}/>}
+      {sp.range&&<input type="hidden" name="range" value={sp.range}/>}
+      {sp.range==='custom'&&sp.from&&<input type="hidden" name="from" value={sp.from}/>}
+      {sp.range==='custom'&&sp.to&&<input type="hidden" name="to" value={sp.to}/>} 
       <button className="button primary small">Lọc</button>
-      {filtersActive&&<Link className="button small filter-clear" href="/purchase/accounts">×</Link>}
+      {filtersActive&&<Link className="button small filter-clear" href={contextHref('/purchase/accounts')}>×</Link>}
     </form>
 
     <div className={`split-view account-workspace ${panelOpen?'with-panel':''}`}>
@@ -338,7 +372,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               <label>Profile<input name="browser_profile" placeholder="Profile A / NST Profile..."/></label>
               <label>Ghi chú<textarea name="note" rows={2}/></label>
             </section>
-            <div className="form-actions"><Link className="button" href="/purchase/accounts">Hủy</Link><button className="button primary">Tạo tài khoản</button></div>
+            <div className="form-actions"><Link className="button" href={contextHref('/purchase/accounts')}>Hủy</Link><button className="button primary">Tạo tài khoản</button></div>
           </form>
         </aside>
       }
@@ -350,9 +384,9 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             <Link className="close" href={filterHref()}>×</Link>
           </div>
           <div className="panel-tabs user-panel-tabs">
-            <Link className={!sp.tab||sp.tab==='info'?'active':''} href={`/purchase/accounts?user=${selected.id}&tab=info`}>Thông tin</Link>
-            <Link className={sp.tab==='orders'?'active':''} href={`/purchase/accounts?user=${selected.id}&tab=orders`}>Đơn hàng <span>{selected.order_count??0}</span></Link>
-            <Link className={sp.tab==='history'?'active':''} href={`/purchase/accounts?user=${selected.id}&tab=history`}>Lịch sử</Link>
+            <Link className={!sp.tab||sp.tab==='info'?'active':''} href={detailHref({user:selected.id,tab:'info'})}>Thông tin</Link>
+            <Link className={sp.tab==='orders'?'active':''} href={detailHref({user:selected.id,tab:'orders'})}>Đơn hàng <span>{selected.order_count??0}</span></Link>
+            <Link className={sp.tab==='history'?'active':''} href={detailHref({user:selected.id,tab:'history'})}>Lịch sử</Link>
           </div>
           <div className="panel-scroll">
             {(!sp.tab||sp.tab==='info')&&<>
@@ -391,13 +425,13 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               </div>
 
               <div className="panel-note-row"><span>Ghi chú</span><b>{selected.note??'—'}</b></div>
-              <div className="panel-action-row"><Link className="button primary" href={`/purchase/accounts?user=${selected.id}&mode=edit`}>Sửa tài khoản</Link></div>
+              <div className="panel-action-row"><Link className="button primary" href={detailHref({user:selected.id,mode:'edit'})}>Sửa tài khoản</Link></div>
             </>}
 
             {sp.tab==='orders'&&<>
               <div className="panel-section-head">
                 <div><h3>Đơn hàng của User</h3><span>{userOrders.length} đơn · chi tiết sản phẩm, voucher, giao nhận</span></div>
-                <Link className="button small" href={`/purchase/orders?q=${encodeURIComponent(selected.username)}`}>Mở toàn bộ</Link>
+                <Link className="button small" href={contextHref('/purchase/orders',{q:selected.username})}>Mở toàn bộ</Link>
               </div>
               <div className="user-order-list detailed">
                 {!userOrders.length
@@ -405,7 +439,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                   : userOrders.map((o:any)=>{
                       const s=activeShipment(o)
                       const voucherText=(o.order_vouchers??[]).map(voucherLabel).filter(Boolean).join(' · ')
-                      return <Link className="user-order-card detailed" href={`/purchase/orders?order=${o.id}`} key={o.id}>
+                      return <Link className="user-order-card detailed" href={contextHref('/purchase/orders',{order:o.id})} key={o.id}>
                         <div className="user-order-card-top">
                           <div><b>{o.shopee_order_id??o.id.slice(0,8)}</b><span>{formatDateTime(o.order_date)} · {o.area??'Chưa rõ khu vực'}</span></div>
                           <strong>{formatMoney(o.cod)}</strong>
@@ -456,7 +490,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         <aside className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Sửa {selected.username}</h2></div>
-            <Link className="close" href={`/purchase/accounts?user=${selected.id}`}>×</Link>
+            <Link className="close" href={detailHref({user:selected.id,mode:null})}>×</Link>
           </div>
           <form action={updateERPUser} className="panel-form panel-scroll">
             <input type="hidden" name="user_id" value={selected.id}/>
@@ -483,7 +517,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               <label>Profile<input name="browser_profile" defaultValue={primaryDevice?.browser_profile??''}/></label>
               <label>Ghi chú<textarea name="note" rows={2} defaultValue={selected.note??''}/></label>
             </section>
-            <div className="form-actions"><Link className="button" href={`/purchase/accounts?user=${selected.id}`}>Hủy</Link><button className="button primary">Lưu thay đổi</button></div>
+            <div className="form-actions"><Link className="button" href={detailHref({user:selected.id,mode:null})}>Hủy</Link><button className="button primary">Lưu thay đổi</button></div>
           </form>
         </aside>
       }
