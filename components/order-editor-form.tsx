@@ -57,6 +57,9 @@ type Values={
   area?:string|null
   destination_hub?:string|null
   shipping_service?:string|null
+  express_shipper_name?:string|null
+  express_shipper_phone?:string|null
+  express_shipper_note?:string|null
 }
 
 function emptyItem():Item{return {sku:'',product_name:'',variant:'',quantity:1,original_price:'',final_price:''}}
@@ -102,6 +105,17 @@ function parseNumberToken(value:string){
   if(!raw)return ''
   const n=Number(raw)
   return Number.isFinite(n)?n:''
+}
+
+function moneyNumber(value:number|string|null|undefined){
+  if(typeof value==='number')return Number.isFinite(value)?value:0
+  const raw=String(value??'').replace(/[^0-9]/g,'')
+  const n=Number(raw)
+  return Number.isFinite(n)?n:0
+}
+
+function formatVnd(value:number){
+  return new Intl.NumberFormat('vi-VN').format(Math.max(0,Math.round(value)))+' đ'
 }
 
 export function OrderEditorForm({
@@ -150,6 +164,9 @@ export function OrderEditorForm({
     destinationHubs.find(h=>h.hub_code===values.destination_hub)?.region??''
   )
   const [quickProductText,setQuickProductText]=useState('')
+  const [expressShipperName,setExpressShipperName]=useState(String(values.express_shipper_name??''))
+  const [expressShipperPhone,setExpressShipperPhone]=useState(String(values.express_shipper_phone??''))
+  const [expressShipperNote,setExpressShipperNote]=useState(String(values.express_shipper_note??''))
   const action=mode==='create'?createOrder:updateOrder
   const skuMap=useMemo(()=>{
     const map=new Map<string,SkuCatalogItem>()
@@ -170,6 +187,10 @@ export function OrderEditorForm({
   const sortedHubs=useMemo(
     ()=>[...destinationHubs].sort((a,b)=>Number(a.priority??100)-Number(b.priority??100)||a.hub_code.localeCompare(b.hub_code,'vi')),
     [destinationHubs]
+  )
+  const totalOriginal=useMemo(
+    ()=>items.reduce((sum,item)=>sum+moneyNumber(item.original_price)*Math.max(1,Number(item.quantity??1)||1),0),
+    [items]
   )
 
   const selectedUser=selectableUsers.find(u=>u.id===selectedUserId)??null
@@ -473,6 +494,39 @@ export function OrderEditorForm({
         </div>
       </div>
 
+      {shippingService==='EXPRESS'&&<div className="express-shipper-box">
+        <div className="express-shipper-title">
+          <b>Thông tin Shipper hỏa tốc</b>
+          <span>Dữ liệu này được lưu cùng đơn để dùng cho đối soát / thanh toán Shipper.</span>
+        </div>
+        <div className="form-grid">
+          <label>Tên Shipper
+            <input
+              name="express_shipper_name"
+              value={expressShipperName}
+              onChange={e=>setExpressShipperName(e.target.value)}
+              placeholder="Tên Shipper"
+            />
+          </label>
+          <label>SĐT Shipper
+            <input
+              name="express_shipper_phone"
+              value={expressShipperPhone}
+              onChange={e=>setExpressShipperPhone(e.target.value)}
+              placeholder="Số điện thoại"
+            />
+          </label>
+        </div>
+        <label>Ghi chú Shipper
+          <input
+            name="express_shipper_note"
+            value={expressShipperNote}
+            onChange={e=>setExpressShipperNote(e.target.value)}
+            placeholder="Biển số / thời gian dự kiến / ghi chú..."
+          />
+        </label>
+      </div>}
+
     </section>
 
     <section className="form-section">
@@ -577,6 +631,11 @@ export function OrderEditorForm({
             </div>
           </div>
         })}
+      </div>
+      <div className="product-total-bar">
+        <span>Tổng giá gốc</span>
+        <b>{formatVnd(totalOriginal)}</b>
+        <small>Σ Giá gốc × Số lượng</small>
       </div>
     </section>
 
