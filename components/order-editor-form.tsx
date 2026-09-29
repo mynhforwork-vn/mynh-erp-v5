@@ -1,9 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createOrder, updateOrder } from '@/lib/actions/core'
 
-type UserOption={id:string,username:string}
+type UserOption={
+  id:string
+  username:string
+  phone?:string|null
+  status?:string|null
+}
 type Item={
   sku?:string|null
   product_name?:string|null
@@ -32,12 +37,28 @@ type Values={
   recipient_name?:string|null
   recipient_phone?:string|null
   recipient_address?:string|null
-  area?:string|null
   destination_hub?:string|null
+  shipping_service?:string|null
 }
 
 function emptyItem():Item{return {sku:'',product_name:'',variant:'',quantity:1,original_price:'',final_price:''}}
 function emptyVoucher():Voucher{return {voucher_code:'',voucher_name:'',voucher_type:'',voucher_tag:'',voucher_account:''}}
+
+function detectCarrier(value:string){
+  const v=value.trim().toUpperCase()
+  if(!v)return ''
+  if(v.startsWith('SPX'))return 'SPX Express'
+  if(v.startsWith('GHN'))return 'Giao Hàng Nhanh'
+  if(v.startsWith('GHTK'))return 'Giao Hàng Tiết Kiệm'
+  if(v.startsWith('VTP')||v.startsWith('VTPN'))return 'Viettel Post'
+  if(v.startsWith('JNT')||v.startsWith('JT'))return 'J&T Express'
+  return ''
+}
+
+function normalizePhone(value?:string|null){
+  const s=String(value??'').trim()
+  return s||'Chưa có SĐT'
+}
 
 export function OrderEditorForm({
   mode,
@@ -56,40 +77,87 @@ export function OrderEditorForm({
   cancelHref?:string
   returnQuery?:string
 }){
+  const selectableUsers=useMemo(
+    ()=>users.filter(u=>u.status!=='Blocked'||u.id===values.erp_user_id),
+    [users,values.erp_user_id]
+  )
+  const initialUser=selectableUsers.find(u=>u.id===values.erp_user_id)??null
+  const [selectedUserId,setSelectedUserId]=useState(values.erp_user_id??'')
+  const [userQuery,setUserQuery]=useState(initialUser?.username??'')
+  const [userOpen,setUserOpen]=useState(false)
   const [items,setItems]=useState<Item[]>(initialItems.length?initialItems:[emptyItem()])
   const [vouchers,setVouchers]=useState<Voucher[]>(initialVouchers.length?initialVouchers:[emptyVoucher()])
+  const [trackingNumber,setTrackingNumber]=useState(String(values.tracking_number??''))
+  const [carrier,setCarrier]=useState(String(values.carrier??detectCarrier(String(values.tracking_number??''))))
+  const [carrierEdited,setCarrierEdited]=useState(Boolean(values.carrier))
+  const [shippingService,setShippingService]=useState(values.shipping_service==='EXPRESS'?'EXPRESS':'STANDARD')
   const action=mode==='create'?createOrder:updateOrder
+
+  const selectedUser=selectableUsers.find(u=>u.id===selectedUserId)??null
+  const filteredUsers=useMemo(()=>{
+    const q=userQuery.trim().toLowerCase()
+    if(!q)return selectableUsers.slice(0,30)
+    return selectableUsers.filter(u=>
+      [u.username,u.phone].filter(Boolean).join(' ').toLowerCase().includes(q)
+    ).slice(0,30)
+  },[selectableUsers,userQuery])
+
+  function pickUser(user:UserOption){
+    setSelectedUserId(user.id)
+    setUserQuery(user.username)
+    setUserOpen(false)
+  }
+
+  function onTrackingChange(value:string){
+    setTrackingNumber(value)
+    if(!carrierEdited)setCarrier(detectCarrier(value))
+  }
 
   return <form action={action} className="panel-form panel-scroll order-editor">
     <input type="hidden" name="return_query" value={returnQuery}/>
-    {mode==='edit'&&<input type="hidden" name="order_id" value={values.id}/>} 
+    <input type="hidden" name="erp_user_id" value={selectedUserId}/>
+    <input type="hidden" name="shipping_service" value={shippingService}/>
+    {mode==='edit'&&<input type="hidden" name="order_id" value={values.id}/>}
 
     <section className="form-section">
       <h3>Thông tin đơn</h3>
+
+      <label className="user-picker-field">
+        Username
+        <div className="user-picker">
+          <input
+            value={userQuery}
+            onChange={e=>{setUserQuery(e.target.value);setSelectedUserId('');setUserOpen(true)}}
+            onFocus={()=>setUserOpen(true)}
+            placeholder="Tìm Username hoặc SĐT..."
+            autoComplete="off"
+          />
+          {userOpen&&<div className="user-picker-menu">
+            {!filteredUsers.length
+              ? <div className="user-picker-empty">Không tìm thấy User khả dụng.</div>
+              : filteredUsers.map(u=><button type="button" key={u.id} onClick={()=>pickUser(u)}>
+                  <b>{u.username}</b>
+                  <span>{normalizePhone(u.phone)}</span>
+                </button>)}
+          </div>}
+        </div>
+      </label>
+
+      <div className="linked-user-strip">
+        <span>SĐT tài khoản</span>
+        <b>{selectedUser?normalizePhone(selectedUser.phone):'Chọn Username để tự liên kết'}</b>
+        {selectedUser&&<small>{selectedUser.status==='Blocked'?'Tài khoản Blocked chỉ được giữ ở đơn cũ':'Liên kết tự động từ User'}</small>}
+      </div>
+
       <div className="form-grid">
         <label>Mã đơn Shopee<input name="shopee_order_id" defaultValue={values.shopee_order_id??''}/></label>
-        <label>Username
-          <select name="erp_user_id" defaultValue={values.erp_user_id??''}>
-            <option value="">— Chọn tài khoản —</option>
-            {users.map(u=><option key={u.id} value={u.id}>{u.username}</option>)}
-          </select>
+        <label>Thời gian đặt
+          <input name="order_date" type="datetime-local" defaultValue={values.order_date_local??''} placeholder="Để trống = hiện tại"/>
+          <small className="field-help">Để trống sẽ tự lấy thời điểm tạo đơn.</small>
         </label>
       </div>
+
       <div className="form-grid">
-        <label>Ngày đặt<input name="order_date" type="datetime-local" defaultValue={values.order_date_local??''}/></label>
-        <label>Khu vực<input name="area" defaultValue={values.area??''} placeholder="Ví dụ: Hà Nội"/></label>
-      </div>
-      <div className="form-grid">
-        <label>Trạng thái đơn
-          <select name="order_status" defaultValue={values.order_status??'PENDING'}>
-            <option value="PENDING">Đang chờ</option>
-            <option value="CONFIRMED">Đã xác nhận</option>
-            <option value="PROCESSING">Đang xử lý</option>
-            <option value="COMPLETED">Hoàn thành</option>
-            <option value="CANCELLED">Đã hủy</option>
-            <option value="RETURNED">Đã trả hàng</option>
-          </select>
-        </label>
         <label>Thanh toán
           <select name="payment_status" defaultValue={values.payment_status??'UNPAID'}>
             <option value="UNPAID">Chưa thanh toán</option>
@@ -99,19 +167,47 @@ export function OrderEditorForm({
             <option value="REFUNDED">Đã hoàn tiền</option>
           </select>
         </label>
+        <div className="derived-order-state">
+          <span>Trạng thái đơn</span>
+          <b>{trackingNumber.trim()?'Đang xử lý · Theo Tracking':'Đang chờ duyệt'}</b>
+          <small>{trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ':'Chờ mã vận đơn'}</small>
+        </div>
       </div>
     </section>
 
     <section className="form-section">
       <h3>Vận chuyển</h3>
+      <label>Mã vận đơn
+        <input
+          name="tracking_number"
+          value={trackingNumber}
+          onChange={e=>onTrackingChange(e.target.value)}
+          onBlur={()=>setTrackingNumber(v=>v.trim().toUpperCase())}
+          placeholder="Nhập MVĐ; hệ thống tự nhận diện ĐVVC"
+        />
+      </label>
+
       <div className="form-grid">
-        <label>Mã vận đơn<input name="tracking_number" defaultValue={values.tracking_number??''}/></label>
-        <label>Đơn vị vận chuyển<input name="carrier" defaultValue={values.carrier??''} placeholder="SPX Express"/></label>
-      </div>
-      <div className="form-grid">
-        <label>COD<input name="cod" inputMode="numeric" defaultValue={values.cod??0}/></label>
+        <label>Đơn vị vận chuyển
+          <input
+            name="carrier"
+            value={carrier}
+            onChange={e=>{setCarrier(e.target.value);setCarrierEdited(true)}}
+            placeholder="Tự nhận diện, có thể sửa"
+          />
+        </label>
         <label>Kho đích<input name="destination_hub" defaultValue={values.destination_hub??''}/></label>
       </div>
+
+      <div className="shipping-service-picker">
+        <span>Dịch vụ vận chuyển</span>
+        <div>
+          <button type="button" className={shippingService==='STANDARD'?'active':''} onClick={()=>setShippingService('STANDARD')}>Tiêu chuẩn</button>
+          <button type="button" className={shippingService==='EXPRESS'?'active express':''} onClick={()=>setShippingService('EXPRESS')}>Hỏa tốc</button>
+        </div>
+      </div>
+
+      <label>COD<input name="cod" inputMode="numeric" defaultValue={values.cod??0}/></label>
     </section>
 
     <section className="form-section">
