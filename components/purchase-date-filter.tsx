@@ -7,20 +7,22 @@ export function PurchaseDateFilter({
   from,
   to,
   label,
+  basePath='/purchase',
 }:{
   activeRange:RangeKey
   from:string
   to:string
   label:string
+  basePath?:string
 }){
   return <div className="purchase-date-filter flat">
     <div className="command-range">
-      <Link className={activeRange==='today'?'active':''} href="/purchase?range=today">Hôm nay</Link>
-      <Link className={activeRange==='week'?'active':''} href="/purchase?range=week">Tuần này</Link>
-      <Link className={activeRange==='month'?'active':''} href="/purchase?range=month">Tháng này</Link>
+      <Link className={activeRange==='today'?'active':''} href={basePath+'?range=today'}>Hôm nay</Link>
+      <Link className={activeRange==='week'?'active':''} href={basePath+'?range=week'}>Tuần này</Link>
+      <Link className={activeRange==='month'?'active':''} href={basePath+'?range=month'}>Tháng này</Link>
     </div>
 
-    <form className="purchase-date-inline-form" action="/purchase">
+    <form className="purchase-date-inline-form" action={basePath}>
       <input type="hidden" name="range" value="custom"/>
       <label>
         <span>Từ ngày</span>
