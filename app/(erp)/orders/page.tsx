@@ -5,9 +5,10 @@ import { ManualSyncButton } from '@/components/manual-sync-button'
 import { replaceShipment } from '@/lib/actions/core'
 import { CopyOrderButton } from '@/components/copy-order-button'
 import { OrderEditorForm } from '@/components/order-editor-form'
+import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 
-type RangeKey='today'|'7d'|'30d'|'month'|'custom'
-type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string}
+type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'
+type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string}
 
 const HOUR=60*60*1000
 const DAY=24*HOUR
@@ -21,14 +22,37 @@ function shiftLocalDay(y:number,m:number,d:number,days:number){
   const x=new Date(Date.UTC(y,m-1,d)+days*DAY)
   return ymd(x.getUTCFullYear(),x.getUTCMonth()+1,x.getUTCDate())
 }
+function currentWeekRange(y:number,m:number,d:number){
+  const weekday=new Date(Date.UTC(y,m-1,d)).getUTCDay()
+  const daysFromMonday=(weekday+6)%7
+  return {
+    from:shiftLocalDay(y,m,d,-daysFromMonday),
+    to:shiftLocalDay(y,m,d,6-daysFromMonday),
+  }
+}
 function resolveRange(sp:SP){
   const key:RangeKey=sp.range??'today'
   const p=vnDateParts()
   const today=ymd(p.year,p.month,p.day)
   let from=today,to=today,label='Hôm nay'
+  if(key==='week'){
+    const week=currentWeekRange(p.year,p.month,p.day)
+    from=week.from
+    to=week.to
+    label='Tuần này'
+  }
   if(key==='7d'){from=shiftLocalDay(p.year,p.month,p.day,-6);label='7 ngày'}
   if(key==='30d'){from=shiftLocalDay(p.year,p.month,p.day,-29);label='30 ngày'}
   if(key==='month'){from=ymd(p.year,p.month,1);label='Tháng này'}
+  if(key==='quarter'){
+    const qStart=Math.floor((p.month-1)/3)*3+1
+    from=ymd(p.year,qStart,1)
+    label='Quý này'
+  }
+  if(key==='year'){
+    from=ymd(p.year,1,1)
+    label='Năm nay'
+  }
   if(key==='custom'){
     from=/^\d{4}-\d{2}-\d{2}$/.test(sp.from??'')?String(sp.from):today
     to=/^\d{4}-\d{2}-\d{2}$/.test(sp.to??'')?String(sp.to):today
@@ -88,6 +112,13 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const dateRows=(data??[]) as any[]
   const rows=dateRows.filter((o:any)=>{
     if(sp.receive&&o.receive_status!==sp.receive)return false
+    const shipment=activeShipment(o)
+    if(sp.tracking==='DELIVERED'&&shipment?.current_tracking_status!=='DELIVERED')return false
+    if(sp.tracking==='shipping'){
+      const status=shipment?.current_tracking_status
+      if(!status||['DELIVERED','CANCELLED','RETURNED'].includes(status))return false
+    }
+    if(sp.tracking==='missing'&&shipment?.tracking_number)return false
     if(!queryText)return true
     const s=activeShipment(o)
     const hay=[
@@ -115,6 +146,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     if(range.key==='custom'){p.set('from',range.from);p.set('to',range.to)}
     if(queryText)p.set('q',sp.q??'')
     if(sp.receive)p.set('receive',sp.receive)
+    if(sp.tracking)p.set('tracking',sp.tracking)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v==='')p.delete(k)
       else p.set(k,v)
@@ -157,7 +189,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const panelOpen=createMode||Boolean(detail)
   const currentShip=activeShipment(detail)
 
-  return <>
+  return <div className="order-screen">
     <header className="page-head">
       <div>
         <span className="module-eyebrow">MUA HÀNG</span>
@@ -169,35 +201,24 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       </div>
     </header>
 
-    <div className="order-date-filter">
-      <div className="command-range">
-        <Link className={range.key==='today'?'active':''} href="/purchase/orders?range=today">Hôm nay</Link>
-        <Link className={range.key==='7d'?'active':''} href="/purchase/orders?range=7d">7 ngày</Link>
-        <Link className={range.key==='30d'?'active':''} href="/purchase/orders?range=30d">30 ngày</Link>
-        <Link className={range.key==='month'?'active':''} href="/purchase/orders?range=month">Tháng này</Link>
-        <Link className={range.key==='custom'?'active':''} href={`/purchase/orders?range=custom&from=${range.from}&to=${range.to}`}>Tùy chọn</Link>
-      </div>
-      <form className="custom-range-form" action="/purchase/orders">
-        <input type="hidden" name="range" value="custom"/>
-        <input type="date" name="from" defaultValue={range.from} aria-label="Từ ngày"/>
-        <span>→</span>
-        <input type="date" name="to" defaultValue={range.to} aria-label="Đến ngày"/>
-        <button className="button small">Áp dụng</button>
-      </form>
-      <div className="range-meta"><span>Đang xem</span><b>{range.label}</b></div>
-    </div>
+    <PurchaseDateFilter
+      activeRange={range.key}
+      from={range.from}
+      to={range.to}
+      label={range.label}
+    />
 
     <section className="kpi-grid order-kpi-grid">
-      <div className="kpi-card"><span>Tổng đơn</span><b>{totalOrders}</b><small>Trong khoảng đã chọn</small></div>
-      <div className="kpi-card"><span>Tổng COD</span><b className="kpi-money">{formatMoney(totalCod)}</b><small>Giá trị đơn nhập</small></div>
-      <div className="kpi-card"><span>Đang vận chuyển</span><b>{shipping}</b><small>Chưa ở trạng thái kết thúc</small></div>
-      <div className="kpi-card"><span>Giao thành công</span><b>{delivered}</b><small>Đã có trạng thái giao thành công</small></div>
-      <Link className="kpi-card warning" href={listHref({receive:'WAITING_RECEIVE'})}><span>Chờ nhận</span><b>{waiting}</b><small>Cần xác nhận vật lý</small></Link>
-      <div className="kpi-card danger"><span>Chưa có MVĐ</span><b>{missingTracking}</b><small>Cần bổ sung vận đơn</small></div>
+      <Link className="kpi-card" href={listHref({receive:null,tracking:null})}><span>Tổng đơn</span><b>{totalOrders}</b><small>Trong khoảng đã chọn</small></Link>
+      <Link className="kpi-card" href={listHref({receive:null,tracking:null})}><span>Tổng COD</span><b className="kpi-money">{formatMoney(totalCod)}</b><small>Giá trị đơn nhập</small></Link>
+      <Link className="kpi-card" href={listHref({receive:null,tracking:'shipping'})}><span>Đang vận chuyển</span><b>{shipping}</b><small>Chưa ở trạng thái kết thúc</small></Link>
+      <Link className="kpi-card" href={listHref({receive:null,tracking:'DELIVERED'})}><span>Giao thành công</span><b>{delivered}</b><small>Đã có trạng thái giao thành công</small></Link>
+      <Link className="kpi-card warning" href={listHref({receive:'WAITING_RECEIVE',tracking:null})}><span>Chờ nhận</span><b>{waiting}</b><small>Cần xác nhận vật lý</small></Link>
+      <Link className="kpi-card danger" href={listHref({receive:null,tracking:'missing'})}><span>Chưa có MVĐ</span><b>{missingTracking}</b><small>Cần bổ sung vận đơn</small></Link>
     </section>
 
-    <div className={`split-view ${panelOpen?'with-panel':''}`}>
-      <section>
+    <div className={`split-view order-workspace ${panelOpen?'with-panel':''}`}>
+      <section className="order-list-pane">
         <div className="toolbar order-toolbar">
           <form className="order-search-form" action="/purchase/orders">
             {range.key!=='today'&&<input type="hidden" name="range" value={range.key}/>}
@@ -215,7 +236,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
           <span className="toolbar-note">{rows.length} / {totalOrders} đơn</span>
         </div>
 
-        <div className="card table-card">
+        <div className="card table-card order-table-card">
           <table className="table order-table">
             <thead><tr>
               <th>#</th>
@@ -237,7 +258,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                       const s=activeShipment(o)
                       return <tr key={o.id} className={sp.order===o.id?'selected-row':''}>
                         <td>{i+1}</td>
-                        <td><Link className="table-link" href={`/purchase/orders?order=${o.id}`}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
+                        <td><Link className="table-link" href={listHref({order:o.id})}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
                         <td>{o.erp_users?.username??'—'}</td>
                         <td className="truncate product-cell">{productSummary(o.order_items??[])}</td>
                         <td className="money">{formatMoney(o.cod)}</td>
@@ -261,13 +282,13 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         <aside className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Tạo đơn mới</h2></div>
-            <Link className="close" href="/purchase/orders">×</Link>
+            <Link className="close" href={listHref({mode:null})}>×</Link>
           </div>
           <OrderEditorForm
             mode="create"
             users={(userOptions??[]) as any[]}
             values={{order_status:'PENDING',payment_status:'UNPAID',cod:0}}
-            cancelHref="/purchase/orders"
+            cancelHref={listHref({mode:null})}
           />
         </aside>
       }
@@ -276,7 +297,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         <aside className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Sửa {detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
-            <Link className="close" href={`/purchase/orders?order=${detail.id}`}>×</Link>
+            <Link className="close" href={listHref({order:detail.id,mode:null})}>×</Link>
           </div>
           <OrderEditorForm
             mode="edit"
@@ -299,7 +320,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             }}
             initialItems={items}
             initialVouchers={vouchers}
-            cancelHref={`/purchase/orders?order=${detail.id}`}
+            cancelHref={listHref({order:detail.id,mode:null})}
           />
         </aside>
       }
@@ -308,13 +329,13 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         <aside className="detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT ĐƠN</span><h2>{detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
-            <Link className="close" href={sp.receive?`/purchase/orders?receive=${sp.receive}`:'/purchase/orders'}>×</Link>
+            <Link className="close" href={listHref({order:null,tab:null,mode:null})}>×</Link>
           </div>
 
           <div className="panel-tabs">
-            <Link className={!sp.tab||sp.tab==='info'?'active':''} href={`/purchase/orders?order=${detail.id}&tab=info`}>Thông tin</Link>
-            <Link className={sp.tab==='tracking'?'active':''} href={`/purchase/orders?order=${detail.id}&tab=tracking`}>Tracking</Link>
-            <Link className={sp.tab==='history'?'active':''} href={`/purchase/orders?order=${detail.id}&tab=history`}>Lịch sử</Link>
+            <Link className={!sp.tab||sp.tab==='info'?'active':''} href={listHref({order:detail.id,tab:'info'})}>Thông tin</Link>
+            <Link className={sp.tab==='tracking'?'active':''} href={listHref({order:detail.id,tab:'tracking'})}>Tracking</Link>
+            <Link className={sp.tab==='history'?'active':''} href={listHref({order:detail.id,tab:'history'})}>Lịch sử</Link>
           </div>
 
           <div className="panel-scroll">
@@ -338,7 +359,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
               <div className="panel-action-row split-actions">
                 <CopyOrderButton text={`Mã đơn: ${detail.shopee_order_id??''}\nMã vận đơn: ${currentShip?.tracking_number??''}\nCOD: ${detail.cod??0}\nNgười nhận: ${detail.recipient_name??''}\nSĐT: ${detail.recipient_phone??''}\nĐịa chỉ: ${detail.recipient_address??''}`}/>
-                {['admin','operator'].includes(role)&&<Link className="button primary" href={`/purchase/orders?order=${detail.id}&mode=edit`}>Sửa đơn</Link>}
+                {['admin','operator'].includes(role)&&<Link className="button primary" href={listHref({order:detail.id,mode:'edit'})}>Sửa đơn</Link>}
               </div>
 
               <h3>Sản phẩm</h3>
@@ -424,5 +445,5 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         </aside>
       }
     </div>
-  </>
+  </div>
 }
