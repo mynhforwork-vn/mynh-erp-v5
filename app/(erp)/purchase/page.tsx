@@ -123,7 +123,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       .order('created_at',{ascending:false})
       .limit(20),
     supabase.from('shipper_payments')
-      .select('id,shipper_name,total_cod,actual_transferred,tip,transferred_at')
+      .select('id,destination_hub,shipper_name,total_cod,actual_transferred,tip,transferred_at')
       .gte('transferred_at',range.start)
       .lte('transferred_at',range.end)
       .order('transferred_at',{ascending:false})
@@ -221,7 +221,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       <div>
         <span className="module-eyebrow">MUA HÀNG</span>
         <h1>Tổng quan mua hàng</h1>
-        <p>Điều hành đơn nhập, vận chuyển, nhận hàng và đối soát Shipper trên một màn hình</p>
+        <p>Điều hành đơn nhập, vận chuyển, nhận hàng và đối soát theo HUB trên một màn hình</p>
       </div>
       <div className="head-actions">
         <Link className="button" href={purchaseHref('/purchase/tracking')}>Cảnh báo vận chuyển</Link>
@@ -265,7 +265,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
         <div>
           <span className="module-eyebrow">ƯU TIÊN XỬ LÝ</span>
           <h2>Đã giao thành công · Chờ xác nhận nhận</h2>
-          <p>Tick nhiều đơn cùng kho đích, xác nhận hàng thực nhận và ghi một lần tổng tiền chuyển cho Shipper.</p>
+          <p>Tick nhiều đơn cùng HUB, xác nhận hàng thực nhận và ghi một lần tổng tiền thực chuyển theo HUB.</p>
         </div>
         <div className="receive-command-number">
           <b>{waiting}</b><span>đơn</span>
@@ -274,7 +274,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       <div className="receive-command-metrics">
         <div><span>COD chờ nhận</span><b>{formatMoney(waitingCod)}</b></div>
         <div><span>Kho đích cần xử lý</span><b>{waitingHubs}</b></div>
-        <div><span>Đã chuyển Shipper</span><b>{formatMoney(transferredTotal)}</b><small>{paymentRows.length} đợt</small></div>
+        <div><span>Đã đối soát HUB</span><b>{formatMoney(transferredTotal)}</b><small>{paymentRows.length} đợt</small></div>
         <div><span>Tip phát sinh</span><b>{formatMoney(tipTotal)}</b></div>
       </div>
       <Link className="button primary" href={purchaseHref('/purchase/tracking',{status:'DELIVERED',receive:'WAITING_RECEIVE'})}>Mở danh sách chờ nhận →</Link>
@@ -305,7 +305,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
                   <td>{x.delivered}</td>
                   <td><b className={x.waiting?'warning-text':''}>{x.waiting}</b></td>
                   <td>{x.received}</td>
-                  <td><Link className="table-link" href={purchaseHref('/purchase/tracking',{status:x.waiting?'DELIVERED':null,receive:x.waiting?'WAITING_RECEIVE':null})}>Xử lý</Link></td>
+                  <td><Link className="table-link" href={purchaseHref('/purchase/tracking',{hub:x.name,status:x.waiting?'DELIVERED':null,receive:x.waiting?'WAITING_RECEIVE':null})}>Xử lý</Link></td>
                 </tr>
               })}
             </tbody>
@@ -377,7 +377,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       <i>→</i>
       <Link href={orderHref()}><span>2</span><div><b>Đơn nhập hàng</b><small>Tạo / sửa / MVĐ</small></div></Link>
       <i>→</i>
-      <Link href={purchaseHref('/purchase/tracking')}><span>3</span><div><b>Cảnh báo vận chuyển</b><small>Tracking · nhận hàng · chuyển Shipper</small></div></Link>
+      <Link href={purchaseHref('/purchase/tracking')}><span>3</span><div><b>Cảnh báo vận chuyển</b><small>Tracking · nhận hàng · đối soát HUB</small></div></Link>
       <i>→</i>
       <Link href="/warehouse/receive"><span>4</span><div><b>Nhập kho</b><small>Đơn đã nhận</small></div></Link>
     </div>
