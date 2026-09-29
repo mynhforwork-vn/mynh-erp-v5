@@ -46,6 +46,7 @@ export function OrderEditorForm({
   initialItems=[],
   initialVouchers=[],
   cancelHref='/orders',
+  returnQuery='',
 }:{
   mode:'create'|'edit'
   users:UserOption[]
@@ -53,13 +54,15 @@ export function OrderEditorForm({
   initialItems?:Item[]
   initialVouchers?:Voucher[]
   cancelHref?:string
+  returnQuery?:string
 }){
   const [items,setItems]=useState<Item[]>(initialItems.length?initialItems:[emptyItem()])
   const [vouchers,setVouchers]=useState<Voucher[]>(initialVouchers.length?initialVouchers:[emptyVoucher()])
   const action=mode==='create'?createOrder:updateOrder
 
   return <form action={action} className="panel-form panel-scroll order-editor">
-    {mode==='edit'&&<input type="hidden" name="order_id" value={values.id}/>}
+    <input type="hidden" name="return_query" value={returnQuery}/>
+    {mode==='edit'&&<input type="hidden" name="order_id" value={values.id}/>} 
 
     <section className="form-section">
       <h3>Thông tin đơn</h3>
