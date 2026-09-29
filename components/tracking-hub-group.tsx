@@ -116,7 +116,7 @@ export function TrackingHubGroup({
               <td>
                 <div className="tracking-row-actions">
                   {r.shipment_id&&!['DELIVERED','CANCELLED','RETURNED'].includes(String(r.tracking_status))&&<ManualSyncButton shipmentId={r.shipment_id}/>}
-                  <Link className="button small" href={'/purchase/orders?order='+r.id+'&tab=tracking'}>Chi tiết</Link>
+                  <Link className="button small" href={orderHref(r.id)}>Chi tiết</Link>
                 </div>
               </td>
             </tr>
