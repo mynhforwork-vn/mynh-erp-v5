@@ -28,7 +28,7 @@ export default async function ShipperPaymentsPage(){
       </div>
     </header>
 
-    {error&&<div className="error-box">Không thể tải thanh toán Shipper: {error.message}</div>}
+    {error&&<div className="error-box">Không thể tải dữ liệu đối soát HUB: {error.message}</div>}
 
     <section className="shipper-finance-kpis">
       <div className="command-kpi"><span>Đợt đối soát</span><b>{rows.length}</b><small>{orderCount} đơn đã đối soát</small></div>
