@@ -196,6 +196,5 @@ export function TrackingHubGroup({
         </div>
       </form>
     }
-    }
   </section>
 }
