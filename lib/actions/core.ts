@@ -298,9 +298,11 @@ export async function saveDestinationHubConfig(formData:FormData){
   const hubCode=text(formData.get('hub_code'))
   const area=text(formData.get('area'))
   const region=text(formData.get('region'))
+  const shipperIds=[...new Set(formData.getAll('shipper_ids').map(v=>text(v)).filter(Boolean))]
   if(!hubCode||!area||!['Miền Bắc','Miền Trung','Miền Nam'].includes(region)){
     throw new Error('Thiếu mã hub, khu vực hoặc miền')
   }
+
   const priorityRaw=Number(text(formData.get('priority'))||100)
   const payload={
     hub_code:hubCode,
@@ -309,16 +311,42 @@ export async function saveDestinationHubConfig(formData:FormData){
     province_keywords:keywordList(formData.get('province_keywords')),
     district_keywords:keywordList(formData.get('district_keywords')),
     address_keywords:keywordList(formData.get('address_keywords')),
-    shipper_id:text(formData.get('shipper_id'))||null,
     priority:Number.isFinite(priorityRaw)?Math.max(0,Math.round(priorityRaw)):100,
     is_active:formData.get('is_active')==='on',
     updated_at:new Date().toISOString(),
+    // Legacy single-shipper fields are intentionally cleared.
+    shipper_id:null,
+    shipper_name:null,
+    shipper_phone:null,
   }
-  const query=id
-    ? supabase.from('destination_hub_configs').update(payload).eq('id',id)
-    : supabase.from('destination_hub_configs').insert(payload)
-  const {error}=await query
+
+  const mutation=id
+    ? supabase.from('destination_hub_configs').update(payload).eq('id',id).select('id').single()
+    : supabase.from('destination_hub_configs').insert(payload).select('id').single()
+
+  const {data:hub,error}=await mutation
   if(error)throw new Error(error.message)
+  const hubId=String(hub?.id??id)
+  if(!hubId)throw new Error('Không xác định được Hub vừa lưu')
+
+  const {error:deleteError}=await supabase
+    .from('destination_hub_shipper_assignments')
+    .delete()
+    .eq('hub_config_id',hubId)
+  if(deleteError)throw new Error(deleteError.message)
+
+  if(shipperIds.length){
+    const {error:assignError}=await supabase
+      .from('destination_hub_shipper_assignments')
+      .insert(shipperIds.map((shipperId,index)=>({
+        hub_config_id:hubId,
+        shipper_id:shipperId,
+        priority:(index+1)*10,
+        is_active:true,
+      })))
+    if(assignError)throw new Error(assignError.message)
+  }
+
   revalidatePath('/settings')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase/tracking')
