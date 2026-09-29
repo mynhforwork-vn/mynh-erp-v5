@@ -13,7 +13,7 @@ function safeReturnParams(raw:string){
   for(const key of RETURN_KEYS){
     const value=src.get(key)
     if(!value)continue
-    if(key==='range'&&!['today','week','month','custom','7d','30d','quarter','year'].includes(value))continue
+    if(key==='range'&&!['today','week','month','custom','7d','30d','quarter','year','all'].includes(value))continue
     if((key==='from'||key==='to')&&!/^\d{4}-\d{2}-\d{2}$/.test(value))continue
     if(value.length>200)continue
     out.set(key,value)
