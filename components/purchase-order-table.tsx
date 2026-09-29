@@ -181,7 +181,9 @@ export function PurchaseOrderTable({
                   {isVisible('voucher')&&<td className="voucher-cell"><VoucherTags value={voucherSummary(o.order_vouchers??[])} compact maxVisible={2}/></td>}
                   {isVisible('status')&&<td>
                     <div className="order-state-cell">
-                      <span className={'status-pill status-'+String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(s?.current_tracking_status)}</span>
+                      {s?.tracking_number
+                        ? <span className={'status-pill status-'+String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(s?.current_tracking_status)}</span>
+                        : <span className="status-pill orange">Chờ mã vận đơn</span>}
                       {o.receive_status!=='NOT_READY'&&<span className={'status-pill '+(o.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(o.receive_status)}</span>}
                     </div>
                   </td>}
