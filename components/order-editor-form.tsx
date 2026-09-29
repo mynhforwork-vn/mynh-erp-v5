@@ -17,6 +17,13 @@ type Item={
   original_price?:number|string|null
   final_price?:number|string|null
 }
+type SkuCatalogItem={
+  sku:string
+  product_name?:string|null
+  variant?:string|null
+  original_price?:number|string|null
+  final_price?:number|string|null
+}
 type Voucher={
   voucher_code?:string|null
   voucher_name?:string|null
@@ -68,6 +75,9 @@ export function OrderEditorForm({
   initialVouchers=[],
   cancelHref='/orders',
   returnQuery='',
+  skuCatalog=[],
+  voucherTypes=[],
+  voucherTags=[],
 }:{
   mode:'create'|'edit'
   users:UserOption[]
@@ -76,6 +86,9 @@ export function OrderEditorForm({
   initialVouchers?:Voucher[]
   cancelHref?:string
   returnQuery?:string
+  skuCatalog?:SkuCatalogItem[]
+  voucherTypes?:string[]
+  voucherTags?:string[]
 }){
   const selectableUsers=useMemo(
     ()=>users.filter(u=>u.status!=='Blocked'||u.id===values.erp_user_id),
@@ -92,6 +105,22 @@ export function OrderEditorForm({
   const [carrierEdited,setCarrierEdited]=useState(Boolean(values.carrier))
   const [shippingService,setShippingService]=useState(values.shipping_service==='EXPRESS'?'EXPRESS':'STANDARD')
   const action=mode==='create'?createOrder:updateOrder
+  const skuMap=useMemo(()=>{
+    const map=new Map<string,SkuCatalogItem>()
+    for(const item of skuCatalog){
+      const key=String(item.sku??'').trim().toUpperCase()
+      if(key&&!map.has(key))map.set(key,item)
+    }
+    return map
+  },[skuCatalog])
+  const voucherTypeOptions=useMemo(
+    ()=>[...new Set([...voucherTypes,...initialVouchers.map(v=>String(v.voucher_type??'')).filter(Boolean)])],
+    [voucherTypes,initialVouchers]
+  )
+  const voucherTagOptions=useMemo(
+    ()=>[...new Set([...voucherTags,...initialVouchers.map(v=>String(v.voucher_tag??'')).filter(Boolean)])],
+    [voucherTags,initialVouchers]
+  )
 
   const selectedUser=selectableUsers.find(u=>u.id===selectedUserId)??null
   const filteredUsers=useMemo(()=>{
@@ -111,6 +140,27 @@ export function OrderEditorForm({
   function onTrackingChange(value:string){
     setTrackingNumber(value)
     if(!carrierEdited)setCarrier(detectCarrier(value))
+  }
+
+  function updateItem(index:number,patch:Partial<Item>){
+    setItems(current=>current.map((item,i)=>i===index?{...item,...patch}:item))
+  }
+
+  function updateSku(index:number,value:string){
+    const matched=skuMap.get(value.trim().toUpperCase())
+    updateItem(index,matched
+      ? {
+          sku:value,
+          product_name:matched.product_name??'',
+          variant:matched.variant??'',
+          original_price:matched.original_price??'',
+          final_price:matched.final_price??'',
+        }
+      : {sku:value})
+  }
+
+  function updateVoucher(index:number,patch:Partial<Voucher>){
+    setVouchers(current=>current.map((voucher,i)=>i===index?{...voucher,...patch}:voucher))
   }
 
   return <form action={action} className="panel-form panel-scroll order-editor">
@@ -222,35 +272,114 @@ export function OrderEditorForm({
     <section className="form-section">
       <div className="form-section-head"><h3>Sản phẩm</h3><button type="button" className="mini-add" onClick={()=>setItems(v=>[...v,emptyItem()])}>+ Thêm dòng</button></div>
       <div className="repeat-stack">
-        {items.map((item,i)=><div className="repeat-card" key={i}>
-          <div className="repeat-card-head"><b>Sản phẩm {i+1}</b>{items.length>1&&<button type="button" onClick={()=>setItems(v=>v.filter((_,x)=>x!==i))}>Xóa</button>}</div>
-          <label>Tên sản phẩm<input name="item_product_name" defaultValue={item.product_name??''} required={i===0}/></label>
-          <div className="form-grid">
-            <label>SKU<input name="item_sku" defaultValue={item.sku??''}/></label>
-            <label>Phân loại<input name="item_variant" defaultValue={item.variant??''}/></label>
+        {items.map((item,i)=>{
+          const matched=Boolean(item.sku&&skuMap.has(String(item.sku).trim().toUpperCase()))
+          return <div className="repeat-card" key={i}>
+            <div className="repeat-card-head">
+              <b>Sản phẩm {i+1}</b>
+              <div className="repeat-card-actions">
+                {matched&&<span className="sku-match-badge">Đã lấy dữ liệu SKU gần nhất</span>}
+                {items.length>1&&<button type="button" onClick={()=>setItems(v=>v.filter((_,x)=>x!==i))}>Xóa</button>}
+              </div>
+            </div>
+
+            <div className="form-grid">
+              <label>SKU
+                <input
+                  name="item_sku"
+                  value={item.sku??''}
+                  onChange={e=>updateSku(i,e.target.value)}
+                  placeholder="Nhập SKU để tự điền"
+                  autoComplete="off"
+                />
+              </label>
+              <label>Phân loại
+                <input
+                  name="item_variant"
+                  value={item.variant??''}
+                  onChange={e=>updateItem(i,{variant:e.target.value})}
+                />
+              </label>
+            </div>
+
+            <label>Tên sản phẩm
+              <input
+                name="item_product_name"
+                value={item.product_name??''}
+                onChange={e=>updateItem(i,{product_name:e.target.value})}
+                required={i===0}
+              />
+            </label>
+
+            <div className="form-grid three">
+              <label>SL
+                <input
+                  name="item_quantity"
+                  type="number"
+                  min="1"
+                  value={item.quantity??1}
+                  onChange={e=>updateItem(i,{quantity:Number(e.target.value||1)})}
+                />
+              </label>
+              <label>Giá gốc
+                <input
+                  name="item_original_price"
+                  inputMode="numeric"
+                  value={item.original_price??''}
+                  onChange={e=>updateItem(i,{original_price:e.target.value})}
+                />
+              </label>
+              <label>Giá sau giảm
+                <input
+                  name="item_final_price"
+                  inputMode="numeric"
+                  value={item.final_price??''}
+                  onChange={e=>updateItem(i,{final_price:e.target.value})}
+                />
+              </label>
+            </div>
           </div>
-          <div className="form-grid three">
-            <label>SL<input name="item_quantity" type="number" min="1" defaultValue={item.quantity??1}/></label>
-            <label>Giá gốc<input name="item_original_price" inputMode="numeric" defaultValue={item.original_price??''}/></label>
-            <label>Giá sau giảm<input name="item_final_price" inputMode="numeric" defaultValue={item.final_price??''}/></label>
-          </div>
-        </div>)}
+        })}
       </div>
     </section>
 
     <section className="form-section">
       <div className="form-section-head"><h3>Voucher</h3><button type="button" className="mini-add" onClick={()=>setVouchers(v=>[...v,emptyVoucher()])}>+ Thêm voucher</button></div>
-      <div className="repeat-stack">
-        {vouchers.map((v,i)=><div className="repeat-card" key={i}>
-          <div className="repeat-card-head"><b>Voucher {i+1}</b>{vouchers.length>1&&<button type="button" onClick={()=>setVouchers(x=>x.filter((_,n)=>n!==i))}>Xóa</button>}</div>
-          <div className="form-grid">
-            <label>Mã voucher<input name="voucher_code" defaultValue={v.voucher_code??''}/></label>
-            <label>Tag voucher<input name="voucher_tag" defaultValue={v.voucher_tag??''}/></label>
+      <div className="repeat-stack voucher-repeat-stack">
+        {vouchers.map((v,i)=><div className="repeat-card voucher-entry-card" key={i}>
+          <div className="repeat-card-head">
+            <b>Voucher {i+1}</b>
+            {vouchers.length>1&&<button type="button" onClick={()=>setVouchers(x=>x.filter((_,n)=>n!==i))}>Xóa</button>}
           </div>
-          <label>Tên voucher<input name="voucher_name" defaultValue={v.voucher_name??''}/></label>
+          <label>Mã voucher
+            <input
+              name="voucher_code"
+              value={v.voucher_code??''}
+              onChange={e=>updateVoucher(i,{voucher_code:e.target.value})}
+              placeholder="Nhập mã voucher"
+            />
+          </label>
           <div className="form-grid">
-            <label>Loại voucher<input name="voucher_type" defaultValue={v.voucher_type??''}/></label>
-            <label>Tài khoản voucher<input name="voucher_account" defaultValue={v.voucher_account??''}/></label>
+            <label>Loại Voucher
+              <select
+                name="voucher_type"
+                value={v.voucher_type??''}
+                onChange={e=>updateVoucher(i,{voucher_type:e.target.value})}
+              >
+                <option value="">— Chọn loại —</option>
+                {voucherTypeOptions.map(option=><option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+            <label>Tag Voucher
+              <select
+                name="voucher_tag"
+                value={v.voucher_tag??''}
+                onChange={e=>updateVoucher(i,{voucher_tag:e.target.value})}
+              >
+                <option value="">— Chọn tag —</option>
+                {voucherTagOptions.map(option=><option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
           </div>
         </div>)}
       </div>
