@@ -3539,3 +3539,67 @@ a{text-decoration:none}
   .tracking-receive-focus{grid-template-columns:1fr auto}
   .tracking-receive-focus>.button{grid-column:1/-1;justify-self:start}
 }
+
+
+/* Shipper payment history */
+.shipper-finance-kpis{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:6px;
+  margin-bottom:7px;
+}
+.shipper-payment-batches{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+.shipper-payment-batch{padding:0;overflow:hidden}
+.shipper-payment-batch-head{
+  display:grid;
+  grid-template-columns:minmax(220px,1fr) minmax(520px,1.5fr);
+  align-items:center;
+  gap:12px;
+  padding:8px 10px;
+  border-bottom:1px solid #E7ECF1;
+  background:#FBFCFD;
+}
+.shipper-payment-batch-head h2{
+  margin:1px 0;
+  color:#36495E;
+  font-size:11px;
+}
+.shipper-payment-batch-head small{color:#8792A0;font-size:6.8px}
+.shipper-payment-batch-metrics{
+  display:grid;
+  grid-template-columns:70px repeat(3,minmax(0,1fr));
+  gap:4px;
+}
+.shipper-payment-batch-metrics>div{
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+  padding:4px 6px;
+  border-left:1px solid #E4E9EF;
+}
+.shipper-payment-batch-metrics span{color:#8A95A3;font-size:6.7px}
+.shipper-payment-batch-metrics b{
+  color:#405167;
+  font-size:8.2px;
+  font-variant-numeric:tabular-nums;
+}
+.shipper-payment-batch .compact-table-wrap{max-height:220px;overflow:auto}
+.shipper-payment-note{
+  display:grid;
+  grid-template-columns:60px 1fr;
+  gap:8px;
+  padding:5px 9px;
+  border-top:1px solid #EDF1F4;
+  background:#FAFBFC;
+}
+.shipper-payment-note span{color:#8A95A3;font-size:6.7px}
+.shipper-payment-note b{color:#556477;font-size:7.2px;font-weight:550}
+
+@media(max-width:1280px){
+  .shipper-finance-kpis{grid-template-columns:repeat(2,1fr)}
+  .shipper-payment-batch-head{grid-template-columns:1fr}
+}
