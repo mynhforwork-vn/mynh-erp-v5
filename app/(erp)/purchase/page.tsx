@@ -220,7 +220,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       <Link href={orderHref({tracking:'shipping'})} className="command-kpi info">
         <span>Đang vận chuyển</span><b>{shipping}</b><small>Đơn tiêu chuẩn đang chạy Tracking</small>
       </Link>
-      <Link href={purchaseHref('/purchase/tracking',{status:'DELIVERED'})} className="command-kpi warning">
+      <Link href={purchaseHref('/purchase/tracking',{status:'DELIVERED',receive:'WAITING_RECEIVE'})} className="command-kpi warning">
         <span>Chờ nhận hàng</span><b>{waiting}</b><small>{formatMoney(waitingCod)} · {waitingHubs} kho đích</small>
       </Link>
       <Link href={purchaseHref('/purchase/tracking',{status:'DELIVERY_FAILED'})} className="command-kpi danger">
@@ -248,7 +248,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
         <div><span>Đã chuyển Shipper</span><b>{formatMoney(transferredTotal)}</b><small>{paymentRows.length} đợt</small></div>
         <div><span>Tip phát sinh</span><b>{formatMoney(tipTotal)}</b></div>
       </div>
-      <Link className="button primary" href={purchaseHref('/purchase/tracking',{status:'DELIVERED'})}>Mở danh sách chờ nhận →</Link>
+      <Link className="button primary" href={purchaseHref('/purchase/tracking',{status:'DELIVERED',receive:'WAITING_RECEIVE'})}>Mở danh sách chờ nhận →</Link>
     </section>
 
     <section className="purchase-ops-grid">
@@ -269,7 +269,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
                   <td>{x.delivered}</td>
                   <td><b className={x.waiting?'warning-text':''}>{x.waiting}</b></td>
                   <td>{x.received}</td>
-                  <td><Link className="table-link" href={purchaseHref('/purchase/tracking',{status:x.waiting?'DELIVERED':null})}>Xử lý</Link></td>
+                  <td><Link className="table-link" href={purchaseHref('/purchase/tracking',{status:x.waiting?'DELIVERED':null,receive:x.waiting?'WAITING_RECEIVE':null})}>Xử lý</Link></td>
                 </tr>)}
             </tbody>
           </table>
@@ -282,7 +282,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
           <span className="badge">{urgent.length}</span>
         </div>
         <div className="action-queue-list">
-          <Link href={purchaseHref('/purchase/tracking',{status:'DELIVERED'})} className="action-queue-summary warning">
+          <Link href={purchaseHref('/purchase/tracking',{status:'DELIVERED',receive:'WAITING_RECEIVE'})} className="action-queue-summary warning">
             <div><b>{waiting}</b><span>Chờ xác nhận nhận</span></div>
             <small>{formatMoney(waitingCod)} COD</small>
           </Link>
