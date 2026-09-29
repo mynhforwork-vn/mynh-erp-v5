@@ -26,10 +26,12 @@ export function TrackingHubGroup({
   hub,
   rows,
   warehouses,
+  contextQuery='',
 }:{
   hub:string
   rows:OrderRow[]
   warehouses:Warehouse[]
+  contextQuery?:string
 }){
   const eligible=rows.filter(r=>r.receive_status==='WAITING_RECEIVE')
   const [selected,setSelected]=useState<string[]>([])
@@ -43,6 +45,13 @@ export function TrackingHubGroup({
   }
   function toggle(id:string){
     setSelected(v=>v.includes(id)?v.filter(x=>x!==id):[...v,id])
+  }
+
+  function orderHref(id:string){
+    const p=new URLSearchParams(contextQuery)
+    p.set('order',id)
+    p.set('tab','tracking')
+    return '/purchase/orders?'+p.toString()
   }
 
   return <section className="card tracking-hub-card">
@@ -86,7 +95,7 @@ export function TrackingHubGroup({
               </td>
               <td>
                 <div className="tracking-order-id">
-                  <Link className="table-link" href={'/purchase/orders?order='+r.id+'&tab=tracking'}>{r.shopee_order_id??r.id.slice(0,8)}</Link>
+                  <Link className="table-link" href={orderHref(r.id)}>{r.shopee_order_id??r.id.slice(0,8)}</Link>
                   <span>{r.tracking_number??'Chưa có MVĐ'}{r.carrier?' · '+r.carrier:''}</span>
                 </div>
               </td>
@@ -118,6 +127,7 @@ export function TrackingHubGroup({
 
     {eligible.length>0&&
       <form action={confirmReceiveOrders} className="receive-confirm-bar">
+        <input type="hidden" name="return_query" value={contextQuery}/>
         {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
         <div className="receive-selection">
           <span>Đã chọn</span>
