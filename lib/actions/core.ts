@@ -353,6 +353,42 @@ export async function saveDestinationHubConfig(formData:FormData){
   revalidatePath('/purchase')
 }
 
+export async function deleteDestinationHubConfig(formData:FormData){
+  const {supabase,user}=await actor()
+  const id=text(formData.get('config_id'))
+  if(!id)throw new Error('Thiếu HUB cần xoá')
+
+  const {data:hub,error:hubError}=await supabase
+    .from('destination_hub_configs')
+    .select('id,hub_code,area,region,province_keywords,district_keywords,address_keywords,priority,is_active')
+    .eq('id',id)
+    .maybeSingle()
+  if(hubError)throw new Error(hubError.message)
+  if(!hub)throw new Error('HUB không tồn tại hoặc đã được xoá')
+
+  const {error:deleteError}=await supabase
+    .from('destination_hub_configs')
+    .delete()
+    .eq('id',id)
+  if(deleteError)throw new Error(deleteError.message)
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,
+    module:'SETTINGS',
+    action:'DELETE_DESTINATION_HUB_CONFIG',
+    entity_type:'DESTINATION_HUB_CONFIG',
+    entity_id:id,
+    old_value:hub,
+    new_value:{deleted:true,hub_code:hub.hub_code},
+    source:'USER',
+  })
+
+  revalidatePath('/settings')
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase/tracking')
+  revalidatePath('/purchase')
+}
+
 export async function saveDestinationShipper(formData:FormData){
   const {supabase}=await actor()
   const id=text(formData.get('shipper_id'))
