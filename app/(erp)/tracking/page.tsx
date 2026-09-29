@@ -262,7 +262,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     return bw-aw||b[1].length-a[1].length
   })
 
-  return <>
+  return <div className="tracking-screen">
     <header className="page-head">
       <div>
         <span className="module-eyebrow">MUA HÀNG</span>
@@ -397,5 +397,5 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
             </div>)}
       </div>
     </section>
-  </>
+  </div>
 }
