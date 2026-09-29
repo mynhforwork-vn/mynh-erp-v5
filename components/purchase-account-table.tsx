@@ -111,6 +111,18 @@ export function PurchaseAccountTable({
     return '/purchase/accounts?'+p.toString()
   }
 
+  function createOrderHref(id:string){
+    const src=new URLSearchParams(detailQuery)
+    const p=new URLSearchParams()
+    for(const key of ['range','from','to']){
+      const value=src.get(key)
+      if(value)p.set(key,value)
+    }
+    p.set('mode','create')
+    p.set('user',id)
+    return '/purchase/orders?'+p.toString()
+  }
+
   const nameNext=sort==='name_asc'?'name_desc':'name_asc'
   const timeNext=sort==='oldest'?'newest':'oldest'
 
@@ -148,7 +160,12 @@ export function PurchaseAccountTable({
             ? <tr><td colSpan={colSpan} className="empty">Không có tài khoản phù hợp với bộ lọc hiện tại.</td></tr>
             : rows.map((u,i)=><tr key={u.id} className={selectedId===u.id?'selected-row':''}>
                 {isVisible('number')&&<td>{i+1}</td>}
-                {isVisible('username')&&<td><Link className="table-link" href={hrefFor(u.id)}>{u.username}</Link></td>}
+                {isVisible('username')&&<td>
+                  <div className="user-name-actions">
+                    <Link className="table-link" href={hrefFor(u.id)}>{u.username}</Link>
+                    {u.status!=='Blocked'&&<Link className="quick-order-link" href={createOrderHref(u.id)} title="Tạo đơn từ User">+ Đơn</Link>}
+                  </div>
+                </td>}
                 {isVisible('platform')&&<td><span className="platform-cell">{u.platform??'SHOPEE'}</span></td>}
                 {isVisible('phone')&&<td>{formatPhone(u.phone)}</td>}
                 {isVisible('email')&&<td>{u.email??'—'}</td>}
