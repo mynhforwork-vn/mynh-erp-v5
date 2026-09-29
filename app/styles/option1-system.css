@@ -2842,3 +2842,33 @@ a{text-decoration:none}
   background:#EFF5FA;
   color:#2F587E;
 }
+
+
+/* Order editor — SKU reuse + compact voucher entry */
+.repeat-card-actions{
+  display:flex;
+  align-items:center;
+  gap:5px;
+}
+.sku-match-badge{
+  display:inline-flex;
+  align-items:center;
+  min-height:17px;
+  padding:0 5px;
+  border:1px solid #C9DDD1;
+  border-radius:999px;
+  background:#F0F8F3;
+  color:#33704E;
+  font-size:6.6px;
+  font-weight:650;
+  white-space:nowrap;
+}
+.voucher-repeat-stack .voucher-entry-card{
+  padding:6px 7px;
+}
+.voucher-entry-card .form-grid{
+  gap:5px;
+}
+.voucher-entry-card select{
+  min-width:0;
+}
