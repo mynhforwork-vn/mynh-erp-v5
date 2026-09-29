@@ -112,7 +112,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       .order('created_at',{ascending:false})
       .limit(3000),
     supabase.from('destination_hub_configs')
-      .select('id,hub_code,area,region,province_keywords,district_keywords,address_keywords,priority,is_active')
+      .select('id,hub_code,area,region,province_keywords,district_keywords,address_keywords,shipper_name,shipper_phone,priority,is_active')
       .eq('is_active',true)
       .order('priority',{ascending:true})
       .order('hub_code',{ascending:true})
