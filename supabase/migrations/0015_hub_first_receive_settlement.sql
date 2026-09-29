@@ -177,6 +177,14 @@ begin
 end;
 $$;
 
+revoke all on function private.confirm_receive_and_pay_hub_impl(
+  uuid[],uuid,text,numeric,text
+) from public;
+
+grant execute on function private.confirm_receive_and_pay_hub_impl(
+  uuid[],uuid,text,numeric,text
+) to authenticated;
+
 create or replace function public.confirm_receive_and_pay_hub(
   p_order_ids uuid[],
   p_warehouse_id uuid,
