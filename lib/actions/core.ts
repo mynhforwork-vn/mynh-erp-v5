@@ -5,6 +5,31 @@ import { requireUser } from '@/lib/supabase/auth'
 import { nextTrackAt } from '@/lib/tracking/schedule'
 
 function text(v:FormDataEntryValue|null){return String(v??'').trim()}
+
+const RETURN_KEYS=['range','from','to','q','receive','tracking','state','device','session','voucher','orders','browser','sort'] as const
+function safeReturnParams(raw:string){
+  const src=new URLSearchParams(raw)
+  const out=new URLSearchParams()
+  for(const key of RETURN_KEYS){
+    const value=src.get(key)
+    if(!value)continue
+    if(key==='range'&&!['today','week','month','custom','7d','30d','quarter','year'].includes(value))continue
+    if((key==='from'||key==='to')&&!/^\d{4}-\d{2}-\d{2}$/.test(value))continue
+    if(value.length>200)continue
+    out.set(key,value)
+  }
+  return out
+}
+function returnHref(path:string,raw:string,extra:Record<string,string|null|undefined>={}){
+  const p=safeReturnParams(raw)
+  for(const [k,v] of Object.entries(extra)){
+    if(v===null||v===undefined||v==='')p.delete(k)
+    else p.set(k,v)
+  }
+  const qs=p.toString()
+  return path+(qs?'?'+qs:'')
+}
+
 async function actor(){
   const {supabase,user}=await requireUser(); const role=String(user.app_metadata?.role??'viewer')
   if(!['admin','operator'].includes(role))throw new Error('Không có quyền thực hiện thao tác này')
@@ -13,6 +38,7 @@ async function actor(){
 
 export async function createERPUser(formData:FormData){
   const {supabase}=await actor()
+  const returnQuery=text(formData.get('return_query'))
   const deviceName=text(formData.get('device_name'))
   const deviceType=text(formData.get('device_type'))||'DESKTOP'
   const browserName=text(formData.get('browser_name'))||null
@@ -53,11 +79,12 @@ export async function createERPUser(formData:FormData){
   }
 
   revalidatePath('/purchase/accounts')
-  redirect(`/purchase/accounts?user=${data}`)
+  redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data)}))
 }
 
 export async function updateERPUser(formData:FormData){
   const {supabase}=await actor()
+  const returnQuery=text(formData.get('return_query'))
   const userId=text(formData.get('user_id'))
   if(!userId)throw new Error('Thiếu tài khoản cần cập nhật')
 
@@ -102,7 +129,7 @@ export async function updateERPUser(formData:FormData){
   }
 
   revalidatePath('/purchase/accounts')
-  redirect(`/purchase/accounts?user=${data}`)
+  redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data)}))
 }
 
 function numberOrNull(v:FormDataEntryValue|null){
@@ -155,6 +182,7 @@ function voucherPayload(formData:FormData){
 
 export async function createOrder(formData:FormData){
   const {supabase}=await actor()
+  const returnQuery=text(formData.get('return_query'))
   const {data,error}=await supabase.rpc('create_order_full',{
     p_shopee_order_id:text(formData.get('shopee_order_id'))||null,
     p_erp_user_id:text(formData.get('erp_user_id'))||null,
@@ -174,11 +202,12 @@ export async function createOrder(formData:FormData){
   })
   if(error)throw new Error(error.message)
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/')
-  redirect(`/purchase/orders?order=${data}`)
+  redirect(returnHref('/purchase/orders',returnQuery,{order:String(data)}))
 }
 
 export async function updateOrder(formData:FormData){
   const {supabase}=await actor()
+  const returnQuery=text(formData.get('return_query'))
   const orderId=text(formData.get('order_id'))
   if(!orderId)throw new Error('Thiếu đơn hàng cần cập nhật')
   const {data,error}=await supabase.rpc('update_order_full',{
@@ -201,12 +230,13 @@ export async function updateOrder(formData:FormData){
   })
   if(error)throw new Error(error.message)
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/')
-  redirect(`/purchase/orders?order=${data}`)
+  redirect(returnHref('/purchase/orders',returnQuery,{order:String(data)}))
 }
 
 
 export async function confirmReceiveOrders(formData:FormData){
   const {supabase}=await actor()
+  const returnQuery=text(formData.get('return_query'))
   const orderIds=formData.getAll('order_ids').map(v=>text(v)).filter(Boolean)
   const warehouseId=text(formData.get('warehouse_id'))
   const note=text(formData.get('note'))||null
@@ -225,11 +255,12 @@ export async function confirmReceiveOrders(formData:FormData){
   revalidatePath('/purchase')
   revalidatePath('/warehouse')
   revalidatePath('/warehouse/receive')
-  redirect(`/purchase/tracking?received=${encodeURIComponent(String(data?.receive_batch_id??''))}`)
+  redirect(returnHref('/purchase/tracking',returnQuery,{received:String(data?.receive_batch_id??'')}))
 }
 
 export async function replaceShipment(formData:FormData){
   const {supabase,user}=await actor()
+  const returnQuery=text(formData.get('return_query'))
   const orderId=text(formData.get('order_id'))
   const trackingNumber=text(formData.get('tracking_number'))
   const carrier=text(formData.get('carrier'))||null
@@ -267,5 +298,5 @@ export async function replaceShipment(formData:FormData){
   })
 
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/')
-  redirect(`/purchase/orders?order=${orderId}&tab=tracking`)
+  redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,tab:'tracking'}))
 }
