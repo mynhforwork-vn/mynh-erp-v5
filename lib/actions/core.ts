@@ -408,6 +408,33 @@ export async function confirmReceiveOrders(formData:FormData){
     if(shipperError)throw new Error(shipperError.message)
     if(!shipper)throw new Error('Shipper không tồn tại hoặc đã ngừng hoạt động')
 
+    const {data:paymentOrders,error:paymentOrdersError}=await supabase
+      .from('orders')
+      .select('id,destination_hub')
+      .in('id',orderIds)
+    if(paymentOrdersError)throw new Error(paymentOrdersError.message)
+    const hubs=[...new Set((paymentOrders??[]).map((o:any)=>String(o.destination_hub??'')).filter(Boolean))]
+    if(hubs.length!==1)throw new Error('Đợt chuyển Shipper phải gồm các đơn cùng một Hub kho đích')
+
+    const {data:hubConfig,error:hubConfigError}=await supabase
+      .from('destination_hub_configs')
+      .select('id')
+      .eq('hub_code',hubs[0])
+      .eq('is_active',true)
+      .maybeSingle()
+    if(hubConfigError)throw new Error(hubConfigError.message)
+    if(!hubConfig)throw new Error('Hub kho đích chưa có cấu hình hoạt động')
+
+    const {data:assignment,error:assignmentError}=await supabase
+      .from('destination_hub_shipper_assignments')
+      .select('id')
+      .eq('hub_config_id',hubConfig.id)
+      .eq('shipper_id',shipperId)
+      .eq('is_active',true)
+      .maybeSingle()
+    if(assignmentError)throw new Error(assignmentError.message)
+    if(!assignment)throw new Error('Shipper được chọn không phụ trách Hub kho đích này')
+
     const result=await supabase.rpc('confirm_receive_and_pay_shipper',{
       p_order_ids:orderIds,
       p_warehouse_id:warehouseId,
