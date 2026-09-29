@@ -261,6 +261,25 @@ export function OrderEditorForm({
     const item:Item=emptyItem()
     const raw=line.trim()
 
+    // Shopee compact format:
+    // Tên SP xSL Giá gốc₫Giá sau giảm₫ (Phân loại)
+    // Example: Dầu Đậu Nành Simply Nguyên chất chai 1 Lít x1 79.000₫78.921₫ (Đậu Nành 1 Lít)
+    const shopeeCompact=raw.match(/^(.*?)\s+[x×]\s*(\d+)\s+([\d.,]+)\s*₫(?:\s*([\d.,]+)\s*₫)?(?:\s*\(([^)]+)\))?\s*$/i)
+    if(shopeeCompact){
+      item.product_name=shopeeCompact[1].trim()
+      item.quantity=Math.max(1,Number(shopeeCompact[2]))
+      const firstPrice=parseNumberToken(shopeeCompact[3])
+      const secondPrice=shopeeCompact[4]?parseNumberToken(shopeeCompact[4]):''
+      if(secondPrice!==''){
+        item.original_price=firstPrice
+        item.final_price=secondPrice
+      }else{
+        item.final_price=firstPrice
+      }
+      item.variant=shopeeCompact[5]?.trim()??''
+      return item
+    }
+
     const labeledSku=raw.match(/(?:^|\s)sku\s*[:=\-]?\s*([A-Za-z0-9._-]{2,60})/i)
     const labeledQty=raw.match(/(?:^|\s)(?:sl|qty|số lượng|so luong)\s*[:=\-]?\s*(\d+)/i)
     const labeledOriginal=raw.match(/(?:giá gốc|gia goc|original)\s*[:=\-]?\s*([\d.,]+)/i)
@@ -454,7 +473,6 @@ export function OrderEditorForm({
         </div>
       </div>
 
-      <label>COD<input name="cod" inputMode="numeric" defaultValue={values.cod??0}/></label>
     </section>
 
     <section className="form-section">
@@ -602,6 +620,14 @@ export function OrderEditorForm({
           </div>
         </div>)}
       </div>
+    </section>
+
+    <section className="form-section order-cod-section">
+      <h3>Giá trị đơn</h3>
+      <label>COD
+        <input name="cod" inputMode="numeric" defaultValue={values.cod??0} placeholder="Nhập COD sau khi hoàn tất sản phẩm / voucher"/>
+        <small className="field-help">Nhập cuối cùng sau khi đã kiểm tra sản phẩm và voucher.</small>
+      </label>
     </section>
 
     <div className="form-actions">
