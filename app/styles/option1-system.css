@@ -2603,20 +2603,20 @@ a{text-decoration:none}
 }
 
 
-/* Highlight the order currently opened in the detail panel */
+/* Highlight the order currently opened in the detail panel — very subtle */
 .order-table-card .order-table tbody tr.selected-row td{
-  background:#EAF2FA!important;
-  border-bottom-color:#D7E4F0!important;
+  background:#F6FAFE!important;
+  border-bottom-color:#E7EEF5!important;
 }
 .order-table-card .order-table tbody tr.selected-row:hover td{
-  background:#EAF2FA!important;
+  background:#F3F8FC!important;
 }
 .order-table-card .order-table tbody tr.selected-row td:first-child{
-  box-shadow:inset 3px 0 0 #365F8A;
-  color:#24496F;
-  font-weight:700;
+  box-shadow:inset 2px 0 0 #8FA9C1;
+  color:#405A73;
+  font-weight:650;
 }
 .order-table-card .order-table tbody tr.selected-row .table-link{
-  color:#1F4F7D;
-  font-weight:800;
+  color:#2B5278;
+  font-weight:750;
 }
