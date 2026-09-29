@@ -416,6 +416,9 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                   : <>
                       <div><span>Khu vực</span><b>{[detail.area,detailHubConfig?.region].filter(Boolean).join(' · ')||'Chưa xác định'}</b></div>
                       <div><span>Kho đích</span><b>{detail.destination_hub??'—'}</b></div>
+                      <div className="full"><span>Shipper phụ trách Hub</span><b>{detailHubConfig?.assigned_shippers?.length
+                        ? detailHubConfig.assigned_shippers.map((s:any)=>s.name+(s.phone?' · '+formatPhone(s.phone):'')).join(' | ')
+                        : 'Chưa cấu hình'}</b></div>
                       <div><span>Mã vận đơn</span><b>{currentShip?.tracking_number??'Chưa có'}</b></div>
                       <div><span>ĐVVC</span><b>{currentShip?.carrier??'—'}</b></div>
                     </>}
