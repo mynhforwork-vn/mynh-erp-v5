@@ -58,7 +58,7 @@ const groups:Group[]=[
   {label:'TÀI CHÍNH',items:[
     {href:'/finance',label:'Tổng quan tài chính',icon:'finance',exact:true},
     {href:'/finance/cashflow',label:'Thu / Chi',icon:'cash'},
-    {href:'/finance/shipper-payments',label:'Thanh toán Shipper',icon:'payment'},
+    {href:'/finance/shipper-payments',label:'Đối soát HUB',icon:'payment'},
     {href:'/finance/customer-payments',label:'Thanh toán khách hàng',icon:'payment'},
     {href:'/finance/reports',label:'Báo cáo tài chính',icon:'report'},
   ]},
