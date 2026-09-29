@@ -97,7 +97,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const range=resolveRange(sp)
   const queryText=String(sp.q??'').trim().toLowerCase()
 
-  const [{data,error},{data:userOptions},{data:recentSkuRows},{data:voucherCatalogRows}]=await Promise.all([
+  const [{data,error},{data:userOptions},{data:recentSkuRows},{data:voucherCatalogRows},{data:destinationHubRows}]=await Promise.all([
     supabase.from('orders').select(
       'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
     ).gte('order_date',range.start).lte('order_date',range.end).order('order_date',{ascending:false}).limit(1000),
@@ -110,7 +110,13 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     supabase.from('order_vouchers')
       .select('voucher_type,voucher_tag,created_at')
       .order('created_at',{ascending:false})
-      .limit(3000)
+      .limit(3000),
+    supabase.from('destination_hub_configs')
+      .select('id,hub_code,area,region,province_keywords,district_keywords,address_keywords,priority,is_active')
+      .eq('is_active',true)
+      .order('priority',{ascending:true})
+      .order('hub_code',{ascending:true})
+      .limit(500)
   ])
 
   const latestSkuMap=new Map<string,any>()
@@ -129,6 +135,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const skuCatalog=[...latestSkuMap.values()]
   const voucherTypes=[...new Set((voucherCatalogRows??[]).map((x:any)=>String(x.voucher_type??'').trim()).filter(Boolean))]
   const voucherTags=[...new Set((voucherCatalogRows??[]).map((x:any)=>String(x.voucher_tag??'').trim()).filter(Boolean))]
+  const destinationHubs=(destinationHubRows??[]) as any[]
 
   const dateRows=(data??[]) as any[]
   const rows=dateRows.filter((o:any)=>{
@@ -214,6 +221,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const editMode=Boolean(detail&&sp.mode==='edit')
   const panelOpen=createMode||Boolean(detail)
   const currentShip=activeShipment(detail)
+  const detailHubConfig=detail?destinationHubs.find((x:any)=>x.hub_code===detail.destination_hub):null
   const returnQuery=listHref().split('?')[1]??''
 
   return <div className="order-screen">
@@ -295,6 +303,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             skuCatalog={skuCatalog}
             voucherTypes={voucherTypes}
             voucherTags={voucherTags}
+            destinationHubs={destinationHubs}
           />
         </aside>
       }
@@ -322,6 +331,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               recipient_name:detail.recipient_name,
               recipient_phone:detail.recipient_phone,
               recipient_address:detail.recipient_address,
+              area:detail.area,
               destination_hub:detail.destination_hub,
             }}
             initialItems={items}
@@ -331,6 +341,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             skuCatalog={skuCatalog}
             voucherTypes={voucherTypes}
             voucherTags={voucherTags}
+            destinationHubs={destinationHubs}
           />
         </aside>
       }
@@ -357,6 +368,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                 <div><span>Thanh toán</span><b>{statusLabel(detail.payment_status)}</b></div>
                 <div><span>COD</span><b>{formatMoney(detail.cod)}</b></div>
                 <div><span>Dịch vụ</span><b>{detail.shipping_service==='EXPRESS'?'Hỏa tốc':'Tiêu chuẩn'}</b></div>
+                <div><span>Khu vực</span><b>{[detail.area,detailHubConfig?.region].filter(Boolean).join(' · ')||'Chưa xác định'}</b></div>
                 <div><span>Người nhận</span><b>{detail.recipient_name??'—'}</b></div>
                 <div><span>Số điện thoại</span><b>{formatPhone(detail.recipient_phone)}</b></div>
                 <div className="full"><span>Địa chỉ nhận</span><b>{detail.recipient_address??'—'}</b></div>
