@@ -3835,3 +3835,24 @@ a{text-decoration:none}
   .destination-config-card{overflow-x:auto}
   .destination-config-row{min-width:1080px}
 }
+
+
+.hub-shipper-cell{
+  min-width:92px;
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.hub-shipper-cell>b{
+  overflow:hidden;
+  color:#4A5A6D;
+  font-size:7.1px;
+  font-weight:650;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.hub-shipper-cell>span{
+  color:#929CA8;
+  font-size:6.3px;
+  white-space:nowrap;
+}
