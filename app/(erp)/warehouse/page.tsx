@@ -14,7 +14,7 @@ export default async function WarehousePage(){
     supabase.from('warehouses').select('*').limit(50),
     supabase.from('transfer_batches').select('*').order('created_at',{ascending:false}).limit(20),
     supabase.from('destination_hub_configs')
-      .select('id,hub_code,area,region,province_keywords,district_keywords,address_keywords,priority,is_active')
+      .select('id,hub_code,area,region,province_keywords,district_keywords,address_keywords,shipper_name,shipper_phone,priority,is_active')
       .order('priority',{ascending:true})
       .order('hub_code',{ascending:true})
       .limit(500),
@@ -68,7 +68,7 @@ export default async function WarehousePage(){
       <div className="card-head destination-config-head">
         <div>
           <h2>Cấu hình kho đích</h2>
-          <span className="muted">Địa chỉ nhận → Khu vực / Miền → Kho đích. Quận/Huyện và từ khóa bổ sung có ưu tiên cao hơn Tỉnh/Thành.</span>
+          <span className="muted">Địa chỉ nhận → Khu vực / Miền → Kho đích → Shipper phụ trách. Quận/Huyện và từ khóa bổ sung có ưu tiên cao hơn Tỉnh/Thành.</span>
         </div>
       </div>
 
@@ -87,6 +87,8 @@ export default async function WarehousePage(){
           <label>Tỉnh/Thành<input name="province_keywords" defaultValue={(row.province_keywords??[]).join(', ')}/></label>
           <label>Quận/Huyện<input name="district_keywords" defaultValue={(row.district_keywords??[]).join(', ')}/></label>
           <label>Từ khóa thêm<input name="address_keywords" defaultValue={(row.address_keywords??[]).join(', ')}/></label>
+          <label>Shipper phụ trách<input name="shipper_name" defaultValue={row.shipper_name??''} placeholder="Tên Shipper"/></label>
+          <label>SĐT Shipper<input name="shipper_phone" defaultValue={row.shipper_phone??''} placeholder="Số điện thoại"/></label>
           <label className="priority-field">Ưu tiên<input name="priority" type="number" min="0" defaultValue={row.priority??100}/></label>
           <label className="config-active"><input type="checkbox" name="is_active" defaultChecked={row.is_active}/> Bật</label>
           <button className="button small" type="submit">Lưu</button>
@@ -106,6 +108,8 @@ export default async function WarehousePage(){
         <label>Tỉnh/Thành<input name="province_keywords" placeholder="Hà Nội, Ha Noi"/></label>
         <label>Quận/Huyện<input name="district_keywords" placeholder="Đống Đa, Dong Da"/></label>
         <label>Từ khóa thêm<input name="address_keywords" placeholder="phường, tuyến đường..."/></label>
+        <label>Shipper phụ trách<input name="shipper_name" placeholder="Tên Shipper"/></label>
+        <label>SĐT Shipper<input name="shipper_phone" placeholder="Số điện thoại"/></label>
         <label className="priority-field">Ưu tiên<input name="priority" type="number" min="0" defaultValue="100"/></label>
         <label className="config-active"><input type="checkbox" name="is_active" defaultChecked/> Bật</label>
         <button className="button small primary" type="submit">+ Thêm rule</button>
