@@ -30,7 +30,7 @@ export default async function SettingsPage(){
 
   const error=hubError??shipperError??assignmentError
 
-  return <>
+  return <div className="settings-screen">
     <header className="page-head">
       <div>
         <span className="module-eyebrow">HỆ THỐNG</span>
@@ -61,5 +61,5 @@ export default async function SettingsPage(){
         shippers={(shipperRows??[]) as any[]}
       />
     </section>
-  </>
+  </div>
 }
