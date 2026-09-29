@@ -40,14 +40,6 @@ function deviceTypeLabel(type?:string|null){
   if(type==='BROWSER_PROFILE')return 'Browser Profile'
   return 'Máy tính'
 }
-function localDateKey(value?:string|null){
-  if(!value)return ''
-  const d=new Date(value)
-  if(Number.isNaN(d.getTime()))return ''
-  return new Intl.DateTimeFormat('en-CA',{
-    timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'
-  }).format(d)
-}
 
 const actionLabels:Record<string,string>={
   CREATE:'Tạo tài khoản',
