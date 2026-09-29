@@ -2620,3 +2620,83 @@ a{text-decoration:none}
   color:#2B5278;
   font-weight:750;
 }
+
+
+/* Configurable / sortable purchase order table */
+.order-table-shell{
+  flex:1 1 auto;
+  min-height:0;
+  position:relative;
+}
+.order-table-shell .order-table-card{
+  height:100%;
+  max-height:none!important;
+  overflow:auto!important;
+}
+.order-column-manager{
+  position:absolute;
+  top:-30px;
+  right:7px;
+  z-index:20;
+}
+.order-column-manager .column-manager-menu{
+  top:30px;
+  right:0;
+}
+.order-workspace .order-toolbar{
+  padding-right:38px;
+}
+.sort-head{
+  display:inline-flex;
+  align-items:center;
+  gap:3px;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  font-weight:inherit;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.sort-head:hover{color:var(--mynh-brand)}
+.sort-head span{
+  color:#8B97A7;
+  font-size:7px;
+}
+.order-table .order-time-cell{
+  min-width:116px;
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.order-table .product-cell{
+  min-width:150px;
+  max-width:240px;
+}
+.order-table .voucher-cell{
+  min-width:115px;
+  max-width:175px;
+}
+.order-table .voucher-tags.compact{
+  flex-wrap:nowrap!important;
+  overflow:hidden;
+}
+.order-table-error{
+  padding:12px;
+}
+
+/* Focused order stays visible and subtly highlighted after sorting / column changes */
+.order-table-shell .order-table tbody tr.selected-row td{
+  background:#F7FAFD!important;
+  border-bottom-color:#E7EEF5!important;
+}
+.order-table-shell .order-table tbody tr.selected-row:hover td{
+  background:#F4F8FC!important;
+}
+.order-table-shell .order-table tbody tr.selected-row td:first-child{
+  box-shadow:inset 2px 0 0 #9CB2C7;
+}
+.order-table-shell .order-table tbody tr.selected-row .table-link{
+  color:#2B5278;
+  font-weight:750;
+}
