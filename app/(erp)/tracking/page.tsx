@@ -1,14 +1,16 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
-import { formatDateTime, sourceLabel, statusLabel } from '@/lib/format'
+import { formatDateTime, formatMoney, sourceLabel, statusLabel } from '@/lib/format'
 import { TrackingHubGroup } from '@/components/tracking-hub-group'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
 type SP={
   status?:string
+  receive?:string
   receiveDate?:string
   received?:string
+  payment?:string
   range?:RangeKey
   from?:string
   to?:string
@@ -16,20 +18,6 @@ type SP={
 
 const HOUR=60*60*1000
 const DAY=24*HOUR
-
-const rules=[
-  ['READY_TO_SHIP','2 giờ','—'],
-  ['PICKED_UP','2 giờ','—'],
-  ['IN_TRANSIT','2 giờ','—'],
-  ['ARRIVED_TRANSIT_HUB','2 giờ','—'],
-  ['ARRIVED_DESTINATION_HUB','2 giờ','ĐƠN ĐẾN KHO'],
-  ['OUT_FOR_DELIVERY','1 giờ','ĐƠN ĐANG GIAO'],
-  ['DELIVERY_FAILED','2 giờ','GIAO KHÔNG THÀNH CÔNG'],
-  ['RETURNING','2 giờ','HOÀN HÀNG'],
-  ['DELIVERED','Dừng','GIAO THÀNH CÔNG'],
-  ['CANCELLED','Dừng','—'],
-  ['RETURNED','Dừng','—'],
-]
 
 function vnDateParts(date=new Date()){
   const shifted=new Date(date.getTime()+7*HOUR)
@@ -88,6 +76,8 @@ function resolveRange(sp:SP){
     key,from,to,label,
     start:new Date(`${from}T00:00:00+07:00`).getTime(),
     end:new Date(`${to}T23:59:59.999+07:00`).getTime(),
+    startIso:new Date(`${from}T00:00:00+07:00`).toISOString(),
+    endIso:new Date(`${to}T23:59:59.999+07:00`).toISOString(),
   }
 }
 
@@ -115,13 +105,25 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
   const range=resolveRange(sp)
   const {supabase}=await requireUser()
 
-  const [{data:shipmentData,error},{data:warehouses},{data:providers},{data:logs}]=await Promise.all([
+  const [
+    {data:shipmentData,error},
+    {data:warehouses},
+    {data:providers},
+    {data:logs},
+    {data:paymentRows},
+  ]=await Promise.all([
     supabase.from('shipments').select(
-      'id,order_id,tracking_number,carrier,is_active,tracking_enabled,current_tracking_status,last_track_at,next_track_at,last_status_change_at,tracking_fail_count,queue_status,orders(id,shopee_order_id,destination_hub,cod,recipient_name,recipient_phone,recipient_address,receive_status,warehouse_status,order_date,order_items(product_name,variant,quantity))'
+      'id,order_id,tracking_number,carrier,is_active,tracking_enabled,current_tracking_status,last_track_at,next_track_at,last_status_change_at,tracking_fail_count,queue_status,orders(id,shopee_order_id,destination_hub,cod,recipient_name,recipient_phone,recipient_address,receive_status,warehouse_status,order_date,shipping_service,order_items(product_name,variant,quantity))'
     ).eq('is_active',true).order('last_status_change_at',{ascending:false,nullsFirst:false}).limit(2000),
     supabase.from('warehouses').select('id,code,name,is_active').eq('is_active',true).order('code'),
     supabase.from('tracking_provider_configs').select('carrier,enabled').order('carrier'),
-    supabase.from('tracking_sync_logs').select('id,shipment_id,source,started_at,result,new_event_count,error_code,error_message').order('started_at',{ascending:false}).limit(10),
+    supabase.from('tracking_sync_logs').select('id,shipment_id,source,started_at,result,new_event_count,error_code,error_message').order('started_at',{ascending:false}).limit(8),
+    supabase.from('shipper_payments')
+      .select('id,shipper_name,total_cod,actual_transferred,tip,transferred_at,warehouses(code,name),shipper_payment_details(order_id)')
+      .gte('transferred_at',range.startIso)
+      .lte('transferred_at',range.endIso)
+      .order('transferred_at',{ascending:false})
+      .limit(8),
   ])
 
   const allRows=(shipmentData??[]).map((s:any)=>{
@@ -160,10 +162,14 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
   const outForDelivery=rangeRows.filter((r:any)=>r.tracking_status==='OUT_FOR_DELIVERY').length
   const delivered=rangeRows.filter((r:any)=>r.tracking_status==='DELIVERED').length
   const failed=rangeRows.filter((r:any)=>r.tracking_status==='DELIVERY_FAILED').length
-  const waiting=rangeRows.filter((r:any)=>r.receive_status==='WAITING_RECEIVE').length
+  const waitingRows=rangeRows.filter((r:any)=>r.receive_status==='WAITING_RECEIVE')
+  const waiting=waitingRows.length
+  const waitingCod=waitingRows.reduce((sum:number,r:any)=>sum+Number(r.cod??0),0)
+  const waitingHubCount=new Set(waitingRows.map((r:any)=>r.destination_hub).filter(Boolean)).size
 
   let rows=[...rangeRows]
   if(sp.status)rows=rows.filter((r:any)=>r.tracking_status===sp.status)
+  if(sp.receive)rows=rows.filter((r:any)=>r.receive_status===sp.receive)
   if(sp.receiveDate)rows=rows.filter((r:any)=>localDate(r.last_status_change_at)===sp.receiveDate)
 
   function trackingHref(extra:Record<string,string|null|undefined>={}){
@@ -174,6 +180,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       p.set('to',range.to)
     }
     if(sp.status)p.set('status',sp.status)
+    if(sp.receive)p.set('receive',sp.receive)
     if(sp.receiveDate)p.set('receiveDate',sp.receiveDate)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v==='')p.delete(k)
@@ -222,7 +229,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       <div>
         <span className="module-eyebrow">MUA HÀNG</span>
         <h1>Cảnh báo vận chuyển</h1>
-        <p>Theo dõi đơn theo kho đích, cảnh báo trạng thái và xác nhận nhận hàng tại một nơi</p>
+        <p>Console nhận hàng theo kho đích · Tracking · đối soát và chuyển tiền Shipper</p>
       </div>
       <div className="head-actions">
         <Link className="button" href={moduleHref('/purchase/orders')}>Đơn nhập hàng</Link>
@@ -240,36 +247,61 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     />
 
     {sp.received&&<div className="notice success"><b>Đã xác nhận nhận hàng.</b><span>Đơn đã chuyển sang trạng thái Đã nhận và sẵn sàng cho luồng kho.</span></div>}
+    {sp.payment&&<div className="notice success"><b>Đã ghi nhận chuyển tiền Shipper.</b><span>Đợt thanh toán đã lưu kèm chi tiết từng đơn và Tip tự động.</span></div>}
     {error&&<div className="error-box">Không thể tải dữ liệu vận chuyển: {error.message}</div>}
     {!providers?.some(p=>p.enabled)&&<div className="notice warning"><b>Chưa có provider tracking đang bật.</b><span>Dữ liệu demo vẫn hiển thị; Manual Sync cần provider hợp lệ để gọi ra ngoài.</span></div>}
 
-    <section className="tracking-alert-grid">
-      <Link href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receiveDate:null})} className={`tracking-alert-card warning ${sp.status==='ARRIVED_DESTINATION_HUB'?'active':''}`}>
+    <section className="tracking-command-kpis">
+      <Link href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE',receiveDate:null})} className="tracking-command-card primary">
+        <span>CHỜ NHẬN HÀNG</span><b>{waiting}</b><small>{formatMoney(waitingCod)} · {waitingHubCount} kho đích</small>
+      </Link>
+      <Link href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null,receiveDate:null})} className="tracking-command-card warning">
         <span>ĐƠN ĐẾN KHO</span><b>{atHub}</b><small>Đã đến kho đích</small>
       </Link>
-      <Link href={trackingHref({status:'OUT_FOR_DELIVERY',receiveDate:null})} className={`tracking-alert-card info ${sp.status==='OUT_FOR_DELIVERY'?'active':''}`}>
-        <span>ĐƠN ĐANG GIAO</span><b>{outForDelivery}</b><small>Shipper đang giao</small>
+      <Link href={trackingHref({status:'OUT_FOR_DELIVERY',receive:null,receiveDate:null})} className="tracking-command-card info">
+        <span>ĐANG GIAO</span><b>{outForDelivery}</b><small>Shipper đang giao</small>
       </Link>
-      <Link href={trackingHref({status:'DELIVERED',receiveDate:null})} className={`tracking-alert-card success ${sp.status==='DELIVERED'?'active':''}`}>
-        <span>GIAO THÀNH CÔNG</span><b>{delivered}</b><small>{waiting} đơn đang chờ xác nhận nhận</small>
+      <Link href={trackingHref({status:'DELIVERED',receive:null,receiveDate:null})} className="tracking-command-card success">
+        <span>GIAO THÀNH CÔNG</span><b>{delivered}</b><small>{waiting} đơn chưa xác nhận nhận</small>
       </Link>
-      <Link href={trackingHref({status:'DELIVERY_FAILED',receiveDate:null})} className={`tracking-alert-card danger ${sp.status==='DELIVERY_FAILED'?'active':''}`}>
-        <span>GIAO KHÔNG THÀNH CÔNG</span><b>{failed}</b><small>Cần theo dõi xử lý lại</small>
+      <Link href={trackingHref({status:'DELIVERY_FAILED',receive:null,receiveDate:null})} className="tracking-command-card danger">
+        <span>GIAO KHÔNG THÀNH CÔNG</span><b>{failed}</b><small>Cần xử lý lại</small>
       </Link>
     </section>
 
-    <div className="tracking-console-toolbar">
+    <section className="tracking-receive-focus">
+      <div>
+        <span className="module-eyebrow">NHẬN HÀNG & THANH TOÁN SHIPPER</span>
+        <h2>{waiting} đơn giao thành công đang chờ nhận</h2>
+        <p>Chọn nhiều đơn trong cùng kho đích → Tổng COD tự cộng → nhập Tổng tiền thực chuyển → hệ thống tự tính Tip và lưu một đợt thanh toán có chi tiết từng đơn.</p>
+      </div>
+      <div className="tracking-receive-focus-metrics">
+        <div><span>COD chờ nhận</span><b>{formatMoney(waitingCod)}</b></div>
+        <div><span>Kho đích</span><b>{waitingHubCount}</b></div>
+      </div>
+      <Link className="button primary" href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE',receiveDate:null})}>Chỉ xem đơn chờ nhận</Link>
+    </section>
+
+    <div className="tracking-console-toolbar redesigned">
       <div className="tracking-console-title">
         <b>Console theo kho đích</b>
         <span>{rows.length} vận đơn · {grouped.length} kho đích · {range.label}</span>
+      </div>
+      <div className="tracking-filter-segments">
+        <Link className={!sp.status&&!sp.receive?'active':''} href={trackingHref({status:null,receive:null,receiveDate:null})}>Tất cả</Link>
+        <Link className={sp.receive==='WAITING_RECEIVE'?'active':''} href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE',receiveDate:null})}>Chờ nhận</Link>
+        <Link className={sp.status==='ARRIVED_DESTINATION_HUB'?'active':''} href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null,receiveDate:null})}>Đến kho</Link>
+        <Link className={sp.status==='OUT_FOR_DELIVERY'?'active':''} href={trackingHref({status:'OUT_FOR_DELIVERY',receive:null,receiveDate:null})}>Đang giao</Link>
+        <Link className={sp.status==='DELIVERY_FAILED'?'active':''} href={trackingHref({status:'DELIVERY_FAILED',receive:null,receiveDate:null})}>Giao lỗi</Link>
       </div>
       <form action="/purchase/tracking" className="tracking-date-filter">
         <input type="hidden" name="range" value={range.key}/>
         {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
         {sp.status&&<input type="hidden" name="status" value={sp.status}/>}
+        {sp.receive&&<input type="hidden" name="receive" value={sp.receive}/>}
         <label><span>Ngày trạng thái</span><input type="date" name="receiveDate" defaultValue={sp.receiveDate??''}/></label>
-        <button className="button small">Lọc ngày</button>
-        {(sp.status||sp.receiveDate)&&<Link className="button small" href={trackingHref({status:null,receiveDate:null,received:null})}>Xóa lọc phụ</Link>}
+        <button className="button small">Lọc</button>
+        {(sp.status||sp.receive||sp.receiveDate)&&<Link className="button small" href={trackingHref({status:null,receive:null,receiveDate:null,received:null,payment:null})}>Xóa lọc</Link>}
       </form>
     </div>
 
@@ -285,17 +317,38 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
           />)}
     </div>
 
-    <section className="content-grid two tracking-technical-grid">
+    <section className="tracking-bottom-grid">
       <div className="card">
-        <div className="card-head"><h2>Quy tắc theo dõi</h2><span className="badge">TỰ ĐỘNG</span></div>
-        {rules.map(r=><div className="rule-row" key={r[0]}><span>{statusLabel(r[0])}</span><b>{r[1]}</b><small>{r[2]}</small></div>)}
-        <div className="quiet-row">Giờ nghỉ tự động: <b>02:00 → 06:00</b> · Manual Sync vẫn hoạt động.</div>
+        <div className="card-head">
+          <div><h2>Đợt chuyển Shipper gần nhất</h2><span className="muted">Mỗi đợt có thể gồm nhiều đơn</span></div>
+          <Link className="button small" href="/finance/shipper-payments">Xem thanh toán</Link>
+        </div>
+        {!paymentRows?.length
+          ? <div className="empty compact">Chưa có đợt chuyển Shipper trong khoảng đang xem.</div>
+          : paymentRows.map((p:any)=><div className="shipper-payment-history-row" key={p.id}>
+              <div>
+                <b>{p.shipper_name??'Shipper'}</b>
+                <span>{p.shipper_payment_details?.length??0} đơn · {(p.warehouses as any)?.code??'—'}</span>
+              </div>
+              <div>
+                <b>{formatMoney(p.actual_transferred)}</b>
+                <span>COD {formatMoney(p.total_cod)} · Tip {formatMoney(p.tip)}</span>
+              </div>
+              <small>{formatDateTime(p.transferred_at)}</small>
+            </div>)}
       </div>
+
       <div className="card">
-        <div className="card-head"><div><h2>Nhật ký đồng bộ gần nhất</h2><span className="muted">10 lần gần nhất</span></div></div>
+        <div className="card-head">
+          <div><h2>Nhật ký Tracking</h2><span className="muted">8 lần đồng bộ gần nhất</span></div>
+          <span className="badge">{providers?.filter(p=>p.enabled).length??0} provider bật</span>
+        </div>
         {!logs?.length
           ? <div className="empty compact">Chưa có lần đồng bộ.</div>
-          : logs.map(l=><div className="log-row" key={l.id}><div><b>{sourceLabel(l.source)}</b><span>{formatDateTime(l.started_at)}</span></div><div><span className={`badge ${l.result==='SUCCESS'?'green':l.result==='FAILED'?'red':''}`}>{statusLabel(l.result??'RUNNING')}</span><small>{l.new_event_count??0} sự kiện</small></div></div>)}
+          : logs.map(l=><div className="log-row" key={l.id}>
+              <div><b>{sourceLabel(l.source)}</b><span>{formatDateTime(l.started_at)}</span></div>
+              <div><span className={`badge ${l.result==='SUCCESS'?'green':l.result==='FAILED'?'red':''}`}>{statusLabel(l.result??'RUNNING')}</span><small>{l.new_event_count??0} sự kiện</small></div>
+            </div>)}
       </div>
     </section>
   </>
