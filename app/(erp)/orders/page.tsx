@@ -99,7 +99,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
   const [{data,error},{data:userOptions},{data:recentSkuRows},{data:voucherCatalogRows},{data:destinationHubRows}]=await Promise.all([
     supabase.from('orders').select(
-      'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
+      'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
     ).gte('order_date',range.start).lte('order_date',range.end).order('order_date',{ascending:false}).limit(1000),
     supabase.from('erp_users').select('id,username,phone,status').order('username').limit(1000),
     supabase.from('order_items')
@@ -192,7 +192,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   if(sp.order){
     const [od,it,vo]=await Promise.all([
       supabase.from('orders').select(
-        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)'
+        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)'
       ).eq('id',sp.order).maybeSingle(),
       supabase.from('order_items').select('*').eq('order_id',sp.order).order('created_at'),
       supabase.from('order_vouchers').select('*').eq('order_id',sp.order).order('created_at')
@@ -222,6 +222,10 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const panelOpen=createMode||Boolean(detail)
   const currentShip=activeShipment(detail)
   const detailHubConfig=detail?destinationHubs.find((x:any)=>x.hub_code===detail.destination_hub):null
+  const detailTotalOriginal=items.reduce(
+    (sum:number,it:any)=>sum+Number(it.original_price??0)*Math.max(1,Number(it.quantity??1)||1),
+    0
+  )
   const returnQuery=listHref().split('?')[1]??''
 
   return <div className="order-screen">
@@ -328,6 +332,9 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               order_status:detail.order_status,
               payment_status:detail.payment_status,
               shipping_service:detail.shipping_service,
+              express_shipper_name:detail.express_shipper_name,
+              express_shipper_phone:detail.express_shipper_phone,
+              express_shipper_note:detail.express_shipper_note,
               recipient_name:detail.recipient_name,
               recipient_phone:detail.recipient_phone,
               recipient_address:detail.recipient_address,
@@ -367,6 +374,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                 <div><span>Trạng thái đơn</span><b>{currentShip?.tracking_number?statusLabel(currentShip.current_tracking_status):'Đang chờ duyệt · Chờ mã vận đơn'}</b></div>
                 <div><span>Thanh toán</span><b>{statusLabel(detail.payment_status)}</b></div>
                 <div><span>COD</span><b>{formatMoney(detail.cod)}</b></div>
+                <div><span>Tổng giá gốc</span><b>{formatMoney(detailTotalOriginal)}</b></div>
                 <div><span>Dịch vụ</span><b>{detail.shipping_service==='EXPRESS'?'Hỏa tốc':'Tiêu chuẩn'}</b></div>
                 <div><span>Khu vực</span><b>{[detail.area,detailHubConfig?.region].filter(Boolean).join(' · ')||'Chưa xác định'}</b></div>
                 <div><span>Người nhận</span><b>{detail.recipient_name??'—'}</b></div>
@@ -377,6 +385,11 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                 <div><span>Kho</span><b>{statusLabel(detail.warehouse_status)}</b></div>
                 <div><span>Mã vận đơn</span><b>{currentShip?.tracking_number??'Chưa có'}</b></div>
                 <div><span>ĐVVC</span><b>{currentShip?.carrier??'—'}</b></div>
+                {detail.shipping_service==='EXPRESS'&&<>
+                  <div><span>Shipper hỏa tốc</span><b>{detail.express_shipper_name??'Chưa nhập'}</b></div>
+                  <div><span>SĐT Shipper</span><b>{formatPhone(detail.express_shipper_phone)}</b></div>
+                  {detail.express_shipper_note&&<div className="full"><span>Ghi chú Shipper</span><b>{detail.express_shipper_note}</b></div>}
+                </>}
               </div>
 
               <div className="panel-action-row split-actions">
@@ -395,6 +408,10 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                       <span>{it.quantity??1}</span>
                       <span>{formatMoney(it.final_price??it.original_price)}</span>
                     </div>)}
+              </div>
+              <div className="mini-total-row">
+                <span>Tổng giá gốc</span>
+                <b>{formatMoney(detailTotalOriginal)}</b>
               </div>
 
               <h3>Voucher</h3>
