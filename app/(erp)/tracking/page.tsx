@@ -4,7 +4,7 @@ import { formatDateTime, sourceLabel, statusLabel } from '@/lib/format'
 import { TrackingHubGroup } from '@/components/tracking-hub-group'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 
-type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'
+type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
 type SP={
   status?:string
   receiveDate?:string
@@ -72,6 +72,11 @@ function resolveRange(sp:SP){
   if(key==='year'){
     from=ymd(p.year,1,1)
     label='Năm nay'
+  }
+  if(key==='all'){
+    from='1970-01-01'
+    to='9999-12-31'
+    label='Toàn thời gian'
   }
   if(key==='custom'){
     from=/^\d{4}-\d{2}-\d{2}$/.test(sp.from??'')?String(sp.from):today
@@ -231,6 +236,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       to={range.to}
       label={range.label}
       basePath="/purchase/tracking"
+      showAll
     />
 
     {sp.received&&<div className="notice success"><b>Đã xác nhận nhận hàng.</b><span>Đơn đã chuyển sang trạng thái Đã nhận và sẵn sàng cho luồng kho.</span></div>}
