@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { roleLabel } from '@/lib/format'
@@ -10,7 +11,7 @@ export default async function ERPLayout({children}:{children:React.ReactNode}){
   return <div className="shell">
     <aside className="sidebar">
       <Link href="/" className="brand"><span className="brand-mark small">M</span><span><b>MYNH ERP</b><small>HỆ THỐNG VẬN HÀNH</small></span></Link>
-      <Nav/>
+      <Suspense fallback={null}><Nav/></Suspense>
       <div className="sidebar-foot">
         <div className="account"><b>{user.email??'Người dùng MYNH ERP'}</b><span>{roleLabel(role)}</span></div>
         <Link className="button ghost" href="/account">Đổi mật khẩu</Link>
