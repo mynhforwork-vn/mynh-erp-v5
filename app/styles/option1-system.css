@@ -3014,3 +3014,88 @@ a{text-decoration:none}
     gap:3px;
   }
 }
+
+
+/* Purchase order totals + express shipper details */
+.product-total-bar{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  align-items:center;
+  gap:2px 8px;
+  margin-top:6px;
+  padding:6px 8px;
+  border:1px solid #DDE6EE;
+  border-radius:6px;
+  background:#F7FAFC;
+}
+.product-total-bar span{
+  color:#718094;
+  font-size:7.2px;
+  font-weight:650;
+}
+.product-total-bar b{
+  justify-self:end;
+  color:#263F5C;
+  font-size:11px;
+  font-variant-numeric:tabular-nums;
+}
+.product-total-bar small{
+  grid-column:1 / -1;
+  color:#909BA8;
+  font-size:6.8px;
+}
+
+.express-shipper-box{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:6px;
+  padding:7px;
+  border:1px solid #E7CF9E;
+  border-radius:6px;
+  background:#FFF9EE;
+}
+.express-shipper-title{
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.express-shipper-title b{
+  color:#815518;
+  font-size:8px;
+}
+.express-shipper-title span{
+  color:#9A805C;
+  font-size:6.7px;
+}
+
+.order-cod-section{
+  border-color:#D7E2EC;
+  background:#F9FBFD;
+}
+.order-cod-section input{
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+
+.mini-total-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-top:4px;
+  padding:5px 7px;
+  border:1px solid #E2E8EF;
+  border-radius:5px;
+  background:#F8FAFC;
+}
+.mini-total-row span{
+  color:#718094;
+  font-size:7px;
+  font-weight:650;
+}
+.mini-total-row b{
+  color:#294A6B;
+  font-size:8.5px;
+  font-variant-numeric:tabular-nums;
+}
