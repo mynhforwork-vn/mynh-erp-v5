@@ -146,6 +146,20 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   }).slice(0,10)
 
 
+  function orderHref(extra:Record<string,string|undefined|null>={}){
+    const p=new URLSearchParams()
+    p.set('range',range.key)
+    if(range.key==='custom'){
+      p.set('from',range.from)
+      p.set('to',range.to)
+    }
+    for(const [k,v] of Object.entries(extra)){
+      if(v===null||v===undefined||v==='')p.delete(k)
+      else p.set(k,v)
+    }
+    return '/purchase/orders?'+p.toString()
+  }
+
   return <>
     <header className="page-head">
       <div>
@@ -155,7 +169,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       </div>
       <div className="head-actions">
         <Link className="button" href="/purchase/tracking">Cảnh báo vận chuyển</Link>
-        <Link className="button primary" href="/purchase/orders?mode=create">+ Tạo đơn nhập</Link>
+        <Link className="button primary" href={orderHref({mode:'create'})}>+ Tạo đơn nhập</Link>
       </div>
     </header>
 
@@ -169,22 +183,22 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
     {error&&<div className="error-box">Không thể tải dữ liệu mua hàng: {error.message}</div>}
 
     <section className="kpi-grid purchase-kpi-grid">
-      <Link href="/purchase/orders" className="kpi-card">
+      <Link href={orderHref()} className="kpi-card">
         <span>Đơn nhập</span><b>{totalOrders}</b><small>{accountCount??0} tài khoản mua hàng</small>
       </Link>
-      <div className="kpi-card">
+      <Link href={orderHref()} className="kpi-card">
         <span>Tổng COD</span><b className="kpi-money">{formatMoney(totalCod)}</b><small>Giá trị trong khoảng đã chọn</small>
-      </div>
-      <Link href="/purchase/tracking" className="kpi-card">
+      </Link>
+      <Link href={orderHref({tracking:'shipping'})} className="kpi-card">
         <span>Đang vận chuyển</span><b>{shipping}</b><small>Chưa ở trạng thái kết thúc</small>
       </Link>
-      <div className="kpi-card">
+      <Link href={orderHref({tracking:'DELIVERED'})} className="kpi-card">
         <span>Giao thành công</span><b>{delivered}</b><small>{totalOrders?Math.round(delivered/totalOrders*100):0}% số đơn trong kỳ</small>
-      </div>
-      <Link href="/purchase/orders?receive=WAITING_RECEIVE" className="kpi-card warning">
+      </Link>
+      <Link href={orderHref({receive:'WAITING_RECEIVE'})} className="kpi-card warning">
         <span>Chờ xác nhận nhận</span><b>{waiting}</b><small>Cần nhân viên xác nhận vật lý</small>
       </Link>
-      <Link href="/purchase/orders?receive=RECEIVED" className="kpi-card">
+      <Link href={orderHref({receive:'RECEIVED'})} className="kpi-card">
         <span>Đã nhận</span><b>{received}</b><small>Sẵn sàng cho luồng kho</small>
       </Link>
     </section>
@@ -250,7 +264,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
             ? <div className="empty compact">Không có đơn cần xử lý trong khoảng này.</div>
             : urgent.map(o=>{
                 const s=activeShipment(o)
-                return <Link className="urgent-order-row" href={`/purchase/orders?order=${o.id}`} key={o.id}>
+                return <Link className="urgent-order-row" href={orderHref({order:o.id})} key={o.id}>
                   <div><b>{o.shopee_order_id??o.id.slice(0,8)}</b><span>{o.erp_users?.username??'—'} · {o.destination_hub??'Chưa rõ kho'}</span></div>
                   <div><span className={`status-pill status-${String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}`}>{statusLabel(s?.current_tracking_status)}</span><small>{formatDateTime(o.order_date)}</small></div>
                 </Link>
@@ -262,7 +276,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
     <div className="purchase-flow-strip">
       <Link href="/purchase/accounts"><span>1</span><div><b>Tài khoản mua hàng</b><small>Quản lý phiên & voucher</small></div></Link>
       <i>→</i>
-      <Link href="/purchase/orders"><span>2</span><div><b>Đơn nhập hàng</b><small>Tạo / sửa / MVĐ</small></div></Link>
+      <Link href={orderHref()}><span>2</span><div><b>Đơn nhập hàng</b><small>Tạo / sửa / MVĐ</small></div></Link>
       <i>→</i>
       <Link href="/purchase/tracking"><span>3</span><div><b>Cảnh báo vận chuyển</b><small>Theo dõi & xác nhận nhận</small></div></Link>
       <i>→</i>
