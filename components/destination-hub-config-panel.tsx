@@ -25,10 +25,25 @@ type HubConfig={
   is_active?:boolean|null
 }
 
-function ruleCount(row:HubConfig){
-  return (row.province_keywords?.length??0)
-    +(row.district_keywords?.length??0)
-    +(row.address_keywords?.length??0)
+function normalizeRoutingKey(value:string){
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/đ/g,'d')
+    .replace(/Đ/g,'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,' ')
+    .trim()
+}
+
+function uniqueRoutingValues(values?:string[]|null){
+  const seen=new Set<string>()
+  return (values??[]).filter(value=>{
+    const key=normalizeRoutingKey(String(value))
+    if(!key||seen.has(key))return false
+    seen.add(key)
+    return true
+  })
 }
 
 function HubFields({
@@ -41,6 +56,7 @@ function HubFields({
   isNew?:boolean
 }){
   const selected=new Set(row?.shipper_ids??[])
+  const wards=uniqueRoutingValues(row?.district_keywords)
 
   return <>
     {!isNew&&row&&<input type="hidden" name="config_id" value={row.id}/>}
@@ -73,32 +89,34 @@ function HubFields({
 
       <section className="hub-editor-section">
         <div className="hub-editor-section-head">
-          <b>Nhận diện địa chỉ</b>
-          <span>Từ khóa dùng để tự xác định HUB từ địa chỉ người nhận</span>
+          <b>Phường / Xã thuộc HUB</b>
+          <span>Một HUB có thể quản lý nhiều phường/xã. Nhập mỗi phường/xã trên một dòng.</span>
         </div>
-        <div className="hub-editor-fields three">
-          <label>
-            <span>Tỉnh / Thành</span>
+        <div className="hub-routing-fields">
+          <label className="hub-routing-province">
+            <span>Tỉnh / Thành phố</span>
             <input
               name="province_keywords"
               defaultValue={(row?.province_keywords??[]).join(', ')}
-              placeholder="Hà Nội, TP Hà Nội"
+              placeholder="VD: Hà Nội"
             />
           </label>
-          <label>
-            <span>Quận / Huyện / Phường</span>
-            <input
-              name="district_keywords"
-              defaultValue={(row?.district_keywords??[]).join(', ')}
-              placeholder="Hai Bà Trưng, Bạch Mai..."
+          <label className="hub-ward-field">
+            <span>Danh sách Phường / Xã <b>{wards.length}</b></span>
+            <textarea
+              name="ward_keywords"
+              defaultValue={wards.join('\n')}
+              placeholder={'Phường Bạch Mai\nPhường Vĩnh Tuy\nPhường Minh Khai'}
+              rows={5}
             />
+            <small>Mỗi dòng là một phường/xã. Khớp bất kỳ dòng nào sẽ nhận diện về HUB này.</small>
           </label>
-          <label>
-            <span>Từ khóa bổ sung</span>
+          <label className="hub-routing-extra">
+            <span>Từ khóa địa chỉ bổ sung</span>
             <input
               name="address_keywords"
               defaultValue={(row?.address_keywords??[]).join(', ')}
-              placeholder="Tên đường / cụm địa chỉ đặc biệt"
+              placeholder="Tên đường / cụm địa chỉ đặc biệt (nếu cần)"
             />
           </label>
         </div>
@@ -168,7 +186,7 @@ export function DestinationHubSettings({
               <div className="destination-create-title">
                 <div>
                   <b>Tạo HUB kho đích mới</b>
-                  <span>Khai báo nhận diện địa chỉ và Shipper phụ trách.</span>
+                  <span>Khai báo nhiều phường/xã và nhiều Shipper cho cùng một HUB.</span>
                 </div>
               </div>
               <HubFields activeShippers={activeShippers} isNew/>
@@ -182,7 +200,7 @@ export function DestinationHubSettings({
 
         {configs.map(row=>{
           const assignedShipperCount=(row.shipper_ids??[]).length
-          const rules=ruleCount(row)
+          const wards=uniqueRoutingValues(row.district_keywords)
 
           return <details className="destination-hub-card-v2" key={row.id}>
             <summary className="destination-hub-summary">
@@ -190,12 +208,12 @@ export function DestinationHubSettings({
                 <span className={'hub-status-dot '+(row.is_active?'active':'inactive')}/>
                 <div>
                   <b>{row.hub_code}</b>
-                  <span>{row.area} · {row.region}</span>
+                  <span>{row.area} · {row.region}{wards.length?' · '+wards.slice(0,2).join(', ')+(wards.length>2?' +'+(wards.length-2):''):''}</span>
                 </div>
               </div>
 
               <div className="destination-hub-summary-metrics">
-                <span><b>{rules}</b> rule nhận diện</span>
+                <span><b>{wards.length}</b> Phường/Xã</span>
                 <span><b>{assignedShipperCount}</b> Shipper</span>
                 <span>Ưu tiên <b>{row.priority??100}</b></span>
                 <span className={'hub-state '+(row.is_active?'active':'')}>{row.is_active?'Đang bật':'Đã tắt'}</span>
@@ -298,7 +316,7 @@ export function DestinationHubConfigModal({
         <div>
           <span className="eyebrow">CÀI ĐẶT HỆ THỐNG</span>
           <h2>HUB kho đích & Shipper</h2>
-          <p>Quản lý theo HUB. Một HUB có thể có nhiều Shipper phụ trách.</p>
+          <p>Một HUB có thể quản lý nhiều phường/xã và đồng thời có nhiều Shipper phụ trách.</p>
         </div>
         <div className="settings-modal-actions">
           <Link className="button small" href="/settings">Cài đặt hệ thống</Link>

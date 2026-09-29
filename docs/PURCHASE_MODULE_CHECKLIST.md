@@ -12,7 +12,9 @@ Trạng thái: ĐANG TRIỂN KHAI / baseline functional đã có
 - [x] KPI Đã nhận
 - [x] Tổng hợp theo Khu vực
 - [x] Tổng hợp theo HUB đích
+- [x] Một HUB quản lý nhiều Phường/Xã
 - [x] Một HUB hiển thị nhiều Shipper phụ trách
+- [x] Nhận diện HUB khi địa chỉ khớp bất kỳ Phường/Xã đã cấu hình
 - [x] Click dòng HUB mở đúng console đã lọc HUB
 - [x] Phân bố trạng thái vận chuyển
 - [x] Danh sách đơn cần xử lý
