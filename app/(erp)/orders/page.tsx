@@ -184,6 +184,11 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     }
   }
 
+  const selectedOutsideFilter=Boolean(detail&&!rows.some((o:any)=>o.id===detail.id))
+  const displayRows=selectedOutsideFilter
+    ? [{...detail,order_items:items,order_vouchers:vouchers},...rows]
+    : rows
+
   const createMode=sp.mode==='create'
   const editMode=Boolean(detail&&sp.mode==='edit')
   const panelOpen=createMode||Boolean(detail)
@@ -236,7 +241,11 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             <Link className={sp.receive==='WAITING_RECEIVE'?'active':''} href={listHref({receive:'WAITING_RECEIVE'})}>Chờ nhận</Link>
             <Link className={sp.receive==='RECEIVED'?'active':''} href={listHref({receive:'RECEIVED'})}>Đã nhận</Link>
           </div>
-          <span className="toolbar-note">{rows.length} / {totalOrders} đơn</span>
+          <span className="toolbar-note">
+            {selectedOutsideFilter
+              ? `${rows.length} / ${totalOrders} đơn · +1 đơn đang mở ngoài bộ lọc`
+              : `${rows.length} / ${totalOrders} đơn`}
+          </span>
         </div>
 
         <div className="card table-card order-table-card">
@@ -255,9 +264,9 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             <tbody>
               {error
                 ? <tr><td colSpan={9} className="error-text">{error.message}</td></tr>
-                : !rows.length
+                : !displayRows.length
                   ? <tr><td colSpan={9} className="empty">Không có đơn phù hợp với bộ lọc hiện tại.</td></tr>
-                  : rows.map((o:any,i:number)=>{
+                  : displayRows.map((o:any,i:number)=>{
                       const s=activeShipment(o)
                       return <tr key={o.id} className={sp.order===o.id?'selected-row':''}>
                         <td>{i+1}</td>
