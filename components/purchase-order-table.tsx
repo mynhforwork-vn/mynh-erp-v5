@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
@@ -66,6 +66,7 @@ export function PurchaseOrderTable({
   const [visible,setVisible]=useState<ColKey[]>(ALL)
   const [open,setOpen]=useState(false)
   const [sort,setSort]=useState<SortKey>('time_new')
+  const tableWrapRef=useRef<HTMLDivElement|null>(null)
 
   useEffect(()=>{
     try{
@@ -81,6 +82,16 @@ export function PurchaseOrderTable({
       if(savedSort)setSort(savedSort)
     }catch{}
   },[])
+
+  useEffect(()=>{
+    if(!selectedId)return
+    const timer=window.setTimeout(()=>{
+      const row=tableWrapRef.current?.querySelector('tr[data-selected="true"]')
+      row?.scrollIntoView({block:'nearest',behavior:'smooth'})
+    },0)
+    return ()=>window.clearTimeout(timer)
+  },[selectedId,sort,visible])
+
 
   function persistColumns(next:ColKey[]){
     setVisible(next)
@@ -139,7 +150,7 @@ export function PurchaseOrderTable({
       </div>}
     </div>
 
-    <div className="card table-card order-table-card">
+    <div className="card table-card order-table-card" ref={tableWrapRef}>
       <table className="table order-table">
         <thead><tr>
           {isVisible('number')&&<th>#</th>}
@@ -158,7 +169,7 @@ export function PurchaseOrderTable({
             ? <tr><td colSpan={colSpan} className="empty">Không có đơn phù hợp với bộ lọc hiện tại.</td></tr>
             : sorted.map((o:any,i:number)=>{
                 const s=activeShipment(o)
-                return <tr key={o.id} className={selectedId===o.id?'selected-row':''}>
+                return <tr key={o.id} data-selected={selectedId===o.id?'true':undefined} className={selectedId===o.id?'selected-row':''}>
                   {isVisible('number')&&<td>{i+1}</td>}
                   {isVisible('order')&&<td><Link className="table-link" href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>}
                   {isVisible('username')&&<td>{o.erp_users?.username??'—'}</td>}
