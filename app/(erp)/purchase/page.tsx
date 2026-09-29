@@ -108,7 +108,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   const range=resolveRange(sp)
   const {supabase}=await requireUser()
 
-  const [{data:ordersData,error},{count:accountCount},{data:alerts},{data:shipperPayments}]=await Promise.all([
+  const [{data:ordersData,error},{count:accountCount},{data:alerts},{data:shipperPayments},{data:hubConfigs}]=await Promise.all([
     supabase.from('orders')
       .select('id,shopee_order_id,order_date,area,destination_hub,cod,receive_status,warehouse_status,order_status,payment_status,shipping_service,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active)')
       .gte('order_date',range.start)
@@ -128,6 +128,10 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       .lte('transferred_at',range.end)
       .order('transferred_at',{ascending:false})
       .limit(1000),
+    supabase.from('destination_hub_configs')
+      .select('hub_code,shipper_name,shipper_phone,is_active')
+      .eq('is_active',true)
+      .limit(500),
   ])
 
   const rows=(ordersData??[]) as any[]
@@ -154,6 +158,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   const maxStatus=Math.max(...statusRows.map(x=>x.count),1)
 
   const paymentRows=(shipperPayments??[]) as any[]
+  const hubConfigMap=new Map((hubConfigs??[]).map((h:any)=>[String(h.hub_code),h]))
   const transferredTotal=paymentRows.reduce((sum,p)=>sum+Number(p.actual_transferred??0),0)
   const tipTotal=paymentRows.reduce((sum,p)=>sum+Number(p.tip??0),0)
 
@@ -259,18 +264,22 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
         </div>
         <div className="compact-table-wrap">
           <table className="table compact-summary-table">
-            <thead><tr><th>Kho đích</th><th>Đơn</th><th>COD</th><th>Giao TC</th><th>Chờ nhận</th><th>Đã nhận</th><th></th></tr></thead>
+            <thead><tr><th>Kho đích</th><th>Shipper</th><th>Đơn</th><th>COD</th><th>Giao TC</th><th>Chờ nhận</th><th>Đã nhận</th><th></th></tr></thead>
             <tbody>{!byHub.length
-              ? <tr><td colSpan={7} className="empty">Chưa có dữ liệu kho đích.</td></tr>
-              : byHub.slice(0,12).map(x=><tr key={x.name} className={x.waiting?'needs-action':''}>
+              ? <tr><td colSpan={8} className="empty">Chưa có dữ liệu kho đích.</td></tr>
+              : byHub.slice(0,12).map(x=>{
+                  const hubConfig=hubConfigMap.get(x.name) as any
+                  return <tr key={x.name} className={x.waiting?'needs-action':''}>
                   <td className="strong">{x.name}</td>
+                  <td><div className="hub-shipper-cell"><b>{hubConfig?.shipper_name??'—'}</b><span>{hubConfig?.shipper_phone??''}</span></div></td>
                   <td>{x.orders}</td>
                   <td className="money">{formatMoney(x.cod)}</td>
                   <td>{x.delivered}</td>
                   <td><b className={x.waiting?'warning-text':''}>{x.waiting}</b></td>
                   <td>{x.received}</td>
                   <td><Link className="table-link" href={purchaseHref('/purchase/tracking',{status:x.waiting?'DELIVERED':null,receive:x.waiting?'WAITING_RECEIVE':null})}>Xử lý</Link></td>
-                </tr>)}
+                </tr>
+              })}
             </tbody>
           </table>
         </div>
