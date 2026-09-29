@@ -219,9 +219,15 @@ export async function createOrder(formData:FormData){
   })
   if(error)throw new Error(error.message)
   const derivedArea=text(formData.get('area'))||null
-  if(data&&derivedArea){
-    const {error:areaError}=await supabase.from('orders').update({area:derivedArea}).eq('id',data)
-    if(areaError)throw new Error(areaError.message)
+  if(data){
+    const express=shippingService==='EXPRESS'
+    const {error:orderMetaError}=await supabase.from('orders').update({
+      area:derivedArea,
+      express_shipper_name:express?(text(formData.get('express_shipper_name'))||null):null,
+      express_shipper_phone:express?(text(formData.get('express_shipper_phone'))||null):null,
+      express_shipper_note:express?(text(formData.get('express_shipper_note'))||null):null,
+    }).eq('id',data)
+    if(orderMetaError)throw new Error(orderMetaError.message)
   }
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data)}))
@@ -259,8 +265,14 @@ export async function updateOrder(formData:FormData){
   })
   if(error)throw new Error(error.message)
   const derivedArea=text(formData.get('area'))||null
-  const {error:areaError}=await supabase.from('orders').update({area:derivedArea}).eq('id',orderId)
-  if(areaError)throw new Error(areaError.message)
+  const express=shippingService==='EXPRESS'
+  const {error:orderMetaError}=await supabase.from('orders').update({
+    area:derivedArea,
+    express_shipper_name:express?(text(formData.get('express_shipper_name'))||null):null,
+    express_shipper_phone:express?(text(formData.get('express_shipper_phone'))||null):null,
+    express_shipper_note:express?(text(formData.get('express_shipper_note'))||null):null,
+  }).eq('id',orderId)
+  if(orderMetaError)throw new Error(orderMetaError.message)
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data)}))
 }
