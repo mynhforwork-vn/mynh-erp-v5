@@ -262,140 +262,164 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     return bw-aw||b[1].length-a[1].length
   })
 
-  return <div className="tracking-screen">
-    <header className="page-head">
+  return <div className="tracking-screen tracking-screen-v2">
+    <header className="page-head tracking-page-head-v2">
       <div>
         <span className="module-eyebrow">MUA HÀNG</span>
         <h1>Cảnh báo vận chuyển</h1>
-        <p>Console nhận hàng theo HUB đích · Tracking · đối soát vận chuyển</p>
+        <p>Theo dõi theo HUB · nhận hàng · đối soát vận chuyển</p>
       </div>
       <div className="head-actions">
         <Link className="button" href={moduleHref('/purchase/orders')}>Đơn nhập hàng</Link>
-        <span className="badge green">HỆ THỐNG ĐANG CHẠY</span>
+        <span className={'tracking-provider-health '+(providers?.some(p=>p.enabled)?'online':'offline')}>
+          <i/>{providers?.some(p=>p.enabled)?'Tracking đang chạy':'Chưa có provider'}
+        </span>
       </div>
     </header>
 
-    <PurchaseDateFilter
-      activeRange={range.key}
-      from={range.from}
-      to={range.to}
-      label={range.label}
-      basePath="/purchase/tracking"
-      showAll
-    />
+    <div className="tracking-date-row-v2">
+      <PurchaseDateFilter
+        activeRange={range.key}
+        from={range.from}
+        to={range.to}
+        label={range.label}
+        basePath="/purchase/tracking"
+        showAll
+      />
+    </div>
 
-    {sp.received&&<div className="notice success"><b>Đã xác nhận nhận hàng.</b><span>Đơn đã chuyển sang trạng thái Đã nhận và sẵn sàng cho luồng kho.</span></div>}
-    {sp.payment&&<div className="notice success"><b>Đã ghi nhận đối soát theo HUB.</b><span>Đợt đối soát đã lưu kèm chi tiết từng đơn và Tip tự động.</span></div>}
-    {error&&<div className="error-box">Không thể tải dữ liệu vận chuyển: {error.message}</div>}
-    {!providers?.some(p=>p.enabled)&&<div className="notice warning"><b>Chưa có provider tracking đang bật.</b><span>Dữ liệu demo vẫn hiển thị; Manual Sync cần provider hợp lệ để gọi ra ngoài.</span></div>}
+    {(sp.received||sp.payment||error)&&<div className="tracking-flash-row">
+      {sp.received&&<div className="notice success"><b>Đã xác nhận nhận hàng.</b><span>Đơn sẵn sàng cho luồng kho.</span></div>}
+      {sp.payment&&<div className="notice success"><b>Đã ghi nhận đối soát HUB.</b><span>Tip đã được tính tự động.</span></div>}
+      {error&&<div className="error-box">Không thể tải dữ liệu vận chuyển: {error.message}</div>}
+    </div>}
 
-    <section className="tracking-command-kpis">
-      <Link href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE',receiveDate:null})} className="tracking-command-card primary">
-        <span>CHỜ NHẬN HÀNG</span><b>{waiting}</b><small>{formatMoney(waitingCod)} · {waitingHubCount} kho đích</small>
-      </Link>
-      <Link href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null,receiveDate:null})} className="tracking-command-card warning">
-        <span>ĐƠN ĐẾN KHO</span><b>{atHub}</b><small>Đã đến kho đích</small>
-      </Link>
-      <Link href={trackingHref({status:'OUT_FOR_DELIVERY',receive:null,receiveDate:null})} className="tracking-command-card info">
-        <span>ĐANG GIAO</span><b>{outForDelivery}</b><small>Shipper đang giao</small>
-      </Link>
-      <Link href={trackingHref({status:'DELIVERED',receive:null,receiveDate:null})} className="tracking-command-card success">
-        <span>GIAO THÀNH CÔNG</span><b>{delivered}</b><small>{waiting} đơn chưa xác nhận nhận</small>
-      </Link>
-      <Link href={trackingHref({status:'DELIVERY_FAILED',receive:null,receiveDate:null})} className="tracking-command-card danger">
-        <span>GIAO KHÔNG THÀNH CÔNG</span><b>{failed}</b><small>Cần xử lý lại</small>
-      </Link>
-    </section>
+    <section className="tracking-command-center-v2">
+      <div className="tracking-status-strip-v2">
+        <Link
+          href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE',receiveDate:null})}
+          className={'tracking-status-metric warning '+(sp.receive==='WAITING_RECEIVE'?'active':'')}
+        >
+          <span>Chờ nhận</span>
+          <b>{waiting}</b>
+          <small>{formatMoney(waitingCod)} · {waitingHubCount} HUB</small>
+        </Link>
+        <Link
+          href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null,receiveDate:null})}
+          className={'tracking-status-metric amber '+(sp.status==='ARRIVED_DESTINATION_HUB'?'active':'')}
+        >
+          <span>Đến HUB</span><b>{atHub}</b><small>Cần theo dõi</small>
+        </Link>
+        <Link
+          href={trackingHref({status:'OUT_FOR_DELIVERY',receive:null,receiveDate:null})}
+          className={'tracking-status-metric info '+(sp.status==='OUT_FOR_DELIVERY'?'active':'')}
+        >
+          <span>Đang giao</span><b>{outForDelivery}</b><small>Shipper đang xử lý</small>
+        </Link>
+        <Link
+          href={trackingHref({status:'DELIVERED',receive:null,receiveDate:null})}
+          className={'tracking-status-metric success '+(sp.status==='DELIVERED'&&!sp.receive?'active':'')}
+        >
+          <span>Giao TC</span><b>{delivered}</b><small>{waiting} chưa nhận</small>
+        </Link>
+        <Link
+          href={trackingHref({status:'DELIVERY_FAILED',receive:null,receiveDate:null})}
+          className={'tracking-status-metric danger '+(sp.status==='DELIVERY_FAILED'?'active':'')}
+        >
+          <span>Giao lỗi</span><b>{failed}</b><small>Cần xử lý</small>
+        </Link>
+      </div>
 
-    <section className="tracking-receive-focus">
-      <div>
-        <span className="module-eyebrow">NHẬN HÀNG & ĐỐI SOÁT HUB</span>
-        <h2>{waiting} đơn giao thành công đang chờ nhận</h2>
-        <p>Chọn nhiều đơn trong cùng HUB → Tổng COD tự cộng → nhập Tổng tiền thực chuyển của HUB → hệ thống tự tính Tip và lưu một đợt đối soát có chi tiết từng đơn.</p>
-      </div>
-      <div className="tracking-receive-focus-metrics">
-        <div><span>COD chờ nhận</span><b>{formatMoney(waitingCod)}</b></div>
-        <div><span>Kho đích</span><b>{waitingHubCount}</b></div>
-      </div>
-      <Link className="button primary" href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE',receiveDate:null})}>Chỉ xem đơn chờ nhận</Link>
-    </section>
+      <div className="tracking-control-row-v2">
+        <div className="tracking-console-title">
+          <b>Console theo HUB</b>
+          <span>{rows.length} vận đơn · {grouped.length} HUB · {range.label}</span>
+        </div>
 
-    <div className="tracking-console-toolbar redesigned">
-      <div className="tracking-console-title">
-        <b>Console theo HUB đích</b>
-        <span>{rows.length} vận đơn · {grouped.length} HUB · {range.label}</span>
-      </div>
-      <div className="tracking-filter-segments">
-        <Link className={!sp.status&&!sp.receive?'active':''} href={trackingHref({status:null,receive:null,receiveDate:null})}>Tất cả</Link>
-        <Link className={sp.receive==='WAITING_RECEIVE'?'active':''} href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE',receiveDate:null})}>Chờ nhận</Link>
-        <Link className={sp.status==='ARRIVED_DESTINATION_HUB'?'active':''} href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null,receiveDate:null})}>Đến kho</Link>
-        <Link className={sp.status==='OUT_FOR_DELIVERY'?'active':''} href={trackingHref({status:'OUT_FOR_DELIVERY',receive:null,receiveDate:null})}>Đang giao</Link>
-        <Link className={sp.status==='DELIVERY_FAILED'?'active':''} href={trackingHref({status:'DELIVERY_FAILED',receive:null,receiveDate:null})}>Giao lỗi</Link>
-      </div>
-      <form action="/purchase/tracking" className="tracking-date-filter">
-        <input type="hidden" name="range" value={range.key}/>
-        {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
-        {sp.status&&<input type="hidden" name="status" value={sp.status}/>}
-        {sp.receive&&<input type="hidden" name="receive" value={sp.receive}/>}
-        <label>
-          <span>HUB đích</span>
-          <select name="hub" defaultValue={sp.hub??''}>
+        <div className="tracking-filter-segments tracking-filter-segments-v2">
+          <Link className={!sp.status&&!sp.receive?'active':''} href={trackingHref({status:null,receive:null,receiveDate:null})}>Tất cả</Link>
+          <Link className={sp.receive==='WAITING_RECEIVE'?'active':''} href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE',receiveDate:null})}>Chờ nhận</Link>
+          <Link className={sp.status==='ARRIVED_DESTINATION_HUB'?'active':''} href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null,receiveDate:null})}>Đến HUB</Link>
+          <Link className={sp.status==='OUT_FOR_DELIVERY'?'active':''} href={trackingHref({status:'OUT_FOR_DELIVERY',receive:null,receiveDate:null})}>Đang giao</Link>
+          <Link className={sp.status==='DELIVERY_FAILED'?'active':''} href={trackingHref({status:'DELIVERY_FAILED',receive:null,receiveDate:null})}>Giao lỗi</Link>
+        </div>
+
+        <form action="/purchase/tracking" className="tracking-date-filter tracking-date-filter-v2">
+          <input type="hidden" name="range" value={range.key}/>
+          {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
+          {sp.status&&<input type="hidden" name="status" value={sp.status}/>}
+          {sp.receive&&<input type="hidden" name="receive" value={sp.receive}/>}
+          <select name="hub" defaultValue={sp.hub??''} aria-label="HUB đích">
             <option value="">Tất cả HUB</option>
             {hubOptions.map(h=><option value={h} key={h}>{h}</option>)}
           </select>
-        </label>
-        <label><span>Ngày trạng thái</span><input type="date" name="receiveDate" defaultValue={sp.receiveDate??''}/></label>
-        <button className="button small">Lọc</button>
-        {(sp.status||sp.receive||sp.receiveDate||sp.hub)&&<Link className="button small" href={trackingHref({status:null,receive:null,receiveDate:null,hub:null,received:null,payment:null})}>Xóa lọc</Link>}
-      </form>
-    </div>
-
-    <div className="tracking-hub-stack">
-      {!grouped.length
-        ? <div className="card empty">Không có vận đơn phù hợp với bộ lọc.</div>
-        : grouped.map(([hub,groupRows])=><TrackingHubGroup
-            key={hub}
-            hub={hub}
-            rows={groupRows as any[]}
-            warehouses={(warehouses??[]) as any[]}
-            assignedShippers={(hubShipperMap.get(hub)??[]) as any[]}
-            contextQuery={contextQuery}
-          />)}
-    </div>
-
-    <section className="tracking-bottom-grid">
-      <div className="card">
-        <div className="card-head">
-          <div><h2>Đợt đối soát HUB gần nhất</h2><span className="muted">Mỗi đợt gồm nhiều đơn cùng HUB</span></div>
-          <Link className="button small" href="/finance/shipper-payments">Xem đối soát</Link>
-        </div>
-        {!paymentRows?.length
-          ? <div className="empty compact">Chưa có đợt đối soát HUB trong khoảng đang xem.</div>
-          : paymentRows.map((p:any)=><div className="shipper-payment-history-row" key={p.id}>
-              <div>
-                <b>{p.destination_hub??'HUB chưa xác định'}</b>
-                <span>{p.shipper_payment_details?.length??0} đơn · {(p.warehouses as any)?.code??'—'}{p.shipper_name?' · '+p.shipper_name:''}</span>
-              </div>
-              <div>
-                <b>{formatMoney(p.actual_transferred)}</b>
-                <span>COD {formatMoney(p.total_cod)} · Tip {formatMoney(p.tip)}</span>
-              </div>
-              <small>{formatDateTime(p.transferred_at)}</small>
-            </div>)}
-      </div>
-
-      <div className="card">
-        <div className="card-head">
-          <div><h2>Nhật ký Tracking</h2><span className="muted">8 lần đồng bộ gần nhất</span></div>
-          <span className="badge">{providers?.filter(p=>p.enabled).length??0} provider bật</span>
-        </div>
-        {!logs?.length
-          ? <div className="empty compact">Chưa có lần đồng bộ.</div>
-          : logs.map(l=><div className="log-row" key={l.id}>
-              <div><b>{sourceLabel(l.source)}</b><span>{formatDateTime(l.started_at)}</span></div>
-              <div><span className={`badge ${l.result==='SUCCESS'?'green':l.result==='FAILED'?'red':''}`}>{statusLabel(l.result??'RUNNING')}</span><small>{l.new_event_count??0} sự kiện</small></div>
-            </div>)}
+          <input type="date" name="receiveDate" defaultValue={sp.receiveDate??''} aria-label="Ngày trạng thái"/>
+          <button className="button small">Lọc</button>
+          {(sp.status||sp.receive||sp.receiveDate||sp.hub)&&
+            <Link className="button small ghost-filter" href={trackingHref({status:null,receive:null,receiveDate:null,hub:null,received:null,payment:null})}>Xóa</Link>}
+        </form>
       </div>
     </section>
+
+    <div className="tracking-hub-stack tracking-hub-stack-v2">
+      {!grouped.length
+        ? <div className="card empty">Không có vận đơn phù hợp với bộ lọc.</div>
+        : grouped.map(([hub,groupRows])=>{
+            const groupUrgent=groupRows.some((x:any)=>
+              x.receive_status==='WAITING_RECEIVE'||
+              ['DELIVERY_FAILED','ARRIVED_DESTINATION_HUB','OUT_FOR_DELIVERY'].includes(String(x.tracking_status))
+            )
+            return <TrackingHubGroup
+              key={hub}
+              hub={hub}
+              rows={groupRows as any[]}
+              warehouses={(warehouses??[]) as any[]}
+              assignedShippers={(hubShipperMap.get(hub)??[]) as any[]}
+              contextQuery={contextQuery}
+              defaultOpen={Boolean(sp.status||sp.receive||sp.hub)||groupUrgent}
+            />
+          })}
+    </div>
+
+    <details className="tracking-secondary-drawer">
+      <summary>
+        <span>Hoạt động gần đây</span>
+        <small>{paymentRows?.length??0} đợt đối soát · {logs?.length??0} lần đồng bộ</small>
+      </summary>
+      <section className="tracking-bottom-grid tracking-bottom-grid-v2">
+        <div className="card">
+          <div className="card-head">
+            <div><h2>Đối soát HUB gần nhất</h2><span className="muted">Mỗi đợt gồm nhiều đơn cùng HUB</span></div>
+            <Link className="button small" href="/finance/shipper-payments">Xem tất cả</Link>
+          </div>
+          {!paymentRows?.length
+            ? <div className="empty compact">Chưa có đợt đối soát trong khoảng đang xem.</div>
+            : paymentRows.map((p:any)=><div className="shipper-payment-history-row" key={p.id}>
+                <div>
+                  <b>{p.destination_hub??'HUB chưa xác định'}</b>
+                  <span>{p.shipper_payment_details?.length??0} đơn · {(p.warehouses as any)?.code??'—'}{p.shipper_name?' · '+p.shipper_name:''}</span>
+                </div>
+                <div>
+                  <b>{formatMoney(p.actual_transferred)}</b>
+                  <span>COD {formatMoney(p.total_cod)} · Tip {formatMoney(p.tip)}</span>
+                </div>
+                <small>{formatDateTime(p.transferred_at)}</small>
+              </div>)}
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <div><h2>Nhật ký Tracking</h2><span className="muted">8 lần đồng bộ gần nhất</span></div>
+            <span className="badge">{providers?.filter(p=>p.enabled).length??0} provider bật</span>
+          </div>
+          {!logs?.length
+            ? <div className="empty compact">Chưa có lần đồng bộ.</div>
+            : logs.map(l=><div className="log-row" key={l.id}>
+                <div><b>{sourceLabel(l.source)}</b><span>{formatDateTime(l.started_at)}</span></div>
+                <div><span className={`badge ${l.result==='SUCCESS'?'green':l.result==='FAILED'?'red':''}`}>{statusLabel(l.result??'RUNNING')}</span><small>{l.new_event_count??0} sự kiện</small></div>
+              </div>)}
+        </div>
+      </section>
+    </details>
   </div>
 }
