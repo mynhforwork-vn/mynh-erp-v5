@@ -328,22 +328,46 @@ export async function confirmReceiveOrders(formData:FormData){
   const orderIds=formData.getAll('order_ids').map(v=>text(v)).filter(Boolean)
   const warehouseId=text(formData.get('warehouse_id'))
   const note=text(formData.get('note'))||null
+  const paymentMode=text(formData.get('payment_mode'))
   if(!orderIds.length)throw new Error('Chưa chọn đơn cần xác nhận nhận hàng')
   if(!warehouseId)throw new Error('Chưa chọn kho nhận')
 
-  const {data,error}=await supabase.rpc('confirm_receive_orders',{
-    p_order_ids:orderIds,
-    p_warehouse_id:warehouseId,
-    p_note:note,
-  })
-  if(error)throw new Error(error.message)
+  let data:any=null
+  if(paymentMode==='with_payment'){
+    const shipperName=text(formData.get('shipper_name'))
+    const actualTransferred=numberOrNull(formData.get('actual_transferred'))
+    if(!shipperName)throw new Error('Chưa nhập tên Shipper')
+    if(actualTransferred===null)throw new Error('Chưa nhập tổng tiền thực chuyển cho Shipper')
+
+    const result=await supabase.rpc('confirm_receive_and_pay_shipper',{
+      p_order_ids:orderIds,
+      p_warehouse_id:warehouseId,
+      p_shipper_name:shipperName,
+      p_actual_transferred:actualTransferred,
+      p_note:note,
+    })
+    if(result.error)throw new Error(result.error.message)
+    data=result.data
+  }else{
+    const result=await supabase.rpc('confirm_receive_orders',{
+      p_order_ids:orderIds,
+      p_warehouse_id:warehouseId,
+      p_note:note,
+    })
+    if(result.error)throw new Error(result.error.message)
+    data=result.data
+  }
 
   revalidatePath('/purchase/tracking')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase')
   revalidatePath('/warehouse')
   revalidatePath('/warehouse/receive')
-  redirect(returnHref('/purchase/tracking',returnQuery,{received:String(data?.receive_batch_id??'')}))
+  revalidatePath('/finance/shipper-payments')
+  redirect(returnHref('/purchase/tracking',returnQuery,{
+    received:String(data?.receive_batch_id??''),
+    payment:data?.shipper_payment_id?String(data.shipper_payment_id):null,
+  }))
 }
 
 export async function replaceShipment(formData:FormData){
