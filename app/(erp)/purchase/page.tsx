@@ -108,9 +108,9 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   const range=resolveRange(sp)
   const {supabase}=await requireUser()
 
-  const [{data:ordersData,error},{count:accountCount},{data:alerts}]=await Promise.all([
+  const [{data:ordersData,error},{count:accountCount},{data:alerts},{data:shipperPayments}]=await Promise.all([
     supabase.from('orders')
-      .select('id,shopee_order_id,order_date,area,destination_hub,cod,receive_status,warehouse_status,order_status,payment_status,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active)')
+      .select('id,shopee_order_id,order_date,area,destination_hub,cod,receive_status,warehouse_status,order_status,payment_status,shipping_service,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active)')
       .gte('order_date',range.start)
       .lte('order_date',range.end)
       .order('order_date',{ascending:false})
@@ -122,30 +122,52 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       .lte('created_at',range.end)
       .order('created_at',{ascending:false})
       .limit(20),
+    supabase.from('shipper_payments')
+      .select('id,shipper_name,total_cod,actual_transferred,tip,transferred_at')
+      .gte('transferred_at',range.start)
+      .lte('transferred_at',range.end)
+      .order('transferred_at',{ascending:false})
+      .limit(1000),
   ])
 
   const rows=(ordersData??[]) as any[]
+  const standardRows=rows.filter(o=>o.shipping_service!=='EXPRESS')
   const totalOrders=rows.length
   const totalCod=rows.reduce((sum,o)=>sum+Number(o.cod??0),0)
-  const delivered=rows.filter(o=>activeShipment(o)?.current_tracking_status==='DELIVERED').length
-  const waiting=rows.filter(o=>o.receive_status==='WAITING_RECEIVE').length
-  const received=rows.filter(o=>o.receive_status==='RECEIVED').length
-  const shipping=rows.filter(o=>{
+  const delivered=standardRows.filter(o=>activeShipment(o)?.current_tracking_status==='DELIVERED').length
+  const waitingRows=standardRows.filter(o=>o.receive_status==='WAITING_RECEIVE')
+  const waiting=waitingRows.length
+  const waitingCod=waitingRows.reduce((sum,o)=>sum+Number(o.cod??0),0)
+  const waitingHubs=new Set(waitingRows.map(o=>o.destination_hub).filter(Boolean)).size
+  const received=standardRows.filter(o=>o.receive_status==='RECEIVED').length
+  const shipping=standardRows.filter(o=>{
     const s=activeShipment(o)?.current_tracking_status
     return s&&!['DELIVERED','CANCELLED','RETURNED'].includes(s)
   }).length
-  const failed=rows.filter(o=>activeShipment(o)?.current_tracking_status==='DELIVERY_FAILED').length
+  const failed=standardRows.filter(o=>activeShipment(o)?.current_tracking_status==='DELIVERY_FAILED').length
+  const missingTracking=standardRows.filter(o=>!activeShipment(o)?.tracking_number).length
+  const expressCount=rows.filter(o=>o.shipping_service==='EXPRESS').length
 
-  const byArea=aggregate(rows,'area')
-  const byHub=aggregate(rows,'destination_hub')
-  const statusRows=trackingCounts(rows)
+  const byArea=aggregate(standardRows,'area')
+  const byHub=aggregate(standardRows,'destination_hub')
+  const statusRows=trackingCounts(standardRows)
   const maxStatus=Math.max(...statusRows.map(x=>x.count),1)
 
-  const urgent=rows.filter(o=>{
-    const status=activeShipment(o)?.current_tracking_status
-    return ['ARRIVED_DESTINATION_HUB','OUT_FOR_DELIVERY','DELIVERY_FAILED','DELIVERED'].includes(status)||o.receive_status==='WAITING_RECEIVE'
-  }).slice(0,10)
+  const paymentRows=(shipperPayments??[]) as any[]
+  const transferredTotal=paymentRows.reduce((sum,p)=>sum+Number(p.actual_transferred??0),0)
+  const tipTotal=paymentRows.reduce((sum,p)=>sum+Number(p.tip??0),0)
 
+  const urgent=standardRows
+    .filter(o=>{
+      const status=activeShipment(o)?.current_tracking_status
+      return o.receive_status==='WAITING_RECEIVE'||['DELIVERY_FAILED','ARRIVED_DESTINATION_HUB','OUT_FOR_DELIVERY'].includes(status)
+    })
+    .sort((a,b)=>{
+      const ap=a.receive_status==='WAITING_RECEIVE'?0:activeShipment(a)?.current_tracking_status==='DELIVERY_FAILED'?1:2
+      const bp=b.receive_status==='WAITING_RECEIVE'?0:activeShipment(b)?.current_tracking_status==='DELIVERY_FAILED'?1:2
+      return ap-bp||new Date(b.order_date).getTime()-new Date(a.order_date).getTime()
+    })
+    .slice(0,10)
 
   function purchaseHref(path:string,extra:Record<string,string|undefined|null>={}){
     const p=new URLSearchParams()
@@ -170,7 +192,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       <div>
         <span className="module-eyebrow">MUA HÀNG</span>
         <h1>Tổng quan mua hàng</h1>
-        <p>Theo dõi toàn bộ tài khoản mua, đơn nhập và vận chuyển theo thời gian thực</p>
+        <p>Điều hành đơn nhập, vận chuyển, nhận hàng và đối soát Shipper trên một màn hình</p>
       </div>
       <div className="head-actions">
         <Link className="button" href={purchaseHref('/purchase/tracking')}>Cảnh báo vận chuyển</Link>
@@ -188,46 +210,120 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
 
     {error&&<div className="error-box">Không thể tải dữ liệu mua hàng: {error.message}</div>}
 
-    <section className="kpi-grid purchase-kpi-grid">
-      <Link href={orderHref()} className="kpi-card">
-        <span>Đơn nhập</span><b>{totalOrders}</b><small>{accountCount??0} tài khoản mua hàng</small>
+    <section className="purchase-command-kpis">
+      <Link href={orderHref()} className="command-kpi">
+        <span>Tổng đơn</span><b>{totalOrders}</b><small>{accountCount??0} tài khoản mua hàng</small>
       </Link>
-      <Link href={orderHref()} className="kpi-card">
-        <span>Tổng COD</span><b className="kpi-money">{formatMoney(totalCod)}</b><small>Giá trị trong khoảng đã chọn</small>
+      <Link href={orderHref()} className="command-kpi">
+        <span>Tổng COD</span><b className="money">{formatMoney(totalCod)}</b><small>Toàn bộ đơn trong khoảng đang xem</small>
       </Link>
-      <Link href={orderHref({tracking:'shipping'})} className="kpi-card">
-        <span>Đang vận chuyển</span><b>{shipping}</b><small>Chưa ở trạng thái kết thúc</small>
+      <Link href={orderHref({tracking:'shipping'})} className="command-kpi info">
+        <span>Đang vận chuyển</span><b>{shipping}</b><small>Đơn tiêu chuẩn đang chạy Tracking</small>
       </Link>
-      <Link href={orderHref({tracking:'DELIVERED'})} className="kpi-card">
-        <span>Giao thành công</span><b>{delivered}</b><small>{totalOrders?Math.round(delivered/totalOrders*100):0}% số đơn trong kỳ</small>
+      <Link href={purchaseHref('/purchase/tracking',{status:'DELIVERED'})} className="command-kpi warning">
+        <span>Chờ nhận hàng</span><b>{waiting}</b><small>{formatMoney(waitingCod)} · {waitingHubs} kho đích</small>
       </Link>
-      <Link href={orderHref({receive:'WAITING_RECEIVE'})} className="kpi-card warning">
-        <span>Chờ xác nhận nhận</span><b>{waiting}</b><small>Cần nhân viên xác nhận vật lý</small>
+      <Link href={purchaseHref('/purchase/tracking',{status:'DELIVERY_FAILED'})} className="command-kpi danger">
+        <span>Giao lỗi</span><b>{failed}</b><small>Cần theo dõi xử lý lại</small>
       </Link>
-      <Link href={orderHref({receive:'RECEIVED'})} className="kpi-card">
-        <span>Đã nhận</span><b>{received}</b><small>Sẵn sàng cho luồng kho</small>
-      </Link>
+      <div className="command-kpi">
+        <span>Hỏa tốc</span><b>{expressCount}</b><small>Không dùng Tracking / kho đích</small>
+      </div>
     </section>
 
-    <section className="purchase-dashboard-grid">
-      <div className="card purchase-summary-card">
+    <section className="purchase-receive-command">
+      <div className="receive-command-main">
+        <div>
+          <span className="module-eyebrow">ƯU TIÊN XỬ LÝ</span>
+          <h2>Đã giao thành công · Chờ xác nhận nhận</h2>
+          <p>Tick nhiều đơn cùng kho đích, xác nhận hàng thực nhận và ghi một lần tổng tiền chuyển cho Shipper.</p>
+        </div>
+        <div className="receive-command-number">
+          <b>{waiting}</b><span>đơn</span>
+        </div>
+      </div>
+      <div className="receive-command-metrics">
+        <div><span>COD chờ nhận</span><b>{formatMoney(waitingCod)}</b></div>
+        <div><span>Kho đích cần xử lý</span><b>{waitingHubs}</b></div>
+        <div><span>Đã chuyển Shipper</span><b>{formatMoney(transferredTotal)}</b><small>{paymentRows.length} đợt</small></div>
+        <div><span>Tip phát sinh</span><b>{formatMoney(tipTotal)}</b></div>
+      </div>
+      <Link className="button primary" href={purchaseHref('/purchase/tracking',{status:'DELIVERED'})}>Mở danh sách chờ nhận →</Link>
+    </section>
+
+    <section className="purchase-ops-grid">
+      <div className="card purchase-hub-board">
         <div className="card-head">
-          <div><h2>Tổng hợp theo khu vực</h2><span className="muted">Số đơn và COD theo nơi nhận</span></div>
-          <span className="badge">{byArea.length} khu vực</span>
+          <div><h2>Theo kho đích</h2><span className="muted">Ưu tiên kho đang có đơn giao thành công chờ nhận</span></div>
+          <Link className="button small" href={purchaseHref('/purchase/tracking')}>Mở console</Link>
         </div>
         <div className="compact-table-wrap">
           <table className="table compact-summary-table">
-            <thead><tr><th>Khu vực</th><th>Đơn</th><th>COD</th><th>Giao TC</th><th>Chờ nhận</th><th>Đã nhận</th></tr></thead>
+            <thead><tr><th>Kho đích</th><th>Đơn</th><th>COD</th><th>Giao TC</th><th>Chờ nhận</th><th>Đã nhận</th><th></th></tr></thead>
+            <tbody>{!byHub.length
+              ? <tr><td colSpan={7} className="empty">Chưa có dữ liệu kho đích.</td></tr>
+              : byHub.slice(0,12).map(x=><tr key={x.name} className={x.waiting?'needs-action':''}>
+                  <td className="strong">{x.name}</td>
+                  <td>{x.orders}</td>
+                  <td className="money">{formatMoney(x.cod)}</td>
+                  <td>{x.delivered}</td>
+                  <td><b className={x.waiting?'warning-text':''}>{x.waiting}</b></td>
+                  <td>{x.received}</td>
+                  <td><Link className="table-link" href={purchaseHref('/purchase/tracking',{status:x.waiting?'DELIVERED':null})}>Xử lý</Link></td>
+                </tr>)}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="card purchase-action-queue">
+        <div className="card-head">
+          <div><h2>Cần xử lý ngay</h2><span className="muted">Theo mức độ ưu tiên vận hành</span></div>
+          <span className="badge">{urgent.length}</span>
+        </div>
+        <div className="action-queue-list">
+          <Link href={purchaseHref('/purchase/tracking',{status:'DELIVERED'})} className="action-queue-summary warning">
+            <div><b>{waiting}</b><span>Chờ xác nhận nhận</span></div>
+            <small>{formatMoney(waitingCod)} COD</small>
+          </Link>
+          <Link href={purchaseHref('/purchase/tracking',{status:'DELIVERY_FAILED'})} className="action-queue-summary danger">
+            <div><b>{failed}</b><span>Giao không thành công</span></div>
+            <small>Cần kiểm tra lại hành trình</small>
+          </Link>
+          <Link href={orderHref({tracking:'missing'})} className="action-queue-summary">
+            <div><b>{missingTracking}</b><span>Chưa có MVĐ</span></div>
+            <small>Chỉ đơn vận chuyển tiêu chuẩn</small>
+          </Link>
+
+          <div className="action-queue-orders">
+            {urgent.slice(0,5).map(o=>{
+              const s=activeShipment(o)
+              return <Link href={orderHref({order:o.id})} key={o.id}>
+                <div><b>{o.shopee_order_id??o.id.slice(0,8)}</b><span>{o.destination_hub??'Chưa xác định kho'}</span></div>
+                <div><span className={'status-pill status-'+String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(s?.current_tracking_status)}</span><small>{formatDateTime(o.order_date)}</small></div>
+              </Link>
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section className="purchase-analytics-grid">
+      <div className="card">
+        <div className="card-head"><div><h2>Theo khu vực</h2><span className="muted">Đơn tiêu chuẩn có phân khu vực tự động</span></div></div>
+        <div className="compact-table-wrap">
+          <table className="table compact-summary-table">
+            <thead><tr><th>Khu vực</th><th>Đơn</th><th>COD</th><th>Giao TC</th><th>Chờ nhận</th></tr></thead>
             <tbody>{!byArea.length
-              ? <tr><td colSpan={6} className="empty">Chưa có dữ liệu trong khoảng này.</td></tr>
-              : byArea.map(x=><tr key={x.name}><td className="strong">{x.name}</td><td>{x.orders}</td><td className="money">{formatMoney(x.cod)}</td><td>{x.delivered}</td><td>{x.waiting}</td><td>{x.received}</td></tr>)}
+              ? <tr><td colSpan={5} className="empty">Chưa có dữ liệu khu vực.</td></tr>
+              : byArea.map(x=><tr key={x.name}><td className="strong">{x.name}</td><td>{x.orders}</td><td className="money">{formatMoney(x.cod)}</td><td>{x.delivered}</td><td>{x.waiting}</td></tr>)}
             </tbody>
           </table>
         </div>
       </div>
 
       <div className="card purchase-status-card">
-        <div className="card-head"><div><h2>Trạng thái vận chuyển</h2><span className="muted">Phân bố đơn theo trạng thái hiện tại</span></div></div>
+        <div className="card-head"><div><h2>Dòng trạng thái vận chuyển</h2><span className="muted">Chỉ các đơn có Tracking</span></div><span className="badge">{alerts?.length??0} cảnh báo</span></div>
         <div className="status-breakdown">
           {!statusRows.length
             ? <div className="empty compact">Chưa có trạng thái vận chuyển.</div>
@@ -235,46 +331,6 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
                 <div className="status-breakdown-label"><span>{statusLabel(x.status)}</span><b>{x.count}</b></div>
                 <div className="status-bar"><i style={{width:`${Math.max(6,x.count/maxStatus*100)}%`}}/></div>
               </div>)}
-        </div>
-        <div className="purchase-alert-foot">
-          <span>Giao thất bại</span><b className={failed?'danger-text':''}>{failed}</b>
-          <span>Cảnh báo phát sinh</span><b>{alerts?.length??0}</b>
-        </div>
-      </div>
-    </section>
-
-    <section className="purchase-dashboard-grid second-row">
-      <div className="card purchase-summary-card">
-        <div className="card-head">
-          <div><h2>Tổng hợp theo kho đích</h2><span className="muted">Phục vụ điều phối nhận hàng theo từng kho đích</span></div>
-          <Link className="button small" href={purchaseHref('/purchase/tracking')}>Mở cảnh báo</Link>
-        </div>
-        <div className="compact-table-wrap">
-          <table className="table compact-summary-table">
-            <thead><tr><th>Kho đích</th><th>Đơn</th><th>COD</th><th>Giao TC</th><th>Chờ nhận</th><th>Đã nhận</th></tr></thead>
-            <tbody>{!byHub.length
-              ? <tr><td colSpan={6} className="empty">Chưa có dữ liệu kho đích.</td></tr>
-              : byHub.map(x=><tr key={x.name}><td className="strong">{x.name}</td><td>{x.orders}</td><td className="money">{formatMoney(x.cod)}</td><td>{x.delivered}</td><td>{x.waiting}</td><td>{x.received}</td></tr>)}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="card urgent-orders-card">
-        <div className="card-head">
-          <div><h2>Đơn cần xử lý</h2><span className="muted">Ưu tiên giao hàng, kho đích và xác nhận nhận</span></div>
-          <span className="badge">{urgent.length}</span>
-        </div>
-        <div className="urgent-list">
-          {!urgent.length
-            ? <div className="empty compact">Không có đơn cần xử lý trong khoảng này.</div>
-            : urgent.map(o=>{
-                const s=activeShipment(o)
-                return <Link className="urgent-order-row" href={orderHref({order:o.id})} key={o.id}>
-                  <div><b>{o.shopee_order_id??o.id.slice(0,8)}</b><span>{o.erp_users?.username??'—'} · {o.destination_hub??'Chưa rõ kho'}</span></div>
-                  <div><span className={`status-pill status-${String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}`}>{statusLabel(s?.current_tracking_status)}</span><small>{formatDateTime(o.order_date)}</small></div>
-                </Link>
-              })}
         </div>
       </div>
     </section>
@@ -284,7 +340,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       <i>→</i>
       <Link href={orderHref()}><span>2</span><div><b>Đơn nhập hàng</b><small>Tạo / sửa / MVĐ</small></div></Link>
       <i>→</i>
-      <Link href={purchaseHref('/purchase/tracking')}><span>3</span><div><b>Cảnh báo vận chuyển</b><small>Theo dõi & xác nhận nhận</small></div></Link>
+      <Link href={purchaseHref('/purchase/tracking')}><span>3</span><div><b>Cảnh báo vận chuyển</b><small>Tracking · nhận hàng · chuyển Shipper</small></div></Link>
       <i>→</i>
       <Link href="/warehouse/receive"><span>4</span><div><b>Nhập kho</b><small>Đơn đã nhận</small></div></Link>
     </div>
