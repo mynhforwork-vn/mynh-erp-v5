@@ -218,6 +218,11 @@ export async function createOrder(formData:FormData){
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
+  const derivedArea=text(formData.get('area'))||null
+  if(data&&derivedArea){
+    const {error:areaError}=await supabase.from('orders').update({area:derivedArea}).eq('id',data)
+    if(areaError)throw new Error(areaError.message)
+  }
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data)}))
 }
@@ -253,8 +258,45 @@ export async function updateOrder(formData:FormData){
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
+  const derivedArea=text(formData.get('area'))||null
+  const {error:areaError}=await supabase.from('orders').update({area:derivedArea}).eq('id',orderId)
+  if(areaError)throw new Error(areaError.message)
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data)}))
+}
+
+function keywordList(v:FormDataEntryValue|null){
+  return text(v).split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean)
+}
+
+export async function saveDestinationHubConfig(formData:FormData){
+  const {supabase}=await actor()
+  const id=text(formData.get('config_id'))
+  const hubCode=text(formData.get('hub_code'))
+  const area=text(formData.get('area'))
+  const region=text(formData.get('region'))
+  if(!hubCode||!area||!['Miền Bắc','Miền Trung','Miền Nam'].includes(region)){
+    throw new Error('Thiếu mã hub, khu vực hoặc miền')
+  }
+  const priorityRaw=Number(text(formData.get('priority'))||100)
+  const payload={
+    hub_code:hubCode,
+    area,
+    region,
+    province_keywords:keywordList(formData.get('province_keywords')),
+    district_keywords:keywordList(formData.get('district_keywords')),
+    address_keywords:keywordList(formData.get('address_keywords')),
+    priority:Number.isFinite(priorityRaw)?Math.max(0,Math.round(priorityRaw)):100,
+    is_active:formData.get('is_active')==='on',
+    updated_at:new Date().toISOString(),
+  }
+  const query=id
+    ? supabase.from('destination_hub_configs').update(payload).eq('id',id)
+    : supabase.from('destination_hub_configs').insert(payload)
+  const {error}=await query
+  if(error)throw new Error(error.message)
+  revalidatePath('/warehouse')
+  revalidatePath('/purchase/orders')
 }
 
 export async function confirmReceiveOrders(formData:FormData){
