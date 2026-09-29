@@ -52,7 +52,7 @@ export default async function SettingsPage(){
       <div className="card-head">
         <div>
           <h2>HUB kho đích & Shipper</h2>
-          <span className="muted">HUB là cấp quản lý chính. Mỗi HUB có rule nhận diện địa chỉ và danh sách Shipper phụ trách.</span>
+          <span className="muted">HUB là cấp quản lý chính. Mỗi HUB có nhiều Phường/Xã và nhiều Shipper phụ trách.</span>
         </div>
       </div>
 
