@@ -7,9 +7,10 @@ import { CopyOrderButton } from '@/components/copy-order-button'
 import { OrderEditorForm } from '@/components/order-editor-form'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import { PurchaseOrderTable } from '@/components/purchase-order-table'
+import { DestinationHubConfigPanel } from '@/components/destination-hub-config-panel'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
-type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,user?:string}
+type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,user?:string,settings?:string}
 
 const HOUR=60*60*1000
 const DAY=24*HOUR
@@ -113,7 +114,6 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       .limit(3000),
     supabase.from('destination_hub_configs')
       .select('id,hub_code,area,region,province_keywords,district_keywords,address_keywords,shipper_name,shipper_phone,priority,is_active')
-      .eq('is_active',true)
       .order('priority',{ascending:true})
       .order('hub_code',{ascending:true})
       .limit(500)
@@ -135,7 +135,8 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const skuCatalog=[...latestSkuMap.values()]
   const voucherTypes=[...new Set((voucherCatalogRows??[]).map((x:any)=>String(x.voucher_type??'').trim()).filter(Boolean))]
   const voucherTags=[...new Set((voucherCatalogRows??[]).map((x:any)=>String(x.voucher_tag??'').trim()).filter(Boolean))]
-  const destinationHubs=(destinationHubRows??[]) as any[]
+  const destinationHubConfigs=(destinationHubRows??[]) as any[]
+  const destinationHubs=destinationHubConfigs.filter((x:any)=>x.is_active)
 
   const dateRows=(data??[]) as any[]
   const rows=dateRows.filter((o:any)=>{
@@ -219,7 +220,8 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
   const createMode=sp.mode==='create'
   const editMode=Boolean(detail&&sp.mode==='edit')
-  const panelOpen=createMode||Boolean(detail)
+  const destinationSettingsMode=sp.settings==='destination-hubs'
+  const panelOpen=createMode||Boolean(detail)||destinationSettingsMode
   const currentShip=activeShipment(detail)
   const detailHubConfig=detail?destinationHubs.find((x:any)=>x.hub_code===detail.destination_hub):null
   const detailTotalOriginal=items.reduce(
@@ -236,7 +238,8 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         <p>Lưu trữ toàn bộ đơn mua, sản phẩm, voucher, vận đơn và lịch sử xử lý</p>
       </div>
       <div className="head-actions">
-        <Link className="button primary" href={listHref({mode:'create'})}>+ Tạo đơn nhập</Link>
+        <Link className={`button ${destinationSettingsMode?'active':''}`} href={listHref({settings:'destination-hubs',order:null,mode:null,tab:null})}>⚙ Cấu hình kho đích</Link>
+        <Link className="button primary" href={listHref({mode:'create',settings:null})}>+ Tạo đơn nhập</Link>
       </div>
     </header>
 
@@ -292,7 +295,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
       </section>
 
-      {createMode&&
+      {createMode&&!destinationSettingsMode&&
         <aside className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Tạo đơn mới</h2></div>
@@ -312,7 +315,14 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         </aside>
       }
 
-      {detail&&editMode&&
+      {destinationSettingsMode&&
+        <DestinationHubConfigPanel
+          configs={destinationHubConfigs}
+          closeHref={listHref({settings:null})}
+        />
+      }
+
+      {detail&&editMode&&!destinationSettingsMode&&
         <aside className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Sửa {detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
@@ -353,7 +363,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         </aside>
       }
 
-      {detail&&!editMode&&
+      {detail&&!editMode&&!destinationSettingsMode&&
         <aside className="detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT ĐƠN</span><h2>{detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
