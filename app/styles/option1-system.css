@@ -1309,7 +1309,8 @@ a{text-decoration:none}
 .tracking-date-filter{display:flex;align-items:center;gap:5px}
 .tracking-date-filter label{display:flex;align-items:center;gap:5px}
 .tracking-date-filter label span{font-size:8px;color:var(--mynh-text-3)}
-.tracking-date-filter input{
+.tracking-date-filter input,
+.tracking-date-filter select{
   height:27px;
   padding:0 6px;
   border:1px solid var(--mynh-border-2);
@@ -3726,6 +3727,34 @@ a{text-decoration:none}
   min-width:0;
 }
 .receive-shipper-field input{padding-right:76px}
+.receive-shipper-field.hub-only{
+  height:27px;
+  display:flex;
+  align-items:center;
+  padding:0 76px 0 6px;
+  border:1px solid #D8E1E9;
+  border-radius:4px;
+  background:#fff;
+}
+.receive-shipper-field.hub-only>div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+.receive-shipper-field.hub-only>div>span{
+  color:#8A95A3;
+  font-size:5.8px;
+  line-height:1.05;
+}
+.receive-shipper-field.hub-only>div>b{
+  overflow:hidden;
+  color:#42536A;
+  font-size:7.3px;
+  line-height:1.15;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
 .receive-shipper-field>span{
   position:absolute;
   top:50%;

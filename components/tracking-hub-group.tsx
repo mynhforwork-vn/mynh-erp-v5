@@ -41,21 +41,15 @@ export function TrackingHubGroup({
   const selectedSet=useMemo(()=>new Set(selected),[selected])
   const selectedRows=eligible.filter(r=>selectedSet.has(r.id))
   const selectedCod=selectedRows.reduce((s,r)=>s+Number(r.cod??0),0)
-  const [shipperId,setShipperId]=useState(assignedShippers.length===1?assignedShippers[0].id:'')
   const [actualTransferred,setActualTransferred]=useState('')
   const actualValue=Number(actualTransferred||0)
   const tip=Math.max(0,actualValue-selectedCod)
-  const selectedShipper=assignedShippers.find(s=>s.id===shipperId)??null
-  const transferValid=Boolean(selected.length&&shipperId&&actualValue>=selectedCod)
+  const transferValid=Boolean(selected.length&&actualValue>=selectedCod)
   const allSelected=eligible.length>0&&selected.length===eligible.length
 
   useEffect(()=>{
     setActualTransferred(selectedCod>0?String(selectedCod):'')
   },[selectedCod])
-
-  useEffect(()=>{
-    setShipperId(assignedShippers.length===1?assignedShippers[0].id:'')
-  },[assignedShippers])
 
   function toggleAll(){
     setSelected(allSelected?[]:eligible.map(r=>r.id))
@@ -159,7 +153,7 @@ export function TrackingHubGroup({
         <span>Chọn đơn chờ nhận để xử lý theo lô</span>
         <small>{assignedShippers.length
           ? `${assignedShippers.length} Shipper: ${assignedShippers.map(s=>s.name).join(', ')}`
-          : 'Chưa cấu hình Shipper phụ trách cho kho này'}</small>
+          : 'Chưa cấu hình Shipper phụ trách cho HUB này'}</small>
       </div>
     }
 
@@ -178,17 +172,12 @@ export function TrackingHubGroup({
           {warehouses.map(w=><option value={w.id} key={w.id}>{(w.code?w.code+' · ':'')+(w.name??'Kho')}</option>)}
         </select>
 
-        <div className="receive-shipper-field">
-          <select
-            name="shipper_id"
-            value={shipperId}
-            onChange={e=>setShipperId(e.target.value)}
-            aria-label="Shipper phụ trách"
-          >
-            <option value="">Chọn Shipper</option>
-            {assignedShippers.map(s=><option value={s.id} key={s.id}>{s.name}{s.phone?' · '+formatPhone(s.phone):''}</option>)}
-          </select>
-          {selectedShipper?.phone&&<span>{formatPhone(selectedShipper.phone)}</span>}
+        <div className="receive-shipper-field hub-only" aria-label="HUB đối soát">
+          <div>
+            <span>Đối soát theo HUB</span>
+            <b>{hub}</b>
+          </div>
+          <span>{assignedShippers.length} Shipper phụ trách</span>
         </div>
 
         <input
@@ -220,7 +209,7 @@ export function TrackingHubGroup({
           Nhận
         </button>
         <button className="button small primary" name="payment_mode" value="with_payment" disabled={!transferValid}>
-          Nhận + chuyển
+          Nhận + ghi chuyển
         </button>
       </form>
     }
