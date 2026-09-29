@@ -11,6 +11,7 @@ type SP={
   receiveDate?:string
   received?:string
   payment?:string
+  hub?:string
   range?:RangeKey
   from?:string
   to?:string
@@ -122,7 +123,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     supabase.from('tracking_provider_configs').select('carrier,enabled').order('carrier'),
     supabase.from('tracking_sync_logs').select('id,shipment_id,source,started_at,result,new_event_count,error_code,error_message').order('started_at',{ascending:false}).limit(8),
     supabase.from('shipper_payments')
-      .select('id,shipper_name,total_cod,actual_transferred,tip,transferred_at,warehouses(code,name),shipper_payment_details(order_id)')
+      .select('id,destination_hub,shipper_name,total_cod,actual_transferred,tip,transferred_at,warehouses(code,name),shipper_payment_details(order_id)')
       .gte('transferred_at',range.startIso)
       .lte('transferred_at',range.endIso)
       .order('transferred_at',{ascending:false})
@@ -175,16 +176,19 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     return Number.isFinite(t)&&t>=range.start&&t<=range.end
   })
 
-  const atHub=rangeRows.filter((r:any)=>r.tracking_status==='ARRIVED_DESTINATION_HUB').length
-  const outForDelivery=rangeRows.filter((r:any)=>r.tracking_status==='OUT_FOR_DELIVERY').length
-  const delivered=rangeRows.filter((r:any)=>r.tracking_status==='DELIVERED').length
-  const failed=rangeRows.filter((r:any)=>r.tracking_status==='DELIVERY_FAILED').length
-  const waitingRows=rangeRows.filter((r:any)=>r.receive_status==='WAITING_RECEIVE')
+  const hubOptions=[...new Set(rangeRows.map((r:any)=>String(r.destination_hub??'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'))
+  const hubRows=sp.hub?rangeRows.filter((r:any)=>r.destination_hub===sp.hub):rangeRows
+
+  const atHub=hubRows.filter((r:any)=>r.tracking_status==='ARRIVED_DESTINATION_HUB').length
+  const outForDelivery=hubRows.filter((r:any)=>r.tracking_status==='OUT_FOR_DELIVERY').length
+  const delivered=hubRows.filter((r:any)=>r.tracking_status==='DELIVERED').length
+  const failed=hubRows.filter((r:any)=>r.tracking_status==='DELIVERY_FAILED').length
+  const waitingRows=hubRows.filter((r:any)=>r.receive_status==='WAITING_RECEIVE')
   const waiting=waitingRows.length
   const waitingCod=waitingRows.reduce((sum:number,r:any)=>sum+Number(r.cod??0),0)
   const waitingHubCount=new Set(waitingRows.map((r:any)=>r.destination_hub).filter(Boolean)).size
 
-  let rows=[...rangeRows]
+  let rows=[...hubRows]
   if(sp.status)rows=rows.filter((r:any)=>r.tracking_status===sp.status)
   if(sp.receive)rows=rows.filter((r:any)=>r.receive_status===sp.receive)
   if(sp.receiveDate)rows=rows.filter((r:any)=>localDate(r.last_status_change_at)===sp.receiveDate)
@@ -199,6 +203,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     if(sp.status)p.set('status',sp.status)
     if(sp.receive)p.set('receive',sp.receive)
     if(sp.receiveDate)p.set('receiveDate',sp.receiveDate)
+    if(sp.hub)p.set('hub',sp.hub)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v==='')p.delete(k)
       else p.set(k,v)
@@ -226,6 +231,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     contextParams.set('from',range.from)
     contextParams.set('to',range.to)
   }
+  if(sp.hub)contextParams.set('hub',sp.hub)
   const contextQuery=contextParams.toString()
 
   const shipperMap=new Map((destinationShippers??[]).map((s:any)=>[String(s.id),s]))
@@ -261,7 +267,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       <div>
         <span className="module-eyebrow">MUA HÀNG</span>
         <h1>Cảnh báo vận chuyển</h1>
-        <p>Console nhận hàng theo kho đích · Tracking · đối soát và chuyển tiền Shipper</p>
+        <p>Console nhận hàng theo HUB đích · Tracking · đối soát vận chuyển</p>
       </div>
       <div className="head-actions">
         <Link className="button" href={moduleHref('/purchase/orders')}>Đơn nhập hàng</Link>
@@ -279,7 +285,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     />
 
     {sp.received&&<div className="notice success"><b>Đã xác nhận nhận hàng.</b><span>Đơn đã chuyển sang trạng thái Đã nhận và sẵn sàng cho luồng kho.</span></div>}
-    {sp.payment&&<div className="notice success"><b>Đã ghi nhận chuyển tiền Shipper.</b><span>Đợt thanh toán đã lưu kèm chi tiết từng đơn và Tip tự động.</span></div>}
+    {sp.payment&&<div className="notice success"><b>Đã ghi nhận đối soát theo HUB.</b><span>Đợt đối soát đã lưu kèm chi tiết từng đơn và Tip tự động.</span></div>}
     {error&&<div className="error-box">Không thể tải dữ liệu vận chuyển: {error.message}</div>}
     {!providers?.some(p=>p.enabled)&&<div className="notice warning"><b>Chưa có provider tracking đang bật.</b><span>Dữ liệu demo vẫn hiển thị; Manual Sync cần provider hợp lệ để gọi ra ngoài.</span></div>}
 
@@ -303,9 +309,9 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
 
     <section className="tracking-receive-focus">
       <div>
-        <span className="module-eyebrow">NHẬN HÀNG & THANH TOÁN SHIPPER</span>
+        <span className="module-eyebrow">NHẬN HÀNG & ĐỐI SOÁT HUB</span>
         <h2>{waiting} đơn giao thành công đang chờ nhận</h2>
-        <p>Chọn nhiều đơn trong cùng kho đích → Tổng COD tự cộng → nhập Tổng tiền thực chuyển → hệ thống tự tính Tip và lưu một đợt thanh toán có chi tiết từng đơn.</p>
+        <p>Chọn nhiều đơn trong cùng HUB → Tổng COD tự cộng → nhập Tổng tiền thực chuyển của HUB → hệ thống tự tính Tip và lưu một đợt đối soát có chi tiết từng đơn.</p>
       </div>
       <div className="tracking-receive-focus-metrics">
         <div><span>COD chờ nhận</span><b>{formatMoney(waitingCod)}</b></div>
@@ -316,8 +322,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
 
     <div className="tracking-console-toolbar redesigned">
       <div className="tracking-console-title">
-        <b>Console theo kho đích</b>
-        <span>{rows.length} vận đơn · {grouped.length} kho đích · {range.label}</span>
+        <b>Console theo HUB đích</b>
+        <span>{rows.length} vận đơn · {grouped.length} HUB · {range.label}</span>
       </div>
       <div className="tracking-filter-segments">
         <Link className={!sp.status&&!sp.receive?'active':''} href={trackingHref({status:null,receive:null,receiveDate:null})}>Tất cả</Link>
@@ -331,9 +337,16 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
         {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
         {sp.status&&<input type="hidden" name="status" value={sp.status}/>}
         {sp.receive&&<input type="hidden" name="receive" value={sp.receive}/>}
+        <label>
+          <span>HUB đích</span>
+          <select name="hub" defaultValue={sp.hub??''}>
+            <option value="">Tất cả HUB</option>
+            {hubOptions.map(h=><option value={h} key={h}>{h}</option>)}
+          </select>
+        </label>
         <label><span>Ngày trạng thái</span><input type="date" name="receiveDate" defaultValue={sp.receiveDate??''}/></label>
         <button className="button small">Lọc</button>
-        {(sp.status||sp.receive||sp.receiveDate)&&<Link className="button small" href={trackingHref({status:null,receive:null,receiveDate:null,received:null,payment:null})}>Xóa lọc</Link>}
+        {(sp.status||sp.receive||sp.receiveDate||sp.hub)&&<Link className="button small" href={trackingHref({status:null,receive:null,receiveDate:null,hub:null,received:null,payment:null})}>Xóa lọc</Link>}
       </form>
     </div>
 
@@ -353,15 +366,15 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     <section className="tracking-bottom-grid">
       <div className="card">
         <div className="card-head">
-          <div><h2>Đợt chuyển Shipper gần nhất</h2><span className="muted">Mỗi đợt có thể gồm nhiều đơn</span></div>
-          <Link className="button small" href="/finance/shipper-payments">Xem thanh toán</Link>
+          <div><h2>Đợt đối soát HUB gần nhất</h2><span className="muted">Mỗi đợt gồm nhiều đơn cùng HUB</span></div>
+          <Link className="button small" href="/finance/shipper-payments">Xem đối soát</Link>
         </div>
         {!paymentRows?.length
-          ? <div className="empty compact">Chưa có đợt chuyển Shipper trong khoảng đang xem.</div>
+          ? <div className="empty compact">Chưa có đợt đối soát HUB trong khoảng đang xem.</div>
           : paymentRows.map((p:any)=><div className="shipper-payment-history-row" key={p.id}>
               <div>
-                <b>{p.shipper_name??'Shipper'}</b>
-                <span>{p.shipper_payment_details?.length??0} đơn · {(p.warehouses as any)?.code??'—'}</span>
+                <b>{p.destination_hub??'HUB chưa xác định'}</b>
+                <span>{p.shipper_payment_details?.length??0} đơn · {(p.warehouses as any)?.code??'—'}{p.shipper_name?' · '+p.shipper_name:''}</span>
               </div>
               <div>
                 <b>{formatMoney(p.actual_transferred)}</b>

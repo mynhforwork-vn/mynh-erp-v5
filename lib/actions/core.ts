@@ -6,7 +6,7 @@ import { nextTrackAt } from '@/lib/tracking/schedule'
 
 function text(v:FormDataEntryValue|null){return String(v??'').trim()}
 
-const RETURN_KEYS=['range','from','to','q','receive','tracking','state','device','session','voucher','orders','browser','sort'] as const
+const RETURN_KEYS=['range','from','to','q','receive','receiveDate','status','hub','tracking','state','device','session','voucher','orders','browser','sort'] as const
 function safeReturnParams(raw:string){
   const src=new URLSearchParams(raw)
   const out=new URLSearchParams()
@@ -385,7 +385,7 @@ export async function saveDestinationShipper(formData:FormData){
 export async function confirmReceiveOrders(formData:FormData){
   const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
-  const orderIds=formData.getAll('order_ids').map(v=>text(v)).filter(Boolean)
+  const orderIds=[...new Set(formData.getAll('order_ids').map(v=>text(v)).filter(Boolean))]
   const warehouseId=text(formData.get('warehouse_id'))
   const note=text(formData.get('note'))||null
   const paymentMode=text(formData.get('payment_mode'))
@@ -394,64 +394,42 @@ export async function confirmReceiveOrders(formData:FormData){
 
   let data:any=null
   if(paymentMode==='with_payment'){
-    const shipperId=text(formData.get('shipper_id'))
     const actualTransferred=numberOrNull(formData.get('actual_transferred'))
-    if(!shipperId)throw new Error('Chưa chọn Shipper phụ trách')
-    if(actualTransferred===null)throw new Error('Chưa nhập tổng tiền thực chuyển cho Shipper')
-
-    const {data:shipper,error:shipperError}=await supabase
-      .from('destination_shippers')
-      .select('id,name,phone,is_active')
-      .eq('id',shipperId)
-      .eq('is_active',true)
-      .maybeSingle()
-    if(shipperError)throw new Error(shipperError.message)
-    if(!shipper)throw new Error('Shipper không tồn tại hoặc đã ngừng hoạt động')
+    if(actualTransferred===null)throw new Error('Chưa nhập tổng tiền thực chuyển theo HUB')
 
     const {data:paymentOrders,error:paymentOrdersError}=await supabase
       .from('orders')
-      .select('id,destination_hub')
+      .select('id,destination_hub,shipping_service')
       .in('id',orderIds)
     if(paymentOrdersError)throw new Error(paymentOrdersError.message)
-    const hubs=[...new Set((paymentOrders??[]).map((o:any)=>String(o.destination_hub??'')).filter(Boolean))]
-    if(hubs.length!==1)throw new Error('Đợt chuyển Shipper phải gồm các đơn cùng một Hub kho đích')
+    if((paymentOrders??[]).length!==orderIds.length)throw new Error('Có đơn hàng không tồn tại')
+
+    if((paymentOrders??[]).some((o:any)=>o.shipping_service==='EXPRESS')){
+      throw new Error('Đơn hỏa tốc không áp dụng nhận hàng / đối soát HUB')
+    }
+
+    const hubs=[...new Set((paymentOrders??[]).map((o:any)=>String(o.destination_hub??'').trim()).filter(Boolean))]
+    if(hubs.length!==1)throw new Error('Đợt đối soát phải gồm các đơn cùng một HUB kho đích')
+    const destinationHub=hubs[0]
 
     const {data:hubConfig,error:hubConfigError}=await supabase
       .from('destination_hub_configs')
       .select('id')
-      .eq('hub_code',hubs[0])
+      .eq('hub_code',destinationHub)
       .eq('is_active',true)
       .maybeSingle()
     if(hubConfigError)throw new Error(hubConfigError.message)
-    if(!hubConfig)throw new Error('Hub kho đích chưa có cấu hình hoạt động')
+    if(!hubConfig)throw new Error('HUB kho đích chưa có cấu hình hoạt động')
 
-    const {data:assignment,error:assignmentError}=await supabase
-      .from('destination_hub_shipper_assignments')
-      .select('id')
-      .eq('hub_config_id',hubConfig.id)
-      .eq('shipper_id',shipperId)
-      .eq('is_active',true)
-      .maybeSingle()
-    if(assignmentError)throw new Error(assignmentError.message)
-    if(!assignment)throw new Error('Shipper được chọn không phụ trách Hub kho đích này')
-
-    const result=await supabase.rpc('confirm_receive_and_pay_shipper',{
+    const result=await supabase.rpc('confirm_receive_and_pay_hub',{
       p_order_ids:orderIds,
       p_warehouse_id:warehouseId,
-      p_shipper_name:shipper.name,
+      p_destination_hub:destinationHub,
       p_actual_transferred:actualTransferred,
       p_note:note,
     })
     if(result.error)throw new Error(result.error.message)
     data=result.data
-
-    if(data?.shipper_payment_id){
-      const {error:linkError}=await supabase
-        .from('shipper_payments')
-        .update({shipper_id:shipperId})
-        .eq('id',data.shipper_payment_id)
-      if(linkError)throw new Error(linkError.message)
-    }
   }else{
     const result=await supabase.rpc('confirm_receive_orders',{
       p_order_ids:orderIds,

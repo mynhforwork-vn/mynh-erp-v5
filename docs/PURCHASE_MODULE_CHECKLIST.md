@@ -11,7 +11,9 @@ Trạng thái: ĐANG TRIỂN KHAI / baseline functional đã có
 - [x] KPI Chờ xác nhận nhận
 - [x] KPI Đã nhận
 - [x] Tổng hợp theo Khu vực
-- [x] Tổng hợp theo Kho đích
+- [x] Tổng hợp theo HUB đích
+- [x] Một HUB hiển thị nhiều Shipper phụ trách
+- [x] Click dòng HUB mở đúng console đã lọc HUB
 - [x] Phân bố trạng thái vận chuyển
 - [x] Danh sách đơn cần xử lý
 - [x] Luồng Mua hàng → Đơn → Tracking → Nhập kho
@@ -40,11 +42,18 @@ Trạng thái: ĐANG TRIỂN KHAI / baseline functional đã có
 - [x] Sửa đơn
 - [x] Cập nhật MVĐ giữ lịch sử
 - [x] Panel Thông tin / Tracking / Lịch sử
+- [x] Nút ⚙ Cấu hình kho đích ngay tại tab Đơn nhập
+- [x] Cấu hình HUB dùng chung với Cài đặt hệ thống
+- [x] Một HUB ↔ nhiều Shipper
+- [x] Hỏa tốc không dùng HUB đích / Tracking
 - [ ] Visual QA deployment thật
 
 ## 4. Cảnh báo vận chuyển
 - [x] 4 nhóm cảnh báo chuẩn
-- [x] Console nhóm theo Kho đích
+- [x] Console nhóm theo HUB đích
+- [x] Bộ lọc HUB đích
+- [x] KPI thay đổi theo HUB đang lọc
+- [x] Hiển thị nhiều Shipper phụ trách trong từng HUB
 - [x] Hiển thị Mã đơn / MVĐ / Sản phẩm / COD / Người nhận / SĐT
 - [x] Manual Tracking Sync inline
 - [x] Link cập nhật MVĐ / chi tiết
@@ -53,8 +62,22 @@ Trạng thái: ĐANG TRIỂN KHAI / baseline functional đã có
 - [x] Chọn kho nhận
 - [x] Receive batch atomic
 - [x] RECEIVED → READY_TO_TRANSFER
-- [x] Rollback test PASS, không residue
-- [ ] Thanh toán shipper (thuộc nhóm Tài chính)
+- [x] Đối soát nhiều đơn theo cùng HUB
+- [x] Không bắt buộc chọn một Shipper khi đối soát HUB
+- [x] Không cho gom nhiều HUB vào cùng một đợt
+- [x] Loại trừ đơn Hỏa tốc khỏi đối soát HUB
+- [x] Tip = Thực chuyển − Tổng COD
+- [x] Rollback smoke test PASS, không residue
+- [ ] Visual QA deployment thật
+
+## 5. Tài chính — Đối soát HUB
+- [x] Danh sách đợt đối soát theo HUB
+- [x] Tổng COD
+- [x] Tổng thực chuyển
+- [x] Tổng Tip
+- [x] Chi tiết từng đơn trong đợt
+- [x] Giữ khả năng đọc dữ liệu Shipper cũ nếu có
+- [ ] Báo cáo tổng hợp HUB theo kỳ
 - [ ] Visual QA deployment thật
 
 ## Gate tiếp theo
