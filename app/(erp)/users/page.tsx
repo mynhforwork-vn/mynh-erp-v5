@@ -239,28 +239,21 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   }
 
   function selectedOrderHref(order:any,username:string){
-    if(sp.range){
-      return contextHref('/purchase/orders',{q:username,order:order.id})
-    }
-    const date=localDateKey(order.order_date)
     return contextHref('/purchase/orders',{
       q:username,
       order:order.id,
-      range:date?'custom':'today',
-      from:date||null,
-      to:date||null,
+      range:'all',
+      from:null,
+      to:null,
     })
   }
 
-  function allUserOrdersHref(username:string,ordersForUser:any[]){
-    if(sp.range)return contextHref('/purchase/orders',{q:username})
-    const dates=ordersForUser.map((o:any)=>localDateKey(o.order_date)).filter(Boolean).sort()
-    if(!dates.length)return contextHref('/purchase/orders',{q:username})
+  function allUserOrdersHref(username:string){
     return contextHref('/purchase/orders',{
       q:username,
-      range:'custom',
-      from:dates[0],
-      to:dates[dates.length-1],
+      range:'all',
+      from:null,
+      to:null,
     })
   }
 
@@ -466,7 +459,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             {sp.tab==='orders'&&<>
               <div className="panel-section-head">
                 <div><h3>Đơn hàng của User</h3><span>{userOrders.length} đơn · chi tiết sản phẩm, voucher, giao nhận</span></div>
-                <Link className="button small" href={allUserOrdersHref(selected.username,userOrders)}>Mở toàn bộ</Link>
+                <Link className="button small" href={allUserOrdersHref(selected.username)}>Mở toàn bộ</Link>
               </div>
               <div className="user-order-list detailed">
                 {!userOrders.length
