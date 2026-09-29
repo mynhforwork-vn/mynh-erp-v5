@@ -16,7 +16,7 @@ type HubConfig={
   province_keywords?:string[]|null
   district_keywords?:string[]|null
   address_keywords?:string[]|null
-  shipper_id?:string|null
+  shipper_ids?:string[]
   priority?:number|null
   is_active?:boolean|null
 }
@@ -69,10 +69,19 @@ export function DestinationHubSettings({
               <input name="address_keywords" defaultValue={(row.address_keywords??[]).join(', ')} placeholder="Từ khóa bổ sung" aria-label="Từ khóa bổ sung"/>
             </div>
 
-            <select name="shipper_id" defaultValue={row.shipper_id??''} aria-label="Shipper phụ trách">
-              <option value="">— Chưa gán Shipper —</option>
-              {activeShippers.map(s=><option key={s.id} value={s.id}>{s.name}{s.phone?' · '+s.phone:''}</option>)}
-            </select>
+            <div className="hub-shipper-checks" aria-label="Shipper phụ trách">
+              {!activeShippers.length
+                ? <span className="muted">Chưa có Shipper</span>
+                : activeShippers.map(s=><label key={s.id} className="hub-shipper-check">
+                    <input
+                      type="checkbox"
+                      name="shipper_ids"
+                      value={s.id}
+                      defaultChecked={(row.shipper_ids??[]).includes(s.id)}
+                    />
+                    <span><b>{s.name}</b>{s.phone&&<small>{s.phone}</small>}</span>
+                  </label>)}
+            </div>
 
             <div className="hub-priority-fields">
               <input name="priority" type="number" min="0" defaultValue={row.priority??100} aria-label="Ưu tiên"/>
@@ -102,10 +111,14 @@ export function DestinationHubSettings({
               <input name="address_keywords" placeholder="Từ khóa bổ sung"/>
             </div>
 
-            <select name="shipper_id" defaultValue="">
-              <option value="">— Chưa gán Shipper —</option>
-              {activeShippers.map(s=><option key={s.id} value={s.id}>{s.name}{s.phone?' · '+s.phone:''}</option>)}
-            </select>
+            <div className="hub-shipper-checks" aria-label="Shipper phụ trách">
+              {!activeShippers.length
+                ? <span className="muted">Chưa có Shipper</span>
+                : activeShippers.map(s=><label key={s.id} className="hub-shipper-check">
+                    <input type="checkbox" name="shipper_ids" value={s.id}/>
+                    <span><b>{s.name}</b>{s.phone&&<small>{s.phone}</small>}</span>
+                  </label>)}
+            </div>
 
             <div className="hub-priority-fields">
               <input name="priority" type="number" min="0" defaultValue="100"/>
@@ -177,7 +190,7 @@ export function DestinationHubConfigModal({
         <div>
           <span className="eyebrow">CÀI ĐẶT HỆ THỐNG</span>
           <h2>Kho đích & Shipper</h2>
-          <p>Xem và cấu hình theo Hub kho đích. Một Shipper có thể phụ trách nhiều Hub.</p>
+          <p>Xem theo Hub kho đích. Một Hub có thể nhiều Shipper và một Shipper có thể phụ trách nhiều Hub.</p>
         </div>
         <Link className="close" href={closeHref}>×</Link>
       </div>
