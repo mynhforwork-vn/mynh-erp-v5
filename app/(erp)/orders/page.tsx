@@ -97,12 +97,38 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const range=resolveRange(sp)
   const queryText=String(sp.q??'').trim().toLowerCase()
 
-  const [{data,error},{data:userOptions}]=await Promise.all([
+  const [{data,error},{data:userOptions},{data:recentSkuRows},{data:voucherCatalogRows}]=await Promise.all([
     supabase.from('orders').select(
       'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
     ).gte('order_date',range.start).lte('order_date',range.end).order('order_date',{ascending:false}).limit(1000),
-    supabase.from('erp_users').select('id,username,phone,status').order('username').limit(1000)
+    supabase.from('erp_users').select('id,username,phone,status').order('username').limit(1000),
+    supabase.from('order_items')
+      .select('sku,product_name,variant,original_price,final_price,created_at')
+      .not('sku','is',null)
+      .order('created_at',{ascending:false})
+      .limit(3000),
+    supabase.from('order_vouchers')
+      .select('voucher_type,voucher_tag,created_at')
+      .order('created_at',{ascending:false})
+      .limit(3000)
   ])
+
+  const latestSkuMap=new Map<string,any>()
+  for(const row of (recentSkuRows??[]) as any[]){
+    const key=String(row.sku??'').trim().toUpperCase()
+    if(key&&!latestSkuMap.has(key)){
+      latestSkuMap.set(key,{
+        sku:String(row.sku??'').trim(),
+        product_name:row.product_name,
+        variant:row.variant,
+        original_price:row.original_price,
+        final_price:row.final_price,
+      })
+    }
+  }
+  const skuCatalog=[...latestSkuMap.values()]
+  const voucherTypes=[...new Set((voucherCatalogRows??[]).map((x:any)=>String(x.voucher_type??'').trim()).filter(Boolean))]
+  const voucherTags=[...new Set((voucherCatalogRows??[]).map((x:any)=>String(x.voucher_tag??'').trim()).filter(Boolean))]
 
   const dateRows=(data??[]) as any[]
   const rows=dateRows.filter((o:any)=>{
@@ -266,6 +292,9 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             values={{erp_user_id:sp.user??'',order_status:'PENDING',payment_status:'UNPAID',shipping_service:'STANDARD',cod:0}}
             cancelHref={listHref({mode:null})}
             returnQuery={returnQuery}
+            skuCatalog={skuCatalog}
+            voucherTypes={voucherTypes}
+            voucherTags={voucherTags}
           />
         </aside>
       }
@@ -299,6 +328,9 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             initialVouchers={vouchers}
             cancelHref={listHref({order:detail.id,mode:null})}
             returnQuery={returnQuery}
+            skuCatalog={skuCatalog}
+            voucherTypes={voucherTypes}
+            voucherTags={voucherTags}
           />
         </aside>
       }
