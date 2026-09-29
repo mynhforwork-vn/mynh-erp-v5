@@ -42,7 +42,7 @@ export default async function SettingsPage(){
     {error&&<div className="error-box">Không thể tải cấu hình hệ thống: {error.message}</div>}
 
     <section className="settings-category-bar">
-      <span className="active">Kho đích & Shipper</span>
+      <span className="active">HUB kho đích & Shipper</span>
       <span>Tài khoản & phân quyền</span>
       <span>Tích hợp</span>
       <span>Thông báo</span>
@@ -51,8 +51,8 @@ export default async function SettingsPage(){
     <section className="card system-settings-card">
       <div className="card-head">
         <div>
-          <h2>Kho đích & Shipper</h2>
-          <span className="muted">Cấu hình Hub là trục chính. Một Hub có thể nhiều Shipper và một Shipper có thể phụ trách nhiều Hub.</span>
+          <h2>HUB kho đích & Shipper</h2>
+          <span className="muted">HUB là cấp quản lý chính. Mỗi HUB có rule nhận diện địa chỉ và danh sách Shipper phụ trách.</span>
         </div>
       </div>
 
