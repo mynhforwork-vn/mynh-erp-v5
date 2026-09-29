@@ -24,6 +24,16 @@ type SkuCatalogItem={
   original_price?:number|string|null
   final_price?:number|string|null
 }
+type DestinationHubConfig={
+  id:string
+  hub_code:string
+  area:string
+  region:string
+  province_keywords?:string[]|null
+  district_keywords?:string[]|null
+  address_keywords?:string[]|null
+  priority?:number|null
+}
 type Voucher={
   voucher_code?:string|null
   voucher_name?:string|null
@@ -44,6 +54,7 @@ type Values={
   recipient_name?:string|null
   recipient_phone?:string|null
   recipient_address?:string|null
+  area?:string|null
   destination_hub?:string|null
   shipping_service?:string|null
 }
@@ -67,6 +78,32 @@ function normalizePhone(value?:string|null){
   return s||'Chưa có SĐT'
 }
 
+function normalizeText(value:string){
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/đ/g,'d')
+    .replace(/Đ/g,'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,' ')
+    .trim()
+}
+
+function containsKeyword(haystack:string,keywords?:string[]|null){
+  if(!keywords?.length)return false
+  return keywords.some(keyword=>{
+    const k=normalizeText(String(keyword))
+    return Boolean(k)&&haystack.includes(k)
+  })
+}
+
+function parseNumberToken(value:string){
+  const raw=value.replace(/[^0-9]/g,'')
+  if(!raw)return ''
+  const n=Number(raw)
+  return Number.isFinite(n)?n:''
+}
+
 export function OrderEditorForm({
   mode,
   users,
@@ -78,6 +115,7 @@ export function OrderEditorForm({
   skuCatalog=[],
   voucherTypes=[],
   voucherTags=[],
+  destinationHubs=[],
 }:{
   mode:'create'|'edit'
   users:UserOption[]
@@ -89,6 +127,7 @@ export function OrderEditorForm({
   skuCatalog?:SkuCatalogItem[]
   voucherTypes?:string[]
   voucherTags?:string[]
+  destinationHubs?:DestinationHubConfig[]
 }){
   const selectableUsers=useMemo(
     ()=>users.filter(u=>u.status!=='Blocked'||u.id===values.erp_user_id),
@@ -104,6 +143,13 @@ export function OrderEditorForm({
   const [carrier,setCarrier]=useState(String(values.carrier??detectCarrier(String(values.tracking_number??''))))
   const [carrierEdited,setCarrierEdited]=useState(Boolean(values.carrier))
   const [shippingService,setShippingService]=useState(values.shipping_service==='EXPRESS'?'EXPRESS':'STANDARD')
+  const [recipientAddress,setRecipientAddress]=useState(String(values.recipient_address??''))
+  const [destinationHub,setDestinationHub]=useState(String(values.destination_hub??''))
+  const [derivedArea,setDerivedArea]=useState(String(values.area??''))
+  const [derivedRegion,setDerivedRegion]=useState(
+    destinationHubs.find(h=>h.hub_code===values.destination_hub)?.region??''
+  )
+  const [quickProductText,setQuickProductText]=useState('')
   const action=mode==='create'?createOrder:updateOrder
   const skuMap=useMemo(()=>{
     const map=new Map<string,SkuCatalogItem>()
@@ -120,6 +166,10 @@ export function OrderEditorForm({
   const voucherTagOptions=useMemo(
     ()=>[...new Set([...voucherTags,...initialVouchers.map(v=>String(v.voucher_tag??'')).filter(Boolean)])],
     [voucherTags,initialVouchers]
+  )
+  const sortedHubs=useMemo(
+    ()=>[...destinationHubs].sort((a,b)=>Number(a.priority??100)-Number(b.priority??100)||a.hub_code.localeCompare(b.hub_code,'vi')),
+    [destinationHubs]
   )
 
   const selectedUser=selectableUsers.find(u=>u.id===selectedUserId)??null
@@ -163,10 +213,120 @@ export function OrderEditorForm({
     setVouchers(current=>current.map((voucher,i)=>i===index?{...voucher,...patch}:voucher))
   }
 
+  function resolveDestination(address:string){
+    const normalized=normalizeText(address)
+    if(!normalized){
+      setDerivedArea('')
+      setDerivedRegion('')
+      setDestinationHub('')
+      return
+    }
+
+    const provinceMatches=sortedHubs.filter(h=>containsKeyword(normalized,h.province_keywords))
+    const districtMatches=sortedHubs
+      .map(h=>({
+        hub:h,
+        score:
+          (containsKeyword(normalized,h.district_keywords)?100:0)+
+          (containsKeyword(normalized,h.address_keywords)?60:0)+
+          (containsKeyword(normalized,h.province_keywords)?20:0)-
+          Math.min(Number(h.priority??100),99)/100,
+      }))
+      .filter(x=>x.score>=60)
+      .sort((a,b)=>b.score-a.score)
+
+    const bestHub=districtMatches[0]?.hub??null
+    const bestArea=bestHub??provinceMatches[0]??null
+
+    setDerivedArea(bestArea?.area??'')
+    setDerivedRegion(bestArea?.region??'')
+    setDestinationHub(bestHub?.hub_code??'')
+  }
+
+  function onAddressChange(value:string){
+    setRecipientAddress(value)
+    resolveDestination(value)
+  }
+
+  function selectDestinationHub(value:string){
+    setDestinationHub(value)
+    const hub=sortedHubs.find(x=>x.hub_code===value)
+    if(hub){
+      setDerivedArea(hub.area)
+      setDerivedRegion(hub.region)
+    }
+  }
+
+  function parseQuickProductLine(line:string){
+    const item:Item=emptyItem()
+    const parts=line.split(/\t|\||;/).map(x=>x.trim()).filter(Boolean)
+    const free:string[]=[]
+
+    for(const part of parts){
+      const normalized=normalizeText(part)
+      let m:RegExpMatchArray|null
+      if((m=part.match(/^\s*sku\s*[:\-=]?\s*(.+)$/i))){item.sku=m[1].trim();continue}
+      if((m=part.match(/^\s*(?:sl|qty|so luong|số lượng)\s*[:\-=]?\s*(\d+)/i))){item.quantity=Math.max(1,Number(m[1]));continue}
+      if((m=part.match(/^\s*(?:phan loai|phân loại|variant|mau|màu|size)\s*[:\-=]?\s*(.+)$/i))){item.variant=m[1].trim();continue}
+      if((m=part.match(/^\s*(?:ten sp|tên sp|ten san pham|tên sản phẩm|san pham|sản phẩm)\s*[:\-=]?\s*(.+)$/i))){item.product_name=m[1].trim();continue}
+      if((m=part.match(/^\s*(?:gia goc|giá gốc|original)\s*[:\-=]?\s*(.+)$/i))){item.original_price=parseNumberToken(m[1]);continue}
+      if((m=part.match(/^\s*(?:gia sau giam|giá sau giảm|gia ban|giá bán|final|price|gia|giá)\s*[:\-=]?\s*(.+)$/i))){item.final_price=parseNumberToken(m[1]);continue}
+      if(/^\d+$/.test(normalized.replace(/ /g,''))){free.push(part);continue}
+      free.push(part)
+    }
+
+    if(!item.sku){
+      const known=free.find(x=>skuMap.has(x.trim().toUpperCase()))
+      if(known){
+        item.sku=known
+        free.splice(free.indexOf(known),1)
+      }else if(free[0]&&/^[A-Za-z0-9._-]{3,40}$/.test(free[0])){
+        item.sku=free.shift()
+      }
+    }
+
+    const numeric=free.filter(x=>/^\s*[\d.,]+\s*$/.test(x))
+    const textParts=free.filter(x=>!/^\s*[\d.,]+\s*$/.test(x))
+    if(!item.product_name&&textParts.length)item.product_name=textParts.shift()
+    if(!item.variant&&textParts.length)item.variant=textParts.join(' · ')
+
+    if(item.quantity==null&&numeric.length&&Number(String(numeric[0]).replace(/\D/g,''))<=100){
+      item.quantity=Math.max(1,Number(String(numeric.shift()).replace(/\D/g,''))||1)
+    }
+    if(item.original_price==null&&numeric.length)item.original_price=parseNumberToken(numeric.shift()??'')
+    if(item.final_price==null&&numeric.length)item.final_price=parseNumberToken(numeric.shift()??'')
+
+    const matched=item.sku?skuMap.get(String(item.sku).trim().toUpperCase()):null
+    if(matched){
+      item.product_name=item.product_name||matched.product_name||''
+      item.variant=item.variant||matched.variant||''
+      item.original_price=item.original_price||matched.original_price||''
+      item.final_price=item.final_price||matched.final_price||''
+    }
+
+    item.quantity=item.quantity??1
+    return item
+  }
+
+  function recognizeQuickProducts(){
+    const parsed=quickProductText
+      .split(/\n+/)
+      .map(line=>line.trim())
+      .filter(Boolean)
+      .map(parseQuickProductLine)
+      .filter(item=>item.sku||item.product_name)
+
+    if(!parsed.length)return
+    const currentIsBlank=items.length===1&&!items[0].sku&&!items[0].product_name
+    setItems(currentIsBlank?parsed:[...items,...parsed])
+    setQuickProductText('')
+  }
+
   return <form action={action} className="panel-form panel-scroll order-editor">
     <input type="hidden" name="return_query" value={returnQuery}/>
     <input type="hidden" name="erp_user_id" value={selectedUserId}/>
     <input type="hidden" name="shipping_service" value={shippingService}/>
+    <input type="hidden" name="area" value={derivedArea}/>
     {mode==='edit'&&<input type="hidden" name="order_id" value={values.id}/>}
 
     <section className="form-section">
@@ -246,7 +406,12 @@ export function OrderEditorForm({
             placeholder="Tự nhận diện, có thể sửa"
           />
         </label>
-        <label>Kho đích<input name="destination_hub" defaultValue={values.destination_hub??''}/></label>
+        <label>Kho đích
+          <select name="destination_hub" value={destinationHub} onChange={e=>selectDestinationHub(e.target.value)}>
+            <option value="">— Tự nhận diện / Chưa xác định —</option>
+            {sortedHubs.map(h=><option key={h.id} value={h.hub_code}>{h.hub_code}</option>)}
+          </select>
+        </label>
       </div>
 
       <div className="shipping-service-picker">
@@ -266,11 +431,33 @@ export function OrderEditorForm({
         <label>Tên người nhận<input name="recipient_name" defaultValue={values.recipient_name??''}/></label>
         <label>SĐT người nhận<input name="recipient_phone" defaultValue={values.recipient_phone??''}/></label>
       </div>
-      <label>Địa chỉ nhận<textarea name="recipient_address" rows={3} defaultValue={values.recipient_address??''}/></label>
+      <label>Địa chỉ nhận
+        <textarea
+          name="recipient_address"
+          rows={3}
+          value={recipientAddress}
+          onChange={e=>onAddressChange(e.target.value)}
+          placeholder="Nhập đầy đủ quận/huyện, tỉnh/thành để tự nhận diện kho đích"
+        />
+      </label>
+      <div className="address-routing-strip">
+        <div><span>Khu vực</span><b>{derivedArea||'Chưa xác định'}</b></div>
+        <div><span>Miền</span><b>{derivedRegion||'Chưa xác định'}</b></div>
+        <div><span>Kho đích</span><b>{destinationHub||'Chưa đủ dữ liệu để nhận diện'}</b></div>
+      </div>
     </section>
 
     <section className="form-section">
       <div className="form-section-head"><h3>Sản phẩm</h3><button type="button" className="mini-add" onClick={()=>setItems(v=>[...v,emptyItem()])}>+ Thêm dòng</button></div>
+      <div className="quick-product-parser">
+        <textarea
+          rows={2}
+          value={quickProductText}
+          onChange={e=>setQuickProductText(e.target.value)}
+          placeholder="Nhập nhanh: SKU123 | Áo thun nam | Đen XL | SL 2 | Giá gốc 199000 | Giá 149000. Có thể dán nhiều dòng."
+        />
+        <button type="button" className="button small" disabled={!quickProductText.trim()} onClick={recognizeQuickProducts}>Nhận diện</button>
+      </div>
       <div className="repeat-stack">
         {items.map((item,i)=>{
           const matched=Boolean(item.sku&&skuMap.has(String(item.sku).trim().toUpperCase()))
