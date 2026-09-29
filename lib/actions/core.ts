@@ -288,8 +288,29 @@ export async function updateOrder(formData:FormData){
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data)}))
 }
 
+function normalizeRoutingKeyword(value:string){
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/đ/g,'d')
+    .replace(/Đ/g,'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g,' ')
+    .trim()
+}
+
 function keywordList(v:FormDataEntryValue|null){
-  return text(v).split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean)
+  const seen=new Set<string>()
+  return text(v)
+    .split(/[\n,;]+/)
+    .map(x=>x.trim())
+    .filter(Boolean)
+    .filter(value=>{
+      const key=normalizeRoutingKeyword(value)
+      if(!key||seen.has(key))return false
+      seen.add(key)
+      return true
+    })
 }
 
 export async function saveDestinationHubConfig(formData:FormData){
@@ -309,7 +330,7 @@ export async function saveDestinationHubConfig(formData:FormData){
     area,
     region,
     province_keywords:keywordList(formData.get('province_keywords')),
-    district_keywords:keywordList(formData.get('district_keywords')),
+    district_keywords:keywordList(formData.get('ward_keywords')??formData.get('district_keywords')),
     address_keywords:keywordList(formData.get('address_keywords')),
     priority:Number.isFinite(priorityRaw)?Math.max(0,Math.round(priorityRaw)):100,
     is_active:formData.get('is_active')==='on',
