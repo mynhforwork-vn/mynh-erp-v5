@@ -3,7 +3,7 @@ import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 
-type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'
+type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
 type SP={range?:RangeKey,from?:string,to?:string}
 
 const HOUR=60*60*1000
@@ -63,6 +63,7 @@ function resolveRange(sp:SP){
     from=ymd(p.year,qStart,1);label='Quý này'
   }
   if(key==='year'){from=ymd(p.year,1,1);label='Năm nay'}
+  if(key==='all'){from='1970-01-01';to='9999-12-31';label='Toàn thời gian'}
   if(key==='custom'){
     from=/^\d{4}-\d{2}-\d{2}$/.test(sp.from??'')?String(sp.from):today
     to=/^\d{4}-\d{2}-\d{2}$/.test(sp.to??'')?String(sp.to):today
@@ -182,6 +183,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       from={range.from}
       to={range.to}
       label={range.label}
+      showAll
     />
 
     {error&&<div className="error-box">Không thể tải dữ liệu mua hàng: {error.message}</div>}
