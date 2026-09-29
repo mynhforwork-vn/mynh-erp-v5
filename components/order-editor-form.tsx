@@ -259,20 +259,52 @@ export function OrderEditorForm({
 
   function parseQuickProductLine(line:string){
     const item:Item=emptyItem()
-    const parts=line.split(/\t|\||;/).map(x=>x.trim()).filter(Boolean)
+    const raw=line.trim()
+
+    const labeledSku=raw.match(/(?:^|\s)sku\s*[:=\-]?\s*([A-Za-z0-9._-]{2,60})/i)
+    const labeledQty=raw.match(/(?:^|\s)(?:sl|qty|số lượng|so luong)\s*[:=\-]?\s*(\d+)/i)
+    const labeledOriginal=raw.match(/(?:giá gốc|gia goc|original)\s*[:=\-]?\s*([\d.,]+)/i)
+    const labeledFinal=raw.match(/(?:giá sau giảm|gia sau giam|giá bán|gia ban|final|price)\s*[:=\-]?\s*([\d.,]+)/i)
+    const labeledName=raw.match(/(?:tên sản phẩm|ten san pham|tên sp|ten sp|sản phẩm|san pham)\s*[:=\-]?\s*(.+?)(?=\s+(?:phân loại|phan loai|variant|màu|mau|size|sl|qty|số lượng|so luong|giá gốc|gia goc|giá sau giảm|gia sau giam|giá bán|gia ban|final|price)\b|$)/i)
+    const labeledVariant=raw.match(/(?:phân loại|phan loai|variant|màu|mau|size)\s*[:=\-]?\s*(.+?)(?=\s+(?:sl|qty|số lượng|so luong|giá gốc|gia goc|giá sau giảm|gia sau giam|giá bán|gia ban|final|price)\b|$)/i)
+
+    if(labeledSku)item.sku=labeledSku[1].trim()
+    if(labeledQty)item.quantity=Math.max(1,Number(labeledQty[1]))
+    if(labeledOriginal)item.original_price=parseNumberToken(labeledOriginal[1])
+    if(labeledFinal)item.final_price=parseNumberToken(labeledFinal[1])
+    if(labeledName)item.product_name=labeledName[1].trim()
+    if(labeledVariant)item.variant=labeledVariant[1].trim()
+
+    const parts=raw.split(/\t|\||;/).map(x=>x.trim()).filter(Boolean)
     const free:string[]=[]
 
     for(const part of parts){
-      const normalized=normalizeText(part)
       let m:RegExpMatchArray|null
-      if((m=part.match(/^\s*sku\s*[:\-=]?\s*(.+)$/i))){item.sku=m[1].trim();continue}
-      if((m=part.match(/^\s*(?:sl|qty|so luong|số lượng)\s*[:\-=]?\s*(\d+)/i))){item.quantity=Math.max(1,Number(m[1]));continue}
-      if((m=part.match(/^\s*(?:phan loai|phân loại|variant|mau|màu|size)\s*[:\-=]?\s*(.+)$/i))){item.variant=m[1].trim();continue}
-      if((m=part.match(/^\s*(?:ten sp|tên sp|ten san pham|tên sản phẩm|san pham|sản phẩm)\s*[:\-=]?\s*(.+)$/i))){item.product_name=m[1].trim();continue}
-      if((m=part.match(/^\s*(?:gia goc|giá gốc|original)\s*[:\-=]?\s*(.+)$/i))){item.original_price=parseNumberToken(m[1]);continue}
-      if((m=part.match(/^\s*(?:gia sau giam|giá sau giảm|gia ban|giá bán|final|price|gia|giá)\s*[:\-=]?\s*(.+)$/i))){item.final_price=parseNumberToken(m[1]);continue}
-      if(/^\d+$/.test(normalized.replace(/ /g,''))){free.push(part);continue}
-      free.push(part)
+      if((m=part.match(/^\s*sku\s*[:\-=]?\s*(.+)$/i))){
+        if(!item.sku)item.sku=m[1].trim().split(/\s+/)[0]
+        continue
+      }
+      if((m=part.match(/^\s*(?:sl|qty|so luong|số lượng)\s*[:\-=]?\s*(\d+)/i))){
+        if(item.quantity==null)item.quantity=Math.max(1,Number(m[1]))
+        continue
+      }
+      if((m=part.match(/^\s*(?:phan loai|phân loại|variant|mau|màu|size)\s*[:\-=]?\s*(.+)$/i))){
+        if(!item.variant)item.variant=m[1].trim()
+        continue
+      }
+      if((m=part.match(/^\s*(?:ten sp|tên sp|ten san pham|tên sản phẩm|san pham|sản phẩm)\s*[:\-=]?\s*(.+)$/i))){
+        if(!item.product_name)item.product_name=m[1].trim()
+        continue
+      }
+      if((m=part.match(/^\s*(?:gia goc|giá gốc|original)\s*[:\-=]?\s*(.+)$/i))){
+        if(item.original_price==null)item.original_price=parseNumberToken(m[1])
+        continue
+      }
+      if((m=part.match(/^\s*(?:gia sau giam|giá sau giảm|gia ban|giá bán|final|price|gia|giá)\s*[:\-=]?\s*(.+)$/i))){
+        if(item.final_price==null)item.final_price=parseNumberToken(m[1])
+        continue
+      }
+      if(parts.length>1)free.push(part)
     }
 
     if(!item.sku){
