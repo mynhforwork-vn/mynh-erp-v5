@@ -9,7 +9,7 @@ import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import { PurchaseOrderTable } from '@/components/purchase-order-table'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
-type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string}
+type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,user?:string}
 
 const HOUR=60*60*1000
 const DAY=24*HOUR
@@ -99,9 +99,9 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
   const [{data,error},{data:userOptions}]=await Promise.all([
     supabase.from('orders').select(
-      'id,shopee_order_id,erp_user_id,order_date,area,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
+      'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
     ).gte('order_date',range.start).lte('order_date',range.end).order('order_date',{ascending:false}).limit(1000),
-    supabase.from('erp_users').select('id,username').order('username').limit(500)
+    supabase.from('erp_users').select('id,username,phone,status').order('username').limit(1000)
   ])
 
   const dateRows=(data??[]) as any[]
@@ -159,7 +159,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   if(sp.order){
     const [od,it,vo]=await Promise.all([
       supabase.from('orders').select(
-        'id,shopee_order_id,erp_user_id,order_date,area,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)'
+        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)'
       ).eq('id',sp.order).maybeSingle(),
       supabase.from('order_items').select('*').eq('order_id',sp.order).order('created_at'),
       supabase.from('order_vouchers').select('*').eq('order_id',sp.order).order('created_at')
@@ -263,7 +263,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
           <OrderEditorForm
             mode="create"
             users={(userOptions??[]) as any[]}
-            values={{order_status:'PENDING',payment_status:'UNPAID',cod:0}}
+            values={{erp_user_id:sp.user??'',order_status:'PENDING',payment_status:'UNPAID',shipping_service:'STANDARD',cod:0}}
             cancelHref={listHref({mode:null})}
             returnQuery={returnQuery}
           />
@@ -289,10 +289,10 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               cod:detail.cod,
               order_status:detail.order_status,
               payment_status:detail.payment_status,
+              shipping_service:detail.shipping_service,
               recipient_name:detail.recipient_name,
               recipient_phone:detail.recipient_phone,
               recipient_address:detail.recipient_address,
-              area:detail.area,
               destination_hub:detail.destination_hub,
             }}
             initialItems={items}
@@ -321,10 +321,10 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               <div className="detail-grid">
                 <div><span>Username</span><b>{detail.erp_users?.username??'—'}</b></div>
                 <div><span>Ngày đặt</span><b>{formatDateTime(detail.order_date)}</b></div>
-                <div><span>Trạng thái đơn</span><b>{statusLabel(detail.order_status)}</b></div>
+                <div><span>Trạng thái đơn</span><b>{currentShip?.tracking_number?statusLabel(currentShip.current_tracking_status):'Đang chờ duyệt · Chờ mã vận đơn'}</b></div>
                 <div><span>Thanh toán</span><b>{statusLabel(detail.payment_status)}</b></div>
                 <div><span>COD</span><b>{formatMoney(detail.cod)}</b></div>
-                <div><span>Khu vực</span><b>{detail.area??'—'}</b></div>
+                <div><span>Dịch vụ</span><b>{detail.shipping_service==='EXPRESS'?'Hỏa tốc':'Tiêu chuẩn'}</b></div>
                 <div><span>Người nhận</span><b>{detail.recipient_name??'—'}</b></div>
                 <div><span>Số điện thoại</span><b>{formatPhone(detail.recipient_phone)}</b></div>
                 <div className="full"><span>Địa chỉ nhận</span><b>{detail.recipient_address??'—'}</b></div>
