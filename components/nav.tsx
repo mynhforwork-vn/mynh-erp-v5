@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 
 type IconName=
   |'home'|'dashboard'|'account'|'orders'|'alert'
@@ -65,13 +65,31 @@ const groups:Group[]=[
 
 export function Nav(){
   const pathname=usePathname()
+  const searchParams=useSearchParams()
+
+  function contextualHref(href:string){
+    if(!href.startsWith('/purchase'))return href
+    if(!pathname.startsWith('/purchase'))return href
+
+    const p=new URLSearchParams()
+    const range=searchParams.get('range')
+    const from=searchParams.get('from')
+    const to=searchParams.get('to')
+    if(range)p.set('range',range)
+    if(range==='custom'&&from)p.set('from',from)
+    if(range==='custom'&&to)p.set('to',to)
+
+    const qs=p.toString()
+    return href+(qs?'?'+qs:'')
+  }
+
   return <nav className="nav" aria-label="Điều hướng chính">
     {groups.map(group=><section className="nav-group" key={group.label}>
       <div className="nav-section-label">{group.label}</div>
       <div className="nav-group-items">
         {group.items.map(item=>{
           const active=item.exact?pathname===item.href:pathname===item.href||pathname.startsWith(item.href+'/')
-          return <Link key={item.href} href={item.href} className={active?'active':''}>
+          return <Link key={item.href} href={contextualHref(item.href)} className={active?'active':''}>
             <span className="nav-icon"><NavIcon name={item.icon}/></span>
             <span>{item.label}</span>
           </Link>
