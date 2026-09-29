@@ -30,32 +30,25 @@ export default async function SettingsPage(){
 
   const error=hubError??shipperError??assignmentError
 
-  return <div className="settings-screen">
-    <header className="page-head">
+  return <div className="settings-screen settings-screen-v3">
+    <header className="page-head settings-page-head">
       <div>
         <span className="module-eyebrow">HỆ THỐNG</span>
         <h1>Cài đặt hệ thống</h1>
-        <p>Cấu hình dùng chung cho các module nghiệp vụ.</p>
+        <p>Cấu hình dùng chung cho vận hành MYNH ERP.</p>
       </div>
     </header>
 
     {error&&<div className="error-box">Không thể tải cấu hình hệ thống: {error.message}</div>}
 
-    <section className="settings-category-bar">
-      <span className="active">HUB kho đích & Shipper</span>
-      <span>Tài khoản & phân quyền</span>
-      <span>Tích hợp</span>
-      <span>Thông báo</span>
-    </section>
+    <nav className="settings-page-tabs-v3" aria-label="Nhóm cài đặt">
+      <button type="button" className="active">Kho đích & Shipper</button>
+      <button type="button" disabled>Tài khoản & phân quyền</button>
+      <button type="button" disabled>Tích hợp</button>
+      <button type="button" disabled>Thông báo</button>
+    </nav>
 
-    <section className="card system-settings-card">
-      <div className="card-head">
-        <div>
-          <h2>HUB kho đích & Shipper</h2>
-          <span className="muted">HUB là cấp quản lý chính. Mỗi HUB có nhiều Phường/Xã và nhiều Shipper phụ trách.</span>
-        </div>
-      </div>
-
+    <section className="settings-workspace-v3">
       <DestinationHubSettings
         configs={configs}
         shippers={(shipperRows??[]) as any[]}
