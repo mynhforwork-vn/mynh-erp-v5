@@ -5299,3 +5299,242 @@ a{text-decoration:none}
     grid-row:auto;
   }
 }
+
+
+/* =====================================================================
+   Viewport workspace / inner-scroll pass
+   Prevent page + modal + table from creating stacked outer scrollbars.
+   ===================================================================== */
+
+/* System settings page: keep the ERP shell fixed, scroll only data panes. */
+.settings-screen{
+  height:calc(100vh - 44px);
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.settings-screen>.page-head,
+.settings-screen>.error-box,
+.settings-screen>.settings-category-bar{
+  flex:0 0 auto;
+}
+.settings-screen>.system-settings-card{
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.settings-screen>.system-settings-card>.card-head{
+  flex:0 0 auto;
+}
+.settings-screen>.system-settings-card>.destination-settings.redesigned{
+  flex:1 1 auto;
+  min-height:0;
+  display:grid;
+  grid-template-rows:minmax(250px,1.7fr) minmax(170px,.8fr);
+  overflow:hidden;
+}
+.settings-screen .destination-settings-section{
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.settings-screen .destination-settings-head{
+  flex:0 0 auto;
+}
+.settings-screen .destination-hub-list{
+  flex:1 1 auto;
+  min-height:0;
+  max-height:none!important;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+}
+.settings-screen .destination-shipper-list-v2{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  overscroll-behavior:contain;
+}
+
+/* Destination HUB modal: modal itself never scrolls; its two data panes do. */
+.settings-modal-backdrop{
+  overflow:hidden;
+  overscroll-behavior:none;
+}
+.settings-modal.destination-hub-modal{
+  max-height:calc(100vh - 28px);
+}
+.settings-modal.destination-hub-modal .settings-modal-head{
+  flex:0 0 auto;
+}
+.settings-modal.destination-hub-modal .settings-modal-scroll{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden!important;
+  overscroll-behavior:none;
+}
+.settings-modal.destination-hub-modal .destination-settings.redesigned{
+  height:100%;
+  min-height:0;
+  display:grid;
+  grid-template-rows:minmax(260px,1.65fr) minmax(180px,.8fr);
+  overflow:hidden;
+}
+.settings-modal.destination-hub-modal .destination-settings-section{
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.settings-modal.destination-hub-modal .destination-settings-head{
+  flex:0 0 auto;
+}
+.settings-modal.destination-hub-modal .destination-hub-list{
+  flex:1 1 auto;
+  min-height:0;
+  max-height:none!important;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+}
+.settings-modal.destination-hub-modal .destination-shipper-list-v2{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  overscroll-behavior:contain;
+}
+.settings-modal.destination-hub-modal .destination-create-form{
+  max-height:calc(100vh - 150px);
+  overscroll-behavior:contain;
+}
+
+/* Tracking console: fixed command area + one main operational scroll pane. */
+.tracking-screen{
+  height:calc(100vh - 44px);
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.tracking-screen>*{
+  flex:0 0 auto;
+}
+.tracking-screen>.page-head{
+  margin-bottom:7px;
+}
+.tracking-screen>.tracking-command-kpis{
+  margin-bottom:6px;
+}
+.tracking-screen>.tracking-receive-focus{
+  margin-bottom:6px;
+}
+.tracking-screen>.tracking-console-toolbar{
+  margin-bottom:6px;
+}
+.tracking-screen>.tracking-hub-stack{
+  flex:1 1 auto;
+  min-height:110px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  padding-right:3px;
+}
+.tracking-screen .tracking-hub-card{
+  max-width:100%;
+  overflow:hidden;
+}
+.tracking-screen .tracking-hub-table-wrap{
+  max-width:100%;
+  overflow:auto;
+  overscroll-behavior:contain;
+}
+.tracking-screen>.tracking-bottom-grid{
+  flex:0 0 142px;
+  min-height:0;
+  max-height:142px;
+  margin-top:6px;
+  overflow:hidden;
+}
+.tracking-screen>.tracking-bottom-grid>.card{
+  min-height:0;
+  height:142px;
+  overflow:auto;
+  overscroll-behavior:contain;
+}
+.tracking-screen>.tracking-bottom-grid>.card>.card-head{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:#fff;
+}
+
+/* Keep filter controls inside the viewport instead of widening the page. */
+.tracking-screen .tracking-console-toolbar.redesigned{
+  max-width:100%;
+  min-width:0;
+  flex-wrap:wrap;
+}
+.tracking-screen .tracking-console-title{
+  min-width:150px;
+}
+.tracking-screen .tracking-filter-segments{
+  flex:1 1 auto;
+  min-width:260px;
+}
+.tracking-screen .tracking-date-filter{
+  flex:0 1 auto;
+  min-width:0;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+/* Prevent expanded HUB editors from pushing an outer page scrollbar. */
+.destination-hub-card-v2[open]{
+  overflow:visible;
+}
+.destination-hub-editor{
+  min-width:0;
+}
+.destination-hub-editor form{
+  min-width:0;
+}
+
+@media(max-height:820px){
+  .tracking-screen>.tracking-bottom-grid{
+    flex-basis:118px;
+    max-height:118px;
+  }
+  .tracking-screen>.tracking-bottom-grid>.card{
+    height:118px;
+  }
+  .tracking-screen>.tracking-hub-stack{
+    min-height:90px;
+  }
+  .settings-screen>.system-settings-card>.destination-settings.redesigned,
+  .settings-modal.destination-hub-modal .destination-settings.redesigned{
+    grid-template-rows:minmax(220px,1.7fr) minmax(145px,.75fr);
+  }
+}
+
+
+/* Allow the Add HUB editor to float over the two internal panes without
+   reopening outer page scrolling. */
+.settings-screen .destination-hub-manager,
+.settings-modal.destination-hub-modal .destination-hub-manager{
+  position:relative;
+  z-index:10;
+  overflow:visible!important;
+}
+.settings-screen .destination-settings-section:not(.destination-hub-manager),
+.settings-modal.destination-hub-modal .destination-settings-section:not(.destination-hub-manager){
+  position:relative;
+  z-index:1;
+}
+.settings-screen .destination-settings.redesigned,
+.settings-modal.destination-hub-modal .destination-settings.redesigned{
+  overflow:visible;
+}
