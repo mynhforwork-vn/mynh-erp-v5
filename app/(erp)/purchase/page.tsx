@@ -305,7 +305,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
                   <td>{x.delivered}</td>
                   <td><b className={x.waiting?'warning-text':''}>{x.waiting}</b></td>
                   <td>{x.received}</td>
-                  <td><Link className="table-link" href={purchaseHref('/purchase/tracking',{hub:x.name,status:x.waiting?'DELIVERED':null,receive:x.waiting?'WAITING_RECEIVE':null})}>Xử lý</Link></td>
+                  <td><Link className="table-link" href={purchaseHref('/purchase/tracking',{hub:x.name==='Chưa xác định'?null:x.name,status:x.waiting?'DELIVERED':null,receive:x.waiting?'WAITING_RECEIVE':null})}>Xử lý</Link></td>
                 </tr>
               })}
             </tbody>
