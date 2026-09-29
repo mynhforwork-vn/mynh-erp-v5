@@ -3856,3 +3856,125 @@ a{text-decoration:none}
   font-size:6.3px;
   white-space:nowrap;
 }
+
+
+/* Destination hub settings live in Purchase Orders */
+.destination-hub-panel{
+  width:382px;
+  min-width:382px;
+}
+.destination-hub-panel-intro{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  padding:7px 9px;
+  border-bottom:1px solid #E7ECF1;
+  background:#F8FAFC;
+}
+.destination-hub-panel-intro>b{
+  color:#405268;
+  font-size:8px;
+}
+.destination-hub-panel-intro>span{
+  color:#8994A2;
+  font-size:6.8px;
+  line-height:1.35;
+}
+.destination-hub-panel-scroll{
+  padding:7px!important;
+}
+.destination-hub-config-list{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.destination-hub-config-card{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  padding:7px;
+  border:1px solid #E1E7ED;
+  border-radius:6px;
+  background:#fff;
+}
+.destination-hub-config-card label{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  color:#788697;
+  font-size:6.8px;
+  font-weight:650;
+}
+.destination-hub-config-card input,
+.destination-hub-config-card select{
+  width:100%;
+  min-width:0;
+  height:27px;
+  padding:0 6px;
+  border:1px solid #D9E2EA;
+  border-radius:4px;
+  background:#fff;
+  color:#415268;
+  font-size:7.3px;
+  outline:none;
+}
+.destination-hub-config-card input:focus,
+.destination-hub-config-card select:focus{
+  border-color:#A8BACB;
+  box-shadow:0 0 0 2px rgba(54,80,114,.05);
+}
+.destination-hub-config-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding-bottom:4px;
+  border-bottom:1px solid #EEF1F4;
+}
+.destination-hub-config-title>div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.destination-hub-config-title b{
+  overflow:hidden;
+  color:#33485F;
+  font-size:8px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.destination-hub-config-title span{
+  color:#8C97A5;
+  font-size:6.5px;
+}
+.destination-hub-config-card .config-toggle{
+  flex:0 0 auto;
+  flex-direction:row;
+  align-items:center;
+  gap:4px;
+  color:#68798D;
+}
+.destination-hub-config-card .config-toggle input{
+  width:11px;
+  height:11px;
+  margin:0;
+  accent-color:#365072;
+}
+.destination-hub-config-actions{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding-top:1px;
+}
+.destination-hub-config-actions>span{
+  color:#909AA7;
+  font-size:6.5px;
+}
+.destination-hub-config-new{
+  margin-top:7px;
+  border-style:dashed;
+  background:#F8FAFC;
+}
