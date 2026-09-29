@@ -7,7 +7,7 @@ import { CopyOrderButton } from '@/components/copy-order-button'
 import { OrderEditorForm } from '@/components/order-editor-form'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import { PurchaseOrderTable } from '@/components/purchase-order-table'
-import { DestinationHubConfigPanel } from '@/components/destination-hub-config-panel'
+import { DestinationHubConfigModal } from '@/components/destination-hub-config-panel'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
 type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,user?:string,settings?:string}
@@ -98,7 +98,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const range=resolveRange(sp)
   const queryText=String(sp.q??'').trim().toLowerCase()
 
-  const [{data,error},{data:userOptions},{data:recentSkuRows},{data:voucherCatalogRows},{data:destinationHubRows}]=await Promise.all([
+  const [{data,error},{data:userOptions},{data:recentSkuRows},{data:voucherCatalogRows},{data:destinationHubRows},{data:destinationShippers},{data:hubShipperAssignments}]=await Promise.all([
     supabase.from('orders').select(
       'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
     ).gte('order_date',range.start).lte('order_date',range.end).order('order_date',{ascending:false}).limit(1000),
@@ -113,10 +113,18 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       .order('created_at',{ascending:false})
       .limit(3000),
     supabase.from('destination_hub_configs')
-      .select('id,hub_code,area,region,province_keywords,district_keywords,address_keywords,shipper_name,shipper_phone,priority,is_active')
+      .select('id,hub_code,area,region,province_keywords,district_keywords,address_keywords,priority,is_active')
       .order('priority',{ascending:true})
       .order('hub_code',{ascending:true})
-      .limit(500)
+      .limit(500),
+    supabase.from('destination_shippers')
+      .select('id,name,phone,note,is_active')
+      .order('name',{ascending:true})
+      .limit(500),
+    supabase.from('destination_hub_shipper_assignments')
+      .select('hub_config_id,shipper_id,priority,is_active')
+      .order('priority',{ascending:true})
+      .limit(2000)
   ])
 
   const latestSkuMap=new Map<string,any>()
@@ -135,8 +143,23 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const skuCatalog=[...latestSkuMap.values()]
   const voucherTypes=[...new Set((voucherCatalogRows??[]).map((x:any)=>String(x.voucher_type??'').trim()).filter(Boolean))]
   const voucherTags=[...new Set((voucherCatalogRows??[]).map((x:any)=>String(x.voucher_tag??'').trim()).filter(Boolean))]
-  const destinationHubConfigs=(destinationHubRows??[]) as any[]
-  const destinationHubs=destinationHubConfigs.filter((x:any)=>x.is_active)
+  const assignmentRows=(hubShipperAssignments??[]) as any[]
+  const destinationHubConfigs=((destinationHubRows??[]) as any[]).map((hub:any)=>({
+    ...hub,
+    shipper_ids:assignmentRows
+      .filter((a:any)=>a.hub_config_id===hub.id&&a.is_active)
+      .map((a:any)=>a.shipper_id),
+  }))
+  const destinationShipperRows=(destinationShippers??[]) as any[]
+  const shipperMap=new Map(destinationShipperRows.map((s:any)=>[s.id,s]))
+  const destinationHubs=destinationHubConfigs
+    .filter((x:any)=>x.is_active)
+    .map((hub:any)=>({
+      ...hub,
+      assigned_shippers:(hub.shipper_ids??[])
+        .map((id:string)=>shipperMap.get(id))
+        .filter((x:any)=>x?.is_active),
+    }))
 
   const dateRows=(data??[]) as any[]
   const rows=dateRows.filter((o:any)=>{
@@ -221,7 +244,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const createMode=sp.mode==='create'
   const editMode=Boolean(detail&&sp.mode==='edit')
   const destinationSettingsMode=sp.settings==='destination-hubs'
-  const panelOpen=createMode||Boolean(detail)||destinationSettingsMode
+  const panelOpen=createMode||Boolean(detail)
   const currentShip=activeShipment(detail)
   const detailHubConfig=detail?destinationHubs.find((x:any)=>x.hub_code===detail.destination_hub):null
   const detailTotalOriginal=items.reduce(
@@ -313,13 +336,6 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             destinationHubs={destinationHubs}
           />
         </aside>
-      }
-
-      {destinationSettingsMode&&
-        <DestinationHubConfigPanel
-          configs={destinationHubConfigs}
-          closeHref={listHref({settings:null})}
-        />
       }
 
       {detail&&editMode&&!destinationSettingsMode&&
@@ -498,5 +514,12 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         </aside>
       }
     </div>
+
+    {destinationSettingsMode&&
+      <DestinationHubConfigModal
+        configs={destinationHubConfigs}
+        shippers={destinationShipperRows}
+        closeHref={listHref({settings:null})}
+      />}
   </div>
 }
