@@ -1,6 +1,13 @@
 import Link from 'next/link'
-import { saveDestinationHubConfig } from '@/lib/actions/core'
+import { saveDestinationHubConfig, saveDestinationShipper } from '@/lib/actions/core'
 
+type Shipper={
+  id:string
+  name:string
+  phone?:string|null
+  note?:string|null
+  is_active?:boolean|null
+}
 type HubConfig={
   id:string
   hub_code:string
@@ -9,132 +16,174 @@ type HubConfig={
   province_keywords?:string[]|null
   district_keywords?:string[]|null
   address_keywords?:string[]|null
-  shipper_name?:string|null
-  shipper_phone?:string|null
+  shipper_id?:string|null
   priority?:number|null
   is_active?:boolean|null
 }
 
-export function DestinationHubConfigPanel({
+export function DestinationHubSettings({
   configs,
-  closeHref,
+  shippers,
 }:{
   configs:HubConfig[]
-  closeHref:string
+  shippers:Shipper[]
 }){
-  return <aside className="detail-panel destination-hub-panel">
-    <div className="panel-head">
-      <div>
-        <span className="eyebrow">ĐƠN NHẬP HÀNG</span>
-        <h2>Cấu hình kho đích</h2>
+  const activeShippers=shippers.filter(s=>s.is_active)
+
+  return <div className="destination-settings">
+    <section className="destination-settings-section">
+      <div className="destination-settings-head">
+        <div>
+          <h3>Hub kho đích</h3>
+          <span>Địa chỉ → Khu vực / Miền → Hub kho đích → Shipper phụ trách</span>
+        </div>
+        <span className="badge">{configs.filter(x=>x.is_active).length} đang bật</span>
       </div>
-      <Link className="close" href={closeHref}>×</Link>
-    </div>
 
-    <div className="destination-hub-panel-intro">
-      <b>Luồng tự nhận diện</b>
-      <span>Địa chỉ nhận → Khu vực / Miền → Kho đích → Shipper phụ trách</span>
-    </div>
+      <div className="destination-hub-table-wrap">
+        <div className="destination-hub-table-head">
+          <span>Hub / Khu vực</span>
+          <span>Nhận diện địa chỉ</span>
+          <span>Shipper phụ trách</span>
+          <span>Ưu tiên</span>
+          <span></span>
+        </div>
 
-    <div className="panel-scroll destination-hub-panel-scroll">
-      <div className="destination-hub-config-list">
-        {configs.map(row=><form action={saveDestinationHubConfig} className="destination-hub-config-card" key={row.id}>
-          <input type="hidden" name="config_id" value={row.id}/>
+        <div className="destination-hub-table-body">
+          {configs.map(row=><form action={saveDestinationHubConfig} className="destination-hub-row" key={row.id}>
+            <input type="hidden" name="config_id" value={row.id}/>
 
-          <div className="destination-hub-config-title">
-            <div>
-              <b>{row.hub_code}</b>
-              <span>{row.area} · {row.region}</span>
-            </div>
-            <label className="config-toggle">
-              <input type="checkbox" name="is_active" defaultChecked={Boolean(row.is_active)}/>
-              <span>Bật</span>
-            </label>
-          </div>
-
-          <div className="form-grid">
-            <label>Mã hub<input name="hub_code" defaultValue={row.hub_code} required/></label>
-            <label>Khu vực<input name="area" defaultValue={row.area} required/></label>
-          </div>
-
-          <div className="form-grid">
-            <label>Miền
-              <select name="region" defaultValue={row.region}>
+            <div className="hub-identity-fields">
+              <input name="hub_code" defaultValue={row.hub_code} required aria-label="Mã hub"/>
+              <input name="area" defaultValue={row.area} required aria-label="Khu vực"/>
+              <select name="region" defaultValue={row.region} aria-label="Miền">
                 <option value="Miền Bắc">Miền Bắc</option>
                 <option value="Miền Trung">Miền Trung</option>
                 <option value="Miền Nam">Miền Nam</option>
               </select>
-            </label>
-            <label>Ưu tiên<input name="priority" type="number" min="0" defaultValue={row.priority??100}/></label>
-          </div>
+            </div>
 
-          <label>Tỉnh / Thành
-            <input name="province_keywords" defaultValue={(row.province_keywords??[]).join(', ')} placeholder="Hà Nội, Ha Noi"/>
-          </label>
+            <div className="hub-keyword-fields">
+              <input name="province_keywords" defaultValue={(row.province_keywords??[]).join(', ')} placeholder="Tỉnh / Thành" aria-label="Tỉnh thành"/>
+              <input name="district_keywords" defaultValue={(row.district_keywords??[]).join(', ')} placeholder="Quận / Huyện / Phường" aria-label="Quận huyện phường"/>
+              <input name="address_keywords" defaultValue={(row.address_keywords??[]).join(', ')} placeholder="Từ khóa bổ sung" aria-label="Từ khóa bổ sung"/>
+            </div>
 
-          <label>Quận / Huyện
-            <input name="district_keywords" defaultValue={(row.district_keywords??[]).join(', ')} placeholder="Hai Bà Trưng, Hai Ba Trung"/>
-          </label>
+            <select name="shipper_id" defaultValue={row.shipper_id??''} aria-label="Shipper phụ trách">
+              <option value="">— Chưa gán Shipper —</option>
+              {activeShippers.map(s=><option key={s.id} value={s.id}>{s.name}{s.phone?' · '+s.phone:''}</option>)}
+            </select>
 
-          <label>Từ khóa bổ sung
-            <input name="address_keywords" defaultValue={(row.address_keywords??[]).join(', ')} placeholder="Phường / đường / khu vực đặc thù"/>
-          </label>
+            <div className="hub-priority-fields">
+              <input name="priority" type="number" min="0" defaultValue={row.priority??100} aria-label="Ưu tiên"/>
+              <label className="config-toggle">
+                <input type="checkbox" name="is_active" defaultChecked={Boolean(row.is_active)}/>
+                <span>Bật</span>
+              </label>
+            </div>
 
-          <div className="form-grid">
-            <label>Shipper phụ trách
-              <input name="shipper_name" defaultValue={row.shipper_name??''} placeholder="Tên Shipper"/>
-            </label>
-            <label>SĐT Shipper
-              <input name="shipper_phone" defaultValue={row.shipper_phone??''} placeholder="Số điện thoại"/>
-            </label>
-          </div>
+            <button className="button small" type="submit">Lưu</button>
+          </form>)}
 
-          <div className="destination-hub-config-actions">
-            <span>{row.is_active?'Đang dùng để tự nhận diện':'Đang tắt'}</span>
-            <button className="button small primary" type="submit">Lưu</button>
-          </div>
-        </form>)}
+          <form action={saveDestinationHubConfig} className="destination-hub-row destination-hub-new">
+            <div className="hub-identity-fields">
+              <input name="hub_code" placeholder="Mã hub" required/>
+              <input name="area" placeholder="Khu vực" required/>
+              <select name="region" defaultValue="Miền Bắc">
+                <option value="Miền Bắc">Miền Bắc</option>
+                <option value="Miền Trung">Miền Trung</option>
+                <option value="Miền Nam">Miền Nam</option>
+              </select>
+            </div>
+
+            <div className="hub-keyword-fields">
+              <input name="province_keywords" placeholder="Tỉnh / Thành"/>
+              <input name="district_keywords" placeholder="Quận / Huyện / Phường"/>
+              <input name="address_keywords" placeholder="Từ khóa bổ sung"/>
+            </div>
+
+            <select name="shipper_id" defaultValue="">
+              <option value="">— Chưa gán Shipper —</option>
+              {activeShippers.map(s=><option key={s.id} value={s.id}>{s.name}{s.phone?' · '+s.phone:''}</option>)}
+            </select>
+
+            <div className="hub-priority-fields">
+              <input name="priority" type="number" min="0" defaultValue="100"/>
+              <label className="config-toggle">
+                <input type="checkbox" name="is_active" defaultChecked/>
+                <span>Bật</span>
+              </label>
+            </div>
+
+            <button className="button small primary" type="submit">+ Thêm</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section className="destination-settings-section">
+      <div className="destination-settings-head">
+        <div>
+          <h3>Danh sách Shipper</h3>
+          <span>Một Shipper có thể phụ trách nhiều Hub kho đích.</span>
+        </div>
+        <span className="badge">{activeShippers.length} đang hoạt động</span>
       </div>
 
-      <form action={saveDestinationHubConfig} className="destination-hub-config-card destination-hub-config-new">
-        <div className="destination-hub-config-title">
-          <div><b>+ Thêm kho đích</b><span>Tạo rule nhận diện mới</span></div>
+      <div className="destination-shipper-grid">
+        {shippers.map(shipper=><form action={saveDestinationShipper} className="destination-shipper-card" key={shipper.id}>
+          <input type="hidden" name="shipper_id" value={shipper.id}/>
+          <div className="shipper-card-main">
+            <input name="name" defaultValue={shipper.name} placeholder="Tên Shipper" required/>
+            <input name="phone" defaultValue={shipper.phone??''} placeholder="SĐT"/>
+            <input name="note" defaultValue={shipper.note??''} placeholder="Ghi chú"/>
+          </div>
+          <label className="config-toggle">
+            <input type="checkbox" name="is_active" defaultChecked={Boolean(shipper.is_active)}/>
+            <span>Bật</span>
+          </label>
+          <button className="button small" type="submit">Lưu</button>
+        </form>)}
+
+        <form action={saveDestinationShipper} className="destination-shipper-card destination-shipper-new">
+          <div className="shipper-card-main">
+            <input name="name" placeholder="Tên Shipper mới" required/>
+            <input name="phone" placeholder="SĐT"/>
+            <input name="note" placeholder="Ghi chú"/>
+          </div>
           <label className="config-toggle">
             <input type="checkbox" name="is_active" defaultChecked/>
             <span>Bật</span>
           </label>
-        </div>
-
-        <div className="form-grid">
-          <label>Mã hub<input name="hub_code" placeholder="VD: HN-Đống Đa" required/></label>
-          <label>Khu vực<input name="area" placeholder="Hà Nội" required/></label>
-        </div>
-
-        <div className="form-grid">
-          <label>Miền
-            <select name="region" defaultValue="Miền Bắc">
-              <option value="Miền Bắc">Miền Bắc</option>
-              <option value="Miền Trung">Miền Trung</option>
-              <option value="Miền Nam">Miền Nam</option>
-            </select>
-          </label>
-          <label>Ưu tiên<input name="priority" type="number" min="0" defaultValue="100"/></label>
-        </div>
-
-        <label>Tỉnh / Thành<input name="province_keywords" placeholder="Hà Nội, Ha Noi"/></label>
-        <label>Quận / Huyện<input name="district_keywords" placeholder="Đống Đa, Dong Da"/></label>
-        <label>Từ khóa bổ sung<input name="address_keywords" placeholder="Phường / đường / từ khóa đặc thù"/></label>
-
-        <div className="form-grid">
-          <label>Shipper phụ trách<input name="shipper_name" placeholder="Tên Shipper"/></label>
-          <label>SĐT Shipper<input name="shipper_phone" placeholder="Số điện thoại"/></label>
-        </div>
-
-        <div className="destination-hub-config-actions">
-          <span>Rule mới</span>
           <button className="button small primary" type="submit">+ Thêm</button>
+        </form>
+      </div>
+    </section>
+  </div>
+}
+
+export function DestinationHubConfigModal({
+  configs,
+  shippers,
+  closeHref,
+}:{
+  configs:HubConfig[]
+  shippers:Shipper[]
+  closeHref:string
+}){
+  return <div className="settings-modal-backdrop" role="presentation">
+    <section className="settings-modal destination-hub-modal" role="dialog" aria-modal="true" aria-label="Cấu hình kho đích">
+      <div className="settings-modal-head">
+        <div>
+          <span className="eyebrow">CÀI ĐẶT HỆ THỐNG</span>
+          <h2>Kho đích & Shipper</h2>
+          <p>Xem và cấu hình theo Hub kho đích. Một Shipper có thể phụ trách nhiều Hub.</p>
         </div>
-      </form>
-    </div>
-  </aside>
+        <Link className="close" href={closeHref}>×</Link>
+      </div>
+      <div className="settings-modal-scroll">
+        <DestinationHubSettings configs={configs} shippers={shippers}/>
+      </div>
+    </section>
+  </div>
 }
