@@ -347,7 +347,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         <aside className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Thêm tài khoản</h2></div>
-            <Link className="close" href="/purchase/accounts">×</Link>
+            <Link className="close" href={contextHref('/purchase/accounts')}>×</Link>
           </div>
           <form action={createERPUser} className="panel-form panel-scroll">
             <input type="hidden" name="return_query" value={detailQuery}/>
