@@ -6420,3 +6420,448 @@ a{text-decoration:none}
   .destination-ward-layout{grid-template-columns:1fr}
   .destination-ward-list-field textarea{min-height:220px}
 }
+
+
+/* =====================================================================
+   HUB Settings V3.1 — balanced modal proportions + refined palette
+   ===================================================================== */
+.destination-master-detail{
+  --hub-ink:#233A53;
+  --hub-ink-2:#3E5268;
+  --hub-muted:#6B7B8E;
+  --hub-muted-2:#8C99A7;
+  --hub-line:#D7E0E9;
+  --hub-line-strong:#C5D1DD;
+  --hub-canvas:#F4F7FB;
+  --hub-surface:#FFFFFF;
+  --hub-blue:#356F9F;
+  --hub-blue-strong:#285B86;
+  --hub-blue-soft:#EAF2F9;
+  --hub-green:#2F8A5A;
+  --hub-green-soft:#EAF6EF;
+  --hub-amber:#C98022;
+  --hub-amber-soft:#FFF5E7;
+  --hub-red:#B95757;
+  --hub-red-soft:#FFF2F2;
+  color:var(--hub-ink);
+}
+
+/* Popup should feel like a focused tool, not a second full-screen app. */
+.settings-modal-backdrop{
+  padding:clamp(28px,5vh,52px) clamp(42px,6vw,88px);
+  background:rgba(20,31,45,.34);
+  backdrop-filter:blur(2px);
+}
+.settings-modal.destination-hub-modal-v3{
+  width:min(1220px,88vw);
+  height:min(760px,86vh);
+  min-width:980px;
+  min-height:620px;
+  max-width:1220px;
+  max-height:760px;
+  border:1px solid #C9D5E0;
+  border-radius:8px;
+  background:#F8FAFC;
+  box-shadow:
+    0 24px 64px rgba(21,35,51,.22),
+    0 2px 8px rgba(21,35,51,.08);
+}
+.settings-modal.destination-hub-modal-v3 .settings-modal-head{
+  min-height:60px;
+  padding:8px 12px 8px 14px;
+  border-bottom-color:#D6E0E9;
+  background:linear-gradient(180deg,#FFFFFF 0%,#F7F9FC 100%);
+}
+.settings-modal.destination-hub-modal-v3 .settings-modal-head .eyebrow{
+  color:#7790A8;
+  font-size:8.8px;
+  letter-spacing:.08em;
+}
+.settings-modal.destination-hub-modal-v3 .settings-modal-head h2{
+  color:#20364D;
+  font-size:16px;
+}
+.settings-modal.destination-hub-modal-v3 .settings-modal-head p{
+  color:#6B7B8E;
+  font-size:10px;
+}
+.settings-modal.destination-hub-modal-v3 .settings-modal-actions .button{
+  border-color:#CCD7E2;
+  background:#fff;
+  color:#3F5A73;
+}
+.settings-modal.destination-hub-modal-v3 .settings-modal-actions .button:hover{
+  border-color:#9FB6CA;
+  background:#F4F8FB;
+  color:#285B86;
+}
+.settings-modal.destination-hub-modal-v3 .settings-modal-head .close{
+  border-color:#D1DAE3;
+  background:#F7F9FB;
+  color:#65768A;
+}
+.settings-modal.destination-hub-modal-v3 .settings-modal-head .close:hover{
+  border-color:#B9C7D4;
+  background:#EEF3F7;
+  color:#2F455C;
+}
+
+/* Slightly tighter information architecture. */
+.destination-manager-toolbar{
+  flex-basis:46px;
+  min-height:46px;
+  padding:6px 9px;
+  border-bottom-color:var(--hub-line);
+  background:#F5F8FB;
+}
+.destination-manager-switch button{
+  min-width:142px;
+  height:32px;
+  border-radius:4px;
+  color:#607286;
+}
+.destination-manager-switch button small{
+  color:#8A98A7;
+}
+.destination-manager-switch button:hover{
+  background:#ECF2F7;
+}
+.destination-manager-switch button.active{
+  border-color:#B9CDDE;
+  background:#E6EFF7;
+  color:#244F74;
+  box-shadow:inset 0 0 0 1px rgba(53,111,159,.03);
+}
+.destination-manager-switch button.active small{
+  color:#53748F;
+}
+.destination-manager-health{
+  color:#687A8D;
+}
+.destination-manager-health i.green{background:var(--hub-green)}
+.destination-manager-health i.blue{background:var(--hub-blue)}
+
+.destination-master-grid{
+  grid-template-columns:270px minmax(0,1fr);
+  background:var(--hub-canvas);
+}
+.destination-hub-rail{
+  border-right-color:var(--hub-line);
+  background:#F2F6FA;
+}
+.destination-hub-rail-head{
+  flex-basis:56px;
+  min-height:56px;
+  padding:8px 9px;
+  border-bottom-color:var(--hub-line);
+  background:#F7F9FC;
+}
+.destination-hub-rail-head b{
+  color:var(--hub-ink);
+}
+.destination-hub-rail-head span{
+  color:var(--hub-muted);
+}
+.destination-hub-rail-head .button.primary{
+  border-color:var(--hub-blue);
+  background:var(--hub-blue);
+  color:#fff;
+}
+.destination-hub-rail-head .button.primary:hover{
+  border-color:var(--hub-blue-strong);
+  background:var(--hub-blue-strong);
+}
+.destination-hub-rail-list{
+  padding:5px 6px;
+}
+.destination-hub-rail-item{
+  min-height:54px;
+  gap:8px;
+  margin-bottom:3px;
+  padding:5px 7px 5px 5px;
+  border-radius:5px;
+}
+.destination-hub-rail-item:hover{
+  border-color:#CCD9E4;
+  background:#FDFEFF;
+}
+.destination-hub-rail-item.active{
+  border-color:#AEC6DA;
+  background:#FFFFFF;
+  box-shadow:0 2px 6px rgba(39,69,96,.06);
+}
+.destination-rail-accent{
+  height:31px;
+  background:#B5C1CD;
+}
+.destination-rail-accent.active{
+  background:linear-gradient(180deg,#4B8EC4 0%,#2E6B9B 100%);
+}
+.destination-hub-rail-copy b{
+  color:#273D54;
+}
+.destination-hub-rail-copy small{
+  color:#6E8093;
+}
+.destination-mini-state{
+  background:#E9EEF3;
+  color:#6C7C8D;
+}
+.destination-mini-state.active{
+  background:var(--hub-green-soft);
+  color:#2B7750;
+}
+
+/* Detail side gets a warmer white surface with stronger hierarchy. */
+.destination-hub-detail,
+.destination-shipper-manager{
+  background:#FCFDFE;
+}
+.destination-detail-head{
+  flex-basis:64px;
+  min-height:64px;
+  padding:8px 12px;
+  border-bottom-color:var(--hub-line);
+  background:#FFFFFF;
+}
+.destination-detail-head h3{
+  color:#223A52;
+  font-size:15px;
+}
+.destination-detail-head p{
+  color:#68798C;
+  font-size:10px;
+}
+.destination-detail-summary>span{
+  min-height:27px;
+  padding:0 7px;
+  border-color:#D4DEE7;
+  background:#F6F8FA;
+  color:#637487;
+}
+.destination-detail-summary>span b{
+  color:#304B64;
+}
+.destination-detail-summary>span.active{
+  border-color:#C8E0D2;
+  background:var(--hub-green-soft);
+  color:#2F7652;
+}
+
+.destination-detail-tabs{
+  flex-basis:38px;
+  min-height:38px;
+  gap:16px;
+  padding:0 12px;
+  border-bottom-color:var(--hub-line);
+  background:#F7F9FB;
+}
+.destination-detail-tabs button{
+  height:38px;
+  color:#65778A;
+  font-size:10.8px;
+}
+.destination-detail-tabs button:hover{
+  color:var(--hub-blue-strong);
+}
+.destination-detail-tabs button.active{
+  border-bottom-color:var(--hub-blue);
+  color:var(--hub-blue-strong);
+}
+.destination-detail-tabs button span{
+  background:#E6ECF2;
+  color:#607386;
+}
+.destination-detail-tabs button.active span{
+  background:#DCEBF6;
+  color:#2E638F;
+}
+
+.destination-tab-panel{
+  padding:12px;
+  background:#FCFDFE;
+}
+.destination-field-grid{
+  gap:10px 12px;
+}
+.destination-field-grid label>span,
+.destination-ward-side label>span,
+.destination-ward-list-field>span{
+  color:#4F6479;
+}
+.destination-field-grid input,
+.destination-field-grid select,
+.destination-ward-side input,
+.destination-ward-list-field textarea,
+.destination-shipper-manager-row input{
+  border-color:#C8D4DF;
+  background:#FFFFFF;
+  color:#283E54;
+}
+.destination-field-grid input:focus,
+.destination-field-grid select:focus,
+.destination-ward-side input:focus,
+.destination-ward-list-field textarea:focus,
+.destination-shipper-manager-row input:focus{
+  border-color:#6E9BC0;
+  box-shadow:0 0 0 2px rgba(53,111,159,.09);
+}
+.destination-info-note{
+  border-color:#D4DFE8;
+  border-left-color:#5F8FB7;
+  background:#F6F9FC;
+}
+.destination-info-note b{color:#30485F}
+.destination-info-note span{color:#66788A}
+.destination-switch{
+  border-color:#CBD6E0;
+  background:#FFFFFF;
+  color:#425A70;
+}
+.destination-switch input{
+  accent-color:var(--hub-blue);
+}
+.destination-ward-help{
+  border-color:#D5E0E9;
+  background:#F3F7FA;
+}
+.destination-ward-help b{
+  color:#2E668F;
+}
+.destination-ward-help span{
+  color:#697B8E;
+}
+
+/* Shipper cards: crisp, slightly richer than plain grey boxes. */
+.destination-assignment-row{
+  min-height:48px;
+  border-color:#D3DEE7;
+  background:#FFFFFF;
+}
+.destination-assignment-row:hover{
+  border-color:#AFC7DA;
+  background:#F8FBFD;
+}
+.destination-assignment-row>input{
+  accent-color:var(--hub-blue);
+}
+.destination-shipper-avatar{
+  background:#E5EDF4;
+  color:#43627E;
+}
+.destination-status-dot.active{
+  background:var(--hub-green);
+}
+.destination-assignment-person b{
+  color:#293F55;
+}
+.destination-assignment-person small{
+  color:#6D7E91;
+}
+.destination-count-pill{
+  background:#E6F0F8;
+  color:#2C668F!important;
+}
+
+.destination-detail-footer{
+  flex-basis:48px;
+  min-height:48px;
+  padding:7px 12px;
+  border-top-color:var(--hub-line);
+  background:#F7F9FB;
+}
+.destination-detail-footer .button.primary{
+  border-color:var(--hub-blue);
+  background:var(--hub-blue);
+  color:#fff;
+}
+.destination-detail-footer .button.primary:hover{
+  border-color:var(--hub-blue-strong);
+  background:var(--hub-blue-strong);
+}
+.destination-danger-zone{
+  flex-basis:46px;
+  min-height:46px;
+  padding:6px 12px;
+  border-top-color:#ECDCDC;
+  background:#FFFAFA;
+}
+.destination-danger-zone>div b{color:#9A4E4E}
+.destination-danger-zone>div span{color:#8B7373}
+.destination-master-detail .button.danger{
+  border-color:#E5C3C3;
+  background:#FFF6F6;
+  color:#A04E4E;
+}
+
+/* Shipper manager table colors */
+.destination-shipper-manager-head{
+  border-top-color:#DCE4EB;
+  border-bottom-color:#CDD8E2;
+  background:#EEF3F7;
+}
+.destination-shipper-manager-head span{
+  color:#52677B;
+}
+.destination-shipper-manager-row{
+  border-bottom-color:#E3E9EF;
+  background:#FFFFFF;
+}
+.destination-shipper-manager-row:hover{
+  background:#F8FBFD;
+}
+.destination-hub-chip{
+  background:#E5F0F8;
+  color:#2C638E;
+}
+.destination-hub-chip.muted{
+  background:#EBEFF3;
+  color:#6D7D8E;
+}
+.destination-shipper-new-row{
+  border-top-color:#C8D5E0;
+  background:#F4F8FB;
+}
+.destination-shipper-new-row .destination-shipper-avatar{
+  background:#DCEBF6;
+  color:#2A668F;
+}
+.destination-shipper-new-row .button.primary{
+  border-color:var(--hub-blue);
+  background:var(--hub-blue);
+  color:#fff;
+}
+
+/* Settings page uses the same visual language, but keeps full workspace size. */
+.settings-workspace-v3{
+  border-color:#CCD7E1;
+  background:#F8FAFC;
+  box-shadow:0 2px 8px rgba(29,49,69,.035);
+}
+.settings-page-tabs-v3{
+  border-bottom-color:#D5DFE8;
+}
+.settings-page-tabs-v3 button{
+  color:#68798C;
+}
+.settings-page-tabs-v3 button.active{
+  border-bottom-color:#356F9F;
+  color:#285B86;
+}
+
+@media(max-width:1120px){
+  .settings-modal.destination-hub-modal-v3{
+    width:calc(100vw - 36px);
+    height:calc(100vh - 36px);
+    min-width:0;
+    min-height:0;
+    max-width:none;
+    max-height:none;
+  }
+  .settings-modal-backdrop{
+    padding:18px;
+  }
+  .destination-master-grid{
+    grid-template-columns:250px minmax(0,1fr);
+  }
+}
