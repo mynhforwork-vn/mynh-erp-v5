@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 type IconName=
   |'home'|'dashboard'|'account'|'orders'|'alert'
   |'warehouse'|'receive'|'inventory'|'history'|'transfer'
-  |'sales'|'customer'|'debt'|'finance'|'cash'|'payment'|'report'
+  |'sales'|'customer'|'debt'|'finance'|'cash'|'payment'|'report'|'settings'
 
 function NavIcon({name}:{name:IconName}){
   const p={width:16,height:16,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.8,strokeLinecap:'round' as const,strokeLinejoin:'round' as const,'aria-hidden':true}
@@ -25,6 +25,7 @@ function NavIcon({name}:{name:IconName}){
   if(name==='finance') return <svg {...p}><path d="M3 9h18"/><path d="M5 9V6l7-3 7 3v3"/><path d="M6 9v8M10 9v8M14 9v8M18 9v8"/><path d="M3 20h18"/></svg>
   if(name==='cash') return <svg {...p}><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M7 9h.01M17 15h.01"/></svg>
   if(name==='payment') return <svg {...p}><path d="M4 7h16v11H4Z"/><path d="M4 10h16"/><path d="M8 15h4"/></svg>
+  if(name==='settings') return <svg {...p}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.06.06-2.12 2.12-.06-.06a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.1 1.65V20.5h-3v-.09a1.8 1.8 0 0 0-1.1-1.65 1.8 1.8 0 0 0-1.98.36l-.06.06-2.12-2.12.06-.06A1.8 1.8 0 0 0 6.6 15a1.8 1.8 0 0 0-1.65-1.1H4.5v-3h.45A1.8 1.8 0 0 0 6.6 9.8a1.8 1.8 0 0 0-.36-1.98l-.06-.06 2.12-2.12.06.06a1.8 1.8 0 0 0 1.98.36A1.8 1.8 0 0 0 11.44 4.4V4.3h3v.1a1.8 1.8 0 0 0 1.1 1.65 1.8 1.8 0 0 0 1.98-.36l.06-.06 2.12 2.12-.06.06a1.8 1.8 0 0 0-.36 1.98 1.8 1.8 0 0 0 1.65 1.1h.45v3h-.45A1.8 1.8 0 0 0 19.4 15Z"/></svg>
   return <svg {...p}><path d="M5 3h10l4 4v14H5Z"/><path d="M15 3v5h5"/><path d="M8 13h8M8 17h6"/></svg>
 }
 
@@ -60,6 +61,9 @@ const groups:Group[]=[
     {href:'/finance/shipper-payments',label:'Thanh toán Shipper',icon:'payment'},
     {href:'/finance/customer-payments',label:'Thanh toán khách hàng',icon:'payment'},
     {href:'/finance/reports',label:'Báo cáo tài chính',icon:'report'},
+  ]},
+  {label:'HỆ THỐNG',items:[
+    {href:'/settings',label:'Cài đặt hệ thống',icon:'settings',exact:true},
   ]},
 ]
 
