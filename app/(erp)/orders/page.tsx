@@ -146,7 +146,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       const status=shipment?.current_tracking_status
       if(!status||['DELIVERED','CANCELLED','RETURNED'].includes(status))return false
     }
-    if(sp.tracking==='missing'&&shipment?.tracking_number)return false
+    if(sp.tracking==='missing'&&(o.shipping_service==='EXPRESS'||shipment?.tracking_number))return false
     if(!queryText)return true
     const s=activeShipment(o)
     const hay=[
@@ -166,7 +166,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   }).length
   const delivered=dateRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='DELIVERED').length
   const waiting=dateRows.filter((o:any)=>o.receive_status==='WAITING_RECEIVE').length
-  const missingTracking=dateRows.filter((o:any)=>!activeShipment(o)?.tracking_number).length
+  const missingTracking=dateRows.filter((o:any)=>o.shipping_service!=='EXPRESS'&&!activeShipment(o)?.tracking_number).length
 
   function listHref(extra:Record<string,string|undefined|null>={}){
     const p=new URLSearchParams()
@@ -255,7 +255,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       <Link className="kpi-card" href={listHref({receive:null,tracking:'shipping'})}><span>Đang vận chuyển</span><b>{shipping}</b><small>Chưa ở trạng thái kết thúc</small></Link>
       <Link className="kpi-card" href={listHref({receive:null,tracking:'DELIVERED'})}><span>Giao thành công</span><b>{delivered}</b><small>Đã có trạng thái giao thành công</small></Link>
       <Link className="kpi-card warning" href={listHref({receive:'WAITING_RECEIVE',tracking:null})}><span>Chờ nhận</span><b>{waiting}</b><small>Cần xác nhận vật lý</small></Link>
-      <Link className="kpi-card danger" href={listHref({receive:null,tracking:'missing'})}><span>Chưa có MVĐ</span><b>{missingTracking}</b><small>Cần bổ sung vận đơn</small></Link>
+      <Link className="kpi-card danger" href={listHref({receive:null,tracking:'missing'})}><span>Chưa có MVĐ</span><b>{missingTracking}</b><small>Chỉ đơn vận chuyển tiêu chuẩn</small></Link>
     </section>
 
     <div className={`split-view order-workspace ${panelOpen?'with-panel':''}`}>
@@ -361,35 +361,38 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
           </div>
 
           <div className="panel-tabs">
-            <Link className={!sp.tab||sp.tab==='info'?'active':''} href={listHref({order:detail.id,tab:'info'})}>Thông tin</Link>
-            <Link className={sp.tab==='tracking'?'active':''} href={listHref({order:detail.id,tab:'tracking'})}>Tracking</Link>
+            <Link className={!sp.tab||sp.tab==='info'||(detail.shipping_service==='EXPRESS'&&sp.tab==='tracking')?'active':''} href={listHref({order:detail.id,tab:'info'})}>Thông tin</Link>
+            {detail.shipping_service!=='EXPRESS'&&<Link className={sp.tab==='tracking'?'active':''} href={listHref({order:detail.id,tab:'tracking'})}>Tracking</Link>}
             <Link className={sp.tab==='history'?'active':''} href={listHref({order:detail.id,tab:'history'})}>Lịch sử</Link>
           </div>
 
           <div className="panel-scroll">
-            {(!sp.tab||sp.tab==='info')&&<>
+            {(!sp.tab||sp.tab==='info'||(detail.shipping_service==='EXPRESS'&&sp.tab==='tracking'))&&<>
               <div className="detail-grid">
                 <div><span>Username</span><b>{detail.erp_users?.username??'—'}</b></div>
                 <div><span>Ngày đặt</span><b>{formatDateTime(detail.order_date)}</b></div>
-                <div><span>Trạng thái đơn</span><b>{currentShip?.tracking_number?statusLabel(currentShip.current_tracking_status):'Đang chờ duyệt · Chờ mã vận đơn'}</b></div>
+                <div><span>Trạng thái đơn</span><b>{detail.shipping_service==='EXPRESS'?'Đang xử lý · Hỏa tốc':currentShip?.tracking_number?statusLabel(currentShip.current_tracking_status):'Đang chờ duyệt · Chờ mã vận đơn'}</b></div>
                 <div><span>Thanh toán</span><b>{statusLabel(detail.payment_status)}</b></div>
                 <div><span>COD</span><b>{formatMoney(detail.cod)}</b></div>
                 <div><span>Tổng giá gốc</span><b>{formatMoney(detailTotalOriginal)}</b></div>
                 <div><span>Dịch vụ</span><b>{detail.shipping_service==='EXPRESS'?'Hỏa tốc':'Tiêu chuẩn'}</b></div>
-                <div><span>Khu vực</span><b>{[detail.area,detailHubConfig?.region].filter(Boolean).join(' · ')||'Chưa xác định'}</b></div>
                 <div><span>Người nhận</span><b>{detail.recipient_name??'—'}</b></div>
                 <div><span>Số điện thoại</span><b>{formatPhone(detail.recipient_phone)}</b></div>
                 <div className="full"><span>Địa chỉ nhận</span><b>{detail.recipient_address??'—'}</b></div>
-                <div><span>Kho đích</span><b>{detail.destination_hub??'—'}</b></div>
                 <div><span>Nhận hàng</span><b>{statusLabel(detail.receive_status)}</b></div>
                 <div><span>Kho</span><b>{statusLabel(detail.warehouse_status)}</b></div>
-                <div><span>Mã vận đơn</span><b>{currentShip?.tracking_number??'Chưa có'}</b></div>
-                <div><span>ĐVVC</span><b>{currentShip?.carrier??'—'}</b></div>
-                {detail.shipping_service==='EXPRESS'&&<>
-                  <div><span>Shipper hỏa tốc</span><b>{detail.express_shipper_name??'Chưa nhập'}</b></div>
-                  <div><span>SĐT Shipper</span><b>{formatPhone(detail.express_shipper_phone)}</b></div>
-                  {detail.express_shipper_note&&<div className="full"><span>Ghi chú Shipper</span><b>{detail.express_shipper_note}</b></div>}
-                </>}
+                {detail.shipping_service==='EXPRESS'
+                  ? <>
+                      <div><span>Shipper hỏa tốc</span><b>{detail.express_shipper_name??'Chưa nhập'}</b></div>
+                      <div><span>SĐT Shipper</span><b>{formatPhone(detail.express_shipper_phone)}</b></div>
+                      {detail.express_shipper_note&&<div className="full"><span>Ghi chú Shipper</span><b>{detail.express_shipper_note}</b></div>}
+                    </>
+                  : <>
+                      <div><span>Khu vực</span><b>{[detail.area,detailHubConfig?.region].filter(Boolean).join(' · ')||'Chưa xác định'}</b></div>
+                      <div><span>Kho đích</span><b>{detail.destination_hub??'—'}</b></div>
+                      <div><span>Mã vận đơn</span><b>{currentShip?.tracking_number??'Chưa có'}</b></div>
+                      <div><span>ĐVVC</span><b>{currentShip?.carrier??'—'}</b></div>
+                    </>}
               </div>
 
               <div className="panel-action-row split-actions">
@@ -423,7 +426,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                   </div>)}</div>}
             </>}
 
-            {sp.tab==='tracking'&&<>
+            {detail.shipping_service!=='EXPRESS'&&sp.tab==='tracking'&&<>
               <h3>Vận đơn</h3>
               {!(detail.shipments??[]).length
                 ? <div className="empty compact">Chưa có mã vận đơn.</div>
