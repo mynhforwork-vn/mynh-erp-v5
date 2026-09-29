@@ -6,8 +6,9 @@ import { replaceShipment } from '@/lib/actions/core'
 import { CopyOrderButton } from '@/components/copy-order-button'
 import { OrderEditorForm } from '@/components/order-editor-form'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
+import { PurchaseOrderTable } from '@/components/purchase-order-table'
 
-type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'
+type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
 type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string}
 
 const HOUR=60*60*1000
@@ -53,6 +54,11 @@ function resolveRange(sp:SP){
     from=ymd(p.year,1,1)
     label='Năm nay'
   }
+  if(key==='all'){
+    from='1970-01-01'
+    to='9999-12-31'
+    label='Toàn thời gian'
+  }
   if(key==='custom'){
     from=/^\d{4}-\d{2}-\d{2}$/.test(sp.from??'')?String(sp.from):today
     to=/^\d{4}-\d{2}-\d{2}$/.test(sp.to??'')?String(sp.to):today
@@ -82,17 +88,6 @@ function activeShipment(order:any){
   return (order?.shipments??[]).find((x:any)=>x.is_active)??order?.shipments?.[0]??null
 }
 
-function productSummary(items:any[]){
-  if(!items?.length)return '—'
-  const first=items[0]
-  const name=[first.product_name,first.variant].filter(Boolean).join(' · ')
-  return items.length>1?`${name} +${items.length-1}`:name
-}
-
-function voucherSummary(vouchers:any[]){
-  if(!vouchers?.length)return '—'
-  return vouchers.map(v=>[v.voucher_tag,v.voucher_type].filter(Boolean).join(' · ')).filter(Boolean).join(', ')||'Có voucher'
-}
 
 export default async function OrdersPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
@@ -142,7 +137,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
   function listHref(extra:Record<string,string|undefined|null>={}){
     const p=new URLSearchParams()
-    if(range.key!=='today')p.set('range',range.key)
+    p.set('range',range.key)
     if(range.key==='custom'){p.set('from',range.from);p.set('to',range.to)}
     if(queryText)p.set('q',sp.q??'')
     if(sp.receive)p.set('receive',sp.receive)
@@ -213,6 +208,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       to={range.to}
       label={range.label}
       basePath="/purchase/orders"
+      showAll
     />
 
     <section className="kpi-grid order-kpi-grid">
@@ -228,7 +224,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       <section className="order-list-pane">
         <div className="toolbar order-toolbar">
           <form className="order-search-form" action="/purchase/orders">
-            {range.key!=='today'&&<input type="hidden" name="range" value={range.key}/>}
+            <input type="hidden" name="range" value={range.key}/>
             {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
             {sp.receive&&<input type="hidden" name="receive" value={sp.receive}/>}
             {sp.tracking&&<input type="hidden" name="tracking" value={sp.tracking}/>}
@@ -248,46 +244,14 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
           </span>
         </div>
 
-        <div className="card table-card order-table-card">
-          <table className="table order-table">
-            <thead><tr>
-              <th>#</th>
-              <th>Mã đơn</th>
-              <th>Username</th>
-              <th>Sản phẩm</th>
-              <th>COD</th>
-              <th>Mã vận đơn</th>
-              <th>ĐVVC</th>
-              <th>Voucher</th>
-              <th>Xử lý</th>
-            </tr></thead>
-            <tbody>
-              {error
-                ? <tr><td colSpan={9} className="error-text">{error.message}</td></tr>
-                : !displayRows.length
-                  ? <tr><td colSpan={9} className="empty">Không có đơn phù hợp với bộ lọc hiện tại.</td></tr>
-                  : displayRows.map((o:any,i:number)=>{
-                      const s=activeShipment(o)
-                      return <tr key={o.id} className={sp.order===o.id?'selected-row':''}>
-                        <td>{i+1}</td>
-                        <td><Link className="table-link" href={listHref({order:o.id})}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
-                        <td>{o.erp_users?.username??'—'}</td>
-                        <td className="truncate product-cell">{productSummary(o.order_items??[])}</td>
-                        <td className="money">{formatMoney(o.cod)}</td>
-                        <td>{s?.tracking_number??'Chưa có'}</td>
-                        <td>{s?.carrier??'—'}</td>
-                        <td className="truncate voucher-cell">{voucherSummary(o.order_vouchers??[])}</td>
-                        <td>
-                          <div className="order-state-cell">
-                            <span className={`status-pill status-${String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}`}>{statusLabel(s?.current_tracking_status)}</span>
-                            {o.receive_status!=='NOT_READY'&&<span className={`status-pill ${o.receive_status==='RECEIVED'?'green':'orange'}`}>{statusLabel(o.receive_status)}</span>}
-                          </div>
-                        </td>
-                      </tr>
-                    })}
-            </tbody>
-          </table>
-        </div>
+        {error
+          ? <div className="card table-card order-table-card"><div className="error-text order-table-error">{error.message}</div></div>
+          : <PurchaseOrderTable
+              rows={displayRows}
+              selectedId={sp.order}
+              baseQuery={returnQuery}
+            />}
+
       </section>
 
       {createMode&&
