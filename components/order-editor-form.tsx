@@ -264,9 +264,23 @@ export function OrderEditorForm({
     setDestinationHub(bestHub?.hub_code??'')
   }
 
+  function setShippingMode(mode:'STANDARD'|'EXPRESS'){
+    setShippingService(mode)
+    if(mode==='EXPRESS'){
+      setTrackingNumber('')
+      setCarrier('')
+      setCarrierEdited(false)
+      setDestinationHub('')
+      setDerivedArea('')
+      setDerivedRegion('')
+      return
+    }
+    if(recipientAddress.trim())resolveDestination(recipientAddress)
+  }
+
   function onAddressChange(value:string){
     setRecipientAddress(value)
-    resolveDestination(value)
+    if(shippingService==='STANDARD')resolveDestination(value)
   }
 
   function selectDestinationHub(value:string){
@@ -398,7 +412,7 @@ export function OrderEditorForm({
     <input type="hidden" name="return_query" value={returnQuery}/>
     <input type="hidden" name="erp_user_id" value={selectedUserId}/>
     <input type="hidden" name="shipping_service" value={shippingService}/>
-    <input type="hidden" name="area" value={derivedArea}/>
+    <input type="hidden" name="area" value={shippingService==='EXPRESS'?'':derivedArea}/>
     {mode==='edit'&&<input type="hidden" name="order_id" value={values.id}/>}
 
     <section className="form-section">
@@ -451,82 +465,84 @@ export function OrderEditorForm({
         </label>
         <div className="derived-order-state">
           <span>Trạng thái đơn</span>
-          <b>{trackingNumber.trim()?'Đang xử lý · Theo Tracking':'Đang chờ duyệt'}</b>
-          <small>{trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ':'Chờ mã vận đơn'}</small>
+          <b>{shippingService==='EXPRESS'?'Đang xử lý · Hỏa tốc':trackingNumber.trim()?'Đang xử lý · Theo Tracking':'Đang chờ duyệt'}</b>
+          <small>{shippingService==='EXPRESS'?'Không sử dụng Tracking / Kho đích':trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ':'Chờ mã vận đơn'}</small>
         </div>
       </div>
     </section>
 
     <section className="form-section">
       <h3>Vận chuyển</h3>
-      <label>Mã vận đơn
-        <input
-          name="tracking_number"
-          value={trackingNumber}
-          onChange={e=>onTrackingChange(e.target.value)}
-          onBlur={()=>setTrackingNumber(v=>v.trim().toUpperCase())}
-          placeholder="Nhập MVĐ; hệ thống tự nhận diện ĐVVC"
-        />
-      </label>
-
-      <div className="form-grid">
-        <label>Đơn vị vận chuyển
-          <input
-            name="carrier"
-            value={carrier}
-            onChange={e=>{setCarrier(e.target.value);setCarrierEdited(true)}}
-            placeholder="Tự nhận diện, có thể sửa"
-          />
-        </label>
-        <label>Kho đích
-          <select name="destination_hub" value={destinationHub} onChange={e=>selectDestinationHub(e.target.value)}>
-            <option value="">— Tự nhận diện / Chưa xác định —</option>
-            {sortedHubs.map(h=><option key={h.id} value={h.hub_code}>{h.hub_code}</option>)}
-          </select>
-        </label>
-      </div>
 
       <div className="shipping-service-picker">
         <span>Dịch vụ vận chuyển</span>
         <div>
-          <button type="button" className={shippingService==='STANDARD'?'active':''} onClick={()=>setShippingService('STANDARD')}>Tiêu chuẩn</button>
-          <button type="button" className={shippingService==='EXPRESS'?'active express':''} onClick={()=>setShippingService('EXPRESS')}>Hỏa tốc</button>
+          <button type="button" className={shippingService==='STANDARD'?'active':''} onClick={()=>setShippingMode('STANDARD')}>Tiêu chuẩn</button>
+          <button type="button" className={shippingService==='EXPRESS'?'active express':''} onClick={()=>setShippingMode('EXPRESS')}>Hỏa tốc</button>
         </div>
       </div>
 
-      {shippingService==='EXPRESS'&&<div className="express-shipper-box">
-        <div className="express-shipper-title">
-          <b>Thông tin Shipper hỏa tốc</b>
-          <span>Dữ liệu này được lưu cùng đơn để dùng cho đối soát / thanh toán Shipper.</span>
-        </div>
-        <div className="form-grid">
-          <label>Tên Shipper
-            <input
-              name="express_shipper_name"
-              value={expressShipperName}
-              onChange={e=>setExpressShipperName(e.target.value)}
-              placeholder="Tên Shipper"
-            />
-          </label>
-          <label>SĐT Shipper
-            <input
-              name="express_shipper_phone"
-              value={expressShipperPhone}
-              onChange={e=>setExpressShipperPhone(e.target.value)}
-              placeholder="Số điện thoại"
-            />
-          </label>
-        </div>
-        <label>Ghi chú Shipper
-          <input
-            name="express_shipper_note"
-            value={expressShipperNote}
-            onChange={e=>setExpressShipperNote(e.target.value)}
-            placeholder="Biển số / thời gian dự kiến / ghi chú..."
-          />
-        </label>
-      </div>}
+      {shippingService==='STANDARD'
+        ? <>
+            <label>Mã vận đơn
+              <input
+                name="tracking_number"
+                value={trackingNumber}
+                onChange={e=>onTrackingChange(e.target.value)}
+                onBlur={()=>setTrackingNumber(v=>v.trim().toUpperCase())}
+                placeholder="Nhập MVĐ; hệ thống tự nhận diện ĐVVC"
+              />
+            </label>
 
+            <div className="form-grid">
+              <label>Đơn vị vận chuyển
+                <input
+                  name="carrier"
+                  value={carrier}
+                  onChange={e=>{setCarrier(e.target.value);setCarrierEdited(true)}}
+                  placeholder="Tự nhận diện, có thể sửa"
+                />
+              </label>
+              <label>Kho đích
+                <select name="destination_hub" value={destinationHub} onChange={e=>selectDestinationHub(e.target.value)}>
+                  <option value="">— Tự nhận diện / Chưa xác định —</option>
+                  {sortedHubs.map(h=><option key={h.id} value={h.hub_code}>{h.hub_code}</option>)}
+                </select>
+              </label>
+            </div>
+          </>
+        : <div className="express-shipper-box">
+            <div className="express-shipper-title">
+              <b>Thông tin Shipper hỏa tốc</b>
+              <span>Hỏa tốc không dùng MVĐ, Tracking hoặc Kho đích.</span>
+            </div>
+            <div className="form-grid">
+              <label>Tên Shipper
+                <input
+                  name="express_shipper_name"
+                  value={expressShipperName}
+                  onChange={e=>setExpressShipperName(e.target.value)}
+                  placeholder="Tên Shipper"
+                />
+              </label>
+              <label>SĐT Shipper
+                <input
+                  name="express_shipper_phone"
+                  value={expressShipperPhone}
+                  onChange={e=>setExpressShipperPhone(e.target.value)}
+                  placeholder="Số điện thoại"
+                />
+              </label>
+            </div>
+            <label>Ghi chú Shipper
+              <input
+                name="express_shipper_note"
+                value={expressShipperNote}
+                onChange={e=>setExpressShipperNote(e.target.value)}
+                placeholder="Biển số / thời gian dự kiến / ghi chú..."
+              />
+            </label>
+          </div>}
     </section>
 
     <section className="form-section">
@@ -541,14 +557,14 @@ export function OrderEditorForm({
           rows={3}
           value={recipientAddress}
           onChange={e=>onAddressChange(e.target.value)}
-          placeholder="Nhập đầy đủ quận/huyện, tỉnh/thành để tự nhận diện kho đích"
+          placeholder={shippingService==='EXPRESS'?'Nhập địa chỉ giao hỏa tốc':'Nhập đầy đủ quận/huyện, tỉnh/thành để tự nhận diện kho đích'}
         />
       </label>
-      <div className="address-routing-strip">
+      {shippingService==='STANDARD'&&<div className="address-routing-strip">
         <div><span>Khu vực</span><b>{derivedArea||'Chưa xác định'}</b></div>
         <div><span>Miền</span><b>{derivedRegion||'Chưa xác định'}</b></div>
         <div><span>Kho đích</span><b>{destinationHub||'Chưa đủ dữ liệu để nhận diện'}</b></div>
-      </div>
+      </div>}
     </section>
 
     <section className="form-section">
