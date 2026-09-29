@@ -206,6 +206,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       from={range.from}
       to={range.to}
       label={range.label}
+      basePath="/purchase/orders"
     />
 
     <section className="kpi-grid order-kpi-grid">
@@ -224,6 +225,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             {range.key!=='today'&&<input type="hidden" name="range" value={range.key}/>}
             {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
             {sp.receive&&<input type="hidden" name="receive" value={sp.receive}/>}
+            {sp.tracking&&<input type="hidden" name="tracking" value={sp.tracking}/>}
             <input className="search" name="q" defaultValue={sp.q??''} placeholder="Mã đơn / MVĐ / Username / sản phẩm / voucher"/>
             <button className="button small">Tìm</button>
             {queryText&&<Link className="button small" href={listHref({q:null})}>Xóa tìm</Link>}
