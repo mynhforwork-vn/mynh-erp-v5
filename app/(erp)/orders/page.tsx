@@ -188,6 +188,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const editMode=Boolean(detail&&sp.mode==='edit')
   const panelOpen=createMode||Boolean(detail)
   const currentShip=activeShipment(detail)
+  const returnQuery=listHref().split('?')[1]??''
 
   return <div className="order-screen">
     <header className="page-head">
@@ -291,6 +292,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             users={(userOptions??[]) as any[]}
             values={{order_status:'PENDING',payment_status:'UNPAID',cod:0}}
             cancelHref={listHref({mode:null})}
+            returnQuery={returnQuery}
           />
         </aside>
       }
@@ -323,6 +325,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             initialItems={items}
             initialVouchers={vouchers}
             cancelHref={listHref({order:detail.id,mode:null})}
+            returnQuery={returnQuery}
           />
         </aside>
       }
@@ -404,6 +407,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
               {['admin','operator'].includes(role)&&
                 <form action={replaceShipment} className="replace-form">
+                  <input type="hidden" name="return_query" value={returnQuery}/>
                   <input type="hidden" name="order_id" value={detail.id}/>
                   <b>Cập nhật mã vận đơn</b>
                   <div className="form-grid">
