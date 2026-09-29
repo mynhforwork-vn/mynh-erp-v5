@@ -4395,3 +4395,10 @@ a{text-decoration:none}
   .settings-modal-backdrop{padding:14px}
   .destination-shipper-grid{grid-template-columns:1fr}
 }
+
+
+.settings-modal-actions{
+  display:flex;
+  align-items:center;
+  gap:5px;
+}
