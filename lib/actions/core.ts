@@ -309,6 +309,8 @@ export async function saveDestinationHubConfig(formData:FormData){
     province_keywords:keywordList(formData.get('province_keywords')),
     district_keywords:keywordList(formData.get('district_keywords')),
     address_keywords:keywordList(formData.get('address_keywords')),
+    shipper_name:text(formData.get('shipper_name'))||null,
+    shipper_phone:text(formData.get('shipper_phone'))||null,
     priority:Number.isFinite(priorityRaw)?Math.max(0,Math.round(priorityRaw)):100,
     is_active:formData.get('is_active')==='on',
     updated_at:new Date().toISOString(),
@@ -320,6 +322,8 @@ export async function saveDestinationHubConfig(formData:FormData){
   if(error)throw new Error(error.message)
   revalidatePath('/warehouse')
   revalidatePath('/purchase/orders')
+  revalidatePath('/purchase/tracking')
+  revalidatePath('/purchase')
 }
 
 export async function confirmReceiveOrders(formData:FormData){
