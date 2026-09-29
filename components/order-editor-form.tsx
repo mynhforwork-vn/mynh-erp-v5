@@ -504,7 +504,7 @@ export function OrderEditorForm({
           rows={2}
           value={quickProductText}
           onChange={e=>setQuickProductText(e.target.value)}
-          placeholder="Nhập nhanh: SKU123 | Áo thun nam | Đen XL | SL 2 | Giá gốc 199000 | Giá 149000. Có thể dán nhiều dòng."
+          placeholder="Dán từ Shopee: Dầu Đậu Nành Simply Nguyên chất chai 1 Lít x1 79.000₫78.921₫ (Đậu Nành 1 Lít). Có thể dán nhiều dòng."
         />
         <button type="button" className="button small" disabled={!quickProductText.trim()} onClick={recognizeQuickProducts}>Nhận diện</button>
       </div>
