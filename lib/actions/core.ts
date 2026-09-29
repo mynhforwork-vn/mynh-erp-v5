@@ -147,6 +147,17 @@ function localDateTime(v:FormDataEntryValue|null){
   return Number.isNaN(d.getTime())?null:d.toISOString()
 }
 
+function detectCarrier(trackingNumber:string){
+  const v=trackingNumber.trim().toUpperCase()
+  if(!v)return null
+  if(v.startsWith('SPX'))return 'SPX Express'
+  if(v.startsWith('GHN'))return 'Giao Hàng Nhanh'
+  if(v.startsWith('GHTK'))return 'Giao Hàng Tiết Kiệm'
+  if(v.startsWith('VTP')||v.startsWith('VTPN'))return 'Viettel Post'
+  if(v.startsWith('JNT')||v.startsWith('JT'))return 'J&T Express'
+  return null
+}
+
 function itemPayload(formData:FormData){
   const names=formData.getAll('item_product_name').map(v=>text(v))
   const skus=formData.getAll('item_sku').map(v=>text(v))
@@ -183,25 +194,31 @@ function voucherPayload(formData:FormData){
 export async function createOrder(formData:FormData){
   const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
-  const {data,error}=await supabase.rpc('create_order_full',{
+  const trackingNumber=text(formData.get('tracking_number'))
+  const carrier=text(formData.get('carrier'))||detectCarrier(trackingNumber)
+  const shippingService=text(formData.get('shipping_service'))==='EXPRESS'?'EXPRESS':'STANDARD'
+  const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
+  const orderStatus=trackingNumber?'PROCESSING':'PENDING'
+
+  const {data,error}=await supabase.rpc('create_order_full_v2',{
     p_shopee_order_id:text(formData.get('shopee_order_id'))||null,
     p_erp_user_id:text(formData.get('erp_user_id'))||null,
-    p_order_date:localDateTime(formData.get('order_date')),
+    p_order_date:orderDate,
     p_recipient_name:text(formData.get('recipient_name'))||null,
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
-    p_area:text(formData.get('area'))||null,
     p_destination_hub:text(formData.get('destination_hub'))||null,
     p_cod:numberOrNull(formData.get('cod'))??0,
-    p_order_status:text(formData.get('order_status'))||'PENDING',
+    p_order_status:orderStatus,
     p_payment_status:text(formData.get('payment_status'))||'UNPAID',
-    p_tracking_number:text(formData.get('tracking_number'))||null,
-    p_carrier:text(formData.get('carrier'))||null,
+    p_tracking_number:trackingNumber||null,
+    p_carrier:carrier,
+    p_shipping_service:shippingService,
     p_items:itemPayload(formData),
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/')
+  revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data)}))
 }
 
@@ -210,29 +227,35 @@ export async function updateOrder(formData:FormData){
   const returnQuery=text(formData.get('return_query'))
   const orderId=text(formData.get('order_id'))
   if(!orderId)throw new Error('Thiếu đơn hàng cần cập nhật')
-  const {data,error}=await supabase.rpc('update_order_full',{
+
+  const trackingNumber=text(formData.get('tracking_number'))
+  const carrier=text(formData.get('carrier'))||detectCarrier(trackingNumber)
+  const shippingService=text(formData.get('shipping_service'))==='EXPRESS'?'EXPRESS':'STANDARD'
+  const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
+  const orderStatus=trackingNumber?'PROCESSING':'PENDING'
+
+  const {data,error}=await supabase.rpc('update_order_full_v2',{
     p_order_id:orderId,
     p_shopee_order_id:text(formData.get('shopee_order_id'))||null,
     p_erp_user_id:text(formData.get('erp_user_id'))||null,
-    p_order_date:localDateTime(formData.get('order_date')),
+    p_order_date:orderDate,
     p_recipient_name:text(formData.get('recipient_name'))||null,
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
-    p_area:text(formData.get('area'))||null,
     p_destination_hub:text(formData.get('destination_hub'))||null,
     p_cod:numberOrNull(formData.get('cod'))??0,
-    p_order_status:text(formData.get('order_status'))||'PENDING',
+    p_order_status:orderStatus,
     p_payment_status:text(formData.get('payment_status'))||'UNPAID',
-    p_tracking_number:text(formData.get('tracking_number'))||null,
-    p_carrier:text(formData.get('carrier'))||null,
+    p_tracking_number:trackingNumber||null,
+    p_carrier:carrier,
+    p_shipping_service:shippingService,
     p_items:itemPayload(formData),
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/')
+  revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data)}))
 }
-
 
 export async function confirmReceiveOrders(formData:FormData){
   const {supabase}=await actor()
