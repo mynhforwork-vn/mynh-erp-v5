@@ -21,19 +21,19 @@ type OrderRow={
   shipment_id?:string|null
 }
 type Warehouse={id:string,code?:string|null,name?:string|null}
-type AssignedShipper={shipper_name?:string|null,shipper_phone?:string|null}
+type AssignedShipper={id:string,name:string,phone?:string|null}
 
 export function TrackingHubGroup({
   hub,
   rows,
   warehouses,
-  assignedShipper,
+  assignedShippers=[],
   contextQuery='',
 }:{
   hub:string
   rows:OrderRow[]
   warehouses:Warehouse[]
-  assignedShipper?:AssignedShipper|null
+  assignedShippers?:AssignedShipper[]
   contextQuery?:string
 }){
   const eligible=rows.filter(r=>r.receive_status==='WAITING_RECEIVE')
@@ -41,11 +41,12 @@ export function TrackingHubGroup({
   const selectedSet=useMemo(()=>new Set(selected),[selected])
   const selectedRows=eligible.filter(r=>selectedSet.has(r.id))
   const selectedCod=selectedRows.reduce((s,r)=>s+Number(r.cod??0),0)
-  const [shipperName,setShipperName]=useState(String(assignedShipper?.shipper_name??''))
+  const [shipperId,setShipperId]=useState(assignedShippers.length===1?assignedShippers[0].id:'')
   const [actualTransferred,setActualTransferred]=useState('')
   const actualValue=Number(actualTransferred||0)
   const tip=Math.max(0,actualValue-selectedCod)
-  const transferValid=Boolean(selected.length&&shipperName.trim()&&actualValue>=selectedCod)
+  const selectedShipper=assignedShippers.find(s=>s.id===shipperId)??null
+  const transferValid=Boolean(selected.length&&shipperId&&actualValue>=selectedCod)
   const allSelected=eligible.length>0&&selected.length===eligible.length
 
   useEffect(()=>{
@@ -53,8 +54,8 @@ export function TrackingHubGroup({
   },[selectedCod])
 
   useEffect(()=>{
-    setShipperName(String(assignedShipper?.shipper_name??''))
-  },[assignedShipper?.shipper_name])
+    setShipperId(assignedShippers.length===1?assignedShippers[0].id:'')
+  },[assignedShippers])
 
   function toggleAll(){
     setSelected(allSelected?[]:eligible.map(r=>r.id))
@@ -79,8 +80,13 @@ export function TrackingHubGroup({
       <div className="tracking-hub-head-right">
         <div className="tracking-hub-assignee">
           <span>Shipper phụ trách</span>
-          <b>{assignedShipper?.shipper_name||'Chưa cấu hình'}</b>
-          {assignedShipper?.shipper_phone&&<small>{formatPhone(assignedShipper.shipper_phone)}</small>}
+          {assignedShippers.length
+            ? <div className="tracking-hub-shipper-list">
+                {assignedShippers.map(s=><span className="tracking-hub-shipper-chip" key={s.id}>
+                  <b>{s.name}</b>{s.phone&&<small>{formatPhone(s.phone)}</small>}
+                </span>)}
+              </div>
+            : <b>Chưa cấu hình</b>}
         </div>
         <div className="tracking-hub-stats">
           <span><b>{rows.length}</b> đơn</span>
@@ -151,8 +157,8 @@ export function TrackingHubGroup({
     {eligible.length>0&&selected.length===0&&
       <div className="receive-compact-idle">
         <span>Chọn đơn chờ nhận để xử lý theo lô</span>
-        <small>{assignedShipper?.shipper_name
-          ? `Shipper: ${assignedShipper.shipper_name}${assignedShipper.shipper_phone?' · '+formatPhone(assignedShipper.shipper_phone):''}`
+        <small>{assignedShippers.length
+          ? `${assignedShippers.length} Shipper: ${assignedShippers.map(s=>s.name).join(', ')}`
           : 'Chưa cấu hình Shipper phụ trách cho kho này'}</small>
       </div>
     }
@@ -173,14 +179,16 @@ export function TrackingHubGroup({
         </select>
 
         <div className="receive-shipper-field">
-          <input
-            name="shipper_name"
-            value={shipperName}
-            onChange={e=>setShipperName(e.target.value)}
-            placeholder="Shipper"
-            aria-label="Shipper"
-          />
-          {assignedShipper?.shipper_phone&&<span>{formatPhone(assignedShipper.shipper_phone)}</span>}
+          <select
+            name="shipper_id"
+            value={shipperId}
+            onChange={e=>setShipperId(e.target.value)}
+            aria-label="Shipper phụ trách"
+          >
+            <option value="">Chọn Shipper</option>
+            {assignedShippers.map(s=><option value={s.id} key={s.id}>{s.name}{s.phone?' · '+formatPhone(s.phone):''}</option>)}
+          </select>
+          {selectedShipper?.phone&&<span>{formatPhone(selectedShipper.phone)}</span>}
         </div>
 
         <input
