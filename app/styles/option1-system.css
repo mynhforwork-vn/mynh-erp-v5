@@ -3603,3 +3603,235 @@ a{text-decoration:none}
   .shipper-finance-kpis{grid-template-columns:repeat(2,1fr)}
   .shipper-payment-batch-head{grid-template-columns:1fr}
 }
+
+
+/* Compact receive/payment + hub shipper assignment */
+.address-routing-strip{
+  grid-template-columns:.8fr .8fr 1.15fr 1.25fr;
+}
+.address-routing-strip .assigned-shipper small{
+  overflow:hidden;
+  color:#8D98A6;
+  font-size:6.4px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.tracking-hub-head-right{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.tracking-hub-assignee{
+  min-width:130px;
+  display:grid;
+  grid-template-columns:auto auto;
+  align-items:baseline;
+  gap:0 5px;
+  padding-right:9px;
+  border-right:1px solid #E7ECF1;
+}
+.tracking-hub-assignee>span{
+  grid-column:1/-1;
+  color:#8A95A3;
+  font-size:6.4px;
+}
+.tracking-hub-assignee>b{
+  max-width:130px;
+  overflow:hidden;
+  color:#46576B;
+  font-size:7.3px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.tracking-hub-assignee>small{
+  color:#8C97A4;
+  font-size:6.5px;
+  white-space:nowrap;
+}
+
+.receive-compact-idle{
+  min-height:28px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:3px 8px;
+  border-top:1px solid #E8EDF2;
+  background:#FAFBFC;
+}
+.receive-compact-idle>span{
+  color:#68778A;
+  font-size:7px;
+  font-weight:650;
+}
+.receive-compact-idle>small{
+  overflow:hidden;
+  color:#8A95A3;
+  font-size:6.5px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.receive-compact-bar{
+  position:relative;
+  min-height:36px;
+  display:grid;
+  grid-template-columns:105px 138px minmax(150px,1fr) 130px 92px 28px 55px 86px;
+  align-items:center;
+  gap:4px;
+  padding:4px 6px;
+  border-top:1px solid #DDE5ED;
+  background:#F8FAFC;
+}
+.receive-compact-bar select,
+.receive-compact-bar input{
+  width:100%;
+  min-width:0;
+  height:27px;
+  padding:0 6px;
+  border:1px solid #D8E1E9;
+  border-radius:4px;
+  background:#fff;
+  color:#42536A;
+  font-size:7.3px;
+  outline:none;
+}
+.receive-compact-bar select:focus,
+.receive-compact-bar input:focus{border-color:#A8BACB}
+
+.receive-compact-summary{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:0;
+}
+.receive-compact-summary>b{
+  color:#405167;
+  font-size:8px;
+  line-height:1.2;
+}
+.receive-compact-summary>span{
+  overflow:hidden;
+  color:#7E8997;
+  font-size:6.6px;
+  line-height:1.2;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.receive-shipper-field{
+  position:relative;
+  min-width:0;
+}
+.receive-shipper-field input{padding-right:76px}
+.receive-shipper-field>span{
+  position:absolute;
+  top:50%;
+  right:5px;
+  max-width:68px;
+  overflow:hidden;
+  transform:translateY(-50%);
+  color:#929CA8;
+  font-size:6.2px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  pointer-events:none;
+}
+
+.receive-tip{
+  min-width:0;
+  height:27px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:3px;
+  padding:0 5px;
+  border:1px solid #E5DED0;
+  border-radius:4px;
+  background:#FFFCF5;
+}
+.receive-tip>span{
+  color:#927C55;
+  font-size:6.2px;
+}
+.receive-tip>b{
+  overflow:hidden;
+  color:#805B1B;
+  font-size:7px;
+  font-variant-numeric:tabular-nums;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.receive-tip.invalid{
+  border-color:#E8BABA;
+  background:#FFF7F7;
+}
+.receive-tip.invalid>b{color:#B84A4A}
+
+.receive-note-details{
+  position:relative;
+  height:27px;
+}
+.receive-note-details>summary{
+  width:28px;
+  height:27px;
+  display:grid;
+  place-items:center;
+  border:1px solid #D8E1E9;
+  border-radius:4px;
+  background:#fff;
+  color:#64758A;
+  font-size:8px;
+  font-weight:700;
+  cursor:pointer;
+  list-style:none;
+}
+.receive-note-details>summary::-webkit-details-marker{display:none}
+.receive-note-popover{
+  position:absolute;
+  right:0;
+  bottom:calc(100% + 4px);
+  z-index:30;
+  width:220px;
+  padding:6px;
+  border:1px solid #D9E2EA;
+  border-radius:5px;
+  background:#fff;
+  box-shadow:0 8px 24px rgba(31,45,64,.12);
+}
+.receive-note-popover>span{
+  display:block;
+  margin-bottom:3px;
+  color:#7C8897;
+  font-size:6.6px;
+  font-weight:650;
+}
+.receive-compact-bar>.button{
+  height:27px;
+  min-width:0;
+  padding:0 6px;
+  justify-content:center;
+  font-size:7px;
+  white-space:nowrap;
+}
+
+/* Destination hub config now includes responsible shipper */
+.destination-config-row{
+  grid-template-columns:108px 94px 86px minmax(90px,1fr) minmax(90px,1fr) minmax(90px,1fr) 112px 96px 48px 42px 52px;
+  gap:3px;
+}
+.destination-config-row label{font-size:6.3px}
+.destination-config-row input,
+.destination-config-row select{font-size:7px}
+
+@media(max-width:1280px){
+  .receive-compact-bar{
+    grid-template-columns:92px 120px minmax(125px,1fr) 115px 82px 28px 50px 78px;
+    gap:3px;
+  }
+  .tracking-hub-assignee{min-width:112px}
+  .destination-config-card{overflow-x:auto}
+  .destination-config-row{min-width:1080px}
+}
