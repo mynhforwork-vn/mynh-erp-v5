@@ -5,7 +5,7 @@ import { formatDateTime, formatMoney } from '@/lib/format'
 export default async function ShipperPaymentsPage(){
   const {supabase}=await requireUser()
   const {data,error}=await supabase.from('shipper_payments')
-    .select('id,shipper_name,total_cod,actual_transferred,tip,transferred_at,note,warehouses(code,name),shipper_payment_details(order_id,cod_snapshot,orders(shopee_order_id,destination_hub))')
+    .select('id,shipper_id,shipper_name,total_cod,actual_transferred,tip,transferred_at,note,destination_shippers(name,phone),warehouses(code,name),shipper_payment_details(order_id,cod_snapshot,orders(shopee_order_id,destination_hub))')
     .order('transferred_at',{ascending:false})
     .limit(200)
 
@@ -40,12 +40,15 @@ export default async function ShipperPaymentsPage(){
     <section className="shipper-payment-batches">
       {!rows.length
         ? <div className="card empty">Chưa có đợt thanh toán Shipper.</div>
-        : rows.map(p=><article className="card shipper-payment-batch" key={p.id}>
+        : rows.map(p=>{
+            const hubs=[...new Set((p.shipper_payment_details??[]).map((d:any)=>d.orders?.destination_hub).filter(Boolean))]
+            const shipper=(p.destination_shippers as any)??null
+            return <article className="card shipper-payment-batch" key={p.id}>
             <div className="shipper-payment-batch-head">
               <div>
-                <span className="module-eyebrow">ĐỢT THANH TOÁN</span>
-                <h2>{p.shipper_name??'Shipper'}</h2>
-                <small>{(p.warehouses as any)?.code??'—'} · {(p.warehouses as any)?.name??'Chưa xác định kho'} · {formatDateTime(p.transferred_at)}</small>
+                <span className="module-eyebrow">HUB KHO ĐÍCH</span>
+                <h2>{hubs.join(' · ')||'Chưa xác định Hub'}</h2>
+                <small>{shipper?.name??p.shipper_name??'Shipper'}{shipper?.phone?' · '+shipper.phone:''} · {(p.warehouses as any)?.code??'—'} · {formatDateTime(p.transferred_at)}</small>
               </div>
               <div className="shipper-payment-batch-metrics">
                 <div><span>Đơn</span><b>{p.shipper_payment_details?.length??0}</b></div>
@@ -66,7 +69,8 @@ export default async function ShipperPaymentsPage(){
               </table>
             </div>
             {p.note&&<div className="shipper-payment-note"><span>Ghi chú</span><b>{p.note}</b></div>}
-          </article>)}
+          </article>
+        })}
     </section>
   </>
 }
