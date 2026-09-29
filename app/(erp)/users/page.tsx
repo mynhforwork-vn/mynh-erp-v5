@@ -445,7 +445,10 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               </div>
 
               <div className="panel-note-row"><span>Ghi chú</span><b>{selected.note??'—'}</b></div>
-              <div className="panel-action-row"><Link className="button primary" href={detailHref({user:selected.id,mode:'edit'})}>Sửa tài khoản</Link></div>
+              <div className="panel-action-row split-actions">
+                {selected.status!=='Blocked'&&<Link className="button" href={contextHref('/purchase/orders',{mode:'create',user:selected.id})}>+ Tạo đơn</Link>}
+                <Link className="button primary" href={detailHref({user:selected.id,mode:'edit'})}>Sửa tài khoản</Link>
+              </div>
             </>}
 
             {sp.tab==='orders'&&<>
