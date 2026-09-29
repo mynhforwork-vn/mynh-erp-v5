@@ -32,7 +32,7 @@ function currentWeekRange(y:number,m:number,d:number){
   }
 }
 function resolveRange(sp:SP){
-  const key:RangeKey=sp.range??'today'
+  const key:RangeKey=sp.range??'all'
   const p=vnDateParts()
   const today=ymd(p.year,p.month,p.day)
   let from=today,to=today,label='Hôm nay'
