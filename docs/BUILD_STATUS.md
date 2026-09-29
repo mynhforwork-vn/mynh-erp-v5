@@ -6,7 +6,8 @@
 - Cron dispatcher: every minute
 - Quiet hours: 02:00–06:00 Asia/Bangkok
 - Internal tracking RPCs: service_role only
-- Security advisor: clean at last verification
+- HUB settlement RPC: authenticated only; operator/admin checked server-side
+- Security advisor: HUB RPC clean; legacy SECURITY DEFINER/Auth warnings remain in backlog
 
 ## Web implemented
 - Supabase SSR auth + session refresh
@@ -15,7 +16,10 @@
 - User Shopee list + create
 - Order list + right detail panel + create Order/Shipment
 - Tracking Console + rules + queue + sync logs
+- Tracking Console grouped/filterable by HUB, with multiple Shippers per HUB
 - Manual Tracking Sync with role check
+- Atomic receive batch + HUB settlement + generated Tip
+- Finance view for HUB settlement
 - Warehouse/receive overview
 - Health API
 
