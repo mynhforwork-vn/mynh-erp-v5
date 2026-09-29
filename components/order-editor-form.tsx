@@ -32,6 +32,8 @@ type DestinationHubConfig={
   province_keywords?:string[]|null
   district_keywords?:string[]|null
   address_keywords?:string[]|null
+  shipper_name?:string|null
+  shipper_phone?:string|null
   priority?:number|null
 }
 type Voucher={
@@ -191,6 +193,10 @@ export function OrderEditorForm({
   const totalOriginal=useMemo(
     ()=>items.reduce((sum,item)=>sum+moneyNumber(item.original_price)*Math.max(1,Number(item.quantity??1)||1),0),
     [items]
+  )
+  const assignedHub=useMemo(
+    ()=>sortedHubs.find(h=>h.hub_code===destinationHub)??null,
+    [sortedHubs,destinationHub]
   )
 
   const selectedUser=selectableUsers.find(u=>u.id===selectedUserId)??null
@@ -564,6 +570,7 @@ export function OrderEditorForm({
         <div><span>Khu vực</span><b>{derivedArea||'Chưa xác định'}</b></div>
         <div><span>Miền</span><b>{derivedRegion||'Chưa xác định'}</b></div>
         <div><span>Kho đích</span><b>{destinationHub||'Chưa đủ dữ liệu để nhận diện'}</b></div>
+        <div className="assigned-shipper"><span>Shipper phụ trách</span><b>{assignedHub?.shipper_name||'Chưa cấu hình'}</b><small>{assignedHub?.shipper_phone||''}</small></div>
       </div>}
     </section>
 
