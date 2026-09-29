@@ -350,6 +350,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             <Link className="close" href="/purchase/accounts">×</Link>
           </div>
           <form action={createERPUser} className="panel-form panel-scroll">
+            <input type="hidden" name="return_query" value={detailQuery}/>
             <section className="form-section">
               <h3>Thông tin tài khoản</h3>
               <label>Username<input name="username" required/></label>
@@ -493,6 +494,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             <Link className="close" href={detailHref({user:selected.id,mode:null})}>×</Link>
           </div>
           <form action={updateERPUser} className="panel-form panel-scroll">
+            <input type="hidden" name="return_query" value={detailQuery}/>
             <input type="hidden" name="user_id" value={selected.id}/>
             <section className="form-section">
               <h3>Thông tin tài khoản</h3>
