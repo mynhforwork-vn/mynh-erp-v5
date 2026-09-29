@@ -108,7 +108,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   const range=resolveRange(sp)
   const {supabase}=await requireUser()
 
-  const [{data:ordersData,error},{count:accountCount},{data:alerts},{data:shipperPayments},{data:hubConfigs}]=await Promise.all([
+  const [{data:ordersData,error},{count:accountCount},{data:alerts},{data:shipperPayments},{data:hubConfigs},{data:destinationShippers},{data:hubShipperAssignments}]=await Promise.all([
     supabase.from('orders')
       .select('id,shopee_order_id,order_date,area,destination_hub,cod,receive_status,warehouse_status,order_status,payment_status,shipping_service,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active)')
       .gte('order_date',range.start)
@@ -129,9 +129,19 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       .order('transferred_at',{ascending:false})
       .limit(1000),
     supabase.from('destination_hub_configs')
-      .select('hub_code,shipper_name,shipper_phone,is_active')
+      .select('id,hub_code,is_active')
       .eq('is_active',true)
       .limit(500),
+    supabase.from('destination_shippers')
+      .select('id,name,phone,is_active')
+      .eq('is_active',true)
+      .order('name',{ascending:true})
+      .limit(500),
+    supabase.from('destination_hub_shipper_assignments')
+      .select('hub_config_id,shipper_id,priority,is_active')
+      .eq('is_active',true)
+      .order('priority',{ascending:true})
+      .limit(2000),
   ])
 
   const rows=(ordersData??[]) as any[]
@@ -158,7 +168,21 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   const maxStatus=Math.max(...statusRows.map(x=>x.count),1)
 
   const paymentRows=(shipperPayments??[]) as any[]
-  const hubConfigMap=new Map((hubConfigs??[]).map((h:any)=>[String(h.hub_code),h]))
+  const dashboardShipperMap=new Map((destinationShippers??[]).map((s:any)=>[String(s.id),s]))
+  const dashboardAssignmentsByHub=new Map<string,any[]>()
+  for(const a of (hubShipperAssignments??[]) as any[]){
+    const shipper=dashboardShipperMap.get(String(a.shipper_id))
+    if(!shipper)continue
+    const list=dashboardAssignmentsByHub.get(String(a.hub_config_id))??[]
+    list.push(shipper)
+    dashboardAssignmentsByHub.set(String(a.hub_config_id),list)
+  }
+  const hubShipperMap=new Map(
+    (hubConfigs??[]).map((h:any)=>[
+      String(h.hub_code),
+      dashboardAssignmentsByHub.get(String(h.id))??[],
+    ])
+  )
   const transferredTotal=paymentRows.reduce((sum,p)=>sum+Number(p.actual_transferred??0),0)
   const tipTotal=paymentRows.reduce((sum,p)=>sum+Number(p.tip??0),0)
 
@@ -268,10 +292,14 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
             <tbody>{!byHub.length
               ? <tr><td colSpan={8} className="empty">Chưa có dữ liệu kho đích.</td></tr>
               : byHub.slice(0,12).map(x=>{
-                  const hubConfig=hubConfigMap.get(x.name) as any
+                  const hubShippers=(hubShipperMap.get(x.name)??[]) as any[]
                   return <tr key={x.name} className={x.waiting?'needs-action':''}>
                   <td className="strong">{x.name}</td>
-                  <td><div className="hub-shipper-cell"><b>{hubConfig?.shipper_name??'—'}</b><span>{hubConfig?.shipper_phone??''}</span></div></td>
+                  <td><div className="hub-shipper-cell">
+                    {!hubShippers.length
+                      ? <span>—</span>
+                      : hubShippers.map((s:any)=><span className="hub-shipper-line" key={s.id}><b>{s.name}</b>{s.phone&&<small>{s.phone}</small>}</span>)}
+                  </div></td>
                   <td>{x.orders}</td>
                   <td className="money">{formatMoney(x.cod)}</td>
                   <td>{x.delivered}</td>
