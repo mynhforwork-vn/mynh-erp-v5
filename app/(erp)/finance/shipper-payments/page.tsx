@@ -5,7 +5,7 @@ import { formatDateTime, formatMoney } from '@/lib/format'
 export default async function ShipperPaymentsPage(){
   const {supabase}=await requireUser()
   const {data,error}=await supabase.from('shipper_payments')
-    .select('id,shipper_id,shipper_name,total_cod,actual_transferred,tip,transferred_at,note,destination_shippers(name,phone),warehouses(code,name),shipper_payment_details(order_id,cod_snapshot,orders(shopee_order_id,destination_hub))')
+    .select('id,destination_hub,shipper_id,shipper_name,total_cod,actual_transferred,tip,transferred_at,note,destination_shippers(name,phone),warehouses(code,name),shipper_payment_details(order_id,cod_snapshot,orders(shopee_order_id,destination_hub))')
     .order('transferred_at',{ascending:false})
     .limit(200)
 
@@ -19,8 +19,8 @@ export default async function ShipperPaymentsPage(){
     <header className="page-head">
       <div>
         <span className="module-eyebrow">TÀI CHÍNH</span>
-        <h1>Thanh toán Shipper</h1>
-        <p>Mỗi đợt chuyển có thể gồm nhiều đơn; Tip = Thực chuyển − Tổng COD.</p>
+        <h1>Đối soát HUB</h1>
+        <p>Mỗi đợt đối soát gồm nhiều đơn cùng HUB; Tip = Thực chuyển − Tổng COD.</p>
       </div>
       <div className="head-actions">
         <Link className="button" href="/purchase/tracking?range=all&status=DELIVERED&receive=WAITING_RECEIVE">Đơn chờ nhận</Link>
@@ -31,7 +31,7 @@ export default async function ShipperPaymentsPage(){
     {error&&<div className="error-box">Không thể tải thanh toán Shipper: {error.message}</div>}
 
     <section className="shipper-finance-kpis">
-      <div className="command-kpi"><span>Đợt thanh toán</span><b>{rows.length}</b><small>{orderCount} đơn đã đối soát</small></div>
+      <div className="command-kpi"><span>Đợt đối soát</span><b>{rows.length}</b><small>{orderCount} đơn đã đối soát</small></div>
       <div className="command-kpi"><span>Tổng COD</span><b className="money">{formatMoney(totalCod)}</b><small>COD snapshot trong các đợt</small></div>
       <div className="command-kpi"><span>Thực chuyển</span><b className="money">{formatMoney(transferred)}</b><small>Tổng tiền đã ghi chuyển</small></div>
       <div className="command-kpi warning"><span>Tổng Tip</span><b className="money">{formatMoney(tip)}</b><small>Chênh lệch trên Tổng COD</small></div>
@@ -39,16 +39,18 @@ export default async function ShipperPaymentsPage(){
 
     <section className="shipper-payment-batches">
       {!rows.length
-        ? <div className="card empty">Chưa có đợt thanh toán Shipper.</div>
+        ? <div className="card empty">Chưa có đợt đối soát HUB.</div>
         : rows.map(p=>{
             const hubs=[...new Set((p.shipper_payment_details??[]).map((d:any)=>d.orders?.destination_hub).filter(Boolean))]
+            const hub=p.destination_hub??hubs[0]??'Chưa xác định HUB'
             const shipper=(p.destination_shippers as any)??null
+            const legacyShipper=shipper?.name??p.shipper_name??null
             return <article className="card shipper-payment-batch" key={p.id}>
             <div className="shipper-payment-batch-head">
               <div>
                 <span className="module-eyebrow">HUB KHO ĐÍCH</span>
-                <h2>{hubs.join(' · ')||'Chưa xác định Hub'}</h2>
-                <small>{shipper?.name??p.shipper_name??'Shipper'}{shipper?.phone?' · '+shipper.phone:''} · {(p.warehouses as any)?.code??'—'} · {formatDateTime(p.transferred_at)}</small>
+                <h2>{hub}</h2>
+                <small>{(p.warehouses as any)?.code??'—'} · {formatDateTime(p.transferred_at)}{legacyShipper?' · Dữ liệu cũ: '+legacyShipper:''}{shipper?.phone?' · '+shipper.phone:''}</small>
               </div>
               <div className="shipper-payment-batch-metrics">
                 <div><span>Đơn</span><b>{p.shipper_payment_details?.length??0}</b></div>
