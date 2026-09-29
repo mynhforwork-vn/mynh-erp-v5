@@ -249,19 +249,26 @@ export function OrderEditorForm({
     }
 
     const provinceMatches=sortedHubs.filter(h=>containsKeyword(normalized,h.province_keywords))
-    const districtMatches=sortedHubs
-      .map(h=>({
-        hub:h,
-        score:
-          (containsKeyword(normalized,h.district_keywords)?100:0)+
-          (containsKeyword(normalized,h.address_keywords)?60:0)+
-          (containsKeyword(normalized,h.province_keywords)?20:0)-
-          Math.min(Number(h.priority??100),99)/100,
-      }))
-      .filter(x=>x.score>=60)
+    const wardMatches=sortedHubs
+      .map(h=>{
+        const wardMatched=containsKeyword(normalized,h.district_keywords)
+        const extraMatched=containsKeyword(normalized,h.address_keywords)
+        const provinceMatched=containsKeyword(normalized,h.province_keywords)
+        const hasWardRules=Boolean(h.district_keywords?.length)
+        return {
+          hub:h,
+          eligible:hasWardRules?wardMatched:extraMatched,
+          score:
+            (wardMatched?100:0)+
+            (provinceMatched?20:0)+
+            (extraMatched?10:0)-
+            Math.min(Number(h.priority??100),99)/100,
+        }
+      })
+      .filter(x=>x.eligible)
       .sort((a,b)=>b.score-a.score)
 
-    const bestHub=districtMatches[0]?.hub??null
+    const bestHub=wardMatches[0]?.hub??null
     const bestArea=bestHub??provinceMatches[0]??null
 
     setDerivedArea(bestArea?.area??'')
@@ -562,13 +569,13 @@ export function OrderEditorForm({
           rows={3}
           value={recipientAddress}
           onChange={e=>onAddressChange(e.target.value)}
-          placeholder={shippingService==='EXPRESS'?'Nhập địa chỉ giao hỏa tốc':'Nhập đầy đủ quận/huyện, tỉnh/thành để tự nhận diện kho đích'}
+          placeholder={shippingService==='EXPRESS'?'Nhập địa chỉ giao hỏa tốc':'Nhập đầy đủ phường/xã, tỉnh/thành để tự nhận diện HUB kho đích'}
         />
       </label>
       {shippingService==='STANDARD'&&<div className="address-routing-strip">
         <div><span>Khu vực</span><b>{derivedArea||'Chưa xác định'}</b></div>
         <div><span>Miền</span><b>{derivedRegion||'Chưa xác định'}</b></div>
-        <div><span>Kho đích</span><b>{destinationHub||'Chưa đủ dữ liệu để nhận diện'}</b></div>
+        <div><span>HUB đích</span><b>{destinationHub||'Chưa đủ dữ liệu để nhận diện'}</b></div>
         <div className="assigned-shipper">
           <span>Shipper phụ trách</span>
           {assignedHub?.assigned_shippers?.length
