@@ -41,7 +41,7 @@ function currentWeekRange(y:number,m:number,d:number){
 }
 
 function resolveRange(sp:SP){
-  const key:RangeKey=sp.range??'today'
+  const key:RangeKey=sp.range??'all'
   const now=new Date()
   const p=vnDateParts(now)
   const today=ymd(p.year,p.month,p.day)
