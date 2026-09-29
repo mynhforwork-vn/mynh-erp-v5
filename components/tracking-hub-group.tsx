@@ -21,16 +21,19 @@ type OrderRow={
   shipment_id?:string|null
 }
 type Warehouse={id:string,code?:string|null,name?:string|null}
+type AssignedShipper={shipper_name?:string|null,shipper_phone?:string|null}
 
 export function TrackingHubGroup({
   hub,
   rows,
   warehouses,
+  assignedShipper,
   contextQuery='',
 }:{
   hub:string
   rows:OrderRow[]
   warehouses:Warehouse[]
+  assignedShipper?:AssignedShipper|null
   contextQuery?:string
 }){
   const eligible=rows.filter(r=>r.receive_status==='WAITING_RECEIVE')
@@ -38,7 +41,7 @@ export function TrackingHubGroup({
   const selectedSet=useMemo(()=>new Set(selected),[selected])
   const selectedRows=eligible.filter(r=>selectedSet.has(r.id))
   const selectedCod=selectedRows.reduce((s,r)=>s+Number(r.cod??0),0)
-  const [shipperName,setShipperName]=useState('')
+  const [shipperName,setShipperName]=useState(String(assignedShipper?.shipper_name??''))
   const [actualTransferred,setActualTransferred]=useState('')
   const actualValue=Number(actualTransferred||0)
   const tip=Math.max(0,actualValue-selectedCod)
@@ -48,6 +51,10 @@ export function TrackingHubGroup({
   useEffect(()=>{
     setActualTransferred(selectedCod>0?String(selectedCod):'')
   },[selectedCod])
+
+  useEffect(()=>{
+    setShipperName(String(assignedShipper?.shipper_name??''))
+  },[assignedShipper?.shipper_name])
 
   function toggleAll(){
     setSelected(allSelected?[]:eligible.map(r=>r.id))
@@ -69,9 +76,16 @@ export function TrackingHubGroup({
         <span className="module-eyebrow">KHO ĐÍCH</span>
         <h2>{hub}</h2>
       </div>
-      <div className="tracking-hub-stats">
-        <span><b>{rows.length}</b> đơn</span>
-        <span><b>{eligible.length}</b> chờ nhận</span>
+      <div className="tracking-hub-head-right">
+        <div className="tracking-hub-assignee">
+          <span>Shipper phụ trách</span>
+          <b>{assignedShipper?.shipper_name||'Chưa cấu hình'}</b>
+          {assignedShipper?.shipper_phone&&<small>{formatPhone(assignedShipper.shipper_phone)}</small>}
+        </div>
+        <div className="tracking-hub-stats">
+          <span><b>{rows.length}</b> đơn</span>
+          <span><b>{eligible.length}</b> chờ nhận</span>
+        </div>
       </div>
     </div>
 
@@ -134,67 +148,74 @@ export function TrackingHubGroup({
       </table>
     </div>
 
-    {eligible.length>0&&
-      <form action={confirmReceiveOrders} className="receive-confirm-bar receive-payment-bar">
+    {eligible.length>0&&selected.length===0&&
+      <div className="receive-compact-idle">
+        <span>Chọn đơn chờ nhận để xử lý theo lô</span>
+        <small>{assignedShipper?.shipper_name
+          ? `Shipper: ${assignedShipper.shipper_name}${assignedShipper.shipper_phone?' · '+formatPhone(assignedShipper.shipper_phone):''}`
+          : 'Chưa cấu hình Shipper phụ trách cho kho này'}</small>
+      </div>
+    }
+
+    {eligible.length>0&&selected.length>0&&
+      <form action={confirmReceiveOrders} className="receive-compact-bar">
         <input type="hidden" name="return_query" value={contextQuery}/>
         {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
 
-        <div className="receive-selection">
-          <span>Đã chọn</span>
+        <div className="receive-compact-summary">
           <b>{selected.length} đơn</b>
-          <small>Tổng COD {formatMoney(selectedCod)}</small>
+          <span>COD {formatMoney(selectedCod)}</span>
         </div>
 
-        <label>
-          <span>Kho nhận</span>
-          <select name="warehouse_id" required defaultValue="">
-            <option value="" disabled>Chọn kho</option>
-            {warehouses.map(w=><option value={w.id} key={w.id}>{(w.code?w.code+' · ':'')+(w.name??'Kho')}</option>)}
-          </select>
-        </label>
+        <select name="warehouse_id" required defaultValue="" aria-label="Kho nhận">
+          <option value="" disabled>Kho nhận</option>
+          {warehouses.map(w=><option value={w.id} key={w.id}>{(w.code?w.code+' · ':'')+(w.name??'Kho')}</option>)}
+        </select>
 
-        <div className="shipper-payment-inline">
-          <label>
-            <span>Shipper</span>
-            <input
-              name="shipper_name"
-              value={shipperName}
-              onChange={e=>setShipperName(e.target.value)}
-              placeholder="Tên Shipper"
-            />
-          </label>
-          <label>
-            <span>Thực chuyển</span>
-            <input
-              name="actual_transferred"
-              type="number"
-              min={selectedCod}
-              step="1"
-              value={actualTransferred}
-              onChange={e=>setActualTransferred(e.target.value)}
-              placeholder="0"
-            />
-          </label>
-          <div className={'shipper-tip-preview '+(actualValue<selectedCod&&actualTransferred?'invalid':'')}>
-            <span>Tip</span>
-            <b>{actualValue>=selectedCod?formatMoney(tip):'Thấp hơn COD'}</b>
+        <div className="receive-shipper-field">
+          <input
+            name="shipper_name"
+            value={shipperName}
+            onChange={e=>setShipperName(e.target.value)}
+            placeholder="Shipper"
+            aria-label="Shipper"
+          />
+          {assignedShipper?.shipper_phone&&<span>{formatPhone(assignedShipper.shipper_phone)}</span>}
+        </div>
+
+        <input
+          className="receive-transfer-input"
+          name="actual_transferred"
+          type="number"
+          min={selectedCod}
+          step="1"
+          value={actualTransferred}
+          onChange={e=>setActualTransferred(e.target.value)}
+          placeholder="Thực chuyển"
+          aria-label="Tổng tiền thực chuyển"
+        />
+
+        <div className={'receive-tip '+(actualValue<selectedCod&&actualTransferred?'invalid':'')}>
+          <span>Tip</span>
+          <b>{actualValue>=selectedCod?formatMoney(tip):'Không hợp lệ'}</b>
+        </div>
+
+        <details className="receive-note-details">
+          <summary title="Ghi chú">•••</summary>
+          <div className="receive-note-popover">
+            <span>Ghi chú</span>
+            <input name="note" placeholder="Không bắt buộc"/>
           </div>
-        </div>
+        </details>
 
-        <label className="receive-note">
-          <span>Ghi chú</span>
-          <input name="note" placeholder="Không bắt buộc"/>
-        </label>
-
-        <div className="receive-actions">
-          <button className="button" name="payment_mode" value="receive_only" disabled={!selected.length}>
-            Chỉ xác nhận đã nhận
-          </button>
-          <button className="button primary" name="payment_mode" value="with_payment" disabled={!transferValid}>
-            Xác nhận + ghi chuyển
-          </button>
-        </div>
+        <button className="button small" name="payment_mode" value="receive_only">
+          Nhận
+        </button>
+        <button className="button small primary" name="payment_mode" value="with_payment" disabled={!transferValid}>
+          Nhận + chuyển
+        </button>
       </form>
+    }
     }
   </section>
 }
