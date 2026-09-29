@@ -4892,3 +4892,410 @@ a{text-decoration:none}
   .hub-ward-field,
   .hub-routing-extra{grid-column:1;grid-row:auto}
 }
+
+
+/* =====================================================================
+   HUB settings readability pass — clear text on MacBook/Chrome
+   Scope: destination HUB + Shipper settings only.
+   ===================================================================== */
+.settings-modal.destination-hub-modal{
+  width:min(1380px,calc(100vw - 40px));
+  height:min(860px,calc(100vh - 40px));
+}
+.settings-modal.destination-hub-modal .settings-modal-head{
+  min-height:72px;
+  padding:11px 14px;
+}
+.settings-modal.destination-hub-modal .settings-modal-head h2{
+  margin:2px 0;
+  color:#2F4359;
+  font-size:18px;
+  line-height:1.25;
+  font-weight:700;
+}
+.settings-modal.destination-hub-modal .settings-modal-head p{
+  color:#667587;
+  font-size:11.5px;
+  line-height:1.4;
+}
+.settings-modal.destination-hub-modal .eyebrow{
+  color:#66798E;
+  font-size:9.5px;
+}
+.settings-modal.destination-hub-modal .settings-modal-scroll{
+  padding:12px;
+}
+.settings-modal.destination-hub-modal .settings-modal-actions .button.small,
+.settings-modal.destination-hub-modal .settings-modal-actions .close{
+  min-height:32px;
+  font-size:11px;
+}
+
+.destination-settings.redesigned{
+  gap:12px;
+  color:#33475C;
+}
+.destination-settings.redesigned .destination-settings-section{
+  border-color:#D7E0E8;
+  border-radius:7px;
+}
+.destination-settings.redesigned .destination-settings-head.redesigned{
+  min-height:58px;
+  padding:9px 11px;
+  background:#F8FAFC;
+}
+.destination-settings.redesigned .destination-settings-head h3{
+  color:#31465C;
+  font-size:13px;
+  line-height:1.25;
+  font-weight:700;
+}
+.destination-settings.redesigned .destination-settings-head span:not(.badge){
+  color:#6E7D8E;
+  font-size:10.5px;
+  line-height:1.35;
+}
+.destination-settings.redesigned .badge{
+  font-size:10px;
+  font-weight:700;
+}
+.destination-settings.redesigned .button.small{
+  height:32px;
+  padding:0 11px;
+  font-size:11px;
+  font-weight:650;
+}
+.destination-settings.redesigned .destination-create-form{
+  top:39px;
+  width:min(980px,calc(100vw - 90px));
+  max-height:min(700px,calc(100vh - 120px));
+  padding:12px;
+  border-color:#CFD9E3;
+}
+.destination-settings.redesigned .destination-create-title{
+  padding:2px 2px 10px;
+  margin-bottom:10px;
+}
+.destination-settings.redesigned .destination-create-title b{
+  color:#33495F;
+  font-size:13px;
+}
+.destination-settings.redesigned .destination-create-title span{
+  color:#718093;
+  font-size:10px;
+}
+
+.destination-settings.redesigned .destination-hub-list{
+  max-height:560px;
+}
+.destination-settings.redesigned .destination-hub-summary{
+  min-height:58px;
+  grid-template-columns:minmax(300px,1fr) auto 22px;
+  gap:12px;
+  padding:8px 11px;
+}
+.destination-settings.redesigned .hub-status-dot{
+  width:9px;
+  height:9px;
+}
+.destination-settings.redesigned .destination-hub-summary-main{
+  gap:9px;
+}
+.destination-settings.redesigned .destination-hub-summary-main>div{
+  gap:2px;
+}
+.destination-settings.redesigned .destination-hub-summary-main b{
+  color:#31475D;
+  font-size:12.5px;
+  line-height:1.25;
+}
+.destination-settings.redesigned .destination-hub-summary-main span{
+  color:#69798B;
+  font-size:10.5px;
+  line-height:1.3;
+}
+.destination-settings.redesigned .destination-hub-summary-metrics{
+  gap:6px;
+}
+.destination-settings.redesigned .destination-hub-summary-metrics>span{
+  min-height:28px;
+  gap:4px;
+  padding:0 8px;
+  border-color:#D8E1E9;
+  background:#FBFCFD;
+  color:#5E6F82;
+  font-size:10px;
+}
+.destination-settings.redesigned .destination-hub-summary-metrics>span>b{
+  color:#33495F;
+  font-size:10.5px;
+}
+.destination-settings.redesigned .destination-hub-chevron{
+  color:#64758A;
+  font-size:15px;
+}
+
+.destination-settings.redesigned .destination-hub-editor{
+  padding:12px 12px 10px 28px;
+  background:#FBFCFD;
+}
+.destination-settings.redesigned .hub-editor-grid{
+  grid-template-columns:.9fr 1.35fr 1fr;
+  gap:9px;
+}
+.destination-settings.redesigned .hub-editor-section{
+  padding:10px;
+  border-color:#D9E2EA;
+  border-radius:6px;
+}
+.destination-settings.redesigned .hub-editor-section-head{
+  gap:2px;
+  padding-bottom:8px;
+  margin-bottom:8px;
+}
+.destination-settings.redesigned .hub-editor-section-head b{
+  color:#354A60;
+  font-size:12px;
+  line-height:1.25;
+}
+.destination-settings.redesigned .hub-editor-section-head span{
+  color:#738294;
+  font-size:9.8px;
+  line-height:1.35;
+}
+.destination-settings.redesigned .hub-editor-fields{
+  gap:7px;
+}
+.destination-settings.redesigned .hub-editor-fields.three{
+  grid-template-columns:1fr;
+}
+.destination-settings.redesigned .hub-editor-fields label{
+  gap:4px;
+}
+.destination-settings.redesigned .hub-editor-fields label>span,
+.destination-settings.redesigned .hub-routing-fields label>span{
+  color:#5F7083;
+  font-size:10px;
+  font-weight:600;
+}
+.destination-settings.redesigned .hub-editor-fields input,
+.destination-settings.redesigned .hub-editor-fields select,
+.destination-settings.redesigned .hub-editor-priority input,
+.destination-settings.redesigned .destination-shipper-row-v2 input,
+.destination-settings.redesigned .hub-routing-fields input,
+.destination-settings.redesigned .hub-routing-fields textarea{
+  border-color:#C9D4DE;
+  background:#fff;
+  color:#2F4358;
+  font-family:inherit;
+  font-size:11.5px;
+  line-height:1.35;
+}
+.destination-settings.redesigned .hub-editor-fields input,
+.destination-settings.redesigned .hub-editor-fields select,
+.destination-settings.redesigned .hub-editor-priority input,
+.destination-settings.redesigned .destination-shipper-row-v2 input,
+.destination-settings.redesigned .hub-routing-fields input{
+  height:34px;
+  padding:0 9px;
+}
+.destination-settings.redesigned .hub-editor-fields input::placeholder,
+.destination-settings.redesigned .destination-shipper-row-v2 input::placeholder,
+.destination-settings.redesigned .hub-routing-fields input::placeholder,
+.destination-settings.redesigned .hub-routing-fields textarea::placeholder{
+  color:#9AA6B2;
+  opacity:1;
+}
+.destination-settings.redesigned .hub-routing-fields{
+  grid-template-columns:minmax(150px,.72fr) minmax(280px,1.45fr);
+  gap:8px;
+}
+.destination-settings.redesigned .hub-routing-fields textarea{
+  min-height:122px;
+  padding:8px 9px;
+  line-height:1.5;
+}
+.destination-settings.redesigned .hub-routing-fields label>span b{
+  min-width:20px;
+  margin-left:4px;
+  padding:1px 5px;
+  background:#E8EEF4;
+  color:#435A70;
+  font-size:9.5px;
+}
+.destination-settings.redesigned .hub-ward-field small{
+  color:#6F7E90;
+  font-size:9.5px;
+  line-height:1.4;
+}
+
+.destination-settings.redesigned .hub-editor-shippers{
+  min-height:92px;
+  max-height:150px;
+  gap:6px;
+  padding:2px;
+}
+.destination-settings.redesigned .hub-editor-shipper{
+  min-width:150px;
+  max-width:210px;
+  min-height:36px;
+  gap:7px;
+  padding:5px 7px;
+  border-color:#D2DCE5;
+  background:#FAFBFC;
+}
+.destination-settings.redesigned .hub-editor-shipper input{
+  width:14px!important;
+  height:14px!important;
+}
+.destination-settings.redesigned .hub-editor-shipper b{
+  color:#354A60;
+  font-size:11px;
+  line-height:1.25;
+}
+.destination-settings.redesigned .hub-editor-shipper small{
+  color:#6E7D8E;
+  font-size:9.5px;
+  line-height:1.25;
+}
+
+.destination-settings.redesigned .hub-editor-footer{
+  min-height:46px;
+  gap:8px;
+  padding-top:9px;
+}
+.destination-settings.redesigned .hub-editor-priority{
+  gap:6px;
+}
+.destination-settings.redesigned .hub-editor-priority>span{
+  color:#5E6F82;
+  font-size:10px;
+  font-weight:600;
+}
+.destination-settings.redesigned .hub-editor-priority input{
+  width:74px;
+}
+.destination-settings.redesigned .config-toggle{
+  height:32px;
+  min-width:82px;
+  padding:0 8px;
+  gap:5px!important;
+  border-color:#CED8E2;
+  color:#536579!important;
+  font-size:10px!important;
+}
+.destination-settings.redesigned .config-toggle input{
+  width:14px!important;
+  height:14px!important;
+}
+
+.destination-settings.redesigned .hub-delete-row{
+  min-height:48px;
+  padding-top:9px;
+}
+.destination-settings.redesigned .hub-delete-row>div{
+  gap:2px;
+}
+.destination-settings.redesigned .hub-delete-row>div b{
+  color:#8F4D4D;
+  font-size:10.5px;
+}
+.destination-settings.redesigned .hub-delete-row>div span{
+  color:#846F6F;
+  font-size:9.5px;
+  line-height:1.35;
+}
+.destination-settings.redesigned .hub-delete-confirm>form{
+  bottom:37px;
+  width:290px;
+  gap:8px;
+  padding:10px;
+}
+.destination-settings.redesigned .hub-delete-confirm>form>span{
+  color:#754E4E;
+  font-size:10.5px;
+}
+
+.destination-settings.redesigned .destination-shipper-list-head,
+.destination-settings.redesigned .destination-shipper-row-v2{
+  min-width:920px;
+  grid-template-columns:minmax(180px,1fr) 145px 105px minmax(200px,1.15fr) 90px 70px;
+  gap:6px;
+}
+.destination-settings.redesigned .destination-shipper-list-head{
+  min-height:34px;
+  padding:0 9px;
+  background:#F5F8FA;
+}
+.destination-settings.redesigned .destination-shipper-list-head span{
+  color:#5F7082;
+  font-size:9.5px;
+  font-weight:700;
+}
+.destination-settings.redesigned .destination-shipper-row-v2{
+  min-height:44px;
+  padding:5px 9px;
+}
+.destination-settings.redesigned .shipper-hub-count{
+  min-height:32px;
+  border-color:#D6E0E8;
+  color:#506479;
+  font-size:10px;
+}
+.destination-settings.redesigned .destination-settings-hint{
+  padding:9px 11px;
+  color:#746747;
+  font-size:10px;
+  line-height:1.4;
+}
+
+.system-settings-card .destination-settings.redesigned{
+  padding:10px;
+}
+.settings-category-bar>span{
+  height:32px;
+  padding:0 10px;
+  color:#667587;
+  font-size:10px;
+}
+.system-settings-card>.card-head{
+  padding:11px 12px;
+}
+.system-settings-card>.card-head h2{
+  font-size:14px;
+}
+.system-settings-card>.card-head .muted{
+  font-size:10.5px;
+}
+
+@media (max-width:1180px){
+  .destination-settings.redesigned .hub-editor-grid{
+    grid-template-columns:1fr;
+  }
+  .destination-settings.redesigned .hub-editor-fields.three{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+@media (max-width:860px){
+  .settings-modal.destination-hub-modal{
+    width:calc(100vw - 20px);
+    height:calc(100vh - 20px);
+  }
+  .destination-settings.redesigned .destination-hub-summary{
+    grid-template-columns:minmax(200px,1fr) 20px;
+  }
+  .destination-settings.redesigned .destination-hub-summary-metrics{
+    grid-column:1 / -1;
+    justify-content:flex-start;
+  }
+  .destination-settings.redesigned .hub-editor-fields.three,
+  .destination-settings.redesigned .hub-routing-fields{
+    grid-template-columns:1fr;
+  }
+  .destination-settings.redesigned .hub-routing-province,
+  .destination-settings.redesigned .hub-ward-field,
+  .destination-settings.redesigned .hub-routing-extra{
+    grid-column:1;
+    grid-row:auto;
+  }
+}
