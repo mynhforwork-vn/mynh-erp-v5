@@ -146,7 +146,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   }).slice(0,10)
 
 
-  function orderHref(extra:Record<string,string|undefined|null>={}){
+  function purchaseHref(path:string,extra:Record<string,string|undefined|null>={}){
     const p=new URLSearchParams()
     p.set('range',range.key)
     if(range.key==='custom'){
@@ -157,7 +157,11 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       if(v===null||v===undefined||v==='')p.delete(k)
       else p.set(k,v)
     }
-    return '/purchase/orders?'+p.toString()
+    return path+'?'+p.toString()
+  }
+
+  function orderHref(extra:Record<string,string|undefined|null>={}){
+    return purchaseHref('/purchase/orders',extra)
   }
 
   return <>
@@ -168,7 +172,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
         <p>Theo dõi toàn bộ tài khoản mua, đơn nhập và vận chuyển theo thời gian thực</p>
       </div>
       <div className="head-actions">
-        <Link className="button" href="/purchase/tracking">Cảnh báo vận chuyển</Link>
+        <Link className="button" href={purchaseHref('/purchase/tracking')}>Cảnh báo vận chuyển</Link>
         <Link className="button primary" href={orderHref({mode:'create'})}>+ Tạo đơn nhập</Link>
       </div>
     </header>
@@ -241,7 +245,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       <div className="card purchase-summary-card">
         <div className="card-head">
           <div><h2>Tổng hợp theo kho đích</h2><span className="muted">Phục vụ điều phối nhận hàng theo từng kho đích</span></div>
-          <Link className="button small" href="/purchase/tracking">Mở cảnh báo</Link>
+          <Link className="button small" href={purchaseHref('/purchase/tracking')}>Mở cảnh báo</Link>
         </div>
         <div className="compact-table-wrap">
           <table className="table compact-summary-table">
@@ -274,11 +278,11 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
     </section>
 
     <div className="purchase-flow-strip">
-      <Link href="/purchase/accounts"><span>1</span><div><b>Tài khoản mua hàng</b><small>Quản lý phiên & voucher</small></div></Link>
+      <Link href={purchaseHref('/purchase/accounts')}><span>1</span><div><b>Tài khoản mua hàng</b><small>Quản lý phiên & voucher</small></div></Link>
       <i>→</i>
       <Link href={orderHref()}><span>2</span><div><b>Đơn nhập hàng</b><small>Tạo / sửa / MVĐ</small></div></Link>
       <i>→</i>
-      <Link href="/purchase/tracking"><span>3</span><div><b>Cảnh báo vận chuyển</b><small>Theo dõi & xác nhận nhận</small></div></Link>
+      <Link href={purchaseHref('/purchase/tracking')}><span>3</span><div><b>Cảnh báo vận chuyển</b><small>Theo dõi & xác nhận nhận</small></div></Link>
       <i>→</i>
       <Link href="/warehouse/receive"><span>4</span><div><b>Nhập kho</b><small>Đơn đã nhận</small></div></Link>
     </div>
