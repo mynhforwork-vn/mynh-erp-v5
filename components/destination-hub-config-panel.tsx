@@ -192,7 +192,10 @@ export function DestinationHubConfigModal({
           <h2>Kho đích & Shipper</h2>
           <p>Xem theo Hub kho đích. Một Hub có thể nhiều Shipper và một Shipper có thể phụ trách nhiều Hub.</p>
         </div>
-        <Link className="close" href={closeHref}>×</Link>
+        <div className="settings-modal-actions">
+          <Link className="button small" href="/settings">Cài đặt hệ thống</Link>
+          <Link className="close" href={closeHref}>×</Link>
+        </div>
       </div>
       <div className="settings-modal-scroll">
         <DestinationHubSettings configs={configs} shippers={shippers}/>
