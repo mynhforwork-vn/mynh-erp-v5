@@ -112,6 +112,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     {data:logs},
     {data:paymentRows},
     {data:hubConfigs},
+    {data:destinationShippers},
+    {data:hubShipperAssignments},
   ]=await Promise.all([
     supabase.from('shipments').select(
       'id,order_id,tracking_number,carrier,is_active,tracking_enabled,current_tracking_status,last_track_at,next_track_at,last_status_change_at,tracking_fail_count,queue_status,orders(id,shopee_order_id,destination_hub,cod,recipient_name,recipient_phone,recipient_address,receive_status,warehouse_status,order_date,shipping_service,order_items(product_name,variant,quantity))'
@@ -126,9 +128,19 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       .order('transferred_at',{ascending:false})
       .limit(8),
     supabase.from('destination_hub_configs')
-      .select('hub_code,shipper_name,shipper_phone,is_active')
+      .select('id,hub_code,is_active')
       .eq('is_active',true)
       .limit(500),
+    supabase.from('destination_shippers')
+      .select('id,name,phone,is_active')
+      .eq('is_active',true)
+      .order('name',{ascending:true})
+      .limit(500),
+    supabase.from('destination_hub_shipper_assignments')
+      .select('hub_config_id,shipper_id,priority,is_active')
+      .eq('is_active',true)
+      .order('priority',{ascending:true})
+      .limit(2000),
   ])
 
   const allRows=(shipmentData??[]).map((s:any)=>{
@@ -216,8 +228,19 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
   }
   const contextQuery=contextParams.toString()
 
-  const hubConfigMap=new Map(
-    (hubConfigs??[]).map((h:any)=>[String(h.hub_code),h])
+  const shipperMap=new Map((destinationShippers??[]).map((s:any)=>[String(s.id),s]))
+  const assignmentByHub=new Map<string,any[]>()
+  for(const a of (hubShipperAssignments??[]) as any[]){
+    const list=assignmentByHub.get(String(a.hub_config_id))??[]
+    const shipper=shipperMap.get(String(a.shipper_id))
+    if(shipper)list.push(shipper)
+    assignmentByHub.set(String(a.hub_config_id),list)
+  }
+  const hubShipperMap=new Map(
+    (hubConfigs??[]).map((h:any)=>[
+      String(h.hub_code),
+      assignmentByHub.get(String(h.id))??[],
+    ])
   )
 
   const groups=new Map<string,any[]>()
@@ -322,7 +345,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
             hub={hub}
             rows={groupRows as any[]}
             warehouses={(warehouses??[]) as any[]}
-            assignedShipper={hubConfigMap.get(hub) as any}
+            assignedShippers={(hubShipperMap.get(hub)??[]) as any[]}
             contextQuery={contextQuery}
           />)}
     </div>
