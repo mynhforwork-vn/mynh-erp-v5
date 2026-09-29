@@ -32,8 +32,7 @@ type DestinationHubConfig={
   province_keywords?:string[]|null
   district_keywords?:string[]|null
   address_keywords?:string[]|null
-  shipper_name?:string|null
-  shipper_phone?:string|null
+  assigned_shippers?:Array<{id:string,name:string,phone?:string|null}>
   priority?:number|null
 }
 type Voucher={
@@ -570,7 +569,16 @@ export function OrderEditorForm({
         <div><span>Khu vực</span><b>{derivedArea||'Chưa xác định'}</b></div>
         <div><span>Miền</span><b>{derivedRegion||'Chưa xác định'}</b></div>
         <div><span>Kho đích</span><b>{destinationHub||'Chưa đủ dữ liệu để nhận diện'}</b></div>
-        <div className="assigned-shipper"><span>Shipper phụ trách</span><b>{assignedHub?.shipper_name||'Chưa cấu hình'}</b><small>{assignedHub?.shipper_phone||''}</small></div>
+        <div className="assigned-shipper">
+          <span>Shipper phụ trách</span>
+          {assignedHub?.assigned_shippers?.length
+            ? <div className="assigned-shipper-list">
+                {assignedHub.assigned_shippers.map(s=><span className="assigned-shipper-chip" key={s.id}>
+                  <b>{s.name}</b>{s.phone&&<small>{s.phone}</small>}
+                </span>)}
+              </div>
+            : <b>Chưa cấu hình</b>}
+        </div>
       </div>}
     </section>
 
