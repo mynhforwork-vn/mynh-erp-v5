@@ -194,11 +194,12 @@ function voucherPayload(formData:FormData){
 export async function createOrder(formData:FormData){
   const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
-  const trackingNumber=text(formData.get('tracking_number'))
-  const carrier=text(formData.get('carrier'))||detectCarrier(trackingNumber)
   const shippingService=text(formData.get('shipping_service'))==='EXPRESS'?'EXPRESS':'STANDARD'
+  const isExpress=shippingService==='EXPRESS'
+  const trackingNumber=isExpress?'':text(formData.get('tracking_number'))
+  const carrier=isExpress?null:(text(formData.get('carrier'))||detectCarrier(trackingNumber))
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
-  const orderStatus=trackingNumber?'PROCESSING':'PENDING'
+  const orderStatus=isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
 
   const {data,error}=await supabase.rpc('create_order_full_v2',{
     p_shopee_order_id:text(formData.get('shopee_order_id'))||null,
@@ -207,7 +208,7 @@ export async function createOrder(formData:FormData){
     p_recipient_name:text(formData.get('recipient_name'))||null,
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
-    p_destination_hub:text(formData.get('destination_hub'))||null,
+    p_destination_hub:isExpress?null:(text(formData.get('destination_hub'))||null),
     p_cod:numberOrNull(formData.get('cod'))??0,
     p_order_status:orderStatus,
     p_payment_status:text(formData.get('payment_status'))||'UNPAID',
@@ -218,14 +219,14 @@ export async function createOrder(formData:FormData){
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  const derivedArea=text(formData.get('area'))||null
+  const derivedArea=isExpress?null:(text(formData.get('area'))||null)
   if(data){
-    const express=shippingService==='EXPRESS'
     const {error:orderMetaError}=await supabase.from('orders').update({
       area:derivedArea,
-      express_shipper_name:express?(text(formData.get('express_shipper_name'))||null):null,
-      express_shipper_phone:express?(text(formData.get('express_shipper_phone'))||null):null,
-      express_shipper_note:express?(text(formData.get('express_shipper_note'))||null):null,
+      destination_hub:isExpress?null:(text(formData.get('destination_hub'))||null),
+      express_shipper_name:isExpress?(text(formData.get('express_shipper_name'))||null):null,
+      express_shipper_phone:isExpress?(text(formData.get('express_shipper_phone'))||null):null,
+      express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
     }).eq('id',data)
     if(orderMetaError)throw new Error(orderMetaError.message)
   }
@@ -239,11 +240,12 @@ export async function updateOrder(formData:FormData){
   const orderId=text(formData.get('order_id'))
   if(!orderId)throw new Error('Thiếu đơn hàng cần cập nhật')
 
-  const trackingNumber=text(formData.get('tracking_number'))
-  const carrier=text(formData.get('carrier'))||detectCarrier(trackingNumber)
   const shippingService=text(formData.get('shipping_service'))==='EXPRESS'?'EXPRESS':'STANDARD'
+  const isExpress=shippingService==='EXPRESS'
+  const trackingNumber=isExpress?'':text(formData.get('tracking_number'))
+  const carrier=isExpress?null:(text(formData.get('carrier'))||detectCarrier(trackingNumber))
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
-  const orderStatus=trackingNumber?'PROCESSING':'PENDING'
+  const orderStatus=isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
 
   const {data,error}=await supabase.rpc('update_order_full_v2',{
     p_order_id:orderId,
@@ -253,7 +255,7 @@ export async function updateOrder(formData:FormData){
     p_recipient_name:text(formData.get('recipient_name'))||null,
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
-    p_destination_hub:text(formData.get('destination_hub'))||null,
+    p_destination_hub:isExpress?null:(text(formData.get('destination_hub'))||null),
     p_cod:numberOrNull(formData.get('cod'))??0,
     p_order_status:orderStatus,
     p_payment_status:text(formData.get('payment_status'))||'UNPAID',
@@ -264,15 +266,24 @@ export async function updateOrder(formData:FormData){
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  const derivedArea=text(formData.get('area'))||null
-  const express=shippingService==='EXPRESS'
+  const derivedArea=isExpress?null:(text(formData.get('area'))||null)
   const {error:orderMetaError}=await supabase.from('orders').update({
     area:derivedArea,
-    express_shipper_name:express?(text(formData.get('express_shipper_name'))||null):null,
-    express_shipper_phone:express?(text(formData.get('express_shipper_phone'))||null):null,
-    express_shipper_note:express?(text(formData.get('express_shipper_note'))||null):null,
+    destination_hub:isExpress?null:(text(formData.get('destination_hub'))||null),
+    express_shipper_name:isExpress?(text(formData.get('express_shipper_name'))||null):null,
+    express_shipper_phone:isExpress?(text(formData.get('express_shipper_phone'))||null):null,
+    express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
   }).eq('id',orderId)
   if(orderMetaError)throw new Error(orderMetaError.message)
+  if(isExpress){
+    const {error:shipmentError}=await supabase.from('shipments').update({
+      is_active:false,
+      tracking_enabled:false,
+      next_track_at:null,
+      replaced_at:new Date().toISOString(),
+    }).eq('order_id',orderId).eq('is_active',true)
+    if(shipmentError)throw new Error(shipmentError.message)
+  }
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data)}))
 }
