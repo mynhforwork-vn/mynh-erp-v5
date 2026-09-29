@@ -394,20 +394,37 @@ export async function confirmReceiveOrders(formData:FormData){
 
   let data:any=null
   if(paymentMode==='with_payment'){
-    const shipperName=text(formData.get('shipper_name'))
+    const shipperId=text(formData.get('shipper_id'))
     const actualTransferred=numberOrNull(formData.get('actual_transferred'))
-    if(!shipperName)throw new Error('Chưa nhập tên Shipper')
+    if(!shipperId)throw new Error('Chưa chọn Shipper phụ trách')
     if(actualTransferred===null)throw new Error('Chưa nhập tổng tiền thực chuyển cho Shipper')
+
+    const {data:shipper,error:shipperError}=await supabase
+      .from('destination_shippers')
+      .select('id,name,phone,is_active')
+      .eq('id',shipperId)
+      .eq('is_active',true)
+      .maybeSingle()
+    if(shipperError)throw new Error(shipperError.message)
+    if(!shipper)throw new Error('Shipper không tồn tại hoặc đã ngừng hoạt động')
 
     const result=await supabase.rpc('confirm_receive_and_pay_shipper',{
       p_order_ids:orderIds,
       p_warehouse_id:warehouseId,
-      p_shipper_name:shipperName,
+      p_shipper_name:shipper.name,
       p_actual_transferred:actualTransferred,
       p_note:note,
     })
     if(result.error)throw new Error(result.error.message)
     data=result.data
+
+    if(data?.shipper_payment_id){
+      const {error:linkError}=await supabase
+        .from('shipper_payments')
+        .update({shipper_id:shipperId})
+        .eq('id',data.shipper_payment_id)
+      if(linkError)throw new Error(linkError.message)
+    }
   }else{
     const result=await supabase.rpc('confirm_receive_orders',{
       p_order_ids:orderIds,
