@@ -111,6 +111,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     {data:providers},
     {data:logs},
     {data:paymentRows},
+    {data:hubConfigs},
   ]=await Promise.all([
     supabase.from('shipments').select(
       'id,order_id,tracking_number,carrier,is_active,tracking_enabled,current_tracking_status,last_track_at,next_track_at,last_status_change_at,tracking_fail_count,queue_status,orders(id,shopee_order_id,destination_hub,cod,recipient_name,recipient_phone,recipient_address,receive_status,warehouse_status,order_date,shipping_service,order_items(product_name,variant,quantity))'
@@ -124,6 +125,10 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       .lte('transferred_at',range.endIso)
       .order('transferred_at',{ascending:false})
       .limit(8),
+    supabase.from('destination_hub_configs')
+      .select('hub_code,shipper_name,shipper_phone,is_active')
+      .eq('is_active',true)
+      .limit(500),
   ])
 
   const allRows=(shipmentData??[]).map((s:any)=>{
@@ -210,6 +215,10 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     contextParams.set('to',range.to)
   }
   const contextQuery=contextParams.toString()
+
+  const hubConfigMap=new Map(
+    (hubConfigs??[]).map((h:any)=>[String(h.hub_code),h])
+  )
 
   const groups=new Map<string,any[]>()
   for(const r of rows){
@@ -313,6 +322,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
             hub={hub}
             rows={groupRows as any[]}
             warehouses={(warehouses??[]) as any[]}
+            assignedShipper={hubConfigMap.get(hub) as any}
             contextQuery={contextQuery}
           />)}
     </div>
