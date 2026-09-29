@@ -2507,3 +2507,97 @@ a{text-decoration:none}
   .account-table-card .voucher-cell{max-width:175px}
   .device-icon-cell{width:101px!important;min-width:101px}
 }
+
+
+/* Purchase orders — preserve viewport, no outer-page scrolling */
+.order-screen{
+  height:calc(100vh - 44px);
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.order-screen .page-head{
+  flex:0 0 auto;
+  min-height:42px;
+  margin-bottom:6px;
+}
+.order-screen .purchase-date-filter{
+  flex:0 0 auto;
+  margin-bottom:6px;
+}
+.order-screen .order-kpi-grid{
+  flex:0 0 auto;
+  margin-bottom:6px;
+}
+.order-screen .order-kpi-grid .kpi-card{
+  min-height:62px;
+  padding:7px 9px;
+}
+.order-screen .order-kpi-grid .kpi-card b{
+  margin-top:3px;
+  font-size:16px;
+}
+.order-screen .order-kpi-grid .kpi-card small{
+  font-size:7.5px;
+}
+
+.order-workspace{
+  flex:1 1 auto;
+  min-height:0;
+  align-items:stretch;
+}
+.order-workspace>.order-list-pane{
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+}
+.order-workspace .order-toolbar{
+  flex:0 0 34px;
+  min-height:34px;
+  height:34px;
+  margin-bottom:0;
+  border:1px solid var(--mynh-border);
+  border-bottom:0;
+  border-radius:6px 6px 0 0;
+  background:#FBFCFD;
+}
+.order-workspace .order-table-card{
+  flex:1 1 auto;
+  min-height:0;
+  height:100%;
+  max-height:none!important;
+  overflow:auto!important;
+  border-radius:0 0 6px 6px!important;
+  box-shadow:none;
+}
+.order-workspace .order-table-card .table th{
+  top:0;
+  z-index:5;
+}
+.order-workspace>.detail-panel{
+  position:relative!important;
+  top:auto!important;
+  height:100%!important;
+  min-height:0;
+}
+.order-workspace>.detail-panel .panel-scroll,
+.order-workspace>.order-panel .panel-scroll{
+  min-height:0;
+  overflow:auto;
+}
+
+.order-table-card::-webkit-scrollbar,
+.order-workspace>.detail-panel .panel-scroll::-webkit-scrollbar{
+  width:6px;
+  height:6px;
+}
+.order-table-card::-webkit-scrollbar-thumb,
+.order-workspace>.detail-panel .panel-scroll::-webkit-scrollbar-thumb{
+  background:#CDD5DF;
+  border-radius:999px;
+}
+.order-table-card::-webkit-scrollbar-track,
+.order-workspace>.detail-panel .panel-scroll::-webkit-scrollbar-track{
+  background:transparent;
+}
