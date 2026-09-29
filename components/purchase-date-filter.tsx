@@ -29,12 +29,12 @@ export function PurchaseDateFilter({
       <input type="hidden" name="range" value="custom"/>
       <label>
         <span>Từ ngày</span>
-        <input aria-label="Từ ngày" type="date" name="from" defaultValue={from} required/>
+        <input aria-label="Từ ngày" type="date" name="from" defaultValue={activeRange==='all'?'':from} required/>
       </label>
       <span className="date-range-arrow">→</span>
       <label>
         <span>Đến ngày</span>
-        <input aria-label="Đến ngày" type="date" name="to" defaultValue={to} required/>
+        <input aria-label="Đến ngày" type="date" name="to" defaultValue={activeRange==='all'?'':to} required/>
       </label>
       <button className="button primary" type="submit">Áp dụng</button>
     </form>
