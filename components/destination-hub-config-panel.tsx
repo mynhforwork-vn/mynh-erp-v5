@@ -181,7 +181,7 @@ export function DestinationHubSettings({
         {!configs.length&&<div className="empty compact">Chưa có cấu hình HUB kho đích.</div>}
 
         {configs.map(row=>{
-          const selectedShippers=activeShippers.filter(s=>(row.shipper_ids??[]).includes(s.id))
+          const assignedShipperCount=(row.shipper_ids??[]).length
           const rules=ruleCount(row)
 
           return <details className="destination-hub-card-v2" key={row.id}>
@@ -196,7 +196,7 @@ export function DestinationHubSettings({
 
               <div className="destination-hub-summary-metrics">
                 <span><b>{rules}</b> rule nhận diện</span>
-                <span><b>{selectedShippers.length}</b> Shipper</span>
+                <span><b>{assignedShipperCount}</b> Shipper</span>
                 <span>Ưu tiên <b>{row.priority??100}</b></span>
                 <span className={'hub-state '+(row.is_active?'active':'')}>{row.is_active?'Đang bật':'Đã tắt'}</span>
               </div>
