@@ -40,6 +40,14 @@ function deviceTypeLabel(type?:string|null){
   if(type==='BROWSER_PROFILE')return 'Browser Profile'
   return 'Máy tính'
 }
+function localDateKey(value?:string|null){
+  if(!value)return ''
+  const d=new Date(value)
+  if(Number.isNaN(d.getTime()))return ''
+  return new Intl.DateTimeFormat('en-CA',{
+    timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'
+  }).format(d)
+}
 
 const actionLabels:Record<string,string>={
   CREATE:'Tạo tài khoản',
@@ -228,6 +236,32 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
   function kpiHref(nextState?:string){
     return contextHref('/purchase/accounts',nextState&&nextState!=='all'?{state:nextState}:{})
+  }
+
+  function selectedOrderHref(order:any,username:string){
+    if(sp.range){
+      return contextHref('/purchase/orders',{q:username,order:order.id})
+    }
+    const date=localDateKey(order.order_date)
+    return contextHref('/purchase/orders',{
+      q:username,
+      order:order.id,
+      range:date?'custom':'today',
+      from:date||null,
+      to:date||null,
+    })
+  }
+
+  function allUserOrdersHref(username:string,ordersForUser:any[]){
+    if(sp.range)return contextHref('/purchase/orders',{q:username})
+    const dates=ordersForUser.map((o:any)=>localDateKey(o.order_date)).filter(Boolean).sort()
+    if(!dates.length)return contextHref('/purchase/orders',{q:username})
+    return contextHref('/purchase/orders',{
+      q:username,
+      range:'custom',
+      from:dates[0],
+      to:dates[dates.length-1],
+    })
   }
 
   let selected:any=null
@@ -432,7 +466,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             {sp.tab==='orders'&&<>
               <div className="panel-section-head">
                 <div><h3>Đơn hàng của User</h3><span>{userOrders.length} đơn · chi tiết sản phẩm, voucher, giao nhận</span></div>
-                <Link className="button small" href={contextHref('/purchase/orders',{q:selected.username})}>Mở toàn bộ</Link>
+                <Link className="button small" href={allUserOrdersHref(selected.username,userOrders)}>Mở toàn bộ</Link>
               </div>
               <div className="user-order-list detailed">
                 {!userOrders.length
@@ -440,7 +474,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                   : userOrders.map((o:any)=>{
                       const s=activeShipment(o)
                       const voucherText=(o.order_vouchers??[]).map(voucherLabel).filter(Boolean).join(' · ')
-                      return <Link className="user-order-card detailed" href={contextHref('/purchase/orders',{order:o.id})} key={o.id}>
+                      return <Link className="user-order-card detailed" href={selectedOrderHref(o,selected.username)} key={o.id}>
                         <div className="user-order-card-top">
                           <div><b>{o.shopee_order_id??o.id.slice(0,8)}</b><span>{formatDateTime(o.order_date)} · {o.area??'Chưa rõ khu vực'}</span></div>
                           <strong>{formatMoney(o.cod)}</strong>
