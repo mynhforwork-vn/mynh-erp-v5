@@ -6,7 +6,7 @@ import { nextTrackAt } from '@/lib/tracking/schedule'
 
 function text(v:FormDataEntryValue|null){return String(v??'').trim()}
 
-const RETURN_KEYS=['range','from','to','q','receive','tracking','state','device','session','voucher','orders','browser','sort'] as const
+const RETURN_KEYS=['range','from','to','q','receive','receiveDate','status','hub','tracking','state','device','session','voucher','orders','browser','sort'] as const
 function safeReturnParams(raw:string){
   const src=new URLSearchParams(raw)
   const out=new URLSearchParams()
