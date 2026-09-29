@@ -39,6 +39,7 @@ function voucherSummary(vouchers:any[]){
   return vouchers.map(v=>[v.voucher_tag,v.voucher_type].filter(Boolean).join(' · ')).filter(Boolean).join(' · ')
 }
 function statusKey(row:Row){
+  if(row.shipping_service==='EXPRESS')return ['EXPRESS',row.receive_status??''].join(' ')
   const s=activeShipment(row)?.current_tracking_status??''
   return [s,row.receive_status??''].join(' ')
 }
@@ -176,14 +177,16 @@ export function PurchaseOrderTable({
                   {isVisible('time')&&<td className="order-time-cell">{formatDateTime(o.order_date)}</td>}
                   {isVisible('product')&&<td className="truncate product-cell">{productSummary(o.order_items??[])}</td>}
                   {isVisible('cod')&&<td className="money">{formatMoney(o.cod)}</td>}
-                  {isVisible('tracking')&&<td>{s?.tracking_number??'Chưa có'}</td>}
-                  {isVisible('carrier')&&<td>{s?.carrier??'—'}</td>}
+                  {isVisible('tracking')&&<td>{o.shipping_service==='EXPRESS'?'Không áp dụng':s?.tracking_number??'Chưa có'}</td>}
+                  {isVisible('carrier')&&<td>{o.shipping_service==='EXPRESS'?'Hỏa tốc':s?.carrier??'—'}</td>}
                   {isVisible('voucher')&&<td className="voucher-cell"><VoucherTags value={voucherSummary(o.order_vouchers??[])} compact maxVisible={2}/></td>}
                   {isVisible('status')&&<td>
                     <div className="order-state-cell">
-                      {s?.tracking_number
-                        ? <span className={'status-pill status-'+String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(s?.current_tracking_status)}</span>
-                        : <span className="status-pill orange">Chờ mã vận đơn</span>}
+                      {o.shipping_service==='EXPRESS'
+                        ? <span className="status-pill orange">Hỏa tốc</span>
+                        : s?.tracking_number
+                          ? <span className={'status-pill status-'+String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(s?.current_tracking_status)}</span>
+                          : <span className="status-pill orange">Chờ mã vận đơn</span>}
                       {o.receive_status!=='NOT_READY'&&<span className={'status-pill '+(o.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(o.receive_status)}</span>}
                     </div>
                   </td>}
