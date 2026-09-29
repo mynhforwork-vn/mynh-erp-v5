@@ -6865,3 +6865,648 @@ a{text-decoration:none}
     grid-template-columns:250px minmax(0,1fr);
   }
 }
+
+
+/* =====================================================================
+   Tracking Command Center V2 — high-density operational workspace
+   ===================================================================== */
+.tracking-screen-v2{
+  --tracking-ink:#233A53;
+  --tracking-muted:#6B7B8E;
+  --tracking-line:#D7E0E9;
+  --tracking-blue:#356F9F;
+  --tracking-blue-soft:#EAF2F9;
+  --tracking-green:#2F8A5A;
+  --tracking-green-soft:#EAF6EF;
+  --tracking-amber:#C98022;
+  --tracking-amber-soft:#FFF5E7;
+  --tracking-red:#B95757;
+  --tracking-red-soft:#FFF1F1;
+  height:calc(100vh - 44px);
+  overflow:hidden;
+}
+.tracking-page-head-v2{
+  min-height:42px;
+  margin-bottom:5px!important;
+}
+.tracking-page-head-v2 h1{
+  font-size:18px;
+}
+.tracking-page-head-v2 p{
+  margin-top:1px;
+  font-size:10px;
+}
+.tracking-provider-health{
+  min-height:28px;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:0 9px;
+  border:1px solid var(--tracking-line);
+  border-radius:4px;
+  background:#fff;
+  color:#5E7185;
+  font-size:9.8px;
+  font-weight:650;
+}
+.tracking-provider-health i{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#A9B4BF;
+}
+.tracking-provider-health.online{
+  border-color:#CFE4D7;
+  background:#F4FAF6;
+  color:#377454;
+}
+.tracking-provider-health.online i{background:var(--tracking-green)}
+.tracking-provider-health.offline{
+  border-color:#E8D8BD;
+  background:#FFFAF2;
+  color:#8D672D;
+}
+.tracking-provider-health.offline i{background:var(--tracking-amber)}
+
+/* Compact date row */
+.tracking-date-row-v2{
+  flex:0 0 auto!important;
+  min-height:0;
+}
+.tracking-date-row-v2 .purchase-date-filter.flat{
+  min-height:35px;
+  grid-template-columns:auto auto 1fr;
+  gap:6px;
+  padding:3px 5px;
+  margin-bottom:5px;
+  border-color:#DCE4EB;
+  border-radius:5px;
+  background:#fff;
+}
+.tracking-date-row-v2 .command-range a{
+  min-height:25px;
+  padding:0 8px;
+  font-size:9.2px;
+}
+.tracking-date-row-v2 .purchase-date-inline-form{
+  gap:4px;
+}
+.tracking-date-row-v2 .purchase-date-inline-form label{
+  gap:0;
+}
+.tracking-date-row-v2 .purchase-date-inline-form label>span{
+  display:none;
+}
+.tracking-date-row-v2 .purchase-date-inline-form input{
+  width:118px;
+  height:25px;
+  border-radius:4px;
+  font-size:9px;
+}
+.tracking-date-row-v2 .purchase-date-inline-form .date-range-arrow{
+  height:25px;
+  line-height:25px;
+}
+.tracking-date-row-v2 .purchase-date-inline-form .button{
+  height:25px;
+  padding:0 8px;
+  font-size:9px;
+}
+.tracking-date-row-v2 .range-meta{
+  justify-self:end;
+  padding-right:4px;
+}
+.tracking-date-row-v2 .range-meta span{
+  font-size:8.5px;
+}
+.tracking-date-row-v2 .range-meta b{
+  font-size:9.5px;
+}
+
+/* Flash results only appear after an action/error. */
+.tracking-flash-row{
+  flex:0 0 auto!important;
+  display:flex;
+  gap:5px;
+  margin-bottom:5px;
+}
+.tracking-flash-row>.notice,
+.tracking-flash-row>.error-box{
+  flex:1 1 auto;
+  min-height:30px;
+  margin:0;
+  padding:5px 8px;
+  font-size:9.5px;
+}
+
+/* 2 rows replace KPI cards + receive focus + old toolbar. */
+.tracking-command-center-v2{
+  flex:0 0 auto!important;
+  overflow:hidden;
+  margin-bottom:5px;
+  border:1px solid #D5DFE8;
+  border-radius:5px;
+  background:#fff;
+}
+.tracking-status-strip-v2{
+  min-height:48px;
+  display:grid;
+  grid-template-columns:1.25fr repeat(4,1fr);
+  border-bottom:1px solid #E0E7ED;
+}
+.tracking-status-metric{
+  min-width:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  grid-template-rows:auto auto;
+  align-content:center;
+  gap:0 8px;
+  padding:5px 10px;
+  border-right:1px solid #E5EAF0;
+  color:#405469;
+  background:#fff;
+}
+.tracking-status-metric:last-child{border-right:0}
+.tracking-status-metric:hover{background:#F9FBFD}
+.tracking-status-metric>span{
+  grid-column:1;
+  grid-row:1;
+  color:#5E7185;
+  font-size:9.8px;
+  font-weight:700;
+}
+.tracking-status-metric>b{
+  grid-column:2;
+  grid-row:1 / span 2;
+  align-self:center;
+  color:#253D55;
+  font-size:19px;
+  line-height:1;
+  font-variant-numeric:tabular-nums;
+}
+.tracking-status-metric>small{
+  grid-column:1;
+  grid-row:2;
+  overflow:hidden;
+  color:#8592A0;
+  font-size:8.7px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.tracking-status-metric.active{
+  box-shadow:inset 0 -2px 0 var(--tracking-blue);
+  background:#F7FAFD;
+}
+.tracking-status-metric.warning.active,
+.tracking-status-metric.warning:hover{background:#FFFAF2}
+.tracking-status-metric.warning>b{color:#A96816}
+.tracking-status-metric.amber>b{color:#A96816}
+.tracking-status-metric.info>b{color:#2E6999}
+.tracking-status-metric.success>b{color:#2F8055}
+.tracking-status-metric.danger>b{color:#A94E4E}
+
+.tracking-control-row-v2{
+  min-height:38px;
+  display:grid;
+  grid-template-columns:180px minmax(300px,1fr) auto;
+  align-items:center;
+  gap:7px;
+  padding:4px 6px;
+  background:#F8FAFC;
+}
+.tracking-control-row-v2 .tracking-console-title{
+  gap:0;
+}
+.tracking-control-row-v2 .tracking-console-title b{
+  color:#2D435A;
+  font-size:10.5px;
+}
+.tracking-control-row-v2 .tracking-console-title span{
+  color:#738396;
+  font-size:8.8px;
+}
+.tracking-filter-segments-v2{
+  gap:3px;
+  overflow:visible;
+}
+.tracking-filter-segments-v2>a{
+  height:27px;
+  padding:0 8px;
+  border-radius:4px;
+  color:#617387;
+  font-size:9.3px;
+}
+.tracking-filter-segments-v2>a.active{
+  border-color:#BACDDD;
+  background:#E8F1F8;
+  color:#285C87;
+}
+.tracking-date-filter-v2{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  flex-wrap:nowrap!important;
+}
+.tracking-date-filter-v2 select,
+.tracking-date-filter-v2 input{
+  height:27px;
+  padding:0 7px;
+  border:1px solid #CAD5DF;
+  border-radius:4px;
+  background:#fff;
+  color:#405469;
+  font-size:9.3px;
+}
+.tracking-date-filter-v2 select{max-width:150px}
+.tracking-date-filter-v2 input[type=date]{width:122px}
+.tracking-date-filter-v2 .button{
+  height:27px;
+  padding:0 7px;
+  font-size:9.2px;
+}
+.tracking-date-filter-v2 .ghost-filter{
+  border-color:transparent;
+  background:transparent;
+  color:#78889A;
+}
+
+/* Main single scroll region */
+.tracking-screen-v2>.tracking-hub-stack-v2{
+  flex:1 1 auto!important;
+  min-height:120px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  padding:0 2px 2px 0;
+}
+.tracking-hub-card-v2{
+  flex:0 0 auto;
+  overflow:hidden!important;
+  border-color:#D7E0E8;
+  border-radius:5px;
+  box-shadow:none;
+}
+.tracking-hub-card-v2.collapsed{
+  background:#FBFCFD;
+}
+.tracking-hub-head-v2{
+  min-height:39px;
+  display:grid;
+  grid-template-columns:26px minmax(175px,.75fr) minmax(520px,2fr) auto;
+  align-items:center;
+  gap:7px;
+  padding:3px 7px 3px 3px;
+  border-bottom:1px solid #E0E7ED;
+  background:#F8FAFC;
+}
+.tracking-hub-card-v2.collapsed .tracking-hub-head-v2{
+  border-bottom:0;
+  background:#FBFCFD;
+}
+.tracking-hub-toggle{
+  width:24px;
+  height:28px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:0;
+  border-radius:4px;
+  background:transparent;
+  color:#66788C;
+  font-size:17px;
+  cursor:pointer;
+}
+.tracking-hub-toggle:hover{
+  background:#EAF0F5;
+  color:#2E608A;
+}
+.tracking-hub-identity{
+  min-width:0;
+  display:grid;
+  grid-template-columns:4px minmax(0,1fr);
+  align-items:center;
+  gap:7px;
+}
+.tracking-hub-priority-dot{
+  width:4px;
+  height:26px;
+  border-radius:2px;
+  background:#B7C2CD;
+}
+.tracking-hub-priority-dot.attention{
+  background:linear-gradient(180deg,#E2A13D,#C77436);
+}
+.tracking-hub-identity>div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+}
+.tracking-hub-identity b{
+  overflow:hidden;
+  color:#293F56;
+  font-size:11.5px;
+  line-height:1.25;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.tracking-hub-identity small{
+  overflow:hidden;
+  color:#78889A;
+  font-size:9px;
+  line-height:1.2;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.tracking-hub-metrics-v2{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:4px;
+  overflow:hidden;
+}
+.tracking-hub-metrics-v2>span{
+  min-height:25px;
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  gap:3px;
+  padding:0 6px;
+  border:1px solid #DEE5EC;
+  border-radius:4px;
+  background:#fff;
+  color:#68798B;
+  font-size:9px;
+  white-space:nowrap;
+}
+.tracking-hub-metrics-v2>span b{
+  color:#314A62;
+  font-size:9.8px;
+}
+.tracking-hub-metrics-v2>span.warning{
+  border-color:#E7D5B7;
+  background:#FFF9F0;
+  color:#8B642D;
+}
+.tracking-hub-metrics-v2>span.warning b{color:#A96816}
+.tracking-hub-metrics-v2>span.info{
+  border-color:#CBDCEB;
+  background:#F2F7FB;
+}
+.tracking-hub-metrics-v2>span.danger{
+  border-color:#E7CCCC;
+  background:#FFF5F5;
+  color:#955151;
+}
+.tracking-hub-metrics-v2>span.danger b{color:#AD4D4D}
+.tracking-hub-metrics-v2>span.money{
+  margin-left:auto;
+}
+.tracking-hub-summary-state{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  white-space:nowrap;
+}
+.tracking-hub-summary-state>span{
+  min-height:24px;
+  display:inline-flex;
+  align-items:center;
+  padding:0 6px;
+  border-radius:4px;
+  background:#EEF2F5;
+  color:#6E7E90;
+  font-size:8.8px;
+}
+.tracking-hub-summary-state>span.success{
+  background:#EAF6EF;
+  color:#2F7C53;
+}
+
+/* Expanded table — no nested vertical scrollbar; main stack owns scrolling. */
+.tracking-hub-table-wrap-v2{
+  max-height:none!important;
+  overflow-x:auto!important;
+  overflow-y:visible!important;
+  background:#fff;
+}
+.tracking-hub-table-v2{
+  min-width:1050px;
+}
+.tracking-hub-table-v2 th{
+  height:28px!important;
+  padding:3px 7px!important;
+  background:#F3F6F9;
+  color:#5E7083;
+  font-size:9px!important;
+  font-weight:750;
+}
+.tracking-hub-table-v2 td{
+  height:36px!important;
+  padding:4px 7px!important;
+  color:#33485E;
+  font-size:9.8px!important;
+  vertical-align:middle;
+}
+.tracking-hub-table-v2 tbody tr:hover td{
+  background:#FAFCFE;
+}
+.tracking-hub-table-v2 tbody tr.tracking-row-waiting td{
+  background:#FFFCF6;
+}
+.tracking-hub-table-v2 tbody tr.tracking-row-waiting td:first-child{
+  box-shadow:inset 2px 0 0 #D69A3A;
+}
+.tracking-hub-table-v2 .select-col{
+  width:31px!important;
+}
+.tracking-hub-table-v2 th:nth-child(2),
+.tracking-hub-table-v2 td:nth-child(2){width:165px}
+.tracking-hub-table-v2 th:nth-child(3),
+.tracking-hub-table-v2 td:nth-child(3){width:auto}
+.tracking-hub-table-v2 th:nth-child(4),
+.tracking-hub-table-v2 td:nth-child(4){width:96px}
+.tracking-hub-table-v2 th:nth-child(5),
+.tracking-hub-table-v2 td:nth-child(5){width:250px}
+.tracking-hub-table-v2 th:nth-child(6),
+.tracking-hub-table-v2 td:nth-child(6){width:185px}
+.tracking-hub-table-v2 th:nth-child(7),
+.tracking-hub-table-v2 td:nth-child(7){width:150px}
+.tracking-hub-table-v2 input[type=checkbox]{
+  width:14px;
+  height:14px;
+}
+.tracking-hub-table-v2 .tracking-order-id{
+  gap:0;
+}
+.tracking-hub-table-v2 .tracking-order-id .table-link{
+  font-size:10px;
+  font-weight:700;
+}
+.tracking-hub-table-v2 .tracking-order-id span{
+  font-size:8.8px;
+}
+.tracking-recipient-v2{
+  min-width:0;
+  gap:1px;
+}
+.tracking-recipient-v2 b{
+  display:flex;
+  align-items:baseline;
+  gap:5px;
+  color:#30465D;
+  font-size:9.8px;
+}
+.tracking-recipient-v2 b small{
+  color:#77889A;
+  font-size:8.8px;
+  font-weight:500;
+}
+.tracking-recipient-v2>span{
+  overflow:hidden;
+  color:#748496!important;
+  font-size:8.7px!important;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.tracking-state-cell-v2{
+  flex-direction:row;
+  flex-wrap:wrap;
+  gap:3px;
+}
+.tracking-state-cell-v2 .status-pill{
+  font-size:8.4px;
+}
+.tracking-hub-table-v2 .tracking-row-actions{
+  gap:3px;
+  flex-wrap:nowrap;
+}
+.tracking-hub-table-v2 .tracking-row-actions .button.small{
+  height:25px;
+  padding:0 6px;
+  font-size:8.8px;
+}
+
+/* Selection bar appears only when user actually selects orders. */
+.receive-compact-bar-v2{
+  min-height:39px;
+  grid-template-columns:96px 135px minmax(150px,1fr) 124px 88px 28px 52px 90px;
+  padding:4px 7px;
+  border-top-color:#D4DEE7;
+  background:#F3F7FA;
+}
+.receive-compact-bar-v2 select,
+.receive-compact-bar-v2 input{
+  height:28px;
+  border-color:#C8D4DF;
+  font-size:9.2px;
+}
+.receive-compact-bar-v2 .receive-compact-summary>b{
+  font-size:9.8px;
+}
+.receive-compact-bar-v2 .receive-compact-summary>span{
+  font-size:8.6px;
+}
+.receive-compact-bar-v2 .receive-shipper-field.hub-only{
+  height:28px;
+}
+.receive-compact-bar-v2 .receive-tip{
+  height:28px;
+}
+.receive-compact-bar-v2 .button.small{
+  height:28px;
+  padding:0 6px;
+  font-size:8.8px;
+}
+
+/* Secondary information no longer consumes the permanent viewport. */
+.tracking-secondary-drawer{
+  flex:0 0 auto!important;
+  margin-top:4px;
+  border:1px solid #D9E2EA;
+  border-radius:5px;
+  background:#F8FAFC;
+}
+.tracking-secondary-drawer>summary{
+  min-height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:0 9px;
+  list-style:none;
+  color:#40566C;
+  font-size:9.8px;
+  font-weight:700;
+  cursor:pointer;
+}
+.tracking-secondary-drawer>summary::-webkit-details-marker{display:none}
+.tracking-secondary-drawer>summary small{
+  color:#78889A;
+  font-size:8.8px;
+  font-weight:500;
+}
+.tracking-secondary-drawer[open]>summary{
+  border-bottom:1px solid #DDE5EC;
+  background:#F3F6F9;
+}
+.tracking-bottom-grid-v2{
+  max-height:220px!important;
+  display:grid!important;
+  grid-template-columns:1.15fr .85fr!important;
+  gap:5px;
+  margin:0!important;
+  padding:5px;
+  overflow:auto!important;
+}
+.tracking-bottom-grid-v2>.card{
+  height:auto!important;
+  min-height:150px;
+  max-height:205px;
+  overflow:auto;
+}
+.tracking-bottom-grid-v2 .card-head{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:#fff;
+}
+
+/* At smaller desktop widths keep status information readable, not microscopic. */
+@media(max-width:1280px){
+  .tracking-control-row-v2{
+    grid-template-columns:160px minmax(240px,1fr);
+  }
+  .tracking-date-filter-v2{
+    grid-column:1 / -1;
+    justify-content:flex-end;
+    padding-top:3px;
+    border-top:1px solid #E2E8EE;
+  }
+  .tracking-hub-head-v2{
+    grid-template-columns:26px minmax(165px,.75fr) minmax(420px,2fr);
+  }
+  .tracking-hub-summary-state{
+    grid-column:3;
+    justify-self:end;
+  }
+  .tracking-status-strip-v2{
+    grid-template-columns:1.2fr repeat(4,1fr);
+  }
+}
+@media(max-width:1100px){
+  .tracking-status-metric{
+    padding-left:7px;
+    padding-right:7px;
+  }
+  .tracking-status-metric>small{display:none}
+  .tracking-hub-head-v2{
+    grid-template-columns:26px minmax(180px,1fr) minmax(0,2fr);
+  }
+  .tracking-hub-metrics-v2>span:nth-child(4),
+  .tracking-hub-metrics-v2>span:nth-child(5){display:none}
+}
