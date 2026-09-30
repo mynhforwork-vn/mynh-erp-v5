@@ -219,7 +219,7 @@ export function TrackingHubGroup({
 
             <div className="receive-confirm-grid">
               <label>Kho nhận
-                <select name="warehouse_id" required defaultValue="">
+                <select name="warehouse_id" required defaultValue={warehouses.length===1?warehouses[0].id:''}>
                   <option value="" disabled>Chọn kho nhận</option>
                   {warehouses.map(w=><option value={w.id} key={w.id}>{(w.code?w.code+' · ':'')+(w.name??'Kho')}</option>)}
                 </select>
