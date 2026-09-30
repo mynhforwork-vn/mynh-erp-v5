@@ -213,58 +213,6 @@ export async function restoreERPUser(formData:FormData){
   redirect(returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:null}))
 }
 
-export async function deleteERPUserPermanent(formData:FormData){
-  const {supabase,user,role}=await actor()
-  requireAdmin(role)
-  const returnQuery=text(formData.get('return_query'))
-  const userId=text(formData.get('user_id'))
-  const confirmText=text(formData.get('confirm_text'))
-  if(!userId)throw new Error('Thiếu User cần xóa')
-
-  const {data:row,error:readError}=await supabase
-    .from('erp_users')
-    .select('id,username,phone,email,status,archived_at')
-    .eq('id',userId)
-    .maybeSingle()
-  if(readError)throw new Error(readError.message)
-  if(!row)throw new Error('User không tồn tại')
-  if(!row.archived_at)throw new Error('Cần lưu trữ User trước khi xóa vĩnh viễn')
-  if(confirmText!==String(row.username))throw new Error('Username xác nhận không khớp')
-
-  const {count:orderCount,error:countError}=await supabase
-    .from('orders')
-    .select('*',{count:'exact',head:true})
-    .eq('erp_user_id',userId)
-  if(countError)throw new Error(countError.message)
-  if((orderCount??0)>0){
-    throw new Error('User đã có đơn hàng nên không thể xóa vĩnh viễn. Hãy giữ ở trạng thái Lưu trữ.')
-  }
-
-  const {error}=await supabase.from('erp_users').delete().eq('id',userId)
-  if(error)throw new Error(error.message)
-
-  await supabase.from('audit_logs').insert({
-    actor_user_id:user.id,
-    module:'USERS',
-    action:'DELETE_USER_PERMANENT',
-    entity_type:'ERP_USER',
-    entity_id:userId,
-    old_value:{
-      username:row.username,
-      phone:row.phone,
-      email:row.email,
-      status:row.status,
-      archived_at:row.archived_at,
-    },
-    new_value:{deleted:true},
-    source:'USER',
-  })
-
-  revalidatePath('/purchase/accounts')
-  revalidatePath('/purchase')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'}))
-}
-
 function numberOrNull(v:FormDataEntryValue|null){
   const s=text(v)
   if(!s)return null
