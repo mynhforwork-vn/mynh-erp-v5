@@ -470,7 +470,37 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
               <div className="panel-action-row split-actions">
                 <CopyOrderButton text={`Mã đơn: ${detail.shopee_order_id??''}\nMã vận đơn: ${currentShip?.tracking_number??''}\nCOD: ${detail.cod??0}\nNgười nhận: ${detail.recipient_name??''}\nSĐT: ${detail.recipient_phone??''}\nĐịa chỉ: ${detail.recipient_address??''}`}/>
-                {['admin','operator'].includes(role)&&<Link className="button primary" href={listHref({order:detail.id,mode:'edit'})}>Sửa đơn</Link>}
+                {['admin','operator'].includes(role)&&!detail.archived_at&&<Link className="button primary" href={listHref({order:detail.id,mode:'edit'})}>Sửa đơn</Link>}
+              </div>
+
+              <div className={'record-lifecycle-zone '+(detail.archived_at?'archived':'')}>
+                {!detail.archived_at
+                  ? <form action={archiveOrder} className="record-lifecycle-action">
+                      <input type="hidden" name="order_id" value={detail.id}/>
+                      <input type="hidden" name="return_query" value={returnQuery}/>
+                      <div><b>Lưu trữ đơn</b><span>Ẩn khỏi vận hành và dừng Tracking tự động. Có thể khôi phục.</span></div>
+                      <button className="button archive-button" type="submit">Lưu trữ</button>
+                    </form>
+                  : <>
+                      <form action={restoreOrder} className="record-lifecycle-action">
+                        <input type="hidden" name="order_id" value={detail.id}/>
+                        <input type="hidden" name="return_query" value={returnQuery}/>
+                        <div><b>Đơn đang lưu trữ</b><span>Dữ liệu và lịch sử vẫn được giữ nguyên.</span></div>
+                        <button className="button primary" type="submit">Khôi phục</button>
+                      </form>
+                      {role==='admin'&&<details className="permanent-delete-box">
+                        <summary>Xóa vĩnh viễn đơn</summary>
+                        <form action={deleteOrderPermanent}>
+                          <input type="hidden" name="order_id" value={detail.id}/>
+                          <input type="hidden" name="return_query" value={returnQuery}/>
+                          <p>Chỉ xóa được khi đơn chưa phát sinh nhận hàng, đối soát hoặc chuyển kho. Hành động này không thể hoàn tác.</p>
+                          <label>Nhập <b>{detail.shopee_order_id??detail.id.slice(0,8)}</b> để xác nhận
+                            <input name="confirm_text" autoComplete="off" required/>
+                          </label>
+                          <button className="button danger" type="submit">Xóa vĩnh viễn</button>
+                        </form>
+                      </details>}
+                    </>}
               </div>
 
               <h3>Sản phẩm</h3>
