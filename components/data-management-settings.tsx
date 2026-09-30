@@ -64,7 +64,7 @@ export function DataManagementSettings({
         <div className="data-danger-section">
           <div>
             <b>Dọn đơn đã lưu trữ</b>
-            <span>Chỉ Admin. Hệ thống tự bỏ qua các đơn đã có nhận hàng, đối soát hoặc chuyển kho.</span>
+            <span>Chỉ Admin. Mỗi lần dọn tối đa 200 đơn đủ điều kiện; các đơn đã có nhận hàng, đối soát hoặc chuyển kho được giữ lại.</span>
           </div>
 
           {canDelete
@@ -72,7 +72,7 @@ export function DataManagementSettings({
                 <summary className="button danger" aria-disabled={archivedOrders===0}>Xóa dữ liệu lưu trữ</summary>
                 <form action={purgeEligibleArchivedOrders}>
                   <p>
-                    Hành động này xóa vĩnh viễn các đơn lưu trữ đủ điều kiện và không thể hoàn tác.
+                    Hành động này xóa vĩnh viễn tối đa 200 đơn lưu trữ đủ điều kiện mỗi lần và không thể hoàn tác.
                     Đơn có ràng buộc nghiệp vụ sẽ được giữ lại.
                   </p>
                   <label>
