@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
-import { WarehouseTabs } from '@/components/warehouse-tabs'
 import { WarehouseInventoryWorkspace } from '@/components/warehouse-inventory-workspace'
 import { WarehouseStockTools } from '@/components/warehouse-stock-tools'
 import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
@@ -138,8 +137,6 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
         />
       </div>
     </header>
-
-    <WarehouseTabs active="/warehouse/inventory"/>
 
     {error&&<div className="error-box">Không thể tải dữ liệu tồn kho: {error.message}</div>}
 
