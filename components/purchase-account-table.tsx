@@ -293,7 +293,7 @@ export function PurchaseAccountTable({
     </div>}
 
     <div className="column-manager">
-      <button className="icon-button" type="button" onClick={()=>setOpen(v=>!v)} aria-expanded={open} title="Ẩn / hiện cột">
+      <button className="icon-button" type="button" onClick={()=>setOpen(v=>!v)} aria-expanded={open} title="Cột & thứ tự">
         <ColumnIcon/>
       </button>
       {open&&<div className="column-manager-menu">
