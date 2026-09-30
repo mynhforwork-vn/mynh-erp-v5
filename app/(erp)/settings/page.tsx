@@ -1,10 +1,28 @@
+import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { DestinationHubSettings } from '@/components/destination-hub-config-panel'
+import { ShippingCarrierSettings } from '@/components/shipping-carrier-settings'
 
-export default async function SettingsPage(){
-  const {supabase}=await requireUser()
+type SP={section?:string}
 
-  const [{data:hubRows,error:hubError},{data:shipperRows,error:shipperError},{data:assignmentRows,error:assignmentError}]=await Promise.all([
+export default async function SettingsPage({searchParams}:{searchParams:Promise<SP>}){
+  const sp=await searchParams
+  const {supabase,user}=await requireUser()
+  const role=String(user.app_metadata?.role??'viewer')
+  const canEdit=['admin','operator'].includes(role)
+  const section=sp.section==='spx-hubs'?'spx-hubs':'shipping-carriers'
+
+  const [
+    {data:carrierRows,error:carrierError},
+    {data:hubRows,error:hubError},
+    {data:shipperRows,error:shipperError},
+    {data:assignmentRows,error:assignmentError},
+  ]=await Promise.all([
+    supabase.from('shipping_carrier_configs')
+      .select('id,carrier_code,display_name,tracking_prefixes,supports_tracking,supports_destination_hub,priority,is_active,note')
+      .order('priority',{ascending:true})
+      .order('display_name',{ascending:true})
+      .limit(200),
     supabase.from('destination_hub_configs')
       .select('id,hub_code,area,region,province_keywords,district_keywords,address_keywords,priority,is_active')
       .order('priority',{ascending:true})
@@ -28,31 +46,34 @@ export default async function SettingsPage(){
       .map((a:any)=>a.shipper_id),
   }))
 
-  const error=hubError??shipperError??assignmentError
+  const error=carrierError??hubError??shipperError??assignmentError
 
   return <div className="settings-screen settings-screen-v3">
     <header className="page-head settings-page-head">
       <div>
         <span className="module-eyebrow">HỆ THỐNG</span>
         <h1>Cài đặt hệ thống</h1>
-        <p>Cấu hình dùng chung cho vận hành MYNH ERP.</p>
+        <p>ĐVVC dùng chung và cấu hình vận hành riêng cho SPX.</p>
       </div>
     </header>
 
     {error&&<div className="error-box">Không thể tải cấu hình hệ thống: {error.message}</div>}
 
     <nav className="settings-page-tabs-v3" aria-label="Nhóm cài đặt">
-      <button type="button" className="active">Kho đích & Shipper</button>
-      <button type="button" disabled>Tài khoản & phân quyền</button>
-      <button type="button" disabled>Tích hợp</button>
-      <button type="button" disabled>Thông báo</button>
+      <Link className={section==='shipping-carriers'?'active':''} href="/settings?section=shipping-carriers">Đơn vị vận chuyển</Link>
+      <Link className={section==='spx-hubs'?'active':''} href="/settings?section=spx-hubs">SPX · Kho đích & Shipper</Link>
+      <span className="disabled">Tài khoản & phân quyền</span>
+      <span className="disabled">Tích hợp</span>
+      <span className="disabled">Thông báo</span>
     </nav>
 
     <section className="settings-workspace-v3">
-      <DestinationHubSettings
-        configs={configs}
-        shippers={(shipperRows??[]) as any[]}
-      />
+      {section==='shipping-carriers'
+        ? <ShippingCarrierSettings carriers={(carrierRows??[]) as any[]} canEdit={canEdit}/>
+        : <DestinationHubSettings
+            configs={configs}
+            shippers={(shipperRows??[]) as any[]}
+          />}
     </section>
   </div>
 }
