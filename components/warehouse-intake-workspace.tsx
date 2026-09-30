@@ -37,7 +37,7 @@ type Row={
   shopee_order_id?:string|null
   cod?:number|string|null
   order_date?:string|null
-  receive_batch_details?:ReceiveDetail[]|null
+  receive_batch_details?:ReceiveDetail|ReceiveDetail[]|null
   order_items:Item[]
 }
 type AuditLog={
@@ -56,7 +56,10 @@ type Suggestion={
 }
 
 function batchOf(row:Row){
-  const raw=row.receive_batch_details?.[0]?.receive_batches
+  const detail=Array.isArray(row.receive_batch_details)
+    ? row.receive_batch_details[0]
+    : row.receive_batch_details
+  const raw=detail?.receive_batches
   if(Array.isArray(raw))return raw[0]??null
   return raw??null
 }
