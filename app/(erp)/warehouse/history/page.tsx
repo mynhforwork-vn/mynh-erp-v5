@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime } from '@/lib/format'
-import { WarehouseTabs } from '@/components/warehouse-tabs'
 import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
 
 type SP={type?:string,warehouse?:string,q?:string,ref?:string}
@@ -111,8 +110,6 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
         />
       </div>
     </header>
-
-    <WarehouseTabs active="/warehouse/history"/>
 
     {(error||warehouseError||settingsError)&&<div className="error-box">
       Không thể tải lịch sử kho: {(error??warehouseError??settingsError)?.message}
