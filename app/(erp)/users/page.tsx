@@ -1,6 +1,6 @@
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
-import { createERPUser, updateERPUser } from '@/lib/actions/core'
+import { archiveERPUser, createERPUser, restoreERPUser, updateERPUser } from '@/lib/actions/core'
 import { PurchaseAccountTable } from '@/components/purchase-account-table'
 import { VoucherTags } from '@/components/voucher-tags'
 import Link from 'next/link'
@@ -8,7 +8,7 @@ import Link from 'next/link'
 type SP={
   mode?:string,user?:string,tab?:string,q?:string,state?:string,platform?:string,
   device?:string,session?:string,voucher?:string,orders?:string,browser?:string,sort?:string,
-  range?:string,from?:string,to?:string
+  range?:string,from?:string,to?:string,archive?:string
 }
 
 function hasST(row:any){return Boolean(row?.spc_st_secret_id||row?.spc_st_encrypted)}
@@ -50,13 +50,17 @@ const actionLabels:Record<string,string>={
   UPDATE_PASSWORD:'Đổi mật khẩu',
   UPDATE_SPC_ST:'Cập nhật SPC_ST',
   UPDATE_SPC_F:'Cập nhật SPC_F',
+  ARCHIVE_USER:'Lưu trữ User',
+  RESTORE_USER:'Khôi phục User',
 }
 
 export default async function UsersPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
-  const {supabase}=await requireUser()
+  const {supabase,user}=await requireUser()
+  const role=String(user.app_metadata?.role??'viewer')
+  const archiveView=sp.archive==='archived'
 
-  const fields='id,username,phone,email,status,platform,browser_name,note,created_at,updated_at,mobile,web,order_count,created_at_source,password_secret_id,spc_st_secret_id,spc_f_secret_id,password_encrypted,spc_st_encrypted,spc_f_encrypted'
+  const fields='id,username,phone,email,status,platform,browser_name,note,created_at,updated_at,mobile,web,order_count,created_at_source,password_secret_id,spc_st_secret_id,spc_f_secret_id,password_encrypted,spc_st_encrypted,spc_f_encrypted,archived_at,archived_by'
   const platform=sp.platform??'SHOPEE'
   const state=sp.state??'all'
   const device=sp.device??'all'
@@ -67,8 +71,14 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const sort=sp.sort??'newest'
   const queryText=String(sp.q??'').trim().toLowerCase()
 
+  let userListQuery=supabase.from('erp_users').select(fields).eq('platform',platform)
+  userListQuery=archiveView
+    ? userListQuery.not('archived_at','is',null)
+    : userListQuery.is('archived_at',null)
+  userListQuery=userListQuery.limit(2000)
+
   const [{data:userData,error},{data:deviceData},{data:voucherOrderData}]=await Promise.all([
-    supabase.from('erp_users').select(fields).eq('platform',platform).limit(2000),
+    userListQuery,
     supabase.from('purchase_account_devices')
       .select('id,erp_user_id,device_key,device_name,device_type,browser_name,browser_profile,is_active,last_seen_at,source,note')
       .order('last_seen_at',{ascending:false,nullsFirst:false})
@@ -180,7 +190,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       orders:orders!=='all'?orders:undefined,browser:browser!=='all'?browser:undefined,
       sort:sort!=='newest'?sort:undefined,platform:platform!=='SHOPEE'?platform:undefined,
       range:sp.range,from:sp.range==='custom'?sp.from:undefined,to:sp.range==='custom'?sp.to:undefined,
-      user:sp.user,mode:sp.mode,tab:sp.tab,
+      user:sp.user,mode:sp.mode,tab:sp.tab,archive:sp.archive,
     }
     for(const [k,v] of Object.entries(current))if(v)p.set(k,v)
     for(const [k,v] of Object.entries(overrides)){
@@ -206,6 +216,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   if(sp.user)detailParams.set('user',sp.user)
   if(sp.mode)detailParams.set('mode',sp.mode)
   if(sp.tab)detailParams.set('tab',sp.tab)
+  if(sp.archive)detailParams.set('archive',sp.archive)
   const detailQuery=detailParams.toString()
 
   function contextHref(path:string,extra:Record<string,string|null|undefined>={}){
@@ -241,6 +252,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       range:'all',
       from:null,
       to:null,
+      archive:order.archived_at?'archived':null,
     })
   }
 
@@ -266,7 +278,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   }
   if(selected&&sp.tab==='orders'){
     const o=await supabase.from('orders').select(
-      'id,shopee_order_id,order_date,area,destination_hub,cod,receive_status,warehouse_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,source,order_items(sku,product_name,variant,quantity,original_price,final_price),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active)'
+      'id,shopee_order_id,order_date,area,destination_hub,cod,receive_status,warehouse_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,source,archived_at,order_items(sku,product_name,variant,quantity,original_price,final_price),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active)'
     ).eq('erp_user_id',selected.id).order('order_date',{ascending:false}).limit(100)
     userOrders=(o.data??[]) as any[]
   }
@@ -282,7 +294,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const selectedVoucherSummary=[...voucherCounts.keys()].join(' · ')
 
   const panelOpen=sp.mode==='create'||Boolean(selected)
-  const isEdit=Boolean(selected&&sp.mode==='edit')
+  const isEdit=Boolean(selected&&sp.mode==='edit'&&!selected.archived_at)
   const filtersActive=Boolean(queryText||state!=='all'||device!=='all'||session!=='all'||voucher!=='all'||orders!=='all'||browser!=='all'||sort!=='newest')
 
   return <div className="account-screen">
@@ -294,7 +306,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       </div>
       <div className="head-actions">
         <span className="platform-badge">SHOPEE</span>
-        <Link className="button primary" href={filterHref({mode:'create',user:null,tab:null})}>+ Thêm tài khoản</Link>
+        <Link className="button primary" href={filterHref({mode:'create',user:null,tab:null,archive:null})}>+ Thêm tài khoản</Link>
       </div>
     </header>
 
@@ -356,10 +368,15 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       {sp.user&&<input type="hidden" name="user" value={sp.user}/>}
       {sp.mode&&<input type="hidden" name="mode" value={sp.mode}/>}
       {sp.tab&&<input type="hidden" name="tab" value={sp.tab}/>}
+      {sp.archive&&<input type="hidden" name="archive" value={sp.archive}/>}
       <button className="button primary small">Lọc</button>
       {filtersActive&&<Link className="button small filter-clear" href={filterHref({
         q:null,state:null,device:null,session:null,voucher:null,orders:null,browser:null,sort:null,platform:null,
       })}>×</Link>}
+      <div className="archive-view-toggle">
+        <Link className={!archiveView?'active':''} href={filterHref({archive:null,user:null,mode:null,tab:null})}>Đang dùng</Link>
+        <Link className={archiveView?'active':''} href={filterHref({archive:'archived',user:null,mode:null,tab:null})}>Đã lưu trữ</Link>
+      </div>
       <div className="entity-result-meta"><b>{rows.length}</b><span>/ {counts.all} User{selectedOutsideFilter?' · +1 đang mở':''}</span></div>
     </form>
 
@@ -419,13 +436,14 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             {(!sp.tab||sp.tab==='info')&&<>
               <div className="detail-grid compact-detail-grid">
                 <div><span>Username</span><b>{selected.username}</b></div>
-                <div><span>Trạng thái</span><b>{statusLabel(selected.status)}</b></div>
+                <div><span>Trạng thái</span><b>{selected.archived_at?'Đã lưu trữ':statusLabel(selected.status)}</b></div>
                 <div><span>SĐT</span><b>{formatPhone(selected.phone)}</b></div>
                 <div><span>Email</span><b>{selected.email??'—'}</b></div>
                 <div><span>SPC_ST</span><b>{hasST(selected)?'Đã có':'Chưa có'}</b></div>
                 <div><span>SPC_F</span><b>{hasF(selected)?'Đã có':'Chưa có'}</b></div>
                 <div><span>Số đơn</span><b>{selected.order_count??0} đơn</b></div>
                 <div><span>Ngày tạo</span><b>{formatDateTime(selected.created_at)}</b></div>
+                {selected.archived_at&&<div><span>Lưu trữ lúc</span><b>{formatDateTime(selected.archived_at)}</b></div>}
               </div>
 
               <div className="panel-section-head"><div><h3>Thiết bị hoạt động</h3><span>{selectedDevices.filter((d:any)=>d.is_active).length} active / {selectedDevices.length} đã ghi nhận</span></div></div>
@@ -453,9 +471,28 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
               <div className="panel-note-row"><span>Ghi chú</span><b>{selected.note??'—'}</b></div>
               <div className="panel-action-row split-actions">
-                {selected.status!=='Blocked'&&<Link className="button" href={contextHref('/purchase/orders',{mode:'create',user:selected.id})}>+ Tạo đơn</Link>}
-                <Link className="button primary" href={detailHref({user:selected.id,mode:'edit'})}>Sửa tài khoản</Link>
+                {!selected.archived_at&&selected.status!=='Blocked'&&<Link className="button" href={contextHref('/purchase/orders',{mode:'create',user:selected.id})}>+ Tạo đơn</Link>}
+                {!selected.archived_at&&<Link className="button primary" href={detailHref({user:selected.id,mode:'edit'})}>Sửa tài khoản</Link>}
               </div>
+
+              {['admin','operator'].includes(role)&&<div className={'record-lifecycle-zone '+(selected.archived_at?'archived':'')}>
+                {!selected.archived_at
+                  ? <form action={archiveERPUser} className="record-lifecycle-action">
+                      <input type="hidden" name="user_id" value={selected.id}/>
+                      <input type="hidden" name="return_query" value={detailQuery}/>
+                      <div><b>Lưu trữ User</b><span>Ẩn khỏi danh sách sử dụng và không cho chọn khi tạo đơn. Có thể khôi phục.</span></div>
+                      <button className="button archive-button" type="submit">Lưu trữ</button>
+                    </form>
+                  : <>
+                      <form action={restoreERPUser} className="record-lifecycle-action">
+                        <input type="hidden" name="user_id" value={selected.id}/>
+                        <input type="hidden" name="return_query" value={detailQuery}/>
+                        <div><b>User đang lưu trữ</b><span>Đơn hàng và toàn bộ lịch sử vẫn được giữ.</span></div>
+                        <button className="button primary" type="submit">Khôi phục</button>
+                      </form>
+
+                    </>}
+              </div>}
             </>}
 
             {sp.tab==='orders'&&<>
@@ -496,6 +533,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                         <div className="user-order-shipping">
                           <div><span>MVĐ</span><b>{s?.tracking_number??'Chưa có'}</b><small>{s?.carrier??'—'} · {o.destination_hub??'Chưa rõ kho đích'}</small></div>
                           <span className={`status-pill status-${String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}`}>{statusLabel(s?.current_tracking_status)}</span>
+                          {o.archived_at&&<span className="status-pill archived">Lưu trữ</span>}
                         </div>
 
                         {voucherText&&<VoucherTags value={voucherText}/>}

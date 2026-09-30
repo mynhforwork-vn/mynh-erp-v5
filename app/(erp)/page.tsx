@@ -9,12 +9,12 @@ export default async function Dashboard(){
   const [active,due,alerts,failed,orders,waiting,recentOrders,recentAlerts,warehouses]=await Promise.all([
     count(supabase.from('shipments').select('*',{count:'exact',head:true}).eq('tracking_enabled',true).eq('is_active',true)),
     count(supabase.from('shipments').select('*',{count:'exact',head:true}).eq('tracking_enabled',true).lte('next_track_at',now)),
-    count(supabase.from('alert_events').select('*',{count:'exact',head:true}).is('sent_at',null)),
+    count(supabase.from('alert_events').select('id,orders!inner(archived_at)',{count:'exact',head:true}).is('sent_at',null).is('orders.archived_at',null)),
     count(supabase.from('tracking_sync_logs').select('*',{count:'exact',head:true}).eq('result','FAILED')),
-    count(supabase.from('orders').select('*',{count:'exact',head:true})),
-    count(supabase.from('orders').select('*',{count:'exact',head:true}).eq('receive_status','WAITING_RECEIVE')),
-    supabase.from('orders').select('id,shopee_order_id,cod,destination_hub,receive_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active)').order('created_at',{ascending:false}).limit(8),
-    supabase.from('alert_events').select('id,alert_type,destination_hub,created_at,sent_at').order('created_at',{ascending:false}).limit(5),
+    count(supabase.from('orders').select('*',{count:'exact',head:true}).is('archived_at',null)),
+    count(supabase.from('orders').select('*',{count:'exact',head:true}).is('archived_at',null).eq('receive_status','WAITING_RECEIVE')),
+    supabase.from('orders').select('id,shopee_order_id,cod,destination_hub,receive_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active)').is('archived_at',null).order('created_at',{ascending:false}).limit(8),
+    supabase.from('alert_events').select('id,alert_type,destination_hub,created_at,sent_at,orders!inner(archived_at)').is('orders.archived_at',null).order('created_at',{ascending:false}).limit(5),
     count(supabase.from('warehouses').select('*',{count:'exact',head:true}).eq('is_active',true)),
   ])
 

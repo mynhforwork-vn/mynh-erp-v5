@@ -117,7 +117,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     {data:hubShipperAssignments},
   ]=await Promise.all([
     supabase.from('shipments').select(
-      'id,order_id,tracking_number,carrier,is_active,tracking_enabled,current_tracking_status,last_track_at,next_track_at,last_status_change_at,tracking_fail_count,queue_status,orders(id,shopee_order_id,destination_hub,cod,recipient_name,recipient_phone,recipient_address,receive_status,warehouse_status,order_date,shipping_service,order_items(product_name,variant,quantity))'
+      'id,order_id,tracking_number,carrier,is_active,tracking_enabled,current_tracking_status,last_track_at,next_track_at,last_status_change_at,tracking_fail_count,queue_status,orders(id,shopee_order_id,destination_hub,cod,recipient_name,recipient_phone,recipient_address,receive_status,warehouse_status,order_date,shipping_service,archived_at,order_items(product_name,variant,quantity))'
     ).eq('is_active',true).order('last_status_change_at',{ascending:false,nullsFirst:false}).limit(2000),
     supabase.from('warehouses').select('id,code,name,is_active').eq('is_active',true).order('code'),
     supabase.from('tracking_provider_configs').select('carrier,enabled').order('carrier'),
@@ -144,7 +144,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       .limit(2000),
   ])
 
-  const allRows=(shipmentData??[]).map((s:any)=>{
+  const allRows=(shipmentData??[]).filter((s:any)=>!s.orders?.archived_at).map((s:any)=>{
     const o=s.orders??{}
     return {
       id:o.id??s.order_id,

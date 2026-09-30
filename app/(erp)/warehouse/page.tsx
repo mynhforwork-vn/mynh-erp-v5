@@ -8,8 +8,8 @@ async function count(q:PromiseLike<{count:number|null}>){
 export default async function WarehousePage(){
   const {supabase}=await requireUser()
   const [waiting,received,warehouses,transfers]=await Promise.all([
-    count(supabase.from('orders').select('*',{count:'exact',head:true}).eq('receive_status','WAITING_RECEIVE')),
-    count(supabase.from('orders').select('*',{count:'exact',head:true}).eq('receive_status','RECEIVED')),
+    count(supabase.from('orders').select('*',{count:'exact',head:true}).is('archived_at',null).eq('receive_status','WAITING_RECEIVE')),
+    count(supabase.from('orders').select('*',{count:'exact',head:true}).is('archived_at',null).eq('receive_status','RECEIVED')),
     supabase.from('warehouses').select('*').limit(50),
     supabase.from('transfer_batches').select('*').order('created_at',{ascending:false}).limit(20),
   ])

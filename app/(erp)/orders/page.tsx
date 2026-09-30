@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
 import { ManualSyncButton } from '@/components/manual-sync-button'
-import { replaceShipment } from '@/lib/actions/core'
+import { archiveOrder, deleteOrderPermanent, replaceShipment, restoreOrder } from '@/lib/actions/core'
 import { CopyOrderButton } from '@/components/copy-order-button'
 import { OrderEditorForm } from '@/components/order-editor-form'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
@@ -10,7 +10,7 @@ import { PurchaseOrderTable } from '@/components/purchase-order-table'
 import { DestinationHubConfigModal } from '@/components/destination-hub-config-panel'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
-type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,user?:string,settings?:string}
+type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,user?:string,settings?:string,archive?:string}
 
 const HOUR=60*60*1000
 const DAY=24*HOUR
@@ -97,12 +97,19 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
   const range=resolveRange(sp)
   const queryText=String(sp.q??'').trim().toLowerCase()
+  const archiveView=sp.archive==='archived'
+
+  let orderListQuery=supabase.from('orders').select(
+    'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,archived_at,archived_by,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
+  ).gte('order_date',range.start).lte('order_date',range.end)
+  orderListQuery=archiveView
+    ? orderListQuery.not('archived_at','is',null)
+    : orderListQuery.is('archived_at',null)
+  orderListQuery=orderListQuery.order('order_date',{ascending:false}).limit(1000)
 
   const [{data,error},{data:userOptions},{data:recentSkuRows},{data:voucherCatalogRows},{data:carrierRows},{data:destinationHubRows},{data:destinationShippers},{data:hubShipperAssignments}]=await Promise.all([
-    supabase.from('orders').select(
-      'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
-    ).gte('order_date',range.start).lte('order_date',range.end).order('order_date',{ascending:false}).limit(1000),
-    supabase.from('erp_users').select('id,username,phone,status').order('username').limit(1000),
+    orderListQuery,
+    supabase.from('erp_users').select('id,username,phone,status,archived_at').order('username').limit(1000),
     supabase.from('order_items')
       .select('sku,product_name,variant,original_price,final_price,created_at')
       .not('sku','is',null)
@@ -211,6 +218,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     if(sp.tab)p.set('tab',sp.tab)
     if(sp.settings)p.set('settings',sp.settings)
     if(sp.user)p.set('user',sp.user)
+    if(sp.archive)p.set('archive',sp.archive)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v==='')p.delete(k)
       else p.set(k,v)
@@ -228,7 +236,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   if(sp.order){
     const [od,it,vo]=await Promise.all([
       supabase.from('orders').select(
-        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)'
+        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,archived_by,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)'
       ).eq('id',sp.order).maybeSingle(),
       supabase.from('order_items').select('*').eq('order_id',sp.order).order('created_at'),
       supabase.from('order_vouchers').select('*').eq('order_id',sp.order).order('created_at')
@@ -254,7 +262,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     : rows
 
   const createMode=sp.mode==='create'
-  const editMode=Boolean(detail&&sp.mode==='edit')
+  const editMode=Boolean(detail&&sp.mode==='edit'&&!detail.archived_at)
   const destinationSettingsMode=sp.settings==='destination-hubs'
   const panelOpen=createMode||Boolean(detail)
   const currentShip=activeShipment(detail)
@@ -274,7 +282,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       </div>
       <div className="head-actions">
         <Link className={`button ${destinationSettingsMode?'active':''}`} href={listHref({settings:'destination-hubs',order:null,mode:null,tab:null})}>⚙ Kho đích SPX</Link>
-        <Link className="button primary" href={listHref({mode:'create',order:null,tab:null,settings:null})}>+ Tạo đơn nhập</Link>
+        <Link className="button primary" href={listHref({mode:'create',order:null,tab:null,settings:null,archive:null})}>+ Tạo đơn nhập</Link>
       </div>
     </header>
 
@@ -294,6 +302,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         q:sp.q,
         receive:sp.receive,
         tracking:sp.tracking,
+        archive:sp.archive,
       }}
     />
 
@@ -318,6 +327,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             {sp.mode&&<input type="hidden" name="mode" value={sp.mode}/>}
             {sp.tab&&<input type="hidden" name="tab" value={sp.tab}/>}
             {sp.user&&<input type="hidden" name="user" value={sp.user}/>}
+            {sp.archive&&<input type="hidden" name="archive" value={sp.archive}/>}
             <input className="search" name="q" defaultValue={sp.q??''} placeholder="Mã đơn / MVĐ / Username / sản phẩm / voucher"/>
             <button className="button small">Tìm</button>
             {queryText&&<Link className="button small" href={listHref({q:null})}>Xóa tìm</Link>}
@@ -326,6 +336,10 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             <Link className={!sp.receive?'active':''} href={listHref({receive:null})}>Tất cả</Link>
             <Link className={sp.receive==='WAITING_RECEIVE'?'active':''} href={listHref({receive:'WAITING_RECEIVE'})}>Chờ nhận</Link>
             <Link className={sp.receive==='RECEIVED'?'active':''} href={listHref({receive:'RECEIVED'})}>Đã nhận</Link>
+          </div>
+          <div className="archive-view-toggle">
+            <Link className={!archiveView?'active':''} href={listHref({archive:null,order:null,mode:null,tab:null})}>Đang dùng</Link>
+            <Link className={archiveView?'active':''} href={listHref({archive:'archived',order:null,mode:null,tab:null,receive:null,tracking:null})}>Đã lưu trữ</Link>
           </div>
           <span className="toolbar-note">
             {selectedOutsideFilter
@@ -340,7 +354,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               rows={displayRows}
               selectedId={sp.order}
               baseQuery={returnQuery}
-              canEdit={['admin','operator'].includes(role)}
+              canEdit={['admin','operator'].includes(role)&&!archiveView}
               carrierConfigs={carrierConfigs}
             />}
 
@@ -427,7 +441,8 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               <div className="detail-grid">
                 <div><span>Username</span><b>{detail.erp_users?.username??'—'}</b></div>
                 <div><span>Ngày đặt</span><b>{formatDateTime(detail.order_date)}</b></div>
-                <div><span>Trạng thái đơn</span><b>{detail.shipping_service==='EXPRESS'?'Đang xử lý · Hỏa tốc':currentShip?.tracking_number?statusLabel(currentShip.current_tracking_status):'Đang chờ duyệt · Chờ mã vận đơn'}</b></div>
+                {detail.archived_at&&<div><span>Lưu trữ lúc</span><b>{formatDateTime(detail.archived_at)}</b></div>}
+                <div><span>Trạng thái đơn</span><b>{detail.archived_at?'Đã lưu trữ':detail.shipping_service==='EXPRESS'?'Đang xử lý · Hỏa tốc':currentShip?.tracking_number?statusLabel(currentShip.current_tracking_status):'Đang chờ duyệt · Chờ mã vận đơn'}</b></div>
                 <div><span>Thanh toán</span><b>{statusLabel(detail.payment_status)}</b></div>
                 <div><span>COD</span><b>{formatMoney(detail.cod)}</b></div>
                 <div><span>Tổng giá gốc</span><b>{formatMoney(detailTotalOriginal)}</b></div>
@@ -456,8 +471,38 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
               <div className="panel-action-row split-actions">
                 <CopyOrderButton text={`Mã đơn: ${detail.shopee_order_id??''}\nMã vận đơn: ${currentShip?.tracking_number??''}\nCOD: ${detail.cod??0}\nNgười nhận: ${detail.recipient_name??''}\nSĐT: ${detail.recipient_phone??''}\nĐịa chỉ: ${detail.recipient_address??''}`}/>
-                {['admin','operator'].includes(role)&&<Link className="button primary" href={listHref({order:detail.id,mode:'edit'})}>Sửa đơn</Link>}
+                {['admin','operator'].includes(role)&&!detail.archived_at&&<Link className="button primary" href={listHref({order:detail.id,mode:'edit'})}>Sửa đơn</Link>}
               </div>
+
+              {['admin','operator'].includes(role)&&<div className={'record-lifecycle-zone '+(detail.archived_at?'archived':'')}>
+                {!detail.archived_at
+                  ? <form action={archiveOrder} className="record-lifecycle-action">
+                      <input type="hidden" name="order_id" value={detail.id}/>
+                      <input type="hidden" name="return_query" value={returnQuery}/>
+                      <div><b>Lưu trữ đơn</b><span>Ẩn khỏi vận hành và dừng Tracking tự động. Có thể khôi phục.</span></div>
+                      <button className="button archive-button" type="submit">Lưu trữ</button>
+                    </form>
+                  : <>
+                      <form action={restoreOrder} className="record-lifecycle-action">
+                        <input type="hidden" name="order_id" value={detail.id}/>
+                        <input type="hidden" name="return_query" value={returnQuery}/>
+                        <div><b>Đơn đang lưu trữ</b><span>Dữ liệu và lịch sử vẫn được giữ nguyên.</span></div>
+                        <button className="button primary" type="submit">Khôi phục</button>
+                      </form>
+                      {role==='admin'&&<details className="permanent-delete-box">
+                        <summary>Xóa vĩnh viễn đơn</summary>
+                        <form action={deleteOrderPermanent}>
+                          <input type="hidden" name="order_id" value={detail.id}/>
+                          <input type="hidden" name="return_query" value={returnQuery}/>
+                          <p>Chỉ xóa được khi đơn chưa phát sinh nhận hàng, đối soát hoặc chuyển kho. Hành động này không thể hoàn tác.</p>
+                          <label>Nhập <b>{detail.shopee_order_id??detail.id.slice(0,8)}</b> để xác nhận
+                            <input name="confirm_text" autoComplete="off" required/>
+                          </label>
+                          <button className="button danger" type="submit">Xóa vĩnh viễn</button>
+                        </form>
+                      </details>}
+                    </>}
+              </div>}
 
               <h3>Sản phẩm</h3>
               <div className="mini-table">
@@ -498,10 +543,10 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                       <span>Lần đồng bộ cuối: {formatDateTime(s.last_track_at)}</span>
                       <span>{s.is_active?'Lần kế tiếp: '+formatDateTime(s.next_track_at):'Thay lúc: '+formatDateTime(s.replaced_at)}</span>
                     </div>
-                    {s.is_active&&<ManualSyncButton shipmentId={s.id}/>}
+                    {s.is_active&&!detail.archived_at&&<ManualSyncButton shipmentId={s.id}/>} 
                   </div>)}
 
-              {['admin','operator'].includes(role)&&
+              {['admin','operator'].includes(role)&&!detail.archived_at&&
                 <form action={replaceShipment} className="replace-form">
                   <input type="hidden" name="return_query" value={returnQuery}/>
                   <input type="hidden" name="order_id" value={detail.id}/>

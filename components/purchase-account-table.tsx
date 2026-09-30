@@ -160,13 +160,15 @@ export function PurchaseAccountTable({
                 {isVisible('username')&&<td>
                   <div className="user-name-actions">
                     <Link className="table-link" href={hrefFor(u.id)}>{u.username}</Link>
-                    {u.status!=='Blocked'&&<Link className="quick-order-link" href={createOrderHref(u.id)} title="Tạo đơn từ User">+ Đơn</Link>}
+                    {!u.archived_at&&u.status!=='Blocked'&&<Link className="quick-order-link" href={createOrderHref(u.id)} title="Tạo đơn từ User">+ Đơn</Link>}
                   </div>
                 </td>}
                 {isVisible('platform')&&<td><span className="platform-cell">{u.platform??'SHOPEE'}</span></td>}
                 {isVisible('phone')&&<td>{formatPhone(u.phone)}</td>}
                 {isVisible('email')&&<td>{u.email??'—'}</td>}
-                {isVisible('status')&&<td><span className={'status-pill '+statusClass(u.status)}>{statusLabel(u.status)}</span></td>}
+                {isVisible('status')&&<td>{u.archived_at
+                  ? <span className="status-pill archived">Lưu trữ</span>
+                  : <span className={'status-pill '+statusClass(u.status)}>{statusLabel(u.status)}</span>}</td>}
                 {isVisible('device')&&<td className="device-icon-cell"><DeviceIcons row={u}/></td>}
                 {isVisible('voucher')&&<td className="voucher-cell"><VoucherTags value={u.voucher_used_summary} compact maxVisible={2}/></td>}
                 {isVisible('orders')&&<td className="count-cell">{u.order_count??0}</td>}

@@ -252,7 +252,7 @@ export function PurchaseOrderTable({
                       ? <span className="tracking-na">Không áp dụng</span>
                       : s?.tracking_number
                         ? <span className="tracking-number-value">{s.tracking_number}</span>
-                        : canEdit
+                        : canEdit&&!o.archived_at
                           ? <QuickTrackingEditor orderId={o.id} returnQuery={baseQuery} carrierConfigs={carrierConfigs}/>
                           : <span className="tracking-missing-text">Chưa có</span>}
                   </td>}
@@ -266,6 +266,7 @@ export function PurchaseOrderTable({
                           ? <span className={'status-pill status-'+String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(s?.current_tracking_status)}</span>
                           : <span className="status-pill orange">Chờ mã vận đơn</span>}
                       {o.receive_status!=='NOT_READY'&&<span className={'status-pill '+(o.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(o.receive_status)}</span>}
+                      {o.archived_at&&<span className="status-pill archived">Lưu trữ</span>}
                     </div>
                   </td>}
                 </tr>

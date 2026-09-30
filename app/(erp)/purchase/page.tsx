@@ -111,13 +111,15 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   const [{data:ordersData,error},{count:accountCount},{data:alerts},{data:shipperPayments},{data:hubConfigs},{data:destinationShippers},{data:hubShipperAssignments}]=await Promise.all([
     supabase.from('orders')
       .select('id,shopee_order_id,order_date,area,destination_hub,cod,receive_status,warehouse_status,order_status,payment_status,shipping_service,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active)')
+      .is('archived_at',null)
       .gte('order_date',range.start)
       .lte('order_date',range.end)
       .order('order_date',{ascending:false})
       .limit(2000),
-    supabase.from('erp_users').select('*',{count:'exact',head:true}),
+    supabase.from('erp_users').select('*',{count:'exact',head:true}).is('archived_at',null),
     supabase.from('alert_events')
-      .select('id,order_id,alert_type,destination_hub,created_at,sent_at')
+      .select('id,order_id,alert_type,destination_hub,created_at,sent_at,orders!inner(archived_at)')
+      .is('orders.archived_at',null)
       .gte('created_at',range.start)
       .lte('created_at',range.end)
       .order('created_at',{ascending:false})
