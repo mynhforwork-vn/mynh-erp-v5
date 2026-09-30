@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/supabase/auth'
 import { WarehouseTabs } from '@/components/warehouse-tabs'
 import { WarehouseInventoryWorkspace } from '@/components/warehouse-inventory-workspace'
 import { WarehouseStockTools } from '@/components/warehouse-stock-tools'
+import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
 
 type SP={warehouse?:string,q?:string,status?:string}
 
@@ -30,6 +31,7 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
     {data:transfers,error:transferError},
     {data:transactions,error:transactionError},
     {data:todayTransactions,error:todayError},
+    {data:settings,error:settingsError},
   ]=await Promise.all([
     supabase.from('inventory_balances')
       .select('warehouse_id,warehouse_code,warehouse_name,product_variant_id,product_id,sku,product_name,variant_name,quantity')
@@ -37,7 +39,7 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
       .order('sku')
       .limit(3000),
     supabase.from('warehouses')
-      .select('id,code,name')
+      .select('id,code,name,address')
       .eq('is_active',true)
       .order('code')
       .limit(100),
@@ -56,9 +58,13 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
       .select('tx_type,quantity')
       .gte('created_at',todayStartVN())
       .limit(5000),
+    supabase.from('warehouse_settings')
+      .select('default_receiving_warehouse_id')
+      .eq('id','main')
+      .single(),
   ])
 
-  const error=balanceError??warehouseError??variantError??transferError??transactionError??todayError
+  const error=balanceError??warehouseError??variantError??transferError??transactionError??todayError??settingsError
   const all=(balances??[]) as any[]
   const priceMap=new Map((variants??[]).map((row:any)=>[String(row.id),Number(row.sale_price??0)]))
 
@@ -125,6 +131,12 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
         <h1>Tồn kho</h1>
         <p>Tồn thực tế theo SKU bán tại Kho nhận; bán hàng, kiểm kê và điều chỉnh đều ghi lịch sử.</p>
       </div>
+      <div className="head-actions">
+        <WarehouseReceivingSettings
+          warehouses={(warehouses??[]) as any[]}
+          defaultReceivingWarehouseId={(settings as any)?.default_receiving_warehouse_id??null}
+        />
+      </div>
     </header>
 
     <WarehouseTabs active="/warehouse/inventory"/>
@@ -164,6 +176,7 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
         warehouses={(warehouses??[]) as any[]}
         balances={toolBalances}
         recentTransfers={(transfers??[]) as any[]}
+        defaultReceivingWarehouseId={(settings as any)?.default_receiving_warehouse_id??null}
       />
     </div>
 
