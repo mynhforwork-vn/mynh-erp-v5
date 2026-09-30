@@ -4,7 +4,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
-import { archiveOrder, deleteOrderPermanent, quickAddTrackingNumber, restoreOrder } from '@/lib/actions/core'
+import {
+  archiveOrder,
+  archiveOrdersBulk,
+  deleteOrderPermanent,
+  deleteOrdersBulkPermanent,
+  quickAddTrackingNumber,
+  restoreOrder,
+  restoreOrdersBulk,
+} from '@/lib/actions/core'
 
 type Row=Record<string,any>
 type CarrierConfig={
@@ -200,6 +208,8 @@ export function PurchaseOrderTable({
   const [visible,setVisible]=useState<ColKey[]>(ALL)
   const [open,setOpen]=useState(false)
   const [sort,setSort]=useState<SortKey>('time_new')
+  const [selected,setSelected]=useState<string[]>([])
+  const [bulkDeleteOpen,setBulkDeleteOpen]=useState(false)
   const tableWrapRef=useRef<HTMLDivElement|null>(null)
 
   useEffect(()=>{
@@ -267,10 +277,79 @@ export function PurchaseOrderTable({
     return next
   },[rows,sort])
 
-  const colSpan=visible.length+1
+  useEffect(()=>{
+    const valid=new Set(rows.map((x:any)=>String(x.id)))
+    setSelected(prev=>prev.filter(id=>valid.has(id)))
+  },[rows])
+
+  const selectedSet=useMemo(()=>new Set(selected),[selected])
+  const selectedRows=useMemo(
+    ()=>sorted.filter((row:any)=>selectedSet.has(String(row.id))),
+    [sorted,selectedSet]
+  )
+  const allSelected=sorted.length>0&&sorted.slice(0,200).every((row:any)=>selectedSet.has(String(row.id)))
+  const selectedArchived=selectedRows.length>0&&selectedRows.every((row:any)=>Boolean(row.archived_at))
+
+  function toggleSelect(id:string){
+    setSelected(prev=>{
+      if(prev.includes(id))return prev.filter(x=>x!==id)
+      if(prev.length>=200)return prev
+      return [...prev,id]
+    })
+  }
+  function toggleSelectAll(){
+    if(allSelected){
+      setSelected([])
+      return
+    }
+    setSelected(sorted.slice(0,200).map((row:any)=>String(row.id)))
+  }
+
+  const colSpan=visible.length+1+(canEdit?1:0)
   const toggleSort=(a:SortKey,b:SortKey)=>changeSort(sort===a?b:a)
 
   return <div className="order-table-shell">
+    {canEdit&&selected.length>0&&<div className="order-bulk-bar">
+      <div className="order-bulk-summary">
+        <b>{selected.length}</b>
+        <span>đơn đã chọn{sorted.length>200?' · tối đa 200/lần':''}</span>
+        <button type="button" onClick={()=>setSelected([])}>Bỏ chọn</button>
+      </div>
+
+      {!selectedArchived
+        ? <form action={archiveOrdersBulk} className="order-bulk-form">
+            <input type="hidden" name="return_query" value={baseQuery}/>
+            {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
+            <button className="button small archive-button" type="submit">Lưu trữ đã chọn</button>
+          </form>
+        : <>
+            <form action={restoreOrdersBulk} className="order-bulk-form">
+              <input type="hidden" name="return_query" value={baseQuery}/>
+              {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
+              <button className="button small primary" type="submit">Khôi phục đã chọn</button>
+            </form>
+
+            {canDeletePermanent&&<div className="order-bulk-delete">
+              <button
+                type="button"
+                className="button small danger"
+                onClick={()=>setBulkDeleteOpen(v=>!v)}
+                aria-expanded={bulkDeleteOpen}
+              >Xóa đã chọn</button>
+              {bulkDeleteOpen&&<form action={deleteOrdersBulkPermanent} className="order-bulk-delete-confirm">
+                <input type="hidden" name="return_query" value={baseQuery}/>
+                {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
+                <span>Nhập <b>XOA DON DA CHON</b> để xóa vĩnh viễn {selected.length} đơn.</span>
+                <input name="confirm_text" placeholder="XOA DON DA CHON" autoComplete="off" required autoFocus/>
+                <div>
+                  <button type="button" className="button small" onClick={()=>setBulkDeleteOpen(false)}>Hủy</button>
+                  <button type="submit" className="button small danger">Xóa vĩnh viễn</button>
+                </div>
+              </form>}
+            </div>}
+          </>}
+    </div>}
+
     <div className="order-column-manager">
       <button className="icon-button" type="button" onClick={()=>setOpen(v=>!v)} title="Ẩn / hiện cột" aria-expanded={open}>
         <ColumnIcon/>
@@ -290,6 +369,15 @@ export function PurchaseOrderTable({
     <div className="card table-card order-table-card" ref={tableWrapRef}>
       <table className="table order-table">
         <thead><tr>
+          {canEdit&&<th className="bulk-select-col">
+            <input
+              type="checkbox"
+              aria-label="Chọn tối đa 200 đơn"
+              checked={allSelected}
+              onChange={toggleSelectAll}
+              disabled={!sorted.length}
+            />
+          </th>}
           {isVisible('number')&&<th>#</th>}
           {isVisible('order')&&<th><button className="sort-head" type="button" onClick={()=>toggleSort('order_asc','order_desc')}>Mã đơn <span>{sortIndicator(sort,'order_asc','order_desc')}</span></button></th>}
           {isVisible('username')&&<th><button className="sort-head" type="button" onClick={()=>toggleSort('username_asc','username_desc')}>Username <span>{sortIndicator(sort,'username_asc','username_desc')}</span></button></th>}
@@ -308,6 +396,14 @@ export function PurchaseOrderTable({
             : sorted.map((o:any,i:number)=>{
                 const s=activeShipment(o)
                 return <tr key={o.id} data-selected={selectedId===o.id?'true':undefined} className={selectedId===o.id?'selected-row':''}>
+                  {canEdit&&<td className="bulk-select-col">
+                    <input
+                      type="checkbox"
+                      aria-label={'Chọn '+(o.shopee_order_id??o.id)}
+                      checked={selectedSet.has(String(o.id))}
+                      onChange={()=>toggleSelect(String(o.id))}
+                    />
+                  </td>}
                   {isVisible('number')&&<td>{i+1}</td>}
                   {isVisible('order')&&<td><Link className="table-link" href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>}
                   {isVisible('username')&&<td>{o.erp_users?.username??'—'}</td>}
