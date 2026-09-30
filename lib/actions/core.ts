@@ -397,8 +397,10 @@ export async function createOrder(formData:FormData){
   const returnQuery=text(formData.get('return_query'))
   const shippingService=text(formData.get('shipping_service'))==='EXPRESS'?'EXPRESS':'STANDARD'
   const isExpress=shippingService==='EXPRESS'
-  const trackingNumber=isExpress?'':text(formData.get('tracking_number'))
-  const carrier=isExpress?null:await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
+  const trackingNumber=text(formData.get('tracking_number'))
+  const carrier=isExpress
+    ? (trackingNumber?'Hỏa tốc':null)
+    : await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
   const usesDestinationHub=!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
   const orderStatus=isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
@@ -431,6 +433,17 @@ export async function createOrder(formData:FormData){
       express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
     }).eq('id',data)
     if(orderMetaError)throw new Error(orderMetaError.message)
+    if(isExpress&&trackingNumber){
+      const {error:shipmentError}=await supabase.from('shipments').update({
+        carrier:'Hỏa tốc',
+        is_active:true,
+        tracking_enabled:false,
+        current_tracking_status:'UNKNOWN',
+        next_track_at:null,
+        locked_until:null,
+      }).eq('order_id',data).eq('is_active',true)
+      if(shipmentError)throw new Error(shipmentError.message)
+    }
   }
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
@@ -444,8 +457,10 @@ export async function updateOrder(formData:FormData){
 
   const shippingService=text(formData.get('shipping_service'))==='EXPRESS'?'EXPRESS':'STANDARD'
   const isExpress=shippingService==='EXPRESS'
-  const trackingNumber=isExpress?'':text(formData.get('tracking_number'))
-  const carrier=isExpress?null:await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
+  const trackingNumber=text(formData.get('tracking_number'))
+  const carrier=isExpress
+    ? (trackingNumber?'Hỏa tốc':null)
+    : await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
   const usesDestinationHub=!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
   const orderStatus=isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
@@ -479,12 +494,23 @@ export async function updateOrder(formData:FormData){
   }).eq('id',orderId)
   if(orderMetaError)throw new Error(orderMetaError.message)
   if(isExpress){
-    const {error:shipmentError}=await supabase.from('shipments').update({
-      is_active:false,
-      tracking_enabled:false,
-      next_track_at:null,
-      replaced_at:new Date().toISOString(),
-    }).eq('order_id',orderId).eq('is_active',true)
+    const {error:shipmentError}=trackingNumber
+      ? await supabase.from('shipments').update({
+          carrier:'Hỏa tốc',
+          is_active:true,
+          tracking_enabled:false,
+          current_tracking_status:'UNKNOWN',
+          next_track_at:null,
+          locked_until:null,
+          replaced_at:null,
+        }).eq('order_id',orderId).eq('is_active',true)
+      : await supabase.from('shipments').update({
+          is_active:false,
+          tracking_enabled:false,
+          next_track_at:null,
+          locked_until:null,
+          replaced_at:new Date().toISOString(),
+        }).eq('order_id',orderId).eq('is_active',true)
     if(shipmentError)throw new Error(shipmentError.message)
   }
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
@@ -1402,8 +1428,19 @@ export async function quickAddTrackingNumber(formData:FormData){
   const carrierConfigId=text(formData.get('carrier_config_id'))
   if(!orderId||!trackingNumber)throw new Error('Thiếu đơn hàng hoặc mã vận đơn')
 
+  const {data:order,error:orderError}=await supabase
+    .from('orders')
+    .select('id,shipping_service')
+    .eq('id',orderId)
+    .maybeSingle()
+  if(orderError)throw new Error(orderError.message)
+  if(!order)throw new Error('Đơn hàng không tồn tại')
+
+  const isExpress=order.shipping_service==='EXPRESS'
   let carrier:string|null=null
-  if(carrierConfigId){
+  if(isExpress){
+    carrier='Hỏa tốc'
+  }else if(carrierConfigId){
     const {data:carrierConfig,error:carrierError}=await supabase
       .from('shipping_carrier_configs')
       .select('id,display_name,is_active,supports_tracking')
@@ -1419,15 +1456,6 @@ export async function quickAddTrackingNumber(formData:FormData){
   }
   if(!carrier)throw new Error('Chưa xác định được ĐVVC. Hãy chọn ĐVVC trong cập nhật nhanh.')
 
-  const {data:order,error:orderError}=await supabase
-    .from('orders')
-    .select('id,shipping_service')
-    .eq('id',orderId)
-    .maybeSingle()
-  if(orderError)throw new Error(orderError.message)
-  if(!order)throw new Error('Đơn hàng không tồn tại')
-  if(order.shipping_service==='EXPRESS')throw new Error('Đơn Hỏa tốc không sử dụng mã vận đơn tracking')
-
   const {data:activeRows,error:activeError}=await supabase
     .from('shipments')
     .select('id,tracking_number,carrier,is_active')
@@ -1440,15 +1468,17 @@ export async function quickAddTrackingNumber(formData:FormData){
     throw new Error('Đơn này đã có mã vận đơn. Hãy dùng chức năng cập nhật MVĐ trong chi tiết đơn.')
   }
 
-  const next=nextTrackAt(new Date(),'READY_TO_SHIP')
+  const next=isExpress?null:nextTrackAt(new Date(),'READY_TO_SHIP')
+  const trackingStatus=isExpress?'UNKNOWN':'READY_TO_SHIP'
   if(active?.id){
     const {error}=await supabase.from('shipments').update({
       tracking_number:trackingNumber,
       carrier,
-      current_tracking_status:'READY_TO_SHIP',
-      tracking_enabled:true,
+      current_tracking_status:trackingStatus,
+      tracking_enabled:!isExpress,
       tracking_interval_minutes:120,
       next_track_at:next?.toISOString()??null,
+      locked_until:null,
     }).eq('id',active.id)
     if(error)throw new Error(error.message)
   }else{
@@ -1456,8 +1486,8 @@ export async function quickAddTrackingNumber(formData:FormData){
       order_id:orderId,
       tracking_number:trackingNumber,
       carrier,
-      current_tracking_status:'READY_TO_SHIP',
-      tracking_enabled:true,
+      current_tracking_status:trackingStatus,
+      tracking_enabled:!isExpress,
       tracking_interval_minutes:120,
       next_track_at:next?.toISOString()??null,
       is_active:true,
