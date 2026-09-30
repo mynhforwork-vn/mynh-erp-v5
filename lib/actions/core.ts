@@ -563,6 +563,12 @@ export async function quickAddTrackingNumber(formData:FormData){
     if(error)throw new Error(error.message)
   }
 
+  const {error:orderStatusError}=await supabase
+    .from('orders')
+    .update({order_status:'PROCESSING'})
+    .eq('id',orderId)
+  if(orderStatusError)throw new Error(orderStatusError.message)
+
   await supabase.from('audit_logs').insert({
     actor_user_id:user.id,
     module:'ORDERS',
