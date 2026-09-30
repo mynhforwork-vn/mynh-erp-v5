@@ -9968,3 +9968,19 @@ a{text-decoration:none}
     flex-wrap:wrap;
   }
 }
+
+
+/* Order tab KPI V2 — seven operational states */
+.order-screen .order-kpi-grid-v2{
+  grid-template-columns:repeat(7,minmax(0,1fr));
+}
+@media(max-width:1380px){
+  .order-screen .order-kpi-grid-v2{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+  }
+}
+@media(max-width:900px){
+  .order-screen .order-kpi-grid-v2{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
