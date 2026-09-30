@@ -6,7 +6,7 @@ import { nextTrackAt } from '@/lib/tracking/schedule'
 
 function text(v:FormDataEntryValue|null){return String(v??'').trim()}
 
-const RETURN_KEYS=['range','from','to','q','receive','receiveDate','status','hub','tracking','state','device','session','voucher','orders','browser','sort'] as const
+const RETURN_KEYS=['range','from','to','q','receive','receiveDate','status','hub','tracking','state','device','session','voucher','orders','browser','sort','order','user','mode','tab','settings','platform'] as const
 function safeReturnParams(raw:string){
   const src=new URLSearchParams(raw)
   const out=new URLSearchParams()
@@ -507,6 +507,77 @@ export async function confirmReceiveOrders(formData:FormData){
     received:String(data?.receive_batch_id??''),
     payment:data?.shipper_payment_id?String(data.shipper_payment_id):null,
   }))
+}
+
+export async function quickAddTrackingNumber(formData:FormData){
+  const {supabase,user}=await actor()
+  const returnQuery=text(formData.get('return_query'))
+  const orderId=text(formData.get('order_id'))
+  const trackingNumber=text(formData.get('tracking_number'))
+  const carrier=text(formData.get('carrier'))||null
+  if(!orderId||!trackingNumber)throw new Error('Thiếu đơn hàng hoặc mã vận đơn')
+
+  const {data:order,error:orderError}=await supabase
+    .from('orders')
+    .select('id,shipping_service')
+    .eq('id',orderId)
+    .maybeSingle()
+  if(orderError)throw new Error(orderError.message)
+  if(!order)throw new Error('Đơn hàng không tồn tại')
+  if(order.shipping_service==='EXPRESS')throw new Error('Đơn Hỏa tốc không sử dụng mã vận đơn tracking')
+
+  const {data:activeRows,error:activeError}=await supabase
+    .from('shipments')
+    .select('id,tracking_number,carrier,is_active')
+    .eq('order_id',orderId)
+    .eq('is_active',true)
+  if(activeError)throw new Error(activeError.message)
+
+  const active=(activeRows??[])[0]??null
+  if(active?.tracking_number){
+    throw new Error('Đơn này đã có mã vận đơn. Hãy dùng chức năng cập nhật MVĐ trong chi tiết đơn.')
+  }
+
+  const next=nextTrackAt(new Date(),'READY_TO_SHIP')
+  if(active?.id){
+    const {error}=await supabase.from('shipments').update({
+      tracking_number:trackingNumber,
+      carrier,
+      current_tracking_status:'READY_TO_SHIP',
+      tracking_enabled:true,
+      tracking_interval_minutes:120,
+      next_track_at:next?.toISOString()??null,
+    }).eq('id',active.id)
+    if(error)throw new Error(error.message)
+  }else{
+    const {error}=await supabase.from('shipments').insert({
+      order_id:orderId,
+      tracking_number:trackingNumber,
+      carrier,
+      current_tracking_status:'READY_TO_SHIP',
+      tracking_enabled:true,
+      tracking_interval_minutes:120,
+      next_track_at:next?.toISOString()??null,
+      is_active:true,
+    })
+    if(error)throw new Error(error.message)
+  }
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,
+    module:'ORDERS',
+    action:'QUICK_ADD_TRACKING_NUMBER',
+    entity_type:'ORDER',
+    entity_id:orderId,
+    old_value:{tracking_number:null,carrier:active?.carrier??null},
+    new_value:{tracking_number:trackingNumber,carrier},
+    source:'USER',
+  })
+
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase/tracking')
+  revalidatePath('/purchase')
+  redirect(returnHref('/purchase/orders',returnQuery))
 }
 
 export async function replaceShipment(formData:FormData){
