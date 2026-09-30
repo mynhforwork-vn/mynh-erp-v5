@@ -300,9 +300,9 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
     <section className="account-kpi-grid compact entity-status-strip">
       <Link className={`account-kpi entity-status-metric ${state==='all'?'active':''}`} href={kpiHref('all')}><span>Tất cả</span><b>{counts.all}</b></Link>
-      <Link className={`account-kpi success ${state==='active'?'active':''}`} href={kpiHref('active')}><span>Hoạt động</span><b>{counts.active}</b></Link>
-      <Link className={`account-kpi warning ${state==='error'?'active':''}`} href={kpiHref('error')}><span>Cần xử lý</span><b>{counts.error}</b></Link>
-      <Link className={`account-kpi danger ${state==='blocked'?'active':''}`} href={kpiHref('blocked')}><span>Đã khóa</span><b>{counts.blocked}</b></Link>
+      <Link className={`account-kpi entity-status-metric success ${state==='active'?'active':''}`} href={kpiHref('active')}><span>Hoạt động</span><b>{counts.active}</b></Link>
+      <Link className={`account-kpi entity-status-metric warning ${state==='error'?'active':''}`} href={kpiHref('error')}><span>Cần xử lý</span><b>{counts.error}</b></Link>
+      <Link className={`account-kpi entity-status-metric danger ${state==='blocked'?'active':''}`} href={kpiHref('blocked')}><span>Đã khóa</span><b>{counts.blocked}</b></Link>
       <Link className={`account-kpi entity-status-metric ${state==='unknown'?'active':''}`} href={kpiHref('unknown')}><span>Không xác định</span><b>{counts.unknown}</b></Link>
     </section>
 
