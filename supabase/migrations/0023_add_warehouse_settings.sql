@@ -28,3 +28,6 @@ with check ((select current_erp_role()) = any (array['admin'::text,'operator'::t
 
 grant select, update on public.warehouse_settings to authenticated;
 revoke all on public.warehouse_settings from anon;
+
+create index if not exists warehouse_settings_default_receiving_warehouse_id_idx
+  on public.warehouse_settings(default_receiving_warehouse_id);
