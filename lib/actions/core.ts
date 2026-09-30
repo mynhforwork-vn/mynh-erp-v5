@@ -596,22 +596,24 @@ function bulkOrderIds(formData:FormData){
 }
 
 async function orderDeleteBlockers(supabase:any,orderIds:string[]){
-  if(!orderIds.length)return {blockedIds:new Set<string>(),error:null as any}
-  const [receiveRefs,paymentRefs,transferRefs]=await Promise.all([
-    supabase.from('receive_batch_details').select('order_id').in('order_id',orderIds),
-    supabase.from('shipper_payment_details').select('order_id').in('order_id',orderIds),
-    supabase.from('transfer_items').select('order_id').in('order_id',orderIds),
-  ])
-  const error=receiveRefs.error??paymentRefs.error??transferRefs.error
-  if(error)return {blockedIds:new Set<string>(),error}
-  return {
-    blockedIds:new Set<string>([
-      ...(receiveRefs.data??[]).map((x:any)=>String(x.order_id)),
-      ...(paymentRefs.data??[]).map((x:any)=>String(x.order_id)),
-      ...(transferRefs.data??[]).map((x:any)=>String(x.order_id)),
-    ]),
-    error:null,
+  const blockedIds=new Set<string>()
+  if(!orderIds.length)return {blockedIds,error:null as any}
+
+  for(let i=0;i<orderIds.length;i+=200){
+    const chunk=orderIds.slice(i,i+200)
+    const [receiveRefs,paymentRefs,transferRefs]=await Promise.all([
+      supabase.from('receive_batch_details').select('order_id').in('order_id',chunk),
+      supabase.from('shipper_payment_details').select('order_id').in('order_id',chunk),
+      supabase.from('transfer_items').select('order_id').in('order_id',chunk),
+    ])
+    const error=receiveRefs.error??paymentRefs.error??transferRefs.error
+    if(error)return {blockedIds:new Set<string>(),error}
+    for(const row of receiveRefs.data??[])blockedIds.add(String((row as any).order_id))
+    for(const row of paymentRefs.data??[])blockedIds.add(String((row as any).order_id))
+    for(const row of transferRefs.data??[])blockedIds.add(String((row as any).order_id))
   }
+
+  return {blockedIds,error:null}
 }
 
 function revalidateOrderLifecycle(){
@@ -812,7 +814,7 @@ export async function purgeEligibleArchivedOrders(formData:FormData){
     .select('id,shopee_order_id')
     .not('archived_at','is',null)
     .order('archived_at',{ascending:true})
-    .limit(200)
+    .limit(1000)
   if(readError)throw new Error(readError.message)
   const archived=rows??[]
   if(!archived.length)throw new Error('Không có đơn lưu trữ để dọn')
@@ -820,8 +822,8 @@ export async function purgeEligibleArchivedOrders(formData:FormData){
   const orderIds=archived.map((x:any)=>String(x.id))
   const blockers=await orderDeleteBlockers(supabase,orderIds)
   if(blockers.error)throw new Error(blockers.error.message)
-  const eligible=archived.filter((x:any)=>!blockers.blockedIds.has(String(x.id)))
-  if(!eligible.length)throw new Error('Không có đơn lưu trữ nào đủ điều kiện xóa vĩnh viễn')
+  const eligible=archived.filter((x:any)=>!blockers.blockedIds.has(String(x.id))).slice(0,200)
+  if(!eligible.length)throw new Error('Không có đơn lưu trữ nào đủ điều kiện xóa vĩnh viễn trong phạm vi kiểm tra')
 
   const eligibleIds=eligible.map((x:any)=>String(x.id))
   const {error}=await supabase.from('orders').delete().in('id',eligibleIds)
@@ -835,6 +837,7 @@ export async function purgeEligibleArchivedOrders(formData:FormData){
     entity_id:'PURGE-'+Date.now(),
     old_value:{
       scanned_count:archived.length,
+      batch_limit:200,
       eligible_count:eligible.length,
       protected_count:blockers.blockedIds.size,
       order_ids:eligibleIds,
