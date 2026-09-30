@@ -318,6 +318,8 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     (sum:number,it:any)=>sum+Number(it.original_price??0)*Math.max(1,Number(it.quantity??1)||1),
     0
   )
+  const detailReceive=(receiveHistory[0] as any)?.receive_batches??null
+  const defaultReceivingWarehouseId=(warehouseSettings as any)?.default_receiving_warehouse_id??''
   const returnQuery=listHref().split('?')[1]??''
 
   return <div className="order-screen">
@@ -482,6 +484,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
           <div className="panel-tabs">
             <Link className={!sp.tab||sp.tab==='info'||(detail.shipping_service==='EXPRESS'&&sp.tab==='tracking')?'active':''} href={listHref({order:detail.id,tab:'info'})}>Thông tin</Link>
             {detail.shipping_service!=='EXPRESS'&&<Link className={sp.tab==='tracking'?'active':''} href={listHref({order:detail.id,tab:'tracking'})}>Tracking</Link>}
+            <Link className={sp.tab==='warehouse'?'active':''} href={listHref({order:detail.id,tab:'warehouse'})}>Nhập kho</Link>
             <Link className={sp.tab==='history'?'active':''} href={listHref({order:detail.id,tab:'history'})}>Lịch sử</Link>
           </div>
 
@@ -517,6 +520,55 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                       <div><span>ĐVVC</span><b>{currentShip?.carrier??'—'}</b></div>
                     </>}
               </div>
+
+              {detail.shipping_service==='EXPRESS'&&['admin','operator'].includes(role)&&!detail.archived_at&&
+                <div className="express-manual-flow">
+                  <div className="express-manual-flow-head">
+                    <div>
+                      <span className="eyebrow">HỎA TỐC · TRẠNG THÁI THỦ CÔNG</span>
+                      <b>{detail.receive_status==='RECEIVED'
+                        ? 'Đã xác nhận nhận hàng'
+                        : detail.receive_status==='WAITING_RECEIVE'
+                          ? 'Đã giao thành công · chờ xác nhận nhận'
+                          : 'Đang vận chuyển / chờ cập nhật giao thành công'}</b>
+                    </div>
+                    <span className={'status-pill '+(detail.receive_status==='RECEIVED'?'green':detail.receive_status==='WAITING_RECEIVE'?'orange':'gray')}>
+                      {statusLabel(detail.receive_status)}
+                    </span>
+                  </div>
+
+                  {detail.receive_status==='NOT_READY'&&
+                    <form action={markExpressDelivered} className="express-manual-action">
+                      <input type="hidden" name="order_id" value={detail.id}/>
+                      <input type="hidden" name="return_query" value={returnQuery}/>
+                      <div><b>Bước 1 · Giao thành công</b><span>Cập nhật thủ công vì đơn Hỏa tốc không chạy Tracking.</span></div>
+                      <button className="button small primary" type="submit">Đánh dấu giao thành công</button>
+                    </form>}
+
+                  {detail.receive_status==='WAITING_RECEIVE'&&
+                    <form action={confirmReceiveOrders} className="express-manual-action receive">
+                      <input type="hidden" name="order_ids" value={detail.id}/>
+                      <input type="hidden" name="return_query" value={returnQuery}/>
+                      <input type="hidden" name="return_path" value="orders"/>
+                      <input type="hidden" name="return_order_id" value={detail.id}/>
+                      <input type="hidden" name="payment_mode" value="receive_only"/>
+                      <div>
+                        <b>Bước 2 · Xác nhận nhận hàng</b>
+                        <span>Sau xác nhận, đơn chuyển sang Nhập kho và không đi qua Cảnh báo vận chuyển.</span>
+                      </div>
+                      <select name="warehouse_id" required defaultValue={defaultReceivingWarehouseId}>
+                        <option value="" disabled>Chọn Kho nhận</option>
+                        {(receivingWarehouses??[]).map((w:any)=><option value={w.id} key={w.id}>{w.code} · {w.name}</option>)}
+                      </select>
+                      <button className="button small primary" type="submit">Xác nhận nhận hàng</button>
+                    </form>}
+
+                  {detail.receive_status==='RECEIVED'&&
+                    <div className="express-manual-action complete">
+                      <div><b>Đã nhận hàng</b><span>Đơn đang ở luồng kho, chờ bóc tách hoặc nhập kho.</span></div>
+                      <Link className="button small" href={listHref({order:detail.id,tab:'warehouse'})}>Xem Nhập kho</Link>
+                    </div>}
+                </div>}
 
               <div className="panel-action-row split-actions">
                 <CopyOrderButton text={`Mã đơn: ${detail.shopee_order_id??''}\nMã vận đơn: ${currentShip?.tracking_number??''}\nCOD: ${detail.cod??0}\nNgười nhận: ${detail.recipient_name??''}\nSĐT: ${detail.recipient_phone??''}\nĐịa chỉ: ${detail.recipient_address??''}`}/>
@@ -619,6 +671,96 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                       </div>
                     </div>)}
               </div>
+            </>}
+
+            {sp.tab==='warehouse'&&<>
+              <div className="order-warehouse-summary">
+                <div>
+                  <span>Trạng thái nhận</span>
+                  <b>{statusLabel(detail.receive_status)}</b>
+                </div>
+                <div>
+                  <span>Trạng thái kho</span>
+                  <b>{detail.warehouse_status==='WAREHOUSE_RECEIVED'?'Đã nhập kho':detail.receive_status==='RECEIVED'?'Chờ bóc tách / nhập kho':'Chưa vào kho'}</b>
+                </div>
+                <div>
+                  <span>Kho nhận</span>
+                  <b>{detailReceive?.warehouses?.code
+                    ? detailReceive.warehouses.code+' · '+detailReceive.warehouses.name
+                    : 'Chưa xác nhận nhận hàng'}</b>
+                </div>
+                <div>
+                  <span>Thời gian nhận</span>
+                  <b>{detailReceive?.received_at?formatDateTime(detailReceive.received_at):'—'}</b>
+                </div>
+              </div>
+
+              <h3>Bóc tách SKU của đơn</h3>
+              <div className="mini-table warehouse-order-items">
+                <div className="mini-head">
+                  <span>SP mua</span><span>SKU tồn kho</span><span>Quy đổi</span><span>SL nhập</span>
+                </div>
+                {!items.length
+                  ? <div className="empty compact">Đơn chưa có sản phẩm.</div>
+                  : items.map((it:any)=>{
+                      const mapped=Boolean(it.product_variant_id&&it.product_variants)
+                      const multiplier=Math.max(1,Number(it.inventory_multiplier??1)||1)
+                      const stockQty=Number(it.quantity??0)*multiplier
+                      return <div className="mini-row" key={it.id}>
+                        <span>
+                          <b>{it.product_name??'Sản phẩm'}</b>
+                          <small>{[it.sku,it.variant].filter(Boolean).join(' · ')||'Không SKU mua'}</small>
+                        </span>
+                        <span>
+                          {mapped
+                            ? <><b>{it.product_variants?.products?.sku??'SKU bán'}</b><small>{it.product_variants?.products?.name} · {it.product_variants?.variant_name}</small></>
+                            : <span className="status-pill orange">Chưa bóc tách</span>}
+                        </span>
+                        <span>{mapped?'× '+multiplier:'—'}</span>
+                        <span>{mapped?stockQty:'—'}</span>
+                      </div>
+                    })}
+              </div>
+
+              <h3>Lịch sử nhập kho</h3>
+              {!receiveHistory.length&&!warehouseHistoryRows.length
+                ? <div className="empty compact">Chưa phát sinh nhận hàng hoặc nhập kho cho đơn này.</div>
+                : <div className="order-warehouse-ledger">
+                    {receiveHistory.map((r:any)=>{
+                      const batch=r.receive_batches
+                      return <div className="order-warehouse-event receive" key={'receive-'+r.id}>
+                        <i/>
+                        <div>
+                          <b>Xác nhận nhận hàng</b>
+                          <span>{batch?.warehouses?.code??'Kho'} · COD {formatMoney(r.cod_snapshot)}</span>
+                          <small>{formatDateTime(batch?.received_at??r.created_at)}</small>
+                        </div>
+                        <strong>ĐÃ NHẬN</strong>
+                      </div>
+                    })}
+                    {warehouseHistoryRows.map((tx:any)=><div className="order-warehouse-event stock" key={'tx-'+tx.id}>
+                      <i/>
+                      <div>
+                        <b>{tx.tx_type==='IN'?'Nhập kho':'Biến động kho'} · {tx.product_variants?.products?.sku??'SKU'}</b>
+                        <span>{tx.product_variants?.products?.name??'Sản phẩm'} · {tx.product_variants?.variant_name??'Mặc định'} · {tx.warehouses?.code??'Kho'}</span>
+                        <small>{formatDateTime(tx.created_at)} · {tx.reference_type??'PURCHASE_RECEIPT'}</small>
+                      </div>
+                      <strong className="in">+{tx.quantity}</strong>
+                    </div>)}
+                  </div>}
+
+              {warehouseAuditRows.length>0&&<>
+                <h3>Lịch sử xử lý kho</h3>
+                <div className="timeline">
+                  {warehouseAuditRows.map((a:any)=><div className="timeline-item" key={'warehouse-audit-'+a.id}>
+                    <i></i><div>
+                      <b>{a.action==='MAP_INVENTORY_SKU'?'Bóc tách / mapping SKU':a.action==='RECEIVE_INTO_STOCK'?'Xác nhận nhập kho':a.action}</b>
+                      <span>{sourceLabel(a.source??'USER')}</span>
+                      <small>{formatDateTime(a.created_at)}</small>
+                    </div>
+                  </div>)}
+                </div>
+              </>}
             </>}
 
             {sp.tab==='history'&&<>
