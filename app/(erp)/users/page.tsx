@@ -286,7 +286,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const filtersActive=Boolean(queryText||state!=='all'||device!=='all'||session!=='all'||voucher!=='all'||orders!=='all'||browser!=='all'||sort!=='newest')
 
   return <div className="account-screen">
-    <header className="page-head">
+    <header className="page-head entity-page-head">
       <div>
         <span className="module-eyebrow">MUA HÀNG</span>
         <h1>Tài khoản mua hàng</h1>
@@ -294,20 +294,19 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       </div>
       <div className="head-actions">
         <span className="platform-badge">SHOPEE</span>
-        <button className="button" disabled>Nhập hàng loạt</button>
         <Link className="button primary" href={filterHref({mode:'create',user:null,tab:null})}>+ Thêm tài khoản</Link>
       </div>
     </header>
 
-    <section className="account-kpi-grid compact">
-      <Link className={`account-kpi ${state==='all'?'active':''}`} href={kpiHref('all')}><span>Tất cả</span><b>{counts.all}</b></Link>
-      <Link className={`account-kpi success ${state==='active'?'active':''}`} href={kpiHref('active')}><span>Hoạt động</span><b>{counts.active}</b></Link>
-      <Link className={`account-kpi warning ${state==='error'?'active':''}`} href={kpiHref('error')}><span>Cần xử lý</span><b>{counts.error}</b></Link>
-      <Link className={`account-kpi danger ${state==='blocked'?'active':''}`} href={kpiHref('blocked')}><span>Đã khóa</span><b>{counts.blocked}</b></Link>
-      <Link className={`account-kpi ${state==='unknown'?'active':''}`} href={kpiHref('unknown')}><span>Không xác định</span><b>{counts.unknown}</b></Link>
+    <section className="account-kpi-grid compact entity-status-strip">
+      <Link className={`account-kpi entity-status-metric ${state==='all'?'active':''}`} href={kpiHref('all')}><span>Tất cả</span><b>{counts.all}</b></Link>
+      <Link className={`account-kpi entity-status-metric success ${state==='active'?'active':''}`} href={kpiHref('active')}><span>Hoạt động</span><b>{counts.active}</b></Link>
+      <Link className={`account-kpi entity-status-metric warning ${state==='error'?'active':''}`} href={kpiHref('error')}><span>Cần xử lý</span><b>{counts.error}</b></Link>
+      <Link className={`account-kpi entity-status-metric danger ${state==='blocked'?'active':''}`} href={kpiHref('blocked')}><span>Đã khóa</span><b>{counts.blocked}</b></Link>
+      <Link className={`account-kpi entity-status-metric ${state==='unknown'?'active':''}`} href={kpiHref('unknown')}><span>Không xác định</span><b>{counts.unknown}</b></Link>
     </section>
 
-    <form className="account-filter-bar one-line" action="/purchase/accounts">
+    <form className="account-filter-bar one-line entity-command-bar entity-user-command" action="/purchase/accounts">
       <input className="search" name="q" defaultValue={sp.q??''} placeholder="Tìm User / SĐT / Email / máy / voucher"/>
       <select name="device" defaultValue={device}>
         <option value="all">Thiết bị: Tất cả</option>
@@ -361,14 +360,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       {filtersActive&&<Link className="button small filter-clear" href={filterHref({
         q:null,state:null,device:null,session:null,voucher:null,orders:null,browser:null,sort:null,platform:null,
       })}>×</Link>}
+      <div className="entity-result-meta"><b>{rows.length}</b><span>/ {counts.all} User{selectedOutsideFilter?' · +1 đang mở':''}</span></div>
     </form>
 
     <div className={`split-view account-workspace ${panelOpen?'with-panel':''}`}>
       <section className="account-list-pane">
-        <div className="toolbar account-toolbar">
-          <div className="account-result-meta"><b>{rows.length}</b><span>/ {counts.all} tài khoản{selectedOutsideFilter?' · +1 đang mở ngoài bộ lọc':''}</span></div>
-          <span className="toolbar-note">Sắp xếp trực tiếp tại cột Username / Thời gian tạo</span>
-        </div>
         {error&&<div className="error-box">Không thể tải dữ liệu tài khoản: {error.message}</div>}
         {!error&&<PurchaseAccountTable rows={displayRows} selectedId={selected?.id} detailQuery={detailQuery} sort={sort}/>} 
       </section>
