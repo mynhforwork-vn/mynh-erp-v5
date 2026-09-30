@@ -10796,3 +10796,30 @@ a{text-decoration:none}
     grid-template-columns:repeat(3,minmax(0,1fr));
   }
 }
+
+
+/* =====================================================================
+   Row action menu stacking fix — opened menu must float above later rows
+   ===================================================================== */
+.order-table tbody tr:has(.row-action-menu),
+.user-table tbody tr:has(.row-action-menu){
+  position:relative;
+  z-index:120!important;
+}
+.order-table tbody tr:has(.row-action-menu) .row-actions-cell,
+.user-table tbody tr:has(.row-action-menu) .row-actions-cell{
+  position:relative;
+  z-index:125!important;
+  overflow:visible!important;
+}
+.row-action-menu-wrap:has(.row-action-menu){
+  position:relative;
+  z-index:130!important;
+}
+.row-action-menu-wrap:has(.row-action-menu) .row-action-kebab{
+  position:relative;
+  z-index:131!important;
+}
+.row-action-menu{
+  z-index:140!important;
+}
