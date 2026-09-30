@@ -282,7 +282,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     if(sp.tab==='warehouse'){
       const [receiveResult,txResult,warehouseAuditResult]=await Promise.all([
         supabase.from('receive_batch_details')
-          .select('id,order_id,cod_snapshot,created_at,receive_batches(id,warehouse_id,received_at,note,warehouses(id,code,name))')
+          .select('id,order_id,cod_snapshot,created_at,receive_batches(id,warehouse_id,received_at,note,warehouses(id,code,name,address))')
           .eq('order_id',sp.order)
           .order('created_at',{ascending:false}),
         supabase.from('inventory_transactions')
@@ -568,7 +568,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                       </div>
                       <select name="warehouse_id" required defaultValue={defaultReceivingWarehouseId}>
                         <option value="" disabled>Chọn Kho nhận</option>
-                        {(receivingWarehouses??[]).map((w:any)=><option value={w.id} key={w.id}>{w.code} · {w.name}</option>)}
+                        {(receivingWarehouses??[]).map((w:any)=><option value={w.id} key={w.id}>{w.code} · {w.address??w.name}</option>)}
                       </select>
                       <button className="button small primary" type="submit">Xác nhận nhận hàng</button>
                     </form>}
@@ -696,7 +696,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                 <div>
                   <span>Kho nhận</span>
                   <b>{detailReceive?.warehouses?.code
-                    ? detailReceive.warehouses.code+' · '+detailReceive.warehouses.name
+                    ? detailReceive.warehouses.code+' · '+(detailReceive.warehouses.address??detailReceive.warehouses.name)
                     : 'Chưa xác nhận nhận hàng'}</b>
                 </div>
                 <div>
