@@ -494,7 +494,17 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                 <div><span>Username</span><b>{detail.erp_users?.username??'—'}</b></div>
                 <div><span>Ngày đặt</span><b>{formatDateTime(detail.order_date)}</b></div>
                 {detail.archived_at&&<div><span>Lưu trữ lúc</span><b>{formatDateTime(detail.archived_at)}</b></div>}
-                <div><span>Trạng thái đơn</span><b>{detail.archived_at?'Đã lưu trữ':detail.shipping_service==='EXPRESS'?'Đang xử lý · Hỏa tốc':currentShip?.tracking_number?statusLabel(currentShip.current_tracking_status):'Đang chờ duyệt · Chờ mã vận đơn'}</b></div>
+                <div><span>Trạng thái đơn</span><b>{detail.archived_at
+                  ? 'Đã lưu trữ'
+                  : detail.shipping_service==='EXPRESS'
+                    ? detail.receive_status==='RECEIVED'
+                      ? 'Đã nhận · Hỏa tốc'
+                      : detail.receive_status==='WAITING_RECEIVE'
+                        ? 'Giao thành công · Hỏa tốc'
+                        : 'Đang xử lý · Hỏa tốc'
+                    : currentShip?.tracking_number
+                      ? statusLabel(currentShip.current_tracking_status)
+                      : 'Đang chờ duyệt · Chờ mã vận đơn'}</b></div>
                 <div><span>Thanh toán</span><b>{statusLabel(detail.payment_status)}</b></div>
                 <div><span>COD</span><b>{formatMoney(detail.cod)}</b></div>
                 <div><span>Tổng giá gốc</span><b>{formatMoney(detailTotalOriginal)}</b></div>
