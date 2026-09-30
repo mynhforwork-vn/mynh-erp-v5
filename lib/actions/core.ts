@@ -219,6 +219,95 @@ export async function restoreERPUser(formData:FormData){
     : returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:null}))
 }
 
+
+function bulkUserIds(formData:FormData){
+  const ids=[...new Set(formData.getAll('user_ids').map(v=>text(v)).filter(Boolean))]
+  if(!ids.length)throw new Error('Chưa chọn User')
+  if(ids.length>200)throw new Error('Tối đa 200 User mỗi lần thao tác')
+  return ids
+}
+
+export async function archiveERPUsersBulk(formData:FormData){
+  const {supabase,user}=await actor()
+  const returnQuery=text(formData.get('return_query'))
+  const userIds=bulkUserIds(formData)
+
+  const {data:rows,error:readError}=await supabase
+    .from('erp_users')
+    .select('id,username,status,archived_at')
+    .in('id',userIds)
+  if(readError)throw new Error(readError.message)
+  if((rows??[]).length!==userIds.length)throw new Error('Có User không tồn tại hoặc không có quyền truy cập')
+  if((rows??[]).some((x:any)=>x.archived_at))throw new Error('Có User đã được lưu trữ. Hãy bỏ chọn các User đó.')
+
+  const archivedAt=new Date().toISOString()
+  const {error}=await supabase.from('erp_users').update({
+    archived_at:archivedAt,
+    archived_by:user.id,
+  }).in('id',userIds)
+  if(error)throw new Error(error.message)
+
+  const audits=(rows??[]).map((row:any)=>({
+    actor_user_id:user.id,
+    module:'USERS',
+    action:'ARCHIVE_USER',
+    entity_type:'ERP_USER',
+    entity_id:String(row.id),
+    old_value:{archived_at:null,username:row.username,status:row.status},
+    new_value:{archived_at:archivedAt,username:row.username,status:row.status,bulk:true},
+    source:'USER',
+  }))
+  if(audits.length){
+    const {error:auditError}=await supabase.from('audit_logs').insert(audits)
+    if(auditError)throw new Error(auditError.message)
+  }
+
+  revalidatePath('/purchase/accounts')
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase')
+  redirect(returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:null}))
+}
+
+export async function restoreERPUsersBulk(formData:FormData){
+  const {supabase,user}=await actor()
+  const returnQuery=text(formData.get('return_query'))
+  const userIds=bulkUserIds(formData)
+
+  const {data:rows,error:readError}=await supabase
+    .from('erp_users')
+    .select('id,username,status,archived_at')
+    .in('id',userIds)
+  if(readError)throw new Error(readError.message)
+  if((rows??[]).length!==userIds.length)throw new Error('Có User không tồn tại hoặc không có quyền truy cập')
+  if((rows??[]).some((x:any)=>!x.archived_at))throw new Error('Có User chưa được lưu trữ. Hãy bỏ chọn các User đó.')
+
+  const {error}=await supabase.from('erp_users').update({
+    archived_at:null,
+    archived_by:null,
+  }).in('id',userIds)
+  if(error)throw new Error(error.message)
+
+  const audits=(rows??[]).map((row:any)=>({
+    actor_user_id:user.id,
+    module:'USERS',
+    action:'RESTORE_USER',
+    entity_type:'ERP_USER',
+    entity_id:String(row.id),
+    old_value:{archived_at:row.archived_at,username:row.username,status:row.status},
+    new_value:{archived_at:null,username:row.username,status:row.status,bulk:true},
+    source:'USER',
+  }))
+  if(audits.length){
+    const {error:auditError}=await supabase.from('audit_logs').insert(audits)
+    if(auditError)throw new Error(auditError.message)
+  }
+
+  revalidatePath('/purchase/accounts')
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase')
+  redirect(returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'}))
+}
+
 function numberOrNull(v:FormDataEntryValue|null){
   const s=text(v)
   if(!s)return null
