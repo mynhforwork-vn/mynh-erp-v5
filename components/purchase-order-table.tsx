@@ -159,10 +159,12 @@ function QuickTrackingEditor({
   orderId,
   returnQuery,
   carrierConfigs,
+  isExpress=false,
 }:{
   orderId:string
   returnQuery:string
   carrierConfigs:CarrierConfig[]
+  isExpress?:boolean
 }){
   const [editing,setEditing]=useState(false)
   const [trackingNumber,setTrackingNumber]=useState('')
@@ -202,10 +204,10 @@ function QuickTrackingEditor({
       autoFocus
       required
     />
-    <select name="carrier_config_id" value={carrierId} onChange={e=>setCarrierId(e.target.value)} required>
+    {!isExpress&&<select name="carrier_config_id" value={carrierId} onChange={e=>setCarrierId(e.target.value)} required>
       <option value="" disabled>ĐVVC</option>
       {carrierConfigs.map(row=><option key={row.id} value={row.id}>{row.carrier_code}</option>)}
-    </select>
+    </select>}
     <button type="submit" className="quick-tracking-save">Lưu</button>
     <button type="button" className="quick-tracking-cancel" onClick={()=>setEditing(false)} aria-label="Hủy">×</button>
   </form>
@@ -420,13 +422,16 @@ export function PurchaseOrderTable({
     if(key==='product')return <td key={key} className="truncate product-cell">{productSummary(o.order_items??[])}</td>
     if(key==='cod')return <td key={key} className="money">{formatMoney(o.cod)}</td>
     if(key==='tracking')return <td key={key} className="tracking-number-cell">
-      {o.shipping_service==='EXPRESS'
-        ? <span className="tracking-na">Không áp dụng</span>
-        : s?.tracking_number
-          ? <span className="tracking-number-value">{s.tracking_number}</span>
-          : canEdit&&!o.archived_at
-            ? <QuickTrackingEditor orderId={o.id} returnQuery={baseQuery} carrierConfigs={carrierConfigs}/>
-            : <span className="tracking-missing-text">Chưa có</span>}
+      {s?.tracking_number
+        ? <span className="tracking-number-value">{s.tracking_number}</span>
+        : canEdit&&!o.archived_at
+          ? <QuickTrackingEditor
+              orderId={o.id}
+              returnQuery={baseQuery}
+              carrierConfigs={carrierConfigs}
+              isExpress={o.shipping_service==='EXPRESS'}
+            />
+          : <span className="tracking-missing-text">Chưa có</span>}
     </td>
     if(key==='carrier')return <td key={key}>{o.shipping_service==='EXPRESS'?'Hỏa tốc':s?.carrier??'—'}</td>
     if(key==='voucher')return <td key={key} className="voucher-cell"><VoucherTags value={voucherSummary(o.order_vouchers??[])} compact maxVisible={2}/></td>
