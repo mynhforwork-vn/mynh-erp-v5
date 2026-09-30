@@ -51,11 +51,13 @@ export function WarehouseIntakeWorkspace({
   variants,
   warehouses,
   auditLogs,
+  defaultReceivingWarehouseId,
 }:{
   rows:Row[]
   variants:Variant[]
   warehouses:Warehouse[]
   auditLogs:AuditLog[]
+  defaultReceivingWarehouseId?:string|null
 }){
   const [activeId,setActiveId]=useState<string|null>(rows[0]?.id??null)
   const [selected,setSelected]=useState<string[]>([])
@@ -92,7 +94,7 @@ export function WarehouseIntakeWorkspace({
         {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
         <label>
           <span>Kho nhận</span>
-          <select name="warehouse_id" required defaultValue="">
+          <select name="warehouse_id" required defaultValue={defaultReceivingWarehouseId??''}>
             <option value="" disabled>Chọn kho</option>
             {warehouses.map(warehouse=><option key={warehouse.id} value={warehouse.id}>
               {warehouse.code} · {warehouse.name}
