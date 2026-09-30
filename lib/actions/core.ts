@@ -812,7 +812,7 @@ export async function purgeEligibleArchivedOrders(formData:FormData){
     .select('id,shopee_order_id')
     .not('archived_at','is',null)
     .order('archived_at',{ascending:true})
-    .limit(5000)
+    .limit(200)
   if(readError)throw new Error(readError.message)
   const archived=rows??[]
   if(!archived.length)throw new Error('Không có đơn lưu trữ để dọn')
@@ -834,7 +834,7 @@ export async function purgeEligibleArchivedOrders(formData:FormData){
     entity_type:'DATA_MAINTENANCE',
     entity_id:'PURGE-'+Date.now(),
     old_value:{
-      archived_count:archived.length,
+      scanned_count:archived.length,
       eligible_count:eligible.length,
       protected_count:blockers.blockedIds.size,
       order_ids:eligibleIds,
