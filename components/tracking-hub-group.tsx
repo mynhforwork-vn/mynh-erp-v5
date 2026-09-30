@@ -20,7 +20,7 @@ type OrderRow={
   tracking_status?:string|null
   shipment_id?:string|null
 }
-type Warehouse={id:string,code?:string|null,name?:string|null}
+type Warehouse={id:string,code?:string|null,name?:string|null,address?:string|null}
 type AssignedShipper={id:string,name:string,phone?:string|null}
 
 export function TrackingHubGroup({
@@ -223,7 +223,7 @@ export function TrackingHubGroup({
               <label>Kho nhận
                 <select name="warehouse_id" required defaultValue={defaultReceivingWarehouseId??(warehouses.length===1?warehouses[0].id:'')}>
                   <option value="" disabled>Chọn kho nhận</option>
-                  {warehouses.map(w=><option value={w.id} key={w.id}>{(w.code?w.code+' · ':'')+(w.name??'Kho')}</option>)}
+                  {warehouses.map(w=><option value={w.id} key={w.id}>{(w.code?w.code+' · ':'')+(w.address??w.name??'Kho')}</option>)}
                 </select>
               </label>
 
