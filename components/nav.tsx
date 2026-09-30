@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 type IconName=
   |'home'|'dashboard'|'account'|'orders'|'alert'
   |'warehouse'|'receive'|'inventory'|'history'
-  |'sales'|'customer'|'debt'|'finance'|'cash'|'payment'|'report'|'settings'
+  |'sales'|'pos'|'customer'|'debt'|'finance'|'cash'|'payment'|'report'|'settings'
 
 function NavIcon({name}:{name:IconName}){
   const p={width:16,height:16,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.8,strokeLinecap:'round' as const,strokeLinejoin:'round' as const,'aria-hidden':true}
@@ -19,6 +19,7 @@ function NavIcon({name}:{name:IconName}){
   if(name==='inventory') return <svg {...p}><path d="m4 7 8-4 8 4-8 4Z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/></svg>
   if(name==='history') return <svg {...p}><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
   if(name==='sales') return <svg {...p}><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19H2"/></svg>
+  if(name==='pos') return <svg {...p}><path d="M3 4h2l2.2 10h9.8l2-7H7"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/><path d="M9 9h7"/></svg>
   if(name==='customer') return <svg {...p}><circle cx="12" cy="8" r="3"/><path d="M5 20c.6-4.3 3-6.5 7-6.5s6.4 2.2 7 6.5"/></svg>
   if(name==='debt') return <svg {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h10"/><path d="M7 14h6"/></svg>
   if(name==='finance') return <svg {...p}><path d="M3 9h18"/><path d="M5 9V6l7-3 7 3v3"/><path d="M6 9v8M10 9v8M14 9v8M18 9v8"/><path d="M3 20h18"/></svg>
@@ -49,9 +50,10 @@ const groups:Group[]=[
   ]},
   {label:'BÁN HÀNG',items:[
     {href:'/sales',label:'Tổng quan bán hàng',icon:'sales',exact:true},
-    {href:'/sales/orders',label:'Đơn bán hàng',icon:'orders'},
+    {href:'/sales/pos',label:'POS',icon:'pos'},
+    {href:'/sales/history',label:'Lịch sử bán',icon:'history'},
     {href:'/sales/customers',label:'Khách hàng',icon:'customer'},
-    {href:'/sales/debt',label:'Công nợ khách hàng',icon:'debt'},
+    {href:'/sales/debt',label:'Công nợ',icon:'debt'},
   ]},
   {label:'TÀI CHÍNH',items:[
     {href:'/finance',label:'Tổng quan tài chính',icon:'finance',exact:true},
