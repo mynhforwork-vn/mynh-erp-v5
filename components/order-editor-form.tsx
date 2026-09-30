@@ -319,7 +319,6 @@ export function OrderEditorForm({
   function setShippingMode(mode:'STANDARD'|'EXPRESS'){
     setShippingService(mode)
     if(mode==='EXPRESS'){
-      setTrackingNumber('')
       setCarrier('')
       setCarrierEdited(false)
       setDestinationHub('')
@@ -517,8 +516,12 @@ export function OrderEditorForm({
         </label>
         <div className="derived-order-state">
           <span>Trạng thái đơn</span>
-          <b>{shippingService==='EXPRESS'?'Đang xử lý · Hỏa tốc':trackingNumber.trim()?'Đang xử lý · Theo Tracking':'Đang chờ duyệt'}</b>
-          <small>{shippingService==='EXPRESS'?'Không sử dụng Tracking / Kho đích':trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ':'Chờ mã vận đơn'}</small>
+          <b>{shippingService==='EXPRESS'
+            ? trackingNumber.trim()?'Đang xử lý · Hỏa tốc':'Hỏa tốc · Chưa có MVĐ'
+            : trackingNumber.trim()?'Đang xử lý · Theo Tracking':'Đang chờ duyệt'}</b>
+          <small>{shippingService==='EXPRESS'
+            ? trackingNumber.trim()?'Có MVĐ · trạng thái giao cập nhật thủ công · không Tracking/HUB':'Cần bổ sung Mã vận đơn Hỏa tốc'
+            : trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ':'Chờ mã vận đơn'}</small>
         </div>
       </div>
     </section>
@@ -575,9 +578,21 @@ export function OrderEditorForm({
           </>
         : <div className="express-shipper-box">
             <div className="express-shipper-title">
-              <b>Thông tin Shipper hỏa tốc</b>
-              <span>Hỏa tốc không dùng MVĐ, Tracking hoặc Kho đích.</span>
+              <b>Thông tin vận chuyển Hỏa tốc</b>
+              <span>Có Mã vận đơn để nhận diện đơn; trạng thái giao cập nhật thủ công, không chạy Tracking/HUB.</span>
             </div>
+
+            <label>Mã vận đơn
+              <input
+                name="tracking_number"
+                value={trackingNumber}
+                onChange={e=>setTrackingNumber(e.target.value)}
+                onBlur={()=>setTrackingNumber(v=>v.trim().toUpperCase())}
+                placeholder="Nhập Mã vận đơn Hỏa tốc"
+              />
+              <small className="field-help">MVĐ Hỏa tốc không kích hoạt Tracking tự động.</small>
+            </label>
+
             <div className="form-grid">
               <label>Tên Shipper
                 <input
