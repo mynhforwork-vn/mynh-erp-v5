@@ -8337,3 +8337,40 @@ a{text-decoration:none}
     overflow-x:auto;
   }
 }
+
+
+/* Readability tuning for Entity Workspace V3 */
+.order-screen>.purchase-date-filter.flat .command-range a{font-size:10px}
+.order-screen>.purchase-date-filter.flat .purchase-date-inline-form input{font-size:10px}
+.order-screen>.purchase-date-filter.flat .purchase-date-inline-form .button{font-size:9.8px}
+.order-screen>.purchase-date-filter.flat .range-meta span{font-size:8.8px}
+.order-screen>.purchase-date-filter.flat .range-meta b{font-size:10px}
+
+.entity-status-strip .entity-status-metric>span{font-size:10px!important}
+.entity-status-strip .entity-status-metric>small{font-size:8.8px!important}
+.entity-status-strip .entity-status-metric>b{font-size:18px!important}
+.entity-status-strip .entity-status-metric>.kpi-money{font-size:14.5px!important}
+
+.entity-command-bar input,
+.entity-command-bar select{font-size:10.2px!important}
+.entity-command-bar .button{font-size:9.8px!important}
+.order-screen .entity-command-bar .segmented a{font-size:9.6px}
+.order-screen .entity-command-bar .toolbar-note{font-size:9.4px}
+.entity-result-meta b{font-size:11px}
+.entity-result-meta span{font-size:9.4px}
+
+.order-table thead th,
+.user-table thead th{font-size:9.8px!important}
+.order-table tbody td,
+.user-table tbody td{font-size:10.4px!important}
+.order-table .table-link,
+.user-table .table-link{font-size:10.5px}
+.order-table .status-pill,
+.user-table .status-pill{font-size:8.8px}
+.user-table .device-state-chip{font-size:8.2px}
+.user-table .quick-order-link{font-size:8px}
+
+@media(max-width:1440px){
+  .entity-status-strip .entity-status-metric>span{font-size:9.5px!important}
+  .entity-status-strip .entity-status-metric>b{font-size:17px!important}
+}
