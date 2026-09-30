@@ -28,6 +28,7 @@ export function TrackingHubGroup({
   rows,
   warehouses,
   assignedShippers=[],
+  defaultReceivingWarehouseId,
   contextQuery='',
   defaultOpen,
 }:{
@@ -35,6 +36,7 @@ export function TrackingHubGroup({
   rows:OrderRow[]
   warehouses:Warehouse[]
   assignedShippers?:AssignedShipper[]
+  defaultReceivingWarehouseId?:string|null
   contextQuery?:string
   defaultOpen?:boolean
 }){
@@ -219,7 +221,7 @@ export function TrackingHubGroup({
 
             <div className="receive-confirm-grid">
               <label>Kho nhận
-                <select name="warehouse_id" required defaultValue={warehouses.length===1?warehouses[0].id:''}>
+                <select name="warehouse_id" required defaultValue={defaultReceivingWarehouseId??(warehouses.length===1?warehouses[0].id:'')}>
                   <option value="" disabled>Chọn kho nhận</option>
                   {warehouses.map(w=><option value={w.id} key={w.id}>{(w.code?w.code+' · ':'')+(w.name??'Kho')}</option>)}
                 </select>
