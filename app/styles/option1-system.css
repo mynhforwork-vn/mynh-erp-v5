@@ -9988,14 +9988,14 @@ a{text-decoration:none}
 }
 
 
-/* Order tab KPI V2 — seven operational states, always one row */
+/* Order tab KPI V2 — eight operational states, always one row */
 .order-screen .order-kpi-grid-v2{
   grid-template-columns:repeat(8,minmax(0,1fr));
   gap:5px;
 }
 @media(max-width:1380px){
   .order-screen .order-kpi-grid-v2{
-    grid-template-columns:repeat(7,minmax(0,1fr));
+    grid-template-columns:repeat(8,minmax(0,1fr));
     gap:4px;
   }
   .order-screen .order-kpi-grid-v2 .kpi-card{
