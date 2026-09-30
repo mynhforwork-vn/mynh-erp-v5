@@ -9,7 +9,7 @@ import {
   stocktakeWarehouseSku,
 } from '@/lib/actions/warehouse'
 
-type Warehouse={id:string,code:string,name:string}
+type Warehouse={id:string,code:string,name:string,address?:string|null}
 type BalanceOption={
   warehouse_id:string
   warehouse_code:string
@@ -96,7 +96,7 @@ export function WarehouseStockTools({
         <label><span>Kho</span>
           <select name="warehouse_id" required value={warehouseId} onChange={e=>setWarehouseId(e.target.value)}>
             <option value="" disabled>Chọn kho</option>
-            {warehouses.map(w=><option value={w.id} key={w.id}>{w.code} · {w.name}</option>)}
+            {warehouses.map(w=><option value={w.id} key={w.id}>{w.code} · {w.address||w.name}</option>)}
           </select>
         </label>
         <label><span>SKU kiểm kê</span>
@@ -125,7 +125,7 @@ export function WarehouseStockTools({
         <label><span>Kho</span>
           <select name="warehouse_id" required value={warehouseId} onChange={e=>setWarehouseId(e.target.value)}>
             <option value="" disabled>Chọn kho</option>
-            {warehouses.map(w=><option value={w.id} key={w.id}>{w.code} · {w.name}</option>)}
+            {warehouses.map(w=><option value={w.id} key={w.id}>{w.code} · {w.address||w.name}</option>)}
           </select>
         </label>
         <label><span>SKU</span>
@@ -164,13 +164,13 @@ export function WarehouseStockTools({
           <label><span>Kho nguồn</span>
             <select name="from_warehouse_id" required value={transferFrom} onChange={e=>setTransferFrom(e.target.value)}>
               <option value="" disabled>Chọn kho nguồn</option>
-              {warehouses.map(w=><option value={w.id} key={w.id}>{w.code} · {w.name}</option>)}
+              {warehouses.map(w=><option value={w.id} key={w.id}>{w.code} · {w.address||w.name}</option>)}
             </select>
           </label>
           <label><span>Kho đích</span>
             <select name="to_warehouse_id" required defaultValue="">
               <option value="" disabled>Chọn kho đích</option>
-              {warehouses.filter(w=>w.id!==transferFrom).map(w=><option value={w.id} key={w.id}>{w.code} · {w.name}</option>)}
+              {warehouses.filter(w=>w.id!==transferFrom).map(w=><option value={w.id} key={w.id}>{w.code} · {w.address||w.name}</option>)}
             </select>
           </label>
         </div>
