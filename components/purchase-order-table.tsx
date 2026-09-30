@@ -234,6 +234,7 @@ export function PurchaseOrderTable({
   const [bulkDeleteOpen,setBulkDeleteOpen]=useState(false)
   const [openActionId,setOpenActionId]=useState<string|null>(null)
   const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
+  const [dragOverColumn,setDragOverColumn]=useState<ColKey|null>(null)
   const tableWrapRef=useRef<HTMLDivElement|null>(null)
 
   useEffect(()=>{
@@ -471,13 +472,15 @@ export function PurchaseOrderTable({
         </div>
         {columnOrder.map(k=><div
           key={k}
-          className={'column-manager-row draggable '+(k==='order'?'locked ':'')+(draggingColumn===k?'dragging':'')}
-          onDragOver={e=>e.preventDefault()}
+          className={'column-manager-row draggable '+(k==='order'?'locked ':'')+(draggingColumn===k?'dragging ':'')+(dragOverColumn===k&&draggingColumn!==k?'drop-target':'')}
+          onDragOver={e=>{e.preventDefault();setDragOverColumn(k)}}
+          onDragLeave={()=>{if(dragOverColumn===k)setDragOverColumn(null)}}
           onDrop={e=>{
             e.preventDefault()
             const source=(e.dataTransfer.getData('text/plain')||draggingColumn) as ColKey|null
             if(source&&ALL.includes(source))reorderColumn(source,k)
             setDraggingColumn(null)
+            setDragOverColumn(null)
           }}
         >
           <button
@@ -491,7 +494,7 @@ export function PurchaseOrderTable({
               e.dataTransfer.effectAllowed='move'
               e.dataTransfer.setData('text/plain',k)
             }}
-            onDragEnd={()=>setDraggingColumn(null)}
+            onDragEnd={()=>{setDraggingColumn(null);setDragOverColumn(null)}}
           >⠿</button>
           <label>
             <input type="checkbox" checked={visible.includes(k)} disabled={k==='order'} onChange={()=>toggleColumn(k)}/>
