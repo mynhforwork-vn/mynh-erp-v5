@@ -38,14 +38,16 @@ export function WarehouseStockTools({
   warehouses,
   balances,
   recentTransfers,
+  defaultReceivingWarehouseId,
 }:{
   warehouses:Warehouse[]
   balances:BalanceOption[]
   recentTransfers:Transfer[]
+  defaultReceivingWarehouseId?:string|null
 }){
   const [tool,setTool]=useState<'stocktake'|'transfer'|'adjust'|null>(null)
-  const [warehouseId,setWarehouseId]=useState('')
-  const [transferFrom,setTransferFrom]=useState('')
+  const [warehouseId,setWarehouseId]=useState(defaultReceivingWarehouseId??'')
+  const [transferFrom,setTransferFrom]=useState(defaultReceivingWarehouseId??'')
   const wrapRef=useRef<HTMLDivElement|null>(null)
 
   useEffect(()=>{
