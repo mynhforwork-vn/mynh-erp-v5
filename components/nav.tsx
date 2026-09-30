@@ -4,7 +4,7 @@ import { usePathname, useSearchParams } from 'next/navigation'
 
 type IconName=
   |'home'|'dashboard'|'account'|'orders'|'alert'
-  |'warehouse'|'receive'|'inventory'|'history'|'transfer'
+  |'warehouse'|'receive'|'inventory'|'history'
   |'sales'|'customer'|'debt'|'finance'|'cash'|'payment'|'report'|'settings'
 
 function NavIcon({name}:{name:IconName}){
@@ -18,7 +18,6 @@ function NavIcon({name}:{name:IconName}){
   if(name==='receive') return <svg {...p}><path d="M4 5h16v14H4Z"/><path d="M8 9h8"/><path d="m9 14 3 3 4-5"/></svg>
   if(name==='inventory') return <svg {...p}><path d="m4 7 8-4 8 4-8 4Z"/><path d="M4 7v10l8 4 8-4V7"/><path d="M12 11v10"/></svg>
   if(name==='history') return <svg {...p}><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
-  if(name==='transfer') return <svg {...p}><path d="M4 7h13"/><path d="m14 4 3 3-3 3"/><path d="M20 17H7"/><path d="m10 14-3 3 3 3"/></svg>
   if(name==='sales') return <svg {...p}><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19H2"/></svg>
   if(name==='customer') return <svg {...p}><circle cx="12" cy="8" r="3"/><path d="M5 20c.6-4.3 3-6.5 7-6.5s6.4 2.2 7 6.5"/></svg>
   if(name==='debt') return <svg {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h10"/><path d="M7 14h6"/></svg>
