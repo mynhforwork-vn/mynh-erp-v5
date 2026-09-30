@@ -49,23 +49,23 @@ export default async function WarehouseReceivePage(){
     active_transfer_status:activeTransferMap.get(String(row.id))?.status??null,
   }))
   const needMapping=rows.filter(r=>(r.order_items??[]).some((i:any)=>!i.product_variant_id)).length
+  const missingItems=rows.reduce((sum,r)=>sum+(r.order_items??[]).filter((i:any)=>!i.product_variant_id).length,0)
+  const mappedItems=rows.reduce((sum,r)=>sum+(r.order_items??[]).filter((i:any)=>Boolean(i.product_variant_id)).length,0)
   const ready=rows.filter(r=>
     !r.active_transfer_id &&
     (r.order_items??[]).length>0 &&
     (r.order_items??[]).every((i:any)=>Boolean(i.product_variant_id))
   ).length
-  const withDraft=rows.filter(r=>r.active_transfer_id).length
 
-  return <div className="warehouse-screen warehouse-receive-screen">
+  return <div className="warehouse-screen warehouse-receive-screen warehouse-v2">
     <header className="page-head warehouse-page-head">
       <div>
         <span className="module-eyebrow">VẬN HÀNH KHO</span>
-        <h1>Nhập kho · Bóc tách</h1>
-        <p>Đơn đã nhận vật lý → map SKU mua sang SKU bán → tạo phiếu chuyển vào kho nội bộ.</p>
+        <h1>Bóc tách nhập kho</h1>
+        <p>Đơn đã xác nhận nhận hàng → bóc tách SKU mua sang SKU bán → nhập trực tiếp vào Kho nhận.</p>
       </div>
       <div className="head-actions">
-        <Link className="button" href="/purchase/tracking?range=all&status=DELIVERED&receive=WAITING_RECEIVE">Đơn chờ nhận</Link>
-        <Link className="button primary" href="/warehouse/transfers">Phiếu chuyển kho</Link>
+        <Link className="button" href="/purchase/tracking?range=all&status=DELIVERED&receive=WAITING_RECEIVE">Đơn chờ xác nhận nhận</Link>
       </div>
     </header>
 
@@ -73,16 +73,20 @@ export default async function WarehouseReceivePage(){
 
     {error&&<div className="error-box">Không thể tải dữ liệu nhập kho: {error.message}</div>}
 
-    <section className="warehouse-status-strip">
-      <div><span>Đã nhận · chờ xử lý</span><b>{rows.length}</b><small>Đơn RECEIVED / READY_TO_TRANSFER</small></div>
-      <div className="warning"><span>Chờ bóc tách SKU</span><b>{needMapping}</b><small>SKU mua chưa liên kết SKU bán</small></div>
-      <div className="success"><span>Sẵn sàng chuyển</span><b>{ready}</b><small>Đã map đủ sản phẩm</small></div>
-      <div><span>Đã tạo phiếu</span><b>{withDraft}</b><small>Không chọn lại vào phiếu mới</small></div>
+    <section className="warehouse-status-strip warehouse-status-strip-5 warehouse-kpi-row">
+      <div><span>Chờ bóc tách</span><b>{rows.length}</b><small>Đơn đã nhận chưa nhập tồn</small></div>
+      <div className={needMapping?'warning':''}><span>Thiếu mapping</span><b>{needMapping}</b><small>Đơn còn SKU chưa liên kết</small></div>
+      <div className={missingItems?'warning':''}><span>SKU chưa map</span><b>{missingItems}</b><small>Dòng sản phẩm cần xử lý</small></div>
+      <div className="info"><span>Đã mapping</span><b>{mappedItems}</b><small>Dòng sản phẩm đã xác định SKU bán</small></div>
+      <div className="success"><span>Sẵn sàng nhập kho</span><b>{ready}</b><small>Có thể ghi tăng tồn Kho nhận</small></div>
     </section>
 
-    <div className="warehouse-rule-note">
-      <b>Quy tắc SKU:</b>
-      <span>SKU trong đơn nhập chỉ là SKU mua vào. Tại bước bóc tách, bạn chọn/tạo SKU bán riêng và nhập giá bán; hệ thống không tự đổi SKU mua thành SKU tồn kho.</span>
+    <div className="warehouse-rule-note warehouse-rule-note-v2">
+      <div className="warehouse-rule-icon">↔</div>
+      <div>
+        <b>SKU mua và SKU bán là hai khái niệm riêng.</b>
+        <span>Chỉ khi tất cả sản phẩm của đơn đã được mapping thì nút “Xác nhận nhập kho” mới sử dụng được. Sau xác nhận, tồn tăng trực tiếp tại Kho nhận; không bắt buộc qua Chuyển kho.</span>
+      </div>
     </div>
 
     <WarehouseReceiveConsole
