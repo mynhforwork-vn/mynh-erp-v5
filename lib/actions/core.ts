@@ -442,6 +442,8 @@ export async function archiveOrder(formData:FormData){
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase/tracking')
   revalidatePath('/purchase')
+  revalidatePath('/warehouse')
+  revalidatePath('/warehouse/receive')
   revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,tab:'info',archive:'archived'}))
 }
@@ -504,6 +506,8 @@ export async function restoreOrder(formData:FormData){
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase/tracking')
   revalidatePath('/purchase')
+  revalidatePath('/warehouse')
+  revalidatePath('/warehouse/receive')
   revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,tab:'info',archive:null}))
 }
@@ -563,7 +567,10 @@ export async function deleteOrderPermanent(formData:FormData){
 
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase/tracking')
+  revalidatePath('/purchase/accounts')
   revalidatePath('/purchase')
+  revalidatePath('/warehouse')
+  revalidatePath('/warehouse/receive')
   revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:null,mode:null,tab:null,archive:'archived'}))
 }
