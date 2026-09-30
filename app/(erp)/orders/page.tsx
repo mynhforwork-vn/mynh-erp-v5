@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
 import { ManualSyncButton } from '@/components/manual-sync-button'
-import { archiveOrder, confirmReceiveOrders, deleteOrderPermanent, markExpressDelivered, replaceShipment, restoreOrder } from '@/lib/actions/core'
+import { archiveOrder, confirmReceiveOrders, deleteOrderPermanent, markExpressDelivered, markExpressDeliveryFailed, replaceShipment, restoreOrder, retryExpressDelivery } from '@/lib/actions/core'
 import { CopyOrderButton } from '@/components/copy-order-button'
 import { OrderEditorForm } from '@/components/order-editor-form'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
@@ -101,7 +101,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const archiveView=sp.archive==='archived'
 
   let orderListQuery=supabase.from('orders').select(
-    'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,archived_at,archived_by,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
+    'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,archived_at,archived_by,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
   ).gte('order_date',range.start).lte('order_date',range.end)
   orderListQuery=archiveView
     ? orderListQuery.not('archived_at','is',null)
@@ -189,7 +189,15 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const rows=dateRows.filter((o:any)=>{
     if(sp.receive&&o.receive_status!==sp.receive)return false
     const shipment=activeShipment(o)
-    if(sp.tracking==='shipping'){
+    if(sp.tracking==='express'){
+      const orderStatus=String(o.order_status??'').toUpperCase()
+      if(
+        o.shipping_service!=='EXPRESS' ||
+        o.receive_status==='RECEIVED' ||
+        orderStatus==='CANCELLED' ||
+        orderStatus==='CANCELED'
+      )return false
+    }else if(sp.tracking==='shipping'){
       const status=shipment?.current_tracking_status
       if(!['READY_TO_SHIP','PICKED_UP','IN_TRANSIT'].includes(String(status)))return false
     }else if(sp.tracking==='missing'){
@@ -226,6 +234,26 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     return status==='CANCELLED'||orderStatus==='CANCELLED'||orderStatus==='CANCELED'
   }).length
 
+  const expressAttentionRows=dateRows.filter((o:any)=>{
+    const orderStatus=String(o.order_status??'').toUpperCase()
+    return (
+      o.shipping_service==='EXPRESS' &&
+      o.receive_status!=='RECEIVED' &&
+      orderStatus!=='CANCELLED' &&
+      orderStatus!=='CANCELED'
+    )
+  })
+  const expressAttention=expressAttentionRows.length
+  const expressFailed=expressAttentionRows.filter(
+    (o:any)=>String(o.express_delivery_status??'PROCESSING')==='FAILED'
+  ).length
+  const expressWaitingReceive=expressAttentionRows.filter(
+    (o:any)=>o.receive_status==='WAITING_RECEIVE'
+  ).length
+  const expressProcessing=expressAttentionRows.filter(
+    (o:any)=>o.receive_status!=='WAITING_RECEIVE'&&String(o.express_delivery_status??'PROCESSING')!=='FAILED'
+  ).length
+
   function listHref(extra:Record<string,string|undefined|null>={}){
     const p=new URLSearchParams()
     p.set('range',range.key)
@@ -259,7 +287,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   if(sp.order){
     const [od,it,vo]=await Promise.all([
       supabase.from('orders').select(
-        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,archived_by,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)'
+        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,archived_by,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)'
       ).eq('id',sp.order).maybeSingle(),
       supabase.from('order_items')
         .select('*,product_variants(id,variant_name,sale_price,products(id,sku,name))')
@@ -369,6 +397,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       <Link className={`kpi-card entity-status-metric success ${sp.tracking==='DELIVERED'&&!sp.receive?'active':''}`} href={listHref({receive:null,tracking:'DELIVERED'})}><span>Giao thành công</span><b>{delivered}</b><small>Đã giao thành công</small></Link>
       <Link className={`kpi-card entity-status-metric warning ${sp.receive==='WAITING_RECEIVE'?'active':''}`} href={listHref({receive:'WAITING_RECEIVE',tracking:null})}><span>Chờ xác nhận nhận hàng</span><b>{waiting}</b><small>Cần xác nhận vật lý</small></Link>
       <Link className={`kpi-card entity-status-metric danger ${sp.tracking==='cancelled'?'active':''}`} href={listHref({receive:null,tracking:'cancelled'})}><span>Bị huỷ</span><b>{cancelled}</b><small>Đơn / vận đơn đã huỷ</small></Link>
+      <Link className={`kpi-card entity-status-metric express ${sp.tracking==='express'?'active':''}`} href={listHref({receive:null,tracking:'express'})}><span>Hỏa tốc cần theo dõi</span><b>{expressAttention}</b><small>Đang giao {expressProcessing} · Lỗi {expressFailed} · Chờ nhận {expressWaitingReceive}</small></Link>
     </section>
 
     <div className={`split-view order-workspace ${panelOpen?'with-panel':''}`}>
@@ -506,10 +535,12 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                     ? 'Đã hủy'
                     : detail.shipping_service==='EXPRESS'
                       ? detail.receive_status==='RECEIVED'
-                      ? 'Đã nhận · Hỏa tốc'
-                      : detail.receive_status==='WAITING_RECEIVE'
-                        ? 'Giao thành công · Hỏa tốc'
-                        : 'Đang xử lý · Hỏa tốc'
+                        ? 'Đã nhận · Hỏa tốc'
+                        : detail.receive_status==='WAITING_RECEIVE'
+                          ? 'Giao thành công · Hỏa tốc'
+                          : detail.express_delivery_status==='FAILED'
+                            ? 'Giao không thành công · Hỏa tốc'
+                            : 'Đang xử lý · Hỏa tốc'
                       : currentShip?.tracking_number
                         ? statusLabel(currentShip.current_tracking_status)
                         : 'Đang chờ duyệt · Chờ mã vận đơn'}</b></div>
@@ -550,20 +581,56 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                           ? 'Đã xác nhận nhận hàng'
                           : detail.receive_status==='WAITING_RECEIVE'
                             ? 'Đã giao thành công · chờ xác nhận nhận'
-                            : 'Đang vận chuyển / chờ cập nhật giao thành công'}</b>
+                            : detail.express_delivery_status==='FAILED'
+                              ? 'Giao không thành công · cần xử lý lại'
+                              : 'Đang vận chuyển / chờ cập nhật giao thành công'}</b>
                     </div>
-                    <span className={'status-pill '+(detail.order_status==='CANCELLED'?'red':detail.receive_status==='RECEIVED'?'green':detail.receive_status==='WAITING_RECEIVE'?'orange':'gray')}>
-                      {detail.order_status==='CANCELLED'?'Đã hủy':statusLabel(detail.receive_status)}
+                    <span className={'status-pill '+(detail.order_status==='CANCELLED'?'red':detail.receive_status==='RECEIVED'?'green':detail.receive_status==='WAITING_RECEIVE'?'orange':detail.express_delivery_status==='FAILED'?'red':'gray')}>
+                      {detail.order_status==='CANCELLED'
+                        ? 'Đã hủy'
+                        : detail.receive_status==='RECEIVED'
+                          ? 'Đã nhận'
+                          : detail.receive_status==='WAITING_RECEIVE'
+                            ? 'Chờ xác nhận nhận'
+                            : detail.express_delivery_status==='FAILED'
+                              ? 'Giao không thành công'
+                              : 'Đang xử lý'}
                     </span>
                   </div>
 
-                  {detail.order_status!=='CANCELLED'&&detail.receive_status==='NOT_READY'&&
-                    <form action={markExpressDelivered} className="express-manual-action">
-                      <input type="hidden" name="order_id" value={detail.id}/>
-                      <input type="hidden" name="return_query" value={returnQuery}/>
-                      <div><b>Bước 1 · Giao thành công</b><span>Cập nhật thủ công vì đơn Hỏa tốc không chạy Tracking.</span></div>
-                      <button className="button small primary" type="submit">Đánh dấu giao thành công</button>
-                    </form>}
+                  {detail.order_status!=='CANCELLED'&&detail.receive_status==='NOT_READY'&&detail.express_delivery_status!=='FAILED'&&
+                    <div className="express-manual-action">
+                      <div><b>Bước 1 · Cập nhật kết quả giao</b><span>Hỏa tốc cập nhật thủ công, không chạy Tracking.</span></div>
+                      <div className="express-delivery-actions">
+                        <form action={markExpressDeliveryFailed}>
+                          <input type="hidden" name="order_id" value={detail.id}/>
+                          <input type="hidden" name="return_query" value={returnQuery}/>
+                          <button className="button small danger-soft" type="submit">Giao không thành công</button>
+                        </form>
+                        <form action={markExpressDelivered}>
+                          <input type="hidden" name="order_id" value={detail.id}/>
+                          <input type="hidden" name="return_query" value={returnQuery}/>
+                          <button className="button small primary" type="submit">Giao thành công</button>
+                        </form>
+                      </div>
+                    </div>}
+
+                  {detail.order_status!=='CANCELLED'&&detail.receive_status==='NOT_READY'&&detail.express_delivery_status==='FAILED'&&
+                    <div className="express-manual-action failed">
+                      <div><b>Giao không thành công</b><span>Đơn vẫn nằm trong KPI Hỏa tốc cho tới khi nhận hàng hoặc hủy.</span></div>
+                      <div className="express-delivery-actions">
+                        <form action={retryExpressDelivery}>
+                          <input type="hidden" name="order_id" value={detail.id}/>
+                          <input type="hidden" name="return_query" value={returnQuery}/>
+                          <button className="button small" type="submit">Giao lại</button>
+                        </form>
+                        <form action={markExpressDelivered}>
+                          <input type="hidden" name="order_id" value={detail.id}/>
+                          <input type="hidden" name="return_query" value={returnQuery}/>
+                          <button className="button small primary" type="submit">Đã giao thành công</button>
+                        </form>
+                      </div>
+                    </div>}
 
                   {detail.order_status!=='CANCELLED'&&detail.receive_status==='WAITING_RECEIVE'&&
                     <form action={confirmReceiveOrders} className="express-manual-action receive">
