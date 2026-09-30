@@ -294,7 +294,6 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       </div>
       <div className="head-actions">
         <span className="platform-badge">SHOPEE</span>
-        <button className="button" disabled>Nhập hàng loạt</button>
         <Link className="button primary" href={filterHref({mode:'create',user:null,tab:null})}>+ Thêm tài khoản</Link>
       </div>
     </header>
