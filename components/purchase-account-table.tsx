@@ -52,9 +52,6 @@ function DeviceIcons({row}:{row:Row}){
 function sortHref(baseQuery:string,nextSort:string){
   const p=new URLSearchParams(baseQuery)
   p.set('sort',nextSort)
-  p.delete('user')
-  p.delete('mode')
-  p.delete('tab')
   return '/purchase/accounts?'+p.toString()
 }
 
