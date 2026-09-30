@@ -47,7 +47,6 @@ const groups:Group[]=[
     {href:'/warehouse/receive',label:'Nhập kho',icon:'receive'},
     {href:'/warehouse/inventory',label:'Tồn kho',icon:'inventory'},
     {href:'/warehouse/history',label:'Lịch sử kho',icon:'history'},
-    {href:'/warehouse/transfers',label:'Chuyển kho',icon:'transfer'},
   ]},
   {label:'BÁN HÀNG',items:[
     {href:'/sales',label:'Tổng quan bán hàng',icon:'sales',exact:true},
