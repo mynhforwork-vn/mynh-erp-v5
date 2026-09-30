@@ -38,7 +38,7 @@ export function TrackingHubGroup({
   contextQuery?:string
   defaultOpen?:boolean
 }){
-  const eligible=rows.filter(r=>r.receive_status==='WAITING_RECEIVE')
+  const eligible=rows.filter(r=>r.receive_status==='WAITING_RECEIVE'&&r.tracking_status==='DELIVERED')
   const atHub=rows.filter(r=>r.tracking_status==='ARRIVED_DESTINATION_HUB').length
   const outForDelivery=rows.filter(r=>r.tracking_status==='OUT_FOR_DELIVERY').length
   const failed=rows.filter(r=>r.tracking_status==='DELIVERY_FAILED').length
@@ -52,6 +52,7 @@ export function TrackingHubGroup({
   const selectedRows=eligible.filter(r=>selectedSet.has(r.id))
   const selectedCod=selectedRows.reduce((s,r)=>s+Number(r.cod??0),0)
   const [actualTransferred,setActualTransferred]=useState('')
+  const [receiveModalOpen,setReceiveModalOpen]=useState(false)
   const actualValue=Number(actualTransferred||0)
   const tip=Math.max(0,actualValue-selectedCod)
   const transferValid=Boolean(selected.length&&actualValue>=selectedCod)
@@ -63,7 +64,17 @@ export function TrackingHubGroup({
 
   useEffect(()=>{
     if(selected.length)setOpen(true)
+    else setReceiveModalOpen(false)
   },[selected.length])
+
+  useEffect(()=>{
+    if(!receiveModalOpen)return
+    function onKeyDown(event:KeyboardEvent){
+      if(event.key==='Escape')setReceiveModalOpen(false)
+    }
+    document.addEventListener('keydown',onKeyDown)
+    return ()=>document.removeEventListener('keydown',onKeyDown)
+  },[receiveModalOpen])
 
   function toggleAll(){
     setSelected(allSelected?[]:eligible.map(r=>r.id))
@@ -132,7 +143,7 @@ export function TrackingHubGroup({
           </tr></thead>
           <tbody>
             {rows.map(r=>{
-              const canReceive=r.receive_status==='WAITING_RECEIVE'
+              const canReceive=r.receive_status==='WAITING_RECEIVE'&&r.tracking_status==='DELIVERED'
               return <tr key={r.id} className={canReceive?'tracking-row-waiting':''}>
                 <td className="select-col">
                   <input
@@ -177,60 +188,94 @@ export function TrackingHubGroup({
       </div>
 
       {eligible.length>0&&selected.length>0&&
-        <form action={confirmReceiveOrders} className="receive-compact-bar receive-compact-bar-v2">
-          <input type="hidden" name="return_query" value={contextQuery}/>
-          {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
-
+        <div className="receive-compact-bar receive-compact-bar-v3">
           <div className="receive-compact-summary">
-            <b>{selected.length} đơn</b>
-            <span>COD {formatMoney(selectedCod)}</span>
+            <b>{selected.length} đơn đã chọn</b>
+            <span>COD {formatMoney(selectedCod)} · {hub}</span>
           </div>
+          <button className="button small primary" type="button" onClick={()=>setReceiveModalOpen(true)}>
+            Nhận hàng
+          </button>
+        </div>}
 
-          <select name="warehouse_id" required defaultValue="" aria-label="Kho nhận">
-            <option value="" disabled>Kho nhận</option>
-            {warehouses.map(w=><option value={w.id} key={w.id}>{(w.code?w.code+' · ':'')+(w.name??'Kho')}</option>)}
-          </select>
-
-          <div className="receive-shipper-field hub-only" aria-label="HUB đối soát">
+      {receiveModalOpen&&<div
+        className="receive-confirm-backdrop"
+        role="presentation"
+        onMouseDown={e=>{if(e.target===e.currentTarget)setReceiveModalOpen(false)}}
+      >
+        <div className="receive-confirm-modal" role="dialog" aria-modal="true" aria-labelledby={'receive-title-'+hub}>
+          <div className="receive-confirm-head">
             <div>
-              <span>Đối soát HUB</span>
-              <b>{hub}</b>
+              <span className="module-eyebrow">XÁC NHẬN NHẬN HÀNG</span>
+              <h3 id={'receive-title-'+hub}>{hub}</h3>
+              <p>{selected.length} đơn · COD {formatMoney(selectedCod)}</p>
             </div>
-            <span>{assignedShippers.length} Shipper</span>
+            <button type="button" className="close" onClick={()=>setReceiveModalOpen(false)} aria-label="Đóng">×</button>
           </div>
 
-          <input
-            className="receive-transfer-input"
-            name="actual_transferred"
-            type="number"
-            min={selectedCod}
-            step="1"
-            value={actualTransferred}
-            onChange={e=>setActualTransferred(e.target.value)}
-            placeholder="Thực chuyển"
-            aria-label="Tổng tiền thực chuyển"
-          />
+          <form action={confirmReceiveOrders} className="receive-confirm-form">
+            <input type="hidden" name="return_query" value={contextQuery}/>
+            {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
 
-          <div className={'receive-tip '+(actualValue<selectedCod&&actualTransferred?'invalid':'')}>
-            <span>Tip</span>
-            <b>{actualValue>=selectedCod?formatMoney(tip):'Không hợp lệ'}</b>
-          </div>
+            <div className="receive-confirm-grid">
+              <label>Kho nhận
+                <select name="warehouse_id" required defaultValue={warehouses.length===1?warehouses[0].id:''}>
+                  <option value="" disabled>Chọn kho nhận</option>
+                  {warehouses.map(w=><option value={w.id} key={w.id}>{(w.code?w.code+' · ':'')+(w.name??'Kho')}</option>)}
+                </select>
+              </label>
 
-          <details className="receive-note-details">
-            <summary title="Ghi chú">•••</summary>
-            <div className="receive-note-popover">
-              <span>Ghi chú</span>
-              <input name="note" placeholder="Không bắt buộc"/>
+              <div className="receive-confirm-readonly">
+                <span>HUB đối soát</span>
+                <b>{hub}</b>
+                <small>{assignedShippers.length} Shipper phụ trách</small>
+              </div>
+
+              <div className="receive-confirm-readonly">
+                <span>Tổng COD đã chọn</span>
+                <b>{formatMoney(selectedCod)}</b>
+                <small>{selected.length} đơn giao thành công chờ nhận</small>
+              </div>
+
+              <label>Tiền thực chuyển ship
+                <input
+                  name="actual_transferred"
+                  type="number"
+                  step="1"
+                  value={actualTransferred}
+                  onChange={e=>setActualTransferred(e.target.value)}
+                  placeholder="Nhập tổng tiền thực chuyển"
+                />
+              </label>
+
+              <div className={'receive-confirm-tip '+(actualValue<selectedCod&&actualTransferred?'invalid':'')}>
+                <span>Tip tự tính</span>
+                <b>{actualValue>=selectedCod?formatMoney(tip):'Thấp hơn COD'}</b>
+                <small>Tiền chuyển − Tổng COD</small>
+              </div>
+
+              <label className="full">Ghi chú
+                <input name="note" placeholder="Không bắt buộc"/>
+              </label>
             </div>
-          </details>
 
-          <button className="button small" name="payment_mode" value="receive_only">
-            Nhận
-          </button>
-          <button className="button small primary" name="payment_mode" value="with_payment" disabled={!transferValid}>
-            Nhận + ghi chuyển
-          </button>
-        </form>}
+            <div className="receive-confirm-note">
+              <b>Bạn có thể bỏ qua phần chuyển ship.</b>
+              <span>Đơn vẫn được xác nhận đã nhận; chỉ không tạo bản ghi đối soát/chuyển tiền cho HUB ở lần này.</span>
+            </div>
+
+            <div className="receive-confirm-actions">
+              <button type="button" className="button" onClick={()=>setReceiveModalOpen(false)}>Hủy</button>
+              <button className="button" name="payment_mode" value="receive_only">
+                Nhận hàng · bỏ qua chuyển ship
+              </button>
+              <button className="button primary" name="payment_mode" value="with_payment" disabled={!transferValid}>
+                Nhận + ghi chuyển ship
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>}
     </>}
   </section>
 }

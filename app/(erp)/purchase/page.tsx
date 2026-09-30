@@ -149,7 +149,6 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   const rows=(ordersData??[]) as any[]
   const standardRows=rows.filter(o=>o.shipping_service!=='EXPRESS')
   const totalOrders=rows.length
-  const totalCod=rows.reduce((sum,o)=>sum+Number(o.cod??0),0)
   const delivered=standardRows.filter(o=>activeShipment(o)?.current_tracking_status==='DELIVERED').length
   const waitingRows=standardRows.filter(o=>o.receive_status==='WAITING_RECEIVE')
   const waiting=waitingRows.length
@@ -158,10 +157,16 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   const received=standardRows.filter(o=>o.receive_status==='RECEIVED').length
   const shipping=standardRows.filter(o=>{
     const s=activeShipment(o)?.current_tracking_status
-    return s&&!['DELIVERED','CANCELLED','RETURNED'].includes(s)
+    return ['READY_TO_SHIP','PICKED_UP','IN_TRANSIT'].includes(String(s))
   }).length
+  const arrivedHub=standardRows.filter(o=>activeShipment(o)?.current_tracking_status==='ARRIVED_DESTINATION_HUB').length
   const failed=standardRows.filter(o=>activeShipment(o)?.current_tracking_status==='DELIVERY_FAILED').length
   const missingTracking=standardRows.filter(o=>!activeShipment(o)?.tracking_number).length
+  const cancelled=rows.filter(o=>{
+    const trackingStatus=activeShipment(o)?.current_tracking_status
+    const orderStatus=String(o.order_status??'').toUpperCase()
+    return trackingStatus==='CANCELLED'||orderStatus==='CANCELLED'||orderStatus==='CANCELED'
+  }).length
   const expressCount=rows.filter(o=>o.shipping_service==='EXPRESS').length
 
   const byArea=aggregate(standardRows,'area')
@@ -241,25 +246,28 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
 
     {error&&<div className="error-box">Không thể tải dữ liệu mua hàng: {error.message}</div>}
 
-    <section className="purchase-command-kpis">
+    <section className="purchase-command-kpis purchase-command-kpis-v2">
       <Link href={orderHref()} className="command-kpi">
         <span>Tổng đơn</span><b>{totalOrders}</b><small>{accountCount??0} tài khoản mua hàng</small>
       </Link>
-      <Link href={orderHref()} className="command-kpi">
-        <span>Tổng COD</span><b className="money">{formatMoney(totalCod)}</b><small>Toàn bộ đơn trong khoảng đang xem</small>
+      <Link href={orderHref({tracking:'missing'})} className="command-kpi warning">
+        <span>Chưa có mã vận đơn</span><b>{missingTracking}</b><small>Không tính đơn Hỏa tốc</small>
       </Link>
       <Link href={orderHref({tracking:'shipping'})} className="command-kpi info">
-        <span>Đang vận chuyển</span><b>{shipping}</b><small>Đơn tiêu chuẩn đang chạy Tracking</small>
+        <span>Đang vận chuyển</span><b>{shipping}</b><small>Đã lấy hàng / đang trung chuyển</small>
+      </Link>
+      <Link href={purchaseHref('/purchase/tracking',{status:'ARRIVED_DESTINATION_HUB'})} className="command-kpi info">
+        <span>Đến kho đích</span><b>{arrivedHub}</b><small>Đã đến HUB đích</small>
+      </Link>
+      <Link href={purchaseHref('/purchase/tracking',{status:'DELIVERED'})} className="command-kpi success">
+        <span>Giao thành công</span><b>{delivered}</b><small>Bao gồm đơn đang chờ xác nhận nhận</small>
       </Link>
       <Link href={purchaseHref('/purchase/tracking',{status:'DELIVERED',receive:'WAITING_RECEIVE'})} className="command-kpi warning">
-        <span>Chờ nhận hàng</span><b>{waiting}</b><small>{formatMoney(waitingCod)} · {waitingHubs} kho đích</small>
+        <span>Chờ xác nhận nhận hàng</span><b>{waiting}</b><small>{formatMoney(waitingCod)} · {waitingHubs} HUB</small>
       </Link>
-      <Link href={purchaseHref('/purchase/tracking',{status:'DELIVERY_FAILED'})} className="command-kpi danger">
-        <span>Giao lỗi</span><b>{failed}</b><small>Cần theo dõi xử lý lại</small>
+      <Link href={orderHref({tracking:'cancelled'})} className="command-kpi danger">
+        <span>Bị huỷ</span><b>{cancelled}</b><small>Đơn / vận đơn đã huỷ</small>
       </Link>
-      <div className="command-kpi">
-        <span>Hỏa tốc</span><b>{expressCount}</b><small>Không dùng Tracking / kho đích</small>
-      </div>
     </section>
 
     <section className="purchase-receive-command">

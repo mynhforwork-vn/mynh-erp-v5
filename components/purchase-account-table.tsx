@@ -125,6 +125,8 @@ export function PurchaseAccountTable({
   const [open,setOpen]=useState(false)
   const [selected,setSelected]=useState<string[]>([])
   const [openActionId,setOpenActionId]=useState<string|null>(null)
+  const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
+  const [dragOverColumn,setDragOverColumn]=useState<ColKey|null>(null)
 
   useEffect(()=>{
     try{
@@ -184,12 +186,12 @@ export function PurchaseAccountTable({
     setColumnOrder(next)
     try{localStorage.setItem(STORAGE_ORDER_KEY,JSON.stringify(next))}catch{}
   }
-  function moveColumn(key:ColKey,direction:-1|1){
-    const index=columnOrder.indexOf(key)
-    const nextIndex=index+direction
-    if(index<0||nextIndex<0||nextIndex>=columnOrder.length)return
-    const next=[...columnOrder]
-    ;[next[index],next[nextIndex]]=[next[nextIndex],next[index]]
+  function reorderColumn(source:ColKey,target:ColKey){
+    if(source===target)return
+    const next=columnOrder.filter(k=>k!==source)
+    const targetIndex=next.indexOf(target)
+    if(targetIndex<0)return
+    next.splice(targetIndex,0,source)
     persistOrder(next)
   }
   function reset(){
@@ -298,15 +300,36 @@ export function PurchaseAccountTable({
       </button>
       {open&&<div className="column-manager-menu">
         <div className="column-manager-head"><b>Cột & thứ tự</b><button type="button" onClick={reset}>↺ Mặc định</button></div>
-        {columnOrder.map((k,index)=><div key={k} className={'column-manager-row '+(k==='username'?'locked':'')}>
+        {columnOrder.map(k=><div
+          key={k}
+          className={'column-manager-row draggable '+(k==='username'?'locked ':'')+(draggingColumn===k?'dragging ':'')+(dragOverColumn===k&&draggingColumn!==k?'drop-target':'')}
+          onDragOver={e=>{e.preventDefault();setDragOverColumn(k)}}
+          onDragLeave={()=>{if(dragOverColumn===k)setDragOverColumn(null)}}
+          onDrop={e=>{
+            e.preventDefault()
+            const source=(e.dataTransfer.getData('text/plain')||draggingColumn) as ColKey|null
+            if(source&&ALL.includes(source))reorderColumn(source,k)
+            setDraggingColumn(null)
+            setDragOverColumn(null)
+          }}
+        >
+          <button
+            type="button"
+            className="column-drag-handle"
+            draggable
+            title="Kéo để đổi thứ tự cột"
+            aria-label={'Kéo '+LABELS[k]}
+            onDragStart={e=>{
+              setDraggingColumn(k)
+              e.dataTransfer.effectAllowed='move'
+              e.dataTransfer.setData('text/plain',k)
+            }}
+            onDragEnd={()=>{setDraggingColumn(null);setDragOverColumn(null)}}
+          >⠿</button>
           <label>
             <input type="checkbox" checked={visible.includes(k)} disabled={k==='username'} onChange={()=>toggle(k)}/>
             <span>{LABELS[k]}</span>
           </label>
-          <div className="column-order-actions">
-            <button type="button" onClick={()=>moveColumn(k,-1)} disabled={index===0} title="Sang trái">←</button>
-            <button type="button" onClick={()=>moveColumn(k,1)} disabled={index===columnOrder.length-1} title="Sang phải">→</button>
-          </div>
         </div>)}
       </div>}
     </div>
