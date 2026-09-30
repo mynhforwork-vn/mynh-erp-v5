@@ -7805,3 +7805,535 @@ a{text-decoration:none}
     max-width:275px;
   }
 }
+
+
+/* =====================================================================
+   Entity Workspace V3 — Orders + Accounts unified visual system
+   ===================================================================== */
+.order-screen,
+.account-screen{
+  --entity-ink:#233A53;
+  --entity-ink-2:#40556B;
+  --entity-muted:#6D7D8F;
+  --entity-muted-2:#8B98A6;
+  --entity-line:#D5DEE7;
+  --entity-line-soft:#E7ECF1;
+  --entity-canvas:#F5F7FA;
+  --entity-surface:#FFFFFF;
+  --entity-blue:#356F9F;
+  --entity-blue-strong:#285B86;
+  --entity-blue-soft:#EAF2F9;
+  --entity-green:#2F8A5A;
+  --entity-green-soft:#EAF6EF;
+  --entity-amber:#C98022;
+  --entity-amber-soft:#FFF5E7;
+  --entity-red:#B95757;
+  --entity-red-soft:#FFF2F2;
+  color:var(--entity-ink);
+}
+
+/* Shared page head */
+.entity-page-head{
+  min-height:43px!important;
+  margin-bottom:5px!important;
+}
+.entity-page-head h1{
+  margin:0;
+  color:var(--entity-ink);
+  font-size:18px!important;
+  line-height:1.15;
+  font-weight:750;
+}
+.entity-page-head p{
+  margin-top:2px!important;
+  color:var(--entity-muted)!important;
+  font-size:10px!important;
+}
+.entity-page-head .module-eyebrow{
+  color:#7890A7;
+  font-size:8.5px;
+  letter-spacing:.08em;
+}
+.entity-page-head .head-actions{
+  gap:5px;
+}
+.entity-page-head .button,
+.entity-page-head .platform-badge{
+  min-height:30px;
+  height:30px;
+  border-radius:4px;
+  font-size:10px;
+}
+.entity-page-head .platform-badge{
+  display:inline-flex;
+  align-items:center;
+  padding:0 9px;
+  border:1px solid #D4DEE7;
+  background:#F7F9FB;
+  color:#607285;
+  font-weight:700;
+}
+
+/* Orders date filter becomes a compact context row rather than a full card. */
+.order-screen>.purchase-date-filter.flat{
+  min-height:34px;
+  height:34px;
+  grid-template-columns:auto auto minmax(120px,1fr);
+  gap:6px;
+  padding:3px 5px;
+  margin-bottom:5px;
+  border:1px solid var(--entity-line);
+  border-radius:5px;
+  background:#fff;
+}
+.order-screen>.purchase-date-filter.flat .command-range{
+  padding:1px;
+  background:#F1F4F7;
+}
+.order-screen>.purchase-date-filter.flat .command-range a{
+  min-height:25px;
+  padding:0 8px;
+  border-radius:3px;
+  font-size:9px;
+}
+.order-screen>.purchase-date-filter.flat .purchase-date-inline-form{
+  align-items:center;
+  gap:4px;
+}
+.order-screen>.purchase-date-filter.flat .purchase-date-inline-form label{
+  gap:0;
+}
+.order-screen>.purchase-date-filter.flat .purchase-date-inline-form label>span{
+  display:none;
+}
+.order-screen>.purchase-date-filter.flat .purchase-date-inline-form input{
+  width:118px;
+  height:25px;
+  border-radius:4px;
+  font-size:9px;
+}
+.order-screen>.purchase-date-filter.flat .date-range-arrow{
+  height:25px;
+  line-height:25px;
+}
+.order-screen>.purchase-date-filter.flat .purchase-date-inline-form .button{
+  height:25px;
+  padding:0 8px;
+  font-size:9px;
+}
+.order-screen>.purchase-date-filter.flat .range-meta{
+  justify-self:end;
+  padding-right:4px;
+}
+.order-screen>.purchase-date-filter.flat .range-meta span{
+  font-size:8px;
+}
+.order-screen>.purchase-date-filter.flat .range-meta b{
+  font-size:9px;
+}
+
+/* Shared KPI / status strip */
+.entity-status-strip{
+  flex:0 0 auto;
+  display:grid!important;
+  gap:0!important;
+  margin:0 0 5px!important;
+  overflow:hidden;
+  border:1px solid var(--entity-line);
+  border-radius:5px;
+  background:#fff;
+  box-shadow:none!important;
+}
+.order-screen .entity-status-strip{
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+}
+.account-screen .entity-status-strip{
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+}
+.entity-status-strip .entity-status-metric{
+  min-width:0;
+  min-height:50px!important;
+  height:50px;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  grid-template-rows:auto auto!important;
+  align-content:center!important;
+  align-items:center!important;
+  gap:0 8px!important;
+  margin:0!important;
+  padding:5px 9px!important;
+  border:0!important;
+  border-right:1px solid var(--entity-line-soft)!important;
+  border-radius:0!important;
+  background:#fff!important;
+  color:var(--entity-ink-2)!important;
+  box-shadow:none!important;
+}
+.entity-status-strip .entity-status-metric:last-child{
+  border-right:0!important;
+}
+.entity-status-strip .entity-status-metric:hover{
+  background:#F9FBFD!important;
+}
+.entity-status-strip .entity-status-metric>span{
+  grid-column:1;
+  grid-row:1;
+  align-self:end;
+  color:#5F7286!important;
+  font-size:9.4px!important;
+  line-height:1.15;
+  font-weight:700!important;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.entity-status-strip .entity-status-metric>b{
+  grid-column:2;
+  grid-row:1 / span 2;
+  align-self:center;
+  margin:0!important;
+  color:#263D55!important;
+  font-size:18px!important;
+  line-height:1!important;
+  font-weight:750!important;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.entity-status-strip .entity-status-metric>.kpi-money{
+  font-size:14px!important;
+}
+.entity-status-strip .entity-status-metric>small{
+  grid-column:1;
+  grid-row:2;
+  align-self:start;
+  margin:1px 0 0!important;
+  color:#8793A1!important;
+  font-size:8px!important;
+  line-height:1.2;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.account-screen .entity-status-strip .entity-status-metric>small{
+  display:none!important;
+}
+.entity-status-strip .entity-status-metric.active{
+  background:#F6FAFD!important;
+  box-shadow:inset 0 -2px 0 var(--entity-blue)!important;
+}
+.entity-status-strip .entity-status-metric.success>b{color:#2F8055!important}
+.entity-status-strip .entity-status-metric.warning>b{color:#A96A18!important}
+.entity-status-strip .entity-status-metric.danger>b{color:#AA5050!important}
+.entity-status-strip .entity-status-metric.info>b{color:#2E6999!important}
+.entity-status-strip .entity-status-metric.success.active{background:#F3FAF6!important}
+.entity-status-strip .entity-status-metric.warning.active{background:#FFFAF2!important}
+.entity-status-strip .entity-status-metric.danger.active{background:#FFF6F6!important}
+
+/* Shared command bar */
+.entity-command-bar{
+  flex:0 0 auto;
+  min-height:38px!important;
+  height:38px!important;
+  display:flex!important;
+  align-items:center!important;
+  flex-wrap:nowrap!important;
+  gap:4px!important;
+  margin:0 0 5px!important;
+  padding:4px 5px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  border:1px solid var(--entity-line)!important;
+  border-radius:5px!important;
+  background:#F8FAFC!important;
+  box-shadow:none!important;
+  scrollbar-width:thin;
+}
+.entity-command-bar input,
+.entity-command-bar select{
+  min-width:0;
+  height:28px!important;
+  min-height:28px!important;
+  padding:0 7px!important;
+  border:1px solid #C9D4DE!important;
+  border-radius:4px!important;
+  background:#fff!important;
+  color:#405469!important;
+  font-size:9.5px!important;
+  outline:none;
+}
+.entity-command-bar input:focus,
+.entity-command-bar select:focus{
+  border-color:#779CBC!important;
+  box-shadow:0 0 0 2px rgba(53,111,159,.07)!important;
+}
+.entity-command-bar .button{
+  height:28px!important;
+  min-height:28px!important;
+  padding:0 8px!important;
+  border-radius:4px!important;
+  font-size:9.3px!important;
+}
+.entity-command-bar .search{
+  flex:1 1 280px;
+  min-width:220px!important;
+}
+.order-screen .entity-command-bar .order-search-form{
+  flex:1 1 auto;
+  min-width:320px;
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.order-screen .entity-command-bar .segmented{
+  flex:0 0 auto;
+  height:28px;
+  padding:1px;
+  border-radius:4px;
+  background:#EEF2F5;
+}
+.order-screen .entity-command-bar .segmented a{
+  min-height:26px;
+  display:inline-flex;
+  align-items:center;
+  padding:0 7px;
+  border-radius:3px;
+  color:#66778A;
+  font-size:9px;
+  font-weight:650;
+}
+.order-screen .entity-command-bar .segmented a.active{
+  background:#fff;
+  color:#285B86;
+  box-shadow:0 1px 2px rgba(29,48,68,.06);
+}
+.order-screen .entity-command-bar .toolbar-note{
+  flex:0 0 auto;
+  margin-left:auto;
+  color:#738396;
+  font-size:9px;
+  white-space:nowrap;
+}
+.entity-user-command{
+  padding-right:6px!important;
+}
+.entity-user-command>.search{
+  flex:0 0 250px!important;
+}
+.entity-user-command select{
+  flex:0 0 auto;
+  width:auto!important;
+  max-width:145px;
+}
+.entity-result-meta{
+  flex:0 0 auto;
+  min-height:28px;
+  display:flex;
+  align-items:center;
+  gap:3px;
+  margin-left:auto;
+  padding:0 6px 0 8px;
+  border-left:1px solid #DDE4EB;
+  color:#718194;
+  white-space:nowrap;
+}
+.entity-result-meta b{
+  color:#2F4A63;
+  font-size:10.5px;
+  font-variant-numeric:tabular-nums;
+}
+.entity-result-meta span{
+  font-size:8.8px;
+}
+
+/* Account workspace no longer reserves a redundant toolbar row. */
+.account-workspace>.account-list-pane{
+  padding-top:0!important;
+}
+.account-workspace .account-table-shell{
+  flex:1 1 auto;
+  min-height:0;
+}
+.account-workspace .account-toolbar{
+  display:none!important;
+}
+
+/* Tables share the same density, hierarchy and selection language. */
+.order-table-card,
+.account-table-card{
+  border:1px solid var(--entity-line)!important;
+  border-radius:5px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.order-table,
+.user-table{
+  color:#33485D;
+  font-size:10px;
+}
+.order-table thead th,
+.user-table thead th{
+  height:31px!important;
+  min-height:31px!important;
+  padding:0 7px!important;
+  border-bottom:1px solid #CAD5DF!important;
+  background:#F2F5F8!important;
+  color:#53677B!important;
+  font-size:9.3px!important;
+  line-height:1.15;
+  font-weight:750!important;
+  white-space:nowrap;
+}
+.order-table tbody td,
+.user-table tbody td{
+  height:36px!important;
+  min-height:36px!important;
+  padding:4px 7px!important;
+  border-bottom:1px solid #E8EDF2!important;
+  color:#344A60;
+  font-size:9.8px!important;
+  line-height:1.3;
+  vertical-align:middle;
+}
+.order-table tbody tr:hover td,
+.user-table tbody tr:hover td{
+  background:#FAFCFD!important;
+}
+.order-table .table-link,
+.user-table .table-link{
+  color:#2D5F89;
+  font-size:10px;
+  font-weight:700;
+}
+.order-table .table-link:hover,
+.user-table .table-link:hover{
+  color:#1F4E76;
+  text-decoration:underline;
+  text-underline-offset:2px;
+}
+.order-table .status-pill,
+.user-table .status-pill{
+  min-height:20px;
+  padding:0 6px;
+  font-size:8.4px;
+}
+.order-table .voucher-tags,
+.user-table .voucher-tags{
+  gap:2px;
+}
+.order-table tr.selected-row td,
+.user-table tr.selected-row td{
+  background:#F0F6FB!important;
+}
+.order-table tr.selected-row td:first-child,
+.user-table tr.selected-row td:first-child{
+  box-shadow:inset 3px 0 0 #4A82B1!important;
+}
+
+/* Column manager uses the same icon position without adding another toolbar row. */
+.order-column-manager{
+  top:-34px!important;
+  right:5px!important;
+}
+.account-table-shell>.column-manager{
+  top:3px!important;
+  right:5px!important;
+  z-index:15;
+}
+.account-table-card .user-table thead th:last-child{
+  padding-right:38px!important;
+}
+.order-column-manager .icon-button,
+.account-table-shell>.column-manager .icon-button{
+  width:27px;
+  height:27px;
+  border-color:#C9D4DE;
+  background:#fff;
+  color:#597086;
+}
+.order-column-manager .icon-button:hover,
+.account-table-shell>.column-manager .icon-button:hover{
+  border-color:#AFC0CF;
+  background:#EEF4F8;
+  color:#285B86;
+}
+
+/* Device and quick-action details are readable but subordinate. */
+.user-table .device-state-set{
+  gap:2px;
+}
+.user-table .device-state-chip{
+  min-width:24px;
+  height:20px;
+  font-size:7.8px;
+}
+.user-table .quick-order-link{
+  opacity:.18;
+  font-size:7.8px;
+}
+.user-table tbody tr:hover .quick-order-link,
+.user-table .selected-row .quick-order-link{
+  opacity:1;
+}
+
+/* Keep table and panel as the only scrollable work regions. */
+.order-workspace,
+.account-workspace{
+  flex:1 1 auto;
+  min-height:0;
+  gap:7px!important;
+}
+.order-list-pane,
+.account-list-pane{
+  min-width:0;
+  min-height:0;
+}
+.order-table-shell,
+.account-table-shell{
+  min-height:0;
+}
+.order-table-card,
+.account-table-card{
+  height:100%;
+  max-height:none!important;
+  overflow:auto!important;
+  scrollbar-width:thin;
+  scrollbar-color:#B9C5D0 transparent;
+}
+
+/* Match the list/table canvas behind both modules. */
+.order-screen,
+.account-screen{
+  background:transparent;
+}
+.order-workspace .order-list-pane,
+.account-workspace .account-list-pane{
+  background:transparent;
+}
+
+@media(max-width:1440px){
+  .entity-status-strip .entity-status-metric{
+    padding-left:7px!important;
+    padding-right:7px!important;
+  }
+  .entity-status-strip .entity-status-metric>span{
+    font-size:8.8px!important;
+  }
+  .entity-status-strip .entity-status-metric>b{
+    font-size:16px!important;
+  }
+  .entity-user-command>.search{
+    flex-basis:220px!important;
+  }
+  .entity-user-command select{
+    max-width:125px;
+  }
+}
+@media(max-width:1180px){
+  .order-screen .entity-status-strip{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+  .account-screen .entity-status-strip{
+    grid-template-columns:repeat(5,minmax(110px,1fr))!important;
+    overflow-x:auto;
+  }
+}
