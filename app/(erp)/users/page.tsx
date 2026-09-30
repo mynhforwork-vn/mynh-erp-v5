@@ -1,6 +1,6 @@
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
-import { archiveERPUser, createERPUser, deleteERPUserPermanent, restoreERPUser, updateERPUser } from '@/lib/actions/core'
+import { archiveERPUser, createERPUser, restoreERPUser, updateERPUser } from '@/lib/actions/core'
 import { PurchaseAccountTable } from '@/components/purchase-account-table'
 import { VoucherTags } from '@/components/voucher-tags'
 import Link from 'next/link'
@@ -52,7 +52,6 @@ const actionLabels:Record<string,string>={
   UPDATE_SPC_F:'Cập nhật SPC_F',
   ARCHIVE_USER:'Lưu trữ User',
   RESTORE_USER:'Khôi phục User',
-  DELETE_USER_PERMANENT:'Xóa vĩnh viễn User',
 }
 
 export default async function UsersPage({searchParams}:{searchParams:Promise<SP>}){
@@ -490,18 +489,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                         <div><b>User đang lưu trữ</b><span>Đơn hàng và toàn bộ lịch sử vẫn được giữ.</span></div>
                         <button className="button primary" type="submit">Khôi phục</button>
                       </form>
-                      {role==='admin'&&<details className="permanent-delete-box">
-                        <summary>Xóa vĩnh viễn User</summary>
-                        <form action={deleteERPUserPermanent}>
-                          <input type="hidden" name="user_id" value={selected.id}/>
-                          <input type="hidden" name="return_query" value={detailQuery}/>
-                          <p>Chỉ xóa được User chưa có bất kỳ đơn hàng nào. Nếu đã có đơn, hệ thống bắt buộc giữ ở Lưu trữ.</p>
-                          <label>Nhập <b>{selected.username}</b> để xác nhận
-                            <input name="confirm_text" autoComplete="off" required/>
-                          </label>
-                          <button className="button danger" type="submit">Xóa vĩnh viễn</button>
-                        </form>
-                      </details>}
+
                     </>}
               </div>}
             </>}
