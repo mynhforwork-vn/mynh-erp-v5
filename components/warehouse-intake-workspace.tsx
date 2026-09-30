@@ -2,7 +2,7 @@
 
 import { useMemo,useState } from 'react'
 import { formatDateTime,formatMoney } from '@/lib/format'
-import { mapWarehouseOrderItem,receiveOrdersIntoWarehouse } from '@/lib/actions/warehouse'
+import { mapWarehouseOrderItem,receiveOrdersIntoWarehouse,skipWarehouseOrder } from '@/lib/actions/warehouse'
 
 type Variant={
   id:string
@@ -337,9 +337,30 @@ export function WarehouseIntakeWorkspace({
 
       <div className="whx-panel-scroll">
         {panelTab==='products'&&<div className="whx-item-list">
-          {activeComplete&&<div className="warehouse-ready-note">
-            <b>Đã bóc tách đủ SKU.</b>
-            <span>Đơn đã rời danh sách Chưa bóc tách và đang chờ người vận hành xác nhận nhập kho.</span>
+          {activeComplete&&<div className="warehouse-ready-note warehouse-ready-actions">
+            <div>
+              <b>Đã bóc tách đủ SKU.</b>
+              <span>Chọn thao tác nhanh cho đơn này.</span>
+            </div>
+            <div className="warehouse-quick-actions">
+              <form action={receiveOrdersIntoWarehouse}>
+                <input type="hidden" name="order_ids" value={active.id}/>
+                <input type="hidden" name="note" value="Nhập kho nhanh sau khi xác nhận SKU"/>
+                <button className="button primary small" type="submit">Nhập kho</button>
+              </form>
+              <form
+                action={skipWarehouseOrder}
+                onSubmit={event=>{
+                  if(!window.confirm('Bỏ qua kho cho đơn này? Đơn sẽ không ghi tăng tồn kho.')){
+                    event.preventDefault()
+                  }
+                }}
+              >
+                <input type="hidden" name="order_id" value={active.id}/>
+                <input type="hidden" name="note" value="Bỏ qua kho sau khi xác nhận SKU"/>
+                <button className="button small warehouse-skip-button" type="submit">Bỏ qua kho</button>
+              </form>
+            </div>
           </div>}
 
           {active.order_items.map(item=>{
