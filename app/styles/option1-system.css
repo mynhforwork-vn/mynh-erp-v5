@@ -12405,3 +12405,25 @@ a{text-decoration:none}
   border-color:#C89B9B!important;
   background:#FFF0F0!important;
 }
+
+/* =====================================================================
+   Receiving warehouse address suggestion
+   ===================================================================== */
+.receive-warehouse-suggestion,
+.express-receiving-select>small{
+  display:block;
+  margin-top:3px;
+  color:#2F6B4C;
+  font-size:8px;
+  font-weight:700;
+  line-height:1.25;
+}
+.express-receiving-select{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.express-receiving-select select{
+  width:100%;
+}
