@@ -472,7 +472,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                 {!selected.archived_at&&<Link className="button primary" href={detailHref({user:selected.id,mode:'edit'})}>Sửa tài khoản</Link>}
               </div>
 
-              <div className={'record-lifecycle-zone '+(selected.archived_at?'archived':'')}>
+              {['admin','operator'].includes(role)&&<div className={'record-lifecycle-zone '+(selected.archived_at?'archived':'')}>
                 {!selected.archived_at
                   ? <form action={archiveERPUser} className="record-lifecycle-action">
                       <input type="hidden" name="user_id" value={selected.id}/>
@@ -500,7 +500,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                         </form>
                       </details>}
                     </>}
-              </div>
+              </div>}
             </>}
 
             {sp.tab==='orders'&&<>
