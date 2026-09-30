@@ -7510,3 +7510,298 @@ a{text-decoration:none}
   .tracking-hub-metrics-v2>span:nth-child(4),
   .tracking-hub-metrics-v2>span:nth-child(5){display:none}
 }
+
+
+/* =====================================================================
+   Right Panel V2 — one persistent sidebar language for Orders + Accounts
+   State persistence is URL-driven; this layer standardizes appearance.
+   ===================================================================== */
+.order-screen,
+.account-screen{
+  --panel-ink:#233A53;
+  --panel-ink-2:#41566C;
+  --panel-muted:#6E7E90;
+  --panel-muted-2:#8B98A7;
+  --panel-line:#D4DEE7;
+  --panel-line-soft:#E5EBF0;
+  --panel-canvas:#F4F7FA;
+  --panel-surface:#FFFFFF;
+  --panel-blue:#356F9F;
+  --panel-blue-soft:#EAF2F9;
+  --panel-green:#2F8A5A;
+  --panel-amber:#C98022;
+  --panel-red:#B95757;
+}
+
+.order-screen .split-view.with-panel,
+.account-screen .split-view.with-panel{
+  grid-template-columns:minmax(0,1fr) clamp(400px,29vw,430px);
+  gap:7px;
+}
+
+.order-workspace>.detail-panel,
+.account-workspace>.detail-panel{
+  position:relative!important;
+  top:auto!important;
+  height:100%!important;
+  min-height:0;
+  overflow:hidden;
+  border:1px solid #CAD6E1;
+  border-radius:5px;
+  background:var(--panel-surface);
+  box-shadow:0 2px 7px rgba(30,50,70,.045);
+}
+
+/* Header stays visible and is visually identical in Create/Edit/Detail. */
+.order-workspace>.detail-panel .panel-head,
+.account-workspace>.detail-panel .panel-head{
+  flex:0 0 54px;
+  min-height:54px;
+  align-items:center;
+  padding:8px 9px 8px 11px;
+  border-bottom:1px solid var(--panel-line);
+  background:linear-gradient(180deg,#FFFFFF 0%,#F8FAFC 100%);
+}
+.order-workspace>.detail-panel .panel-head>div,
+.account-workspace>.detail-panel .panel-head>div{
+  min-width:0;
+}
+.order-workspace>.detail-panel .panel-head h2,
+.account-workspace>.detail-panel .panel-head h2{
+  max-width:315px;
+  overflow:hidden;
+  margin:1px 0 0;
+  color:var(--panel-ink);
+  font-size:14px;
+  line-height:1.25;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.order-workspace>.detail-panel .eyebrow,
+.account-workspace>.detail-panel .eyebrow{
+  color:#70859A;
+  font-size:8.5px;
+  letter-spacing:.08em;
+}
+.order-workspace>.detail-panel .close,
+.account-workspace>.detail-panel .close{
+  width:29px;
+  height:29px;
+  flex:0 0 29px;
+  border-color:#CFD9E2;
+  border-radius:4px;
+  background:#F7F9FB;
+  color:#5D7083;
+  font-size:17px;
+}
+.order-workspace>.detail-panel .close:hover,
+.account-workspace>.detail-panel .close:hover{
+  border-color:#AFC0CF;
+  background:#EEF3F7;
+  color:#294F70;
+}
+
+/* Detail tabs: readable, low-height, no decorative card treatment. */
+.order-workspace>.detail-panel .panel-tabs,
+.account-workspace>.detail-panel .panel-tabs{
+  flex:0 0 38px;
+  height:38px;
+  gap:18px;
+  padding:0 11px;
+  border-top:0;
+  border-bottom:1px solid var(--panel-line);
+  background:#F7F9FB;
+}
+.order-workspace>.detail-panel .panel-tabs a,
+.order-workspace>.detail-panel .panel-tabs span,
+.account-workspace>.detail-panel .panel-tabs a,
+.account-workspace>.detail-panel .panel-tabs span{
+  height:38px;
+  color:#68798B;
+  font-size:10.5px;
+  font-weight:700;
+}
+.order-workspace>.detail-panel .panel-tabs a.active,
+.order-workspace>.detail-panel .panel-tabs span.active,
+.account-workspace>.detail-panel .panel-tabs a.active,
+.account-workspace>.detail-panel .panel-tabs span.active{
+  border-bottom-color:var(--panel-blue);
+  color:#285B86;
+}
+.account-workspace>.detail-panel .panel-tabs a span{
+  min-width:18px;
+  height:18px;
+  display:inline-grid;
+  place-items:center;
+  margin-left:4px;
+  padding:0 5px;
+  border:0;
+  border-radius:9px;
+  background:#E6EDF3;
+  color:#5C7185;
+  font-size:8.8px;
+}
+
+/* One scroll owner inside the panel. */
+.order-workspace>.detail-panel .panel-scroll,
+.account-workspace>.detail-panel .panel-scroll,
+.order-workspace>.order-panel .panel-scroll,
+.account-workspace>.account-detail-panel .panel-scroll{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  padding:10px 11px 14px;
+  scrollbar-width:thin;
+  scrollbar-color:#B9C5D0 transparent;
+}
+.order-workspace>.detail-panel .panel-scroll::-webkit-scrollbar,
+.account-workspace>.detail-panel .panel-scroll::-webkit-scrollbar{
+  width:6px;
+}
+.order-workspace>.detail-panel .panel-scroll::-webkit-scrollbar-thumb,
+.account-workspace>.detail-panel .panel-scroll::-webkit-scrollbar-thumb{
+  border-radius:6px;
+  background:#B9C5D0;
+}
+
+/* Forms use a clear 11–12px control system rather than microscopic labels. */
+.order-workspace>.order-panel .panel-form,
+.account-workspace>.account-detail-panel .panel-form{
+  flex:1 1 auto;
+  min-height:0;
+  gap:9px;
+}
+.order-workspace>.order-panel .panel-form label,
+.account-workspace>.account-detail-panel .panel-form label{
+  gap:4px;
+  color:#50657A;
+  font-size:10px;
+  font-weight:700;
+}
+.order-workspace>.order-panel .panel-form input,
+.order-workspace>.order-panel .panel-form select,
+.order-workspace>.order-panel .panel-form textarea,
+.account-workspace>.account-detail-panel .panel-form input,
+.account-workspace>.account-detail-panel .panel-form select,
+.account-workspace>.account-detail-panel .panel-form textarea{
+  min-height:34px;
+  padding:6px 8px;
+  border-color:#C8D3DE;
+  border-radius:4px;
+  background:#fff;
+  color:#2B4055;
+  font-size:11px;
+}
+.order-workspace>.order-panel .panel-form input:focus,
+.order-workspace>.order-panel .panel-form select:focus,
+.order-workspace>.order-panel .panel-form textarea:focus,
+.account-workspace>.account-detail-panel .panel-form input:focus,
+.account-workspace>.account-detail-panel .panel-form select:focus,
+.account-workspace>.account-detail-panel .panel-form textarea:focus{
+  border-color:#729BBE;
+  box-shadow:0 0 0 2px rgba(53,111,159,.08);
+}
+
+/* Keep Save / Cancel visible while editing long forms. */
+.order-workspace>.order-panel .form-actions,
+.account-workspace>.account-detail-panel .form-actions{
+  position:sticky;
+  bottom:-14px;
+  z-index:4;
+  min-height:47px;
+  align-items:center;
+  margin:7px -11px -14px;
+  padding:7px 11px;
+  border-top:1px solid var(--panel-line);
+  background:rgba(248,250,252,.97);
+  backdrop-filter:blur(4px);
+}
+.order-workspace>.order-panel .form-actions .button,
+.account-workspace>.account-detail-panel .form-actions .button{
+  min-height:31px;
+  font-size:10px;
+}
+
+/* Information grids are flatter and more legible. */
+.order-workspace>.detail-panel .detail-grid,
+.account-workspace>.detail-panel .detail-grid{
+  border-color:#D7E0E8;
+  border-radius:4px;
+}
+.order-workspace>.detail-panel .detail-grid>div,
+.account-workspace>.detail-panel .detail-grid>div{
+  min-height:46px;
+  padding:6px 7px;
+  border-right-color:#E7ECF1;
+  border-bottom-color:#E7ECF1;
+  background:#fff;
+}
+.order-workspace>.detail-panel .detail-grid span,
+.account-workspace>.detail-panel .detail-grid span{
+  color:#758597;
+  font-size:9px;
+}
+.order-workspace>.detail-panel .detail-grid b,
+.account-workspace>.detail-panel .detail-grid b{
+  color:#2E445B;
+  font-size:10.5px;
+  line-height:1.3;
+}
+.order-workspace>.detail-panel .panel-scroll h3,
+.account-workspace>.detail-panel .panel-scroll h3{
+  margin:12px 0 6px;
+  color:#31485F;
+  font-size:10.5px;
+  font-weight:750;
+}
+
+/* Sections/cards inside panels should not create visual noise. */
+.order-workspace>.detail-panel .shipment-box,
+.order-workspace>.detail-panel .repeat-card,
+.order-workspace>.detail-panel .voucher-list,
+.account-workspace>.detail-panel .secret-state,
+.account-workspace>.detail-panel .device-card,
+.account-workspace>.detail-panel .user-order-card{
+  border-color:#DCE4EB;
+  border-radius:4px;
+  box-shadow:none;
+}
+.order-workspace>.detail-panel .active-shipment{
+  border-color:#BFD0DF;
+  background:#F7FAFC;
+}
+.order-workspace>.detail-panel .replace-form{
+  border-color:#D6E0E9;
+  border-radius:4px;
+  background:#F6F9FB;
+}
+
+/* Selected row remains visible even when the list filter changes around it. */
+.order-table tr.selected-row td,
+.user-table tr.selected-row td{
+  background:#F0F6FB!important;
+}
+.order-table tr.selected-row td:first-child,
+.user-table tr.selected-row td:first-child{
+  box-shadow:inset 3px 0 0 #4A82B1;
+}
+
+/* On 1440×900 keep the panel useful without starving the table. */
+@media(max-width:1440px){
+  .order-screen .split-view.with-panel,
+  .account-screen .split-view.with-panel{
+    grid-template-columns:minmax(0,1fr) 392px;
+  }
+}
+@media(max-width:1180px){
+  .order-screen .split-view.with-panel,
+  .account-screen .split-view.with-panel{
+    grid-template-columns:minmax(0,1fr) 370px;
+  }
+  .order-workspace>.detail-panel .panel-head h2,
+  .account-workspace>.detail-panel .panel-head h2{
+    max-width:275px;
+  }
+}
