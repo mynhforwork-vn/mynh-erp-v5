@@ -262,7 +262,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     : rows
 
   const createMode=sp.mode==='create'
-  const editMode=Boolean(detail&&sp.mode==='edit')
+  const editMode=Boolean(detail&&sp.mode==='edit'&&!detail.archived_at)
   const destinationSettingsMode=sp.settings==='destination-hubs'
   const panelOpen=createMode||Boolean(detail)
   const currentShip=activeShipment(detail)
@@ -282,7 +282,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       </div>
       <div className="head-actions">
         <Link className={`button ${destinationSettingsMode?'active':''}`} href={listHref({settings:'destination-hubs',order:null,mode:null,tab:null})}>⚙ Kho đích SPX</Link>
-        <Link className="button primary" href={listHref({mode:'create',order:null,tab:null,settings:null})}>+ Tạo đơn nhập</Link>
+        <Link className="button primary" href={listHref({mode:'create',order:null,tab:null,settings:null,archive:null})}>+ Tạo đơn nhập</Link>
       </div>
     </header>
 
@@ -473,7 +473,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                 {['admin','operator'].includes(role)&&!detail.archived_at&&<Link className="button primary" href={listHref({order:detail.id,mode:'edit'})}>Sửa đơn</Link>}
               </div>
 
-              <div className={'record-lifecycle-zone '+(detail.archived_at?'archived':'')}>
+              {['admin','operator'].includes(role)&&<div className={'record-lifecycle-zone '+(detail.archived_at?'archived':'')}>
                 {!detail.archived_at
                   ? <form action={archiveOrder} className="record-lifecycle-action">
                       <input type="hidden" name="order_id" value={detail.id}/>
@@ -501,7 +501,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                         </form>
                       </details>}
                     </>}
-              </div>
+              </div>}
 
               <h3>Sản phẩm</h3>
               <div className="mini-table">
@@ -542,10 +542,10 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                       <span>Lần đồng bộ cuối: {formatDateTime(s.last_track_at)}</span>
                       <span>{s.is_active?'Lần kế tiếp: '+formatDateTime(s.next_track_at):'Thay lúc: '+formatDateTime(s.replaced_at)}</span>
                     </div>
-                    {s.is_active&&<ManualSyncButton shipmentId={s.id}/>}
+                    {s.is_active&&!detail.archived_at&&<ManualSyncButton shipmentId={s.id}/>} 
                   </div>)}
 
-              {['admin','operator'].includes(role)&&
+              {['admin','operator'].includes(role)&&!detail.archived_at&&
                 <form action={replaceShipment} className="replace-form">
                   <input type="hidden" name="return_query" value={returnQuery}/>
                   <input type="hidden" name="order_id" value={detail.id}/>
