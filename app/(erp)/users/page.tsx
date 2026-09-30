@@ -50,6 +50,9 @@ const actionLabels:Record<string,string>={
   UPDATE_PASSWORD:'Đổi mật khẩu',
   UPDATE_SPC_ST:'Cập nhật SPC_ST',
   UPDATE_SPC_F:'Cập nhật SPC_F',
+  ARCHIVE_USER:'Lưu trữ User',
+  RESTORE_USER:'Khôi phục User',
+  DELETE_USER_PERMANENT:'Xóa vĩnh viễn User',
 }
 
 export default async function UsersPage({searchParams}:{searchParams:Promise<SP>}){
