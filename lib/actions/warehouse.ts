@@ -162,8 +162,8 @@ export async function receiveOrdersIntoWarehouse(formData:FormData){
     if(order.receive_status!=='RECEIVED'){
       throw new Error('Có đơn chưa được xác nhận nhận hàng')
     }
-    if(order.warehouse_status==='WAREHOUSE_RECEIVED'){
-      throw new Error('Có đơn đã được nhập kho trước đó')
+    if(order.warehouse_status!=='READY_TO_TRANSFER'){
+      throw new Error('Có đơn không còn ở trạng thái chờ nhập kho')
     }
 
     const items=(order.order_items??[]) as any[]
@@ -210,6 +210,56 @@ export async function receiveOrdersIntoWarehouse(formData:FormData){
     new_value:{warehouse_id:warehouseId,note},
     source:'USER',
   })))
+
+  revalidateWarehouse()
+}
+
+export async function skipWarehouseOrder(formData:FormData){
+  const {supabase,user}=await actor()
+
+  const orderId=text(formData.get('order_id'))
+  const note=text(formData.get('note'))||'Bỏ qua kho sau khi xác nhận SKU'
+  if(!orderId)throw new Error('Thiếu đơn cần bỏ qua kho')
+
+  const {data:order,error:orderError}=await supabase
+    .from('orders')
+    .select('id,receive_status,warehouse_status,order_items(id,product_variant_id)')
+    .eq('id',orderId)
+    .is('archived_at',null)
+    .maybeSingle()
+  if(orderError)throw new Error(orderError.message)
+  if(!order)throw new Error('Đơn hàng không tồn tại hoặc đã lưu trữ')
+  if(order.receive_status!=='RECEIVED'){
+    throw new Error('Đơn chưa được xác nhận nhận hàng')
+  }
+  if(order.warehouse_status!=='READY_TO_TRANSFER'){
+    throw new Error('Đơn không còn ở trạng thái chờ xử lý kho')
+  }
+
+  const items=(order.order_items??[]) as any[]
+  if(!items.length||items.some(item=>!item.product_variant_id)){
+    throw new Error('Cần xác nhận đầy đủ SKU trước khi bỏ qua kho')
+  }
+
+  const {error:updateError}=await supabase
+    .from('orders')
+    .update({warehouse_status:'WAREHOUSE_SKIPPED'})
+    .eq('id',orderId)
+  if(updateError)throw new Error(updateError.message)
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,
+    module:'WAREHOUSE',
+    action:'SKIP_WAREHOUSE',
+    entity_type:'ORDER',
+    entity_id:orderId,
+    old_value:{warehouse_status:order.warehouse_status},
+    new_value:{
+      warehouse_status:'WAREHOUSE_SKIPPED',
+      note,
+    },
+    source:'USER',
+  })
 
   revalidateWarehouse()
 }
