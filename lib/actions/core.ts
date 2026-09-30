@@ -1421,6 +1421,119 @@ export async function mapOrderItemToInventory(formData:FormData){
   revalidateWarehouse()
 }
 
+export async function receiveOrdersIntoWarehouse(formData:FormData){
+  const {supabase,user}=await actor()
+  const orderIds=[...new Set(formData.getAll('order_ids').map(v=>text(v)).filter(Boolean))]
+  const warehouseId=text(formData.get('warehouse_id'))
+  const note=text(formData.get('note'))||null
+
+  if(!orderIds.length)throw new Error('Chưa chọn đơn cần nhập kho')
+  if(!warehouseId)throw new Error('Chưa chọn Kho nhận')
+
+  const {data:orders,error:ordersError}=await supabase
+    .from('orders')
+    .select('id,warehouse_status,order_items(id,product_variant_id,quantity)')
+    .in('id',orderIds)
+    .is('archived_at',null)
+    .eq('receive_status','RECEIVED')
+  if(ordersError)throw new Error(ordersError.message)
+
+  const validOrders=(orders??[]) as any[]
+  if(validOrders.length!==orderIds.length)throw new Error('Có đơn không còn ở trạng thái Đã nhận')
+  if(validOrders.some(o=>o.warehouse_status==='WAREHOUSE_RECEIVED')){
+    throw new Error('Có đơn đã được nhập kho trước đó')
+  }
+
+  const transactions:any[]=[]
+  for(const order of validOrders){
+    const items=(order.order_items??[]) as any[]
+    if(!items.length||items.some(i=>!i.product_variant_id)){
+      throw new Error('Có đơn chưa bóc tách đủ SKU bán')
+    }
+    for(const item of items){
+      const quantity=Math.max(1,Number(item.quantity??1)||1)
+      transactions.push({
+        warehouse_id:warehouseId,
+        product_variant_id:item.product_variant_id,
+        tx_type:'IN',
+        quantity,
+        reference_type:note?'PURCHASE_RECEIPT: '+note:'PURCHASE_RECEIPT',
+        reference_id:order.id,
+        created_by:user.id,
+      })
+    }
+  }
+
+  const {error:txError}=await supabase.from('inventory_transactions').insert(transactions)
+  if(txError)throw new Error(txError.message)
+
+  const {error:updateError}=await supabase
+    .from('orders')
+    .update({warehouse_status:'WAREHOUSE_RECEIVED'})
+    .in('id',orderIds)
+  if(updateError)throw new Error(updateError.message)
+
+  await supabase.from('audit_logs').insert(orderIds.map(orderId=>({
+    actor_user_id:user.id,
+    module:'WAREHOUSE',
+    action:'RECEIVE_INTO_WAREHOUSE',
+    entity_type:'ORDER',
+    entity_id:orderId,
+    new_value:{warehouse_id:warehouseId,note},
+    source:'USER',
+  })))
+
+  revalidateWarehouse()
+  redirect('/warehouse/inventory')
+}
+
+export async function stocktakeWarehouseInventory(formData:FormData){
+  const {supabase,user}=await actor()
+  const warehouseId=text(formData.get('warehouse_id'))
+  const variantId=text(formData.get('product_variant_id'))
+  const actualQuantity=Number(text(formData.get('actual_quantity')))
+  const note=text(formData.get('note'))||null
+
+  if(!warehouseId||!variantId)throw new Error('Thiếu kho hoặc SKU cần kiểm kê')
+  if(!Number.isInteger(actualQuantity)||actualQuantity<0)throw new Error('Tồn thực tế không hợp lệ')
+
+  const {data:balance,error:balanceError}=await supabase
+    .from('inventory_balances')
+    .select('quantity')
+    .eq('warehouse_id',warehouseId)
+    .eq('product_variant_id',variantId)
+    .maybeSingle()
+  if(balanceError)throw new Error(balanceError.message)
+
+  const systemQuantity=Number(balance?.quantity??0)
+  const diff=actualQuantity-systemQuantity
+  if(diff!==0){
+    const {error}=await supabase.from('inventory_transactions').insert({
+      warehouse_id:warehouseId,
+      product_variant_id:variantId,
+      tx_type:diff>0?'ADJUSTMENT_IN':'ADJUSTMENT_OUT',
+      quantity:Math.abs(diff),
+      reference_type:note?'STOCKTAKE: '+note:'STOCKTAKE',
+      reference_id:null,
+      created_by:user.id,
+    })
+    if(error)throw new Error(error.message)
+  }
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,
+    module:'WAREHOUSE',
+    action:'STOCKTAKE',
+    entity_type:'PRODUCT_VARIANT',
+    entity_id:variantId,
+    old_value:{quantity:systemQuantity,warehouse_id:warehouseId},
+    new_value:{quantity:actualQuantity,difference:diff,warehouse_id:warehouseId,note},
+    source:'USER',
+  })
+
+  revalidateWarehouse()
+}
+
 export async function createInboundWarehouseTransfer(formData:FormData){
   const {supabase}=await actor()
   const orderIds=[...new Set(formData.getAll('order_ids').map(v=>text(v)).filter(Boolean))]
