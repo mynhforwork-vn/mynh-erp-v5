@@ -4,11 +4,14 @@ import { requireUser } from '@/lib/supabase/auth'
 import { roleLabel } from '@/lib/format'
 import { Nav } from '@/components/nav'
 import { LogoutButton } from '@/components/logout-button'
+import { DismissOpenDetails } from '@/components/dismiss-open-details'
 
 export default async function ERPLayout({children}:{children:React.ReactNode}){
   const {user}=await requireUser()
   const role=String(user.app_metadata?.role??'viewer')
-  return <div className="shell">
+  return <>
+    <DismissOpenDetails/>
+    <div className="shell">
     <aside className="sidebar">
       <Link href="/" className="brand"><span className="brand-mark small">M</span><span><b>MYNH ERP</b><small>HỆ THỐNG VẬN HÀNH</small></span></Link>
       <Suspense fallback={null}><Nav/></Suspense>
@@ -20,4 +23,5 @@ export default async function ERPLayout({children}:{children:React.ReactNode}){
     </aside>
     <main className="main">{children}</main>
   </div>
+  </>
 }
