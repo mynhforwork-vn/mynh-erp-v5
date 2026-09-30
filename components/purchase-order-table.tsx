@@ -378,6 +378,51 @@ export function PurchaseOrderTable({
   const colSpan=visible.length+1+(canEdit?1:0)
   const toggleSort=(a:SortKey,b:SortKey)=>changeSort(sort===a?b:a)
 
+  function renderHeader(key:ColKey){
+    if(key==='number')return <th key={key}>#</th>
+    if(key==='order')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('order_asc','order_desc')}>Mã đơn <span>{sortIndicator(sort,'order_asc','order_desc')}</span></button></th>
+    if(key==='username')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('username_asc','username_desc')}>Username <span>{sortIndicator(sort,'username_asc','username_desc')}</span></button></th>
+    if(key==='time')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('time_old','time_new')}>Thời gian đặt <span>{sort==='time_new'?'↓':sort==='time_old'?'↑':'↕'}</span></button></th>
+    if(key==='product')return <th key={key}>Sản phẩm</th>
+    if(key==='cod')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('cod_asc','cod_desc')}>COD <span>{sortIndicator(sort,'cod_asc','cod_desc')}</span></button></th>
+    if(key==='tracking')return <th key={key}>Mã vận đơn</th>
+    if(key==='carrier')return <th key={key}>ĐVVC</th>
+    if(key==='voucher')return <th key={key}>Voucher</th>
+    return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('status_asc','status_desc')}>Xử lý <span>{sortIndicator(sort,'status_asc','status_desc')}</span></button></th>
+  }
+
+  function renderCell(key:ColKey,o:any,i:number){
+    const s=activeShipment(o)
+    if(key==='number')return <td key={key}>{i+1}</td>
+    if(key==='order')return <td key={key}><Link className="table-link" href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
+    if(key==='username')return <td key={key}>{o.erp_users?.username??'—'}</td>
+    if(key==='time')return <td key={key} className="order-time-cell">{formatDateTime(o.order_date)}</td>
+    if(key==='product')return <td key={key} className="truncate product-cell">{productSummary(o.order_items??[])}</td>
+    if(key==='cod')return <td key={key} className="money">{formatMoney(o.cod)}</td>
+    if(key==='tracking')return <td key={key} className="tracking-number-cell">
+      {o.shipping_service==='EXPRESS'
+        ? <span className="tracking-na">Không áp dụng</span>
+        : s?.tracking_number
+          ? <span className="tracking-number-value">{s.tracking_number}</span>
+          : canEdit&&!o.archived_at
+            ? <QuickTrackingEditor orderId={o.id} returnQuery={baseQuery} carrierConfigs={carrierConfigs}/>
+            : <span className="tracking-missing-text">Chưa có</span>}
+    </td>
+    if(key==='carrier')return <td key={key}>{o.shipping_service==='EXPRESS'?'Hỏa tốc':s?.carrier??'—'}</td>
+    if(key==='voucher')return <td key={key} className="voucher-cell"><VoucherTags value={voucherSummary(o.order_vouchers??[])} compact maxVisible={2}/></td>
+    return <td key={key}>
+      <div className="order-state-cell">
+        {o.shipping_service==='EXPRESS'
+          ? <span className="status-pill orange">Hỏa tốc</span>
+          : s?.tracking_number
+            ? <span className={'status-pill status-'+String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(s?.current_tracking_status)}</span>
+            : <span className="status-pill orange">Chờ mã vận đơn</span>}
+        {o.receive_status!=='NOT_READY'&&<span className={'status-pill '+(o.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(o.receive_status)}</span>}
+        {o.archived_at&&<span className="status-pill archived">Lưu trữ</span>}
+      </div>
+    </td>
+  }
+
   return <div className="order-table-shell">
     {canEdit&&selected.length>0&&<div className="order-bulk-bar">
       <div className="order-bulk-summary">
@@ -454,16 +499,7 @@ export function PurchaseOrderTable({
               disabled={!sorted.length}
             />
           </th>}
-          {isVisible('number')&&<th>#</th>}
-          {isVisible('order')&&<th><button className="sort-head" type="button" onClick={()=>toggleSort('order_asc','order_desc')}>Mã đơn <span>{sortIndicator(sort,'order_asc','order_desc')}</span></button></th>}
-          {isVisible('username')&&<th><button className="sort-head" type="button" onClick={()=>toggleSort('username_asc','username_desc')}>Username <span>{sortIndicator(sort,'username_asc','username_desc')}</span></button></th>}
-          {isVisible('time')&&<th><button className="sort-head" type="button" onClick={()=>toggleSort('time_old','time_new')}>Thời gian đặt <span>{sort==='time_new'?'↓':sort==='time_old'?'↑':'↕'}</span></button></th>}
-          {isVisible('product')&&<th>Sản phẩm</th>}
-          {isVisible('cod')&&<th><button className="sort-head" type="button" onClick={()=>toggleSort('cod_asc','cod_desc')}>COD <span>{sortIndicator(sort,'cod_asc','cod_desc')}</span></button></th>}
-          {isVisible('tracking')&&<th>Mã vận đơn</th>}
-          {isVisible('carrier')&&<th>ĐVVC</th>}
-          {isVisible('voucher')&&<th>Voucher</th>}
-          {isVisible('status')&&<th><button className="sort-head" type="button" onClick={()=>toggleSort('status_asc','status_desc')}>Xử lý <span>{sortIndicator(sort,'status_asc','status_desc')}</span></button></th>}
+          {columnOrder.filter(isVisible).map(renderHeader)}
           <th className="row-actions-head" aria-label="Thao tác"><span>•••</span></th>
         </tr></thead>
         <tbody>
@@ -480,40 +516,16 @@ export function PurchaseOrderTable({
                       onChange={()=>toggleSelect(String(o.id))}
                     />
                   </td>}
-                  {isVisible('number')&&<td>{i+1}</td>}
-                  {isVisible('order')&&<td><Link className="table-link" href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>}
-                  {isVisible('username')&&<td>{o.erp_users?.username??'—'}</td>}
-                  {isVisible('time')&&<td className="order-time-cell">{formatDateTime(o.order_date)}</td>}
-                  {isVisible('product')&&<td className="truncate product-cell">{productSummary(o.order_items??[])}</td>}
-                  {isVisible('cod')&&<td className="money">{formatMoney(o.cod)}</td>}
-                  {isVisible('tracking')&&<td className="tracking-number-cell">
-                    {o.shipping_service==='EXPRESS'
-                      ? <span className="tracking-na">Không áp dụng</span>
-                      : s?.tracking_number
-                        ? <span className="tracking-number-value">{s.tracking_number}</span>
-                        : canEdit&&!o.archived_at
-                          ? <QuickTrackingEditor orderId={o.id} returnQuery={baseQuery} carrierConfigs={carrierConfigs}/>
-                          : <span className="tracking-missing-text">Chưa có</span>}
-                  </td>}
-                  {isVisible('carrier')&&<td>{o.shipping_service==='EXPRESS'?'Hỏa tốc':s?.carrier??'—'}</td>}
-                  {isVisible('voucher')&&<td className="voucher-cell"><VoucherTags value={voucherSummary(o.order_vouchers??[])} compact maxVisible={2}/></td>}
-                  {isVisible('status')&&<td>
-                    <div className="order-state-cell">
-                      {o.shipping_service==='EXPRESS'
-                        ? <span className="status-pill orange">Hỏa tốc</span>
-                        : s?.tracking_number
-                          ? <span className={'status-pill status-'+String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(s?.current_tracking_status)}</span>
-                          : <span className="status-pill orange">Chờ mã vận đơn</span>}
-                      {o.receive_status!=='NOT_READY'&&<span className={'status-pill '+(o.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(o.receive_status)}</span>}
-                      {o.archived_at&&<span className="status-pill archived">Lưu trữ</span>}
-                    </div>
-                  </td>}
+                  {columnOrder.filter(isVisible).map(k=>renderCell(k,o,i))}
                   <td className="row-actions-cell">
                     <OrderLifecycleCell
                       row={o}
                       returnQuery={baseQuery}
                       canManage={canEdit}
                       canDeletePermanent={canDeletePermanent}
+                      open={openActionId===String(o.id)}
+                      onToggle={()=>setOpenActionId(prev=>prev===String(o.id)?null:String(o.id))}
+                      onClose={()=>setOpenActionId(null)}
                     />
                   </td>
                 </tr>
