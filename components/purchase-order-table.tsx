@@ -7,6 +7,12 @@ import { VoucherTags } from '@/components/voucher-tags'
 import { quickAddTrackingNumber } from '@/lib/actions/core'
 
 type Row=Record<string,any>
+type CarrierConfig={
+  id:string
+  carrier_code:string
+  display_name:string
+  tracking_prefixes?:string[]|null
+}
 type ColKey='number'|'order'|'username'|'time'|'product'|'cod'|'tracking'|'carrier'|'voucher'|'status'
 type SortKey='order_asc'|'order_desc'|'username_asc'|'username_desc'|'time_new'|'time_old'|'cod_desc'|'cod_asc'|'status_asc'|'status_desc'
 
@@ -59,18 +65,26 @@ function ColumnIcon(){
 function QuickTrackingEditor({
   orderId,
   returnQuery,
+  carrierConfigs,
 }:{
   orderId:string
   returnQuery:string
+  carrierConfigs:CarrierConfig[]
 }){
   const [editing,setEditing]=useState(false)
   const [trackingNumber,setTrackingNumber]=useState('')
-  const [carrier,setCarrier]=useState('')
+  const [carrierId,setCarrierId]=useState('')
 
   function changeTracking(value:string){
     setTrackingNumber(value)
-    if(/^SPX/i.test(value))setCarrier('SPX Express')
-    else if(/^GHN/i.test(value))setCarrier('Giao Hàng Nhanh')
+    const upper=value.trim().toUpperCase()
+    const matched=carrierConfigs.find(row=>
+      (row.tracking_prefixes??[]).some(prefix=>{
+        const p=String(prefix??'').trim().toUpperCase()
+        return Boolean(p)&&upper.startsWith(p)
+      })
+    )
+    setCarrierId(matched?.id??'')
   }
 
   if(!editing){
@@ -95,10 +109,9 @@ function QuickTrackingEditor({
       autoFocus
       required
     />
-    <select name="carrier" value={carrier} onChange={e=>setCarrier(e.target.value)} required>
+    <select name="carrier_config_id" value={carrierId} onChange={e=>setCarrierId(e.target.value)} required>
       <option value="" disabled>ĐVVC</option>
-      <option value="SPX Express">SPX</option>
-      <option value="Giao Hàng Nhanh">GHN</option>
+      {carrierConfigs.map(row=><option key={row.id} value={row.id}>{row.carrier_code}</option>)}
     </select>
     <button type="submit" className="quick-tracking-save">Lưu</button>
     <button type="button" className="quick-tracking-cancel" onClick={()=>setEditing(false)} aria-label="Hủy">×</button>
@@ -110,11 +123,13 @@ export function PurchaseOrderTable({
   selectedId,
   baseQuery='',
   canEdit=false,
+  carrierConfigs=[],
 }:{
   rows:Row[]
   selectedId?:string|null
   baseQuery?:string
   canEdit?:boolean
+  carrierConfigs?:CarrierConfig[]
 }){
   const [visible,setVisible]=useState<ColKey[]>(ALL)
   const [open,setOpen]=useState(false)
@@ -238,7 +253,7 @@ export function PurchaseOrderTable({
                       : s?.tracking_number
                         ? <span className="tracking-number-value">{s.tracking_number}</span>
                         : canEdit
-                          ? <QuickTrackingEditor orderId={o.id} returnQuery={baseQuery}/>
+                          ? <QuickTrackingEditor orderId={o.id} returnQuery={baseQuery} carrierConfigs={carrierConfigs}/>
                           : <span className="tracking-missing-text">Chưa có</span>}
                   </td>}
                   {isVisible('carrier')&&<td>{o.shipping_service==='EXPRESS'?'Hỏa tốc':s?.carrier??'—'}</td>}
