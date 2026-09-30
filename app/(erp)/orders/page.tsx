@@ -98,7 +98,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const range=resolveRange(sp)
   const queryText=String(sp.q??'').trim().toLowerCase()
 
-  const [{data,error},{data:userOptions},{data:recentSkuRows},{data:voucherCatalogRows},{data:destinationHubRows},{data:destinationShippers},{data:hubShipperAssignments}]=await Promise.all([
+  const [{data,error},{data:userOptions},{data:recentSkuRows},{data:voucherCatalogRows},{data:carrierRows},{data:destinationHubRows},{data:destinationShippers},{data:hubShipperAssignments}]=await Promise.all([
     supabase.from('orders').select(
       'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
     ).gte('order_date',range.start).lte('order_date',range.end).order('order_date',{ascending:false}).limit(1000),
@@ -112,6 +112,12 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       .select('voucher_type,voucher_tag,created_at')
       .order('created_at',{ascending:false})
       .limit(3000),
+    supabase.from('shipping_carrier_configs')
+      .select('id,carrier_code,display_name,tracking_prefixes,supports_tracking,supports_destination_hub,priority,is_active')
+      .eq('is_active',true)
+      .order('priority',{ascending:true})
+      .order('display_name',{ascending:true})
+      .limit(200),
     supabase.from('destination_hub_configs')
       .select('id,hub_code,area,region,province_keywords,district_keywords,address_keywords,priority,is_active')
       .order('priority',{ascending:true})
@@ -143,6 +149,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const skuCatalog=[...latestSkuMap.values()]
   const voucherTypes=[...new Set((voucherCatalogRows??[]).map((x:any)=>String(x.voucher_type??'').trim()).filter(Boolean))]
   const voucherTags=[...new Set((voucherCatalogRows??[]).map((x:any)=>String(x.voucher_tag??'').trim()).filter(Boolean))]
+  const carrierConfigs=((carrierRows??[]) as any[]).filter((x:any)=>x.supports_tracking)
   const assignmentRows=(hubShipperAssignments??[]) as any[]
   const destinationHubConfigs=((destinationHubRows??[]) as any[]).map((hub:any)=>({
     ...hub,
@@ -266,7 +273,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         <p>Lưu trữ toàn bộ đơn mua, sản phẩm, voucher, vận đơn và lịch sử xử lý</p>
       </div>
       <div className="head-actions">
-        <Link className={`button ${destinationSettingsMode?'active':''}`} href={listHref({settings:'destination-hubs',order:null,mode:null,tab:null})}>⚙ Cấu hình kho đích</Link>
+        <Link className={`button ${destinationSettingsMode?'active':''}`} href={listHref({settings:'destination-hubs',order:null,mode:null,tab:null})}>⚙ Kho đích SPX</Link>
         <Link className="button primary" href={listHref({mode:'create',order:null,tab:null,settings:null})}>+ Tạo đơn nhập</Link>
       </div>
     </header>
@@ -334,6 +341,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               selectedId={sp.order}
               baseQuery={returnQuery}
               canEdit={['admin','operator'].includes(role)}
+              carrierConfigs={carrierConfigs}
             />}
 
       </section>
@@ -354,6 +362,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             voucherTypes={voucherTypes}
             voucherTags={voucherTags}
             destinationHubs={destinationHubs}
+            carrierConfigs={carrierConfigs}
           />
         </aside>
       }
@@ -395,6 +404,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             voucherTypes={voucherTypes}
             voucherTags={voucherTags}
             destinationHubs={destinationHubs}
+            carrierConfigs={carrierConfigs}
           />
         </aside>
       }
@@ -435,8 +445,8 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                     </>
                   : <>
                       <div><span>Khu vực</span><b>{[detail.area,detailHubConfig?.region].filter(Boolean).join(' · ')||'Chưa xác định'}</b></div>
-                      <div><span>Kho đích</span><b>{detail.destination_hub??'—'}</b></div>
-                      <div className="full"><span>Shipper phụ trách Hub</span><b>{detailHubConfig?.assigned_shippers?.length
+                      <div><span>Kho đích SPX</span><b>{detail.destination_hub??'—'}</b></div>
+                      <div className="full"><span>Shipper phụ trách HUB SPX</span><b>{detailHubConfig?.assigned_shippers?.length
                         ? detailHubConfig.assigned_shippers.map((s:any)=>s.name+(s.phone?' · '+formatPhone(s.phone):'')).join(' | ')
                         : 'Chưa cấu hình'}</b></div>
                       <div><span>Mã vận đơn</span><b>{currentShip?.tracking_number??'Chưa có'}</b></div>

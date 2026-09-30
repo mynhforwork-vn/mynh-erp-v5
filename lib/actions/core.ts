@@ -129,7 +129,7 @@ export async function updateERPUser(formData:FormData){
   }
 
   revalidatePath('/purchase/accounts')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data)}))
+  redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data),mode:null,tab:'info'}))
 }
 
 function numberOrNull(v:FormDataEntryValue|null){
@@ -147,15 +147,40 @@ function localDateTime(v:FormDataEntryValue|null){
   return Number.isNaN(d.getTime())?null:d.toISOString()
 }
 
-function detectCarrier(trackingNumber:string){
+async function resolveCarrierName(supabase:any,trackingNumber:string,explicitCarrier?:string|null){
+  const explicit=String(explicitCarrier??'').trim()
+  if(explicit)return explicit
   const v=trackingNumber.trim().toUpperCase()
   if(!v)return null
-  if(v.startsWith('SPX'))return 'SPX Express'
-  if(v.startsWith('GHN'))return 'Giao Hàng Nhanh'
-  if(v.startsWith('GHTK'))return 'Giao Hàng Tiết Kiệm'
-  if(v.startsWith('VTP')||v.startsWith('VTPN'))return 'Viettel Post'
-  if(v.startsWith('JNT')||v.startsWith('JT'))return 'J&T Express'
-  return null
+
+  const {data,error}=await supabase
+    .from('shipping_carrier_configs')
+    .select('display_name,tracking_prefixes')
+    .eq('is_active',true)
+    .eq('supports_tracking',true)
+    .order('priority',{ascending:true})
+  if(error)throw new Error(error.message)
+
+  const matched=(data??[]).find((row:any)=>
+    (row.tracking_prefixes??[]).some((prefix:any)=>{
+      const p=String(prefix??'').trim().toUpperCase()
+      return Boolean(p)&&v.startsWith(p)
+    })
+  )
+  return matched?.display_name??null
+}
+
+async function carrierUsesDestinationHub(supabase:any,carrierName:string|null){
+  if(!carrierName)return false
+  const {data,error}=await supabase
+    .from('shipping_carrier_configs')
+    .select('supports_destination_hub')
+    .eq('display_name',carrierName)
+    .order('priority',{ascending:true})
+    .limit(1)
+    .maybeSingle()
+  if(error)throw new Error(error.message)
+  return Boolean(data?.supports_destination_hub)
 }
 
 function itemPayload(formData:FormData){
@@ -197,7 +222,8 @@ export async function createOrder(formData:FormData){
   const shippingService=text(formData.get('shipping_service'))==='EXPRESS'?'EXPRESS':'STANDARD'
   const isExpress=shippingService==='EXPRESS'
   const trackingNumber=isExpress?'':text(formData.get('tracking_number'))
-  const carrier=isExpress?null:(text(formData.get('carrier'))||detectCarrier(trackingNumber))
+  const carrier=isExpress?null:await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
+  const usesDestinationHub=!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
   const orderStatus=isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
 
@@ -208,7 +234,7 @@ export async function createOrder(formData:FormData){
     p_recipient_name:text(formData.get('recipient_name'))||null,
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
-    p_destination_hub:isExpress?null:(text(formData.get('destination_hub'))||null),
+    p_destination_hub:usesDestinationHub?(text(formData.get('destination_hub'))||null):null,
     p_cod:numberOrNull(formData.get('cod'))??0,
     p_order_status:orderStatus,
     p_payment_status:text(formData.get('payment_status'))||'UNPAID',
@@ -219,11 +245,11 @@ export async function createOrder(formData:FormData){
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  const derivedArea=isExpress?null:(text(formData.get('area'))||null)
+  const derivedArea=usesDestinationHub?(text(formData.get('area'))||null):null
   if(data){
     const {error:orderMetaError}=await supabase.from('orders').update({
       area:derivedArea,
-      destination_hub:isExpress?null:(text(formData.get('destination_hub'))||null),
+      destination_hub:usesDestinationHub?(text(formData.get('destination_hub'))||null):null,
       express_shipper_name:isExpress?(text(formData.get('express_shipper_name'))||null):null,
       express_shipper_phone:isExpress?(text(formData.get('express_shipper_phone'))||null):null,
       express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
@@ -243,7 +269,8 @@ export async function updateOrder(formData:FormData){
   const shippingService=text(formData.get('shipping_service'))==='EXPRESS'?'EXPRESS':'STANDARD'
   const isExpress=shippingService==='EXPRESS'
   const trackingNumber=isExpress?'':text(formData.get('tracking_number'))
-  const carrier=isExpress?null:(text(formData.get('carrier'))||detectCarrier(trackingNumber))
+  const carrier=isExpress?null:await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
+  const usesDestinationHub=!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
   const orderStatus=isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
 
@@ -255,7 +282,7 @@ export async function updateOrder(formData:FormData){
     p_recipient_name:text(formData.get('recipient_name'))||null,
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
-    p_destination_hub:isExpress?null:(text(formData.get('destination_hub'))||null),
+    p_destination_hub:usesDestinationHub?(text(formData.get('destination_hub'))||null):null,
     p_cod:numberOrNull(formData.get('cod'))??0,
     p_order_status:orderStatus,
     p_payment_status:text(formData.get('payment_status'))||'UNPAID',
@@ -266,10 +293,10 @@ export async function updateOrder(formData:FormData){
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  const derivedArea=isExpress?null:(text(formData.get('area'))||null)
+  const derivedArea=usesDestinationHub?(text(formData.get('area'))||null):null
   const {error:orderMetaError}=await supabase.from('orders').update({
     area:derivedArea,
-    destination_hub:isExpress?null:(text(formData.get('destination_hub'))||null),
+    destination_hub:usesDestinationHub?(text(formData.get('destination_hub'))||null):null,
     express_shipper_name:isExpress?(text(formData.get('express_shipper_name'))||null):null,
     express_shipper_phone:isExpress?(text(formData.get('express_shipper_phone'))||null):null,
     express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
@@ -285,7 +312,7 @@ export async function updateOrder(formData:FormData){
     if(shipmentError)throw new Error(shipmentError.message)
   }
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
-  redirect(returnHref('/purchase/orders',returnQuery,{order:String(data)}))
+  redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
 }
 
 function normalizeRoutingKeyword(value:string){
@@ -439,6 +466,53 @@ export async function saveDestinationShipper(formData:FormData){
 }
 
 
+
+export async function saveShippingCarrierConfig(formData:FormData){
+  const {supabase,user}=await actor()
+  const id=text(formData.get('carrier_config_id'))
+  const carrierCode=text(formData.get('carrier_code')).toUpperCase()
+  const displayName=text(formData.get('display_name'))
+  const trackingPrefixes=keywordList(formData.get('tracking_prefixes')).map(x=>x.toUpperCase())
+  const priorityRaw=Number(text(formData.get('priority'))||100)
+  const isSpx=carrierCode==='SPX'
+
+  if(!carrierCode||!displayName)throw new Error('Thiếu mã hoặc tên ĐVVC')
+
+  const payload={
+    carrier_code:carrierCode,
+    display_name:displayName,
+    tracking_prefixes:trackingPrefixes,
+    supports_tracking:formData.get('supports_tracking')==='on',
+    supports_destination_hub:isSpx,
+    priority:Number.isFinite(priorityRaw)?Math.max(0,Math.round(priorityRaw)):100,
+    is_active:formData.get('is_active')==='on',
+    note:text(formData.get('note'))||null,
+    updated_at:new Date().toISOString(),
+  }
+
+  const query=id
+    ? supabase.from('shipping_carrier_configs').update(payload).eq('id',id).select('*').single()
+    : supabase.from('shipping_carrier_configs').insert(payload).select('*').single()
+  const {data,error}=await query
+  if(error)throw new Error(error.message)
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,
+    module:'SETTINGS',
+    action:id?'UPDATE_SHIPPING_CARRIER_CONFIG':'CREATE_SHIPPING_CARRIER_CONFIG',
+    entity_type:'SHIPPING_CARRIER_CONFIG',
+    entity_id:String(data?.id??id),
+    old_value:null,
+    new_value:data,
+    source:'USER',
+  })
+
+  revalidatePath('/settings')
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase/tracking')
+  revalidatePath('/purchase')
+}
+
 export async function confirmReceiveOrders(formData:FormData){
   const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
@@ -514,8 +588,25 @@ export async function quickAddTrackingNumber(formData:FormData){
   const returnQuery=text(formData.get('return_query'))
   const orderId=text(formData.get('order_id'))
   const trackingNumber=text(formData.get('tracking_number'))
-  const carrier=text(formData.get('carrier'))||detectCarrier(trackingNumber)
+  const carrierConfigId=text(formData.get('carrier_config_id'))
   if(!orderId||!trackingNumber)throw new Error('Thiếu đơn hàng hoặc mã vận đơn')
+
+  let carrier:string|null=null
+  if(carrierConfigId){
+    const {data:carrierConfig,error:carrierError}=await supabase
+      .from('shipping_carrier_configs')
+      .select('id,display_name,is_active,supports_tracking')
+      .eq('id',carrierConfigId)
+      .eq('is_active',true)
+      .eq('supports_tracking',true)
+      .maybeSingle()
+    if(carrierError)throw new Error(carrierError.message)
+    if(!carrierConfig)throw new Error('ĐVVC đã bị tắt hoặc không còn tồn tại')
+    carrier=carrierConfig.display_name
+  }else{
+    carrier=await resolveCarrierName(supabase,trackingNumber,null)
+  }
+  if(!carrier)throw new Error('Chưa xác định được ĐVVC. Hãy chọn ĐVVC trong cập nhật nhanh.')
 
   const {data:order,error:orderError}=await supabase
     .from('orders')
