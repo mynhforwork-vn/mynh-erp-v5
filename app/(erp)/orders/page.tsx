@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
 import { ManualSyncButton } from '@/components/manual-sync-button'
-import { archiveOrder, deleteOrderPermanent, replaceShipment, restoreOrder } from '@/lib/actions/core'
+import { archiveOrder, confirmReceiveOrders, deleteOrderPermanent, markExpressDelivered, replaceShipment, restoreOrder } from '@/lib/actions/core'
 import { CopyOrderButton } from '@/components/copy-order-button'
 import { OrderEditorForm } from '@/components/order-editor-form'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
@@ -107,7 +107,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     : orderListQuery.is('archived_at',null)
   orderListQuery=orderListQuery.order('order_date',{ascending:false}).limit(1000)
 
-  const [{data,error},{data:userOptions},{data:recentSkuRows},{data:voucherCatalogRows},{data:carrierRows},{data:destinationHubRows},{data:destinationShippers},{data:hubShipperAssignments}]=await Promise.all([
+  const [{data,error},{data:userOptions},{data:recentSkuRows},{data:voucherCatalogRows},{data:carrierRows},{data:destinationHubRows},{data:destinationShippers},{data:hubShipperAssignments},{data:receivingWarehouses},{data:warehouseSettings}]=await Promise.all([
     orderListQuery,
     supabase.from('erp_users').select('id,username,phone,status,archived_at').order('username').limit(1000),
     supabase.from('order_items')
@@ -137,7 +137,16 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     supabase.from('destination_hub_shipper_assignments')
       .select('hub_config_id,shipper_id,priority,is_active')
       .order('priority',{ascending:true})
-      .limit(2000)
+      .limit(2000),
+    supabase.from('warehouses')
+      .select('id,code,name,address')
+      .eq('is_active',true)
+      .order('code')
+      .limit(100),
+    supabase.from('warehouse_settings')
+      .select('default_receiving_warehouse_id')
+      .eq('id','main')
+      .maybeSingle()
   ])
 
   const latestSkuMap=new Map<string,any>()
@@ -242,13 +251,19 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   let vouchers:any[]=[]
   let trackingEvents:any[]=[]
   let auditRows:any[]=[]
+  let receiveHistory:any[]=[]
+  let warehouseHistoryRows:any[]=[]
+  let warehouseAuditRows:any[]=[]
 
   if(sp.order){
     const [od,it,vo]=await Promise.all([
       supabase.from('orders').select(
         'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,archived_by,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)'
       ).eq('id',sp.order).maybeSingle(),
-      supabase.from('order_items').select('*').eq('order_id',sp.order).order('created_at'),
+      supabase.from('order_items')
+        .select('*,product_variants(id,variant_name,sale_price,products(id,sku,name))')
+        .eq('order_id',sp.order)
+        .order('created_at'),
       supabase.from('order_vouchers').select('*').eq('order_id',sp.order).order('created_at')
     ])
     detail=od.data
@@ -263,6 +278,28 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     if(sp.tab==='history'){
       const au=await supabase.from('audit_logs').select('*').eq('entity_id',sp.order).order('created_at',{ascending:false}).limit(100)
       auditRows=(au.data??[]) as any[]
+    }
+    if(sp.tab==='warehouse'){
+      const [receiveResult,txResult,warehouseAuditResult]=await Promise.all([
+        supabase.from('receive_batch_details')
+          .select('id,order_id,cod_snapshot,created_at,receive_batches(id,warehouse_id,received_at,note,warehouses(id,code,name))')
+          .eq('order_id',sp.order)
+          .order('created_at',{ascending:false}),
+        supabase.from('inventory_transactions')
+          .select('id,warehouse_id,product_variant_id,tx_type,quantity,reference_type,reference_id,created_at,warehouses(id,code,name),product_variants(id,variant_name,products(id,sku,name))')
+          .eq('reference_id',sp.order)
+          .order('created_at',{ascending:false})
+          .limit(200),
+        supabase.from('audit_logs')
+          .select('id,action,old_value,new_value,source,created_at')
+          .eq('entity_id',sp.order)
+          .eq('module','WAREHOUSE')
+          .order('created_at',{ascending:false})
+          .limit(100),
+      ])
+      receiveHistory=(receiveResult.data??[]) as any[]
+      warehouseHistoryRows=(txResult.data??[]) as any[]
+      warehouseAuditRows=(warehouseAuditResult.data??[]) as any[]
     }
   }
 
