@@ -115,6 +115,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     {data:hubConfigs},
     {data:destinationShippers},
     {data:hubShipperAssignments},
+    {data:warehouseSettings},
   ]=await Promise.all([
     supabase.from('shipments').select(
       'id,order_id,tracking_number,carrier,is_active,tracking_enabled,current_tracking_status,last_track_at,next_track_at,last_status_change_at,tracking_fail_count,queue_status,orders(id,shopee_order_id,destination_hub,cod,recipient_name,recipient_phone,recipient_address,receive_status,warehouse_status,order_date,shipping_service,order_status,archived_at,order_items(product_name,variant,quantity))'
@@ -142,6 +143,10 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       .eq('is_active',true)
       .order('priority',{ascending:true})
       .limit(2000),
+    supabase.from('warehouse_settings')
+      .select('default_receiving_warehouse_id')
+      .eq('id','main')
+      .maybeSingle(),
   ])
 
   const allRows=(shipmentData??[]).filter((s:any)=>!s.orders?.archived_at).map((s:any)=>{
@@ -392,6 +397,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
               rows={groupRows as any[]}
               warehouses={(warehouses??[]) as any[]}
               assignedShippers={(hubShipperMap.get(hub)??[]) as any[]}
+              defaultReceivingWarehouseId={(warehouseSettings as any)?.default_receiving_warehouse_id??null}
               contextQuery={contextQuery}
               defaultOpen={Boolean(sp.status||sp.receive||sp.hub)||groupUrgent}
             />
