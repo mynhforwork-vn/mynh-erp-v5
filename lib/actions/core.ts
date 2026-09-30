@@ -514,7 +514,7 @@ export async function quickAddTrackingNumber(formData:FormData){
   const returnQuery=text(formData.get('return_query'))
   const orderId=text(formData.get('order_id'))
   const trackingNumber=text(formData.get('tracking_number'))
-  const carrier=text(formData.get('carrier'))||null
+  const carrier=text(formData.get('carrier'))||detectCarrier(trackingNumber)
   if(!orderId||!trackingNumber)throw new Error('Thiếu đơn hàng hoặc mã vận đơn')
 
   const {data:order,error:orderError}=await supabase
