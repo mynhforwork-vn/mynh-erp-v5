@@ -853,7 +853,7 @@ export async function deleteOrdersBulkPermanent(formData:FormData){
     .in('id',orderIds)
   if(readError)throw new Error(readError.message)
   if((rows??[]).length!==orderIds.length)throw new Error('Có đơn không tồn tại hoặc không có quyền truy cập')
-  if((rows??[]).some((x:any)=>!x.archived_at))throw new Error('Chỉ được xóa vĩnh viễn các đơn đã lưu trữ')
+  const returnArchive=(rows??[]).every((x:any)=>Boolean(x.archived_at))?'archived':null
 
   const blockers=await orderDeleteBlockers(supabase,orderIds)
   if(blockers.error)throw new Error(blockers.error.message)
@@ -893,7 +893,7 @@ export async function deleteOrdersBulkPermanent(formData:FormData){
   }
 
   revalidateOrderLifecycle()
-  redirect(returnHref('/purchase/orders',returnQuery,{order:null,mode:null,tab:null,archive:'archived'}))
+  redirect(returnHref('/purchase/orders',returnQuery,{order:null,mode:null,tab:null,archive:returnArchive}))
 }
 
 export async function purgeEligibleArchivedOrders(formData:FormData){
