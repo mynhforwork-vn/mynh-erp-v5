@@ -2,21 +2,30 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { DestinationHubSettings } from '@/components/destination-hub-config-panel'
 import { ShippingCarrierSettings } from '@/components/shipping-carrier-settings'
+import { DataManagementSettings } from '@/components/data-management-settings'
 
-type SP={section?:string}
+type SP={section?:string,purged?:string,protected?:string}
 
 export default async function SettingsPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
   const {supabase,user}=await requireUser()
   const role=String(user.app_metadata?.role??'viewer')
   const canEdit=['admin','operator'].includes(role)
-  const section=sp.section==='spx-hubs'?'spx-hubs':'shipping-carriers'
+  const section=sp.section==='spx-hubs'
+    ? 'spx-hubs'
+    : sp.section==='data-management'
+      ? 'data-management'
+      : 'shipping-carriers'
 
   const [
     {data:carrierRows,error:carrierError},
     {data:hubRows,error:hubError},
     {data:shipperRows,error:shipperError},
     {data:assignmentRows,error:assignmentError},
+    activeOrdersResult,
+    archivedOrdersResult,
+    activeUsersResult,
+    archivedUsersResult,
   ]=await Promise.all([
     supabase.from('shipping_carrier_configs')
       .select('id,carrier_code,display_name,tracking_prefixes,supports_tracking,supports_destination_hub,priority,is_active,note')
@@ -36,6 +45,10 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       .select('hub_config_id,shipper_id,priority,is_active')
       .order('priority',{ascending:true})
       .limit(2000),
+    supabase.from('orders').select('*',{count:'exact',head:true}).is('archived_at',null),
+    supabase.from('orders').select('*',{count:'exact',head:true}).not('archived_at','is',null),
+    supabase.from('erp_users').select('*',{count:'exact',head:true}).is('archived_at',null),
+    supabase.from('erp_users').select('*',{count:'exact',head:true}).not('archived_at','is',null),
   ])
 
   const assignments=(assignmentRows??[]) as any[]
@@ -47,6 +60,14 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
   }))
 
   const error=carrierError??hubError??shipperError??assignmentError
+    ??activeOrdersResult.error??archivedOrdersResult.error??activeUsersResult.error??archivedUsersResult.error
+
+  const activeOrders=activeOrdersResult.count??0
+  const archivedOrders=archivedOrdersResult.count??0
+  const activeUsers=activeUsersResult.count??0
+  const archivedUsers=archivedUsersResult.count??0
+  const purged=sp.purged?Number(sp.purged):null
+  const protectedCount=sp.protected?Number(sp.protected):null
 
   return <div className="settings-screen settings-screen-v3">
     <header className="page-head settings-page-head">
@@ -62,6 +83,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     <nav className="settings-page-tabs-v3" aria-label="Nhóm cài đặt">
       <Link className={section==='shipping-carriers'?'active':''} href="/settings?section=shipping-carriers">Đơn vị vận chuyển</Link>
       <Link className={section==='spx-hubs'?'active':''} href="/settings?section=spx-hubs">SPX · Kho đích & Shipper</Link>
+      <Link className={section==='data-management'?'active':''} href="/settings?section=data-management">Quản lý dữ liệu</Link>
       <span className="disabled">Tài khoản & phân quyền</span>
       <span className="disabled">Tích hợp</span>
       <span className="disabled">Thông báo</span>
@@ -70,10 +92,20 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     <section className="settings-workspace-v3">
       {section==='shipping-carriers'
         ? <ShippingCarrierSettings carriers={(carrierRows??[]) as any[]} canEdit={canEdit}/>
-        : <DestinationHubSettings
-            configs={configs}
-            shippers={(shipperRows??[]) as any[]}
-          />}
+        : section==='spx-hubs'
+          ? <DestinationHubSettings
+              configs={configs}
+              shippers={(shipperRows??[]) as any[]}
+            />
+          : <DataManagementSettings
+              activeOrders={activeOrders}
+              archivedOrders={archivedOrders}
+              activeUsers={activeUsers}
+              archivedUsers={archivedUsers}
+              canDelete={role==='admin'}
+              purged={Number.isFinite(purged as number)?purged:null}
+              protectedCount={Number.isFinite(protectedCount as number)?protectedCount:null}
+            />}
     </section>
   </div>
 }
