@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
-import { WarehouseTabs } from '@/components/warehouse-tabs'
 import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
 
 export default async function WarehousePage(){
@@ -103,8 +102,6 @@ export default async function WarehousePage(){
         <Link className="button primary" href="/warehouse/receive">Bóc tách nhập kho</Link>
       </div>
     </header>
-
-    <WarehouseTabs active="/warehouse"/>
 
     {error&&<div className="error-box">Không thể tải dữ liệu kho: {error.message}</div>}
 
