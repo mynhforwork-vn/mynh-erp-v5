@@ -285,6 +285,12 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
         label={range.label}
         basePath="/purchase/tracking"
         showAll
+        preserveParams={{
+          status:sp.status,
+          receive:sp.receive,
+          receiveDate:sp.receiveDate,
+          hub:sp.hub,
+        }}
       />
     </div>
 
