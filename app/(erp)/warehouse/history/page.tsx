@@ -83,6 +83,14 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
     return '/warehouse/history'+(qs?'?'+qs:'')
   }
 
+  function clearFilterHref(){
+    const params=new URLSearchParams()
+    if(sp.type)params.set('type',sp.type)
+    if(sp.ref)params.set('ref',sp.ref)
+    const qs=params.toString()
+    return '/warehouse/history'+(qs?'?'+qs:'')
+  }
+
   return <div className="whx-page">
     <header className="page-head whx-page-head">
       <div>
@@ -127,7 +135,7 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
           </option>)}
         </select>
         <button className="button small" type="submit">Lọc</button>
-        {(sp.q||sp.warehouse)&&<Link className="button small" href={href({})}>Xóa lọc</Link>}
+        {(sp.q||sp.warehouse)&&<Link className="button small" href={clearFilterHref()}>Xóa lọc</Link>}
       </form>
     </div>
 
