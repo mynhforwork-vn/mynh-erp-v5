@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { confirmReceiveOrders } from '@/lib/actions/core'
 import { ManualSyncButton } from '@/components/manual-sync-button'
 import { formatMoney, formatPhone, statusLabel } from '@/lib/format'
+import { suggestReceivingWarehouseForAddresses } from '@/lib/warehouse-routing'
 
 type OrderRow={
   id:string
@@ -53,8 +54,17 @@ export function TrackingHubGroup({
   const selectedSet=useMemo(()=>new Set(selected),[selected])
   const selectedRows=eligible.filter(r=>selectedSet.has(r.id))
   const selectedCod=selectedRows.reduce((s,r)=>s+Number(r.cod??0),0)
+  const suggestedWarehouseId=useMemo(
+    ()=>suggestReceivingWarehouseForAddresses(
+      selectedRows.map(row=>row.recipient_address),
+      warehouses,
+    ),
+    [selectedRows,warehouses],
+  )
+  const suggestedWarehouse=warehouses.find(warehouse=>warehouse.id===suggestedWarehouseId)??null
   const [actualTransferred,setActualTransferred]=useState('')
   const [receiveModalOpen,setReceiveModalOpen]=useState(false)
+  const [warehouseId,setWarehouseId]=useState('')
   const actualValue=Number(actualTransferred||0)
   const tip=Math.max(0,actualValue-selectedCod)
   const transferValid=Boolean(selected.length&&actualValue>=selectedCod)
@@ -68,6 +78,20 @@ export function TrackingHubGroup({
     if(selected.length)setOpen(true)
     else setReceiveModalOpen(false)
   },[selected.length])
+
+  useEffect(()=>{
+    if(!receiveModalOpen)return
+    setWarehouseId(
+      suggestedWarehouseId ??
+      defaultReceivingWarehouseId ??
+      (warehouses.length===1?warehouses[0].id:'')
+    )
+  },[
+    receiveModalOpen,
+    suggestedWarehouseId,
+    defaultReceivingWarehouseId,
+    warehouses,
+  ])
 
   useEffect(()=>{
     if(!receiveModalOpen)return
@@ -221,10 +245,18 @@ export function TrackingHubGroup({
 
             <div className="receive-confirm-grid">
               <label>Kho nhận
-                <select name="warehouse_id" required defaultValue={defaultReceivingWarehouseId??(warehouses.length===1?warehouses[0].id:'')}>
+                <select
+                  name="warehouse_id"
+                  required
+                  value={warehouseId}
+                  onChange={event=>setWarehouseId(event.target.value)}
+                >
                   <option value="" disabled>Chọn kho nhận</option>
                   {warehouses.map(w=><option value={w.id} key={w.id}>{(w.code?w.code+' · ':'')+(w.address??w.name??'Kho')}</option>)}
                 </select>
+                {suggestedWarehouse&&<small className="receive-warehouse-suggestion">
+                  Gợi ý theo địa chỉ: {suggestedWarehouse.code} · {suggestedWarehouse.address??suggestedWarehouse.name}
+                </small>}
               </label>
 
               <div className="receive-confirm-readonly">
