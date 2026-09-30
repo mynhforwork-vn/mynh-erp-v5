@@ -2,8 +2,8 @@
 
 import { useMemo,useState } from 'react'
 import {
-  createInboundWarehouseTransfer,
   mapOrderItemToInventory,
+  receiveOrdersIntoWarehouse,
 } from '@/lib/actions/core'
 import { formatMoney } from '@/lib/format'
 
@@ -54,6 +54,7 @@ export function WarehouseReceiveConsole({
     r.order_items.every(i=>Boolean(i.product_variant_id))
   )
   const allEligibleSelected=eligibleRows.length>0&&eligibleRows.every(r=>selectedSet.has(r.id))
+  const defaultWarehouseId=warehouses[0]?.id??''
 
   function toggle(id:string){
     setSelected(v=>v.includes(id)?v.filter(x=>x!==id):[...v,id])
@@ -62,23 +63,33 @@ export function WarehouseReceiveConsole({
     setSelected(allEligibleSelected?[]:eligibleRows.map(r=>r.id))
   }
 
-  return <div className="warehouse-receive-console">
-    {selected.length>0&&<form action={createInboundWarehouseTransfer} className="warehouse-bulk-bar">
-      <div>
-        <b>{selected.length} đơn sẵn sàng chuyển</b>
-        <span>Đã map đủ SKU bán</span>
+  return <div className="warehouse-receive-console warehouse-receive-console-v2">
+    {selected.length>0&&<form action={receiveOrdersIntoWarehouse} className="warehouse-bulk-bar warehouse-intake-bar">
+      <div className="warehouse-intake-summary">
+        <b>{selected.length} đơn sẵn sàng nhập kho</b>
+        <span>Đã mapping đầy đủ SKU bán</span>
       </div>
       {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
-      <select name="to_warehouse_id" required defaultValue="">
-        <option value="" disabled>Chọn kho đích</option>
-        {warehouses.map(w=><option key={w.id} value={w.id}>{w.code} · {w.name}</option>)}
-      </select>
-      <input name="note" placeholder="Ghi chú phiếu chuyển"/>
-      <button className="button primary small" type="submit">Tạo phiếu chuyển</button>
+      <label>Kho nhận
+        <select name="warehouse_id" required defaultValue={defaultWarehouseId}>
+          {warehouses.map(w=><option key={w.id} value={w.id}>{w.code} · {w.name}</option>)}
+        </select>
+      </label>
+      <label className="warehouse-intake-note">Ghi chú
+        <input name="note" placeholder="Không bắt buộc"/>
+      </label>
+      <button className="button primary small" type="submit">Xác nhận nhập kho</button>
       <button className="button small" type="button" onClick={()=>setSelected([])}>Bỏ chọn</button>
     </form>}
 
-    <div className="card warehouse-receive-table-card">
+    <div className="card warehouse-receive-table-card warehouse-table-surface">
+      <div className="warehouse-table-head">
+        <div>
+          <h2>Đơn đã nhận chờ nhập kho</h2>
+          <span>{rows.length} đơn · chọn các đơn đã mapping đủ SKU để nhập cùng lúc</span>
+        </div>
+        <span className="warehouse-table-meta">{eligibleRows.length} sẵn sàng</span>
+      </div>
       <table className="table warehouse-receive-table">
         <thead><tr>
           <th className="bulk-select-col">
@@ -87,23 +98,24 @@ export function WarehouseReceiveConsole({
               checked={allEligibleSelected}
               onChange={toggleAll}
               disabled={!eligibleRows.length}
-              aria-label="Chọn tất cả đơn sẵn sàng chuyển"
+              aria-label="Chọn tất cả đơn sẵn sàng nhập kho"
             />
           </th>
           <th>Mã đơn</th>
-          <th>HUB</th>
           <th>COD</th>
           <th>Sản phẩm mua vào → SKU bán</th>
-          <th>Trạng thái kho</th>
+          <th>Tổng SL</th>
+          <th>Trạng thái</th>
         </tr></thead>
         <tbody>
           {!rows.length
-            ? <tr><td colSpan={6} className="empty">Không có đơn đã nhận đang chờ xử lý kho.</td></tr>
+            ? <tr><td colSpan={6} className="empty">Không có đơn đã nhận đang chờ bóc tách nhập kho.</td></tr>
             : rows.map(row=>{
                 const mapped=row.order_items.filter(i=>i.product_variant_id).length
                 const complete=row.order_items.length>0&&mapped===row.order_items.length
                 const selectable=complete&&!row.active_transfer_id
-                return <tr key={row.id}>
+                const totalQty=row.order_items.reduce((sum,i)=>sum+Number(i.quantity??0),0)
+                return <tr key={row.id} className={selectable?'warehouse-row-ready':''}>
                   <td className="bulk-select-col">
                     <input
                       type="checkbox"
@@ -116,10 +128,9 @@ export function WarehouseReceiveConsole({
                   <td>
                     <div className="warehouse-order-cell">
                       <b>{row.shopee_order_id??row.id.slice(0,8)}</b>
-                      <small>{row.order_items.length} dòng SP</small>
+                      <small>{row.order_items.length} dòng sản phẩm</small>
                     </div>
                   </td>
-                  <td>{row.destination_hub??'—'}</td>
                   <td className="money">{formatMoney(row.cod)}</td>
                   <td>
                     <div className="warehouse-item-stack">
@@ -160,12 +171,13 @@ export function WarehouseReceiveConsole({
                       </div>)}
                     </div>
                   </td>
+                  <td className="warehouse-stock-number">{totalQty}</td>
                   <td>
                     {row.active_transfer_id
-                      ? <span className={'status-pill '+(row.active_transfer_status==='IN_TRANSIT'?'orange':'gray')}>Đã có phiếu · {row.active_transfer_status}</span>
+                      ? <span className="status-pill archived">Phiếu chuyển cũ · {row.active_transfer_status}</span>
                       : complete
-                        ? <span className="status-pill green">Sẵn sàng chuyển</span>
-                        : <span className="status-pill orange">Chờ bóc tách {row.order_items.length-mapped}</span>}
+                        ? <span className="status-pill green">Sẵn sàng nhập kho</span>
+                        : <span className="status-pill orange">Thiếu mapping {row.order_items.length-mapped}</span>}
                   </td>
                 </tr>
               })}
