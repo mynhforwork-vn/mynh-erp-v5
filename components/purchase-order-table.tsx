@@ -87,6 +87,7 @@ function OrderLifecycleCell({
     >
       <input type="hidden" name="order_id" value={row.id}/>
       <input type="hidden" name="return_query" value={returnQuery}/>
+      <input type="hidden" name="table_action" value="1"/>
       <button className="row-action-button archive" type="submit">Lưu trữ</button>
     </form>
   }
@@ -95,6 +96,7 @@ function OrderLifecycleCell({
     <form action={restoreOrder} className="row-lifecycle-form">
       <input type="hidden" name="order_id" value={row.id}/>
       <input type="hidden" name="return_query" value={returnQuery}/>
+      <input type="hidden" name="table_action" value="1"/>
       <button className="row-action-button restore" type="submit">Khôi phục</button>
     </form>
 
@@ -112,6 +114,7 @@ function OrderLifecycleCell({
         <form action={deleteOrderPermanent}>
           <input type="hidden" name="order_id" value={row.id}/>
           <input type="hidden" name="return_query" value={returnQuery}/>
+      <input type="hidden" name="table_action" value="1"/>
           <input
             name="confirm_text"
             placeholder={String(row.shopee_order_id??row.id.slice(0,8))}
