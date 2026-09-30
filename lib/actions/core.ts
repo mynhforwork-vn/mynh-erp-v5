@@ -1237,6 +1237,9 @@ export async function markExpressDelivered(formData:FormData){
   if(!order)throw new Error('Đơn hàng không tồn tại')
   if(order.archived_at)throw new Error('Không thể cập nhật đơn đã lưu trữ')
   if(order.shipping_service!=='EXPRESS')throw new Error('Chức năng này chỉ dành cho đơn Hỏa tốc')
+  if(['CANCELLED','RETURNED'].includes(String(order.order_status??'').toUpperCase())){
+    throw new Error('Không thể cập nhật giao thành công cho đơn đã hủy/hoàn')
+  }
   if(order.receive_status==='RECEIVED')throw new Error('Đơn đã được xác nhận nhận hàng')
 
   const {error}=await supabase
