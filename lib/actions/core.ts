@@ -1145,6 +1145,8 @@ export async function saveShippingCarrierConfig(formData:FormData){
 export async function confirmReceiveOrders(formData:FormData){
   const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
+  const returnPath=text(formData.get('return_path'))
+  const returnOrderId=text(formData.get('return_order_id'))
   const orderIds=[...new Set(formData.getAll('order_ids').map(v=>text(v)).filter(Boolean))]
   const warehouseId=text(formData.get('warehouse_id'))
   const note=text(formData.get('note'))||null
@@ -1206,9 +1208,72 @@ export async function confirmReceiveOrders(formData:FormData){
   revalidatePath('/warehouse')
   revalidatePath('/warehouse/receive')
   revalidatePath('/finance/shipper-payments')
+  if(returnPath==='orders'){
+    redirect(returnHref('/purchase/orders',returnQuery,{
+      order:returnOrderId||orderIds[0]||null,
+      tab:'warehouse',
+      mode:null,
+    }))
+  }
+
   redirect(returnHref('/purchase/tracking',returnQuery,{
     received:String(data?.receive_batch_id??''),
     payment:data?.shipper_payment_id?String(data.shipper_payment_id):null,
+  }))
+}
+
+export async function markExpressDelivered(formData:FormData){
+  const {supabase,user}=await actor()
+  const orderId=text(formData.get('order_id'))
+  const returnQuery=text(formData.get('return_query'))
+  if(!orderId)throw new Error('Thiếu đơn Hỏa tốc cần cập nhật')
+
+  const {data:order,error:orderError}=await supabase
+    .from('orders')
+    .select('id,shipping_service,order_status,receive_status,archived_at')
+    .eq('id',orderId)
+    .maybeSingle()
+  if(orderError)throw new Error(orderError.message)
+  if(!order)throw new Error('Đơn hàng không tồn tại')
+  if(order.archived_at)throw new Error('Không thể cập nhật đơn đã lưu trữ')
+  if(order.shipping_service!=='EXPRESS')throw new Error('Chức năng này chỉ dành cho đơn Hỏa tốc')
+  if(order.receive_status==='RECEIVED')throw new Error('Đơn đã được xác nhận nhận hàng')
+
+  const {error}=await supabase
+    .from('orders')
+    .update({
+      order_status:'DELIVERED',
+      receive_status:'WAITING_RECEIVE',
+      updated_at:new Date().toISOString(),
+    })
+    .eq('id',orderId)
+  if(error)throw new Error(error.message)
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,
+    module:'ORDERS',
+    action:'EXPRESS_MARK_DELIVERED',
+    entity_type:'ORDER',
+    entity_id:orderId,
+    old_value:{
+      order_status:order.order_status,
+      receive_status:order.receive_status,
+    },
+    new_value:{
+      order_status:'DELIVERED',
+      receive_status:'WAITING_RECEIVE',
+    },
+    source:'USER',
+  })
+
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase')
+  revalidatePath('/warehouse')
+  revalidatePath('/warehouse/receive')
+  redirect(returnHref('/purchase/orders',returnQuery,{
+    order:orderId,
+    tab:'info',
+    mode:null,
   }))
 }
 
