@@ -8747,3 +8747,166 @@ a{text-decoration:none}
     grid-template-columns:minmax(230px,1.2fr) minmax(170px,1fr) 90px 72px 100px 140px;
   }
 }
+
+
+/* =====================================================================
+   Archive / permanent delete lifecycle — Orders + Users
+   ===================================================================== */
+.archive-view-toggle{
+  flex:0 0 auto;
+  height:28px;
+  display:inline-flex;
+  align-items:center;
+  gap:2px;
+  padding:2px;
+  border:1px solid #D5DEE7;
+  border-radius:4px;
+  background:#EEF2F5;
+}
+.archive-view-toggle a{
+  height:22px;
+  display:inline-flex;
+  align-items:center;
+  padding:0 7px;
+  border-radius:3px;
+  color:#697B8E;
+  font-size:9px;
+  font-weight:700;
+  white-space:nowrap;
+}
+.archive-view-toggle a:hover{
+  color:#355F83;
+  background:#F8FAFC;
+}
+.archive-view-toggle a.active{
+  background:#fff;
+  color:#285B86;
+  box-shadow:0 1px 2px rgba(32,52,72,.08);
+}
+
+.status-pill.archived{
+  border:1px solid #CBD4DD;
+  background:#EEF1F4;
+  color:#667789;
+}
+
+.record-lifecycle-zone{
+  margin:10px 0 3px;
+  overflow:hidden;
+  border:1px solid #D9E1E8;
+  border-radius:5px;
+  background:#FAFBFC;
+}
+.record-lifecycle-zone.archived{
+  border-color:#CAD5DE;
+  background:#F5F8FA;
+}
+.record-lifecycle-action{
+  min-height:52px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  padding:7px 8px;
+}
+.record-lifecycle-action>div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.record-lifecycle-action b{
+  color:#344B62;
+  font-size:10.2px;
+}
+.record-lifecycle-action span{
+  color:#748496;
+  font-size:8.9px;
+  line-height:1.35;
+}
+.record-lifecycle-action .button{
+  min-width:72px;
+  min-height:29px;
+  font-size:9.3px;
+}
+.archive-button{
+  border-color:#B9C7D2!important;
+  background:#F1F4F6!important;
+  color:#546A7E!important;
+}
+.archive-button:hover{
+  border-color:#9EAEBB!important;
+  background:#E7EDF2!important;
+  color:#3E566D!important;
+}
+
+.permanent-delete-box{
+  border-top:1px solid #E0E5EA;
+  background:#FFF9F9;
+}
+.permanent-delete-box>summary{
+  min-height:31px;
+  display:flex;
+  align-items:center;
+  padding:0 9px;
+  list-style:none;
+  color:#9B5151;
+  font-size:9.3px;
+  font-weight:700;
+  cursor:pointer;
+}
+.permanent-delete-box>summary::-webkit-details-marker{
+  display:none;
+}
+.permanent-delete-box>summary:hover{
+  background:#FFF3F3;
+}
+.permanent-delete-box[open]>summary{
+  border-bottom:1px solid #EFDADA;
+  background:#FFF4F4;
+}
+.permanent-delete-box>form{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  padding:8px 9px 10px;
+}
+.permanent-delete-box p{
+  margin:0;
+  color:#7B6161;
+  font-size:8.9px;
+  line-height:1.4;
+}
+.permanent-delete-box label{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  color:#6F5B5B;
+  font-size:9px;
+}
+.permanent-delete-box input{
+  height:30px;
+  padding:0 7px;
+  border:1px solid #D7BABA;
+  border-radius:4px;
+  background:#fff;
+  color:#493D3D;
+  font-size:10px;
+}
+.permanent-delete-box .button.danger{
+  align-self:flex-end;
+  min-height:29px;
+  border-color:#B85B5B;
+  background:#B85B5B;
+  color:#fff;
+  font-size:9.2px;
+}
+.permanent-delete-box .button.danger:hover{
+  border-color:#9F4747;
+  background:#9F4747;
+}
+
+.order-table tr:has(.status-pill.archived) td,
+.user-table tr:has(.status-pill.archived) td{
+  color:#667789;
+}
