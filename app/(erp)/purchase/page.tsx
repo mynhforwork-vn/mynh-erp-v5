@@ -265,7 +265,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       <Link href={purchaseHref('/purchase/tracking',{status:'DELIVERED',receive:'WAITING_RECEIVE'})} className="command-kpi warning">
         <span>Chờ xác nhận nhận hàng</span><b>{waiting}</b><small>{formatMoney(waitingCod)} · {waitingHubs} HUB</small>
       </Link>
-      <Link href={purchaseHref('/purchase/tracking',{status:'CANCELLED'})} className="command-kpi danger">
+      <Link href={orderHref({tracking:'cancelled'})} className="command-kpi danger">
         <span>Bị huỷ</span><b>{cancelled}</b><small>Đơn / vận đơn đã huỷ</small>
       </Link>
     </section>
