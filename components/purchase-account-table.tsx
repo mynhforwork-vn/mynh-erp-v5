@@ -132,11 +132,12 @@ export function PurchaseAccountTable({
   useEffect(()=>{
     try{
       const raw=localStorage.getItem(STORAGE_KEY)
-      if(!raw)return
-      const parsed=JSON.parse(raw)
-      if(Array.isArray(parsed)){
-        const valid=parsed.filter((x:any)=>ALL.includes(x))
-        if(valid.length)setVisible(valid)
+      if(raw){
+        const parsed=JSON.parse(raw)
+        if(Array.isArray(parsed)){
+          const valid=parsed.filter((x:any)=>ALL.includes(x))
+          if(valid.length)setVisible(valid)
+        }
       }
       const rawOrder=localStorage.getItem(STORAGE_ORDER_KEY)
       if(rawOrder){
