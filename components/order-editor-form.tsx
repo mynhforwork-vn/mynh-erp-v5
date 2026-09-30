@@ -8,6 +8,7 @@ type UserOption={
   username:string
   phone?:string|null
   status?:string|null
+  archived_at?:string|null
 }
 type Item={
   sku?:string|null
@@ -155,7 +156,7 @@ export function OrderEditorForm({
   carrierConfigs?:CarrierConfig[]
 }){
   const selectableUsers=useMemo(
-    ()=>users.filter(u=>u.status!=='Blocked'||u.id===values.erp_user_id),
+    ()=>users.filter(u=>(!u.archived_at&&u.status!=='Blocked')||u.id===values.erp_user_id),
     [users,values.erp_user_id]
   )
   const initialUser=selectableUsers.find(u=>u.id===values.erp_user_id)??null
@@ -493,7 +494,7 @@ export function OrderEditorForm({
       <div className="linked-user-strip">
         <span>SĐT tài khoản</span>
         <b>{selectedUser?normalizePhone(selectedUser.phone):'Chọn Username để tự liên kết'}</b>
-        {selectedUser&&<small>{selectedUser.status==='Blocked'?'Tài khoản Blocked chỉ được giữ ở đơn cũ':'Liên kết tự động từ User'}</small>}
+        {selectedUser&&<small>{selectedUser.archived_at?'User đã lưu trữ · chỉ giữ liên kết đơn cũ':selectedUser.status==='Blocked'?'Tài khoản Blocked chỉ được giữ ở đơn cũ':'Liên kết tự động từ User'}</small>}
       </div>
 
       <div className="form-grid">
