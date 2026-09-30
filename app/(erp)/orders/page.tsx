@@ -502,15 +502,17 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                 {detail.archived_at&&<div><span>Lưu trữ lúc</span><b>{formatDateTime(detail.archived_at)}</b></div>}
                 <div><span>Trạng thái đơn</span><b>{detail.archived_at
                   ? 'Đã lưu trữ'
-                  : detail.shipping_service==='EXPRESS'
-                    ? detail.receive_status==='RECEIVED'
+                  : detail.order_status==='CANCELLED'
+                    ? 'Đã hủy'
+                    : detail.shipping_service==='EXPRESS'
+                      ? detail.receive_status==='RECEIVED'
                       ? 'Đã nhận · Hỏa tốc'
                       : detail.receive_status==='WAITING_RECEIVE'
                         ? 'Giao thành công · Hỏa tốc'
                         : 'Đang xử lý · Hỏa tốc'
-                    : currentShip?.tracking_number
-                      ? statusLabel(currentShip.current_tracking_status)
-                      : 'Đang chờ duyệt · Chờ mã vận đơn'}</b></div>
+                      : currentShip?.tracking_number
+                        ? statusLabel(currentShip.current_tracking_status)
+                        : 'Đang chờ duyệt · Chờ mã vận đơn'}</b></div>
                 <div><span>Thanh toán</span><b>{statusLabel(detail.payment_status)}</b></div>
                 <div><span>COD</span><b>{formatMoney(detail.cod)}</b></div>
                 <div><span>Tổng giá gốc</span><b>{formatMoney(detailTotalOriginal)}</b></div>
@@ -542,18 +544,20 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                   <div className="express-manual-flow-head">
                     <div>
                       <span className="eyebrow">HỎA TỐC · TRẠNG THÁI THỦ CÔNG</span>
-                      <b>{detail.receive_status==='RECEIVED'
-                        ? 'Đã xác nhận nhận hàng'
-                        : detail.receive_status==='WAITING_RECEIVE'
-                          ? 'Đã giao thành công · chờ xác nhận nhận'
-                          : 'Đang vận chuyển / chờ cập nhật giao thành công'}</b>
+                      <b>{detail.order_status==='CANCELLED'
+                        ? 'Đơn Hỏa tốc đã hủy'
+                        : detail.receive_status==='RECEIVED'
+                          ? 'Đã xác nhận nhận hàng'
+                          : detail.receive_status==='WAITING_RECEIVE'
+                            ? 'Đã giao thành công · chờ xác nhận nhận'
+                            : 'Đang vận chuyển / chờ cập nhật giao thành công'}</b>
                     </div>
-                    <span className={'status-pill '+(detail.receive_status==='RECEIVED'?'green':detail.receive_status==='WAITING_RECEIVE'?'orange':'gray')}>
-                      {statusLabel(detail.receive_status)}
+                    <span className={'status-pill '+(detail.order_status==='CANCELLED'?'red':detail.receive_status==='RECEIVED'?'green':detail.receive_status==='WAITING_RECEIVE'?'orange':'gray')}>
+                      {detail.order_status==='CANCELLED'?'Đã hủy':statusLabel(detail.receive_status)}
                     </span>
                   </div>
 
-                  {detail.receive_status==='NOT_READY'&&
+                  {detail.order_status!=='CANCELLED'&&detail.receive_status==='NOT_READY'&&
                     <form action={markExpressDelivered} className="express-manual-action">
                       <input type="hidden" name="order_id" value={detail.id}/>
                       <input type="hidden" name="return_query" value={returnQuery}/>
@@ -561,7 +565,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                       <button className="button small primary" type="submit">Đánh dấu giao thành công</button>
                     </form>}
 
-                  {detail.receive_status==='WAITING_RECEIVE'&&
+                  {detail.order_status!=='CANCELLED'&&detail.receive_status==='WAITING_RECEIVE'&&
                     <form action={confirmReceiveOrders} className="express-manual-action receive">
                       <input type="hidden" name="order_ids" value={detail.id}/>
                       <input type="hidden" name="return_query" value={returnQuery}/>
