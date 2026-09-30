@@ -126,6 +126,7 @@ export function PurchaseAccountTable({
   const [selected,setSelected]=useState<string[]>([])
   const [openActionId,setOpenActionId]=useState<string|null>(null)
   const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
+  const [dragOverColumn,setDragOverColumn]=useState<ColKey|null>(null)
 
   useEffect(()=>{
     try{
@@ -301,13 +302,15 @@ export function PurchaseAccountTable({
         <div className="column-manager-head"><b>Cột & thứ tự</b><button type="button" onClick={reset}>↺ Mặc định</button></div>
         {columnOrder.map(k=><div
           key={k}
-          className={'column-manager-row draggable '+(k==='username'?'locked ':'')+(draggingColumn===k?'dragging':'')}
-          onDragOver={e=>e.preventDefault()}
+          className={'column-manager-row draggable '+(k==='username'?'locked ':'')+(draggingColumn===k?'dragging ':'')+(dragOverColumn===k&&draggingColumn!==k?'drop-target':'')}
+          onDragOver={e=>{e.preventDefault();setDragOverColumn(k)}}
+          onDragLeave={()=>{if(dragOverColumn===k)setDragOverColumn(null)}}
           onDrop={e=>{
             e.preventDefault()
             const source=(e.dataTransfer.getData('text/plain')||draggingColumn) as ColKey|null
             if(source&&ALL.includes(source))reorderColumn(source,k)
             setDraggingColumn(null)
+            setDragOverColumn(null)
           }}
         >
           <button
@@ -321,7 +324,7 @@ export function PurchaseAccountTable({
               e.dataTransfer.effectAllowed='move'
               e.dataTransfer.setData('text/plain',k)
             }}
-            onDragEnd={()=>setDraggingColumn(null)}
+            onDragEnd={()=>{setDraggingColumn(null);setDragOverColumn(null)}}
           >⠿</button>
           <label>
             <input type="checkbox" checked={visible.includes(k)} disabled={k==='username'} onChange={()=>toggle(k)}/>
