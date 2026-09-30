@@ -78,13 +78,7 @@ function OrderLifecycleCell({
   if(!canManage)return <span className="row-action-readonly">—</span>
 
   if(!row.archived_at){
-    return <form
-      action={archiveOrder}
-      className="row-lifecycle-form"
-      onSubmit={e=>{
-        if(!window.confirm(`Lưu trữ đơn ${row.shopee_order_id??row.id.slice(0,8)}?\nĐơn sẽ được ẩn khỏi vận hành và dừng Tracking tự động.`))e.preventDefault()
-      }}
-    >
+    return <form action={archiveOrder} className="row-lifecycle-form">
       <input type="hidden" name="order_id" value={row.id}/>
       <input type="hidden" name="return_query" value={returnQuery}/>
       <input type="hidden" name="table_action" value="1"/>
