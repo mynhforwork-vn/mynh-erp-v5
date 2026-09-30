@@ -117,7 +117,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     {data:hubShipperAssignments},
   ]=await Promise.all([
     supabase.from('shipments').select(
-      'id,order_id,tracking_number,carrier,is_active,tracking_enabled,current_tracking_status,last_track_at,next_track_at,last_status_change_at,tracking_fail_count,queue_status,orders(id,shopee_order_id,destination_hub,cod,recipient_name,recipient_phone,recipient_address,receive_status,warehouse_status,order_date,shipping_service,archived_at,order_items(product_name,variant,quantity))'
+      'id,order_id,tracking_number,carrier,is_active,tracking_enabled,current_tracking_status,last_track_at,next_track_at,last_status_change_at,tracking_fail_count,queue_status,orders(id,shopee_order_id,destination_hub,cod,recipient_name,recipient_phone,recipient_address,receive_status,warehouse_status,order_date,shipping_service,order_status,archived_at,order_items(product_name,variant,quantity))'
     ).eq('is_active',true).order('last_status_change_at',{ascending:false,nullsFirst:false}).limit(2000),
     supabase.from('warehouses').select('id,code,name,is_active').eq('is_active',true).order('code'),
     supabase.from('tracking_provider_configs').select('carrier,enabled').order('carrier'),
@@ -156,6 +156,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       recipient_address:o.recipient_address,
       receive_status:o.receive_status,
       warehouse_status:o.warehouse_status,
+      order_status:o.order_status,
+      shipping_service:o.shipping_service,
       order_date:o.order_date,
       product_summary:productSummary(o.order_items??[]),
       shipment_id:s.id,
@@ -171,7 +173,16 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     }
   })
 
-  const rangeRows=allRows.filter((r:any)=>{
+  const operationalRows=allRows.filter((r:any)=>{
+    const orderStatus=String(r.order_status??'').toUpperCase()
+    if(r.shipping_service==='EXPRESS')return false
+    if(r.receive_status==='RECEIVED')return false
+    if(r.tracking_status==='CANCELLED')return false
+    if(orderStatus==='CANCELLED'||orderStatus==='CANCELED')return false
+    return true
+  })
+
+  const rangeRows=operationalRows.filter((r:any)=>{
     const t=new Date(r.order_date).getTime()
     return Number.isFinite(t)&&t>=range.start&&t<=range.end
   })
