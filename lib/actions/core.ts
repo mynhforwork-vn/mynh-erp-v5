@@ -170,6 +170,18 @@ async function resolveCarrierName(supabase:any,trackingNumber:string,explicitCar
   return matched?.display_name??null
 }
 
+async function carrierUsesDestinationHub(supabase:any,carrierName:string|null){
+  if(!carrierName)return false
+  const {data,error}=await supabase
+    .from('shipping_carrier_configs')
+    .select('supports_destination_hub')
+    .eq('display_name',carrierName)
+    .eq('is_active',true)
+    .maybeSingle()
+  if(error)throw new Error(error.message)
+  return Boolean(data?.supports_destination_hub)
+}
+
 function itemPayload(formData:FormData){
   const names=formData.getAll('item_product_name').map(v=>text(v))
   const skus=formData.getAll('item_sku').map(v=>text(v))
@@ -210,6 +222,7 @@ export async function createOrder(formData:FormData){
   const isExpress=shippingService==='EXPRESS'
   const trackingNumber=isExpress?'':text(formData.get('tracking_number'))
   const carrier=isExpress?null:await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
+  const usesDestinationHub=!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
   const orderStatus=isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
 
@@ -220,7 +233,7 @@ export async function createOrder(formData:FormData){
     p_recipient_name:text(formData.get('recipient_name'))||null,
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
-    p_destination_hub:isExpress?null:(text(formData.get('destination_hub'))||null),
+    p_destination_hub:usesDestinationHub?(text(formData.get('destination_hub'))||null):null,
     p_cod:numberOrNull(formData.get('cod'))??0,
     p_order_status:orderStatus,
     p_payment_status:text(formData.get('payment_status'))||'UNPAID',
@@ -231,11 +244,11 @@ export async function createOrder(formData:FormData){
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  const derivedArea=isExpress?null:(text(formData.get('area'))||null)
+  const derivedArea=usesDestinationHub?(text(formData.get('area'))||null):null
   if(data){
     const {error:orderMetaError}=await supabase.from('orders').update({
       area:derivedArea,
-      destination_hub:isExpress?null:(text(formData.get('destination_hub'))||null),
+      destination_hub:usesDestinationHub?(text(formData.get('destination_hub'))||null):null,
       express_shipper_name:isExpress?(text(formData.get('express_shipper_name'))||null):null,
       express_shipper_phone:isExpress?(text(formData.get('express_shipper_phone'))||null):null,
       express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
@@ -256,6 +269,7 @@ export async function updateOrder(formData:FormData){
   const isExpress=shippingService==='EXPRESS'
   const trackingNumber=isExpress?'':text(formData.get('tracking_number'))
   const carrier=isExpress?null:await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
+  const usesDestinationHub=!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
   const orderStatus=isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
 
@@ -267,7 +281,7 @@ export async function updateOrder(formData:FormData){
     p_recipient_name:text(formData.get('recipient_name'))||null,
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
-    p_destination_hub:isExpress?null:(text(formData.get('destination_hub'))||null),
+    p_destination_hub:usesDestinationHub?(text(formData.get('destination_hub'))||null):null,
     p_cod:numberOrNull(formData.get('cod'))??0,
     p_order_status:orderStatus,
     p_payment_status:text(formData.get('payment_status'))||'UNPAID',
@@ -278,10 +292,10 @@ export async function updateOrder(formData:FormData){
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  const derivedArea=isExpress?null:(text(formData.get('area'))||null)
+  const derivedArea=usesDestinationHub?(text(formData.get('area'))||null):null
   const {error:orderMetaError}=await supabase.from('orders').update({
     area:derivedArea,
-    destination_hub:isExpress?null:(text(formData.get('destination_hub'))||null),
+    destination_hub:usesDestinationHub?(text(formData.get('destination_hub'))||null):null,
     express_shipper_name:isExpress?(text(formData.get('express_shipper_name'))||null):null,
     express_shipper_phone:isExpress?(text(formData.get('express_shipper_phone'))||null):null,
     express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
