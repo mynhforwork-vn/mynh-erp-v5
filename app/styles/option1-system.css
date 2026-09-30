@@ -9728,6 +9728,10 @@ a{text-decoration:none}
    ===================================================================== */
 .purchase-command-kpis-v2{
   grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:5px;
+}
+.purchase-command-kpis-v2 .command-kpi{
+  min-width:0;
 }
 .command-kpi.success{
   border-left:3px solid #6FA981;
@@ -9735,12 +9739,26 @@ a{text-decoration:none}
 }
 @media(max-width:1380px){
   .purchase-command-kpis-v2{
-    grid-template-columns:repeat(4,minmax(0,1fr));
+    grid-template-columns:repeat(7,minmax(0,1fr));
+    gap:4px;
+  }
+  .purchase-command-kpis-v2 .command-kpi{
+    padding-left:6px;
+    padding-right:6px;
+  }
+  .purchase-command-kpis-v2 .command-kpi>span{
+    font-size:6.8px;
+    letter-spacing:.01em;
+  }
+  .purchase-command-kpis-v2 .command-kpi>small{
+    font-size:6.7px;
   }
 }
 @media(max-width:900px){
   .purchase-command-kpis-v2{
-    grid-template-columns:repeat(2,minmax(0,1fr));
+    grid-template-columns:repeat(7,minmax(128px,1fr));
+    overflow-x:auto;
+    overscroll-behavior-inline:contain;
   }
 }
 
@@ -9970,18 +9988,33 @@ a{text-decoration:none}
 }
 
 
-/* Order tab KPI V2 — seven operational states */
+/* Order tab KPI V2 — seven operational states, always one row */
 .order-screen .order-kpi-grid-v2{
   grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:5px;
 }
 @media(max-width:1380px){
   .order-screen .order-kpi-grid-v2{
-    grid-template-columns:repeat(4,minmax(0,1fr));
+    grid-template-columns:repeat(7,minmax(0,1fr));
+    gap:4px;
+  }
+  .order-screen .order-kpi-grid-v2 .kpi-card{
+    padding-left:6px;
+    padding-right:6px;
+  }
+  .order-screen .order-kpi-grid-v2 .kpi-card>span{
+    font-size:6.8px;
+    letter-spacing:.01em;
+  }
+  .order-screen .order-kpi-grid-v2 .kpi-card>small{
+    font-size:6.7px;
   }
 }
 @media(max-width:900px){
   .order-screen .order-kpi-grid-v2{
-    grid-template-columns:repeat(2,minmax(0,1fr));
+    grid-template-columns:repeat(7,minmax(128px,1fr));
+    overflow-x:auto;
+    overscroll-behavior-inline:contain;
   }
 }
 
