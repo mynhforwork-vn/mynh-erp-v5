@@ -201,7 +201,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       const status=shipment?.current_tracking_status
       if(!['READY_TO_SHIP','PICKED_UP','IN_TRANSIT'].includes(String(status)))return false
     }else if(sp.tracking==='missing'){
-      if(o.shipping_service==='EXPRESS'||shipment?.tracking_number)return false
+      if(shipment?.tracking_number)return false
     }else if(sp.tracking==='cancelled'){
       const orderStatus=String(o.order_status??'').toUpperCase()
       if(shipment?.current_tracking_status!=='CANCELLED'&&orderStatus!=='CANCELLED'&&orderStatus!=='CANCELED')return false
@@ -227,7 +227,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const arrivedHub=dateRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='ARRIVED_DESTINATION_HUB').length
   const delivered=dateRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='DELIVERED').length
   const waiting=dateRows.filter((o:any)=>o.receive_status==='WAITING_RECEIVE').length
-  const missingTracking=dateRows.filter((o:any)=>o.shipping_service!=='EXPRESS'&&!activeShipment(o)?.tracking_number).length
+  const missingTracking=dateRows.filter((o:any)=>!activeShipment(o)?.tracking_number).length
   const cancelled=dateRows.filter((o:any)=>{
     const status=activeShipment(o)?.current_tracking_status
     const orderStatus=String(o.order_status??'').toUpperCase()
@@ -391,7 +391,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
     <section className="kpi-grid order-kpi-grid order-kpi-grid-v2 entity-status-strip">
       <Link className={`kpi-card entity-status-metric ${!sp.receive&&!sp.tracking?'active':''}`} href={listHref({receive:null,tracking:null})}><span>Tổng đơn</span><b>{totalOrders}</b><small>Trong khoảng đã chọn</small></Link>
-      <Link className={`kpi-card entity-status-metric warning ${sp.tracking==='missing'?'active':''}`} href={listHref({receive:null,tracking:'missing'})}><span>Chưa có mã vận đơn</span><b>{missingTracking}</b><small>Không tính đơn Hỏa tốc</small></Link>
+      <Link className={`kpi-card entity-status-metric warning ${sp.tracking==='missing'?'active':''}`} href={listHref({receive:null,tracking:'missing'})}><span>Chưa có mã vận đơn</span><b>{missingTracking}</b><small>Gồm cả đơn Hỏa tốc</small></Link>
       <Link className={`kpi-card entity-status-metric info ${sp.tracking==='shipping'?'active':''}`} href={listHref({receive:null,tracking:'shipping'})}><span>Đang vận chuyển</span><b>{shipping}</b><small>Đã lấy hàng / đang trung chuyển</small></Link>
       <Link className={`kpi-card entity-status-metric info ${sp.tracking==='ARRIVED_DESTINATION_HUB'?'active':''}`} href={listHref({receive:null,tracking:'ARRIVED_DESTINATION_HUB'})}><span>Đến kho đích</span><b>{arrivedHub}</b><small>Đã đến HUB đích</small></Link>
       <Link className={`kpi-card entity-status-metric success ${sp.tracking==='DELIVERED'&&!sp.receive?'active':''}`} href={listHref({receive:null,tracking:'DELIVERED'})}><span>Giao thành công</span><b>{delivered}</b><small>Đã giao thành công</small></Link>
@@ -555,6 +555,8 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                 <div><span>Kho</span><b>{statusLabel(detail.warehouse_status)}</b></div>
                 {detail.shipping_service==='EXPRESS'
                   ? <>
+                      <div><span>Mã vận đơn</span><b>{currentShip?.tracking_number??'Chưa có'}</b></div>
+                      <div><span>ĐVVC</span><b>Hỏa tốc</b></div>
                       <div><span>Shipper hỏa tốc</span><b>{detail.express_shipper_name??'Chưa nhập'}</b></div>
                       <div><span>SĐT Shipper</span><b>{formatPhone(detail.express_shipper_phone)}</b></div>
                       {detail.express_shipper_note&&<div className="full"><span>Ghi chú Shipper</span><b>{detail.express_shipper_note}</b></div>}
