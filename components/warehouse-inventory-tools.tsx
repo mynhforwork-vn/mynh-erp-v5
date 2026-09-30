@@ -96,7 +96,8 @@ export function WarehouseInventoryTools({
       </div>
       <form action={adjustWarehouseInventory}>
         <label>Kho
-          <select name="warehouse_id" required defaultValue={defaultWarehouse}>
+          <select name="warehouse_id" required defaultValue="">
+            <option value="" disabled>Chọn kho</option>
             {warehouses.map(w=><option key={w.id} value={w.id}>{w.code} · {w.name}</option>)}
           </select>
         </label>
