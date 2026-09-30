@@ -82,55 +82,74 @@ function OrderLifecycleCell({
   canManage:boolean
   canDeletePermanent:boolean
 }){
+  const [menuOpen,setMenuOpen]=useState(false)
   const [deleteOpen,setDeleteOpen]=useState(false)
   if(!canManage)return <span className="row-action-readonly">—</span>
 
-  if(!row.archived_at){
-    return <form action={archiveOrder} className="row-lifecycle-form">
-      <input type="hidden" name="order_id" value={row.id}/>
-      <input type="hidden" name="return_query" value={returnQuery}/>
-      <input type="hidden" name="table_action" value="1"/>
-      <button className="row-action-button archive" type="submit">Lưu trữ</button>
-    </form>
+  function closeMenu(){
+    setMenuOpen(false)
+    setDeleteOpen(false)
   }
 
-  return <div className="row-lifecycle-actions">
-    <form action={restoreOrder} className="row-lifecycle-form">
-      <input type="hidden" name="order_id" value={row.id}/>
-      <input type="hidden" name="return_query" value={returnQuery}/>
-      <input type="hidden" name="table_action" value="1"/>
-      <button className="row-action-button restore" type="submit">Khôi phục</button>
-    </form>
+  return <div className="row-action-menu-wrap">
+    <button
+      type="button"
+      className="row-action-kebab"
+      aria-label="Mở thao tác"
+      aria-expanded={menuOpen}
+      onClick={()=>{setMenuOpen(v=>!v);setDeleteOpen(false)}}
+    >•••</button>
 
-    {canDeletePermanent&&<>
-      <button
-        className="row-action-button delete"
-        type="button"
-        onClick={()=>setDeleteOpen(v=>!v)}
-        aria-expanded={deleteOpen}
-      >Xóa</button>
+    {menuOpen&&<div className="row-action-menu">
+      {row.archived_at
+        ? <form action={restoreOrder} className="row-action-menu-form">
+            <input type="hidden" name="order_id" value={row.id}/>
+            <input type="hidden" name="return_query" value={returnQuery}/>
+            <input type="hidden" name="table_action" value="1"/>
+            <button className="row-action-menu-item restore" type="submit">Khôi phục</button>
+          </form>
+        : <form action={archiveOrder} className="row-action-menu-form">
+            <input type="hidden" name="order_id" value={row.id}/>
+            <input type="hidden" name="return_query" value={returnQuery}/>
+            <input type="hidden" name="table_action" value="1"/>
+            <button className="row-action-menu-item archive" type="submit">Lưu trữ</button>
+          </form>}
 
-      {deleteOpen&&<div className="row-delete-popover">
-        <b>Xóa vĩnh viễn?</b>
-        <span>Nhập lại mã đơn để xác nhận.</span>
-        <form action={deleteOrderPermanent}>
-          <input type="hidden" name="order_id" value={row.id}/>
-          <input type="hidden" name="return_query" value={returnQuery}/>
-      <input type="hidden" name="table_action" value="1"/>
-          <input
-            name="confirm_text"
-            placeholder={String(row.shopee_order_id??row.id.slice(0,8))}
-            autoComplete="off"
-            required
-            autoFocus
-          />
-          <div>
-            <button type="button" className="row-delete-cancel" onClick={()=>setDeleteOpen(false)}>Hủy</button>
-            <button type="submit" className="row-delete-confirm">Xóa vĩnh viễn</button>
-          </div>
-        </form>
-      </div>}
-    </>}
+      {canDeletePermanent&&<>
+        <button
+          type="button"
+          className="row-action-menu-item delete"
+          onClick={()=>setDeleteOpen(true)}
+        >Xóa đơn</button>
+
+        {deleteOpen&&<div className="row-delete-popover compact">
+          <b>Xóa vĩnh viễn?</b>
+          <span>
+            {row.archived_at
+              ? 'Đơn sẽ bị xóa khỏi hệ thống.'
+              : 'Không cần lưu trữ trước. Đơn có ràng buộc nghiệp vụ sẽ bị chặn.'}
+          </span>
+          <form action={deleteOrderPermanent}>
+            <input type="hidden" name="order_id" value={row.id}/>
+            <input type="hidden" name="return_query" value={returnQuery}/>
+            <input type="hidden" name="table_action" value="1"/>
+            <input
+              name="confirm_text"
+              placeholder={String(row.shopee_order_id??row.id.slice(0,8))}
+              autoComplete="off"
+              required
+              autoFocus
+            />
+            <div>
+              <button type="button" className="row-delete-cancel" onClick={()=>setDeleteOpen(false)}>Hủy</button>
+              <button type="submit" className="row-delete-confirm">Xóa vĩnh viễn</button>
+            </div>
+          </form>
+        </div>}
+      </>}
+
+      <button type="button" className="row-action-menu-dismiss" onClick={closeMenu}>Đóng</button>
+    </div>}
   </div>
 }
 
@@ -388,7 +407,7 @@ export function PurchaseOrderTable({
           {isVisible('carrier')&&<th>ĐVVC</th>}
           {isVisible('voucher')&&<th>Voucher</th>}
           {isVisible('status')&&<th><button className="sort-head" type="button" onClick={()=>toggleSort('status_asc','status_desc')}>Xử lý <span>{sortIndicator(sort,'status_asc','status_desc')}</span></button></th>}
-          <th className="row-actions-head">Thao tác</th>
+          <th className="row-actions-head" aria-label="Thao tác"><span>•••</span></th>
         </tr></thead>
         <tbody>
           {!sorted.length
