@@ -9984,3 +9984,22 @@ a{text-decoration:none}
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 }
+
+
+/* Drag/drop target + compact tracking selection */
+.column-manager-row.draggable.drop-target{
+  box-shadow:inset 0 2px 0 #5E8EB6;
+  background:#F1F6FA;
+}
+.tracking-hub-table-v2 .select-col{
+  width:25px!important;
+  min-width:25px!important;
+  max-width:25px!important;
+  padding-left:4px!important;
+  padding-right:3px!important;
+}
+.tracking-hub-table-v2 input[type=checkbox]{
+  width:11px!important;
+  height:11px!important;
+  margin:0!important;
+}
