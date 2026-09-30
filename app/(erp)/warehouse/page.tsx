@@ -21,7 +21,7 @@ export default async function WarehousePage(){
     count(supabase.from('orders').select('*',{count:'exact',head:true}).is('archived_at',null).eq('receive_status','WAITING_RECEIVE')),
     count(supabase.from('orders').select('*',{count:'exact',head:true}).is('archived_at',null).eq('warehouse_status','WAREHOUSE_RECEIVED')),
     supabase.from('orders')
-      .select('id,shopee_order_id,destination_hub,cod,order_date,warehouse_status,order_items(id,product_name,sku,quantity,product_variant_id)')
+      .select('id,shopee_order_id,destination_hub,cod,order_date,warehouse_status,order_items(id,product_name,sku,quantity,product_variant_id),transfer_items(id,transfer_batch_id,transfer_batches(status))')
       .is('archived_at',null)
       .eq('receive_status','RECEIVED')
       .eq('warehouse_status','READY_TO_TRANSFER')
@@ -41,7 +41,11 @@ export default async function WarehousePage(){
   const error=readyError??transferError??balanceError??warehouseError
   const ready=(readyOrders??[]) as any[]
   const needMapping=ready.filter(o=>(o.order_items??[]).some((i:any)=>!i.product_variant_id))
-  const mappedReady=ready.filter(o=>(o.order_items??[]).length>0&&(o.order_items??[]).every((i:any)=>i.product_variant_id))
+  const mappedReady=ready.filter(o=>
+    (o.order_items??[]).length>0 &&
+    (o.order_items??[]).every((i:any)=>i.product_variant_id) &&
+    !(o.transfer_items??[]).some((ti:any)=>ti.transfer_batches?.status&&ti.transfer_batches.status!=='CANCELLED')
+  )
   const transfers=(transferRows??[]) as any[]
   const draft=transfers.filter(t=>t.status==='DRAFT')
   const inTransit=transfers.filter(t=>t.status==='IN_TRANSIT')
