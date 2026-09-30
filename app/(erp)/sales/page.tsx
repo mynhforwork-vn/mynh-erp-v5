@@ -94,16 +94,17 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
   const range=resolveRange(sp)
   const {supabase}=await requireUser()
 
-  const [{data:salesData,error:salesError},{data:warehouses},{data:balances}]=await Promise.all([
+  const [{data:salesData,error:salesError},{count:allSalesCount},{data:warehouses},{data:balances}]=await Promise.all([
     supabase.from('sales')
       .select('id,customer_id,sale_at,total_amount,paid_amount,debt_amount,payment_status,created_by,customers(name,phone)')
       .gte('sale_at',range.start)
       .lte('sale_at',range.end)
       .order('sale_at',{ascending:false})
       .limit(3000),
+    supabase.from('sales').select('*',{count:'exact',head:true}),
     supabase.from('warehouses').select('id,code,name,address').eq('is_active',true).order('code'),
     supabase.from('inventory_balances')
-      .select('warehouse_id,warehouse_code,sku,product_name,variant_name,quantity')
+      .select('warehouse_id,warehouse_code,product_variant_id,sku,product_name,variant_name,quantity')
       .order('quantity',{ascending:true})
       .limit(1000),
   ])
@@ -119,7 +120,7 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
     realItems=(data??[]) as any[]
   }
 
-  const hasRealSales=realSales.length>0
+  const hasRealSales=(allSalesCount??0)>0
   const warehouseFilter=String(sp.warehouse??'ALL').toUpperCase()
 
   const sales=hasRealSales
