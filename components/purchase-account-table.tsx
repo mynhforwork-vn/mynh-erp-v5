@@ -70,15 +70,13 @@ function UserLifecycleCell({
   returnQuery,
   canManage,
   open,
-  onToggle,
-  onClose,
+  onToggle
 }:{
   row:Row
   returnQuery:string
   canManage:boolean
   open:boolean
   onToggle:()=>void
-  onClose:()=>void
 }){
   if(!canManage)return <span className="row-action-readonly">—</span>
 
@@ -105,7 +103,6 @@ function UserLifecycleCell({
             <input type="hidden" name="table_action" value="1"/>
             <button className="row-action-menu-item archive" type="submit">Lưu trữ User</button>
           </form>}
-      <button type="button" className="row-action-menu-dismiss" onClick={onClose}>Đóng</button>
     </div>}
   </div>
 }
@@ -343,7 +340,6 @@ export function PurchaseAccountTable({
                     canManage={canManage}
                     open={openActionId===String(u.id)}
                     onToggle={()=>setOpenActionId(prev=>prev===String(u.id)?null:String(u.id))}
-                    onClose={()=>setOpenActionId(null)}
                   />
                 </td>
               </tr>)}
