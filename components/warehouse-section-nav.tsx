@@ -1,11 +1,10 @@
 import Link from 'next/link'
 
 const items=[
-  {href:'/warehouse',label:'Tổng quan'},
-  {href:'/warehouse/receive',label:'Nhập kho'},
+  {href:'/warehouse',label:'Tổng quan kho'},
+  {href:'/warehouse/receive',label:'Bóc tách nhập kho'},
   {href:'/warehouse/inventory',label:'Tồn kho'},
   {href:'/warehouse/history',label:'Lịch sử kho'},
-  {href:'/warehouse/transfers',label:'Chuyển kho'},
 ]
 
 export function WarehouseSectionNav({active}:{active:string}){
