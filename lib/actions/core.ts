@@ -88,7 +88,6 @@ export async function createERPUser(formData:FormData){
 export async function updateERPUser(formData:FormData){
   const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
-  const tableAction=text(formData.get('table_action'))==='1'
   const userId=text(formData.get('user_id'))
   if(!userId)throw new Error('Thiếu tài khoản cần cập nhật')
 
@@ -140,6 +139,7 @@ export async function updateERPUser(formData:FormData){
 export async function archiveERPUser(formData:FormData){
   const {supabase,user}=await actor()
   const returnQuery=text(formData.get('return_query'))
+  const tableAction=text(formData.get('table_action'))==='1'
   const userId=text(formData.get('user_id'))
   if(!userId)throw new Error('Thiếu User cần lưu trữ')
 
