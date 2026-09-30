@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
-import { WarehouseTabs } from '@/components/warehouse-tabs'
 import { WarehouseIntakeWorkspace } from '@/components/warehouse-intake-workspace'
 import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
 
@@ -73,8 +72,6 @@ export default async function WarehouseReceivePage(){
         <Link className="button" href="/purchase/tracking?range=all&status=DELIVERED&receive=WAITING_RECEIVE">Đơn chờ xác nhận nhận</Link>
       </div>
     </header>
-
-    <WarehouseTabs active="/warehouse/receive"/>
 
     {error&&<div className="error-box">Không thể tải dữ liệu bóc tách: {error.message}</div>}
 
