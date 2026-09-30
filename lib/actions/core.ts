@@ -1486,3 +1486,41 @@ export async function receiveWarehouseTransfer(formData:FormData){
   revalidateWarehouse()
   redirect('/warehouse/transfers?transfer='+encodeURIComponent(transferId))
 }
+
+
+export async function adjustWarehouseInventory(formData:FormData){
+  const {supabase,user}=await actor()
+  const warehouseId=text(formData.get('warehouse_id'))
+  const variantId=text(formData.get('product_variant_id'))
+  const direction=text(formData.get('direction'))
+  const quantity=Number(text(formData.get('quantity')))
+  const note=text(formData.get('note'))||null
+
+  if(!warehouseId||!variantId)throw new Error('Thiếu kho hoặc SKU cần điều chỉnh')
+  if(!Number.isInteger(quantity)||quantity<=0)throw new Error('Số lượng điều chỉnh không hợp lệ')
+  if(!['IN','OUT'].includes(direction))throw new Error('Loại điều chỉnh không hợp lệ')
+
+  if(direction==='OUT'){
+    const {data:balance,error:balanceError}=await supabase
+      .from('inventory_balances')
+      .select('quantity')
+      .eq('warehouse_id',warehouseId)
+      .eq('product_variant_id',variantId)
+      .maybeSingle()
+    if(balanceError)throw new Error(balanceError.message)
+    if(Number(balance?.quantity??0)<quantity)throw new Error('Tồn thực tế không đủ để điều chỉnh giảm')
+  }
+
+  const {error}=await supabase.from('inventory_transactions').insert({
+    warehouse_id:warehouseId,
+    product_variant_id:variantId,
+    tx_type:direction==='IN'?'ADJUSTMENT_IN':'ADJUSTMENT_OUT',
+    quantity,
+    reference_type:note?'MANUAL_ADJUSTMENT: '+note:'MANUAL_ADJUSTMENT',
+    reference_id:null,
+    created_by:user.id,
+  })
+  if(error)throw new Error(error.message)
+
+  revalidateWarehouse()
+}
