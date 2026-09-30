@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime } from '@/lib/format'
 import { WarehouseTabs } from '@/components/warehouse-tabs'
+import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
 
 type SP={type?:string,warehouse?:string,q?:string,ref?:string}
 
@@ -38,13 +39,18 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
   const [
     {data:rows,error},
     {data:warehouses,error:warehouseError},
+    {data:settings,error:settingsError},
   ]=await Promise.all([
     query,
     supabase.from('warehouses')
-      .select('id,code,name')
+      .select('id,code,name,address')
       .eq('is_active',true)
       .order('code')
       .limit(100),
+    supabase.from('warehouse_settings')
+      .select('default_receiving_warehouse_id')
+      .eq('id','main')
+      .single(),
   ])
 
   const all=(rows??[]) as any[]
@@ -98,12 +104,18 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
         <h1>Lịch sử kho</h1>
         <p>Ledger toàn bộ biến động nhập, xuất, bán, kiểm kê, điều chỉnh và chuyển kho theo SKU.</p>
       </div>
+      <div className="head-actions">
+        <WarehouseReceivingSettings
+          warehouses={(warehouses??[]) as any[]}
+          defaultReceivingWarehouseId={(settings as any)?.default_receiving_warehouse_id??null}
+        />
+      </div>
     </header>
 
     <WarehouseTabs active="/warehouse/history"/>
 
-    {(error||warehouseError)&&<div className="error-box">
-      Không thể tải lịch sử kho: {(error??warehouseError)?.message}
+    {(error||warehouseError||settingsError)&&<div className="error-box">
+      Không thể tải lịch sử kho: {(error??warehouseError??settingsError)?.message}
     </div>}
 
     <section className="whx-kpi-grid five">
