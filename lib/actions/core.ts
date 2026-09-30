@@ -539,7 +539,6 @@ export async function deleteOrderPermanent(formData:FormData){
     .maybeSingle()
   if(readError)throw new Error(readError.message)
   if(!row)throw new Error('Đơn hàng không tồn tại')
-  if(!row.archived_at)throw new Error('Cần lưu trữ đơn trước khi xóa vĩnh viễn')
 
   const expected=String(row.shopee_order_id??row.id.slice(0,8))
   if(confirmText!==expected)throw new Error('Mã đơn xác nhận không khớp')
@@ -584,7 +583,12 @@ export async function deleteOrderPermanent(formData:FormData){
   revalidatePath('/warehouse')
   revalidatePath('/warehouse/receive')
   revalidatePath('/')
-  redirect(returnHref('/purchase/orders',returnQuery,{order:null,mode:null,tab:null,archive:'archived'}))
+  redirect(returnHref('/purchase/orders',returnQuery,{
+    order:null,
+    mode:null,
+    tab:null,
+    archive:row.archived_at?'archived':null,
+  }))
 }
 
 

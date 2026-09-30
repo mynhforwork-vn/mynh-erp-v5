@@ -73,23 +73,35 @@ function UserLifecycleCell({
   returnQuery:string
   canManage:boolean
 }){
+  const [menuOpen,setMenuOpen]=useState(false)
   if(!canManage)return <span className="row-action-readonly">—</span>
 
-  if(row.archived_at){
-    return <form action={restoreERPUser} className="row-lifecycle-form">
-      <input type="hidden" name="user_id" value={row.id}/>
-      <input type="hidden" name="return_query" value={returnQuery}/>
-      <input type="hidden" name="table_action" value="1"/>
-      <button className="row-action-button restore" type="submit">Khôi phục</button>
-    </form>
-  }
+  return <div className="row-action-menu-wrap">
+    <button
+      type="button"
+      className="row-action-kebab"
+      aria-label="Mở thao tác"
+      aria-expanded={menuOpen}
+      onClick={()=>setMenuOpen(v=>!v)}
+    >•••</button>
 
-  return <form action={archiveERPUser} className="row-lifecycle-form">
-    <input type="hidden" name="user_id" value={row.id}/>
-    <input type="hidden" name="return_query" value={returnQuery}/>
-    <input type="hidden" name="table_action" value="1"/>
-    <button className="row-action-button archive" type="submit">Lưu trữ</button>
-  </form>
+    {menuOpen&&<div className="row-action-menu">
+      {row.archived_at
+        ? <form action={restoreERPUser} className="row-action-menu-form">
+            <input type="hidden" name="user_id" value={row.id}/>
+            <input type="hidden" name="return_query" value={returnQuery}/>
+            <input type="hidden" name="table_action" value="1"/>
+            <button className="row-action-menu-item restore" type="submit">Khôi phục User</button>
+          </form>
+        : <form action={archiveERPUser} className="row-action-menu-form">
+            <input type="hidden" name="user_id" value={row.id}/>
+            <input type="hidden" name="return_query" value={returnQuery}/>
+            <input type="hidden" name="table_action" value="1"/>
+            <button className="row-action-menu-item archive" type="submit">Lưu trữ User</button>
+          </form>}
+      <button type="button" className="row-action-menu-dismiss" onClick={()=>setMenuOpen(false)}>Đóng</button>
+    </div>}
+  </div>
 }
 
 export function PurchaseAccountTable({
@@ -183,7 +195,7 @@ export function PurchaseAccountTable({
           {isVisible('orders')&&<th>Số đơn</th>}
           {isVisible('createdAt')&&<th><Link className="sortable-head" href={sortHref(detailQuery,timeNext)}>Thời gian tạo <span>{sort==='newest'?'↓':sort==='oldest'?'↑':'↕'}</span></Link></th>}
           {isVisible('note')&&<th>Ghi chú</th>}
-          <th className="row-actions-head">Thao tác</th>
+          <th className="row-actions-head" aria-label="Thao tác"><span>•••</span></th>
         </tr></thead>
         <tbody>
           {!rows.length
