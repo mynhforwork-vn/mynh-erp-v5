@@ -587,6 +587,267 @@ export async function deleteOrderPermanent(formData:FormData){
   redirect(returnHref('/purchase/orders',returnQuery,{order:null,mode:null,tab:null,archive:'archived'}))
 }
 
+
+function bulkOrderIds(formData:FormData){
+  const ids=[...new Set(formData.getAll('order_ids').map(v=>text(v)).filter(Boolean))]
+  if(!ids.length)throw new Error('Chưa chọn đơn')
+  if(ids.length>200)throw new Error('Tối đa 200 đơn mỗi lần thao tác')
+  return ids
+}
+
+async function orderDeleteBlockers(supabase:any,orderIds:string[]){
+  if(!orderIds.length)return {blockedIds:new Set<string>(),error:null as any}
+  const [receiveRefs,paymentRefs,transferRefs]=await Promise.all([
+    supabase.from('receive_batch_details').select('order_id').in('order_id',orderIds),
+    supabase.from('shipper_payment_details').select('order_id').in('order_id',orderIds),
+    supabase.from('transfer_items').select('order_id').in('order_id',orderIds),
+  ])
+  const error=receiveRefs.error??paymentRefs.error??transferRefs.error
+  if(error)return {blockedIds:new Set<string>(),error}
+  return {
+    blockedIds:new Set<string>([
+      ...(receiveRefs.data??[]).map((x:any)=>String(x.order_id)),
+      ...(paymentRefs.data??[]).map((x:any)=>String(x.order_id)),
+      ...(transferRefs.data??[]).map((x:any)=>String(x.order_id)),
+    ]),
+    error:null,
+  }
+}
+
+function revalidateOrderLifecycle(){
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase/tracking')
+  revalidatePath('/purchase/accounts')
+  revalidatePath('/purchase')
+  revalidatePath('/warehouse')
+  revalidatePath('/warehouse/receive')
+  revalidatePath('/')
+}
+
+export async function archiveOrdersBulk(formData:FormData){
+  const {supabase,user}=await actor()
+  const returnQuery=text(formData.get('return_query'))
+  const orderIds=bulkOrderIds(formData)
+
+  const {data:rows,error:readError}=await supabase
+    .from('orders')
+    .select('id,shopee_order_id,order_status,receive_status,warehouse_status,archived_at')
+    .in('id',orderIds)
+  if(readError)throw new Error(readError.message)
+  if((rows??[]).length!==orderIds.length)throw new Error('Có đơn không tồn tại hoặc không có quyền truy cập')
+  const alreadyArchived=(rows??[]).filter((x:any)=>x.archived_at)
+  if(alreadyArchived.length)throw new Error('Có đơn đã được lưu trữ. Hãy bỏ chọn các đơn đó.')
+
+  const archivedAt=new Date().toISOString()
+  const {error}=await supabase.from('orders').update({
+    archived_at:archivedAt,
+    archived_by:user.id,
+  }).in('id',orderIds)
+  if(error)throw new Error(error.message)
+
+  const {error:shipmentError}=await supabase.from('shipments').update({
+    tracking_enabled:false,
+    next_track_at:null,
+  }).in('order_id',orderIds).eq('is_active',true)
+  if(shipmentError){
+    await supabase.from('orders').update({archived_at:null,archived_by:null}).in('id',orderIds)
+    throw new Error(shipmentError.message)
+  }
+
+  const audits=(rows??[]).map((row:any)=>({
+    actor_user_id:user.id,
+    module:'ORDERS',
+    action:'ARCHIVE_ORDER',
+    entity_type:'ORDER',
+    entity_id:String(row.id),
+    old_value:{archived_at:null,order_status:row.order_status,receive_status:row.receive_status,warehouse_status:row.warehouse_status},
+    new_value:{archived_at:archivedAt,order_status:row.order_status,receive_status:row.receive_status,warehouse_status:row.warehouse_status,bulk:true},
+    source:'USER',
+  }))
+  if(audits.length){
+    const {error:auditError}=await supabase.from('audit_logs').insert(audits)
+    if(auditError)throw new Error(auditError.message)
+  }
+
+  revalidateOrderLifecycle()
+  redirect(returnHref('/purchase/orders',returnQuery,{order:null,mode:null,tab:null,archive:null}))
+}
+
+export async function restoreOrdersBulk(formData:FormData){
+  const {supabase,user}=await actor()
+  const returnQuery=text(formData.get('return_query'))
+  const orderIds=bulkOrderIds(formData)
+
+  const {data:rows,error:readError}=await supabase
+    .from('orders')
+    .select('id,shopee_order_id,archived_at,archived_by,shipments(id,tracking_number,current_tracking_status,is_active)')
+    .in('id',orderIds)
+  if(readError)throw new Error(readError.message)
+  if((rows??[]).length!==orderIds.length)throw new Error('Có đơn không tồn tại hoặc không có quyền truy cập')
+  const notArchived=(rows??[]).filter((x:any)=>!x.archived_at)
+  if(notArchived.length)throw new Error('Có đơn chưa được lưu trữ. Hãy bỏ chọn các đơn đó.')
+
+  const {error}=await supabase.from('orders').update({
+    archived_at:null,
+    archived_by:null,
+  }).in('id',orderIds)
+  if(error)throw new Error(error.message)
+
+  try{
+    for(const row of rows??[]){
+      const active=(row.shipments??[]).find((x:any)=>x.is_active)??null
+      if(!active?.id)continue
+      const status=String(active.current_tracking_status??(active.tracking_number?'READY_TO_SHIP':''))
+      const shouldTrack=Boolean(
+        active.tracking_number &&
+        status &&
+        !['DELIVERED','CANCELLED','RETURNED'].includes(status)
+      )
+      const next=shouldTrack?nextTrackAt(new Date(),status as any):null
+      const {error:shipmentError}=await supabase.from('shipments').update({
+        tracking_enabled:shouldTrack,
+        tracking_interval_minutes:status==='OUT_FOR_DELIVERY'?60:120,
+        next_track_at:next?.toISOString()??null,
+      }).eq('id',active.id)
+      if(shipmentError)throw shipmentError
+    }
+  }catch(err:any){
+    for(const row of rows??[]){
+      await supabase.from('orders').update({
+        archived_at:row.archived_at,
+        archived_by:row.archived_by,
+      }).eq('id',row.id)
+    }
+    await supabase.from('shipments').update({
+      tracking_enabled:false,
+      next_track_at:null,
+    }).in('order_id',orderIds).eq('is_active',true)
+    throw new Error(err?.message??'Không thể khôi phục Tracking cho các đơn đã chọn')
+  }
+
+  const audits=(rows??[]).map((row:any)=>({
+    actor_user_id:user.id,
+    module:'ORDERS',
+    action:'RESTORE_ORDER',
+    entity_type:'ORDER',
+    entity_id:String(row.id),
+    old_value:{archived_at:row.archived_at},
+    new_value:{archived_at:null,bulk:true},
+    source:'USER',
+  }))
+  if(audits.length){
+    const {error:auditError}=await supabase.from('audit_logs').insert(audits)
+    if(auditError)throw new Error(auditError.message)
+  }
+
+  revalidateOrderLifecycle()
+  redirect(returnHref('/purchase/orders',returnQuery,{order:null,mode:null,tab:null,archive:'archived'}))
+}
+
+export async function deleteOrdersBulkPermanent(formData:FormData){
+  const {supabase,user,role}=await actor()
+  requireAdmin(role)
+  const returnQuery=text(formData.get('return_query'))
+  const orderIds=bulkOrderIds(formData)
+  const confirmText=text(formData.get('confirm_text')).toUpperCase()
+  if(confirmText!=='XOA DON DA CHON')throw new Error('Cụm xác nhận không đúng')
+
+  const {data:rows,error:readError}=await supabase
+    .from('orders')
+    .select('id,shopee_order_id,erp_user_id,cod,order_status,receive_status,warehouse_status,archived_at')
+    .in('id',orderIds)
+  if(readError)throw new Error(readError.message)
+  if((rows??[]).length!==orderIds.length)throw new Error('Có đơn không tồn tại hoặc không có quyền truy cập')
+  if((rows??[]).some((x:any)=>!x.archived_at))throw new Error('Chỉ được xóa vĩnh viễn các đơn đã lưu trữ')
+
+  const blockers=await orderDeleteBlockers(supabase,orderIds)
+  if(blockers.error)throw new Error(blockers.error.message)
+  if(blockers.blockedIds.size){
+    const blockedCodes=(rows??[])
+      .filter((x:any)=>blockers.blockedIds.has(String(x.id)))
+      .map((x:any)=>String(x.shopee_order_id??x.id).slice(0,24))
+      .slice(0,8)
+    throw new Error('Có '+blockers.blockedIds.size+' đơn đã phát sinh nhận hàng/đối soát/chuyển kho nên không thể xóa: '+blockedCodes.join(', '))
+  }
+
+  const {error}=await supabase.from('orders').delete().in('id',orderIds)
+  if(error)throw new Error(error.message)
+
+  const audits=(rows??[]).map((row:any)=>({
+    actor_user_id:user.id,
+    module:'ORDERS',
+    action:'DELETE_ORDER_PERMANENT',
+    entity_type:'ORDER',
+    entity_id:String(row.id),
+    old_value:{
+      shopee_order_id:row.shopee_order_id,
+      erp_user_id:row.erp_user_id,
+      cod:row.cod,
+      order_status:row.order_status,
+      receive_status:row.receive_status,
+      warehouse_status:row.warehouse_status,
+      archived_at:row.archived_at,
+      bulk:true,
+    },
+    new_value:{deleted:true,bulk:true},
+    source:'USER',
+  }))
+  if(audits.length){
+    const {error:auditError}=await supabase.from('audit_logs').insert(audits)
+    if(auditError)throw new Error(auditError.message)
+  }
+
+  revalidateOrderLifecycle()
+  redirect(returnHref('/purchase/orders',returnQuery,{order:null,mode:null,tab:null,archive:'archived'}))
+}
+
+export async function purgeEligibleArchivedOrders(formData:FormData){
+  const {supabase,user,role}=await actor()
+  requireAdmin(role)
+  const confirmText=text(formData.get('confirm_text')).toUpperCase()
+  if(confirmText!=='XOA DON LUU TRU')throw new Error('Cụm xác nhận không đúng')
+
+  const {data:rows,error:readError}=await supabase
+    .from('orders')
+    .select('id,shopee_order_id')
+    .not('archived_at','is',null)
+    .order('archived_at',{ascending:true})
+    .limit(5000)
+  if(readError)throw new Error(readError.message)
+  const archived=rows??[]
+  if(!archived.length)throw new Error('Không có đơn lưu trữ để dọn')
+
+  const orderIds=archived.map((x:any)=>String(x.id))
+  const blockers=await orderDeleteBlockers(supabase,orderIds)
+  if(blockers.error)throw new Error(blockers.error.message)
+  const eligible=archived.filter((x:any)=>!blockers.blockedIds.has(String(x.id)))
+  if(!eligible.length)throw new Error('Không có đơn lưu trữ nào đủ điều kiện xóa vĩnh viễn')
+
+  const eligibleIds=eligible.map((x:any)=>String(x.id))
+  const {error}=await supabase.from('orders').delete().in('id',eligibleIds)
+  if(error)throw new Error(error.message)
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,
+    module:'SETTINGS',
+    action:'PURGE_ARCHIVED_ORDERS',
+    entity_type:'DATA_MAINTENANCE',
+    entity_id:'PURGE-'+Date.now(),
+    old_value:{
+      archived_count:archived.length,
+      eligible_count:eligible.length,
+      protected_count:blockers.blockedIds.size,
+      order_ids:eligibleIds,
+    },
+    new_value:{deleted_count:eligible.length},
+    source:'USER',
+  })
+
+  revalidateOrderLifecycle()
+  revalidatePath('/settings')
+  redirect('/settings?section=data-management&purged='+eligible.length+'&protected='+blockers.blockedIds.size)
+}
+
 function normalizeRoutingKeyword(value:string){
   return value
     .normalize('NFD')
