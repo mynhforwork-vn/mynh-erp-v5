@@ -180,6 +180,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       orders:orders!=='all'?orders:undefined,browser:browser!=='all'?browser:undefined,
       sort:sort!=='newest'?sort:undefined,platform:platform!=='SHOPEE'?platform:undefined,
       range:sp.range,from:sp.range==='custom'?sp.from:undefined,to:sp.range==='custom'?sp.to:undefined,
+      user:sp.user,mode:sp.mode,tab:sp.tab,
     }
     for(const [k,v] of Object.entries(current))if(v)p.set(k,v)
     for(const [k,v] of Object.entries(overrides)){
@@ -202,6 +203,9 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   if(sp.range)detailParams.set('range',sp.range)
   if(sp.range==='custom'&&sp.from)detailParams.set('from',sp.from)
   if(sp.range==='custom'&&sp.to)detailParams.set('to',sp.to)
+  if(sp.user)detailParams.set('user',sp.user)
+  if(sp.mode)detailParams.set('mode',sp.mode)
+  if(sp.tab)detailParams.set('tab',sp.tab)
   const detailQuery=detailParams.toString()
 
   function contextHref(path:string,extra:Record<string,string|null|undefined>={}){
@@ -227,7 +231,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   }
 
   function kpiHref(nextState?:string){
-    return contextHref('/purchase/accounts',nextState&&nextState!=='all'?{state:nextState}:{})
+    return filterHref({state:nextState&&nextState!=='all'?nextState:null})
   }
 
   function selectedOrderHref(order:any,username:string){
@@ -289,7 +293,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       <div className="head-actions">
         <span className="platform-badge">SHOPEE</span>
         <button className="button" disabled>Nhập hàng loạt</button>
-        <Link className="button primary" href={contextHref('/purchase/accounts',{mode:'create'})}>+ Thêm tài khoản</Link>
+        <Link className="button primary" href={filterHref({mode:'create',user:null,tab:null})}>+ Thêm tài khoản</Link>
       </div>
     </header>
 
@@ -347,9 +351,14 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       {sort!=='newest'&&<input type="hidden" name="sort" value={sort}/>}
       {sp.range&&<input type="hidden" name="range" value={sp.range}/>}
       {sp.range==='custom'&&sp.from&&<input type="hidden" name="from" value={sp.from}/>}
-      {sp.range==='custom'&&sp.to&&<input type="hidden" name="to" value={sp.to}/>} 
+      {sp.range==='custom'&&sp.to&&<input type="hidden" name="to" value={sp.to}/>}
+      {sp.user&&<input type="hidden" name="user" value={sp.user}/>}
+      {sp.mode&&<input type="hidden" name="mode" value={sp.mode}/>}
+      {sp.tab&&<input type="hidden" name="tab" value={sp.tab}/>}
       <button className="button primary small">Lọc</button>
-      {filtersActive&&<Link className="button small filter-clear" href={contextHref('/purchase/accounts')}>×</Link>}
+      {filtersActive&&<Link className="button small filter-clear" href={filterHref({
+        q:null,state:null,device:null,session:null,voucher:null,orders:null,browser:null,sort:null,platform:null,
+      })}>×</Link>}
     </form>
 
     <div className={`split-view account-workspace ${panelOpen?'with-panel':''}`}>
@@ -401,7 +410,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         <aside className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT USER</span><h2>{selected.username}</h2></div>
-            <Link className="close" href={filterHref()}>×</Link>
+            <Link className="close" href={filterHref({user:null,mode:null,tab:null})}>×</Link>
           </div>
           <div className="panel-tabs user-panel-tabs">
             <Link className={!sp.tab||sp.tab==='info'?'active':''} href={detailHref({user:selected.id,tab:'info'})}>Thông tin</Link>
