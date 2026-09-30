@@ -110,6 +110,9 @@ export function PurchaseOrderTable({
   function hrefFor(id:string){
     const p=new URLSearchParams(baseQuery)
     p.set('order',id)
+    p.delete('mode')
+    p.delete('settings')
+    p.delete('user')
     return '/purchase/orders?'+p.toString()
   }
   function isVisible(key:ColKey){return visible.includes(key)}

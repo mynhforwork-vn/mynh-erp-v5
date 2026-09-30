@@ -199,6 +199,11 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     if(queryText)p.set('q',sp.q??'')
     if(sp.receive)p.set('receive',sp.receive)
     if(sp.tracking)p.set('tracking',sp.tracking)
+    if(sp.order)p.set('order',sp.order)
+    if(sp.mode)p.set('mode',sp.mode)
+    if(sp.tab)p.set('tab',sp.tab)
+    if(sp.settings)p.set('settings',sp.settings)
+    if(sp.user)p.set('user',sp.user)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v==='')p.delete(k)
       else p.set(k,v)
@@ -262,7 +267,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       </div>
       <div className="head-actions">
         <Link className={`button ${destinationSettingsMode?'active':''}`} href={listHref({settings:'destination-hubs',order:null,mode:null,tab:null})}>⚙ Cấu hình kho đích</Link>
-        <Link className="button primary" href={listHref({mode:'create',settings:null})}>+ Tạo đơn nhập</Link>
+        <Link className="button primary" href={listHref({mode:'create',order:null,tab:null,settings:null})}>+ Tạo đơn nhập</Link>
       </div>
     </header>
 
@@ -273,6 +278,16 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       label={range.label}
       basePath="/purchase/orders"
       showAll
+      preserveParams={{
+        order:sp.order,
+        mode:sp.mode,
+        tab:sp.tab,
+        settings:sp.settings,
+        user:sp.user,
+        q:sp.q,
+        receive:sp.receive,
+        tracking:sp.tracking,
+      }}
     />
 
     <section className="kpi-grid order-kpi-grid">
@@ -292,6 +307,10 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
             {sp.receive&&<input type="hidden" name="receive" value={sp.receive}/>}
             {sp.tracking&&<input type="hidden" name="tracking" value={sp.tracking}/>}
+            {sp.order&&<input type="hidden" name="order" value={sp.order}/>}
+            {sp.mode&&<input type="hidden" name="mode" value={sp.mode}/>}
+            {sp.tab&&<input type="hidden" name="tab" value={sp.tab}/>}
+            {sp.user&&<input type="hidden" name="user" value={sp.user}/>}
             <input className="search" name="q" defaultValue={sp.q??''} placeholder="Mã đơn / MVĐ / Username / sản phẩm / voucher"/>
             <button className="button small">Tìm</button>
             {queryText&&<Link className="button small" href={listHref({q:null})}>Xóa tìm</Link>}
