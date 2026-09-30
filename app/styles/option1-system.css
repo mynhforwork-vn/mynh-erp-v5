@@ -9704,3 +9704,20 @@ a{text-decoration:none}
     max-width:24px!important;
   }
 }
+
+
+/* Final density tuning for table interaction V4 */
+.row-actions-head,
+.row-actions-cell{
+  width:28px!important;
+  min-width:28px!important;
+  max-width:28px!important;
+}
+.row-action-kebab{
+  width:20px!important;
+  height:20px!important;
+  font-size:12px!important;
+}
+.row-action-kebab>span{
+  transform:translateY(-.5px);
+}
