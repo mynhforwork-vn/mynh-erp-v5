@@ -443,6 +443,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                 <div><span>SPC_F</span><b>{hasF(selected)?'Đã có':'Chưa có'}</b></div>
                 <div><span>Số đơn</span><b>{selected.order_count??0} đơn</b></div>
                 <div><span>Ngày tạo</span><b>{formatDateTime(selected.created_at)}</b></div>
+                {selected.archived_at&&<div><span>Lưu trữ lúc</span><b>{formatDateTime(selected.archived_at)}</b></div>}
               </div>
 
               <div className="panel-section-head"><div><h3>Thiết bị hoạt động</h3><span>{selectedDevices.filter((d:any)=>d.is_active).length} active / {selectedDevices.length} đã ghi nhận</span></div></div>
