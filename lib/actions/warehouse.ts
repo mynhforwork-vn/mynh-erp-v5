@@ -127,11 +127,23 @@ export async function receiveOrdersIntoWarehouse(formData:FormData){
   const {supabase,user}=await actor()
 
   const orderIds=[...new Set(formData.getAll('order_ids').map(text).filter(Boolean))]
-  const warehouseId=text(formData.get('warehouse_id'))
   const note=text(formData.get('note'))||null
 
   if(!orderIds.length)throw new Error('Chưa chọn đơn cần nhập kho')
-  if(!warehouseId)throw new Error('Chưa chọn Kho nhận')
+
+  const {data:receiptRows,error:receiptError}=await supabase
+    .from('receive_batch_details')
+    .select('order_id,receive_batches(warehouse_id)')
+    .in('order_id',orderIds)
+  if(receiptError)throw new Error(receiptError.message)
+
+  const receiptWarehouseIds=[...new Set((receiptRows??[])
+    .map((row:any)=>String(row.receive_batches?.warehouse_id??''))
+    .filter(Boolean))]
+  if((receiptRows??[]).length!==orderIds.length||receiptWarehouseIds.length!==1){
+    throw new Error('Các đơn nhập kho phải thuộc cùng một Kho nhận đã xác nhận')
+  }
+  const warehouseId=receiptWarehouseIds[0]
 
   const {data:orders,error:ordersError}=await supabase
     .from('orders')
