@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { WarehouseTabs } from '@/components/warehouse-tabs'
 import { WarehouseIntakeWorkspace } from '@/components/warehouse-intake-workspace'
+import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
 
 export default async function WarehouseReceivePage(){
   const {supabase}=await requireUser()
@@ -11,6 +12,7 @@ export default async function WarehouseReceivePage(){
     {data:variants,error:variantsError},
     {data:warehouses,error:warehousesError},
     {data:auditLogs,error:auditError},
+    {data:settings,error:settingsError},
   ]=await Promise.all([
     supabase.from('orders')
       .select('id,shopee_order_id,cod,order_date,warehouse_status,receive_batch_details(receive_batches(received_at)),order_items(id,sku,product_name,variant,quantity,original_price,final_price,product_variant_id,inventory_multiplier,product_variants(id,variant_name,sale_price,products(id,sku,name)))')
@@ -24,7 +26,7 @@ export default async function WarehouseReceivePage(){
       .order('updated_at',{ascending:false})
       .limit(1500),
     supabase.from('warehouses')
-      .select('id,code,name')
+      .select('id,code,name,address')
       .eq('is_active',true)
       .order('code')
       .limit(100),
@@ -34,9 +36,13 @@ export default async function WarehouseReceivePage(){
       .eq('entity_type','ORDER')
       .order('created_at',{ascending:false})
       .limit(500),
+    supabase.from('warehouse_settings')
+      .select('default_receiving_warehouse_id')
+      .eq('id','main')
+      .single(),
   ])
 
-  const error=ordersError??variantsError??warehousesError??auditError
+  const error=ordersError??variantsError??warehousesError??auditError??settingsError
   const rows=(orders??[]) as any[]
   const missingOrders=rows.filter(row=>(row.order_items??[]).some((item:any)=>!item.product_variant_id))
   const missingItems=rows.reduce(
@@ -60,6 +66,10 @@ export default async function WarehouseReceivePage(){
         <p>Đơn đã xác nhận nhận hàng → mapping SKU bán → quy đổi số lượng → nhập trực tiếp vào Kho nhận.</p>
       </div>
       <div className="head-actions">
+        <WarehouseReceivingSettings
+          warehouses={(warehouses??[]) as any[]}
+          defaultReceivingWarehouseId={(settings as any)?.default_receiving_warehouse_id??null}
+        />
         <Link className="button" href="/purchase/tracking?range=all&status=DELIVERED&receive=WAITING_RECEIVE">Đơn chờ xác nhận nhận</Link>
       </div>
     </header>
@@ -89,6 +99,7 @@ export default async function WarehouseReceivePage(){
       variants={(variants??[]) as any[]}
       warehouses={(warehouses??[]) as any[]}
       auditLogs={(auditLogs??[]) as any[]}
+      defaultReceivingWarehouseId={(settings as any)?.default_receiving_warehouse_id??null}
     />
   </div>
 }
