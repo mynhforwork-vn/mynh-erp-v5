@@ -38,6 +38,7 @@ const LABELS:Record<ColKey,string>={
   status:'Xử lý',
 }
 const STORAGE_COLUMNS='mynh-v5-purchase-order-columns'
+const STORAGE_COLUMN_ORDER='mynh-v5-purchase-order-column-order'
 const STORAGE_SORT='mynh-v5-purchase-order-sort'
 
 function activeShipment(order:Row){
@@ -76,31 +77,34 @@ function OrderLifecycleCell({
   returnQuery,
   canManage,
   canDeletePermanent,
+  open,
+  onToggle
 }:{
   row:Row
   returnQuery:string
   canManage:boolean
   canDeletePermanent:boolean
+  open:boolean
+  onToggle:()=>void
 }){
-  const [menuOpen,setMenuOpen]=useState(false)
   const [deleteOpen,setDeleteOpen]=useState(false)
-  if(!canManage)return <span className="row-action-readonly">—</span>
 
-  function closeMenu(){
-    setMenuOpen(false)
-    setDeleteOpen(false)
-  }
+  useEffect(()=>{
+    if(!open)setDeleteOpen(false)
+  },[open])
+
+  if(!canManage)return <span className="row-action-readonly">—</span>
 
   return <div className="row-action-menu-wrap">
     <button
       type="button"
       className="row-action-kebab"
       aria-label="Mở thao tác"
-      aria-expanded={menuOpen}
-      onClick={()=>{setMenuOpen(v=>!v);setDeleteOpen(false)}}
-    >•••</button>
+      aria-expanded={open}
+      onClick={onToggle}
+    ><span aria-hidden="true">⋮</span></button>
 
-    {menuOpen&&<div className="row-action-menu">
+    {open&&<div className="row-action-menu">
       {row.archived_at
         ? <form action={restoreOrder} className="row-action-menu-form">
             <input type="hidden" name="order_id" value={row.id}/>
@@ -147,8 +151,6 @@ function OrderLifecycleCell({
           </form>
         </div>}
       </>}
-
-      <button type="button" className="row-action-menu-dismiss" onClick={closeMenu}>Đóng</button>
     </div>}
   </div>
 }
@@ -225,10 +227,12 @@ export function PurchaseOrderTable({
   carrierConfigs?:CarrierConfig[]
 }){
   const [visible,setVisible]=useState<ColKey[]>(ALL)
+  const [columnOrder,setColumnOrder]=useState<ColKey[]>(ALL)
   const [open,setOpen]=useState(false)
   const [sort,setSort]=useState<SortKey>('time_new')
   const [selected,setSelected]=useState<string[]>([])
   const [bulkDeleteOpen,setBulkDeleteOpen]=useState(false)
+  const [openActionId,setOpenActionId]=useState<string|null>(null)
   const tableWrapRef=useRef<HTMLDivElement|null>(null)
 
   useEffect(()=>{
@@ -239,6 +243,15 @@ export function PurchaseOrderTable({
         if(Array.isArray(parsed)){
           const valid=parsed.filter((x:any)=>ALL.includes(x))
           if(valid.length)setVisible(valid)
+        }
+      }
+      const rawOrder=localStorage.getItem(STORAGE_COLUMN_ORDER)
+      if(rawOrder){
+        const parsedOrder=JSON.parse(rawOrder)
+        if(Array.isArray(parsedOrder)){
+          const validOrder=parsedOrder.filter((x:any)=>ALL.includes(x))
+          const missing=ALL.filter(x=>!validOrder.includes(x))
+          if(validOrder.length)setColumnOrder([...validOrder,...missing])
         }
       }
       const savedSort=localStorage.getItem(STORAGE_SORT) as SortKey|null
@@ -255,10 +268,44 @@ export function PurchaseOrderTable({
     return ()=>window.clearTimeout(timer)
   },[selectedId,sort,visible])
 
+  useEffect(()=>{
+    if(!openActionId)return
+    function onPointerDown(event:PointerEvent){
+      const target=event.target as HTMLElement|null
+      if(target?.closest('.row-action-menu-wrap'))return
+      setOpenActionId(null)
+    }
+    function onKeyDown(event:KeyboardEvent){
+      if(event.key==='Escape')setOpenActionId(null)
+    }
+    document.addEventListener('pointerdown',onPointerDown)
+    document.addEventListener('keydown',onKeyDown)
+    return ()=>{
+      document.removeEventListener('pointerdown',onPointerDown)
+      document.removeEventListener('keydown',onKeyDown)
+    }
+  },[openActionId])
+
 
   function persistColumns(next:ColKey[]){
     setVisible(next)
     try{localStorage.setItem(STORAGE_COLUMNS,JSON.stringify(next))}catch{}
+  }
+  function persistColumnOrder(next:ColKey[]){
+    setColumnOrder(next)
+    try{localStorage.setItem(STORAGE_COLUMN_ORDER,JSON.stringify(next))}catch{}
+  }
+  function moveColumn(key:ColKey,direction:-1|1){
+    const index=columnOrder.indexOf(key)
+    const nextIndex=index+direction
+    if(index<0||nextIndex<0||nextIndex>=columnOrder.length)return
+    const next=[...columnOrder]
+    ;[next[index],next[nextIndex]]=[next[nextIndex],next[index]]
+    persistColumnOrder(next)
+  }
+  function resetColumns(){
+    persistColumns(ALL)
+    persistColumnOrder(ALL)
   }
   function toggleColumn(key:ColKey){
     if(key==='order')return
@@ -327,6 +374,51 @@ export function PurchaseOrderTable({
   const colSpan=visible.length+1+(canEdit?1:0)
   const toggleSort=(a:SortKey,b:SortKey)=>changeSort(sort===a?b:a)
 
+  function renderHeader(key:ColKey){
+    if(key==='number')return <th key={key}>#</th>
+    if(key==='order')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('order_asc','order_desc')}>Mã đơn <span>{sortIndicator(sort,'order_asc','order_desc')}</span></button></th>
+    if(key==='username')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('username_asc','username_desc')}>Username <span>{sortIndicator(sort,'username_asc','username_desc')}</span></button></th>
+    if(key==='time')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('time_old','time_new')}>Thời gian đặt <span>{sort==='time_new'?'↓':sort==='time_old'?'↑':'↕'}</span></button></th>
+    if(key==='product')return <th key={key}>Sản phẩm</th>
+    if(key==='cod')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('cod_asc','cod_desc')}>COD <span>{sortIndicator(sort,'cod_asc','cod_desc')}</span></button></th>
+    if(key==='tracking')return <th key={key}>Mã vận đơn</th>
+    if(key==='carrier')return <th key={key}>ĐVVC</th>
+    if(key==='voucher')return <th key={key}>Voucher</th>
+    return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('status_asc','status_desc')}>Xử lý <span>{sortIndicator(sort,'status_asc','status_desc')}</span></button></th>
+  }
+
+  function renderCell(key:ColKey,o:any,i:number){
+    const s=activeShipment(o)
+    if(key==='number')return <td key={key}>{i+1}</td>
+    if(key==='order')return <td key={key}><Link className="table-link" href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
+    if(key==='username')return <td key={key}>{o.erp_users?.username??'—'}</td>
+    if(key==='time')return <td key={key} className="order-time-cell">{formatDateTime(o.order_date)}</td>
+    if(key==='product')return <td key={key} className="truncate product-cell">{productSummary(o.order_items??[])}</td>
+    if(key==='cod')return <td key={key} className="money">{formatMoney(o.cod)}</td>
+    if(key==='tracking')return <td key={key} className="tracking-number-cell">
+      {o.shipping_service==='EXPRESS'
+        ? <span className="tracking-na">Không áp dụng</span>
+        : s?.tracking_number
+          ? <span className="tracking-number-value">{s.tracking_number}</span>
+          : canEdit&&!o.archived_at
+            ? <QuickTrackingEditor orderId={o.id} returnQuery={baseQuery} carrierConfigs={carrierConfigs}/>
+            : <span className="tracking-missing-text">Chưa có</span>}
+    </td>
+    if(key==='carrier')return <td key={key}>{o.shipping_service==='EXPRESS'?'Hỏa tốc':s?.carrier??'—'}</td>
+    if(key==='voucher')return <td key={key} className="voucher-cell"><VoucherTags value={voucherSummary(o.order_vouchers??[])} compact maxVisible={2}/></td>
+    return <td key={key}>
+      <div className="order-state-cell">
+        {o.shipping_service==='EXPRESS'
+          ? <span className="status-pill orange">Hỏa tốc</span>
+          : s?.tracking_number
+            ? <span className={'status-pill status-'+String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(s?.current_tracking_status)}</span>
+            : <span className="status-pill orange">Chờ mã vận đơn</span>}
+        {o.receive_status!=='NOT_READY'&&<span className={'status-pill '+(o.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(o.receive_status)}</span>}
+        {o.archived_at&&<span className="status-pill archived">Lưu trữ</span>}
+      </div>
+    </td>
+  }
+
   return <div className="order-table-shell">
     {canEdit&&selected.length>0&&<div className="order-bulk-bar">
       <div className="order-bulk-summary">
@@ -370,18 +462,24 @@ export function PurchaseOrderTable({
     </div>}
 
     <div className="order-column-manager">
-      <button className="icon-button" type="button" onClick={()=>setOpen(v=>!v)} title="Ẩn / hiện cột" aria-expanded={open}>
+      <button className="icon-button" type="button" onClick={()=>setOpen(v=>!v)} title="Cột & thứ tự" aria-expanded={open}>
         <ColumnIcon/>
       </button>
       {open&&<div className="column-manager-menu">
         <div className="column-manager-head">
-          <b>Ẩn / hiện cột</b>
-          <button type="button" onClick={()=>persistColumns(ALL)}>↺ Mặc định</button>
+          <b>Cột & thứ tự</b>
+          <button type="button" onClick={resetColumns}>↺ Mặc định</button>
         </div>
-        {ALL.map(k=><label key={k} className={k==='order'?'locked':''}>
-          <input type="checkbox" checked={visible.includes(k)} disabled={k==='order'} onChange={()=>toggleColumn(k)}/>
-          <span>{LABELS[k]}</span>
-        </label>)}
+        {columnOrder.map((k,index)=><div key={k} className={'column-manager-row '+(k==='order'?'locked':'')}>
+          <label>
+            <input type="checkbox" checked={visible.includes(k)} disabled={k==='order'} onChange={()=>toggleColumn(k)}/>
+            <span>{LABELS[k]}</span>
+          </label>
+          <div className="column-order-actions">
+            <button type="button" onClick={()=>moveColumn(k,-1)} disabled={index===0} title="Sang trái">←</button>
+            <button type="button" onClick={()=>moveColumn(k,1)} disabled={index===columnOrder.length-1} title="Sang phải">→</button>
+          </div>
+        </div>)}
       </div>}
     </div>
 
@@ -397,23 +495,13 @@ export function PurchaseOrderTable({
               disabled={!sorted.length}
             />
           </th>}
-          {isVisible('number')&&<th>#</th>}
-          {isVisible('order')&&<th><button className="sort-head" type="button" onClick={()=>toggleSort('order_asc','order_desc')}>Mã đơn <span>{sortIndicator(sort,'order_asc','order_desc')}</span></button></th>}
-          {isVisible('username')&&<th><button className="sort-head" type="button" onClick={()=>toggleSort('username_asc','username_desc')}>Username <span>{sortIndicator(sort,'username_asc','username_desc')}</span></button></th>}
-          {isVisible('time')&&<th><button className="sort-head" type="button" onClick={()=>toggleSort('time_old','time_new')}>Thời gian đặt <span>{sort==='time_new'?'↓':sort==='time_old'?'↑':'↕'}</span></button></th>}
-          {isVisible('product')&&<th>Sản phẩm</th>}
-          {isVisible('cod')&&<th><button className="sort-head" type="button" onClick={()=>toggleSort('cod_asc','cod_desc')}>COD <span>{sortIndicator(sort,'cod_asc','cod_desc')}</span></button></th>}
-          {isVisible('tracking')&&<th>Mã vận đơn</th>}
-          {isVisible('carrier')&&<th>ĐVVC</th>}
-          {isVisible('voucher')&&<th>Voucher</th>}
-          {isVisible('status')&&<th><button className="sort-head" type="button" onClick={()=>toggleSort('status_asc','status_desc')}>Xử lý <span>{sortIndicator(sort,'status_asc','status_desc')}</span></button></th>}
-          <th className="row-actions-head" aria-label="Thao tác"><span>•••</span></th>
+          {columnOrder.filter(isVisible).map(renderHeader)}
+          <th className="row-actions-head" aria-label="Thao tác"></th>
         </tr></thead>
         <tbody>
           {!sorted.length
             ? <tr><td colSpan={colSpan} className="empty">Không có đơn phù hợp với bộ lọc hiện tại.</td></tr>
             : sorted.map((o:any,i:number)=>{
-                const s=activeShipment(o)
                 return <tr key={o.id} data-selected={selectedId===o.id?'true':undefined} className={selectedId===o.id?'selected-row':''}>
                   {canEdit&&<td className="bulk-select-col">
                     <input
@@ -423,40 +511,15 @@ export function PurchaseOrderTable({
                       onChange={()=>toggleSelect(String(o.id))}
                     />
                   </td>}
-                  {isVisible('number')&&<td>{i+1}</td>}
-                  {isVisible('order')&&<td><Link className="table-link" href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>}
-                  {isVisible('username')&&<td>{o.erp_users?.username??'—'}</td>}
-                  {isVisible('time')&&<td className="order-time-cell">{formatDateTime(o.order_date)}</td>}
-                  {isVisible('product')&&<td className="truncate product-cell">{productSummary(o.order_items??[])}</td>}
-                  {isVisible('cod')&&<td className="money">{formatMoney(o.cod)}</td>}
-                  {isVisible('tracking')&&<td className="tracking-number-cell">
-                    {o.shipping_service==='EXPRESS'
-                      ? <span className="tracking-na">Không áp dụng</span>
-                      : s?.tracking_number
-                        ? <span className="tracking-number-value">{s.tracking_number}</span>
-                        : canEdit&&!o.archived_at
-                          ? <QuickTrackingEditor orderId={o.id} returnQuery={baseQuery} carrierConfigs={carrierConfigs}/>
-                          : <span className="tracking-missing-text">Chưa có</span>}
-                  </td>}
-                  {isVisible('carrier')&&<td>{o.shipping_service==='EXPRESS'?'Hỏa tốc':s?.carrier??'—'}</td>}
-                  {isVisible('voucher')&&<td className="voucher-cell"><VoucherTags value={voucherSummary(o.order_vouchers??[])} compact maxVisible={2}/></td>}
-                  {isVisible('status')&&<td>
-                    <div className="order-state-cell">
-                      {o.shipping_service==='EXPRESS'
-                        ? <span className="status-pill orange">Hỏa tốc</span>
-                        : s?.tracking_number
-                          ? <span className={'status-pill status-'+String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(s?.current_tracking_status)}</span>
-                          : <span className="status-pill orange">Chờ mã vận đơn</span>}
-                      {o.receive_status!=='NOT_READY'&&<span className={'status-pill '+(o.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(o.receive_status)}</span>}
-                      {o.archived_at&&<span className="status-pill archived">Lưu trữ</span>}
-                    </div>
-                  </td>}
+                  {columnOrder.filter(isVisible).map(k=>renderCell(k,o,i))}
                   <td className="row-actions-cell">
                     <OrderLifecycleCell
                       row={o}
                       returnQuery={baseQuery}
                       canManage={canEdit}
                       canDeletePermanent={canDeletePermanent}
+                      open={openActionId===String(o.id)}
+                      onToggle={()=>setOpenActionId(prev=>prev===String(o.id)?null:String(o.id))}
                     />
                   </td>
                 </tr>
