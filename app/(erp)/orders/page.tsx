@@ -109,7 +109,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
   const [{data,error},{data:userOptions},{data:recentSkuRows},{data:voucherCatalogRows},{data:carrierRows},{data:destinationHubRows},{data:destinationShippers},{data:hubShipperAssignments}]=await Promise.all([
     orderListQuery,
-    supabase.from('erp_users').select('id,username,phone,status').is('archived_at',null).order('username').limit(1000),
+    supabase.from('erp_users').select('id,username,phone,status,archived_at').order('username').limit(1000),
     supabase.from('order_items')
       .select('sku,product_name,variant,original_price,final_price,created_at')
       .not('sku','is',null)
@@ -441,6 +441,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               <div className="detail-grid">
                 <div><span>Username</span><b>{detail.erp_users?.username??'—'}</b></div>
                 <div><span>Ngày đặt</span><b>{formatDateTime(detail.order_date)}</b></div>
+                {detail.archived_at&&<div><span>Lưu trữ lúc</span><b>{formatDateTime(detail.archived_at)}</b></div>}
                 <div><span>Trạng thái đơn</span><b>{detail.archived_at?'Đã lưu trữ':detail.shipping_service==='EXPRESS'?'Đang xử lý · Hỏa tốc':currentShip?.tracking_number?statusLabel(currentShip.current_tracking_status):'Đang chờ duyệt · Chờ mã vận đơn'}</b></div>
                 <div><span>Thanh toán</span><b>{statusLabel(detail.payment_status)}</b></div>
                 <div><span>COD</span><b>{formatMoney(detail.cod)}</b></div>
