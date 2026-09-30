@@ -156,7 +156,7 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
         <select name="warehouse" defaultValue={sp.warehouse??''}>
           <option value="">Tất cả kho</option>
           {(warehouses??[]).map((warehouse:any)=><option key={warehouse.id} value={warehouse.id}>
-            {warehouse.code} · {warehouse.name}
+            {warehouse.code} · {warehouse.address??warehouse.name}
           </option>)}
         </select>
         <select name="status" defaultValue={sp.status??''}>
