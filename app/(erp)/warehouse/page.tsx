@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { WarehouseTabs } from '@/components/warehouse-tabs'
+import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
 
 export default async function WarehousePage(){
   const {supabase}=await requireUser()
@@ -8,6 +9,8 @@ export default async function WarehousePage(){
   const [
     {data:orders,error:ordersError},
     {data:balances,error:balanceError},
+    {data:warehouses,error:warehouseError},
+    {data:settings,error:settingsError},
   ]=await Promise.all([
     supabase.from('orders')
       .select('id,shopee_order_id,cod,order_date,order_items(id,product_name,product_variant_id,quantity,inventory_multiplier)')
@@ -21,9 +24,18 @@ export default async function WarehousePage(){
       .order('warehouse_code')
       .order('sku')
       .limit(3000),
+    supabase.from('warehouses')
+      .select('id,code,name,address')
+      .eq('is_active',true)
+      .order('code')
+      .limit(100),
+    supabase.from('warehouse_settings')
+      .select('default_receiving_warehouse_id')
+      .eq('id','main')
+      .single(),
   ])
 
-  const error=ordersError??balanceError
+  const error=ordersError??balanceError??warehouseError??settingsError
   const waiting=(orders??[]) as any[]
   const stock=(balances??[]) as any[]
 
@@ -83,6 +95,10 @@ export default async function WarehousePage(){
         <p>Hàng đã nhận → bóc tách SKU → nhập Kho nhận → tồn kho → bán hàng.</p>
       </div>
       <div className="head-actions">
+        <WarehouseReceivingSettings
+          warehouses={(warehouses??[]) as any[]}
+          defaultReceivingWarehouseId={(settings as any)?.default_receiving_warehouse_id??null}
+        />
         <Link className="button" href="/warehouse/history">Lịch sử kho</Link>
         <Link className="button primary" href="/warehouse/receive">Bóc tách nhập kho</Link>
       </div>
