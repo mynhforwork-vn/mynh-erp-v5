@@ -12,6 +12,14 @@ function suggestionKey(item:any){
   ].join('|')
 }
 
+function receiveBatchOf(row:any){
+  const detail=Array.isArray(row.receive_batch_details)
+    ? row.receive_batch_details[0]
+    : row.receive_batch_details
+  const batch=detail?.receive_batches
+  return Array.isArray(batch)?batch[0]??null:batch??null
+}
+
 export default async function WarehouseReceivePage(){
   const {supabase}=await requireUser()
 
@@ -98,7 +106,7 @@ export default async function WarehouseReceivePage(){
 
   const receivingWarehouseIds=new Set(
     rows
-      .map(row=>row.receive_batch_details?.[0]?.receive_batches?.warehouse_id)
+      .map(row=>receiveBatchOf(row)?.warehouse_id)
       .filter(Boolean)
       .map(String)
   )
