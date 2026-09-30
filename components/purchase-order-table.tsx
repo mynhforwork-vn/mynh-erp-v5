@@ -69,7 +69,8 @@ function QuickTrackingEditor({
 
   function changeTracking(value:string){
     setTrackingNumber(value)
-    if(/^SPX/i.test(value))setCarrier('SPX')
+    if(/^SPX/i.test(value))setCarrier('SPX Express')
+    else if(/^GHN/i.test(value))setCarrier('Giao Hàng Nhanh')
   }
 
   if(!editing){
@@ -96,7 +97,7 @@ function QuickTrackingEditor({
     />
     <select name="carrier" value={carrier} onChange={e=>setCarrier(e.target.value)} required>
       <option value="" disabled>ĐVVC</option>
-      <option value="SPX">SPX</option>
+      <option value="SPX Express">SPX</option>
       <option value="Giao Hàng Nhanh">GHN</option>
     </select>
     <button type="submit" className="quick-tracking-save">Lưu</button>
