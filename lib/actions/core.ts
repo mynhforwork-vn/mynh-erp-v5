@@ -6,7 +6,7 @@ import { nextTrackAt } from '@/lib/tracking/schedule'
 
 function text(v:FormDataEntryValue|null){return String(v??'').trim()}
 
-const RETURN_KEYS=['range','from','to','q','receive','receiveDate','status','hub','tracking','state','device','session','voucher','orders','browser','sort','order','user','mode','tab','settings','platform'] as const
+const RETURN_KEYS=['range','from','to','q','receive','receiveDate','status','hub','tracking','state','device','session','voucher','orders','browser','sort','order','user','mode','tab','settings','platform','archive'] as const
 function safeReturnParams(raw:string){
   const src=new URLSearchParams(raw)
   const out=new URLSearchParams()
@@ -34,6 +34,9 @@ async function actor(){
   const {supabase,user}=await requireUser(); const role=String(user.app_metadata?.role??'viewer')
   if(!['admin','operator'].includes(role))throw new Error('Không có quyền thực hiện thao tác này')
   return {supabase,user,role}
+}
+function requireAdmin(role:string){
+  if(role!=='admin')throw new Error('Chỉ Admin được xóa vĩnh viễn dữ liệu')
 }
 
 export async function createERPUser(formData:FormData){
@@ -130,6 +133,136 @@ export async function updateERPUser(formData:FormData){
 
   revalidatePath('/purchase/accounts')
   redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data),mode:null,tab:'info'}))
+}
+
+
+export async function archiveERPUser(formData:FormData){
+  const {supabase,user}=await actor()
+  const returnQuery=text(formData.get('return_query'))
+  const userId=text(formData.get('user_id'))
+  if(!userId)throw new Error('Thiếu User cần lưu trữ')
+
+  const {data:row,error:readError}=await supabase
+    .from('erp_users')
+    .select('id,username,phone,email,status,archived_at')
+    .eq('id',userId)
+    .maybeSingle()
+  if(readError)throw new Error(readError.message)
+  if(!row)throw new Error('User không tồn tại')
+  if(row.archived_at)throw new Error('User đã được lưu trữ trước đó')
+
+  const archivedAt=new Date().toISOString()
+  const {error}=await supabase.from('erp_users').update({
+    archived_at:archivedAt,
+    archived_by:user.id,
+  }).eq('id',userId)
+  if(error)throw new Error(error.message)
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,
+    module:'USERS',
+    action:'ARCHIVE_USER',
+    entity_type:'ERP_USER',
+    entity_id:userId,
+    old_value:{archived_at:null,username:row.username,status:row.status},
+    new_value:{archived_at:archivedAt,username:row.username,status:row.status},
+    source:'USER',
+  })
+
+  revalidatePath('/purchase/accounts')
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase')
+  redirect(returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:'archived'}))
+}
+
+export async function restoreERPUser(formData:FormData){
+  const {supabase,user}=await actor()
+  const returnQuery=text(formData.get('return_query'))
+  const userId=text(formData.get('user_id'))
+  if(!userId)throw new Error('Thiếu User cần khôi phục')
+
+  const {data:row,error:readError}=await supabase
+    .from('erp_users')
+    .select('id,username,status,archived_at')
+    .eq('id',userId)
+    .maybeSingle()
+  if(readError)throw new Error(readError.message)
+  if(!row)throw new Error('User không tồn tại')
+  if(!row.archived_at)throw new Error('User này chưa được lưu trữ')
+
+  const {error}=await supabase.from('erp_users').update({
+    archived_at:null,
+    archived_by:null,
+  }).eq('id',userId)
+  if(error)throw new Error(error.message)
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,
+    module:'USERS',
+    action:'RESTORE_USER',
+    entity_type:'ERP_USER',
+    entity_id:userId,
+    old_value:{archived_at:row.archived_at,username:row.username,status:row.status},
+    new_value:{archived_at:null,username:row.username,status:row.status},
+    source:'USER',
+  })
+
+  revalidatePath('/purchase/accounts')
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase')
+  redirect(returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:null}))
+}
+
+export async function deleteERPUserPermanent(formData:FormData){
+  const {supabase,user,role}=await actor()
+  requireAdmin(role)
+  const returnQuery=text(formData.get('return_query'))
+  const userId=text(formData.get('user_id'))
+  const confirmText=text(formData.get('confirm_text'))
+  if(!userId)throw new Error('Thiếu User cần xóa')
+
+  const {data:row,error:readError}=await supabase
+    .from('erp_users')
+    .select('id,username,phone,email,status,archived_at')
+    .eq('id',userId)
+    .maybeSingle()
+  if(readError)throw new Error(readError.message)
+  if(!row)throw new Error('User không tồn tại')
+  if(!row.archived_at)throw new Error('Cần lưu trữ User trước khi xóa vĩnh viễn')
+  if(confirmText!==String(row.username))throw new Error('Username xác nhận không khớp')
+
+  const {count:orderCount,error:countError}=await supabase
+    .from('orders')
+    .select('*',{count:'exact',head:true})
+    .eq('erp_user_id',userId)
+  if(countError)throw new Error(countError.message)
+  if((orderCount??0)>0){
+    throw new Error('User đã có đơn hàng nên không thể xóa vĩnh viễn. Hãy giữ ở trạng thái Lưu trữ.')
+  }
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,
+    module:'USERS',
+    action:'DELETE_USER_PERMANENT',
+    entity_type:'ERP_USER',
+    entity_id:userId,
+    old_value:{
+      username:row.username,
+      phone:row.phone,
+      email:row.email,
+      status:row.status,
+      archived_at:row.archived_at,
+    },
+    new_value:{deleted:true},
+    source:'USER',
+  })
+
+  const {error}=await supabase.from('erp_users').delete().eq('id',userId)
+  if(error)throw new Error(error.message)
+
+  revalidatePath('/purchase/accounts')
+  revalidatePath('/purchase')
+  redirect(returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'}))
 }
 
 function numberOrNull(v:FormDataEntryValue|null){
@@ -313,6 +446,169 @@ export async function updateOrder(formData:FormData){
   }
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
+}
+
+
+export async function archiveOrder(formData:FormData){
+  const {supabase,user}=await actor()
+  const returnQuery=text(formData.get('return_query'))
+  const orderId=text(formData.get('order_id'))
+  if(!orderId)throw new Error('Thiếu đơn cần lưu trữ')
+
+  const {data:row,error:readError}=await supabase
+    .from('orders')
+    .select('id,shopee_order_id,order_status,receive_status,warehouse_status,archived_at')
+    .eq('id',orderId)
+    .maybeSingle()
+  if(readError)throw new Error(readError.message)
+  if(!row)throw new Error('Đơn hàng không tồn tại')
+  if(row.archived_at)throw new Error('Đơn đã được lưu trữ trước đó')
+
+  const archivedAt=new Date().toISOString()
+  const {error}=await supabase.from('orders').update({
+    archived_at:archivedAt,
+    archived_by:user.id,
+  }).eq('id',orderId)
+  if(error)throw new Error(error.message)
+
+  const {error:shipmentError}=await supabase.from('shipments').update({
+    tracking_enabled:false,
+    next_track_at:null,
+  }).eq('order_id',orderId).eq('is_active',true)
+  if(shipmentError)throw new Error(shipmentError.message)
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,
+    module:'ORDERS',
+    action:'ARCHIVE_ORDER',
+    entity_type:'ORDER',
+    entity_id:orderId,
+    old_value:{archived_at:null,order_status:row.order_status,receive_status:row.receive_status,warehouse_status:row.warehouse_status},
+    new_value:{archived_at:archivedAt,order_status:row.order_status,receive_status:row.receive_status,warehouse_status:row.warehouse_status},
+    source:'USER',
+  })
+
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase/tracking')
+  revalidatePath('/purchase')
+  revalidatePath('/')
+  redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,tab:'info',archive:'archived'}))
+}
+
+export async function restoreOrder(formData:FormData){
+  const {supabase,user}=await actor()
+  const returnQuery=text(formData.get('return_query'))
+  const orderId=text(formData.get('order_id'))
+  if(!orderId)throw new Error('Thiếu đơn cần khôi phục')
+
+  const {data:row,error:readError}=await supabase
+    .from('orders')
+    .select('id,shopee_order_id,archived_at,shipments(id,tracking_number,current_tracking_status,is_active)')
+    .eq('id',orderId)
+    .maybeSingle()
+  if(readError)throw new Error(readError.message)
+  if(!row)throw new Error('Đơn hàng không tồn tại')
+  if(!row.archived_at)throw new Error('Đơn này chưa được lưu trữ')
+
+  const {error}=await supabase.from('orders').update({
+    archived_at:null,
+    archived_by:null,
+  }).eq('id',orderId)
+  if(error)throw new Error(error.message)
+
+  const active=(row.shipments??[]).find((x:any)=>x.is_active)??null
+  const status=String(active?.current_tracking_status??'')
+  const shouldTrack=Boolean(
+    active?.tracking_number &&
+    status &&
+    !['DELIVERED','CANCELLED','RETURNED'].includes(status)
+  )
+  if(active?.id){
+    const next=shouldTrack?nextTrackAt(new Date(),status as any):null
+    const {error:shipmentError}=await supabase.from('shipments').update({
+      tracking_enabled:shouldTrack,
+      tracking_interval_minutes:shouldTrack?(status==='OUT_FOR_DELIVERY'?60:120):null,
+      next_track_at:next?.toISOString()??null,
+    }).eq('id',active.id)
+    if(shipmentError)throw new Error(shipmentError.message)
+  }
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,
+    module:'ORDERS',
+    action:'RESTORE_ORDER',
+    entity_type:'ORDER',
+    entity_id:orderId,
+    old_value:{archived_at:row.archived_at},
+    new_value:{archived_at:null},
+    source:'USER',
+  })
+
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase/tracking')
+  revalidatePath('/purchase')
+  revalidatePath('/')
+  redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,tab:'info',archive:null}))
+}
+
+export async function deleteOrderPermanent(formData:FormData){
+  const {supabase,user,role}=await actor()
+  requireAdmin(role)
+  const returnQuery=text(formData.get('return_query'))
+  const orderId=text(formData.get('order_id'))
+  const confirmText=text(formData.get('confirm_text'))
+  if(!orderId)throw new Error('Thiếu đơn cần xóa')
+
+  const {data:row,error:readError}=await supabase
+    .from('orders')
+    .select('id,shopee_order_id,erp_user_id,cod,order_status,receive_status,warehouse_status,archived_at')
+    .eq('id',orderId)
+    .maybeSingle()
+  if(readError)throw new Error(readError.message)
+  if(!row)throw new Error('Đơn hàng không tồn tại')
+  if(!row.archived_at)throw new Error('Cần lưu trữ đơn trước khi xóa vĩnh viễn')
+
+  const expected=String(row.shopee_order_id??row.id.slice(0,8))
+  if(confirmText!==expected)throw new Error('Mã đơn xác nhận không khớp')
+
+  const [receiveRefs,paymentRefs,transferRefs]=await Promise.all([
+    supabase.from('receive_batch_details').select('*',{count:'exact',head:true}).eq('order_id',orderId),
+    supabase.from('shipper_payment_details').select('*',{count:'exact',head:true}).eq('order_id',orderId),
+    supabase.from('transfer_items').select('*',{count:'exact',head:true}).eq('order_id',orderId),
+  ])
+  const refError=receiveRefs.error??paymentRefs.error??transferRefs.error
+  if(refError)throw new Error(refError.message)
+  if((receiveRefs.count??0)+(paymentRefs.count??0)+(transferRefs.count??0)>0){
+    throw new Error('Đơn đã phát sinh nhận hàng, đối soát hoặc chuyển kho nên không thể xóa vĩnh viễn. Hãy giữ ở trạng thái Lưu trữ.')
+  }
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,
+    module:'ORDERS',
+    action:'DELETE_ORDER_PERMANENT',
+    entity_type:'ORDER',
+    entity_id:orderId,
+    old_value:{
+      shopee_order_id:row.shopee_order_id,
+      erp_user_id:row.erp_user_id,
+      cod:row.cod,
+      order_status:row.order_status,
+      receive_status:row.receive_status,
+      warehouse_status:row.warehouse_status,
+      archived_at:row.archived_at,
+    },
+    new_value:{deleted:true},
+    source:'USER',
+  })
+
+  const {error}=await supabase.from('orders').delete().eq('id',orderId)
+  if(error)throw new Error(error.message)
+
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase/tracking')
+  revalidatePath('/purchase')
+  revalidatePath('/')
+  redirect(returnHref('/purchase/orders',returnQuery,{order:null,mode:null,tab:null,archive:'archived'}))
 }
 
 function normalizeRoutingKeyword(value:string){
