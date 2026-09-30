@@ -84,13 +84,7 @@ function UserLifecycleCell({
     </form>
   }
 
-  return <form
-    action={archiveERPUser}
-    className="row-lifecycle-form"
-    onSubmit={e=>{
-      if(!window.confirm(`Lưu trữ User ${row.username}?\nUser sẽ không còn được chọn cho đơn mới nhưng toàn bộ lịch sử vẫn được giữ.`))e.preventDefault()
-    }}
-  >
+  return <form action={archiveERPUser} className="row-lifecycle-form">
     <input type="hidden" name="user_id" value={row.id}/>
     <input type="hidden" name="return_query" value={returnQuery}/>
     <input type="hidden" name="table_action" value="1"/>
