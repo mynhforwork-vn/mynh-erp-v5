@@ -293,8 +293,8 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     <section className="kpi-grid order-kpi-grid entity-status-strip">
       <Link className="kpi-card entity-status-metric" href={listHref({receive:null,tracking:null})}><span>Tổng đơn</span><b>{totalOrders}</b><small>Trong khoảng đã chọn</small></Link>
       <Link className="kpi-card entity-status-metric" href={listHref({receive:null,tracking:null})}><span>Tổng COD</span><b className="kpi-money">{formatMoney(totalCod)}</b><small>Giá trị đơn nhập</small></Link>
-      <Link className="kpi-card entity-status-metric" href={listHref({receive:null,tracking:'shipping'})}><span>Đang vận chuyển</span><b>{shipping}</b><small>Chưa ở trạng thái kết thúc</small></Link>
-      <Link className="kpi-card entity-status-metric" href={listHref({receive:null,tracking:'DELIVERED'})}><span>Giao thành công</span><b>{delivered}</b><small>Đã có trạng thái giao thành công</small></Link>
+      <Link className="kpi-card entity-status-metric info" href={listHref({receive:null,tracking:'shipping'})}><span>Đang vận chuyển</span><b>{shipping}</b><small>Chưa ở trạng thái kết thúc</small></Link>
+      <Link className="kpi-card entity-status-metric success" href={listHref({receive:null,tracking:'DELIVERED'})}><span>Giao thành công</span><b>{delivered}</b><small>Đã có trạng thái giao thành công</small></Link>
       <Link className="kpi-card entity-status-metric warning" href={listHref({receive:'WAITING_RECEIVE',tracking:null})}><span>Chờ nhận</span><b>{waiting}</b><small>Cần xác nhận vật lý</small></Link>
       <Link className="kpi-card entity-status-metric danger" href={listHref({receive:null,tracking:'missing'})}><span>Chưa có MVĐ</span><b>{missingTracking}</b><small>Chỉ đơn vận chuyển tiêu chuẩn</small></Link>
     </section>
