@@ -129,7 +129,7 @@ export async function updateERPUser(formData:FormData){
   }
 
   revalidatePath('/purchase/accounts')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data)}))
+  redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data),mode:null,tab:'info'}))
 }
 
 function numberOrNull(v:FormDataEntryValue|null){
@@ -312,7 +312,7 @@ export async function updateOrder(formData:FormData){
     if(shipmentError)throw new Error(shipmentError.message)
   }
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
-  redirect(returnHref('/purchase/orders',returnQuery,{order:String(data)}))
+  redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
 }
 
 function normalizeRoutingKeyword(value:string){
