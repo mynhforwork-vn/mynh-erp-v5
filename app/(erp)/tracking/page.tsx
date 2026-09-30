@@ -120,7 +120,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     supabase.from('shipments').select(
       'id,order_id,tracking_number,carrier,is_active,tracking_enabled,current_tracking_status,last_track_at,next_track_at,last_status_change_at,tracking_fail_count,queue_status,orders(id,shopee_order_id,destination_hub,cod,recipient_name,recipient_phone,recipient_address,receive_status,warehouse_status,order_date,shipping_service,order_status,archived_at,order_items(product_name,variant,quantity))'
     ).eq('is_active',true).order('last_status_change_at',{ascending:false,nullsFirst:false}).limit(2000),
-    supabase.from('warehouses').select('id,code,name,is_active').eq('is_active',true).order('code'),
+    supabase.from('warehouses').select('id,code,name,address,is_active').eq('is_active',true).order('code'),
     supabase.from('tracking_provider_configs').select('carrier,enabled').order('carrier'),
     supabase.from('tracking_sync_logs').select('id,shipment_id,source,started_at,result,new_event_count,error_code,error_message').order('started_at',{ascending:false}).limit(8),
     supabase.from('shipper_payments')
