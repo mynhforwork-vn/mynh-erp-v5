@@ -1,127 +1,154 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
-import { WarehouseSectionNav } from '@/components/warehouse-section-nav'
-import { WarehouseInventoryTools } from '@/components/warehouse-inventory-tools'
-import { formatMoney } from '@/lib/format'
+import { WarehouseTabs } from '@/components/warehouse-tabs'
+import { WarehouseInventoryWorkspace } from '@/components/warehouse-inventory-workspace'
+import { WarehouseStockTools } from '@/components/warehouse-stock-tools'
 
 type SP={warehouse?:string,q?:string,status?:string}
 
 const IN_TYPES=new Set(['IN','TRANSFER_IN','RETURN','ADJUSTMENT_IN'])
 const OUT_TYPES=new Set(['OUT','TRANSFER_OUT','SALE','ADJUSTMENT_OUT'])
 
-function vnTodayStartIso(){
+function todayStartVN(){
   const now=new Date()
   const shifted=new Date(now.getTime()+7*60*60*1000)
   const y=shifted.getUTCFullYear()
   const m=String(shifted.getUTCMonth()+1).padStart(2,'0')
   const d=String(shifted.getUTCDate()).padStart(2,'0')
-  return new Date(`${y}-${m}-${d}T00:00:00+07:00`).toISOString()
+  return new Date(y+'-'+m+'-'+d+'T00:00:00+07:00').toISOString()
 }
 
 export default async function WarehouseInventoryPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
   const {supabase}=await requireUser()
-  const query=String(sp.q??'').trim().toLowerCase()
+  const q=String(sp.q??'').trim().toLowerCase()
 
   const [
     {data:balances,error:balanceError},
     {data:warehouses,error:warehouseError},
-    {data:pendingTransfers,error:transferError},
-    {data:todayTx,error:todayTxError},
-    {data:variantRows,error:variantError},
+    {data:variants,error:variantError},
+    {data:transfers,error:transferError},
+    {data:transactions,error:transactionError},
+    {data:todayTransactions,error:todayError},
   ]=await Promise.all([
     supabase.from('inventory_balances')
       .select('warehouse_id,warehouse_code,warehouse_name,product_variant_id,product_id,sku,product_name,variant_name,quantity')
       .order('warehouse_code')
       .order('sku')
       .limit(3000),
-    supabase.from('warehouses').select('id,code,name').eq('is_active',true).order('code').limit(100),
-    supabase.from('transfer_batches')
-      .select('id,status,to_warehouse_id,transfer_items(product_variant_id,quantity)')
-      .eq('status','IN_TRANSIT')
-      .limit(500),
-    supabase.from('inventory_transactions')
-      .select('tx_type,quantity,reference_type,created_at')
-      .gte('created_at',vnTodayStartIso())
-      .limit(5000),
+    supabase.from('warehouses')
+      .select('id,code,name')
+      .eq('is_active',true)
+      .order('code')
+      .limit(100),
     supabase.from('product_variants')
-      .select('id,variant_name,sale_price,products(id,sku,name)')
-      .order('updated_at',{ascending:false})
+      .select('id,sale_price')
+      .limit(2000),
+    supabase.from('transfer_batches')
+      .select('id,status,created_at,from_warehouse:warehouses!transfer_batches_from_warehouse_id_fkey(code),to_warehouse:warehouses!transfer_batches_to_warehouse_id_fkey(code),to_warehouse_id,transfer_items(quantity,product_variant_id,product_variants(variant_name,products(sku,name)))')
+      .order('created_at',{ascending:false})
+      .limit(100),
+    supabase.from('inventory_transactions')
+      .select('id,warehouse_id,product_variant_id,tx_type,quantity,reference_type,reference_id,created_at')
+      .order('created_at',{ascending:false})
       .limit(1500),
+    supabase.from('inventory_transactions')
+      .select('tx_type,quantity')
+      .gte('created_at',todayStartVN())
+      .limit(5000),
   ])
 
-  const error=balanceError??warehouseError??transferError??todayTxError??variantError
-  const pendingIn=new Map<string,number>()
-  for(const transfer of (pendingTransfers??[]) as any[]){
+  const error=balanceError??warehouseError??variantError??transferError??transactionError??todayError
+  const all=(balances??[]) as any[]
+  const priceMap=new Map((variants??[]).map((row:any)=>[String(row.id),Number(row.sale_price??0)]))
+
+  const incomingMap=new Map<string,number>()
+  for(const transfer of (transfers??[]) as any[]){
+    if(transfer.status!=='IN_TRANSIT')continue
     for(const item of transfer.transfer_items??[]){
       const key=String(transfer.to_warehouse_id)+'|'+String(item.product_variant_id)
-      pendingIn.set(key,(pendingIn.get(key)??0)+Number(item.quantity??0))
+      incomingMap.set(key,(incomingMap.get(key)??0)+Number(item.quantity??0))
     }
   }
 
-  const all=(balances??[]) as any[]
-  const rows=all.filter(row=>{
-    if(sp.warehouse&&String(row.warehouse_id)!==sp.warehouse)return false
+  const totalUnits=all.reduce((sum,row)=>sum+Number(row.quantity??0),0)
+  const skuCount=new Set(all.map(row=>String(row.product_variant_id))).size
+  const normalCount=all.filter(row=>Number(row.quantity??0)>3).length
+  const lowCount=all.filter(row=>Number(row.quantity??0)>0&&Number(row.quantity??0)<=3).length
+  const outCount=all.filter(row=>Number(row.quantity??0)===0).length
+  const todayIn=((todayTransactions??[]) as any[])
+    .filter(tx=>IN_TYPES.has(String(tx.tx_type)))
+    .reduce((sum,tx)=>sum+Number(tx.quantity??0),0)
+  const todayOut=((todayTransactions??[]) as any[])
+    .filter(tx=>OUT_TYPES.has(String(tx.tx_type)))
+    .reduce((sum,tx)=>sum+Number(tx.quantity??0),0)
+
+  const filtered=all.filter(row=>{
     const qty=Number(row.quantity??0)
+    if(sp.warehouse&&String(row.warehouse_id)!==sp.warehouse)return false
     if(sp.status==='normal'&&qty<=3)return false
     if(sp.status==='low'&&(qty<=0||qty>3))return false
     if(sp.status==='out'&&qty!==0)return false
-    if(!query)return true
-    const hay=[row.warehouse_code,row.warehouse_name,row.sku,row.product_name,row.variant_name].filter(Boolean).join(' ').toLowerCase()
-    return hay.includes(query)
+    if(!q)return true
+    const hay=[row.sku,row.product_name,row.variant_name,row.warehouse_code,row.warehouse_name]
+      .filter(Boolean).join(' ').toLowerCase()
+    return hay.includes(q)
   })
 
-  const totalUnits=all.reduce((sum,r)=>sum+Number(r.quantity??0),0)
-  const skuCount=new Set(all.map(r=>String(r.product_variant_id))).size
-  const normalCount=all.filter(r=>Number(r.quantity??0)>3).length
-  const lowStock=all.filter(r=>Number(r.quantity??0)>0&&Number(r.quantity??0)<=3).length
-  const outStock=all.filter(r=>Number(r.quantity??0)===0).length
-  const todayIn=((todayTx??[]) as any[]).filter(x=>IN_TYPES.has(String(x.tx_type))).reduce((s,x)=>s+Number(x.quantity??0),0)
-  const todayOut=((todayTx??[]) as any[]).filter(x=>OUT_TYPES.has(String(x.tx_type))).reduce((s,x)=>s+Number(x.quantity??0),0)
+  const workspaceRows=filtered.map(row=>({
+    warehouse_id:String(row.warehouse_id),
+    warehouse_code:String(row.warehouse_code??'—'),
+    warehouse_name:String(row.warehouse_name??'—'),
+    product_variant_id:String(row.product_variant_id),
+    sku:String(row.sku??'—'),
+    product_name:String(row.product_name??'—'),
+    variant_name:String(row.variant_name??'Mặc định'),
+    quantity:Number(row.quantity??0),
+    incoming:incomingMap.get(String(row.warehouse_id)+'|'+String(row.product_variant_id))??0,
+    sale_price:priceMap.get(String(row.product_variant_id))??0,
+  }))
 
-  const priceMap=new Map((variantRows??[]).map((v:any)=>[String(v.id),Number(v.sale_price??0)]))
+  const toolBalances=all.map(row=>({
+    warehouse_id:String(row.warehouse_id),
+    warehouse_code:String(row.warehouse_code??'—'),
+    product_variant_id:String(row.product_variant_id),
+    sku:String(row.sku??'—'),
+    product_name:String(row.product_name??'—'),
+    variant_name:String(row.variant_name??'Mặc định'),
+    quantity:Number(row.quantity??0),
+  }))
 
-  function href(extra:Record<string,string|undefined|null>={}){
-    const p=new URLSearchParams()
-    if(sp.warehouse)p.set('warehouse',sp.warehouse)
-    if(sp.q)p.set('q',sp.q)
-    if(sp.status)p.set('status',sp.status)
-    for(const [k,v] of Object.entries(extra)){
-      if(v===null||v===undefined||v==='')p.delete(k)
-      else p.set(k,v)
-    }
-    const qs=p.toString()
-    return '/warehouse/inventory'+(qs?'?'+qs:'')
-  }
-
-  return <div className="warehouse-screen warehouse-inventory-screen warehouse-v2">
-    <header className="page-head warehouse-page-head warehouse-page-head-v2">
+  return <div className="whx-page">
+    <header className="page-head whx-page-head">
       <div>
         <span className="module-eyebrow">VẬN HÀNH KHO</span>
         <h1>Tồn kho</h1>
-        <p>Tồn thực tế theo Kho nhận → SKU bán → Phân loại; bán hàng và mọi điều chỉnh đều ghi lịch sử theo SKU.</p>
+        <p>Tồn thực tế theo SKU bán tại Kho nhận; bán hàng, kiểm kê và điều chỉnh đều ghi lịch sử.</p>
       </div>
     </header>
 
-    <WarehouseSectionNav active="/warehouse/inventory"/>
+    <WarehouseTabs active="/warehouse/inventory"/>
+
     {error&&<div className="error-box">Không thể tải dữ liệu tồn kho: {error.message}</div>}
 
-    <section className="warehouse-status-strip warehouse-status-strip-7 warehouse-kpi-row">
-      <Link href={href({status:null})}><span>Tổng SKU</span><b>{skuCount}</b><small>SKU bán đang quản lý</small></Link>
-      <Link href={href({status:null})} className="success"><span>Tổng SL tồn</span><b>{totalUnits}</b><small>Đơn vị hàng hiện có</small></Link>
-      <Link href={href({status:'normal'})}><span>Bình thường</span><b>{normalCount}</b><small>Tồn trên ngưỡng cảnh báo</small></Link>
-      <Link href={href({status:'low'})} className={lowStock?'warning':''}><span>Tồn thấp</span><b>{lowStock}</b><small>Từ 1 đến 3 đơn vị</small></Link>
-      <Link href={href({status:'out'})} className={outStock?'danger':''}><span>Hết hàng</span><b>{outStock}</b><small>Tồn bằng 0</small></Link>
+    <section className="whx-kpi-grid seven">
+      <div><span>Tổng SKU</span><b>{skuCount}</b><small>SKU bán đang quản lý</small></div>
+      <div className="success"><span>Tổng SL tồn</span><b>{totalUnits}</b><small>Đơn vị hàng hiện có</small></div>
+      <div><span>Bình thường</span><b>{normalCount}</b><small>Tồn trên ngưỡng cảnh báo</small></div>
+      <div className={lowCount?'warning':''}><span>Tồn thấp</span><b>{lowCount}</b><small>Từ 1 đến 3 đơn vị</small></div>
+      <div className={outCount?'danger':''}><span>Hết hàng</span><b>{outCount}</b><small>Tồn bằng 0</small></div>
       <Link href="/warehouse/history?type=IN" className="info"><span>Nhập hôm nay</span><b>{todayIn}</b><small>Tổng SL ghi tăng trong ngày</small></Link>
       <Link href="/warehouse/history?type=SALE" className="info"><span>Xuất hôm nay</span><b>{todayOut}</b><small>Tổng SL ghi giảm trong ngày</small></Link>
     </section>
 
-    <div className="warehouse-inventory-toolbar warehouse-toolbar-v2">
+    <div className="whx-toolbar">
       <form action="/warehouse/inventory">
         <input name="q" defaultValue={sp.q??''} placeholder="Tìm SKU / tên sản phẩm / phân loại"/>
         <select name="warehouse" defaultValue={sp.warehouse??''}>
           <option value="">Tất cả kho</option>
-          {(warehouses??[]).map((w:any)=><option key={w.id} value={w.id}>{w.code} · {w.name}</option>)}
+          {(warehouses??[]).map((warehouse:any)=><option key={warehouse.id} value={warehouse.id}>
+            {warehouse.code} · {warehouse.name}
+          </option>)}
         </select>
         <select name="status" defaultValue={sp.status??''}>
           <option value="">Tất cả trạng thái</option>
@@ -130,46 +157,19 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
           <option value="out">Hết hàng</option>
         </select>
         <button className="button small" type="submit">Lọc</button>
-        {(sp.warehouse||sp.q||sp.status)&&<Link className="button small" href="/warehouse/inventory">Xóa lọc</Link>}
+        {(sp.q||sp.warehouse||sp.status)&&<Link className="button small" href="/warehouse/inventory">Xóa lọc</Link>}
       </form>
 
-      <WarehouseInventoryTools
+      <WarehouseStockTools
         warehouses={(warehouses??[]) as any[]}
-        variants={(variantRows??[]) as any[]}
+        balances={toolBalances}
+        recentTransfers={(transfers??[]) as any[]}
       />
     </div>
 
-    <div className="card warehouse-inventory-table-card warehouse-table-surface">
-      <div className="warehouse-table-head">
-        <div><h2>Danh sách tồn kho</h2><span>{rows.length} dòng phù hợp bộ lọc hiện tại</span></div>
-        <Link className="warehouse-inline-link" href="/warehouse/history">Lịch sử nhập / xuất →</Link>
-      </div>
-      <table className="table warehouse-inventory-table">
-        <thead><tr>
-          <th>SKU bán</th><th>Sản phẩm</th><th>Phân loại</th><th>Kho</th><th>Tồn</th><th>Đang về</th><th>Khả dụng</th><th>Giá bán</th><th>Trạng thái</th>
-        </tr></thead>
-        <tbody>{!rows.length
-          ? <tr><td colSpan={9} className="empty">Không có tồn kho phù hợp.</td></tr>
-          : rows.map(r=>{
-              const incoming=pendingIn.get(String(r.warehouse_id)+'|'+String(r.product_variant_id))??0
-              const qty=Number(r.quantity??0)
-              return <tr key={String(r.warehouse_id)+'-'+String(r.product_variant_id)}>
-                <td><b className="warehouse-sku-code">{r.sku}</b></td>
-                <td>{r.product_name}</td>
-                <td>{r.variant_name}</td>
-                <td><div className="warehouse-order-cell"><b>{r.warehouse_code}</b><small>{r.warehouse_name}</small></div></td>
-                <td className="warehouse-stock-number">{qty}</td>
-                <td>{incoming||'—'}</td>
-                <td className="warehouse-stock-number">{qty}</td>
-                <td className="money">{formatMoney(priceMap.get(String(r.product_variant_id))??0)}</td>
-                <td>{qty===0
-                  ? <span className="status-pill red">Hết hàng</span>
-                  : qty<=3
-                    ? <span className="status-pill orange">Tồn thấp</span>
-                    : <span className="status-pill green">Bình thường</span>}</td>
-              </tr>
-            })}</tbody>
-      </table>
-    </div>
+    <WarehouseInventoryWorkspace
+      rows={workspaceRows}
+      transactions={(transactions??[]) as any[]}
+    />
   </div>
 }
