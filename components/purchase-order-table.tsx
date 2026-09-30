@@ -233,6 +233,7 @@ export function PurchaseOrderTable({
   const [selected,setSelected]=useState<string[]>([])
   const [bulkDeleteOpen,setBulkDeleteOpen]=useState(false)
   const [openActionId,setOpenActionId]=useState<string|null>(null)
+  const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
   const tableWrapRef=useRef<HTMLDivElement|null>(null)
 
   useEffect(()=>{
@@ -295,12 +296,12 @@ export function PurchaseOrderTable({
     setColumnOrder(next)
     try{localStorage.setItem(STORAGE_COLUMN_ORDER,JSON.stringify(next))}catch{}
   }
-  function moveColumn(key:ColKey,direction:-1|1){
-    const index=columnOrder.indexOf(key)
-    const nextIndex=index+direction
-    if(index<0||nextIndex<0||nextIndex>=columnOrder.length)return
-    const next=[...columnOrder]
-    ;[next[index],next[nextIndex]]=[next[nextIndex],next[index]]
+  function reorderColumn(source:ColKey,target:ColKey){
+    if(source===target)return
+    const next=columnOrder.filter(k=>k!==source)
+    const targetIndex=next.indexOf(target)
+    if(targetIndex<0)return
+    next.splice(targetIndex,0,source)
     persistColumnOrder(next)
   }
   function resetColumns(){
@@ -427,38 +428,36 @@ export function PurchaseOrderTable({
         <button type="button" onClick={()=>setSelected([])}>Bỏ chọn</button>
       </div>
 
-      {!selectedArchived
-        ? <form action={archiveOrdersBulk} className="order-bulk-form">
+      {selectedArchived
+        ? <form action={restoreOrdersBulk} className="order-bulk-form">
+            <input type="hidden" name="return_query" value={baseQuery}/>
+            {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
+            <button className="button small primary" type="submit">Khôi phục đã chọn</button>
+          </form>
+        : <form action={archiveOrdersBulk} className="order-bulk-form">
             <input type="hidden" name="return_query" value={baseQuery}/>
             {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
             <button className="button small archive-button" type="submit">Lưu trữ đã chọn</button>
-          </form>
-        : <>
-            <form action={restoreOrdersBulk} className="order-bulk-form">
-              <input type="hidden" name="return_query" value={baseQuery}/>
-              {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
-              <button className="button small primary" type="submit">Khôi phục đã chọn</button>
-            </form>
+          </form>}
 
-            {canDeletePermanent&&<div className="order-bulk-delete">
-              <button
-                type="button"
-                className="button small danger"
-                onClick={()=>setBulkDeleteOpen(v=>!v)}
-                aria-expanded={bulkDeleteOpen}
-              >Xóa đã chọn</button>
-              {bulkDeleteOpen&&<form action={deleteOrdersBulkPermanent} className="order-bulk-delete-confirm">
-                <input type="hidden" name="return_query" value={baseQuery}/>
-                {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
-                <span>Nhập <b>XOA DON DA CHON</b> để xóa vĩnh viễn {selected.length} đơn.</span>
-                <input name="confirm_text" placeholder="XOA DON DA CHON" autoComplete="off" required autoFocus/>
-                <div>
-                  <button type="button" className="button small" onClick={()=>setBulkDeleteOpen(false)}>Hủy</button>
-                  <button type="submit" className="button small danger">Xóa vĩnh viễn</button>
-                </div>
-              </form>}
-            </div>}
-          </>}
+      {canDeletePermanent&&<div className="order-bulk-delete">
+        <button
+          type="button"
+          className="button small danger"
+          onClick={()=>setBulkDeleteOpen(v=>!v)}
+          aria-expanded={bulkDeleteOpen}
+        >Xóa đã chọn</button>
+        {bulkDeleteOpen&&<form action={deleteOrdersBulkPermanent} className="order-bulk-delete-confirm">
+          <input type="hidden" name="return_query" value={baseQuery}/>
+          {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
+          <span>Nhập <b>XOA DON DA CHON</b> để xóa vĩnh viễn {selected.length} đơn. Đơn đã có nhận hàng / đối soát / chuyển kho sẽ bị chặn.</span>
+          <input name="confirm_text" placeholder="XOA DON DA CHON" autoComplete="off" required autoFocus/>
+          <div>
+            <button type="button" className="button small" onClick={()=>setBulkDeleteOpen(false)}>Hủy</button>
+            <button type="submit" className="button small danger">Xóa vĩnh viễn</button>
+          </div>
+        </form>}
+      </div>}
     </div>}
 
     <div className="order-column-manager">
@@ -470,15 +469,34 @@ export function PurchaseOrderTable({
           <b>Cột & thứ tự</b>
           <button type="button" onClick={resetColumns}>↺ Mặc định</button>
         </div>
-        {columnOrder.map((k,index)=><div key={k} className={'column-manager-row '+(k==='order'?'locked':'')}>
+        {columnOrder.map(k=><div
+          key={k}
+          className={'column-manager-row draggable '+(k==='order'?'locked ':'')+(draggingColumn===k?'dragging':'')}
+          onDragOver={e=>e.preventDefault()}
+          onDrop={e=>{
+            e.preventDefault()
+            const source=(e.dataTransfer.getData('text/plain')||draggingColumn) as ColKey|null
+            if(source&&ALL.includes(source))reorderColumn(source,k)
+            setDraggingColumn(null)
+          }}
+        >
+          <button
+            type="button"
+            className="column-drag-handle"
+            draggable
+            title="Kéo để đổi thứ tự cột"
+            aria-label={'Kéo '+LABELS[k]}
+            onDragStart={e=>{
+              setDraggingColumn(k)
+              e.dataTransfer.effectAllowed='move'
+              e.dataTransfer.setData('text/plain',k)
+            }}
+            onDragEnd={()=>setDraggingColumn(null)}
+          >⠿</button>
           <label>
             <input type="checkbox" checked={visible.includes(k)} disabled={k==='order'} onChange={()=>toggleColumn(k)}/>
             <span>{LABELS[k]}</span>
           </label>
-          <div className="column-order-actions">
-            <button type="button" onClick={()=>moveColumn(k,-1)} disabled={index===0} title="Sang trái">←</button>
-            <button type="button" onClick={()=>moveColumn(k,1)} disabled={index===columnOrder.length-1} title="Sang phải">→</button>
-          </div>
         </div>)}
       </div>}
     </div>
