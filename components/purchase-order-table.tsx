@@ -500,7 +500,7 @@ export function PurchaseOrderTable({
             />
           </th>}
           {columnOrder.filter(isVisible).map(renderHeader)}
-          <th className="row-actions-head" aria-label="Thao tác"><span>•••</span></th>
+          <th className="row-actions-head" aria-label="Thao tác"></th>
         </tr></thead>
         <tbody>
           {!sorted.length
