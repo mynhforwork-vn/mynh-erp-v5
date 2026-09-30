@@ -42,7 +42,7 @@ const groups:Group[]=[
     {href:'/purchase/orders',label:'Đơn nhập hàng',icon:'orders'},
     {href:'/purchase/tracking',label:'Cảnh báo vận chuyển',icon:'alert'},
   ]},
-  {label:'QUẢN LÝ KHO',items:[
+  {label:'VẬN HÀNH KHO',items:[
     {href:'/warehouse',label:'Tổng quan kho',icon:'warehouse',exact:true},
     {href:'/warehouse/receive',label:'Nhập kho',icon:'receive'},
     {href:'/warehouse/inventory',label:'Tồn kho',icon:'inventory'},

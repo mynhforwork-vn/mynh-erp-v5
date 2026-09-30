@@ -1348,3 +1348,179 @@ export async function replaceShipment(formData:FormData){
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,settings:null,tab:'tracking'}))
 }
+
+
+/* =====================================================================
+   Warehouse operations
+   ===================================================================== */
+function revalidateWarehouse(){
+  revalidatePath('/warehouse')
+  revalidatePath('/warehouse/receive')
+  revalidatePath('/warehouse/transfers')
+  revalidatePath('/warehouse/inventory')
+  revalidatePath('/warehouse/history')
+  revalidatePath('/purchase/orders')
+}
+
+export async function mapOrderItemToInventory(formData:FormData){
+  const {supabase}=await actor()
+  const itemId=text(formData.get('item_id'))
+  const existingVariantId=text(formData.get('existing_variant_id'))
+  const saleSku=text(formData.get('sale_sku')).toUpperCase()
+  const productName=text(formData.get('sale_product_name'))
+  const variantName=text(formData.get('sale_variant_name'))||'Mặc định'
+  const salePrice=numberOrNull(formData.get('sale_price'))
+
+  if(!itemId)throw new Error('Thiếu dòng sản phẩm cần bóc tách')
+
+  let variantId=existingVariantId
+  if(variantId){
+    const {data:existing,error:existingError}=await supabase
+      .from('product_variants')
+      .select('id')
+      .eq('id',variantId)
+      .maybeSingle()
+    if(existingError)throw new Error(existingError.message)
+    if(!existing)throw new Error('SKU tồn kho đã chọn không còn tồn tại')
+  }else{
+    if(!saleSku||!productName)throw new Error('Thiếu SKU bán hoặc tên sản phẩm tồn kho')
+    if(salePrice===null||salePrice<0)throw new Error('Giá bán không hợp lệ')
+
+    const {data:product,error:productError}=await supabase
+      .from('products')
+      .upsert({
+        sku:saleSku,
+        name:productName,
+        note:'Tạo từ bóc tách đơn nhập',
+        updated_at:new Date().toISOString(),
+      },{onConflict:'sku'})
+      .select('id')
+      .single()
+    if(productError)throw new Error(productError.message)
+
+    const {data:variant,error:variantError}=await supabase
+      .from('product_variants')
+      .upsert({
+        product_id:product.id,
+        variant_name:variantName,
+        sale_price:salePrice,
+        updated_at:new Date().toISOString(),
+      },{onConflict:'product_id,variant_name'})
+      .select('id')
+      .single()
+    if(variantError)throw new Error(variantError.message)
+    variantId=String(variant.id)
+  }
+
+  const {error}=await supabase
+    .from('order_items')
+    .update({product_variant_id:variantId})
+    .eq('id',itemId)
+  if(error)throw new Error(error.message)
+
+  revalidateWarehouse()
+}
+
+export async function createInboundWarehouseTransfer(formData:FormData){
+  const {supabase}=await actor()
+  const orderIds=[...new Set(formData.getAll('order_ids').map(v=>text(v)).filter(Boolean))]
+  const toWarehouseId=text(formData.get('to_warehouse_id'))
+  const note=text(formData.get('note'))||null
+  if(!orderIds.length)throw new Error('Chưa chọn đơn cần chuyển kho')
+  if(!toWarehouseId)throw new Error('Chưa chọn kho đích')
+
+  const {data,error}=await supabase.rpc('create_inbound_transfer',{
+    p_order_ids:orderIds,
+    p_to_warehouse_id:toWarehouseId,
+    p_note:note,
+  })
+  if(error)throw new Error(error.message)
+
+  revalidateWarehouse()
+  redirect('/warehouse/transfers?transfer='+encodeURIComponent(String(data?.transfer_id??'')))
+}
+
+export async function createStockWarehouseTransfer(formData:FormData){
+  const {supabase}=await actor()
+  const fromWarehouseId=text(formData.get('from_warehouse_id'))
+  const toWarehouseId=text(formData.get('to_warehouse_id'))
+  const variantId=text(formData.get('product_variant_id'))
+  const quantityRaw=Number(text(formData.get('quantity')))
+  const note=text(formData.get('note'))||null
+
+  if(!fromWarehouseId||!toWarehouseId||!variantId)throw new Error('Thiếu kho nguồn, kho đích hoặc SKU')
+  if(!Number.isInteger(quantityRaw)||quantityRaw<=0)throw new Error('Số lượng chuyển không hợp lệ')
+
+  const {data,error}=await supabase.rpc('create_stock_transfer',{
+    p_from_warehouse_id:fromWarehouseId,
+    p_to_warehouse_id:toWarehouseId,
+    p_items:[{product_variant_id:variantId,quantity:quantityRaw}],
+    p_note:note,
+  })
+  if(error)throw new Error(error.message)
+
+  revalidateWarehouse()
+  redirect('/warehouse/transfers?transfer='+encodeURIComponent(String(data?.transfer_id??'')))
+}
+
+export async function dispatchWarehouseTransfer(formData:FormData){
+  const {supabase}=await actor()
+  const transferId=text(formData.get('transfer_id'))
+  if(!transferId)throw new Error('Thiếu phiếu chuyển kho')
+
+  const {error}=await supabase.rpc('dispatch_transfer',{p_transfer_id:transferId})
+  if(error)throw new Error(error.message)
+
+  revalidateWarehouse()
+  redirect('/warehouse/transfers?transfer='+encodeURIComponent(transferId))
+}
+
+export async function receiveWarehouseTransfer(formData:FormData){
+  const {supabase}=await actor()
+  const transferId=text(formData.get('transfer_id'))
+  if(!transferId)throw new Error('Thiếu phiếu chuyển kho')
+
+  const {error}=await supabase.rpc('receive_transfer',{p_transfer_id:transferId})
+  if(error)throw new Error(error.message)
+
+  revalidateWarehouse()
+  redirect('/warehouse/transfers?transfer='+encodeURIComponent(transferId))
+}
+
+
+export async function adjustWarehouseInventory(formData:FormData){
+  const {supabase,user}=await actor()
+  const warehouseId=text(formData.get('warehouse_id'))
+  const variantId=text(formData.get('product_variant_id'))
+  const direction=text(formData.get('direction'))
+  const quantity=Number(text(formData.get('quantity')))
+  const note=text(formData.get('note'))||null
+
+  if(!warehouseId||!variantId)throw new Error('Thiếu kho hoặc SKU cần điều chỉnh')
+  if(!Number.isInteger(quantity)||quantity<=0)throw new Error('Số lượng điều chỉnh không hợp lệ')
+  if(!['IN','OUT'].includes(direction))throw new Error('Loại điều chỉnh không hợp lệ')
+
+  if(direction==='OUT'){
+    const {data:balance,error:balanceError}=await supabase
+      .from('inventory_balances')
+      .select('quantity')
+      .eq('warehouse_id',warehouseId)
+      .eq('product_variant_id',variantId)
+      .maybeSingle()
+    if(balanceError)throw new Error(balanceError.message)
+    if(Number(balance?.quantity??0)<quantity)throw new Error('Tồn thực tế không đủ để điều chỉnh giảm')
+  }
+
+  const {error}=await supabase.from('inventory_transactions').insert({
+    warehouse_id:warehouseId,
+    product_variant_id:variantId,
+    tx_type:direction==='IN'?'ADJUSTMENT_IN':'ADJUSTMENT_OUT',
+    quantity,
+    reference_type:note?'MANUAL_ADJUSTMENT: '+note:'MANUAL_ADJUSTMENT',
+    reference_id:null,
+    created_by:user.id,
+  })
+  if(error)throw new Error(error.message)
+
+  revalidateWarehouse()
+}
