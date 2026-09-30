@@ -255,6 +255,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
   let selected:any=null
   if(sp.user)selected=enriched.find((x:any)=>x.id===sp.user)??null
+  const selectedOutsideFilter=Boolean(selected&&!rows.some((u:any)=>u.id===selected.id))
+  const displayRows=selectedOutsideFilter?[selected,...rows]:rows
 
   let history:any[]=[]
   let userOrders:any[]=[]
@@ -364,11 +366,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     <div className={`split-view account-workspace ${panelOpen?'with-panel':''}`}>
       <section className="account-list-pane">
         <div className="toolbar account-toolbar">
-          <div className="account-result-meta"><b>{rows.length}</b><span>/ {counts.all} tài khoản</span></div>
+          <div className="account-result-meta"><b>{rows.length}</b><span>/ {counts.all} tài khoản{selectedOutsideFilter?' · +1 đang mở ngoài bộ lọc':''}</span></div>
           <span className="toolbar-note">Sắp xếp trực tiếp tại cột Username / Thời gian tạo</span>
         </div>
         {error&&<div className="error-box">Không thể tải dữ liệu tài khoản: {error.message}</div>}
-        {!error&&<PurchaseAccountTable rows={rows} selectedId={selected?.id} detailQuery={detailQuery} sort={sort}/>}
+        {!error&&<PurchaseAccountTable rows={displayRows} selectedId={selected?.id} detailQuery={detailQuery} sort={sort}/>} 
       </section>
 
       {sp.mode==='create'&&
