@@ -478,7 +478,7 @@ export async function restoreOrder(formData:FormData){
     const next=shouldTrack?nextTrackAt(new Date(),status as any):null
     const {error:shipmentError}=await supabase.from('shipments').update({
       tracking_enabled:shouldTrack,
-      tracking_interval_minutes:shouldTrack?(status==='OUT_FOR_DELIVERY'?60:120):null,
+      tracking_interval_minutes:status==='OUT_FOR_DELIVERY'?60:120,
       next_track_at:next?.toISOString()??null,
     }).eq('id',active.id)
     if(shipmentError){
