@@ -50,15 +50,15 @@ export default async function WarehouseTransfersPage({searchParams}:{searchParam
     <header className="page-head warehouse-page-head">
       <div>
         <span className="module-eyebrow">VẬN HÀNH KHO</span>
-        <h1>Chuyển kho</h1>
-        <p>Phiếu inbound từ khu nhận hàng và chuyển tồn giữa các kho nội bộ.</p>
+        <h1>Chuyển kho <span className="warehouse-optional-tag">Tùy chọn</span></h1>
+        <p>Công cụ phụ dùng khi cần điều chuyển tồn giữa các kho; không nằm trong luồng nhập kho bắt buộc.</p>
       </div>
       <div className="head-actions">
-        <Link className="button" href="/warehouse/receive">Nhập kho</Link>
+        <Link className="button" href="/warehouse/inventory">← Quay lại Tồn kho</Link>
       </div>
     </header>
 
-    <WarehouseSectionNav active="/warehouse/transfers"/>
+    <WarehouseSectionNav active="/warehouse/inventory"/>
     {error&&<div className="error-box">Không thể tải dữ liệu chuyển kho: {error.message}</div>}
 
     <section className="warehouse-status-strip">
