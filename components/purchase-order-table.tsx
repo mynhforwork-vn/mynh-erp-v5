@@ -38,6 +38,7 @@ const LABELS:Record<ColKey,string>={
   status:'Xử lý',
 }
 const STORAGE_COLUMNS='mynh-v5-purchase-order-columns'
+const STORAGE_COLUMN_ORDER='mynh-v5-purchase-order-column-order'
 const STORAGE_SORT='mynh-v5-purchase-order-sort'
 
 function activeShipment(order:Row){
@@ -76,31 +77,36 @@ function OrderLifecycleCell({
   returnQuery,
   canManage,
   canDeletePermanent,
+  open,
+  onToggle,
+  onClose,
 }:{
   row:Row
   returnQuery:string
   canManage:boolean
   canDeletePermanent:boolean
+  open:boolean
+  onToggle:()=>void
+  onClose:()=>void
 }){
-  const [menuOpen,setMenuOpen]=useState(false)
   const [deleteOpen,setDeleteOpen]=useState(false)
-  if(!canManage)return <span className="row-action-readonly">—</span>
 
-  function closeMenu(){
-    setMenuOpen(false)
-    setDeleteOpen(false)
-  }
+  useEffect(()=>{
+    if(!open)setDeleteOpen(false)
+  },[open])
+
+  if(!canManage)return <span className="row-action-readonly">—</span>
 
   return <div className="row-action-menu-wrap">
     <button
       type="button"
       className="row-action-kebab"
       aria-label="Mở thao tác"
-      aria-expanded={menuOpen}
-      onClick={()=>{setMenuOpen(v=>!v);setDeleteOpen(false)}}
-    >•••</button>
+      aria-expanded={open}
+      onClick={onToggle}
+    ><span aria-hidden="true">⋮</span></button>
 
-    {menuOpen&&<div className="row-action-menu">
+    {open&&<div className="row-action-menu">
       {row.archived_at
         ? <form action={restoreOrder} className="row-action-menu-form">
             <input type="hidden" name="order_id" value={row.id}/>
@@ -148,7 +154,7 @@ function OrderLifecycleCell({
         </div>}
       </>}
 
-      <button type="button" className="row-action-menu-dismiss" onClick={closeMenu}>Đóng</button>
+      <button type="button" className="row-action-menu-dismiss" onClick={onClose}>Đóng</button>
     </div>}
   </div>
 }
@@ -225,10 +231,12 @@ export function PurchaseOrderTable({
   carrierConfigs?:CarrierConfig[]
 }){
   const [visible,setVisible]=useState<ColKey[]>(ALL)
+  const [columnOrder,setColumnOrder]=useState<ColKey[]>(ALL)
   const [open,setOpen]=useState(false)
   const [sort,setSort]=useState<SortKey>('time_new')
   const [selected,setSelected]=useState<string[]>([])
   const [bulkDeleteOpen,setBulkDeleteOpen]=useState(false)
+  const [openActionId,setOpenActionId]=useState<string|null>(null)
   const tableWrapRef=useRef<HTMLDivElement|null>(null)
 
   useEffect(()=>{
@@ -239,6 +247,15 @@ export function PurchaseOrderTable({
         if(Array.isArray(parsed)){
           const valid=parsed.filter((x:any)=>ALL.includes(x))
           if(valid.length)setVisible(valid)
+        }
+      }
+      const rawOrder=localStorage.getItem(STORAGE_COLUMN_ORDER)
+      if(rawOrder){
+        const parsedOrder=JSON.parse(rawOrder)
+        if(Array.isArray(parsedOrder)){
+          const validOrder=parsedOrder.filter((x:any)=>ALL.includes(x))
+          const missing=ALL.filter(x=>!validOrder.includes(x))
+          if(validOrder.length)setColumnOrder([...validOrder,...missing])
         }
       }
       const savedSort=localStorage.getItem(STORAGE_SORT) as SortKey|null
@@ -255,10 +272,44 @@ export function PurchaseOrderTable({
     return ()=>window.clearTimeout(timer)
   },[selectedId,sort,visible])
 
+  useEffect(()=>{
+    if(!openActionId)return
+    function onPointerDown(event:PointerEvent){
+      const target=event.target as HTMLElement|null
+      if(target?.closest('.row-action-menu-wrap'))return
+      setOpenActionId(null)
+    }
+    function onKeyDown(event:KeyboardEvent){
+      if(event.key==='Escape')setOpenActionId(null)
+    }
+    document.addEventListener('pointerdown',onPointerDown)
+    document.addEventListener('keydown',onKeyDown)
+    return ()=>{
+      document.removeEventListener('pointerdown',onPointerDown)
+      document.removeEventListener('keydown',onKeyDown)
+    }
+  },[openActionId])
+
 
   function persistColumns(next:ColKey[]){
     setVisible(next)
     try{localStorage.setItem(STORAGE_COLUMNS,JSON.stringify(next))}catch{}
+  }
+  function persistColumnOrder(next:ColKey[]){
+    setColumnOrder(next)
+    try{localStorage.setItem(STORAGE_COLUMN_ORDER,JSON.stringify(next))}catch{}
+  }
+  function moveColumn(key:ColKey,direction:-1|1){
+    const index=columnOrder.indexOf(key)
+    const nextIndex=index+direction
+    if(index<0||nextIndex<0||nextIndex>=columnOrder.length)return
+    const next=[...columnOrder]
+    ;[next[index],next[nextIndex]]=[next[nextIndex],next[index]]
+    persistColumnOrder(next)
+  }
+  function resetColumns(){
+    persistColumns(ALL)
+    persistColumnOrder(ALL)
   }
   function toggleColumn(key:ColKey){
     if(key==='order')return
@@ -375,13 +426,19 @@ export function PurchaseOrderTable({
       </button>
       {open&&<div className="column-manager-menu">
         <div className="column-manager-head">
-          <b>Ẩn / hiện cột</b>
-          <button type="button" onClick={()=>persistColumns(ALL)}>↺ Mặc định</button>
+          <b>Cột & thứ tự</b>
+          <button type="button" onClick={resetColumns}>↺ Mặc định</button>
         </div>
-        {ALL.map(k=><label key={k} className={k==='order'?'locked':''}>
-          <input type="checkbox" checked={visible.includes(k)} disabled={k==='order'} onChange={()=>toggleColumn(k)}/>
-          <span>{LABELS[k]}</span>
-        </label>)}
+        {columnOrder.map((k,index)=><div key={k} className={'column-manager-row '+(k==='order'?'locked':'')}>
+          <label>
+            <input type="checkbox" checked={visible.includes(k)} disabled={k==='order'} onChange={()=>toggleColumn(k)}/>
+            <span>{LABELS[k]}</span>
+          </label>
+          <div className="column-order-actions">
+            <button type="button" onClick={()=>moveColumn(k,-1)} disabled={index===0} title="Sang trái">←</button>
+            <button type="button" onClick={()=>moveColumn(k,1)} disabled={index===columnOrder.length-1} title="Sang phải">→</button>
+          </div>
+        </div>)}
       </div>}
     </div>
 
