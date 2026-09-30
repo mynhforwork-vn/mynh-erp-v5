@@ -320,7 +320,7 @@ export function PurchaseAccountTable({
             <input type="checkbox" aria-label="Chọn tối đa 200 User" checked={allSelected} onChange={toggleSelectAll} disabled={!rows.length}/>
           </th>}
           {columnOrder.filter(isVisible).map(renderHeader)}
-          <th className="row-actions-head" aria-label="Thao tác"><span>•••</span></th>
+          <th className="row-actions-head" aria-label="Thao tác"></th>
         </tr></thead>
         <tbody>
           {!rows.length
