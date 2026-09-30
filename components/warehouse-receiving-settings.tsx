@@ -64,7 +64,7 @@ export function WarehouseReceivingSettings({
           <select name="default_receiving_warehouse_id" required defaultValue={defaultReceivingWarehouseId??''}>
             <option value="" disabled>Chọn kho nhận</option>
             {warehouses.map(warehouse=><option value={warehouse.id} key={warehouse.id}>
-              {warehouse.code} · {warehouse.name}
+              {warehouse.code} · {warehouse.address||warehouse.name}
             </option>)}
           </select>
         </label>
@@ -72,7 +72,7 @@ export function WarehouseReceivingSettings({
         <div className="whx-settings-current">
           <span>Đang sử dụng</span>
           {active
-            ? <div><b>{active.code} · {active.name}</b><small>{active.address||'Chưa có địa chỉ kho'}</small></div>
+            ? <div><b>{active.code} · {active.address||active.name}</b><small>{active.name}</small></div>
             : <div><b>Chưa cấu hình</b><small>Cần chọn kho nhận mặc định.</small></div>}
         </div>
 
