@@ -38,7 +38,7 @@ export function TrackingHubGroup({
   contextQuery?:string
   defaultOpen?:boolean
 }){
-  const eligible=rows.filter(r=>r.receive_status==='WAITING_RECEIVE')
+  const eligible=rows.filter(r=>r.receive_status==='WAITING_RECEIVE'&&r.tracking_status==='DELIVERED')
   const atHub=rows.filter(r=>r.tracking_status==='ARRIVED_DESTINATION_HUB').length
   const outForDelivery=rows.filter(r=>r.tracking_status==='OUT_FOR_DELIVERY').length
   const failed=rows.filter(r=>r.tracking_status==='DELIVERY_FAILED').length
@@ -143,7 +143,7 @@ export function TrackingHubGroup({
           </tr></thead>
           <tbody>
             {rows.map(r=>{
-              const canReceive=r.receive_status==='WAITING_RECEIVE'
+              const canReceive=r.receive_status==='WAITING_RECEIVE'&&r.tracking_status==='DELIVERED'
               return <tr key={r.id} className={canReceive?'tracking-row-waiting':''}>
                 <td className="select-col">
                   <input
