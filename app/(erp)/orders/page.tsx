@@ -691,7 +691,13 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                 </div>
                 <div>
                   <span>Trạng thái kho</span>
-                  <b>{detail.warehouse_status==='WAREHOUSE_RECEIVED'?'Đã nhập kho':detail.receive_status==='RECEIVED'?'Chờ bóc tách / nhập kho':'Chưa vào kho'}</b>
+                  <b>{detail.warehouse_status==='WAREHOUSE_RECEIVED'
+                    ? 'Đã nhập kho'
+                    : detail.warehouse_status==='WAREHOUSE_SKIPPED'
+                      ? 'Bỏ qua kho'
+                      : detail.receive_status==='RECEIVED'
+                        ? 'Chờ bóc tách / nhập kho'
+                        : 'Chưa vào kho'}</b>
                 </div>
                 <div>
                   <span>Kho nhận</span>
@@ -764,7 +770,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                 <div className="timeline">
                   {warehouseAuditRows.map((a:any)=><div className="timeline-item" key={'warehouse-audit-'+a.id}>
                     <i></i><div>
-                      <b>{a.action==='MAP_INVENTORY_SKU'?'Bóc tách / mapping SKU':a.action==='RECEIVE_INTO_STOCK'?'Xác nhận nhập kho':a.action}</b>
+                      <b>{a.action==='MAP_INVENTORY_SKU'?'Bóc tách / mapping SKU':a.action==='RECEIVE_INTO_STOCK'?'Xác nhận nhập kho':a.action==='SKIP_WAREHOUSE'?'Bỏ qua kho':a.action}</b>
                       <span>{sourceLabel(a.source??'USER')}</span>
                       <small>{formatDateTime(a.created_at)}</small>
                     </div>
