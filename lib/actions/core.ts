@@ -581,7 +581,7 @@ export async function restoreOrder(formData:FormData){
 
   const {data:row,error:readError}=await supabase
     .from('orders')
-    .select('id,shopee_order_id,archived_at,archived_by,shipments(id,tracking_number,current_tracking_status,is_active)')
+    .select('id,shopee_order_id,shipping_service,archived_at,archived_by,shipments(id,tracking_number,current_tracking_status,is_active)')
     .eq('id',orderId)
     .maybeSingle()
   if(readError)throw new Error(readError.message)
@@ -597,6 +597,7 @@ export async function restoreOrder(formData:FormData){
   const active=(row.shipments??[]).find((x:any)=>x.is_active)??null
   const status=String(active?.current_tracking_status??(active?.tracking_number?'READY_TO_SHIP':''))
   const shouldTrack=Boolean(
+    row.shipping_service!=='EXPRESS' &&
     active?.tracking_number &&
     status &&
     !['DELIVERED','CANCELLED','RETURNED'].includes(status)
@@ -801,7 +802,7 @@ export async function restoreOrdersBulk(formData:FormData){
 
   const {data:rows,error:readError}=await supabase
     .from('orders')
-    .select('id,shopee_order_id,archived_at,archived_by,shipments(id,tracking_number,current_tracking_status,is_active)')
+    .select('id,shopee_order_id,shipping_service,archived_at,archived_by,shipments(id,tracking_number,current_tracking_status,is_active)')
     .in('id',orderIds)
   if(readError)throw new Error(readError.message)
   if((rows??[]).length!==orderIds.length)throw new Error('Có đơn không tồn tại hoặc không có quyền truy cập')
@@ -820,6 +821,7 @@ export async function restoreOrdersBulk(formData:FormData){
       if(!active?.id)continue
       const status=String(active.current_tracking_status??(active.tracking_number?'READY_TO_SHIP':''))
       const shouldTrack=Boolean(
+        row.shipping_service!=='EXPRESS' &&
         active.tracking_number &&
         status &&
         !['DELIVERED','CANCELLED','RETURNED'].includes(status)
@@ -1523,8 +1525,17 @@ export async function replaceShipment(formData:FormData){
   const returnQuery=text(formData.get('return_query'))
   const orderId=text(formData.get('order_id'))
   const trackingNumber=text(formData.get('tracking_number'))
-  const carrier=text(formData.get('carrier'))||null
   if(!orderId||!trackingNumber)throw new Error('Thiếu đơn hàng hoặc mã vận đơn')
+
+  const {data:order,error:orderError}=await supabase
+    .from('orders')
+    .select('id,shipping_service')
+    .eq('id',orderId)
+    .maybeSingle()
+  if(orderError)throw new Error(orderError.message)
+  if(!order)throw new Error('Đơn hàng không tồn tại')
+  const isExpress=order.shipping_service==='EXPRESS'
+  const carrier=isExpress?'Hỏa tốc':(text(formData.get('carrier'))||null)
 
   const {data:old,error:oldError}=await supabase.from('shipments').select('id,tracking_number,carrier').eq('order_id',orderId).eq('is_active',true)
   if(oldError)throw new Error(oldError.message)
@@ -1538,14 +1549,20 @@ export async function replaceShipment(formData:FormData){
     if(error)throw new Error(error.message)
   }
 
-  const next=nextTrackAt(new Date(),'READY_TO_SHIP')
+  const next=isExpress?null:nextTrackAt(new Date(),'READY_TO_SHIP')
   const {error:newError}=await supabase.from('shipments').insert({
     order_id:orderId,tracking_number:trackingNumber,carrier,
-    current_tracking_status:'READY_TO_SHIP',tracking_enabled:true,
-    tracking_interval_minutes:120,next_track_at:next?.toISOString()??null,is_active:true
+    current_tracking_status:isExpress?'UNKNOWN':'READY_TO_SHIP',
+    tracking_enabled:!isExpress,
+    tracking_interval_minutes:120,
+    next_track_at:next?.toISOString()??null,
+    is_active:true
   })
   if(newError){
-    if(ids.length)await supabase.from('shipments').update({is_active:true,tracking_enabled:true}).in('id',ids)
+    if(ids.length)await supabase.from('shipments').update({
+      is_active:true,
+      tracking_enabled:!isExpress,
+    }).in('id',ids)
     throw new Error(newError.message)
   }
 
@@ -1558,5 +1575,5 @@ export async function replaceShipment(formData:FormData){
   })
 
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/')
-  redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,settings:null,tab:'tracking'}))
+  redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,settings:null,tab:isExpress?'info':'tracking'}))
 }
