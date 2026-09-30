@@ -8,6 +8,7 @@ import { OrderEditorForm } from '@/components/order-editor-form'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import { PurchaseOrderTable } from '@/components/purchase-order-table'
 import { DestinationHubConfigModal } from '@/components/destination-hub-config-panel'
+import { suggestReceivingWarehouseId } from '@/lib/warehouse-routing'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
 type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,user?:string,settings?:string,archive?:string}
@@ -320,6 +321,11 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   )
   const detailReceive=(receiveHistory[0] as any)?.receive_batches??null
   const defaultReceivingWarehouseId=(warehouseSettings as any)?.default_receiving_warehouse_id??''
+  const suggestedReceivingWarehouseId=detail
+    ? suggestReceivingWarehouseId(detail.recipient_address,(receivingWarehouses??[]) as any[])
+    : null
+  const suggestedReceivingWarehouse=(receivingWarehouses??[] as any[])
+    .find((warehouse:any)=>warehouse.id===suggestedReceivingWarehouseId)??null
   const returnQuery=listHref().split('?')[1]??''
 
   return <div className="order-screen">
@@ -566,10 +572,15 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                         <b>Bước 2 · Xác nhận nhận hàng</b>
                         <span>Sau xác nhận, đơn chuyển sang Nhập kho và không đi qua Cảnh báo vận chuyển.</span>
                       </div>
-                      <select name="warehouse_id" required defaultValue={defaultReceivingWarehouseId}>
-                        <option value="" disabled>Chọn Kho nhận</option>
-                        {(receivingWarehouses??[]).map((w:any)=><option value={w.id} key={w.id}>{w.code} · {w.address??w.name}</option>)}
-                      </select>
+                      <div className="express-receiving-select">
+                        <select name="warehouse_id" required defaultValue={suggestedReceivingWarehouseId??defaultReceivingWarehouseId}>
+                          <option value="" disabled>Chọn Kho nhận</option>
+                          {(receivingWarehouses??[]).map((w:any)=><option value={w.id} key={w.id}>{w.code} · {w.address??w.name}</option>)}
+                        </select>
+                        {suggestedReceivingWarehouse&&<small>
+                          Gợi ý theo địa chỉ: {suggestedReceivingWarehouse.code} · {suggestedReceivingWarehouse.address??suggestedReceivingWarehouse.name}
+                        </small>}
+                      </div>
                       <button className="button small primary" type="submit">Xác nhận nhận hàng</button>
                     </form>}
 
