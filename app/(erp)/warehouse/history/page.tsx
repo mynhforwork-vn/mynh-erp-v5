@@ -140,7 +140,7 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
         <select name="warehouse" defaultValue={sp.warehouse??''}>
           <option value="">Tất cả kho</option>
           {(warehouses??[]).map((warehouse:any)=><option key={warehouse.id} value={warehouse.id}>
-            {warehouse.code} · {warehouse.name}
+            {warehouse.code} · {warehouse.address??warehouse.name}
           </option>)}
         </select>
         <button className="button small" type="submit">Lọc</button>
