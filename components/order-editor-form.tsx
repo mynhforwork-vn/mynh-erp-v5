@@ -35,6 +35,14 @@ type DestinationHubConfig={
   assigned_shippers?:Array<{id:string,name:string,phone?:string|null}>
   priority?:number|null
 }
+type CarrierConfig={
+  id:string
+  carrier_code:string
+  display_name:string
+  tracking_prefixes?:string[]|null
+  supports_destination_hub?:boolean|null
+  priority?:number|null
+}
 type Voucher={
   voucher_code?:string|null
   voucher_name?:string|null
@@ -66,15 +74,15 @@ type Values={
 function emptyItem():Item{return {sku:'',product_name:'',variant:'',quantity:1,original_price:'',final_price:''}}
 function emptyVoucher():Voucher{return {voucher_code:'',voucher_name:'',voucher_type:'',voucher_tag:'',voucher_account:''}}
 
-function detectCarrier(value:string){
+function detectCarrierConfig(value:string,configs:CarrierConfig[]){
   const v=value.trim().toUpperCase()
-  if(!v)return ''
-  if(v.startsWith('SPX'))return 'SPX Express'
-  if(v.startsWith('GHN'))return 'Giao Hàng Nhanh'
-  if(v.startsWith('GHTK'))return 'Giao Hàng Tiết Kiệm'
-  if(v.startsWith('VTP')||v.startsWith('VTPN'))return 'Viettel Post'
-  if(v.startsWith('JNT')||v.startsWith('JT'))return 'J&T Express'
-  return ''
+  if(!v)return null
+  return configs.find(row=>
+    (row.tracking_prefixes??[]).some(prefix=>{
+      const p=String(prefix??'').trim().toUpperCase()
+      return Boolean(p)&&v.startsWith(p)
+    })
+  )??null
 }
 
 function normalizePhone(value?:string|null){
@@ -131,6 +139,7 @@ export function OrderEditorForm({
   voucherTypes=[],
   voucherTags=[],
   destinationHubs=[],
+  carrierConfigs=[],
 }:{
   mode:'create'|'edit'
   users:UserOption[]
@@ -143,6 +152,7 @@ export function OrderEditorForm({
   voucherTypes?:string[]
   voucherTags?:string[]
   destinationHubs?:DestinationHubConfig[]
+  carrierConfigs?:CarrierConfig[]
 }){
   const selectableUsers=useMemo(
     ()=>users.filter(u=>u.status!=='Blocked'||u.id===values.erp_user_id),
@@ -155,7 +165,8 @@ export function OrderEditorForm({
   const [items,setItems]=useState<Item[]>(initialItems.length?initialItems:[emptyItem()])
   const [vouchers,setVouchers]=useState<Voucher[]>(initialVouchers.length?initialVouchers:[emptyVoucher()])
   const [trackingNumber,setTrackingNumber]=useState(String(values.tracking_number??''))
-  const [carrier,setCarrier]=useState(String(values.carrier??detectCarrier(String(values.tracking_number??''))))
+  const initialCarrierConfig=detectCarrierConfig(String(values.tracking_number??''),carrierConfigs)
+  const [carrier,setCarrier]=useState(String(values.carrier??initialCarrierConfig?.display_name??''))
   const [carrierEdited,setCarrierEdited]=useState(Boolean(values.carrier))
   const [shippingService,setShippingService]=useState(values.shipping_service==='EXPRESS'?'EXPRESS':'STANDARD')
   const [recipientAddress,setRecipientAddress]=useState(String(values.recipient_address??''))
@@ -197,6 +208,11 @@ export function OrderEditorForm({
     ()=>sortedHubs.find(h=>h.hub_code===destinationHub)??null,
     [sortedHubs,destinationHub]
   )
+  const selectedCarrierConfig=useMemo(
+    ()=>carrierConfigs.find(x=>x.display_name===carrier)??null,
+    [carrierConfigs,carrier]
+  )
+  const usesDestinationHub=Boolean(selectedCarrierConfig?.supports_destination_hub)
 
   const selectedUser=selectableUsers.find(u=>u.id===selectedUserId)??null
   const filteredUsers=useMemo(()=>{
@@ -215,7 +231,30 @@ export function OrderEditorForm({
 
   function onTrackingChange(value:string){
     setTrackingNumber(value)
-    if(!carrierEdited)setCarrier(detectCarrier(value))
+    if(carrierEdited)return
+
+    const detected=detectCarrierConfig(value,carrierConfigs)
+    setCarrier(detected?.display_name??'')
+    if(detected?.supports_destination_hub){
+      if(recipientAddress.trim())resolveDestination(recipientAddress)
+    }else{
+      setDestinationHub('')
+      setDerivedArea('')
+      setDerivedRegion('')
+    }
+  }
+
+  function selectCarrier(value:string){
+    setCarrier(value)
+    setCarrierEdited(Boolean(value))
+    const config=carrierConfigs.find(x=>x.display_name===value)??null
+    if(config?.supports_destination_hub){
+      if(recipientAddress.trim())resolveDestination(recipientAddress)
+    }else{
+      setDestinationHub('')
+      setDerivedArea('')
+      setDerivedRegion('')
+    }
   }
 
   function updateItem(index:number,patch:Partial<Item>){
@@ -287,12 +326,12 @@ export function OrderEditorForm({
       setDerivedRegion('')
       return
     }
-    if(recipientAddress.trim())resolveDestination(recipientAddress)
+    if(usesDestinationHub&&recipientAddress.trim())resolveDestination(recipientAddress)
   }
 
   function onAddressChange(value:string){
     setRecipientAddress(value)
-    if(shippingService==='STANDARD')resolveDestination(value)
+    if(shippingService==='STANDARD'&&usesDestinationHub)resolveDestination(value)
   }
 
   function selectDestinationHub(value:string){
@@ -508,19 +547,29 @@ export function OrderEditorForm({
 
             <div className="form-grid">
               <label>Đơn vị vận chuyển
-                <input
+                <select
                   name="carrier"
                   value={carrier}
-                  onChange={e=>{setCarrier(e.target.value);setCarrierEdited(true)}}
-                  placeholder="Tự nhận diện, có thể sửa"
-                />
-              </label>
-              <label>Kho đích
-                <select name="destination_hub" value={destinationHub} onChange={e=>selectDestinationHub(e.target.value)}>
-                  <option value="">— Tự nhận diện / Chưa xác định —</option>
-                  {sortedHubs.map(h=><option key={h.id} value={h.hub_code}>{h.hub_code}</option>)}
+                  onChange={e=>selectCarrier(e.target.value)}
+                >
+                  <option value="">— Chọn / tự nhận diện theo MVĐ —</option>
+                  {carrier&& !carrierConfigs.some(x=>x.display_name===carrier)&&<option value={carrier}>{carrier}</option>}
+                  {carrierConfigs.map(row=><option key={row.id} value={row.display_name}>{row.carrier_code} · {row.display_name}</option>)}
                 </select>
               </label>
+
+              {usesDestinationHub
+                ? <label>Kho đích SPX
+                    <select name="destination_hub" value={destinationHub} onChange={e=>selectDestinationHub(e.target.value)}>
+                      <option value="">— Tự nhận diện / Chưa xác định —</option>
+                      {sortedHubs.map(h=><option key={h.id} value={h.hub_code}>{h.hub_code}</option>)}
+                    </select>
+                  </label>
+                : <div className="carrier-routing-state">
+                    <span>Kho đích</span>
+                    <b>{carrier?'Không áp dụng':'Chưa xác định ĐVVC'}</b>
+                    <small>{carrier?'Chỉ SPX sử dụng HUB kho đích':'Nhập MVĐ hoặc chọn ĐVVC'}</small>
+                  </div>}
             </div>
           </>
         : <div className="express-shipper-box">
