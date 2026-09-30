@@ -241,7 +241,6 @@ export function TrackingHubGroup({
                 <input
                   name="actual_transferred"
                   type="number"
-                  min={selectedCod}
                   step="1"
                   value={actualTransferred}
                   onChange={e=>setActualTransferred(e.target.value)}
