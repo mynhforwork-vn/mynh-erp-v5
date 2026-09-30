@@ -202,6 +202,54 @@ export async function receiveOrdersIntoWarehouse(formData:FormData){
   revalidateWarehouse()
 }
 
+export async function saveReceivingWarehouseSettings(formData:FormData){
+  const {supabase,user}=await actor()
+
+  const warehouseId=text(formData.get('default_receiving_warehouse_id'))
+  if(!warehouseId)throw new Error('Chưa chọn Kho nhận mặc định')
+
+  const {data:warehouse,error:warehouseError}=await supabase
+    .from('warehouses')
+    .select('id,code,name,is_active')
+    .eq('id',warehouseId)
+    .maybeSingle()
+  if(warehouseError)throw new Error(warehouseError.message)
+  if(!warehouse||!warehouse.is_active)throw new Error('Kho nhận đã chọn không còn hoạt động')
+
+  const {data:current,error:currentError}=await supabase
+    .from('warehouse_settings')
+    .select('default_receiving_warehouse_id')
+    .eq('id','main')
+    .single()
+  if(currentError)throw new Error(currentError.message)
+
+  const {error}=await supabase
+    .from('warehouse_settings')
+    .update({
+      default_receiving_warehouse_id:warehouseId,
+      updated_at:new Date().toISOString(),
+    })
+    .eq('id','main')
+  if(error)throw new Error(error.message)
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,
+    module:'WAREHOUSE',
+    action:'UPDATE_RECEIVING_WAREHOUSE',
+    entity_type:'SYSTEM',
+    entity_id:null,
+    old_value:{default_receiving_warehouse_id:current.default_receiving_warehouse_id},
+    new_value:{
+      default_receiving_warehouse_id:warehouseId,
+      warehouse_code:warehouse.code,
+      warehouse_name:warehouse.name,
+    },
+    source:'USER',
+  })
+
+  revalidateWarehouse()
+}
+
 export async function stocktakeWarehouseSku(formData:FormData){
   const {supabase,user}=await actor()
 
