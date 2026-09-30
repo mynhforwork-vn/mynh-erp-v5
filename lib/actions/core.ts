@@ -88,6 +88,7 @@ export async function createERPUser(formData:FormData){
 export async function updateERPUser(formData:FormData){
   const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
+  const tableAction=text(formData.get('table_action'))==='1'
   const userId=text(formData.get('user_id'))
   if(!userId)throw new Error('Thiếu tài khoản cần cập nhật')
 
@@ -172,12 +173,15 @@ export async function archiveERPUser(formData:FormData){
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:'archived'}))
+  redirect(tableAction
+    ? returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:null})
+    : returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:'archived'}))
 }
 
 export async function restoreERPUser(formData:FormData){
   const {supabase,user}=await actor()
   const returnQuery=text(formData.get('return_query'))
+  const tableAction=text(formData.get('table_action'))==='1'
   const userId=text(formData.get('user_id'))
   if(!userId)throw new Error('Thiếu User cần khôi phục')
 
@@ -210,7 +214,9 @@ export async function restoreERPUser(formData:FormData){
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:null}))
+  redirect(tableAction
+    ? returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'})
+    : returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:null}))
 }
 
 function numberOrNull(v:FormDataEntryValue|null){
@@ -400,6 +406,7 @@ export async function updateOrder(formData:FormData){
 export async function archiveOrder(formData:FormData){
   const {supabase,user}=await actor()
   const returnQuery=text(formData.get('return_query'))
+  const tableAction=text(formData.get('table_action'))==='1'
   const orderId=text(formData.get('order_id'))
   if(!orderId)throw new Error('Thiếu đơn cần lưu trữ')
 
@@ -445,12 +452,15 @@ export async function archiveOrder(formData:FormData){
   revalidatePath('/warehouse')
   revalidatePath('/warehouse/receive')
   revalidatePath('/')
-  redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,tab:'info',archive:'archived'}))
+  redirect(tableAction
+    ? returnHref('/purchase/orders',returnQuery,{order:null,mode:null,tab:null,archive:null})
+    : returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,tab:'info',archive:'archived'}))
 }
 
 export async function restoreOrder(formData:FormData){
   const {supabase,user}=await actor()
   const returnQuery=text(formData.get('return_query'))
+  const tableAction=text(formData.get('table_action'))==='1'
   const orderId=text(formData.get('order_id'))
   if(!orderId)throw new Error('Thiếu đơn cần khôi phục')
 
@@ -509,7 +519,9 @@ export async function restoreOrder(formData:FormData){
   revalidatePath('/warehouse')
   revalidatePath('/warehouse/receive')
   revalidatePath('/')
-  redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,tab:'info',archive:null}))
+  redirect(tableAction
+    ? returnHref('/purchase/orders',returnQuery,{order:null,mode:null,tab:null,archive:'archived'})
+    : returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,tab:'info',archive:null}))
 }
 
 export async function deleteOrderPermanent(formData:FormData){
