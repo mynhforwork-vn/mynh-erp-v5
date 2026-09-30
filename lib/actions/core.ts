@@ -240,6 +240,9 @@ export async function deleteERPUserPermanent(formData:FormData){
     throw new Error('User đã có đơn hàng nên không thể xóa vĩnh viễn. Hãy giữ ở trạng thái Lưu trữ.')
   }
 
+  const {error}=await supabase.from('erp_users').delete().eq('id',userId)
+  if(error)throw new Error(error.message)
+
   await supabase.from('audit_logs').insert({
     actor_user_id:user.id,
     module:'USERS',
@@ -256,9 +259,6 @@ export async function deleteERPUserPermanent(formData:FormData){
     new_value:{deleted:true},
     source:'USER',
   })
-
-  const {error}=await supabase.from('erp_users').delete().eq('id',userId)
-  if(error)throw new Error(error.message)
 
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase')
@@ -475,7 +475,10 @@ export async function archiveOrder(formData:FormData){
     tracking_enabled:false,
     next_track_at:null,
   }).eq('order_id',orderId).eq('is_active',true)
-  if(shipmentError)throw new Error(shipmentError.message)
+  if(shipmentError){
+    await supabase.from('orders').update({archived_at:null,archived_by:null}).eq('id',orderId)
+    throw new Error(shipmentError.message)
+  }
 
   await supabase.from('audit_logs').insert({
     actor_user_id:user.id,
@@ -503,7 +506,7 @@ export async function restoreOrder(formData:FormData){
 
   const {data:row,error:readError}=await supabase
     .from('orders')
-    .select('id,shopee_order_id,archived_at,shipments(id,tracking_number,current_tracking_status,is_active)')
+    .select('id,shopee_order_id,archived_at,archived_by,shipments(id,tracking_number,current_tracking_status,is_active)')
     .eq('id',orderId)
     .maybeSingle()
   if(readError)throw new Error(readError.message)
@@ -517,7 +520,7 @@ export async function restoreOrder(formData:FormData){
   if(error)throw new Error(error.message)
 
   const active=(row.shipments??[]).find((x:any)=>x.is_active)??null
-  const status=String(active?.current_tracking_status??'')
+  const status=String(active?.current_tracking_status??(active?.tracking_number?'READY_TO_SHIP':''))
   const shouldTrack=Boolean(
     active?.tracking_number &&
     status &&
@@ -530,7 +533,13 @@ export async function restoreOrder(formData:FormData){
       tracking_interval_minutes:shouldTrack?(status==='OUT_FOR_DELIVERY'?60:120):null,
       next_track_at:next?.toISOString()??null,
     }).eq('id',active.id)
-    if(shipmentError)throw new Error(shipmentError.message)
+    if(shipmentError){
+      await supabase.from('orders').update({
+        archived_at:row.archived_at,
+        archived_by:row.archived_by,
+      }).eq('id',orderId)
+      throw new Error(shipmentError.message)
+    }
   }
 
   await supabase.from('audit_logs').insert({
@@ -582,6 +591,9 @@ export async function deleteOrderPermanent(formData:FormData){
     throw new Error('Đơn đã phát sinh nhận hàng, đối soát hoặc chuyển kho nên không thể xóa vĩnh viễn. Hãy giữ ở trạng thái Lưu trữ.')
   }
 
+  const {error}=await supabase.from('orders').delete().eq('id',orderId)
+  if(error)throw new Error(error.message)
+
   await supabase.from('audit_logs').insert({
     actor_user_id:user.id,
     module:'ORDERS',
@@ -600,9 +612,6 @@ export async function deleteOrderPermanent(formData:FormData){
     new_value:{deleted:true},
     source:'USER',
   })
-
-  const {error}=await supabase.from('orders').delete().eq('id',orderId)
-  if(error)throw new Error(error.message)
 
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase/tracking')
