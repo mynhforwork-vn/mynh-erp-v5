@@ -165,7 +165,7 @@ function HubEditor({
 
         <div className="destination-assignment-list">
           {!assignmentOptions.length
-            ? <div className="destination-empty">Chưa có Shipper. Mở “Quản lý Shipper” để thêm mới.</div>
+            ? <div className="destination-empty">Chưa có Shipper. Mở “Shipper SPX” để thêm mới.</div>
             : assignmentOptions.map(shipper=><label className="destination-assignment-row" key={shipper.id}>
                 <input
                   type="checkbox"
@@ -220,8 +220,8 @@ function ShipperManager({
   return <div className="destination-shipper-manager">
     <div className="destination-detail-head">
       <div>
-        <span className="module-eyebrow">DANH MỤC DÙNG CHUNG</span>
-        <h3>Quản lý Shipper</h3>
+        <span className="module-eyebrow">SPX · DANH MỤC SHIPPER</span>
+        <h3>Shipper phụ trách SPX</h3>
         <p>Shipper có thể được gán cho nhiều HUB. Việc gán HUB thực hiện tại tab Shipper của từng HUB.</p>
       </div>
       <button type="button" className="button" onClick={onBack}>← Quay lại HUB</button>
@@ -319,7 +319,7 @@ export function DestinationHubSettings({
           className={mode==='hubs'?'active':''}
           onClick={()=>setMode('hubs')}
         >
-          HUB & địa bàn
+          SPX · HUB & địa bàn
           <small>{configs.length} HUB</small>
         </button>
         <button
@@ -327,7 +327,7 @@ export function DestinationHubSettings({
           className={mode==='shippers'?'active':''}
           onClick={()=>setMode('shippers')}
         >
-          Quản lý Shipper
+          Shipper SPX
           <small>{activeShipperCount} hoạt động</small>
         </button>
       </div>
@@ -342,7 +342,7 @@ export function DestinationHubSettings({
           <aside className="destination-hub-rail">
             <div className="destination-hub-rail-head">
               <div>
-                <b>HUB kho đích</b>
+                <b>HUB kho đích SPX</b>
                 <span>Chọn HUB để chỉnh sửa</span>
               </div>
               <button
@@ -382,7 +382,7 @@ export function DestinationHubSettings({
             <div className="destination-detail-head">
               <div>
                 <span className="module-eyebrow">{isNew?'TẠO MỚI':'HUB ĐANG CHỌN'}</span>
-                <h3>{isNew?'Tạo HUB kho đích':selectedHub?.hub_code??'Chọn HUB'}</h3>
+                <h3>{isNew?'Tạo HUB kho đích SPX':selectedHub?.hub_code??'Chọn HUB'}</h3>
                 <p>
                   {isNew
                     ? 'Khai báo thông tin, danh sách Phường/Xã và Shipper phụ trách.'
@@ -430,15 +430,15 @@ export function DestinationHubConfigModal({
   closeHref:string
 }){
   return <div className="settings-modal-backdrop" role="presentation">
-    <section className="settings-modal destination-hub-modal destination-hub-modal-v3" role="dialog" aria-modal="true" aria-label="Cấu hình kho đích">
+    <section className="settings-modal destination-hub-modal destination-hub-modal-v3" role="dialog" aria-modal="true" aria-label="Cấu hình kho đích SPX">
       <div className="settings-modal-head">
         <div>
           <span className="eyebrow">CÀI ĐẶT HỆ THỐNG</span>
-          <h2>Cấu hình kho đích</h2>
-          <p>Quản lý HUB → nhiều Phường/Xã → nhiều Shipper trong cùng một workspace.</p>
+          <h2>Cấu hình kho đích SPX</h2>
+          <p>Cấu hình riêng cho SPX: HUB → nhiều Phường/Xã → nhiều Shipper.</p>
         </div>
         <div className="settings-modal-actions">
-          <Link className="button" href="/settings">Cài đặt hệ thống</Link>
+          <Link className="button" href="/settings?section=spx-hubs">Cài đặt hệ thống</Link>
           <Link className="close" href={closeHref}>×</Link>
         </div>
       </div>
