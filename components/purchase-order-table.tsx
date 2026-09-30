@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
+import { quickAddTrackingNumber } from '@/lib/actions/core'
 
 type Row=Record<string,any>
 type ColKey='number'|'order'|'username'|'time'|'product'|'cod'|'tracking'|'carrier'|'voucher'|'status'
@@ -55,14 +56,65 @@ function ColumnIcon(){
   </svg>
 }
 
+function QuickTrackingEditor({
+  orderId,
+  returnQuery,
+}:{
+  orderId:string
+  returnQuery:string
+}){
+  const [editing,setEditing]=useState(false)
+  const [trackingNumber,setTrackingNumber]=useState('')
+  const [carrier,setCarrier]=useState('')
+
+  function changeTracking(value:string){
+    setTrackingNumber(value)
+    if(/^SPX/i.test(value))setCarrier('SPX Express')
+    else if(/^GHN/i.test(value))setCarrier('Giao Hàng Nhanh')
+  }
+
+  if(!editing){
+    return <button
+      type="button"
+      className="quick-tracking-trigger"
+      onClick={()=>setEditing(true)}
+      title="Cập nhật nhanh mã vận đơn"
+    >
+      + MVĐ
+    </button>
+  }
+
+  return <form action={quickAddTrackingNumber} className="quick-tracking-form">
+    <input type="hidden" name="order_id" value={orderId}/>
+    <input type="hidden" name="return_query" value={returnQuery}/>
+    <input
+      name="tracking_number"
+      value={trackingNumber}
+      onChange={e=>changeTracking(e.target.value)}
+      placeholder="Mã vận đơn"
+      autoFocus
+      required
+    />
+    <select name="carrier" value={carrier} onChange={e=>setCarrier(e.target.value)} required>
+      <option value="" disabled>ĐVVC</option>
+      <option value="SPX Express">SPX</option>
+      <option value="Giao Hàng Nhanh">GHN</option>
+    </select>
+    <button type="submit" className="quick-tracking-save">Lưu</button>
+    <button type="button" className="quick-tracking-cancel" onClick={()=>setEditing(false)} aria-label="Hủy">×</button>
+  </form>
+}
+
 export function PurchaseOrderTable({
   rows,
   selectedId,
   baseQuery='',
+  canEdit=false,
 }:{
   rows:Row[]
   selectedId?:string|null
   baseQuery?:string
+  canEdit?:boolean
 }){
   const [visible,setVisible]=useState<ColKey[]>(ALL)
   const [open,setOpen]=useState(false)
@@ -180,7 +232,15 @@ export function PurchaseOrderTable({
                   {isVisible('time')&&<td className="order-time-cell">{formatDateTime(o.order_date)}</td>}
                   {isVisible('product')&&<td className="truncate product-cell">{productSummary(o.order_items??[])}</td>}
                   {isVisible('cod')&&<td className="money">{formatMoney(o.cod)}</td>}
-                  {isVisible('tracking')&&<td>{o.shipping_service==='EXPRESS'?'Không áp dụng':s?.tracking_number??'Chưa có'}</td>}
+                  {isVisible('tracking')&&<td className="tracking-number-cell">
+                    {o.shipping_service==='EXPRESS'
+                      ? <span className="tracking-na">Không áp dụng</span>
+                      : s?.tracking_number
+                        ? <span className="tracking-number-value">{s.tracking_number}</span>
+                        : canEdit
+                          ? <QuickTrackingEditor orderId={o.id} returnQuery={baseQuery}/>
+                          : <span className="tracking-missing-text">Chưa có</span>}
+                  </td>}
                   {isVisible('carrier')&&<td>{o.shipping_service==='EXPRESS'?'Hỏa tốc':s?.carrier??'—'}</td>}
                   {isVisible('voucher')&&<td className="voucher-cell"><VoucherTags value={voucherSummary(o.order_vouchers??[])} compact maxVisible={2}/></td>}
                   {isVisible('status')&&<td>
