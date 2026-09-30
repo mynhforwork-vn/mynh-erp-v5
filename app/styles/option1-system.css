@@ -7945,7 +7945,7 @@ a{text-decoration:none}
   box-shadow:none!important;
 }
 .order-screen .entity-status-strip{
-  grid-template-columns:repeat(7,minmax(0,1fr))!important;
+  grid-template-columns:repeat(8,minmax(0,1fr))!important;
 }
 .account-screen .entity-status-strip{
   grid-template-columns:repeat(5,minmax(0,1fr))!important;
@@ -9756,7 +9756,7 @@ a{text-decoration:none}
 }
 @media(max-width:900px){
   .purchase-command-kpis-v2{
-    grid-template-columns:repeat(7,minmax(128px,1fr));
+    grid-template-columns:repeat(8,minmax(122px,1fr));
     overflow-x:auto;
     overscroll-behavior-inline:contain;
   }
@@ -9990,7 +9990,7 @@ a{text-decoration:none}
 
 /* Order tab KPI V2 — seven operational states, always one row */
 .order-screen .order-kpi-grid-v2{
-  grid-template-columns:repeat(7,minmax(0,1fr));
+  grid-template-columns:repeat(8,minmax(0,1fr));
   gap:5px;
 }
 @media(max-width:1380px){
@@ -10012,7 +10012,7 @@ a{text-decoration:none}
 }
 @media(max-width:900px){
   .order-screen .order-kpi-grid-v2{
-    grid-template-columns:repeat(7,minmax(128px,1fr));
+    grid-template-columns:repeat(8,minmax(122px,1fr));
     overflow-x:auto;
     overscroll-behavior-inline:contain;
   }
@@ -12426,4 +12426,43 @@ a{text-decoration:none}
 }
 .express-receiving-select select{
   width:100%;
+}
+
+/* =====================================================================
+   Express monitoring KPI and manual failure actions
+   ===================================================================== */
+.order-screen .entity-status-strip .entity-status-metric.express>b{
+  color:#9A5D13!important;
+}
+.order-screen .entity-status-strip .entity-status-metric.express.active{
+  background:#FFF8EC!important;
+  box-shadow:inset 0 -2px 0 #C8862C!important;
+}
+.express-delivery-actions{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.express-delivery-actions form{
+  display:flex;
+}
+.button.danger-soft{
+  border-color:#D4B3B3!important;
+  background:#FFF6F6!important;
+  color:#9B4F4F!important;
+}
+.button.danger-soft:hover{
+  border-color:#C99595!important;
+  background:#FFEDED!important;
+}
+.express-manual-action.failed{
+  background:#FFF6F6;
+  border-top:1px solid #E5CACA;
+}
+.express-manual-action.failed>div:first-child b{
+  color:#8D4747;
+}
+.express-manual-action.failed>div:first-child span{
+  color:#785B5B;
 }
