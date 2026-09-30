@@ -11920,3 +11920,454 @@ a{text-decoration:none}
   font-size:7.5px;
   font-weight:800;
 }
+
+/* =====================================================================
+   Warehouse receive grouped like tracking alerts
+   ===================================================================== */
+.warehouse-receive-screen{
+  --tracking-muted:#586B7E;
+  --tracking-line:#CBD7E1;
+}
+.warehouse-receive-screen>.warehouse-command-center{
+  margin-bottom:5px;
+}
+.warehouse-command-center .tracking-status-strip-v2{
+  grid-template-columns:repeat(5,minmax(0,1fr));
+}
+.warehouse-control-row{
+  grid-template-columns:190px minmax(0,1fr);
+}
+.warehouse-intake-rule{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:7px;
+  color:#56697C;
+  font-size:9px;
+}
+.warehouse-intake-rule b{
+  color:#2C455D;
+  font-size:9.5px;
+}
+.warehouse-intake-layout{
+  flex:1 1 auto!important;
+  min-height:0;
+  overflow:hidden;
+  align-items:stretch;
+}
+.warehouse-intake-layout.with-panel{
+  grid-template-columns:minmax(0,1fr) clamp(390px,29vw,430px);
+}
+.warehouse-receive-groups{
+  min-height:0;
+  overflow-y:auto!important;
+  overflow-x:hidden;
+  padding-right:2px;
+}
+.warehouse-receive-card{
+  border-color:#CBD7E1!important;
+}
+.warehouse-receive-card .tracking-hub-head-v2{
+  grid-template-columns:26px minmax(210px,.9fr) minmax(430px,1.8fr) auto;
+  background:#F6F9FB;
+}
+.warehouse-receive-card .tracking-hub-identity b{
+  color:#263F57;
+  font-size:11.5px;
+}
+.warehouse-receive-card .tracking-hub-identity small{
+  color:#617386;
+  font-size:9px;
+}
+.warehouse-intake-section-head{
+  min-height:34px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:5px 8px;
+  border-top:1px solid #DDE5EB;
+  border-bottom:1px solid #DDE5EB;
+  background:#FFF9F0;
+}
+.warehouse-intake-section-head.ready{
+  background:#F2F8F5;
+}
+.warehouse-intake-section-head>div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.warehouse-intake-section-head b{
+  color:#334B62;
+  font-size:9.7px;
+}
+.warehouse-intake-section-head span{
+  overflow:hidden;
+  color:#667789;
+  font-size:8.4px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.warehouse-intake-section-head strong{
+  min-width:26px;
+  height:23px;
+  display:grid;
+  place-items:center;
+  border-radius:5px;
+  background:#fff;
+  color:#2B4B66;
+  font-size:10px;
+  box-shadow:inset 0 0 0 1px #D7E0E7;
+}
+.warehouse-split-table,
+.warehouse-ready-table{
+  min-width:930px!important;
+}
+.warehouse-split-table th:nth-child(1),
+.warehouse-split-table td:nth-child(1){width:150px!important}
+.warehouse-split-table th:nth-child(2),
+.warehouse-split-table td:nth-child(2){width:145px!important}
+.warehouse-split-table th:nth-child(3),
+.warehouse-split-table td:nth-child(3){width:auto!important}
+.warehouse-split-table th:nth-child(4),
+.warehouse-split-table td:nth-child(4){width:100px!important}
+.warehouse-split-table th:nth-child(5),
+.warehouse-split-table td:nth-child(5){width:105px!important;text-align:center}
+.warehouse-split-table th:nth-child(6),
+.warehouse-split-table td:nth-child(6){width:140px!important}
+.warehouse-ready-table th:nth-child(1),
+.warehouse-ready-table td:nth-child(1){width:31px!important}
+.warehouse-ready-table th:nth-child(2),
+.warehouse-ready-table td:nth-child(2){width:150px!important}
+.warehouse-ready-table th:nth-child(3),
+.warehouse-ready-table td:nth-child(3){width:145px!important}
+.warehouse-ready-table th:nth-child(4),
+.warehouse-ready-table td:nth-child(4){width:auto!important}
+.warehouse-ready-table th:nth-child(5),
+.warehouse-ready-table td:nth-child(5){width:90px!important;text-align:center}
+.warehouse-ready-table th:nth-child(6),
+.warehouse-ready-table td:nth-child(6){width:100px!important}
+.warehouse-ready-table th:nth-child(7),
+.warehouse-ready-table td:nth-child(7){width:150px!important}
+.warehouse-missing-count{
+  color:#A25E10;
+  font-size:11px;
+  font-weight:800;
+}
+.warehouse-stock-qty{
+  color:#236646;
+  font-size:11px!important;
+  font-weight:800;
+}
+.warehouse-confirm-stock-bar{
+  min-height:48px;
+  display:grid;
+  grid-template-columns:minmax(240px,1fr) minmax(190px,.7fr) auto auto;
+  align-items:end;
+  gap:6px;
+  padding:6px 8px;
+  border-top:1px solid #C9D8CF;
+  background:#F2F8F5;
+}
+.warehouse-confirm-stock-bar>div{
+  align-self:center;
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.warehouse-confirm-stock-bar>div b{
+  color:#28573F;
+  font-size:9.5px;
+}
+.warehouse-confirm-stock-bar>div span{
+  color:#587164;
+  font-size:8.2px;
+}
+.warehouse-confirm-stock-bar label{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  color:#4C6658;
+  font-size:8px;
+  font-weight:700;
+}
+.warehouse-confirm-stock-bar input{
+  height:28px;
+  min-width:0;
+  padding:0 7px;
+  border:1px solid #C6D6CC;
+  border-radius:4px;
+  background:#fff;
+  color:#304B3C;
+  font-size:9px;
+}
+.warehouse-intake-panel{
+  height:100%!important;
+  position:relative!important;
+}
+.warehouse-ready-note{
+  min-height:47px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:2px;
+  padding:7px 8px;
+  border:1px solid #C9DDD1;
+  border-radius:5px;
+  background:#F2F8F5;
+}
+.warehouse-ready-note b{
+  color:#2B6547;
+  font-size:9.5px;
+}
+.warehouse-ready-note span{
+  color:#587164;
+  font-size:8.4px;
+}
+.whx-sku-suggestion{
+  min-height:52px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:6px 7px;
+  border-bottom:1px solid #DFE7ED;
+  background:#EEF5FA;
+}
+.whx-sku-suggestion>div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.whx-sku-suggestion>div>span{
+  color:#52708A;
+  font-size:7.4px;
+  font-weight:800;
+  letter-spacing:.04em;
+}
+.whx-sku-suggestion b{
+  overflow:hidden;
+  color:#245D87;
+  font-size:9.2px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.whx-sku-suggestion small{
+  color:#5A6F82;
+  font-size:8px;
+}
+.whx-sku-suggestion>i{
+  flex:0 0 auto;
+  padding:3px 6px;
+  border-radius:999px;
+  background:#fff;
+  color:#557085;
+  font-size:7.4px;
+  font-style:normal;
+  font-weight:700;
+  box-shadow:inset 0 0 0 1px #CAD9E5;
+}
+.whx-map-actions{
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.whx-map-actions>span{
+  color:#607184;
+  font-size:7.8px;
+}
+
+/* Express manual flow in order detail */
+.express-manual-flow{
+  margin-top:8px;
+  overflow:hidden;
+  border:1px solid #D9C89F;
+  border-radius:6px;
+  background:#FFFBF2;
+}
+.express-manual-flow-head{
+  min-height:47px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:6px 8px;
+  border-bottom:1px solid #E7DAB9;
+}
+.express-manual-flow-head>div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.express-manual-flow-head b{
+  color:#5B4827;
+  font-size:9.5px;
+}
+.express-manual-action{
+  min-height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:6px 8px;
+}
+.express-manual-action>div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.express-manual-action>div b{
+  color:#4A3D26;
+  font-size:9px;
+}
+.express-manual-action>div span{
+  color:#756649;
+  font-size:8px;
+}
+.express-manual-action.receive{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 145px auto;
+}
+.express-manual-action select{
+  height:28px;
+  min-width:0;
+  padding:0 6px;
+  border:1px solid #D6C69D;
+  border-radius:4px;
+  background:#fff;
+  color:#4C4432;
+  font-size:8.5px;
+}
+.express-manual-action.complete{
+  background:#F4FAF6;
+}
+
+/* Warehouse history tab inside order detail */
+.order-warehouse-summary{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  overflow:hidden;
+  margin-bottom:9px;
+  border:1px solid #D6E0E8;
+  border-radius:6px;
+}
+.order-warehouse-summary>div{
+  min-height:49px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:2px;
+  padding:6px 7px;
+  border-right:1px solid #E4E9ED;
+  border-bottom:1px solid #E4E9ED;
+}
+.order-warehouse-summary>div:nth-child(2n){border-right:0}
+.order-warehouse-summary>div:nth-last-child(-n+2){border-bottom:0}
+.order-warehouse-summary span{
+  color:#607184;
+  font-size:8px;
+}
+.order-warehouse-summary b{
+  color:#2D455C;
+  font-size:9.4px;
+}
+.warehouse-order-items .mini-row>span{
+  min-width:0;
+}
+.warehouse-order-items .mini-row>span:nth-child(1),
+.warehouse-order-items .mini-row>span:nth-child(2){
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.warehouse-order-items .mini-row b{
+  overflow:hidden;
+  color:#314A62;
+  font-size:8.8px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.warehouse-order-items .mini-row small{
+  overflow:hidden;
+  color:#647588;
+  font-size:7.7px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.order-warehouse-ledger{
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border:1px solid #D9E2E9;
+  border-radius:6px;
+}
+.order-warehouse-event{
+  min-height:48px;
+  display:grid;
+  grid-template-columns:10px minmax(0,1fr) auto;
+  align-items:center;
+  gap:7px;
+  padding:6px 8px;
+  border-bottom:1px solid #E7ECF0;
+}
+.order-warehouse-event:last-child{border-bottom:0}
+.order-warehouse-event>i{
+  width:8px;
+  height:8px;
+  border:2px solid #6C96B7;
+  border-radius:50%;
+  background:#fff;
+}
+.order-warehouse-event.stock>i{border-color:#56A077}
+.order-warehouse-event>div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.order-warehouse-event b{
+  color:#30485F;
+  font-size:9px;
+}
+.order-warehouse-event span{
+  overflow:hidden;
+  color:#5E7082;
+  font-size:8px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.order-warehouse-event small{
+  color:#7A8795;
+  font-size:7.5px;
+}
+.order-warehouse-event>strong{
+  color:#376B54;
+  font-size:8px;
+  font-weight:800;
+}
+.order-warehouse-event>strong.in{
+  color:#26724D;
+  font-size:11px;
+}
+
+@media(max-width:1280px){
+  .warehouse-receive-card .tracking-hub-head-v2{
+    grid-template-columns:26px minmax(190px,.9fr) minmax(360px,1.6fr);
+  }
+  .warehouse-receive-card .tracking-hub-summary-state{
+    grid-column:3;
+    justify-self:end;
+  }
+  .warehouse-confirm-stock-bar{
+    grid-template-columns:minmax(190px,1fr) minmax(160px,.7fr) auto;
+  }
+  .warehouse-confirm-stock-bar>.button:last-child{
+    display:none;
+  }
+}
