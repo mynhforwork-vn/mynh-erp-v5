@@ -184,6 +184,9 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       if(!['READY_TO_SHIP','PICKED_UP','IN_TRANSIT'].includes(String(status)))return false
     }else if(sp.tracking==='missing'){
       if(o.shipping_service==='EXPRESS'||shipment?.tracking_number)return false
+    }else if(sp.tracking==='cancelled'){
+      const orderStatus=String(o.order_status??'').toUpperCase()
+      if(shipment?.current_tracking_status!=='CANCELLED'&&orderStatus!=='CANCELLED'&&orderStatus!=='CANCELED')return false
     }else if(sp.tracking&&shipment?.current_tracking_status!==sp.tracking){
       return false
     }
@@ -320,7 +323,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       <Link className={`kpi-card entity-status-metric info ${sp.tracking==='ARRIVED_DESTINATION_HUB'?'active':''}`} href={listHref({receive:null,tracking:'ARRIVED_DESTINATION_HUB'})}><span>Đến kho đích</span><b>{arrivedHub}</b><small>Đã đến HUB đích</small></Link>
       <Link className={`kpi-card entity-status-metric success ${sp.tracking==='DELIVERED'&&!sp.receive?'active':''}`} href={listHref({receive:null,tracking:'DELIVERED'})}><span>Giao thành công</span><b>{delivered}</b><small>Đã giao thành công</small></Link>
       <Link className={`kpi-card entity-status-metric warning ${sp.receive==='WAITING_RECEIVE'?'active':''}`} href={listHref({receive:'WAITING_RECEIVE',tracking:null})}><span>Chờ xác nhận nhận hàng</span><b>{waiting}</b><small>Cần xác nhận vật lý</small></Link>
-      <Link className={`kpi-card entity-status-metric danger ${sp.tracking==='CANCELLED'?'active':''}`} href={listHref({receive:null,tracking:'CANCELLED'})}><span>Bị huỷ</span><b>{cancelled}</b><small>Đơn / vận đơn đã huỷ</small></Link>
+      <Link className={`kpi-card entity-status-metric danger ${sp.tracking==='cancelled'?'active':''}`} href={listHref({receive:null,tracking:'cancelled'})}><span>Bị huỷ</span><b>{cancelled}</b><small>Đơn / vận đơn đã huỷ</small></Link>
     </section>
 
     <div className={`split-view order-workspace ${panelOpen?'with-panel':''}`}>
