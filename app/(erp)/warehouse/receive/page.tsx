@@ -27,7 +27,7 @@ export default async function WarehouseReceivePage(){
       .select('id,shopee_order_id,cod,order_date,warehouse_status,receive_batch_details(id,receive_batch_id,receive_batches(id,warehouse_id,received_at,warehouses(id,code,name))),order_items(id,sku,product_name,variant,quantity,original_price,final_price,product_variant_id,inventory_multiplier,product_variants(id,variant_name,sale_price,products(id,sku,name)))')
       .is('archived_at',null)
       .eq('receive_status','RECEIVED')
-      .neq('warehouse_status','WAREHOUSE_RECEIVED')
+      .eq('warehouse_status','READY_TO_TRANSFER')
       .order('order_date',{ascending:false})
       .limit(500),
     supabase.from('product_variants')
