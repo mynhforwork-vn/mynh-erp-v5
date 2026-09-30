@@ -9458,3 +9458,126 @@ a{text-decoration:none}
     grid-template-columns:1fr;
   }
 }
+
+
+/* =====================================================================
+   Compact row action menu V2 — one icon per row
+   ===================================================================== */
+.row-actions-head,
+.row-actions-cell{
+  width:40px!important;
+  min-width:40px!important;
+  max-width:40px!important;
+  padding-left:3px!important;
+  padding-right:3px!important;
+  text-align:center!important;
+}
+.row-actions-head>span{
+  color:#708194;
+  font-size:11px;
+  letter-spacing:1px;
+}
+.row-action-menu-wrap{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.row-action-kebab{
+  width:28px;
+  height:24px;
+  display:grid;
+  place-items:center;
+  padding:0 0 5px;
+  border:1px solid transparent;
+  border-radius:4px;
+  background:transparent;
+  color:#64778A;
+  font-size:13px;
+  line-height:1;
+  letter-spacing:1px;
+  cursor:pointer;
+}
+.row-action-kebab:hover,
+.row-action-kebab[aria-expanded="true"]{
+  border-color:#C7D3DD;
+  background:#EEF3F7;
+  color:#315D81;
+}
+.row-action-menu{
+  position:absolute;
+  z-index:55;
+  top:27px;
+  right:0;
+  width:148px;
+  overflow:visible;
+  padding:4px;
+  border:1px solid #CBD6DF;
+  border-radius:5px;
+  background:#fff;
+  box-shadow:0 8px 22px rgba(38,55,70,.16);
+  text-align:left;
+}
+.row-action-menu-form{
+  display:block;
+  margin:0;
+}
+.row-action-menu-item,
+.row-action-menu-dismiss{
+  width:100%;
+  min-height:29px;
+  display:flex;
+  align-items:center;
+  padding:0 8px;
+  border:0;
+  border-radius:3px;
+  background:transparent;
+  color:#42586E;
+  font-size:9.5px;
+  font-weight:650;
+  text-align:left;
+  cursor:pointer;
+}
+.row-action-menu-item:hover,
+.row-action-menu-dismiss:hover{
+  background:#F1F5F8;
+}
+.row-action-menu-item.archive{
+  color:#586C7F;
+}
+.row-action-menu-item.restore{
+  color:#2E688F;
+}
+.row-action-menu-item.delete{
+  color:#A14D4D;
+}
+.row-action-menu-item.delete:hover{
+  background:#FFF1F1;
+  color:#8D3D3D;
+}
+.row-action-menu-dismiss{
+  min-height:25px;
+  margin-top:3px;
+  border-top:1px solid #E4E9EE;
+  border-radius:0 0 3px 3px;
+  color:#8794A2;
+  font-size:8.7px;
+}
+.row-delete-popover.compact{
+  top:0;
+  right:154px;
+  width:230px;
+}
+.row-action-readonly{
+  display:block!important;
+  padding:0!important;
+  text-align:center;
+}
+@media(max-width:1180px){
+  .row-actions-head,
+  .row-actions-cell{
+    width:38px!important;
+    min-width:38px!important;
+    max-width:38px!important;
+  }
+}
