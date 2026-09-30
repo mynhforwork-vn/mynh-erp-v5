@@ -22,7 +22,7 @@ type Item={
   inventory_multiplier?:number|null
   product_variants?:Variant|null
 }
-type ReceiptWarehouse={id?:string|null,code?:string|null,name?:string|null}
+type ReceiptWarehouse={id?:string|null,code?:string|null,name?:string|null,address?:string|null}
 type ReceiveBatch={
   id?:string|null
   warehouse_id?:string|null
@@ -83,6 +83,7 @@ export function WarehouseIntakeWorkspace({
       id:string
       code:string
       name:string
+      address:string
       rows:Row[]
     }>()
     for(const row of rows){
@@ -93,6 +94,7 @@ export function WarehouseIntakeWorkspace({
         id,
         code:String(warehouse?.code??'CHƯA XÁC ĐỊNH'),
         name:String(warehouse?.name??'Kho nhận chưa xác định'),
+        address:String(warehouse?.address??''),
         rows:[],
       }
       existing.rows.push(row)
@@ -172,8 +174,8 @@ export function WarehouseIntakeWorkspace({
                 <div className="tracking-hub-identity">
                   <span className={'tracking-hub-priority-dot '+(splitRows.length?'attention':'')}/>
                   <div>
-                    <b>{group.code} · {group.name}</b>
-                    <small>Kho nhận của {group.rows.length} đơn đã xác nhận nhận hàng</small>
+                    <b>{group.code} · {group.address||group.name}</b>
+                    <small>{group.name} · {group.rows.length} đơn đã xác nhận nhận hàng</small>
                   </div>
                 </div>
 
@@ -319,7 +321,7 @@ export function WarehouseIntakeWorkspace({
         <div>
           <span className="module-eyebrow">{activeComplete?'CHỜ NHẬP KHO':'BÓC TÁCH SKU'}</span>
           <h2>{active.shopee_order_id??active.id.slice(0,8)}</h2>
-          <p>{batchOf(active)?.warehouses?.code??'Kho'} · {formatDateTime(receivedAt(active))} · {formatMoney(active.cod)}</p>
+          <p>{batchOf(active)?.warehouses?.code??'Kho'} · {batchOf(active)?.warehouses?.address??batchOf(active)?.warehouses?.name??''} · {formatDateTime(receivedAt(active))} · {formatMoney(active.cod)}</p>
         </div>
         <button className="close" type="button" onClick={()=>setActiveId(null)} aria-label="Đóng">×</button>
       </div>
@@ -420,7 +422,7 @@ export function WarehouseIntakeWorkspace({
 
         {panelTab==='info'&&<div className="whx-info-grid">
           <div><span>Mã đơn</span><b>{active.shopee_order_id??'—'}</b></div>
-          <div><span>Kho nhận</span><b>{batchOf(active)?.warehouses?.code??'—'}</b></div>
+          <div><span>Kho nhận</span><b>{batchOf(active)?.warehouses?.code??'—'} · {batchOf(active)?.warehouses?.address??batchOf(active)?.warehouses?.name??''}</b></div>
           <div><span>Ngày nhận</span><b>{formatDateTime(receivedAt(active))}</b></div>
           <div><span>COD</span><b>{formatMoney(active.cod)}</b></div>
           <div><span>Số dòng SP</span><b>{active.order_items.length}</b></div>
