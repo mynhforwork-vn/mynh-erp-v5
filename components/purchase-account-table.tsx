@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { formatDateTime, formatPhone, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
@@ -127,6 +127,7 @@ export function PurchaseAccountTable({
   const [openActionId,setOpenActionId]=useState<string|null>(null)
   const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
   const [dragOverColumn,setDragOverColumn]=useState<ColKey|null>(null)
+  const columnManagerRef=useRef<HTMLDivElement|null>(null)
 
   useEffect(()=>{
     try{
@@ -172,6 +173,23 @@ export function PurchaseAccountTable({
       document.removeEventListener('keydown',onKeyDown)
     }
   },[openActionId])
+
+  useEffect(()=>{
+    if(!open)return
+    function onPointerDown(event:PointerEvent){
+      const target=event.target as Node|null
+      if(target&&!columnManagerRef.current?.contains(target))setOpen(false)
+    }
+    function onKeyDown(event:KeyboardEvent){
+      if(event.key==='Escape')setOpen(false)
+    }
+    document.addEventListener('pointerdown',onPointerDown)
+    document.addEventListener('keydown',onKeyDown)
+    return ()=>{
+      document.removeEventListener('pointerdown',onPointerDown)
+      document.removeEventListener('keydown',onKeyDown)
+    }
+  },[open])
 
   function persist(next:ColKey[]){
     setVisible(next)
@@ -294,7 +312,7 @@ export function PurchaseAccountTable({
           </form>}
     </div>}
 
-    <div className="column-manager">
+    <div className="column-manager" ref={columnManagerRef}>
       <button className="icon-button" type="button" onClick={()=>setOpen(v=>!v)} aria-expanded={open} title="Cột & thứ tự">
         <ColumnIcon/>
       </button>
