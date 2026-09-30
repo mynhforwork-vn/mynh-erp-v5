@@ -78,8 +78,7 @@ function OrderLifecycleCell({
   canManage,
   canDeletePermanent,
   open,
-  onToggle,
-  onClose,
+  onToggle
 }:{
   row:Row
   returnQuery:string
@@ -87,7 +86,6 @@ function OrderLifecycleCell({
   canDeletePermanent:boolean
   open:boolean
   onToggle:()=>void
-  onClose:()=>void
 }){
   const [deleteOpen,setDeleteOpen]=useState(false)
 
@@ -153,8 +151,6 @@ function OrderLifecycleCell({
           </form>
         </div>}
       </>}
-
-      <button type="button" className="row-action-menu-dismiss" onClick={onClose}>Đóng</button>
     </div>}
   </div>
 }
@@ -506,7 +502,6 @@ export function PurchaseOrderTable({
           {!sorted.length
             ? <tr><td colSpan={colSpan} className="empty">Không có đơn phù hợp với bộ lọc hiện tại.</td></tr>
             : sorted.map((o:any,i:number)=>{
-                const s=activeShipment(o)
                 return <tr key={o.id} data-selected={selectedId===o.id?'true':undefined} className={selectedId===o.id?'selected-row':''}>
                   {canEdit&&<td className="bulk-select-col">
                     <input
@@ -525,7 +520,6 @@ export function PurchaseOrderTable({
                       canDeletePermanent={canDeletePermanent}
                       open={openActionId===String(o.id)}
                       onToggle={()=>setOpenActionId(prev=>prev===String(o.id)?null:String(o.id))}
-                      onClose={()=>setOpenActionId(null)}
                     />
                   </td>
                 </tr>
