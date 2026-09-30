@@ -118,7 +118,8 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       .limit(2000),
     supabase.from('erp_users').select('*',{count:'exact',head:true}).is('archived_at',null),
     supabase.from('alert_events')
-      .select('id,order_id,alert_type,destination_hub,created_at,sent_at')
+      .select('id,order_id,alert_type,destination_hub,created_at,sent_at,orders!inner(archived_at)')
+      .is('orders.archived_at',null)
       .gte('created_at',range.start)
       .lte('created_at',range.end)
       .order('created_at',{ascending:false})
