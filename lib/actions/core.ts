@@ -79,7 +79,7 @@ export async function createERPUser(formData:FormData){
   }
 
   revalidatePath('/purchase/accounts')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data)}))
+  redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data),mode:null,tab:'info'}))
 }
 
 export async function updateERPUser(formData:FormData){
@@ -231,7 +231,7 @@ export async function createOrder(formData:FormData){
     if(orderMetaError)throw new Error(orderMetaError.message)
   }
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
-  redirect(returnHref('/purchase/orders',returnQuery,{order:String(data)}))
+  redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
 }
 
 export async function updateOrder(formData:FormData){
@@ -620,5 +620,5 @@ export async function replaceShipment(formData:FormData){
   })
 
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/')
-  redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,tab:'tracking'}))
+  redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,settings:null,tab:'tracking'}))
 }
