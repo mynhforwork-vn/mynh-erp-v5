@@ -54,7 +54,6 @@ export function WarehouseReceiveConsole({
     r.order_items.every(i=>Boolean(i.product_variant_id))
   )
   const allEligibleSelected=eligibleRows.length>0&&eligibleRows.every(r=>selectedSet.has(r.id))
-  const defaultWarehouseId=warehouses[0]?.id??''
 
   function toggle(id:string){
     setSelected(v=>v.includes(id)?v.filter(x=>x!==id):[...v,id])
@@ -71,7 +70,8 @@ export function WarehouseReceiveConsole({
       </div>
       {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
       <label>Kho nhận
-        <select name="warehouse_id" required defaultValue={defaultWarehouseId}>
+        <select name="warehouse_id" required defaultValue="">
+          <option value="" disabled>Chọn Kho nhận</option>
           {warehouses.map(w=><option key={w.id} value={w.id}>{w.code} · {w.name}</option>)}
         </select>
       </label>
