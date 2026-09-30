@@ -236,6 +236,8 @@ export function PurchaseOrderTable({
   const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
   const [dragOverColumn,setDragOverColumn]=useState<ColKey|null>(null)
   const tableWrapRef=useRef<HTMLDivElement|null>(null)
+  const columnManagerRef=useRef<HTMLDivElement|null>(null)
+  const bulkDeleteRef=useRef<HTMLDivElement|null>(null)
 
   useEffect(()=>{
     try{
@@ -287,6 +289,26 @@ export function PurchaseOrderTable({
       document.removeEventListener('keydown',onKeyDown)
     }
   },[openActionId])
+
+  useEffect(()=>{
+    if(!open&&!bulkDeleteOpen)return
+    function onPointerDown(event:PointerEvent){
+      const target=event.target as Node|null
+      if(open&&target&&!columnManagerRef.current?.contains(target))setOpen(false)
+      if(bulkDeleteOpen&&target&&!bulkDeleteRef.current?.contains(target))setBulkDeleteOpen(false)
+    }
+    function onKeyDown(event:KeyboardEvent){
+      if(event.key!=='Escape')return
+      setOpen(false)
+      setBulkDeleteOpen(false)
+    }
+    document.addEventListener('pointerdown',onPointerDown)
+    document.addEventListener('keydown',onKeyDown)
+    return ()=>{
+      document.removeEventListener('pointerdown',onPointerDown)
+      document.removeEventListener('keydown',onKeyDown)
+    }
+  },[open,bulkDeleteOpen])
 
 
   function persistColumns(next:ColKey[]){
@@ -441,7 +463,7 @@ export function PurchaseOrderTable({
             <button className="button small archive-button" type="submit">Lưu trữ đã chọn</button>
           </form>}
 
-      {canDeletePermanent&&<div className="order-bulk-delete">
+      {canDeletePermanent&&<div className="order-bulk-delete" ref={bulkDeleteRef}>
         <button
           type="button"
           className="button small danger"
@@ -461,7 +483,7 @@ export function PurchaseOrderTable({
       </div>}
     </div>}
 
-    <div className="order-column-manager">
+    <div className="order-column-manager" ref={columnManagerRef}>
       <button className="icon-button" type="button" onClick={()=>setOpen(v=>!v)} title="Cột & thứ tự" aria-expanded={open}>
         <ColumnIcon/>
       </button>
