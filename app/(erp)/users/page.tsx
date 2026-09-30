@@ -375,7 +375,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         <aside className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Thêm tài khoản</h2></div>
-            <Link className="close" href={contextHref('/purchase/accounts')}>×</Link>
+            <Link className="close" href={filterHref({mode:null,user:null,tab:null})}>×</Link>
           </div>
           <form action={createERPUser} className="panel-form panel-scroll">
             <input type="hidden" name="return_query" value={detailQuery}/>
@@ -401,7 +401,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               <label>Profile<input name="browser_profile" placeholder="Profile A / NST Profile..."/></label>
               <label>Ghi chú<textarea name="note" rows={2}/></label>
             </section>
-            <div className="form-actions"><Link className="button" href={contextHref('/purchase/accounts')}>Hủy</Link><button className="button primary">Tạo tài khoản</button></div>
+            <div className="form-actions"><Link className="button" href={filterHref({mode:null,user:null,tab:null})}>Hủy</Link><button className="button primary">Tạo tài khoản</button></div>
           </form>
         </aside>
       }
