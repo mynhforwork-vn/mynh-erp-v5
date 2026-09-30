@@ -383,7 +383,13 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     <div className={`split-view account-workspace ${panelOpen?'with-panel':''}`}>
       <section className="account-list-pane">
         {error&&<div className="error-box">Không thể tải dữ liệu tài khoản: {error.message}</div>}
-        {!error&&<PurchaseAccountTable rows={displayRows} selectedId={selected?.id} detailQuery={detailQuery} sort={sort}/>} 
+        {!error&&<PurchaseAccountTable
+          rows={displayRows}
+          selectedId={selected?.id}
+          detailQuery={detailQuery}
+          sort={sort}
+          canManage={['admin','operator'].includes(role)}
+        />} 
       </section>
 
       {sp.mode==='create'&&

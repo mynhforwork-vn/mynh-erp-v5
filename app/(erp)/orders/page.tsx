@@ -354,7 +354,8 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               rows={displayRows}
               selectedId={sp.order}
               baseQuery={returnQuery}
-              canEdit={['admin','operator'].includes(role)&&!archiveView}
+              canEdit={['admin','operator'].includes(role)}
+              canDeletePermanent={role==='admin'}
               carrierConfigs={carrierConfigs}
             />}
 

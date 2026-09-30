@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
-import { quickAddTrackingNumber } from '@/lib/actions/core'
+import { archiveOrder, deleteOrderPermanent, quickAddTrackingNumber, restoreOrder } from '@/lib/actions/core'
 
 type Row=Record<string,any>
 type CarrierConfig={
@@ -60,6 +60,70 @@ function ColumnIcon(){
     <rect x="3" y="5" width="18" height="14" rx="2"/>
     <path d="M9 5v14M15 5v14"/>
   </svg>
+}
+
+
+function OrderLifecycleCell({
+  row,
+  returnQuery,
+  canManage,
+  canDeletePermanent,
+}:{
+  row:Row
+  returnQuery:string
+  canManage:boolean
+  canDeletePermanent:boolean
+}){
+  const [deleteOpen,setDeleteOpen]=useState(false)
+  if(!canManage)return <span className="row-action-readonly">—</span>
+
+  if(!row.archived_at){
+    return <form action={archiveOrder} className="row-lifecycle-form">
+      <input type="hidden" name="order_id" value={row.id}/>
+      <input type="hidden" name="return_query" value={returnQuery}/>
+      <input type="hidden" name="table_action" value="1"/>
+      <button className="row-action-button archive" type="submit">Lưu trữ</button>
+    </form>
+  }
+
+  return <div className="row-lifecycle-actions">
+    <form action={restoreOrder} className="row-lifecycle-form">
+      <input type="hidden" name="order_id" value={row.id}/>
+      <input type="hidden" name="return_query" value={returnQuery}/>
+      <input type="hidden" name="table_action" value="1"/>
+      <button className="row-action-button restore" type="submit">Khôi phục</button>
+    </form>
+
+    {canDeletePermanent&&<>
+      <button
+        className="row-action-button delete"
+        type="button"
+        onClick={()=>setDeleteOpen(v=>!v)}
+        aria-expanded={deleteOpen}
+      >Xóa</button>
+
+      {deleteOpen&&<div className="row-delete-popover">
+        <b>Xóa vĩnh viễn?</b>
+        <span>Nhập lại mã đơn để xác nhận.</span>
+        <form action={deleteOrderPermanent}>
+          <input type="hidden" name="order_id" value={row.id}/>
+          <input type="hidden" name="return_query" value={returnQuery}/>
+      <input type="hidden" name="table_action" value="1"/>
+          <input
+            name="confirm_text"
+            placeholder={String(row.shopee_order_id??row.id.slice(0,8))}
+            autoComplete="off"
+            required
+            autoFocus
+          />
+          <div>
+            <button type="button" className="row-delete-cancel" onClick={()=>setDeleteOpen(false)}>Hủy</button>
+            <button type="submit" className="row-delete-confirm">Xóa vĩnh viễn</button>
+          </div>
+        </form>
+      </div>}
+    </>}
+  </div>
 }
 
 function QuickTrackingEditor({
@@ -123,12 +187,14 @@ export function PurchaseOrderTable({
   selectedId,
   baseQuery='',
   canEdit=false,
+  canDeletePermanent=false,
   carrierConfigs=[],
 }:{
   rows:Row[]
   selectedId?:string|null
   baseQuery?:string
   canEdit?:boolean
+  canDeletePermanent?:boolean
   carrierConfigs?:CarrierConfig[]
 }){
   const [visible,setVisible]=useState<ColKey[]>(ALL)
@@ -201,7 +267,7 @@ export function PurchaseOrderTable({
     return next
   },[rows,sort])
 
-  const colSpan=visible.length
+  const colSpan=visible.length+1
   const toggleSort=(a:SortKey,b:SortKey)=>changeSort(sort===a?b:a)
 
   return <div className="order-table-shell">
@@ -234,6 +300,7 @@ export function PurchaseOrderTable({
           {isVisible('carrier')&&<th>ĐVVC</th>}
           {isVisible('voucher')&&<th>Voucher</th>}
           {isVisible('status')&&<th><button className="sort-head" type="button" onClick={()=>toggleSort('status_asc','status_desc')}>Xử lý <span>{sortIndicator(sort,'status_asc','status_desc')}</span></button></th>}
+          <th className="row-actions-head">Thao tác</th>
         </tr></thead>
         <tbody>
           {!sorted.length
@@ -269,6 +336,14 @@ export function PurchaseOrderTable({
                       {o.archived_at&&<span className="status-pill archived">Lưu trữ</span>}
                     </div>
                   </td>}
+                  <td className="row-actions-cell">
+                    <OrderLifecycleCell
+                      row={o}
+                      returnQuery={baseQuery}
+                      canManage={canEdit}
+                      canDeletePermanent={canDeletePermanent}
+                    />
+                  </td>
                 </tr>
               })}
         </tbody>

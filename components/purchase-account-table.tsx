@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { formatDateTime, formatPhone, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
+import { archiveERPUser, restoreERPUser } from '@/lib/actions/core'
 
 type Row=Record<string,any>
 type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'device'|'voucher'|'orders'|'createdAt'|'note'
@@ -62,16 +63,47 @@ function ColumnIcon(){
   </svg>
 }
 
+
+function UserLifecycleCell({
+  row,
+  returnQuery,
+  canManage,
+}:{
+  row:Row
+  returnQuery:string
+  canManage:boolean
+}){
+  if(!canManage)return <span className="row-action-readonly">—</span>
+
+  if(row.archived_at){
+    return <form action={restoreERPUser} className="row-lifecycle-form">
+      <input type="hidden" name="user_id" value={row.id}/>
+      <input type="hidden" name="return_query" value={returnQuery}/>
+      <input type="hidden" name="table_action" value="1"/>
+      <button className="row-action-button restore" type="submit">Khôi phục</button>
+    </form>
+  }
+
+  return <form action={archiveERPUser} className="row-lifecycle-form">
+    <input type="hidden" name="user_id" value={row.id}/>
+    <input type="hidden" name="return_query" value={returnQuery}/>
+    <input type="hidden" name="table_action" value="1"/>
+    <button className="row-action-button archive" type="submit">Lưu trữ</button>
+  </form>
+}
+
 export function PurchaseAccountTable({
   rows,
   selectedId,
   detailQuery='',
   sort='newest',
+  canManage=false,
 }:{
   rows:Row[]
   selectedId?:string|null
   detailQuery?:string
   sort?:string
+  canManage?:boolean
 }){
   const [visible,setVisible]=useState<ColKey[]>(ALL)
   const [open,setOpen]=useState(false)
@@ -99,7 +131,7 @@ export function PurchaseAccountTable({
   }
   function reset(){persist(ALL)}
   function isVisible(k:ColKey){return visible.includes(k)}
-  const colSpan=useMemo(()=>visible.length,[visible])
+  const colSpan=useMemo(()=>visible.length+1,[visible])
 
   function hrefFor(id:string){
     const p=new URLSearchParams(detailQuery)
@@ -151,6 +183,7 @@ export function PurchaseAccountTable({
           {isVisible('orders')&&<th>Số đơn</th>}
           {isVisible('createdAt')&&<th><Link className="sortable-head" href={sortHref(detailQuery,timeNext)}>Thời gian tạo <span>{sort==='newest'?'↓':sort==='oldest'?'↑':'↕'}</span></Link></th>}
           {isVisible('note')&&<th>Ghi chú</th>}
+          <th className="row-actions-head">Thao tác</th>
         </tr></thead>
         <tbody>
           {!rows.length
@@ -174,6 +207,9 @@ export function PurchaseAccountTable({
                 {isVisible('orders')&&<td className="count-cell">{u.order_count??0}</td>}
                 {isVisible('createdAt')&&<td>{formatDateTime(u.created_at)}</td>}
                 {isVisible('note')&&<td className="truncate">{u.note??'—'}</td>}
+                <td className="row-actions-cell">
+                  <UserLifecycleCell row={u} returnQuery={detailQuery} canManage={canManage}/>
+                </td>
               </tr>)}
         </tbody>
       </table>
