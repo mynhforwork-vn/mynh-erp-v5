@@ -12371,3 +12371,37 @@ a{text-decoration:none}
     display:none;
   }
 }
+
+/* =====================================================================
+   Warehouse quick actions after SKU confirmation
+   ===================================================================== */
+.warehouse-ready-actions{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.warehouse-ready-actions>div:first-child{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.warehouse-quick-actions{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.warehouse-quick-actions form{
+  display:flex;
+}
+.warehouse-skip-button{
+  border-color:#D3B7B7!important;
+  background:#FFF7F7!important;
+  color:#985050!important;
+}
+.warehouse-skip-button:hover{
+  border-color:#C89B9B!important;
+  background:#FFF0F0!important;
+}
