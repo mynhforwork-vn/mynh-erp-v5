@@ -13,6 +13,7 @@ type POSPaymentInput={
   method:'CASH'|'TRANSFER'
   amount:number
   tendered_amount?:number|null
+  reference_code?:string|null
 }
 
 export type POSCheckoutInput={
@@ -60,6 +61,7 @@ export async function checkoutPOS(input:POSCheckoutInput){
       tendered_amount:payment.tendered_amount===null||payment.tendered_amount===undefined
         ? null
         : Number(payment.tendered_amount),
+      reference_code:String(payment.reference_code??'').trim()||null,
     }))
 
     const {data,error}=await supabase.rpc('create_pos_sale',{
@@ -140,5 +142,50 @@ export async function createPOSCustomer(input:{name:string,phone?:string,address
     return {ok:true as const,data}
   }catch(error:any){
     return {ok:false as const,error:String(error?.message??'Không thể tạo khách hàng')}
+  }
+}
+
+
+export async function saveBankTransferConfig(formData:FormData){
+  try{
+    const {supabase}=await actor()
+
+    const bank_id=String(formData.get('bank_id')??'').trim()
+    const bank_name=String(formData.get('bank_name')??'').trim()
+    const account_no=String(formData.get('account_no')??'').trim().replace(/\s+/g,'')
+    const account_name=String(formData.get('account_name')??'').trim()
+    const qr_template=String(formData.get('qr_template')??'compact2').trim()||'compact2'
+    const transfer_prefix=String(formData.get('transfer_prefix')??'MYNH')
+      .trim()
+      .replace(/[^A-Za-z0-9]/g,'')
+      .toUpperCase()
+      .slice(0,12)||'MYNH'
+    const is_active=formData.get('is_active')==='on'
+
+    if(!bank_id)return {ok:false as const,error:'Chưa nhập Bank ID / mã BIN'}
+    if(!bank_name)return {ok:false as const,error:'Chưa nhập tên ngân hàng'}
+    if(!account_no)return {ok:false as const,error:'Chưa nhập số tài khoản'}
+    if(!account_name)return {ok:false as const,error:'Chưa nhập tên tài khoản'}
+
+    const {error}=await supabase.from('bank_transfer_configs').upsert({
+      config_key:'DEFAULT',
+      bank_id,
+      bank_name,
+      account_no,
+      account_name,
+      qr_template,
+      transfer_prefix,
+      is_active,
+      updated_at:new Date().toISOString(),
+    },{onConflict:'config_key'})
+
+    if(error)return {ok:false as const,error:error.message}
+
+    revalidatePath('/settings')
+    revalidatePath('/sales/pos')
+    revalidatePath('/sales/history')
+    return {ok:true as const}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể lưu cấu hình chuyển khoản')}
   }
 }
