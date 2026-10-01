@@ -3,8 +3,8 @@
 import { useEffect,useMemo,useRef,useState,useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { checkoutPOS,createPOSCustomer } from '@/lib/actions/sales'
-import { buildTransferDescription,buildVietQRUrl,makeTransferReference,type BankTransferConfig } from '@/lib/vietqr'
+import { checkoutPOS,createPOSCustomer,reservePOSInvoiceCode } from '@/lib/actions/sales'
+import { buildTransferDescription,buildVietQRUrl,type BankTransferConfig } from '@/lib/vietqr'
 
 type Warehouse={id:string,code:string,name:string,address?:string|null}
 type Product={
@@ -43,6 +43,13 @@ type Receipt={
   payment_status:string
   cash_received:number
   change_amount:number
+  print_items?:CartLine[]
+  print_customer?:Customer|null
+  print_warehouse?:Warehouse|null
+  print_payment_mode?:'cash'|'transfer'|'debt'|'combined'
+  print_transfer_qr?:string
+  print_transfer_description?:string
+  print_note?:string
 }
 
 const HOLD_KEY='mynh-pos-held-orders-v1'
@@ -97,6 +104,7 @@ export function SalesPOSWorkspace({
   const [combinedTransfer,setCombinedTransfer]=useState(0)
   const [error,setError]=useState('')
   const [receipt,setReceipt]=useState<Receipt|null>(null)
+  const [printTarget,setPrintTarget]=useState<'prepay'|'final'|null>(null)
 
   useEffect(()=>{
     const saved=localStorage.getItem(WAREHOUSE_KEY)
@@ -156,7 +164,7 @@ export function SalesPOSWorkspace({
       ? Math.max(0,combinedTransfer)
       : 0
   const transferDescription=buildTransferDescription(
-    transferConfig?.transfer_prefix||'MYNH',
+    null,
     transferRef||'POS',
   )
   const transferQR=transferConfig?.is_active&&transferAmount>0
@@ -279,19 +287,35 @@ export function SalesPOSWorkspace({
     persistHeld(held.filter(x=>x.id!==holdId))
   }
 
-  function openPayment(mode:'cash'|'transfer'|'debt'|'combined'){
+  async function openPayment(mode:'cash'|'transfer'|'debt'|'combined'){
     if(!cart.length){setError('Giỏ hàng đang trống');return}
     if(total<=0){setError('Tổng thanh toán phải lớn hơn 0');return}
-    if(mode==='transfer'&&(!transferConfig?.is_active||!transferConfig.bank_id||!transferConfig.account_no)){
+    if(mode==='debt'&&!customerId){
+      setError('Ghi nợ cần gắn khách hàng trước.')
+      setCreateCustomerOpen(true)
+      return
+    }
+    if((mode==='transfer'||mode==='combined')&&(!transferConfig?.is_active||!transferConfig.bank_id||!transferConfig.account_no)){
       setError('Chưa cấu hình tài khoản chuyển khoản. Mở Cài đặt → Thanh toán & QR để thiết lập.')
       return
     }
+
+    let documentCode=transferRef
+    if((mode==='transfer'||mode==='combined')&&!documentCode){
+      const reserved=await reservePOSInvoiceCode()
+      if(!reserved.ok){
+        setError(reserved.error)
+        return
+      }
+      documentCode=reserved.data
+      setTransferRef(documentCode)
+    }
+
     setError('')
     setPaymentMode(mode)
     setCashTendered(total)
     setCombinedCash(0)
     setCombinedTransfer(0)
-    setTransferRef(makeTransferReference(transferConfig?.transfer_prefix||'MYNH'))
     setCheckoutOpen(true)
   }
 
@@ -313,7 +337,8 @@ export function SalesPOSWorkspace({
         setError('Chưa cấu hình tài khoản chuyển khoản')
         return
       }
-      payments=[{method:'TRANSFER',amount:total,reference_code:transferRef||makeTransferReference(transferConfig.transfer_prefix||'MYNH')}]
+      if(!transferRef){setError('Chưa có mã phiếu bán');return}
+      payments=[{method:'TRANSFER',amount:total,reference_code:transferRef}]
     }
     if(paymentMode==='debt'){
       if(!customerId){setError('Cần chọn khách hàng để ghi nợ');return}
@@ -333,7 +358,7 @@ export function SalesPOSWorkspace({
       if(transfer>0)payments.push({
         method:'TRANSFER',
         amount:transfer,
-        reference_code:transferRef||makeTransferReference(transferConfig?.transfer_prefix||'MYNH'),
+        reference_code:transferRef||null,
       })
     }
 
@@ -351,12 +376,22 @@ export function SalesPOSWorkspace({
           other_fee:Math.max(0,otherFee),
           payments,
           note:note||null,
+          invoice_code:transferRef||null,
         })
         if(!result.ok){
           setError(result.error)
           return
         }
-        setReceipt(result.data)
+        setReceipt({
+          ...result.data,
+          print_items:cart.map(line=>({...line})),
+          print_customer:selectedCustomer,
+          print_warehouse:warehouse,
+          print_payment_mode:paymentMode,
+          print_transfer_qr:transferQR,
+          print_transfer_description:transferDescription,
+          print_note:note,
+        })
         resetSale()
       }catch(e:any){
         setError(e?.message??'Không thể hoàn tất thanh toán')
@@ -616,7 +651,7 @@ export function SalesPOSWorkspace({
                   Chuyển khoản
                 </button>
                 <button className="button" type="button" onClick={()=>openPayment('debt')} disabled={!cart.length||pending||!canSell}>
-                  Khác
+                  Ghi nợ
                 </button>
               </div>
             </>
