@@ -449,7 +449,7 @@ export function SalesPOSWorkspace({
     return ()=>window.removeEventListener('keydown',onKeyDown)
   },[cart,total,warehouseId,customerId,discountMode,discountValue,otherFee,note])
 
-  return <div className="tracking-screen tracking-screen-v2 pos-screen pos-screen-v2">
+  return <div className="tracking-screen tracking-screen-v2 pos-screen pos-screen-v2 neo-enterprise-v1 neo-pos-screen">
     <header className="page-head tracking-page-head-v2 pos-page-head-v2">
       <div>
         <span className="module-eyebrow">BÁN HÀNG</span>
@@ -550,7 +550,7 @@ export function SalesPOSWorkspace({
           </div>
         </div>
 
-        <div className="pos-product-grid">
+        <div className="pos-product-grid neo-pos-product-grid">
           {!filteredProducts.length
             ? <div className="empty">Không tìm thấy sản phẩm phù hợp trong kho này.</div>
             : filteredProducts.map(product=><button
@@ -560,27 +560,14 @@ export function SalesPOSWorkspace({
                 onClick={()=>addProduct(product)}
                 disabled={!canSell||product.quantity<=0}
               >
-                <div className="pos-product-card-head">
-                  <div className="pos-product-card-main">
-                    <b>{product.name}</b>
-                    <span>{product.variant}</span>
-                  </div>
-                  <div className="pos-product-card-code">
-                    <span>SKU</span>
-                    <b>{product.sku}</b>
-                    {product.barcode&&<small>{product.barcode}</small>}
-                  </div>
+                <div className="neo-pos-product-main">
+                  <b>{product.name}</b>
+                  <span>{product.variant} · {product.sku}</span>
+                  {product.barcode&&<small>{product.barcode}</small>}
                 </div>
-                <div className="pos-product-card-stats">
-                  <div>
-                    <span>Giá bán</span>
-                    <b>{money(product.sale_price)}</b>
-                  </div>
-                  <div className={product.quantity<=5?'low':''}>
-                    <span>Tồn kho</span>
-                    <b>{product.quantity}</b>
-                    <small>{product.warehouse_code}</small>
-                  </div>
+                <div className="neo-pos-product-price">
+                  <b>{money(product.sale_price)}</b>
+                  <span className={product.quantity<=5?'low':''}>Tồn {product.quantity}</span>
                 </div>
               </button>)}
         </div>
