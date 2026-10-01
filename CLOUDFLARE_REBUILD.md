@@ -1,0 +1,10 @@
+# MYNH ERP — Cloudflare Rebuild
+
+Baseline: commit 407fc93168237ca6e5ac891d9827f1ad5b360643 (last known successful Cloudflare Workers build).
+
+Rules:
+- GitHub + Cloudflare are the source of truth.
+- Floot is frozen as a visual reference only.
+- Do not modify main during rebuild.
+- Rebuild visual system and responsive UI incrementally on this branch.
+- Validate build after each coherent change before porting the next module.
