@@ -137,7 +137,6 @@ export async function createPOSCustomer(input:{name:string,phone?:string,address
     if(error)return {ok:false as const,error:'Không thể tạo khách hàng'}
 
     revalidatePath('/sales/customers')
-    revalidatePath('/sales/pos')
     return {ok:true as const,data}
   }catch(error:any){
     return {ok:false as const,error:String(error?.message??'Không thể tạo khách hàng')}
