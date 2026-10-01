@@ -64,8 +64,8 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
     .filter((row:any)=>row.warehouses?.code)
     .map((row:any)=>[String(row.warehouses.code),row.warehouses])).values()] as any[]
 
-  return <div className={'sales-history-screen '+(selected?'with-panel':'')}>
-    <header className="page-head">
+  return <div className={'tracking-screen tracking-screen-v2 sales-history-screen sales-history-v3 '+(selected?'with-panel':'')}>
+    <header className="page-head tracking-page-head-v2 sales-page-head-v3">
       <div>
         <span className="module-eyebrow">BÁN HÀNG</span>
         <h1>Lịch sử bán</h1>
