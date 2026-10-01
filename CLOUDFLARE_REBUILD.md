@@ -20,3 +20,5 @@ Build environment note:
 - Retrigger after recursive build fix confirmed at branch head d091fb6.
 
 - Retrigger after cancelling stale recursive build and saving Preview Base commands.
+
+- Build pipeline fallback hardened: npm run build now produces OpenNext worker while OpenNext internally runs next build via buildCommand override.
