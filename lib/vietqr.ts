@@ -26,10 +26,13 @@ export function makeTransferReference(prefix='MYNH'){
   return `${p}${tail}${rand}`.slice(0,25)
 }
 
-export function buildTransferDescription(prefix:string|undefined|null,reference:string){
-  const p=cleanPart(prefix||'MYNH',10).toUpperCase()||'MYNH'
-  const r=cleanPart(reference,32).toUpperCase()
-  return cleanPart(`${p} ${r}`,50)
+export function buildTransferDescription(_prefix:string|undefined|null,reference:string){
+  return String(reference??'')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^A-Za-z0-9-]+/g,'')
+    .toUpperCase()
+    .slice(0,50)
 }
 
 export function buildVietQRUrl(
