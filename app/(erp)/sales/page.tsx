@@ -244,7 +244,7 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
       </div>
     </header>
 
-    <PurchaseDateFilter
+    <div className="tracking-date-row-v2 sales-date-row-v2"><PurchaseDateFilter
       activeRange={range.key}
       from={range.from}
       to={range.to}
@@ -252,7 +252,7 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
       basePath="/sales"
       showAll
       preserveParams={{warehouse:warehouseFilter==='ALL'?null:warehouseFilter}}
-    />
+    /></div>
 
     <div className="sales-dashboard-toolbar">
       <div className="sales-warehouse-filter">
@@ -270,13 +270,13 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
     {salesError&&<div className="error-box">Không thể tải dữ liệu bán hàng: {salesError.message}</div>}
 
     <section className="tracking-command-center-v2 sales-command-center-v2"><div className="tracking-status-strip-v2 sales-kpi-strip">
-      <div className="sales-kpi"><span>Doanh thu</span><b className="money">{formatMoney(revenue)}</b><small>{invoices} hóa đơn</small></div>
-      <div className="sales-kpi"><span>Số hóa đơn</span><b>{invoices}</b><small>{customerCount} khách có hồ sơ</small></div>
-      <div className="sales-kpi"><span>Sản phẩm bán</span><b>{units}</b><small>{topProducts.length} SKU phát sinh</small></div>
-      <div className="sales-kpi"><span>Giá trị TB/HĐ</span><b className="money">{formatMoney(avg)}</b><small>Trung bình mỗi hóa đơn</small></div>
-      <div className="sales-kpi success"><span>Đã thu</span><b className="money">{formatMoney(collected)}</b><small>{revenue?Math.round(collected/revenue*100):0}% doanh thu</small></div>
-      <div className="sales-kpi warning"><span>Công nợ</span><b className="money">{formatMoney(debt)}</b><small>{visibleSales.filter(s=>s.debt>0).length} hóa đơn còn nợ</small></div>
-      <div className="sales-kpi danger"><span>Hoàn / huỷ</span><b>0</b><small>Sẽ lấy từ luồng POS hoàn/hủy</small></div>
+      <div className="tracking-status-metric info sales-kpi"><span>Doanh thu</span><b className="money">{formatMoney(revenue)}</b><small>{invoices} hóa đơn</small></div>
+      <div className="tracking-status-metric sales-kpi"><span>Số hóa đơn</span><b>{invoices}</b><small>{customerCount} khách có hồ sơ</small></div>
+      <div className="tracking-status-metric success sales-kpi"><span>Sản phẩm bán</span><b>{units}</b><small>{topProducts.length} SKU phát sinh</small></div>
+      <div className="tracking-status-metric sales-kpi"><span>Giá trị TB/HĐ</span><b className="money">{formatMoney(avg)}</b><small>Trung bình mỗi hóa đơn</small></div>
+      <div className="tracking-status-metric success sales-kpi"><span>Đã thu</span><b className="money">{formatMoney(collected)}</b><small>{revenue?Math.round(collected/revenue*100):0}% doanh thu</small></div>
+      <div className="tracking-status-metric warning sales-kpi"><span>Công nợ</span><b className="money">{formatMoney(debt)}</b><small>{visibleSales.filter(s=>s.debt>0).length} hóa đơn còn nợ</small></div>
+      <div className="tracking-status-metric danger sales-kpi"><span>Hoàn / huỷ</span><b>0</b><small>Sẽ lấy từ luồng POS hoàn/hủy</small></div>
       </div>
       <div className="tracking-control-row-v2 sales-control-row-v2">
         <div className="tracking-console-title">
