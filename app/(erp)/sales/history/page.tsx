@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime,formatMoney,statusLabel } from '@/lib/format'
 import { PrintPageButton } from '@/components/print-page-button'
+import { buildTransferDescription,buildVietQRUrl } from '@/lib/vietqr'
 
 type SP={
   sale?:string
@@ -22,10 +23,18 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
   const sp=await searchParams
   const {supabase}=await requireUser()
 
-  const {data,error}=await supabase.from('sales')
-    .select('id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,note,subtotal,discount_amount,other_fee,sale_status,cash_received,change_amount,warehouse_id,created_by,warehouses(id,code,name,address),customers(id,name,phone,address),sale_items(id,quantity,sale_price,unit_cost,product_variant_id,product_variants(id,variant_name,barcode,products(id,sku,name))),sale_payments(id,method,amount,tendered_amount,change_amount,created_at)')
-    .order('sale_at',{ascending:false})
-    .limit(1500)
+  const [salesResult,bankTransferResult]=await Promise.all([
+    supabase.from('sales')
+      .select('id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,note,subtotal,discount_amount,other_fee,sale_status,cash_received,change_amount,warehouse_id,created_by,warehouses(id,code,name,address),customers(id,name,phone,address),sale_items(id,quantity,sale_price,unit_cost,product_variant_id,product_variants(id,variant_name,barcode,products(id,sku,name))),sale_payments(id,method,amount,tendered_amount,change_amount,reference_code,created_at)')
+      .order('sale_at',{ascending:false})
+      .limit(1500),
+    supabase.from('bank_transfer_configs')
+      .select('config_key,bank_id,bank_name,account_no,account_name,qr_template,transfer_prefix,is_active')
+      .eq('config_key','DEFAULT')
+      .maybeSingle(),
+  ])
+  const {data,error}=salesResult
+  const bankTransferConfig=(bankTransferResult.data??null) as any
 
   let rows=(data??[]) as any[]
   const q=String(sp.q??'').trim().toLowerCase()
@@ -45,6 +54,27 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
       ? ((data??[]) as any[]).find((row:any)=>String(row.id)===sp.sale)
       : null)
   const tab=sp.tab??'info'
+  const transferPayment=selected
+    ? (selected.sale_payments??[]).find((payment:any)=>payment.method==='TRANSFER')
+    : null
+  const receiptQRAmount=selected
+    ? Number(selected.debt_amount)>0
+      ? Number(selected.debt_amount)
+      : Number(transferPayment?.amount??0)
+    : 0
+  const receiptQRReference=selected
+    ? String(
+        Number(selected.debt_amount)>0
+          ? selected.invoice_code??selected.id
+          : transferPayment?.reference_code??selected.invoice_code??selected.id
+      )
+    : ''
+  const receiptQRDescription=selected&&bankTransferConfig
+    ? buildTransferDescription(bankTransferConfig.transfer_prefix,receiptQRReference)
+    : ''
+  const receiptQR=selected&&bankTransferConfig?.is_active&&receiptQRAmount>0
+    ? buildVietQRUrl(bankTransferConfig,receiptQRAmount,receiptQRDescription,'qr_only')
+    : ''
 
   function href(extra:Record<string,string|null|undefined>={}){
     const p=new URLSearchParams()
@@ -221,12 +251,16 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
         </div>
 
         <div className="sales-receipt-print">
-          <div className="receipt-brand"><b>MYNH ERP</b><span>HÓA ĐƠN BÁN HÀNG</span></div>
+          <div className="receipt-brand">
+            <b>MYNH ERP</b>
+            <span>PHIẾU BÁN HÀNG</span>
+            <small>{selected.warehouses?.code} · {selected.warehouses?.address??selected.warehouses?.name}</small>
+          </div>
           <div className="receipt-meta">
-            <div><span>Mã HĐ</span><b>{selected.invoice_code??'—'}</b></div>
+            <div><span>Mã phiếu</span><b>{selected.invoice_code??'—'}</b></div>
             <div><span>Ngày bán</span><b>{formatDateTime(selected.sale_at)}</b></div>
-            <div><span>Kho bán</span><b>{selected.warehouses?.code} · {selected.warehouses?.address??selected.warehouses?.name}</b></div>
             <div><span>Khách hàng</span><b>{selected.customers?.name??'Khách lẻ'}</b></div>
+            {selected.customers?.phone&&<div><span>SĐT</span><b>{selected.customers.phone}</b></div>}
           </div>
           <table>
             <thead><tr><th>#</th><th>Sản phẩm</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
@@ -240,13 +274,34 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
           </table>
           <div className="receipt-totals">
             <div><span>Tiền hàng</span><b>{formatMoney(selected.subtotal)}</b></div>
-            <div><span>Giảm giá</span><b>−{formatMoney(selected.discount_amount)}</b></div>
-            <div><span>Phí khác</span><b>{formatMoney(selected.other_fee)}</b></div>
+            {Number(selected.discount_amount)>0&&<div><span>Giảm giá</span><b>−{formatMoney(selected.discount_amount)}</b></div>}
+            {Number(selected.other_fee)>0&&<div><span>Phí khác</span><b>{formatMoney(selected.other_fee)}</b></div>}
             <div className="total"><span>TỔNG THANH TOÁN</span><b>{formatMoney(selected.total_amount)}</b></div>
             <div><span>Đã thu</span><b>{formatMoney(selected.paid_amount)}</b></div>
-            <div><span>Tiền thừa</span><b>{formatMoney(selected.change_amount)}</b></div>
-            <div><span>Còn nợ</span><b>{formatMoney(selected.debt_amount)}</b></div>
+            {Number(selected.change_amount)>0&&<div><span>Tiền thừa</span><b>{formatMoney(selected.change_amount)}</b></div>}
+            {Number(selected.debt_amount)>0&&<div><span>Còn nợ</span><b>{formatMoney(selected.debt_amount)}</b></div>}
           </div>
+          <div className="receipt-payments">
+            <b>THANH TOÁN</b>
+            {(selected.sale_payments??[]).length
+              ? (selected.sale_payments??[]).map((payment:any)=><div key={payment.id}>
+                  <span>{paymentLabel(payment.method)}</span>
+                  <b>{formatMoney(payment.amount)}</b>
+                </div>)
+              : <div><span>Ghi nợ</span><b>{formatMoney(selected.debt_amount)}</b></div>}
+          </div>
+          {receiptQR&&<div className="receipt-qr">
+            <div>
+              <b>{Number(selected.debt_amount)>0?'QR THANH TOÁN CÒN NỢ':'THÔNG TIN CHUYỂN KHOẢN'}</b>
+              <span>{bankTransferConfig.bank_name} · {bankTransferConfig.account_no}</span>
+              <span>{bankTransferConfig.account_name}</span>
+              <strong>{formatMoney(receiptQRAmount)}</strong>
+              <small>Nội dung: {receiptQRDescription}</small>
+              {Number(selected.debt_amount)<=0&&<em>ĐÃ GHI NHẬN THANH TOÁN</em>}
+            </div>
+            <img src={receiptQR} alt="VietQR phiếu bán hàng"/>
+          </div>}
+          {selected.note&&<div className="receipt-note"><span>Ghi chú</span><b>{selected.note}</b></div>}
           <p>Cảm ơn quý khách!</p>
         </div>
       </aside>}
