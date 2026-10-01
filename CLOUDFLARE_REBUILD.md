@@ -12,3 +12,5 @@ Rules:
 Build environment note:
 - Preview build variables for Supabase were configured in Cloudflare on 2026-10-02.
 - This commit intentionally retriggers the Preview build after that configuration change.
+
+- Preview build variables verified in Cloudflare Builds > Previews Base on 2026-10-02.
