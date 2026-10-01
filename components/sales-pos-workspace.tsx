@@ -357,40 +357,74 @@ export function SalesPOSWorkspace({
     return ()=>window.removeEventListener('keydown',onKeyDown)
   },[cart,total,warehouseId,customerId,discountMode,discountValue,otherFee,note])
 
-  return <div className="pos-screen">
-    <header className="pos-topbar">
-      <div className="pos-title">
+  return <div className="tracking-screen tracking-screen-v2 pos-screen pos-screen-v2">
+    <header className="page-head tracking-page-head-v2 pos-page-head-v2">
+      <div>
         <span className="module-eyebrow">BÁN HÀNG</span>
-        <h1>POS</h1>
+        <h1>POS bán hàng</h1>
+        <p>Bán tại quầy · tồn theo kho · thanh toán nhanh · hóa đơn tức thời</p>
       </div>
-
-      <label className="pos-warehouse">
-        <span>Kho bán</span>
-        <select value={warehouseId} onChange={e=>changeWarehouse(e.target.value)}>
-          {warehouses.map(w=><option key={w.id} value={w.id}>{w.code} · {w.address??w.name}</option>)}
-        </select>
-      </label>
-
-      <div className="pos-search">
-        <span>⌕</span>
-        <input
-          ref={searchRef}
-          value={search}
-          onChange={e=>setSearch(e.target.value)}
-          onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();scanEnter()}}}
-          placeholder="Quét barcode / nhập SKU / tìm tên sản phẩm..."
-        />
-        <kbd>F4</kbd>
+      <div className="head-actions">
+        <Link className="button" href="/sales">Tổng quan bán hàng</Link>
+        <Link className="button" href="/sales/history">Lịch sử bán</Link>
+        <span className="pos-live-status"><i/>POS sẵn sàng</span>
       </div>
-
-      <button className="button" type="button" onClick={()=>setCreateCustomerOpen(v=>!v)}>
-        {selectedCustomer?selectedCustomer.name:'Khách lẻ'}
-      </button>
-      <button className="button" type="button" onClick={()=>setHeldOpen(v=>!v)}>
-        Đơn tạm ({held.length})
-      </button>
-      <Link className="button" href="/sales/history">Lịch sử bán</Link>
     </header>
+
+    <section className="tracking-command-center-v2 pos-command-center-v2">
+      <div className="tracking-status-strip-v2 pos-status-strip-v2">
+        <div className="tracking-status-metric info pos-status-metric">
+          <span>Kho bán</span>
+          <b>{warehouse?.code??'—'}</b>
+          <small>{warehouse?.address??warehouse?.name??'Chưa chọn kho'}</small>
+        </div>
+        <div className="tracking-status-metric success pos-status-metric">
+          <span>SKU có hàng</span>
+          <b>{warehouseProducts.length}</b>
+          <small>{warehouseProducts.reduce((sum,p)=>sum+p.quantity,0)} đơn vị tồn</small>
+        </div>
+        <div className="tracking-status-metric amber pos-status-metric">
+          <span>Giỏ hàng</span>
+          <b>{cartQty}</b>
+          <small>{cart.length} SKU · {selectedCustomer?.name??'Khách lẻ'}</small>
+        </div>
+        <div className="tracking-status-metric warning pos-status-metric">
+          <span>Tạm tính</span>
+          <b className="money">{money(total)}</b>
+          <small>{held.length} đơn đang giữ</small>
+        </div>
+      </div>
+
+      <div className="tracking-control-row-v2 pos-control-row-v2">
+        <label className="pos-warehouse pos-warehouse-v2">
+          <span>Kho bán</span>
+          <select value={warehouseId} onChange={e=>changeWarehouse(e.target.value)}>
+            {warehouses.map(w=><option key={w.id} value={w.id}>{w.code} · {w.address??w.name}</option>)}
+          </select>
+        </label>
+
+        <div className="pos-search pos-search-v2">
+          <span className="pos-search-icon">⌕</span>
+          <input
+            ref={searchRef}
+            value={search}
+            onChange={e=>setSearch(e.target.value)}
+            onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();scanEnter()}}}
+            placeholder="Quét barcode / nhập SKU / tìm tên sản phẩm..."
+          />
+          <kbd>F4</kbd>
+        </div>
+
+        <div className="pos-control-actions">
+          <button className="button small" type="button" onClick={()=>setCreateCustomerOpen(v=>!v)}>
+            {selectedCustomer?selectedCustomer.name:'Khách lẻ'}
+          </button>
+          <button className="button small" type="button" onClick={()=>setHeldOpen(v=>!v)}>
+            Đơn tạm ({held.length})
+          </button>
+        </div>
+      </div>
+    </section>
 
     {loadError&&<div className="error-box">{loadError}</div>}
     {error&&<div className="error-box">{error}</div>}
@@ -436,9 +470,15 @@ export function SalesPOSWorkspace({
 
     <div className="pos-workspace">
       <section className="pos-products">
-        <div className="pos-product-toolbar">
-          <div><b>{warehouse?.code??'—'} · {warehouse?.address??warehouse?.name??''}</b><span>{warehouseProducts.length} SKU đang có tồn</span></div>
-          <span>{search?filteredProducts.length+' kết quả':'Thẻ sản phẩm · không dùng ảnh'}</span>
+        <div className="pos-product-toolbar pos-product-toolbar-v2">
+          <div>
+            <span className="pos-section-kicker">SẢN PHẨM ĐANG BÁN</span>
+            <b>{warehouse?.code??'—'} · {warehouse?.address??warehouse?.name??''}</b>
+          </div>
+          <div className="pos-product-meta">
+            <b>{search?filteredProducts.length:warehouseProducts.length}</b>
+            <span>{search?'kết quả':'SKU có tồn'}</span>
+          </div>
         </div>
 
         <div className="pos-product-grid">
@@ -451,11 +491,18 @@ export function SalesPOSWorkspace({
                 onClick={()=>addProduct(product)}
                 disabled={!canSell||product.quantity<=0}
               >
-                <b>{product.name}</b>
-                <span>{product.variant}</span>
-                <small>SKU: {product.sku}</small>
-                {product.barcode&&<small>Barcode: {product.barcode}</small>}
-                <div><strong>{money(product.sale_price)}</strong><em>Tồn {product.quantity}</em></div>
+                <div className="pos-product-card-main">
+                  <b>{product.name}</b>
+                  <span>{product.variant}</span>
+                </div>
+                <div className="pos-product-card-code">
+                  <small>{product.sku}</small>
+                  {product.barcode&&<small>{product.barcode}</small>}
+                </div>
+                <div className="pos-product-card-foot">
+                  <strong>{money(product.sale_price)}</strong>
+                  <em className={product.quantity<=5?'low':''}>Tồn {product.quantity}</em>
+                </div>
               </button>)}
         </div>
       </section>
@@ -463,9 +510,13 @@ export function SalesPOSWorkspace({
       <aside className="pos-cart">
         {!checkoutOpen
           ? <>
-              <div className="pos-cart-head">
-                <div><b>Giỏ hàng ({cartQty})</b><span>{cart.length} SKU</span></div>
-                {cart.length>0&&<button type="button" className="pos-text-danger" onClick={()=>setCart([])}>Xóa tất cả</button>}
+              <div className="pos-cart-head pos-cart-head-v2">
+                <div>
+                  <span className="pos-section-kicker">HÓA ĐƠN HIỆN TẠI</span>
+                  <b>Giỏ hàng · {cartQty} SP</b>
+                  <small>{cart.length} SKU · {selectedCustomer?.name??'Khách lẻ'}</small>
+                </div>
+                {cart.length>0&&<button type="button" className="pos-text-danger" onClick={()=>setCart([])}>Xóa giỏ</button>}
               </div>
 
               <div className="pos-cart-lines">
@@ -506,7 +557,7 @@ export function SalesPOSWorkspace({
                   <b>−{money(discountAmount)}</b>
                 </div>
                 <div><span>Phí khác</span><input value={otherFee} onChange={e=>setOtherFee(Math.max(0,num(e.target.value)))}/><b>{money(otherFee)}</b></div>
-                <div className="pos-total"><span>Tổng thanh toán</span><b>{money(total)}</b></div>
+                <div className="pos-total"><span>PHẢI THU</span><b>{money(total)}</b></div>
                 <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Ghi chú hóa đơn (không bắt buộc)"/>
               </div>
 
