@@ -18,3 +18,5 @@ Build environment note:
 - Preview commands verified: OpenNext build + wrangler preview.
 
 - Retrigger after recursive build fix confirmed at branch head d091fb6.
+
+- Retrigger after cancelling stale recursive build and saving Preview Base commands.
