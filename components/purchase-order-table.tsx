@@ -415,12 +415,29 @@ export function PurchaseOrderTable({
 
   function renderCell(key:ColKey,o:any,i:number){
     const s=activeShipment(o)
+    const orderItems=o.order_items??[]
+    const orderQty=orderItems.reduce((sum:number,item:any)=>sum+Math.max(1,Number(item.quantity??1)||1),0)
+    const orderTime=formatDateTime(o.order_date)
     if(key==='number')return <td key={key}>{i+1}</td>
-    if(key==='order')return <td key={key}><Link className="table-link" href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
-    if(key==='username')return <td key={key}>{o.erp_users?.username??'—'}</td>
-    if(key==='time')return <td key={key} className="order-time-cell">{formatDateTime(o.order_date)}</td>
-    if(key==='product')return <td key={key} className="truncate product-cell">{productSummary(o.order_items??[])}</td>
-    if(key==='cod')return <td key={key} className="money">{formatMoney(o.cod)}</td>
+    if(key==='order')return <td key={key}>
+      <div className="neo-order-id-cell">
+        <Link className="table-link" href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link>
+        <small>{s?.tracking_number??(o.shipping_service==='EXPRESS'?'Hỏa tốc · chưa có MVĐ':'Chưa có mã vận đơn')}</small>
+      </div>
+    </td>
+    if(key==='username')return <td key={key}>
+      <div className="neo-order-person-cell">
+        <b>{o.erp_users?.username??'—'}</b>
+        <small>{[o.recipient_name,o.recipient_phone].filter(Boolean).join(' · ')||'Chưa có người nhận'}</small>
+      </div>
+    </td>
+    if(key==='time')return <td key={key} className="order-time-cell">
+      <div className="neo-order-time-cell"><b>{orderTime.split(' ')[0]??orderTime}</b><small>{orderTime.split(' ')[1]??''}</small></div>
+    </td>
+    if(key==='product')return <td key={key} className="product-cell">
+      <div className="neo-order-product-cell"><b>{productSummary(orderItems)}</b><small>{orderQty} sản phẩm</small></div>
+    </td>
+    if(key==='cod')return <td key={key} className="money neo-order-money">{formatMoney(o.cod)}</td>
     if(key==='tracking')return <td key={key} className="tracking-number-cell">
       {s?.tracking_number
         ? <span className="tracking-number-value">{s.tracking_number}</span>
