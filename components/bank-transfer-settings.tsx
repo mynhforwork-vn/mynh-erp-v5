@@ -26,7 +26,7 @@ export function BankTransferSettings({
 
   const preview=useMemo(()=>{
     if(!form.bank_id||!form.account_no)return ''
-    const ref=buildTransferDescription(form.transfer_prefix,'DEMO123')
+    const ref=buildTransferDescription(null,'POS-261001-000123')
     return buildVietQRUrl(form,123000,ref,'compact2')
   },[form])
 
@@ -110,18 +110,6 @@ export function BankTransferSettings({
         </label>
 
         <label>
-          <span>Prefix nội dung CK</span>
-          <input
-            name="transfer_prefix"
-            value={String(form.transfer_prefix??'')}
-            onChange={e=>setForm(v=>({...v,transfer_prefix:e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12)}))}
-            placeholder="MYNH"
-            disabled={!canEdit}
-          />
-          <small>Ví dụ: MYNH + mã tham chiếu riêng của giao dịch.</small>
-        </label>
-
-        <label>
           <span>Mẫu QR</span>
           <select
             name="qr_template"
@@ -169,7 +157,7 @@ export function BankTransferSettings({
           <div><span>Số tài khoản</span><b>{form.account_no||'—'}</b></div>
           <div><span>Tên tài khoản</span><b>{form.account_name||'—'}</b></div>
           <div><span>Số tiền</span><b>123.000đ</b></div>
-          <div><span>Nội dung</span><b>{buildTransferDescription(form.transfer_prefix,'DEMO123')}</b></div>
+          <div><span>Nội dung</span><b>{buildTransferDescription(null,'POS-261001-000123')}</b></div>
         </div>
       </div>
     </div>
