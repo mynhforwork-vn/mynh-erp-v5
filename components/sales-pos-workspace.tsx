@@ -150,6 +150,18 @@ export function SalesPOSWorkspace({
   const total=Math.max(0,subtotal-discountAmount+Math.max(0,otherFee))
   const cartQty=cart.reduce((sum,line)=>sum+line.cart_qty,0)
   const selectedCustomer=customerRows.find(c=>c.id===customerId)??null
+  const transferAmount=paymentMode==='transfer'
+    ? total
+    : paymentMode==='combined'
+      ? Math.max(0,combinedTransfer)
+      : 0
+  const transferDescription=buildTransferDescription(
+    transferConfig?.transfer_prefix||'MYNH',
+    transferRef||'POS',
+  )
+  const transferQR=transferConfig?.is_active&&transferAmount>0
+    ? buildVietQRUrl(transferConfig,transferAmount,transferDescription,'compact2')
+    : ''
 
   function resetSale(){
     setCart([])
@@ -297,7 +309,11 @@ export function SalesPOSWorkspace({
       payments=[{method:'CASH',amount:total,tendered_amount:cashTendered}]
     }
     if(paymentMode==='transfer'){
-      payments=[{method:'TRANSFER',amount:total}]
+      if(!transferConfig?.is_active||!transferConfig.bank_id||!transferConfig.account_no){
+        setError('Chưa cấu hình tài khoản chuyển khoản')
+        return
+      }
+      payments=[{method:'TRANSFER',amount:total,reference_code:transferRef||makeTransferReference(transferConfig.transfer_prefix||'MYNH')}]
     }
     if(paymentMode==='debt'){
       if(!customerId){setError('Cần chọn khách hàng để ghi nợ');return}
@@ -309,8 +325,16 @@ export function SalesPOSWorkspace({
       if(cash+transfer>total){setError('Tổng tiền đã nhận vượt số tiền cần thanh toán');return}
       const debt=total-cash-transfer
       if(debt>0&&!customerId){setError('Phần còn nợ cần gắn khách hàng');return}
+      if(transfer>0&&(!transferConfig?.is_active||!transferConfig.bank_id||!transferConfig.account_no)){
+        setError('Chưa cấu hình tài khoản chuyển khoản')
+        return
+      }
       if(cash>0)payments.push({method:'CASH',amount:cash,tendered_amount:cash})
-      if(transfer>0)payments.push({method:'TRANSFER',amount:transfer})
+      if(transfer>0)payments.push({
+        method:'TRANSFER',
+        amount:transfer,
+        reference_code:transferRef||makeTransferReference(transferConfig?.transfer_prefix||'MYNH'),
+      })
     }
 
     startTransition(async()=>{
@@ -583,26 +607,39 @@ export function SalesPOSWorkspace({
                 <button className="button small" type="button" onClick={()=>setCreateCustomerOpen(true)}>Gắn khách</button>
               </div>
 
-              <div className="pos-summary">
+              <div className="pos-summary pos-summary-fast">
                 <div><span>Tiền hàng</span><b>{money(subtotal)}</b></div>
-                <div className="pos-discount-row">
-                  <span>Giảm giá</span>
-                  <select value={discountMode} onChange={e=>setDiscountMode(e.target.value as any)}>
-                    <option value="amount">Số tiền</option>
-                    <option value="percent">%</option>
-                  </select>
-                  <input ref={discountRef} value={discountValue} onChange={e=>setDiscountValue(Math.max(0,num(e.target.value)))}/>
-                  <b>−{money(discountAmount)}</b>
-                </div>
-                <div><span>Phí khác</span><input value={otherFee} onChange={e=>setOtherFee(Math.max(0,num(e.target.value)))}/><b>{money(otherFee)}</b></div>
+                {discountAmount>0&&<div><span>Giảm giá</span><b>−{money(discountAmount)}</b></div>}
+                {otherFee>0&&<div><span>Phí khác</span><b>{money(otherFee)}</b></div>}
+                <button className="pos-invoice-extras-toggle" type="button" onClick={()=>setInvoiceExtrasOpen(v=>!v)}>
+                  {invoiceExtrasOpen?'Thu gọn tùy chỉnh':'Tùy chỉnh hóa đơn'} <span>{invoiceExtrasOpen?'▴':'▾'}</span>
+                </button>
+                {invoiceExtrasOpen&&<div className="pos-invoice-extras">
+                  <div className="pos-discount-row">
+                    <span>Giảm giá</span>
+                    <select value={discountMode} onChange={e=>setDiscountMode(e.target.value as any)}>
+                      <option value="amount">Số tiền</option>
+                      <option value="percent">%</option>
+                    </select>
+                    <input ref={discountRef} value={discountValue} onChange={e=>setDiscountValue(Math.max(0,num(e.target.value)))}/>
+                    <b>−{money(discountAmount)}</b>
+                  </div>
+                  <div><span>Phí khác</span><input value={otherFee} onChange={e=>setOtherFee(Math.max(0,num(e.target.value)))}/><b>{money(otherFee)}</b></div>
+                  <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Ghi chú hóa đơn (không bắt buộc)"/>
+                </div>}
                 <div className="pos-total"><span>PHẢI THU</span><b>{money(total)}</b></div>
-                <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Ghi chú hóa đơn (không bắt buộc)"/>
               </div>
 
-              <div className="pos-cart-actions">
-                <button className="button" type="button" onClick={holdOrder} disabled={!cart.length||pending}>Giữ đơn</button>
-                <button className="button primary pos-pay-button" type="button" onClick={beginCheckout} disabled={!cart.length||pending||!canSell}>
-                  Thanh toán · {money(total)}
+              <div className="pos-cart-actions pos-cart-actions-fast">
+                <button className="button" type="button" onClick={holdOrder} disabled={!cart.length||pending}>Giữ</button>
+                <button className="button pos-quick-cash" type="button" onClick={()=>openPayment('cash')} disabled={!cart.length||pending||!canSell}>
+                  Tiền mặt
+                </button>
+                <button className="button primary pos-quick-transfer" type="button" onClick={()=>openPayment('transfer')} disabled={!cart.length||pending||!canSell}>
+                  Chuyển khoản
+                </button>
+                <button className="button" type="button" onClick={()=>openPayment('debt')} disabled={!cart.length||pending||!canSell}>
+                  Khác
                 </button>
               </div>
             </>
@@ -613,10 +650,10 @@ export function SalesPOSWorkspace({
               </div>
 
               <div className="pos-pay-methods">
-                <button className={paymentMode==='cash'?'active':''} type="button" onClick={()=>setPaymentMode('cash')}>Tiền mặt</button>
-                <button className={paymentMode==='transfer'?'active':''} type="button" onClick={()=>setPaymentMode('transfer')}>Chuyển khoản</button>
-                <button className={paymentMode==='debt'?'active':''} type="button" onClick={()=>setPaymentMode('debt')}>Ghi nợ</button>
-                <button className={paymentMode==='combined'?'active':''} type="button" onClick={()=>setPaymentMode('combined')}>Kết hợp</button>
+                <button className={paymentMode==='cash'?'active':''} type="button" onClick={()=>openPayment('cash')}>Tiền mặt</button>
+                <button className={paymentMode==='transfer'?'active':''} type="button" onClick={()=>openPayment('transfer')}>Chuyển khoản</button>
+                <button className={paymentMode==='debt'?'active':''} type="button" onClick={()=>openPayment('debt')}>Ghi nợ</button>
+                <button className={paymentMode==='combined'?'active':''} type="button" onClick={()=>openPayment('combined')}>Kết hợp</button>
               </div>
 
               <div className="pos-checkout-total">
@@ -634,9 +671,18 @@ export function SalesPOSWorkspace({
                 <div className="pos-change"><span>Tiền thừa</span><b>{money(Math.max(0,cashTendered-total))}</b></div>
               </div>}
 
-              {paymentMode==='transfer'&&<div className="pos-payment-note">
-                <b>Chuyển khoản</b>
-                <span>Xác nhận khi đã nhận đủ {money(total)}.</span>
+              {paymentMode==='transfer'&&<div className="pos-transfer-panel">
+                {transferQR
+                  ? <img src={transferQR} alt="VietQR chuyển khoản"/>
+                  : <div className="empty compact">Chưa có cấu hình QR.</div>}
+                <div className="pos-transfer-info">
+                  <div><span>Số tiền</span><b className="amount">{money(total)}</b></div>
+                  <div><span>Ngân hàng</span><b>{transferConfig?.bank_name??'—'}</b></div>
+                  <div><span>Số tài khoản</span><b>{transferConfig?.account_no??'—'}</b></div>
+                  <div><span>Tên tài khoản</span><b>{transferConfig?.account_name??'—'}</b></div>
+                  <div><span>Nội dung CK</span><b>{transferDescription}</b></div>
+                </div>
+                <small>QR đã gắn sẵn đúng số tiền. Chỉ xác nhận sau khi đã nhận tiền.</small>
               </div>}
 
               {paymentMode==='debt'&&<div className="pos-payment-note warning">
@@ -647,6 +693,10 @@ export function SalesPOSWorkspace({
               {paymentMode==='combined'&&<div className="pos-combined-panel">
                 <label>Tiền mặt<input value={combinedCash} onChange={e=>setCombinedCash(Math.max(0,num(e.target.value)))}/></label>
                 <label>Chuyển khoản<input value={combinedTransfer} onChange={e=>setCombinedTransfer(Math.max(0,num(e.target.value)))}/></label>
+                {combinedTransfer>0&&transferQR&&<div className="pos-combined-qr">
+                  <img src={transferQR} alt="VietQR phần chuyển khoản"/>
+                  <span>{money(combinedTransfer)} · {transferDescription}</span>
+                </div>}
                 <div><span>Còn nợ</span><b>{money(Math.max(0,total-combinedCash-combinedTransfer))}</b></div>
                 {total-combinedCash-combinedTransfer>0&&!selectedCustomer&&<small>Cần gắn khách hàng cho phần còn nợ.</small>}
               </div>}
@@ -658,7 +708,11 @@ export function SalesPOSWorkspace({
               </div>
 
               <button className="button primary pos-confirm-payment" type="button" onClick={submitCheckout} disabled={pending}>
-                {pending?'Đang xử lý...':'Xác nhận thanh toán · '+money(total)}
+                {pending
+                  ? 'Đang xử lý...'
+                  : paymentMode==='transfer'
+                    ? 'Đã nhận chuyển khoản · '+money(total)
+                    : 'Xác nhận thanh toán · '+money(total)}
               </button>
             </div>}
       </aside>
