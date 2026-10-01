@@ -18368,3 +18368,194 @@ body{
 .neo-orders-screen .order-time-cell{
   min-width:94px!important;
 }
+
+/* =====================================================================
+   NEO WAREHOUSE RECEIVE
+   ===================================================================== */
+.neo-warehouse-receive .warehouse-command-center{
+  margin-bottom:7px!important;
+  border:0!important;
+  background:transparent!important;
+}
+.neo-warehouse-receive .tracking-status-strip-v2{
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(120px,1fr))!important;
+  gap:0!important;
+  overflow:hidden!important;
+  border:1px solid var(--neo-line)!important;
+  border-radius:10px 10px 0 0!important;
+  background:#fff!important;
+  box-shadow:var(--neo-shadow)!important;
+}
+.neo-warehouse-receive .tracking-status-metric{
+  min-height:64px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  gap:3px!important;
+  padding:8px 10px!important;
+  border:0!important;
+  border-right:1px solid #EEF2F6!important;
+  border-radius:0!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.neo-warehouse-receive .tracking-status-metric:last-child{border-right:0!important}
+.neo-warehouse-receive .tracking-status-metric>span{
+  color:#77879A!important;
+  font-size:7.7px!important;
+  font-weight:720!important;
+}
+.neo-warehouse-receive .tracking-status-metric>b{
+  color:#21364B!important;
+  font-size:17px!important;
+  font-weight:760!important;
+}
+.neo-warehouse-receive .tracking-status-metric>small{
+  color:#98A5B3!important;
+  font-size:7.3px!important;
+}
+.neo-warehouse-receive .tracking-status-metric.success>b{color:#24825A!important}
+.neo-warehouse-receive .tracking-status-metric.warning>b,
+.neo-warehouse-receive .tracking-status-metric.amber>b{color:#B57416!important}
+.neo-warehouse-receive .tracking-status-metric.info>b{color:#326BD0!important}
+
+.neo-warehouse-receive .warehouse-control-row{
+  min-height:44px!important;
+  display:grid!important;
+  grid-template-columns:220px minmax(0,1fr)!important;
+  gap:12px!important;
+  padding:7px 9px!important;
+  border:1px solid var(--neo-line)!important;
+  border-top:0!important;
+  border-radius:0 0 10px 10px!important;
+  background:#FAFBFD!important;
+}
+.neo-warehouse-receive .tracking-console-title b{
+  color:#385069!important;
+  font-size:9.5px!important;
+  font-weight:720!important;
+}
+.neo-warehouse-receive .tracking-console-title span{
+  color:#8795A5!important;
+  font-size:7.8px!important;
+}
+.neo-warehouse-receive .warehouse-intake-rule{
+  color:#7B8998!important;
+  font-size:8px!important;
+}
+.neo-warehouse-receive .warehouse-intake-rule b{
+  color:#4D6175!important;
+  font-size:8.4px!important;
+}
+
+/* Group cards behave like operational sections, not boxed widgets. */
+.neo-warehouse-receive .warehouse-receive-card{
+  overflow:hidden!important;
+  border:1px solid var(--neo-line)!important;
+  border-radius:10px!important;
+  background:#fff!important;
+  box-shadow:var(--neo-shadow)!important;
+}
+.neo-warehouse-receive .warehouse-receive-card .tracking-hub-head-v2{
+  min-height:48px!important;
+  border-bottom:1px solid #EEF2F6!important;
+  background:#F9FBFD!important;
+}
+.neo-warehouse-receive .warehouse-receive-card .tracking-hub-identity b{
+  color:#30485F!important;
+  font-size:10.2px!important;
+  font-weight:730!important;
+}
+.neo-warehouse-receive .warehouse-receive-card .tracking-hub-identity small{
+  color:#8391A1!important;
+  font-size:7.8px!important;
+}
+.neo-warehouse-receive .warehouse-intake-section-head{
+  min-height:38px!important;
+  padding:6px 9px!important;
+  border-color:#EEF2F6!important;
+  background:#FFF9EF!important;
+}
+.neo-warehouse-receive .warehouse-intake-section-head.ready{
+  background:#F3FBF7!important;
+}
+.neo-warehouse-receive .warehouse-intake-section-head b{
+  color:#465C72!important;
+  font-size:9px!important;
+}
+.neo-warehouse-receive .warehouse-intake-section-head span{
+  color:#8290A0!important;
+  font-size:7.8px!important;
+}
+.neo-warehouse-receive .warehouse-split-table thead th,
+.neo-warehouse-receive .warehouse-ready-table thead th{
+  height:33px!important;
+  background:#F8FAFD!important;
+  color:#718195!important;
+  font-size:8.2px!important;
+  font-weight:720!important;
+}
+.neo-warehouse-receive .warehouse-split-table tbody td,
+.neo-warehouse-receive .warehouse-ready-table tbody td{
+  min-height:42px!important;
+  padding-top:5px!important;
+  padding-bottom:5px!important;
+  border-bottom-color:#EEF2F6!important;
+  color:#40556A!important;
+  font-size:9px!important;
+}
+.neo-warehouse-receive .warehouse-split-table tbody tr:hover td,
+.neo-warehouse-receive .warehouse-ready-table tbody tr:hover td{
+  background:#FAFCFF!important;
+}
+.neo-warehouse-receive .warehouse-intake-layout.with-panel{
+  grid-template-columns:minmax(0,1fr) clamp(410px,29vw,440px)!important;
+  gap:7px!important;
+}
+.neo-warehouse-receive .whx-panel{
+  border:1px solid var(--neo-line)!important;
+  border-radius:11px!important;
+  background:#fff!important;
+  box-shadow:0 12px 34px rgba(28,45,65,.07)!important;
+}
+.neo-warehouse-receive .whx-panel-head{
+  min-height:64px!important;
+  padding:11px 12px 9px!important;
+  border-bottom:1px solid #EEF2F6!important;
+  background:#fff!important;
+}
+.neo-warehouse-receive .whx-panel-tabs{
+  min-height:38px!important;
+  margin:0 9px 7px!important;
+  padding:3px!important;
+  gap:3px!important;
+  border:0!important;
+  border-radius:8px!important;
+  background:#F3F6FA!important;
+}
+.neo-warehouse-receive .whx-panel-tabs button,
+.neo-warehouse-receive .whx-panel-tabs a{
+  min-height:30px!important;
+  border:0!important;
+  border-radius:6px!important;
+  background:transparent!important;
+  color:#748598!important;
+  font-size:8.4px!important;
+  font-weight:650!important;
+}
+.neo-warehouse-receive .whx-panel-tabs button.active,
+.neo-warehouse-receive .whx-panel-tabs a.active{
+  background:#fff!important;
+  color:var(--neo-primary)!important;
+  box-shadow:0 1px 4px rgba(28,44,66,.08)!important;
+}
+
+@media(max-width:1440px){
+  .neo-warehouse-receive .tracking-status-strip-v2{
+    grid-template-columns:repeat(5,minmax(112px,1fr))!important;
+  }
+  .neo-warehouse-receive .warehouse-intake-layout.with-panel{
+    grid-template-columns:minmax(0,1fr) 410px!important;
+  }
+}
