@@ -1,0 +1,607 @@
+'use client'
+
+import { useEffect,useMemo,useRef,useState,useTransition } from 'react'
+import Link from 'next/link'
+import { checkoutPOS,createPOSCustomer } from '@/lib/actions/sales'
+
+type Warehouse={id:string,code:string,name:string,address?:string|null}
+type Product={
+  variant_id:string
+  warehouse_id:string
+  warehouse_code:string
+  sku:string
+  name:string
+  variant:string
+  quantity:number
+  sale_price:number
+  barcode?:string
+}
+type Customer={id:string,name:string,phone?:string|null,address?:string|null}
+type CartLine=Product&{cart_qty:number,unit_price:number}
+type HeldOrder={
+  id:string
+  created_at:string
+  warehouse_id:string
+  customer_id:string
+  cart:CartLine[]
+  discount_mode:'amount'|'percent'
+  discount_value:number
+  other_fee:number
+  note:string
+}
+type Receipt={
+  sale_id:string
+  invoice_code:string
+  subtotal:number
+  discount_amount:number
+  other_fee:number
+  total_amount:number
+  paid_amount:number
+  debt_amount:number
+  payment_status:string
+  cash_received:number
+  change_amount:number
+}
+
+const HOLD_KEY='mynh-pos-held-orders-v1'
+const WAREHOUSE_KEY='mynh-pos-last-warehouse-v1'
+
+function money(value:number){
+  return new Intl.NumberFormat('vi-VN',{maximumFractionDigits:0}).format(Math.round(value))+'đ'
+}
+function num(value:any){
+  const n=Number(value)
+  return Number.isFinite(n)?n:0
+}
+function id(){return 'hold-'+Date.now()+'-'+Math.random().toString(36).slice(2,7)}
+
+export function SalesPOSWorkspace({
+  warehouses,
+  products,
+  customers,
+  canSell,
+  loadError,
+}:{
+  warehouses:Warehouse[]
+  products:Product[]
+  customers:Customer[]
+  canSell:boolean
+  loadError?:string|null
+}){
+  const searchRef=useRef<HTMLInputElement|null>(null)
+  const discountRef=useRef<HTMLInputElement|null>(null)
+  const [pending,startTransition]=useTransition()
+  const [warehouseId,setWarehouseId]=useState('')
+  const [search,setSearch]=useState('')
+  const [cart,setCart]=useState<CartLine[]>([])
+  const [customerId,setCustomerId]=useState('')
+  const [customerRows,setCustomerRows]=useState<Customer[]>(customers)
+  const [held,setHeld]=useState<HeldOrder[]>([])
+  const [heldOpen,setHeldOpen]=useState(false)
+  const [createCustomerOpen,setCreateCustomerOpen]=useState(false)
+  const [checkoutOpen,setCheckoutOpen]=useState(false)
+  const [paymentMode,setPaymentMode]=useState<'cash'|'transfer'|'debt'|'combined'>('cash')
+  const [discountMode,setDiscountMode]=useState<'amount'|'percent'>('amount')
+  const [discountValue,setDiscountValue]=useState(0)
+  const [otherFee,setOtherFee]=useState(0)
+  const [note,setNote]=useState('')
+  const [cashTendered,setCashTendered]=useState(0)
+  const [combinedCash,setCombinedCash]=useState(0)
+  const [combinedTransfer,setCombinedTransfer]=useState(0)
+  const [error,setError]=useState('')
+  const [receipt,setReceipt]=useState<Receipt|null>(null)
+
+  useEffect(()=>{
+    const saved=localStorage.getItem(WAREHOUSE_KEY)
+    const preferred=warehouses.find(w=>w.id===saved)
+      ??warehouses.find(w=>w.code==='HN')
+      ??warehouses[0]
+    if(preferred)setWarehouseId(preferred.id)
+    try{
+      const raw=localStorage.getItem(HOLD_KEY)
+      if(raw){
+        const parsed=JSON.parse(raw)
+        if(Array.isArray(parsed))setHeld(parsed)
+      }
+    }catch{}
+    window.setTimeout(()=>searchRef.current?.focus(),50)
+  },[warehouses])
+
+  useEffect(()=>{
+    if(warehouseId)localStorage.setItem(WAREHOUSE_KEY,warehouseId)
+  },[warehouseId])
+
+  function persistHeld(next:HeldOrder[]){
+    setHeld(next)
+    localStorage.setItem(HOLD_KEY,JSON.stringify(next))
+  }
+
+  const warehouse=warehouses.find(w=>w.id===warehouseId)??null
+  const warehouseProducts=useMemo(
+    ()=>products.filter(p=>p.warehouse_id===warehouseId),
+    [products,warehouseId],
+  )
+
+  const filteredProducts=useMemo(()=>{
+    const q=search.trim().toLowerCase()
+    if(!q)return warehouseProducts
+    return warehouseProducts.filter(p=>
+      p.sku.toLowerCase().includes(q)||
+      p.name.toLowerCase().includes(q)||
+      p.variant.toLowerCase().includes(q)||
+      String(p.barcode??'').toLowerCase().includes(q)
+    )
+  },[warehouseProducts,search])
+
+  const subtotal=cart.reduce((sum,line)=>sum+line.cart_qty*line.unit_price,0)
+  const discountAmount=Math.min(
+    subtotal+otherFee,
+    discountMode==='percent'
+      ? subtotal*Math.max(0,Math.min(100,discountValue))/100
+      : Math.max(0,discountValue),
+  )
+  const total=Math.max(0,subtotal-discountAmount+Math.max(0,otherFee))
+  const cartQty=cart.reduce((sum,line)=>sum+line.cart_qty,0)
+  const selectedCustomer=customerRows.find(c=>c.id===customerId)??null
+
+  function resetSale(){
+    setCart([])
+    setCustomerId('')
+    setDiscountMode('amount')
+    setDiscountValue(0)
+    setOtherFee(0)
+    setNote('')
+    setCashTendered(0)
+    setCombinedCash(0)
+    setCombinedTransfer(0)
+    setCheckoutOpen(false)
+    setPaymentMode('cash')
+    setError('')
+    window.setTimeout(()=>searchRef.current?.focus(),50)
+  }
+
+  function changeWarehouse(nextId:string){
+    if(nextId===warehouseId)return
+    if(cart.length&&!window.confirm('Đổi Kho bán sẽ xóa giỏ hiện tại. Tiếp tục?'))return
+    setWarehouseId(nextId)
+    resetSale()
+  }
+
+  function addProduct(product:Product){
+    if(!canSell)return
+    setCart(prev=>{
+      const found=prev.find(line=>line.variant_id===product.variant_id)
+      if(found){
+        if(found.cart_qty>=product.quantity)return prev
+        return prev.map(line=>line.variant_id===product.variant_id
+          ? {...line,cart_qty:line.cart_qty+1}
+          : line
+        )
+      }
+      return [...prev,{...product,cart_qty:1,unit_price:product.sale_price}]
+    })
+  }
+
+  function scanEnter(){
+    const q=search.trim().toLowerCase()
+    if(!q)return
+    const exact=warehouseProducts.find(p=>
+      p.sku.toLowerCase()===q||String(p.barcode??'').toLowerCase()===q
+    )
+    if(exact){
+      addProduct(exact)
+      setSearch('')
+      window.setTimeout(()=>searchRef.current?.focus(),10)
+      return
+    }
+    if(filteredProducts.length===1){
+      addProduct(filteredProducts[0])
+      setSearch('')
+    }
+  }
+
+  function setQty(variantId:string,next:number){
+    setCart(prev=>prev
+      .map(line=>line.variant_id===variantId
+        ? {...line,cart_qty:Math.max(0,Math.min(line.quantity,Math.floor(next)||0))}
+        : line
+      )
+      .filter(line=>line.cart_qty>0)
+    )
+  }
+
+  function removeLine(variantId:string){
+    setCart(prev=>prev.filter(line=>line.variant_id!==variantId))
+  }
+
+  function holdOrder(){
+    if(!cart.length)return
+    const entry:HeldOrder={
+      id:id(),
+      created_at:new Date().toISOString(),
+      warehouse_id:warehouseId,
+      customer_id:customerId,
+      cart,
+      discount_mode:discountMode,
+      discount_value:discountValue,
+      other_fee:otherFee,
+      note,
+    }
+    persistHeld([entry,...held].slice(0,30))
+    resetSale()
+  }
+
+  function restoreHeld(entry:HeldOrder){
+    if(cart.length&&!window.confirm('Mở đơn tạm sẽ thay thế giỏ hiện tại. Tiếp tục?'))return
+    const allowed=new Map(products
+      .filter(p=>p.warehouse_id===entry.warehouse_id)
+      .map(p=>[p.variant_id,p]))
+    const restored=entry.cart
+      .map(line=>{
+        const live=allowed.get(line.variant_id)
+        if(!live)return null
+        return {...live,cart_qty:Math.min(line.cart_qty,live.quantity),unit_price:line.unit_price}
+      })
+      .filter(Boolean) as CartLine[]
+    setWarehouseId(entry.warehouse_id)
+    setCustomerId(entry.customer_id)
+    setCart(restored)
+    setDiscountMode(entry.discount_mode)
+    setDiscountValue(entry.discount_value)
+    setOtherFee(entry.other_fee)
+    setNote(entry.note)
+    persistHeld(held.filter(x=>x.id!==entry.id))
+    setHeldOpen(false)
+  }
+
+  function removeHeld(holdId:string){
+    persistHeld(held.filter(x=>x.id!==holdId))
+  }
+
+  function beginCheckout(){
+    if(!cart.length){setError('Giỏ hàng đang trống');return}
+    if(total<=0){setError('Tổng thanh toán phải lớn hơn 0');return}
+    setError('')
+    setCashTendered(total)
+    setCombinedCash(0)
+    setCombinedTransfer(0)
+    setCheckoutOpen(true)
+  }
+
+  function submitCheckout(){
+    if(!warehouseId||!cart.length)return
+    setError('')
+
+    let payments:{method:'CASH'|'TRANSFER',amount:number,tendered_amount?:number|null}[]=[]
+    if(paymentMode==='cash'){
+      if(cashTendered<total){setError('Tiền khách đưa chưa đủ');return}
+      payments=[{method:'CASH',amount:total,tendered_amount:cashTendered}]
+    }
+    if(paymentMode==='transfer'){
+      payments=[{method:'TRANSFER',amount:total}]
+    }
+    if(paymentMode==='debt'){
+      if(!customerId){setError('Cần chọn khách hàng để ghi nợ');return}
+      payments=[]
+    }
+    if(paymentMode==='combined'){
+      const cash=Math.max(0,combinedCash)
+      const transfer=Math.max(0,combinedTransfer)
+      if(cash+transfer>total){setError('Tổng tiền đã nhận vượt số tiền cần thanh toán');return}
+      const debt=total-cash-transfer
+      if(debt>0&&!customerId){setError('Phần còn nợ cần gắn khách hàng');return}
+      if(cash>0)payments.push({method:'CASH',amount:cash,tendered_amount:cash})
+      if(transfer>0)payments.push({method:'TRANSFER',amount:transfer})
+    }
+
+    startTransition(async()=>{
+      try{
+        const result=await checkoutPOS({
+          warehouse_id:warehouseId,
+          customer_id:customerId||null,
+          items:cart.map(line=>({
+            product_variant_id:line.variant_id,
+            quantity:line.cart_qty,
+            sale_price:line.unit_price,
+          })),
+          discount_amount:discountAmount,
+          other_fee:Math.max(0,otherFee),
+          payments,
+          note:note||null,
+        })
+        setReceipt(result)
+        resetSale()
+      }catch(e:any){
+        setError(e?.message??'Không thể hoàn tất thanh toán')
+      }
+    })
+  }
+
+  function createCustomer(form:HTMLFormElement){
+    const fd=new FormData(form)
+    const name=String(fd.get('name')??'').trim()
+    const phone=String(fd.get('phone')??'').trim()
+    const address=String(fd.get('address')??'').trim()
+    setError('')
+    startTransition(async()=>{
+      try{
+        const row=await createPOSCustomer({name,phone,address})
+        setCustomerRows(prev=>[row as Customer,...prev.filter(x=>x.id!==(row as Customer).id)])
+        setCustomerId((row as Customer).id)
+        setCreateCustomerOpen(false)
+      }catch(e:any){
+        setError(e?.message??'Không thể tạo khách hàng')
+      }
+    })
+  }
+
+  useEffect(()=>{
+    function onKeyDown(event:KeyboardEvent){
+      if(event.key==='F2'){event.preventDefault();beginCheckout()}
+      if(event.key==='F3'){event.preventDefault();holdOrder()}
+      if(event.key==='F4'){event.preventDefault();searchRef.current?.focus()}
+      if(event.key==='F5'){event.preventDefault();setCreateCustomerOpen(true)}
+      if(event.key==='F7'){event.preventDefault();discountRef.current?.focus()}
+      if(event.key==='F8'){
+        event.preventDefault()
+        const last=cart[cart.length-1]
+        if(last)removeLine(last.variant_id)
+      }
+      if(event.key==='Escape'){
+        setCheckoutOpen(false)
+        setHeldOpen(false)
+        setCreateCustomerOpen(false)
+      }
+    }
+    window.addEventListener('keydown',onKeyDown)
+    return ()=>window.removeEventListener('keydown',onKeyDown)
+  },[cart,total,warehouseId,customerId,discountMode,discountValue,otherFee,note])
+
+  return <div className="pos-screen">
+    <header className="pos-topbar">
+      <div className="pos-title">
+        <span className="module-eyebrow">BÁN HÀNG</span>
+        <h1>POS</h1>
+      </div>
+
+      <label className="pos-warehouse">
+        <span>Kho bán</span>
+        <select value={warehouseId} onChange={e=>changeWarehouse(e.target.value)}>
+          {warehouses.map(w=><option key={w.id} value={w.id}>{w.code} · {w.address??w.name}</option>)}
+        </select>
+      </label>
+
+      <div className="pos-search">
+        <span>⌕</span>
+        <input
+          ref={searchRef}
+          value={search}
+          onChange={e=>setSearch(e.target.value)}
+          onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();scanEnter()}}}
+          placeholder="Quét barcode / nhập SKU / tìm tên sản phẩm..."
+        />
+        <kbd>F4</kbd>
+      </div>
+
+      <button className="button" type="button" onClick={()=>setCreateCustomerOpen(v=>!v)}>
+        {selectedCustomer?selectedCustomer.name:'Khách lẻ'}
+      </button>
+      <button className="button" type="button" onClick={()=>setHeldOpen(v=>!v)}>
+        Đơn tạm ({held.length})
+      </button>
+      <Link className="button" href="/sales/history">Lịch sử bán</Link>
+    </header>
+
+    {loadError&&<div className="error-box">{loadError}</div>}
+    {error&&<div className="error-box">{error}</div>}
+
+    {createCustomerOpen&&<div className="pos-popover pos-customer-popover">
+      <div className="pos-popover-head">
+        <b>Gắn / tạo khách hàng</b>
+        <button type="button" onClick={()=>setCreateCustomerOpen(false)}>×</button>
+      </div>
+      <label>Khách hiện có
+        <select value={customerId} onChange={e=>setCustomerId(e.target.value)}>
+          <option value="">Khách lẻ</option>
+          {customerRows.map(c=><option key={c.id} value={c.id}>{c.name}{c.phone?' · '+c.phone:''}</option>)}
+        </select>
+      </label>
+      <form onSubmit={e=>{e.preventDefault();createCustomer(e.currentTarget)}}>
+        <b>Tạo nhanh khách mới</b>
+        <input name="name" placeholder="Tên khách hàng" required/>
+        <input name="phone" placeholder="SĐT"/>
+        <input name="address" placeholder="Địa chỉ"/>
+        <button className="button primary" type="submit" disabled={pending}>Tạo & gắn khách</button>
+      </form>
+    </div>}
+
+    {heldOpen&&<div className="pos-popover pos-held-popover">
+      <div className="pos-popover-head">
+        <b>Đơn tạm ({held.length})</b>
+        <button type="button" onClick={()=>setHeldOpen(false)}>×</button>
+      </div>
+      {!held.length
+        ? <div className="empty compact">Chưa có đơn tạm.</div>
+        : held.map(entry=>{
+            const wh=warehouses.find(w=>w.id===entry.warehouse_id)
+            const amount=entry.cart.reduce((s,x)=>s+x.cart_qty*x.unit_price,0)
+            return <div className="pos-held-row" key={entry.id}>
+              <div><b>{wh?.code??'Kho'} · {entry.cart.reduce((s,x)=>s+x.cart_qty,0)} SP</b><span>{new Date(entry.created_at).toLocaleString('vi-VN')}</span></div>
+              <strong>{money(amount)}</strong>
+              <button className="button small primary" type="button" onClick={()=>restoreHeld(entry)}>Mở</button>
+              <button className="button small" type="button" onClick={()=>removeHeld(entry.id)}>Xóa</button>
+            </div>
+          })}
+    </div>}
+
+    <div className="pos-workspace">
+      <section className="pos-products">
+        <div className="pos-product-toolbar">
+          <div><b>{warehouse?.code??'—'} · {warehouse?.address??warehouse?.name??''}</b><span>{warehouseProducts.length} SKU đang có tồn</span></div>
+          <span>{search?filteredProducts.length+' kết quả':'Thẻ sản phẩm · không dùng ảnh'}</span>
+        </div>
+
+        <div className="pos-product-grid">
+          {!filteredProducts.length
+            ? <div className="empty">Không tìm thấy sản phẩm phù hợp trong kho này.</div>
+            : filteredProducts.map(product=><button
+                type="button"
+                className="pos-product-card"
+                key={product.warehouse_id+product.variant_id}
+                onClick={()=>addProduct(product)}
+                disabled={!canSell||product.quantity<=0}
+              >
+                <b>{product.name}</b>
+                <span>{product.variant}</span>
+                <small>SKU: {product.sku}</small>
+                {product.barcode&&<small>Barcode: {product.barcode}</small>}
+                <div><strong>{money(product.sale_price)}</strong><em>Tồn {product.quantity}</em></div>
+              </button>)}
+        </div>
+      </section>
+
+      <aside className="pos-cart">
+        {!checkoutOpen
+          ? <>
+              <div className="pos-cart-head">
+                <div><b>Giỏ hàng ({cartQty})</b><span>{cart.length} SKU</span></div>
+                {cart.length>0&&<button type="button" className="pos-text-danger" onClick={()=>setCart([])}>Xóa tất cả</button>}
+              </div>
+
+              <div className="pos-cart-lines">
+                {!cart.length
+                  ? <div className="pos-cart-empty"><b>Giỏ hàng đang trống</b><span>Chọn thẻ sản phẩm hoặc quét barcode để bắt đầu.</span></div>
+                  : cart.map(line=><div className="pos-cart-line" key={line.variant_id}>
+                      <div className="pos-cart-product">
+                        <b>{line.name}</b><span>{line.variant}</span><small>{line.sku} · Tồn {line.quantity}</small>
+                      </div>
+                      <div className="pos-qty">
+                        <button type="button" onClick={()=>setQty(line.variant_id,line.cart_qty-1)}>−</button>
+                        <input value={line.cart_qty} onChange={e=>setQty(line.variant_id,num(e.target.value))}/>
+                        <button type="button" onClick={()=>setQty(line.variant_id,line.cart_qty+1)}>+</button>
+                      </div>
+                      <label className="pos-price">
+                        <span>Đơn giá</span>
+                        <input value={line.unit_price} onChange={e=>setCart(prev=>prev.map(x=>x.variant_id===line.variant_id?{...x,unit_price:Math.max(0,num(e.target.value))}:x))}/>
+                      </label>
+                      <strong>{money(line.cart_qty*line.unit_price)}</strong>
+                      <button type="button" className="pos-remove" onClick={()=>removeLine(line.variant_id)}>×</button>
+                    </div>)}
+              </div>
+
+              <div className="pos-customer-row">
+                <div><span>Khách hàng</span><b>{selectedCustomer?.name??'Khách lẻ'}</b>{selectedCustomer?.phone&&<small>{selectedCustomer.phone}</small>}</div>
+                <button className="button small" type="button" onClick={()=>setCreateCustomerOpen(true)}>Gắn khách</button>
+              </div>
+
+              <div className="pos-summary">
+                <div><span>Tiền hàng</span><b>{money(subtotal)}</b></div>
+                <div className="pos-discount-row">
+                  <span>Giảm giá</span>
+                  <select value={discountMode} onChange={e=>setDiscountMode(e.target.value as any)}>
+                    <option value="amount">Số tiền</option>
+                    <option value="percent">%</option>
+                  </select>
+                  <input ref={discountRef} value={discountValue} onChange={e=>setDiscountValue(Math.max(0,num(e.target.value)))}/>
+                  <b>−{money(discountAmount)}</b>
+                </div>
+                <div><span>Phí khác</span><input value={otherFee} onChange={e=>setOtherFee(Math.max(0,num(e.target.value)))}/><b>{money(otherFee)}</b></div>
+                <div className="pos-total"><span>Tổng thanh toán</span><b>{money(total)}</b></div>
+                <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Ghi chú hóa đơn (không bắt buộc)"/>
+              </div>
+
+              <div className="pos-cart-actions">
+                <button className="button" type="button" onClick={holdOrder} disabled={!cart.length||pending}>Giữ đơn</button>
+                <button className="button primary pos-pay-button" type="button" onClick={beginCheckout} disabled={!cart.length||pending||!canSell}>
+                  Thanh toán · {money(total)}
+                </button>
+              </div>
+            </>
+          : <div className="pos-checkout">
+              <div className="pos-checkout-head">
+                <button type="button" onClick={()=>setCheckoutOpen(false)}>←</button>
+                <div><b>Thanh toán</b><span>{cartQty} sản phẩm · {warehouse?.code}</span></div>
+              </div>
+
+              <div className="pos-pay-methods">
+                <button className={paymentMode==='cash'?'active':''} type="button" onClick={()=>setPaymentMode('cash')}>Tiền mặt</button>
+                <button className={paymentMode==='transfer'?'active':''} type="button" onClick={()=>setPaymentMode('transfer')}>Chuyển khoản</button>
+                <button className={paymentMode==='debt'?'active':''} type="button" onClick={()=>setPaymentMode('debt')}>Ghi nợ</button>
+                <button className={paymentMode==='combined'?'active':''} type="button" onClick={()=>setPaymentMode('combined')}>Kết hợp</button>
+              </div>
+
+              <div className="pos-checkout-total">
+                <span>Tổng thanh toán</span><b>{money(total)}</b>
+              </div>
+
+              {paymentMode==='cash'&&<div className="pos-cash-panel">
+                <label>Khách đưa
+                  <input value={cashTendered} onChange={e=>setCashTendered(Math.max(0,num(e.target.value)))}/>
+                </label>
+                <div className="pos-money-presets">
+                  {[100000,200000,500000,1000000].map(v=><button key={v} type="button" onClick={()=>setCashTendered(v)}>{v===1000000?'1tr':v/1000+'k'}</button>)}
+                  <button type="button" onClick={()=>setCashTendered(total)}>Vừa đủ</button>
+                </div>
+                <div className="pos-change"><span>Tiền thừa</span><b>{money(Math.max(0,cashTendered-total))}</b></div>
+              </div>}
+
+              {paymentMode==='transfer'&&<div className="pos-payment-note">
+                <b>Chuyển khoản</b>
+                <span>Xác nhận khi đã nhận đủ {money(total)}.</span>
+              </div>}
+
+              {paymentMode==='debt'&&<div className="pos-payment-note warning">
+                <b>Ghi nợ toàn bộ</b>
+                <span>{selectedCustomer?'Công nợ sẽ ghi cho '+selectedCustomer.name:'Cần gắn khách hàng trước khi xác nhận.'}</span>
+              </div>}
+
+              {paymentMode==='combined'&&<div className="pos-combined-panel">
+                <label>Tiền mặt<input value={combinedCash} onChange={e=>setCombinedCash(Math.max(0,num(e.target.value)))}/></label>
+                <label>Chuyển khoản<input value={combinedTransfer} onChange={e=>setCombinedTransfer(Math.max(0,num(e.target.value)))}/></label>
+                <div><span>Còn nợ</span><b>{money(Math.max(0,total-combinedCash-combinedTransfer))}</b></div>
+                {total-combinedCash-combinedTransfer>0&&!selectedCustomer&&<small>Cần gắn khách hàng cho phần còn nợ.</small>}
+              </div>}
+
+              <div className="pos-checkout-customer">
+                <span>Khách hàng</span>
+                <b>{selectedCustomer?.name??'Khách lẻ'}</b>
+                <button className="button small" type="button" onClick={()=>setCreateCustomerOpen(true)}>Thay đổi</button>
+              </div>
+
+              <button className="button primary pos-confirm-payment" type="button" onClick={submitCheckout} disabled={pending}>
+                {pending?'Đang xử lý...':'Xác nhận thanh toán · '+money(total)}
+              </button>
+            </div>}
+      </aside>
+    </div>
+
+    {receipt&&<div className="pos-success-layer">
+      <div className="pos-success-card">
+        <div className="pos-success-icon">✓</div>
+        <h2>Thanh toán thành công</h2>
+        <b>{receipt.invoice_code}</b>
+        <div className="pos-success-money">{money(receipt.total_amount)}</div>
+        <div className="pos-success-grid">
+          <div><span>Đã thu</span><b>{money(receipt.paid_amount)}</b></div>
+          <div><span>Còn nợ</span><b>{money(receipt.debt_amount)}</b></div>
+          <div><span>Khách đưa</span><b>{money(receipt.cash_received)}</b></div>
+          <div><span>Tiền thừa</span><b>{money(receipt.change_amount)}</b></div>
+        </div>
+        <div className="pos-success-actions">
+          <button className="button primary" type="button" onClick={()=>{setReceipt(null);searchRef.current?.focus()}}>Đơn mới</button>
+          <Link className="button" href={'/sales/history?sale='+receipt.sale_id}>Xem hóa đơn</Link>
+        </div>
+      </div>
+    </div>}
+
+    <footer className="pos-shortcuts">
+      <span><kbd>F2</kbd> Thanh toán</span>
+      <span><kbd>F3</kbd> Giữ đơn</span>
+      <span><kbd>F4</kbd> Tìm / quét SP</span>
+      <span><kbd>F5</kbd> Gắn khách</span>
+      <span><kbd>F7</kbd> Giảm giá</span>
+      <span><kbd>F8</kbd> Xóa dòng cuối</span>
+      <span><kbd>Esc</kbd> Đóng</span>
+    </footer>
+  </div>
+}
