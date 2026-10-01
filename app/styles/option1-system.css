@@ -17458,3 +17458,861 @@ a{text-decoration:none}
     min-height:620px;
   }
 }
+
+/* =====================================================================
+   NEO ENTERPRISE V1 FOUNDATION
+   Branch: redesign/neo-enterprise-v1
+   Visual direction: Neo Enterprise Light / Precision Operations
+   ===================================================================== */
+:root{
+  --neo-primary:#2563EB;
+  --neo-primary-strong:#1D4ED8;
+  --neo-primary-soft:#EEF4FF;
+  --neo-teal:#14A89A;
+  --neo-teal-soft:#EAF9F7;
+  --neo-success:#249765;
+  --neo-success-soft:#EAF7F0;
+  --neo-warning:#D58A20;
+  --neo-warning-soft:#FFF6E8;
+  --neo-danger:#D65353;
+  --neo-danger-soft:#FDEEEE;
+  --neo-ink:#1D2A38;
+  --neo-text:#34485C;
+  --neo-muted:#6C7C8F;
+  --neo-soft:#F6F8FB;
+  --neo-soft-2:#F9FBFD;
+  --neo-line:#E3E9F0;
+  --neo-line-strong:#D4DDE7;
+  --neo-surface:#FFFFFF;
+  --neo-shadow:0 1px 2px rgba(18,33,52,.035),0 8px 24px rgba(18,33,52,.025);
+
+  --mynh-bg:var(--neo-soft);
+  --mynh-surface:var(--neo-surface);
+  --mynh-text:var(--neo-ink);
+  --mynh-text-2:var(--neo-text);
+  --mynh-text-3:var(--neo-muted);
+  --mynh-border:var(--neo-line);
+  --mynh-border-2:var(--neo-line-strong);
+  --mynh-brand:var(--neo-primary);
+  --mynh-info:var(--neo-primary);
+  --mynh-info-bg:var(--neo-primary-soft);
+  --mynh-success:var(--neo-success);
+  --mynh-success-bg:var(--neo-success-soft);
+  --mynh-warning:var(--neo-warning);
+  --mynh-warning-bg:var(--neo-warning-soft);
+  --mynh-danger:var(--neo-danger);
+  --mynh-danger-bg:var(--neo-danger-soft);
+}
+
+/* Light navigation becomes the new visual master on the redesign branch. */
+body{
+  background:var(--neo-soft)!important;
+  color:var(--neo-ink);
+}
+.main{
+  background:
+    radial-gradient(circle at 20% -10%,rgba(37,99,235,.035),transparent 26%),
+    var(--neo-soft)!important;
+}
+.sidebar{
+  border-right:1px solid var(--neo-line)!important;
+  background:#fff!important;
+  color:var(--neo-text)!important;
+  box-shadow:none!important;
+}
+.sidebar .brand{
+  color:var(--neo-ink)!important;
+}
+.sidebar .brand-mark{
+  background:linear-gradient(145deg,#2C6FF1,#55B3F3)!important;
+  color:#fff!important;
+  box-shadow:0 6px 16px rgba(37,99,235,.16)!important;
+}
+.nav{
+  scrollbar-color:#D9E2EC transparent!important;
+}
+.nav::-webkit-scrollbar-thumb{
+  background:#D9E2EC!important;
+}
+.nav-section-label{
+  color:#9AA7B6!important;
+  font-size:7.2px!important;
+  letter-spacing:.14em!important;
+}
+.nav a{
+  color:#607186!important;
+  font-weight:600!important;
+  border:1px solid transparent!important;
+  transition:background .12s ease,color .12s ease,border-color .12s ease!important;
+}
+.nav a:hover{
+  border-color:#E7EDF4!important;
+  background:#F7F9FC!important;
+  color:#31506C!important;
+}
+.nav a.active{
+  border-color:#D8E5FF!important;
+  background:#EDF4FF!important;
+  color:var(--neo-primary)!important;
+  box-shadow:inset 3px 0 0 var(--neo-primary)!important;
+}
+.nav a.active .nav-icon{
+  background:#DBEAFE!important;
+  color:var(--neo-primary)!important;
+}
+.nav-icon{
+  color:#7C8DA0!important;
+  background:transparent!important;
+}
+.sidebar-foot{
+  background:#fff!important;
+  border-top:1px solid #EDF1F5!important;
+}
+.account{
+  border-color:#E5EBF2!important;
+  background:#F9FBFD!important;
+  color:#506177!important;
+}
+
+/* Universal Neo page shell */
+.neo-enterprise-v1{
+  color:var(--neo-text);
+}
+.neo-enterprise-v1 .page-head{
+  min-height:52px!important;
+  margin-bottom:8px!important;
+}
+.neo-enterprise-v1 .page-head h1{
+  margin:0!important;
+  color:var(--neo-ink)!important;
+  font-size:20px!important;
+  line-height:1.12!important;
+  font-weight:760!important;
+  letter-spacing:-.025em!important;
+}
+.neo-enterprise-v1 .page-head p{
+  margin:3px 0 0!important;
+  color:#758497!important;
+  font-size:10px!important;
+  line-height:1.4!important;
+  font-weight:500!important;
+}
+.neo-enterprise-v1 .module-eyebrow,
+.neo-enterprise-v1 .eyebrow{
+  color:#8B99AA!important;
+  font-size:7.4px!important;
+  font-weight:780!important;
+  letter-spacing:.13em!important;
+}
+.neo-enterprise-v1 .head-actions{
+  gap:6px!important;
+}
+.neo-enterprise-v1 .button{
+  min-height:30px!important;
+  border:1px solid #D9E2EC!important;
+  border-radius:7px!important;
+  background:#fff!important;
+  color:#4B5F74!important;
+  font-size:9px!important;
+  font-weight:680!important;
+  box-shadow:0 1px 1px rgba(22,36,54,.02)!important;
+}
+.neo-enterprise-v1 .button:hover{
+  border-color:#C4D0DD!important;
+  background:#F8FAFD!important;
+  color:#2D4B65!important;
+}
+.neo-enterprise-v1 .button.primary{
+  border-color:var(--neo-primary)!important;
+  background:var(--neo-primary)!important;
+  color:#fff!important;
+  box-shadow:0 4px 10px rgba(37,99,235,.14)!important;
+}
+.neo-enterprise-v1 .button.primary:hover{
+  border-color:var(--neo-primary-strong)!important;
+  background:var(--neo-primary-strong)!important;
+}
+.neo-enterprise-v1 input,
+.neo-enterprise-v1 select,
+.neo-enterprise-v1 textarea{
+  border-color:#DCE4EC!important;
+  border-radius:7px!important;
+  background:#fff!important;
+  color:#3A4D61!important;
+}
+.neo-enterprise-v1 input:focus,
+.neo-enterprise-v1 select:focus,
+.neo-enterprise-v1 textarea:focus{
+  border-color:#91B2FF!important;
+  box-shadow:0 0 0 3px rgba(37,99,235,.07)!important;
+}
+.neo-enterprise-v1 input::placeholder,
+.neo-enterprise-v1 textarea::placeholder{
+  color:#9AA7B5!important;
+}
+
+/* Segmented controls: soft active fill, no heavy block. */
+.neo-enterprise-v1 .segmented,
+.neo-enterprise-v1 .archive-view-toggle{
+  min-height:30px!important;
+  padding:3px!important;
+  gap:2px!important;
+  border:0!important;
+  border-radius:8px!important;
+  background:#F1F4F8!important;
+}
+.neo-enterprise-v1 .segmented a,
+.neo-enterprise-v1 .archive-view-toggle a{
+  min-height:24px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  padding:0 8px!important;
+  border:0!important;
+  border-radius:6px!important;
+  color:#77879A!important;
+  font-size:8.7px!important;
+  font-weight:650!important;
+  box-shadow:none!important;
+}
+.neo-enterprise-v1 .segmented a.active,
+.neo-enterprise-v1 .archive-view-toggle a.active{
+  background:#fff!important;
+  color:var(--neo-primary)!important;
+  box-shadow:0 1px 3px rgba(33,48,68,.08)!important;
+}
+
+/* Status pills: small, saturated text, soft tint. */
+.neo-enterprise-v1 .status-pill,
+.neo-enterprise-v1 .badge{
+  min-height:21px!important;
+  padding:0 7px!important;
+  border-radius:999px!important;
+  font-size:8px!important;
+  font-weight:700!important;
+}
+.neo-enterprise-v1 .status-pill.green,
+.neo-enterprise-v1 .badge.green{
+  border-color:#C6E8D6!important;
+  background:var(--neo-success-soft)!important;
+  color:#207D54!important;
+}
+.neo-enterprise-v1 .status-pill.orange{
+  border-color:#F0D8B5!important;
+  background:var(--neo-warning-soft)!important;
+  color:#A96A12!important;
+}
+.neo-enterprise-v1 .status-pill.red{
+  border-color:#EDCACA!important;
+  background:var(--neo-danger-soft)!important;
+  color:#B54848!important;
+}
+
+/* Right detail panel becomes a clean floating workspace. */
+.neo-enterprise-v1 .detail-panel{
+  border:1px solid #DEE6EE!important;
+  border-radius:11px!important;
+  background:#fff!important;
+  box-shadow:0 12px 34px rgba(28,45,65,.07)!important;
+}
+.neo-enterprise-v1 .panel-head{
+  min-height:64px!important;
+  padding:12px 13px 9px!important;
+  border-bottom:0!important;
+  background:#fff!important;
+}
+.neo-enterprise-v1 .panel-head h2{
+  color:#263A4E!important;
+  font-size:14px!important;
+  font-weight:740!important;
+  letter-spacing:-.012em!important;
+}
+.neo-enterprise-v1 .close{
+  width:28px!important;
+  height:28px!important;
+  border-color:#E2E8EF!important;
+  border-radius:7px!important;
+  color:#758598!important;
+}
+.neo-enterprise-v1 .panel-tabs{
+  height:auto!important;
+  min-height:38px!important;
+  gap:3px!important;
+  margin:0 10px 7px!important;
+  padding:3px!important;
+  border:0!important;
+  border-radius:8px!important;
+  background:#F3F6FA!important;
+}
+.neo-enterprise-v1 .panel-tabs a,
+.neo-enterprise-v1 .panel-tabs span{
+  min-height:30px!important;
+  flex:1 1 auto!important;
+  justify-content:center!important;
+  padding:0 7px!important;
+  border:0!important;
+  border-radius:6px!important;
+  color:#748598!important;
+  font-size:8.7px!important;
+  font-weight:650!important;
+}
+.neo-enterprise-v1 .panel-tabs a.active,
+.neo-enterprise-v1 .panel-tabs span.active{
+  background:#fff!important;
+  color:var(--neo-primary)!important;
+  box-shadow:0 1px 4px rgba(28,44,66,.08)!important;
+}
+.neo-enterprise-v1 .panel-scroll{
+  padding:6px 11px 18px!important;
+}
+.neo-enterprise-v1 .detail-grid{
+  border:0!important;
+  border-radius:0!important;
+  background:#fff!important;
+}
+.neo-enterprise-v1 .detail-grid>div{
+  min-height:47px!important;
+  padding:7px 2px!important;
+  border-right:0!important;
+  border-bottom:1px solid #EEF2F6!important;
+  background:#fff!important;
+}
+.neo-enterprise-v1 .detail-grid span{
+  color:#91A0AF!important;
+  font-size:7.7px!important;
+  font-weight:600!important;
+}
+.neo-enterprise-v1 .detail-grid b{
+  color:#34495E!important;
+  font-size:9.5px!important;
+  font-weight:650!important;
+}
+
+/* =====================================================================
+   NEO PURCHASE ORDERS
+   ===================================================================== */
+.neo-orders-screen .purchase-date-filter{
+  margin-bottom:7px!important;
+}
+.neo-orders-screen .entity-status-strip{
+  min-height:66px!important;
+  display:grid!important;
+  grid-template-columns:repeat(8,minmax(112px,1fr))!important;
+  gap:0!important;
+  overflow-x:auto!important;
+  border:1px solid var(--neo-line)!important;
+  border-radius:10px!important;
+  background:#fff!important;
+  box-shadow:var(--neo-shadow)!important;
+}
+.neo-orders-screen .entity-status-strip .entity-status-metric{
+  min-height:64px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  gap:3px!important;
+  padding:8px 10px!important;
+  border:0!important;
+  border-right:1px solid #EEF2F6!important;
+  border-radius:0!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.neo-orders-screen .entity-status-strip .entity-status-metric:last-child{
+  border-right:0!important;
+}
+.neo-orders-screen .entity-status-strip .entity-status-metric:hover{
+  background:#F9FBFE!important;
+}
+.neo-orders-screen .entity-status-strip .entity-status-metric.active{
+  background:#F1F6FF!important;
+  box-shadow:inset 0 -2px 0 var(--neo-primary)!important;
+}
+.neo-orders-screen .entity-status-strip .entity-status-metric>span{
+  color:#77879A!important;
+  font-size:7.7px!important;
+  font-weight:720!important;
+  text-transform:none!important;
+}
+.neo-orders-screen .entity-status-strip .entity-status-metric>b{
+  color:#21364B!important;
+  font-size:18px!important;
+  font-weight:760!important;
+}
+.neo-orders-screen .entity-status-strip .entity-status-metric>small{
+  color:#98A4B2!important;
+  font-size:7.3px!important;
+}
+.neo-orders-screen .entity-status-strip .success>b{color:#24825A!important}
+.neo-orders-screen .entity-status-strip .warning>b{color:#B57416!important}
+.neo-orders-screen .entity-status-strip .danger>b{color:#BC4D4D!important}
+.neo-orders-screen .entity-status-strip .info>b{color:#326BD0!important}
+
+.neo-orders-screen .entity-command-bar{
+  height:42px!important;
+  min-height:42px!important;
+  margin-bottom:6px!important;
+  padding:5px 7px!important;
+  border:1px solid var(--neo-line)!important;
+  border-radius:9px!important;
+  background:#fff!important;
+  box-shadow:0 1px 2px rgba(22,36,54,.025)!important;
+}
+.neo-orders-screen .entity-command-bar input,
+.neo-orders-screen .entity-command-bar select{
+  height:30px!important;
+  min-height:30px!important;
+}
+.neo-orders-screen .entity-command-bar .search{
+  font-size:9.5px!important;
+}
+.neo-orders-screen .toolbar-note{
+  color:#8B98A8!important;
+  font-size:8.3px!important;
+}
+
+.neo-orders-screen .order-table-card{
+  border:1px solid var(--neo-line)!important;
+  border-radius:10px!important;
+  box-shadow:var(--neo-shadow)!important;
+}
+.neo-orders-screen .order-table thead th{
+  height:34px!important;
+  min-height:34px!important;
+  border-bottom:1px solid var(--neo-line)!important;
+  background:#F8FAFD!important;
+  color:#718195!important;
+  font-size:8.4px!important;
+  font-weight:720!important;
+  text-transform:none!important;
+  letter-spacing:.01em!important;
+}
+.neo-orders-screen .order-table tbody td{
+  height:43px!important;
+  min-height:43px!important;
+  padding-top:5px!important;
+  padding-bottom:5px!important;
+  border-bottom:1px solid #EEF2F6!important;
+  background:#fff!important;
+  color:#41566C!important;
+  font-size:9.3px!important;
+}
+.neo-orders-screen .order-table tbody tr:hover td{
+  background:#FAFCFF!important;
+}
+.neo-orders-screen .order-table tr.selected-row td{
+  background:#F2F6FF!important;
+}
+.neo-orders-screen .order-table tr.selected-row td:first-child{
+  box-shadow:inset 3px 0 0 var(--neo-primary)!important;
+}
+.neo-orders-screen .order-table .table-link{
+  color:#245ECF!important;
+  font-weight:740!important;
+}
+.neo-orders-screen .row-action-kebab{
+  color:#8090A2!important;
+}
+.neo-orders-screen .order-bulk-bar{
+  border:1px solid #CFE0FF!important;
+  border-radius:9px!important;
+  background:#F2F6FF!important;
+  box-shadow:0 8px 24px rgba(37,99,235,.08)!important;
+}
+
+/* =====================================================================
+   NEO WAREHOUSE OVERVIEW
+   ===================================================================== */
+.neo-warehouse-screen{
+  --whx-blue:var(--neo-primary);
+}
+.neo-warehouse-screen .whx-kpi-grid{
+  display:grid!important;
+  grid-template-columns:repeat(7,minmax(110px,1fr))!important;
+  gap:0!important;
+  overflow:hidden!important;
+  border:1px solid var(--neo-line)!important;
+  border-radius:10px!important;
+  background:#fff!important;
+  box-shadow:var(--neo-shadow)!important;
+}
+.neo-warehouse-screen .whx-kpi-grid>a{
+  min-height:68px!important;
+  padding:9px 10px!important;
+  border:0!important;
+  border-right:1px solid #EEF2F6!important;
+  border-radius:0!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.neo-warehouse-screen .whx-kpi-grid>a:last-child{border-right:0!important}
+.neo-warehouse-screen .whx-kpi-grid>a:hover{background:#FAFCFF!important}
+.neo-warehouse-screen .whx-kpi-grid span{
+  color:#78889B!important;
+  font-size:7.6px!important;
+  font-weight:720!important;
+}
+.neo-warehouse-screen .whx-kpi-grid b{
+  margin-top:3px!important;
+  color:#21364B!important;
+  font-size:18px!important;
+  font-weight:760!important;
+}
+.neo-warehouse-screen .whx-kpi-grid small{
+  color:#98A5B3!important;
+  font-size:7.3px!important;
+}
+.neo-warehouse-screen .whx-kpi-grid .success b{color:#24825A!important}
+.neo-warehouse-screen .whx-kpi-grid .warning b{color:#B57416!important}
+.neo-warehouse-screen .whx-kpi-grid .danger b{color:#BC4D4D!important}
+.neo-warehouse-screen .whx-kpi-grid .info b{color:#326BD0!important}
+
+.neo-warehouse-screen .whx-overview-grid{
+  gap:8px!important;
+  margin-top:8px!important;
+}
+.neo-warehouse-screen .whx-surface{
+  border:1px solid var(--neo-line)!important;
+  border-radius:10px!important;
+  background:#fff!important;
+  box-shadow:var(--neo-shadow)!important;
+}
+.neo-warehouse-screen .whx-surface-head{
+  min-height:52px!important;
+  padding:9px 11px!important;
+  border-bottom:1px solid #EEF2F6!important;
+  background:#fff!important;
+}
+.neo-warehouse-screen .whx-surface-head span{
+  color:#95A2B0!important;
+  font-size:7.2px!important;
+}
+.neo-warehouse-screen .whx-surface-head h2{
+  color:#30455A!important;
+  font-size:11px!important;
+  font-weight:720!important;
+}
+.neo-warehouse-screen .whx-work-head{
+  background:#F8FAFD!important;
+  color:#7A899A!important;
+}
+.neo-warehouse-screen .whx-work-row{
+  min-height:44px!important;
+  border-top:1px solid #EEF2F6!important;
+  background:#fff!important;
+}
+.neo-warehouse-screen .whx-work-row:hover{background:#FAFCFF!important}
+.neo-warehouse-screen .whx-work-row b{color:#37506A!important}
+.neo-warehouse-screen .whx-stock-summary{
+  margin:8px 10px 0!important;
+  border:0!important;
+  border-radius:8px!important;
+  background:#F7FAFD!important;
+}
+.neo-warehouse-screen .whx-low-list>a{
+  min-height:42px!important;
+  border-top-color:#EEF2F6!important;
+}
+.neo-warehouse-screen .whx-flow{
+  margin-top:8px!important;
+  border:1px solid var(--neo-line)!important;
+  border-radius:10px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.neo-warehouse-screen .whx-flow>div span{
+  background:var(--neo-primary-soft)!important;
+  color:var(--neo-primary)!important;
+}
+
+/* =====================================================================
+   NEO POS — quick commerce / precision operations
+   ===================================================================== */
+.neo-pos-screen{
+  height:calc(100vh - 44px)!important;
+  background:transparent!important;
+}
+.neo-pos-screen .pos-page-head-v2{
+  min-height:50px!important;
+  margin-bottom:6px!important;
+}
+.neo-pos-screen .pos-command-center-v2{
+  margin-bottom:7px!important;
+}
+.neo-pos-screen .pos-control-row-v2{
+  min-height:44px!important;
+  grid-template-columns:220px minmax(360px,1fr) auto!important;
+  gap:7px!important;
+  padding:6px 7px!important;
+  border:1px solid var(--neo-line)!important;
+  border-radius:10px!important;
+  background:#fff!important;
+  box-shadow:var(--neo-shadow)!important;
+}
+.neo-pos-screen .pos-warehouse-v2 select{
+  height:31px!important;
+  border-radius:7px!important;
+}
+.neo-pos-screen .pos-search-v2{
+  height:32px!important;
+  border:1px solid #DCE4EC!important;
+  border-radius:8px!important;
+  background:#F9FBFD!important;
+  box-shadow:none!important;
+}
+.neo-pos-screen .pos-search-v2:focus-within{
+  border-color:#9BB7F7!important;
+  background:#fff!important;
+  box-shadow:0 0 0 3px rgba(37,99,235,.06)!important;
+}
+.neo-pos-screen .pos-search-icon{color:var(--neo-primary)!important}
+.neo-pos-screen .pos-search-v2 kbd{
+  border:0!important;
+  background:#EEF3FA!important;
+  color:#71839A!important;
+}
+.neo-pos-screen>.pos-workspace{
+  grid-template-columns:minmax(0,1fr) clamp(420px,31vw,465px)!important;
+  gap:7px!important;
+}
+.neo-pos-screen .pos-products,
+.neo-pos-screen .pos-cart{
+  border:1px solid var(--neo-line)!important;
+  border-radius:11px!important;
+  background:#fff!important;
+  box-shadow:var(--neo-shadow)!important;
+}
+.neo-pos-screen .pos-product-toolbar-v2{
+  min-height:48px!important;
+  padding:8px 10px!important;
+  border-bottom:1px solid #EEF2F6!important;
+  background:#fff!important;
+}
+.neo-pos-screen .pos-product-toolbar-v2>div:first-child>b{
+  color:#40566D!important;
+  font-size:9.7px!important;
+}
+.neo-pos-screen .pos-product-meta{
+  align-items:flex-end!important;
+}
+.neo-pos-screen .pos-product-meta>b{
+  color:var(--neo-primary)!important;
+  font-size:15px!important;
+}
+.neo-pos-screen .neo-pos-product-grid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-content:start!important;
+  gap:6px!important;
+  padding:7px!important;
+  background:#F7F9FC!important;
+}
+.neo-pos-screen .pos-product-card{
+  min-height:68px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:12px!important;
+  padding:9px 10px!important;
+  border:1px solid #E1E7EE!important;
+  border-radius:9px!important;
+  background:#fff!important;
+  color:inherit!important;
+  box-shadow:none!important;
+  text-align:left!important;
+  transition:border-color .12s ease,background .12s ease,transform .12s ease,box-shadow .12s ease!important;
+}
+.neo-pos-screen .pos-product-card:hover{
+  border-color:#BFD0F5!important;
+  background:#FBFDFF!important;
+  transform:translateY(-1px)!important;
+  box-shadow:0 4px 12px rgba(37,99,235,.055)!important;
+}
+.neo-pos-screen .pos-product-card:active{
+  transform:translateY(0)!important;
+  background:#F4F8FF!important;
+}
+.neo-pos-product-main{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.neo-pos-product-main>b{
+  overflow:hidden;
+  color:#2F4358;
+  font-size:10px;
+  line-height:1.3;
+  font-weight:720;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.neo-pos-product-main>span{
+  overflow:hidden;
+  color:#7A899A;
+  font-size:8px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.neo-pos-product-main>small{
+  overflow:hidden;
+  color:#A0AAB6;
+  font-size:6.8px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.neo-pos-product-price{
+  min-width:82px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:3px;
+}
+.neo-pos-product-price>b{
+  color:#214B74;
+  font-size:10.5px;
+  font-weight:780;
+  white-space:nowrap;
+}
+.neo-pos-product-price>span{
+  padding:2px 5px;
+  border-radius:999px;
+  background:var(--neo-success-soft);
+  color:#287E59;
+  font-size:7.4px;
+  font-weight:700;
+}
+.neo-pos-product-price>span.low{
+  background:var(--neo-warning-soft);
+  color:#A56A16;
+}
+
+.neo-pos-screen .pos-cart-head-v2{
+  min-height:60px!important;
+  padding:10px 11px 8px!important;
+  border-bottom:1px solid #EEF2F6!important;
+  background:#fff!important;
+}
+.neo-pos-screen .pos-cart-head-v2 b{
+  color:#2B4156!important;
+  font-size:12px!important;
+}
+.neo-pos-screen .pos-cart-head-v2 small{
+  color:#8795A5!important;
+  font-size:8px!important;
+}
+.neo-pos-screen .pos-cart-line{
+  min-height:62px!important;
+  padding:7px 8px!important;
+  border-bottom:1px solid #EEF2F6!important;
+}
+.neo-pos-screen .pos-cart-line:hover{background:#FBFCFE!important}
+.neo-pos-screen .pos-cart-product b{
+  color:#33495F!important;
+  font-size:9.4px!important;
+}
+.neo-pos-screen .pos-cart-product span,
+.neo-pos-screen .pos-cart-product small{
+  color:#8593A2!important;
+}
+.neo-pos-screen .pos-customer-row{
+  border-color:#EEF2F6!important;
+  background:#FAFBFD!important;
+}
+.neo-pos-screen .pos-summary-fast{
+  background:#fff!important;
+}
+.neo-pos-screen .pos-total{
+  min-height:48px!important;
+  padding:7px 9px!important;
+  border:1px solid #DCE7F8!important;
+  border-radius:8px!important;
+  background:#F4F8FF!important;
+}
+.neo-pos-screen .pos-total span{
+  color:#60748A!important;
+  font-size:8px!important;
+}
+.neo-pos-screen .pos-total b{
+  color:var(--neo-primary-strong)!important;
+  font-size:21px!important;
+  font-weight:800!important;
+}
+.neo-pos-screen .pos-cart-actions-fast{
+  grid-template-columns:54px 1fr 1.15fr 1fr!important;
+  padding:7px 8px 8px!important;
+  border-top:1px solid #EEF2F6!important;
+  background:#fff!important;
+}
+.neo-pos-screen .pos-cart-actions-fast .button{
+  height:34px!important;
+  border-radius:8px!important;
+}
+.neo-pos-screen .pos-quick-transfer{
+  border-color:var(--neo-primary)!important;
+  background:var(--neo-primary)!important;
+  color:#fff!important;
+}
+.neo-pos-screen .pos-quick-cash{
+  border-color:#CFE7E2!important;
+  background:#F0FBF8!important;
+  color:#187E72!important;
+}
+.neo-pos-screen .pos-checkout{
+  background:#fff!important;
+}
+.neo-pos-screen .pos-checkout-head{
+  min-height:62px!important;
+  border-bottom:1px solid #EEF2F6!important;
+  background:#fff!important;
+}
+.neo-pos-screen .pos-pay-methods{
+  gap:4px!important;
+  padding:4px!important;
+  border-radius:9px!important;
+  background:#F2F5F9!important;
+}
+.neo-pos-screen .pos-pay-methods button{
+  min-height:30px!important;
+  border:0!important;
+  border-radius:7px!important;
+  background:transparent!important;
+  color:#728397!important;
+}
+.neo-pos-screen .pos-pay-methods button.active{
+  background:#fff!important;
+  color:var(--neo-primary)!important;
+  box-shadow:0 1px 4px rgba(27,44,65,.08)!important;
+}
+.neo-pos-screen .pos-transfer-panel{
+  border-color:#E2E9F0!important;
+  border-radius:9px!important;
+  background:#FAFCFE!important;
+}
+.neo-pos-screen .pos-confirm-payment{
+  min-height:38px!important;
+  border-radius:8px!important;
+  background:var(--neo-primary)!important;
+  border-color:var(--neo-primary)!important;
+}
+.neo-pos-screen .pos-shortcuts{
+  min-height:28px!important;
+  border:0!important;
+  background:transparent!important;
+  color:#8B98A8!important;
+}
+
+/* Responsive density for MacBook 13.3" baseline */
+@media(max-width:1440px){
+  .neo-orders-screen .entity-status-strip{
+    grid-template-columns:repeat(8,minmax(105px,1fr))!important;
+  }
+  .neo-warehouse-screen .whx-kpi-grid{
+    grid-template-columns:repeat(7,minmax(104px,1fr))!important;
+  }
+  .neo-pos-screen>.pos-workspace{
+    grid-template-columns:minmax(0,1fr) 415px!important;
+  }
+  .neo-pos-screen .neo-pos-product-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
