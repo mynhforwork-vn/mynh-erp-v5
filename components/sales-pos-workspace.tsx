@@ -4,6 +4,7 @@ import { useEffect,useMemo,useRef,useState,useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { checkoutPOS,createPOSCustomer } from '@/lib/actions/sales'
+import { buildTransferDescription,buildVietQRUrl,makeTransferReference,type BankTransferConfig } from '@/lib/vietqr'
 
 type Warehouse={id:string,code:string,name:string,address?:string|null}
 type Product={
@@ -60,12 +61,14 @@ export function SalesPOSWorkspace({
   warehouses,
   products,
   customers,
+  transferConfig,
   canSell,
   loadError,
 }:{
   warehouses:Warehouse[]
   products:Product[]
   customers:Customer[]
+  transferConfig:BankTransferConfig|null
   canSell:boolean
   loadError?:string|null
 }){
@@ -83,6 +86,8 @@ export function SalesPOSWorkspace({
   const [createCustomerOpen,setCreateCustomerOpen]=useState(false)
   const [checkoutOpen,setCheckoutOpen]=useState(false)
   const [paymentMode,setPaymentMode]=useState<'cash'|'transfer'|'debt'|'combined'>('cash')
+  const [transferRef,setTransferRef]=useState('')
+  const [invoiceExtrasOpen,setInvoiceExtrasOpen]=useState(false)
   const [discountMode,setDiscountMode]=useState<'amount'|'percent'>('amount')
   const [discountValue,setDiscountValue]=useState(0)
   const [otherFee,setOtherFee]=useState(0)
@@ -158,6 +163,8 @@ export function SalesPOSWorkspace({
     setCombinedTransfer(0)
     setCheckoutOpen(false)
     setPaymentMode('cash')
+    setTransferRef('')
+    setInvoiceExtrasOpen(false)
     setError('')
     window.setTimeout(()=>searchRef.current?.focus(),50)
   }
@@ -260,14 +267,24 @@ export function SalesPOSWorkspace({
     persistHeld(held.filter(x=>x.id!==holdId))
   }
 
-  function beginCheckout(){
+  function openPayment(mode:'cash'|'transfer'|'debt'|'combined'){
     if(!cart.length){setError('Giỏ hàng đang trống');return}
     if(total<=0){setError('Tổng thanh toán phải lớn hơn 0');return}
+    if(mode==='transfer'&&(!transferConfig?.is_active||!transferConfig.bank_id||!transferConfig.account_no)){
+      setError('Chưa cấu hình tài khoản chuyển khoản. Mở Cài đặt → Thanh toán & QR để thiết lập.')
+      return
+    }
     setError('')
+    setPaymentMode(mode)
     setCashTendered(total)
     setCombinedCash(0)
     setCombinedTransfer(0)
+    setTransferRef(makeTransferReference(transferConfig?.transfer_prefix||'MYNH'))
     setCheckoutOpen(true)
+  }
+
+  function beginCheckout(){
+    openPayment('cash')
   }
 
   function submitCheckout(){
