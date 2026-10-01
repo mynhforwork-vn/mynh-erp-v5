@@ -309,7 +309,11 @@ export function SalesPOSWorkspace({
           payments,
           note:note||null,
         })
-        setReceipt(result)
+        if(!result.ok){
+          setError(result.error)
+          return
+        }
+        setReceipt(result.data)
         resetSale()
       }catch(e:any){
         setError(e?.message??'Không thể hoàn tất thanh toán')
@@ -325,9 +329,14 @@ export function SalesPOSWorkspace({
     setError('')
     startTransition(async()=>{
       try{
-        const row=await createPOSCustomer({name,phone,address})
-        setCustomerRows(prev=>[row as Customer,...prev.filter(x=>x.id!==(row as Customer).id)])
-        setCustomerId((row as Customer).id)
+        const result=await createPOSCustomer({name,phone,address})
+        if(!result.ok){
+          setError(result.error)
+          return
+        }
+        const row=result.data as Customer
+        setCustomerRows(prev=>[row,...prev.filter(x=>x.id!==row.id)])
+        setCustomerId(row.id)
         setCreateCustomerOpen(false)
       }catch(e:any){
         setError(e?.message??'Không thể tạo khách hàng')
