@@ -356,7 +356,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     .find((warehouse:any)=>warehouse.id===suggestedReceivingWarehouseId)??null
   const returnQuery=listHref().split('?')[1]??''
 
-  return <div className="order-screen">
+  return <div className="order-screen neo-enterprise-v1 neo-orders-screen">
     <header className="page-head entity-page-head">
       <div>
         <span className="module-eyebrow">MUA HÀNG</span>
