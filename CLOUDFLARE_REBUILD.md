@@ -16,3 +16,5 @@ Build environment note:
 - Preview build variables verified in Cloudflare Builds > Previews Base on 2026-10-02.
 
 - Preview commands verified: OpenNext build + wrangler preview.
+
+- Retrigger after recursive build fix confirmed at branch head d091fb6.
