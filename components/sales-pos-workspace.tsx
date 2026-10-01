@@ -2,6 +2,7 @@
 
 import { useEffect,useMemo,useRef,useState,useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { checkoutPOS,createPOSCustomer } from '@/lib/actions/sales'
 
 type Warehouse={id:string,code:string,name:string,address?:string|null}
@@ -68,6 +69,7 @@ export function SalesPOSWorkspace({
   canSell:boolean
   loadError?:string|null
 }){
+  const router=useRouter()
   const searchRef=useRef<HTMLInputElement|null>(null)
   const discountRef=useRef<HTMLInputElement|null>(null)
   const [pending,startTransition]=useTransition()
@@ -658,7 +660,15 @@ export function SalesPOSWorkspace({
           <div><span>Tiền thừa</span><b>{money(receipt.change_amount)}</b></div>
         </div>
         <div className="pos-success-actions">
-          <button className="button primary" type="button" onClick={()=>{setReceipt(null);searchRef.current?.focus()}}>Đơn mới</button>
+          <button
+            className="button primary"
+            type="button"
+            onClick={()=>{
+              setReceipt(null)
+              router.refresh()
+              window.setTimeout(()=>searchRef.current?.focus(),80)
+            }}
+          >Đơn mới</button>
           <Link className="button" href={'/sales/history?sale='+receipt.sale_id}>Xem hóa đơn</Link>
         </div>
       </div>
