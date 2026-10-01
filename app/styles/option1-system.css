@@ -16592,3 +16592,166 @@ a{text-decoration:none}
   }
   .pos-transfer-panel>img{width:145px}
 }
+
+/* =====================================================================
+   POS Receipt Print V6
+   ===================================================================== */
+.pos-transfer-actions{
+  grid-column:1/-1;
+  display:flex;
+  justify-content:flex-end;
+  padding-top:6px;
+  border-top:1px solid #E8EDF1;
+}
+.pos-transfer-actions .button{
+  min-height:29px;
+  font-size:8.7px!important;
+}
+.pos-success-actions{
+  grid-template-columns:1fr 1fr 1fr!important;
+}
+.pos-inline-receipt-print{
+  display:none;
+}
+
+@media print{
+  .pos-inline-receipt-print,
+  .pos-inline-receipt-print *{
+    visibility:visible!important;
+  }
+  .pos-inline-receipt-print{
+    display:block!important;
+    position:fixed;
+    inset:0;
+    z-index:99999;
+    width:80mm;
+    min-height:100vh;
+    margin:0 auto;
+    padding:6mm 5mm;
+    background:#fff;
+    color:#111;
+    font-family:Arial,sans-serif;
+  }
+  .pos-inline-receipt-print .receipt-brand{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:1.5mm;
+    padding-bottom:3mm;
+    border-bottom:1px dashed #777;
+    text-align:center;
+  }
+  .pos-inline-receipt-print .receipt-brand>b{
+    font-size:18px;
+  }
+  .pos-inline-receipt-print .receipt-brand>span{
+    font-size:12px;
+    font-weight:700;
+  }
+  .pos-inline-receipt-print .receipt-brand>small{
+    font-size:8px;
+    font-weight:700;
+  }
+  .pos-inline-receipt-print .receipt-meta{
+    display:grid;
+    gap:1.5mm;
+    padding:3mm 0;
+    border-bottom:1px dashed #777;
+  }
+  .pos-inline-receipt-print .receipt-meta>div{
+    display:grid;
+    grid-template-columns:22mm 1fr;
+    gap:2mm;
+    font-size:9px;
+  }
+  .pos-inline-receipt-print .receipt-meta span{color:#444}
+  .pos-inline-receipt-print .receipt-meta b{font-weight:600}
+  .pos-inline-receipt-print table{
+    width:100%;
+    margin:3mm 0;
+    border-collapse:collapse;
+    font-size:8.5px;
+  }
+  .pos-inline-receipt-print th,
+  .pos-inline-receipt-print td{
+    padding:1.8mm 1mm;
+    border-bottom:1px dotted #AAA;
+    text-align:left;
+  }
+  .pos-inline-receipt-print th:nth-child(3),
+  .pos-inline-receipt-print td:nth-child(3),
+  .pos-inline-receipt-print th:nth-child(4),
+  .pos-inline-receipt-print td:nth-child(4),
+  .pos-inline-receipt-print th:nth-child(5),
+  .pos-inline-receipt-print td:nth-child(5){
+    text-align:right;
+  }
+  .pos-inline-receipt-print td small{
+    display:block;
+    margin-top:.6mm;
+    color:#555;
+    font-size:7px;
+  }
+  .pos-inline-receipt-print .receipt-totals{
+    margin-top:2mm;
+    padding-top:2mm;
+    border-top:1px dashed #777;
+  }
+  .pos-inline-receipt-print .receipt-totals>div{
+    display:flex;
+    justify-content:space-between;
+    gap:4mm;
+    padding:1mm 0;
+    font-size:9.5px;
+  }
+  .pos-inline-receipt-print .receipt-totals .total{
+    margin:1.5mm 0;
+    padding:2mm 0;
+    border-top:1px solid #222;
+    border-bottom:1px solid #222;
+    font-size:11px;
+  }
+  .pos-inline-receipt-print .receipt-qr{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 28mm;
+    align-items:center;
+    gap:3mm;
+    margin-top:4mm;
+    padding-top:3mm;
+    border-top:1px dashed #777;
+  }
+  .pos-inline-receipt-print .receipt-qr>div{
+    display:flex;
+    flex-direction:column;
+    gap:.8mm;
+  }
+  .pos-inline-receipt-print .receipt-qr>div>b{font-size:8px}
+  .pos-inline-receipt-print .receipt-qr>div>span,
+  .pos-inline-receipt-print .receipt-qr>div>small{font-size:7.2px}
+  .pos-inline-receipt-print .receipt-qr>div>strong{font-size:10.5px}
+  .pos-inline-receipt-print .receipt-qr>div>em{
+    font-size:7px;
+    font-style:normal;
+    font-weight:700;
+  }
+  .pos-inline-receipt-print .receipt-qr>img{
+    width:28mm;
+    height:28mm;
+    object-fit:contain;
+  }
+  .pos-inline-receipt-print .receipt-note{
+    display:grid;
+    grid-template-columns:16mm 1fr;
+    gap:2mm;
+    margin-top:3mm;
+    padding-top:2mm;
+    border-top:1px dashed #AAA;
+    font-size:8px;
+  }
+  .pos-inline-receipt-print>p{
+    margin:5mm 0 0;
+    text-align:center;
+    font-size:9px;
+    font-style:italic;
+  }
+}
