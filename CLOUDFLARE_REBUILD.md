@@ -14,3 +14,5 @@ Build environment note:
 - This commit intentionally retriggers the Preview build after that configuration change.
 
 - Preview build variables verified in Cloudflare Builds > Previews Base on 2026-10-02.
+
+- Preview commands verified: OpenNext build + wrangler preview.
