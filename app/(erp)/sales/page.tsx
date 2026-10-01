@@ -231,8 +231,8 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
     return '/sales?'+p.toString()
   }
 
-  return <div className="sales-dashboard-screen">
-    <header className="page-head">
+  return <div className="tracking-screen tracking-screen-v2 sales-dashboard-screen sales-dashboard-v2">
+    <header className="page-head tracking-page-head-v2 sales-page-head-v2">
       <div>
         <span className="module-eyebrow">BÁN HÀNG</span>
         <h1>Tổng quan bán hàng</h1>
@@ -269,7 +269,7 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
 
     {salesError&&<div className="error-box">Không thể tải dữ liệu bán hàng: {salesError.message}</div>}
 
-    <section className="sales-kpi-strip">
+    <section className="tracking-command-center-v2 sales-command-center-v2"><div className="tracking-status-strip-v2 sales-kpi-strip">
       <div className="sales-kpi"><span>Doanh thu</span><b className="money">{formatMoney(revenue)}</b><small>{invoices} hóa đơn</small></div>
       <div className="sales-kpi"><span>Số hóa đơn</span><b>{invoices}</b><small>{customerCount} khách có hồ sơ</small></div>
       <div className="sales-kpi"><span>Sản phẩm bán</span><b>{units}</b><small>{topProducts.length} SKU phát sinh</small></div>
@@ -277,6 +277,18 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
       <div className="sales-kpi success"><span>Đã thu</span><b className="money">{formatMoney(collected)}</b><small>{revenue?Math.round(collected/revenue*100):0}% doanh thu</small></div>
       <div className="sales-kpi warning"><span>Công nợ</span><b className="money">{formatMoney(debt)}</b><small>{visibleSales.filter(s=>s.debt>0).length} hóa đơn còn nợ</small></div>
       <div className="sales-kpi danger"><span>Hoàn / huỷ</span><b>0</b><small>Sẽ lấy từ luồng POS hoàn/hủy</small></div>
+      </div>
+      <div className="tracking-control-row-v2 sales-control-row-v2">
+        <div className="tracking-console-title">
+          <b>Sales Command Center</b>
+          <span>{range.label} · {warehouseFilter==='ALL'?'Tất cả kho':warehouseFilter} · {invoices} hóa đơn</span>
+        </div>
+        <div className="sales-control-links">
+          <Link className="button small" href="/sales/pos">Mở POS</Link>
+          <Link className="button small" href="/sales/history">Lịch sử bán</Link>
+          <Link className="button small" href="/sales/debt">Công nợ</Link>
+        </div>
+      </div>
     </section>
 
     <section className="sales-dashboard-grid sales-dashboard-grid-main">
