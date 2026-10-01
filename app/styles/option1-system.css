@@ -18316,3 +18316,55 @@ body{
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
   }
 }
+
+/* =====================================================================
+   NEO ORDER TWO LEVEL ROWS
+   ===================================================================== */
+.neo-orders-screen .neo-order-id-cell,
+.neo-orders-screen .neo-order-person-cell,
+.neo-orders-screen .neo-order-time-cell,
+.neo-orders-screen .neo-order-product-cell{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:2px;
+}
+.neo-orders-screen .neo-order-id-cell .table-link{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.neo-orders-screen .neo-order-id-cell small,
+.neo-orders-screen .neo-order-person-cell small,
+.neo-orders-screen .neo-order-time-cell small,
+.neo-orders-screen .neo-order-product-cell small{
+  overflow:hidden;
+  color:#93A0AF;
+  font-size:7.2px;
+  line-height:1.2;
+  font-weight:500;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.neo-orders-screen .neo-order-person-cell>b,
+.neo-orders-screen .neo-order-time-cell>b,
+.neo-orders-screen .neo-order-product-cell>b{
+  overflow:hidden;
+  color:#3B5268;
+  font-size:9.2px;
+  line-height:1.25;
+  font-weight:680;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.neo-orders-screen .neo-order-product-cell{
+  max-width:230px;
+}
+.neo-orders-screen .neo-order-money{
+  color:#294D70!important;
+  font-weight:740!important;
+}
+.neo-orders-screen .order-time-cell{
+  min-width:94px!important;
+}
