@@ -171,6 +171,11 @@ export function SalesPOSWorkspace({
     ? buildVietQRUrl(transferConfig,transferAmount,transferDescription,'compact2')
     : ''
 
+  function printReceipt(target:'prepay'|'final'){
+    setPrintTarget(target)
+    window.setTimeout(()=>window.print(),80)
+  }
+
   function resetSale(){
     setCart([])
     setCustomerId('')
@@ -694,7 +699,10 @@ export function SalesPOSWorkspace({
                   <div><span>Tên tài khoản</span><b>{transferConfig?.account_name??'—'}</b></div>
                   <div><span>Nội dung CK</span><b>{transferDescription}</b></div>
                 </div>
-                <small>QR đã gắn sẵn đúng số tiền. Chỉ xác nhận sau khi đã nhận tiền.</small>
+                <small>QR đã gắn sẵn đúng số tiền. Nội dung chuyển khoản = {transferRef}. Chỉ xác nhận sau khi đã nhận tiền.</small>
+                <div className="pos-transfer-actions">
+                  <button className="button" type="button" onClick={()=>printReceipt('prepay')}>In phiếu cho khách</button>
+                </div>
               </div>}
 
               {paymentMode==='debt'&&<div className="pos-payment-note warning">
@@ -733,7 +741,7 @@ export function SalesPOSWorkspace({
     {receipt&&<div className="pos-success-layer">
       <div className="pos-success-card">
         <div className="pos-success-icon">✓</div>
-        <h2>Thanh toán thành công</h2>
+        <h2>{receipt.payment_status==='UNPAID'?'Đã ghi nợ':'Thanh toán thành công'}</h2>
         <b>{receipt.invoice_code}</b>
         <div className="pos-success-money">{money(receipt.total_amount)}</div>
         <div className="pos-success-grid">
@@ -743,18 +751,85 @@ export function SalesPOSWorkspace({
           <div><span>Tiền thừa</span><b>{money(receipt.change_amount)}</b></div>
         </div>
         <div className="pos-success-actions">
+          <button className="button" type="button" onClick={()=>printReceipt('final')}>In hóa đơn</button>
+          <Link className="button" href={'/sales/history?sale='+receipt.sale_id}>Xem hóa đơn</Link>
           <button
             className="button primary"
             type="button"
             onClick={()=>{
               setReceipt(null)
+              setPrintTarget(null)
               router.refresh()
               window.setTimeout(()=>searchRef.current?.focus(),80)
             }}
           >Đơn mới</button>
-          <Link className="button" href={'/sales/history?sale='+receipt.sale_id}>Xem hóa đơn</Link>
         </div>
       </div>
+    </div>}
+
+    {printTarget&&<div className="pos-inline-receipt-print">
+      <div className="receipt-brand">
+        <b>MYNH ERP</b>
+        <span>PHIẾU BÁN HÀNG</span>
+        <small>{printTarget==='prepay'?'CHỜ THANH TOÁN':receipt?.payment_status==='UNPAID'?'GHI NỢ':'ĐÃ THANH TOÁN'}</small>
+      </div>
+
+      <div className="receipt-meta">
+        <div><span>Mã phiếu</span><b>{printTarget==='prepay'?transferRef:receipt?.invoice_code}</b></div>
+        <div><span>Kho bán</span><b>{printTarget==='prepay'
+          ? (warehouse?.code+' · '+(warehouse?.address??warehouse?.name??''))
+          : (receipt?.print_warehouse?.code+' · '+(receipt?.print_warehouse?.address??receipt?.print_warehouse?.name??''))}</b></div>
+        <div><span>Khách hàng</span><b>{printTarget==='prepay'
+          ? (selectedCustomer?.name??'Khách lẻ')
+          : (receipt?.print_customer?.name??'Khách lẻ')}</b></div>
+        {(printTarget==='prepay'?selectedCustomer?.phone:receipt?.print_customer?.phone)&&<div>
+          <span>SĐT</span><b>{printTarget==='prepay'?selectedCustomer?.phone:receipt?.print_customer?.phone}</b>
+        </div>}
+      </div>
+
+      <table>
+        <thead><tr><th>#</th><th>Sản phẩm</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
+        <tbody>{(printTarget==='prepay'?cart:(receipt?.print_items??[])).map((item,index)=><tr key={item.variant_id}>
+          <td>{index+1}</td>
+          <td><b>{item.name}</b><small>{item.sku} · {item.variant}</small></td>
+          <td>{item.cart_qty}</td>
+          <td>{money(item.unit_price)}</td>
+          <td>{money(item.cart_qty*item.unit_price)}</td>
+        </tr>)}</tbody>
+      </table>
+
+      <div className="receipt-totals">
+        <div><span>Tiền hàng</span><b>{money(printTarget==='prepay'?subtotal:Number(receipt?.subtotal??0))}</b></div>
+        {(printTarget==='prepay'?discountAmount:Number(receipt?.discount_amount??0))>0&&<div>
+          <span>Giảm giá</span><b>−{money(printTarget==='prepay'?discountAmount:Number(receipt?.discount_amount??0))}</b>
+        </div>}
+        {(printTarget==='prepay'?otherFee:Number(receipt?.other_fee??0))>0&&<div>
+          <span>Phí khác</span><b>{money(printTarget==='prepay'?otherFee:Number(receipt?.other_fee??0))}</b>
+        </div>}
+        <div className="total"><span>TỔNG THANH TOÁN</span><b>{money(printTarget==='prepay'?total:Number(receipt?.total_amount??0))}</b></div>
+        {printTarget==='final'&&<div><span>Đã thu</span><b>{money(Number(receipt?.paid_amount??0))}</b></div>}
+        {printTarget==='final'&&Number(receipt?.debt_amount??0)>0&&<div><span>Còn nợ</span><b>{money(Number(receipt?.debt_amount??0))}</b></div>}
+      </div>
+
+      {((printTarget==='prepay'&&transferQR)||(printTarget==='final'&&receipt?.print_payment_mode==='transfer'&&receipt?.print_transfer_qr))&&<div className="receipt-qr">
+        <div>
+          <b>{printTarget==='prepay'?'QUÉT QR ĐỂ THANH TOÁN':'THANH TOÁN CHUYỂN KHOẢN'}</b>
+          <span>{transferConfig?.bank_name} · {transferConfig?.account_no}</span>
+          <span>{transferConfig?.account_name}</span>
+          <strong>{money(printTarget==='prepay'?total:Number(receipt?.total_amount??0))}</strong>
+          <small>Nội dung: {printTarget==='prepay'?transferDescription:receipt?.print_transfer_description}</small>
+          {printTarget==='final'&&<em>ĐÃ GHI NHẬN THANH TOÁN</em>}
+        </div>
+        <img
+          src={printTarget==='prepay'?transferQR:String(receipt?.print_transfer_qr??'')}
+          alt="VietQR phiếu bán hàng"
+        />
+      </div>}
+
+      {(printTarget==='prepay'?note:receipt?.print_note)&&<div className="receipt-note">
+        <span>Ghi chú</span><b>{printTarget==='prepay'?note:receipt?.print_note}</b>
+      </div>}
+      <p>Cảm ơn quý khách!</p>
     </div>}
 
     <footer className="pos-shortcuts">
