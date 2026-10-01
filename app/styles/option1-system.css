@@ -16755,3 +16755,706 @@ a{text-decoration:none}
     font-style:italic;
   }
 }
+
+/* =====================================================================
+   Customer & Debt Demo V1 — native Purchase/Warehouse visual language
+   ===================================================================== */
+.sales-customers-demo,
+.sales-debt-demo{
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+}
+.customer-demo-kpis{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  margin-bottom:6px;
+}
+.debt-demo-kpis{
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  margin-bottom:6px;
+}
+.customer-demo-kpis .entity-status-metric,
+.debt-demo-kpis .entity-status-metric{
+  min-height:64px;
+  border:1px solid var(--mynh-border);
+  border-radius:6px;
+  background:#fff;
+  box-shadow:none;
+}
+.customer-demo-kpis .entity-status-metric.active,
+.debt-demo-kpis .entity-status-metric.active{
+  border-color:#B8C8D6;
+  background:#F7FAFD;
+}
+.customer-demo-kpis .entity-status-metric>span,
+.debt-demo-kpis .entity-status-metric>span{
+  color:#6D7C8C;
+  font-size:8.1px;
+  font-weight:700;
+  text-transform:uppercase;
+}
+.customer-demo-kpis .entity-status-metric>b,
+.debt-demo-kpis .entity-status-metric>b{
+  color:#2A4158;
+  font-size:17px;
+  font-weight:760;
+}
+.customer-demo-kpis .entity-status-metric>b.money,
+.debt-demo-kpis .entity-status-metric>b.money{
+  font-size:13px;
+}
+.customer-demo-kpis .entity-status-metric>small,
+.debt-demo-kpis .entity-status-metric>small{
+  color:#8693A1;
+  font-size:7.7px;
+}
+.customer-demo-kpis .entity-status-metric.success,
+.debt-demo-kpis .entity-status-metric.success{
+  border-left:3px solid #6FA981;
+  background:#FAFDFB;
+}
+.customer-demo-kpis .entity-status-metric.info,
+.debt-demo-kpis .entity-status-metric.info{
+  border-left:3px solid #8EABC8;
+}
+.customer-demo-kpis .entity-status-metric.warning,
+.debt-demo-kpis .entity-status-metric.warning{
+  border-left:3px solid #D8A14A;
+  background:#FFFCF7;
+}
+.customer-demo-kpis .entity-status-metric.danger,
+.debt-demo-kpis .entity-status-metric.danger{
+  border-left:3px solid #D88989;
+  background:#FFFBFB;
+}
+
+.customer-demo-command,
+.debt-demo-command{
+  min-height:38px;
+  margin-bottom:6px;
+  border:1px solid var(--mynh-border);
+  border-radius:6px;
+  background:#FBFCFD;
+}
+.customer-demo-command .search,
+.debt-demo-command .search{
+  min-width:300px;
+}
+.customer-demo-command input,
+.customer-demo-command select,
+.debt-demo-command input,
+.debt-demo-command select{
+  min-height:28px;
+  border-color:#D7E0E8;
+  background:#fff;
+  color:#435467;
+  font-size:9px;
+}
+
+.customer-demo-workspace,
+.debt-demo-workspace{
+  min-height:0;
+  flex:1 1 auto;
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:6px;
+}
+.sales-customers-demo.with-panel .customer-demo-workspace,
+.sales-debt-demo.with-panel .debt-demo-workspace{
+  grid-template-columns:minmax(0,1fr) clamp(405px,30vw,450px);
+}
+.customer-demo-list,
+.debt-demo-list,
+.customer-demo-panel,
+.debt-demo-panel{
+  min-height:0;
+  border:1px solid var(--mynh-border);
+  border-radius:6px;
+  background:#fff;
+}
+.customer-demo-list,
+.debt-demo-list{
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.customer-demo-table-wrap,
+.debt-demo-table-wrap{
+  min-height:0;
+  flex:1 1 auto;
+  overflow:auto;
+  scrollbar-width:thin;
+}
+.customer-demo-table,
+.debt-demo-table{
+  min-width:900px;
+}
+.customer-demo-table thead th,
+.debt-demo-table thead th{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:#F8FAFC;
+  color:#69798A;
+  font-size:8.8px!important;
+  font-weight:700!important;
+}
+.customer-demo-table tbody td,
+.debt-demo-table tbody td{
+  height:40px;
+  color:#405064;
+  font-size:9.3px!important;
+  border-bottom-color:#EEF2F5!important;
+}
+.customer-demo-table tbody tr:hover td,
+.debt-demo-table tbody tr:hover td{
+  background:#FAFBFC;
+}
+.customer-demo-table tr.selected td,
+.debt-demo-table tr.selected td{
+  background:#F7FAFD;
+}
+.customer-demo-table tr.selected td:first-child,
+.debt-demo-table tr.selected td:first-child{
+  box-shadow:inset 2px 0 0 #9CB2C7;
+}
+.customer-demo-table td small,
+.debt-demo-table td small{
+  display:block;
+  margin-top:1px;
+  color:#8793A0;
+  font-size:7.6px;
+}
+.customer-demo-table .table-link,
+.debt-demo-table .table-link{
+  color:#2B5278;
+  font-weight:750;
+}
+
+.customer-demo-panel,
+.debt-demo-panel{
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.sales-detail-panel-head{
+  min-height:67px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 11px 8px;
+  border-bottom:1px solid #F0F3F5;
+  background:#fff;
+}
+.sales-detail-panel-head>div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.sales-detail-panel-head h2{
+  margin:0;
+  color:#2D4358;
+  font-size:14px;
+  font-weight:720;
+}
+.sales-detail-panel-head p{
+  margin:0;
+  overflow:hidden;
+  color:#7B8997;
+  font-size:8px;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+.sales-detail-panel-head .panel-close{
+  width:27px;
+  height:27px;
+  display:grid;
+  place-items:center;
+  border:1px solid var(--mynh-border);
+  border-radius:5px;
+  background:#fff;
+  color:#5D7083;
+  font-size:15px;
+}
+.customer-demo-panel .panel-tabs,
+.debt-demo-panel .panel-tabs{
+  height:33px;
+  display:flex;
+  align-items:stretch;
+  gap:16px;
+  padding:0 11px;
+  border-bottom:1px solid var(--mynh-border);
+  background:#fff;
+}
+.customer-demo-panel .panel-tabs a,
+.debt-demo-panel .panel-tabs a{
+  height:33px;
+  display:flex;
+  align-items:center;
+  padding:0;
+  border:0;
+  border-bottom:2px solid transparent;
+  color:#7C8998;
+  font-size:8.5px;
+  font-weight:650;
+}
+.customer-demo-panel .panel-tabs a.active,
+.debt-demo-panel .panel-tabs a.active{
+  border-bottom-color:#3D74A0;
+  color:#32668F;
+}
+.customer-demo-panel-scroll,
+.debt-demo-panel-scroll{
+  min-height:0;
+  flex:1 1 auto;
+  overflow:auto;
+  padding:9px 10px 16px;
+  scrollbar-width:thin;
+}
+
+.customer-demo-summary{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:5px;
+  margin-top:7px;
+}
+.customer-demo-summary>div{
+  min-height:55px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:2px;
+  padding:6px 7px;
+  border:1px solid #E0E6EB;
+  border-radius:5px;
+  background:#FBFCFD;
+}
+.customer-demo-summary>div.warning{
+  border-color:#E8D4B0;
+  background:#FFFCF7;
+}
+.customer-demo-summary span{
+  color:#8793A0;
+  font-size:7.5px;
+}
+.customer-demo-summary b{
+  color:#344C63;
+  font-size:10px;
+}
+.customer-demo-summary .warning b{color:#A26714}
+.customer-demo-note{
+  margin-top:7px;
+  padding:8px;
+  border:1px solid #E0E6EB;
+  border-radius:5px;
+  background:#fff;
+}
+.customer-demo-note span{
+  display:block;
+  color:#8793A0;
+  font-size:7.5px;
+}
+.customer-demo-note b{
+  display:block;
+  margin-top:2px;
+  color:#4B5F72;
+  font-size:8.7px;
+  font-weight:600;
+}
+.customer-purchase-row,
+.customer-debt-invoice{
+  min-height:52px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:6px 2px;
+  border-bottom:1px solid #EEF2F5;
+}
+.customer-purchase-row>div,
+.customer-debt-invoice>div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.customer-purchase-row>div:last-child,
+.customer-debt-invoice>div:last-child{
+  align-items:flex-end;
+}
+.customer-purchase-row b,
+.customer-debt-invoice b{
+  color:#344C63;
+  font-size:9px;
+}
+.customer-purchase-row span:not(.status-pill),
+.customer-debt-invoice span{
+  color:#83909D;
+  font-size:7.8px;
+}
+.customer-purchase-row strong{
+  color:#2F465D;
+  font-size:9.6px;
+}
+.customer-debt-total{
+  min-height:58px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:8px 10px;
+  border:1px solid #E8D4B0;
+  border-radius:5px;
+  background:#FFFCF7;
+}
+.customer-debt-total span{
+  color:#7A6A50;
+  font-size:8.5px;
+  font-weight:650;
+}
+.customer-debt-total b{
+  color:#A26714;
+  font-size:16px;
+}
+.customer-collect-button{
+  width:100%;
+  min-height:34px;
+  margin-top:8px;
+}
+
+/* Debt panel */
+.debt-collect-demo{
+  padding:8px;
+  border-bottom:1px solid var(--mynh-border);
+  background:#FBFCFD;
+}
+.debt-collect-head{
+  min-height:35px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:6px;
+}
+.debt-collect-head>div{
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.debt-collect-head b{
+  color:#315D8A;
+  font-size:10px;
+}
+.debt-collect-head>a{
+  color:#718094;
+  font-size:14px;
+}
+.debt-collect-amount{
+  min-height:62px;
+  display:grid;
+  grid-template-columns:1fr auto;
+  grid-template-rows:auto auto;
+  align-content:center;
+  gap:1px 8px;
+  padding:7px 9px;
+  border:1px solid #E4D4B8;
+  border-radius:5px;
+  background:#FFFCF7;
+}
+.debt-collect-amount span{
+  color:#76664D;
+  font-size:8px;
+}
+.debt-collect-amount b{
+  grid-column:2;
+  grid-row:1 / span 2;
+  align-self:center;
+  color:#A26714;
+  font-size:17px;
+}
+.debt-collect-amount small{
+  color:#8B7B63;
+  font-size:7.5px;
+}
+.debt-collect-methods{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:5px;
+  margin-top:6px;
+}
+.debt-collect-methods a{
+  min-height:31px;
+  display:grid;
+  place-items:center;
+  border:1px solid #D9E1E8;
+  border-radius:5px;
+  background:#fff;
+  color:#607086;
+  font-size:8.7px;
+  font-weight:650;
+}
+.debt-collect-methods a.active{
+  border-color:#AFC2D5;
+  background:#EEF5FB;
+  color:#2E587F;
+}
+.debt-collect-cash{
+  margin-top:6px;
+  padding:6px 8px;
+  border:1px solid #E1E7EC;
+  border-radius:5px;
+  background:#fff;
+}
+.debt-collect-cash>div{
+  min-height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  border-bottom:1px solid #EEF2F5;
+}
+.debt-collect-cash>div:last-child{border-bottom:0}
+.debt-collect-cash span{
+  color:#7A8797;
+  font-size:8px;
+}
+.debt-collect-cash b{
+  color:#3E5267;
+  font-size:9px;
+}
+.debt-collect-transfer{
+  display:grid;
+  grid-template-columns:130px minmax(0,1fr);
+  gap:8px;
+  margin-top:6px;
+  padding:7px;
+  border:1px solid #E1E7EC;
+  border-radius:5px;
+  background:#fff;
+}
+.debt-collect-transfer>img{
+  width:130px;
+  display:block;
+  border:1px solid #E6EBEF;
+  border-radius:5px;
+}
+.debt-qr-empty{
+  min-height:130px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  border:1px dashed #D6DFE7;
+  border-radius:5px;
+  background:#FBFCFD;
+  text-align:center;
+}
+.debt-qr-empty b{color:#526579;font-size:8.5px}
+.debt-qr-empty span{color:#8793A0;font-size:7.4px}
+.debt-collect-transfer>div:last-child{
+  min-width:0;
+}
+.debt-collect-transfer>div:last-child>div{
+  min-height:30px;
+  display:grid;
+  grid-template-columns:82px minmax(0,1fr);
+  align-items:center;
+  gap:5px;
+  border-bottom:1px solid #EEF2F5;
+}
+.debt-collect-transfer span{
+  color:#7A8797;
+  font-size:7.7px;
+}
+.debt-collect-transfer b{
+  overflow:hidden;
+  color:#3E5267;
+  font-size:8.8px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.debt-collect-transfer b.amount{
+  color:#294A6B;
+  font-size:12px;
+}
+.debt-allocation{
+  margin-top:6px;
+  padding:6px 8px;
+  border:1px solid #E1E7EC;
+  border-radius:5px;
+  background:#fff;
+}
+.debt-allocation>span{
+  display:block;
+  margin-bottom:3px;
+  color:#7A8797;
+  font-size:7.8px;
+  font-weight:650;
+}
+.debt-allocation>div{
+  min-height:37px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  border-top:1px solid #EEF2F5;
+}
+.debt-allocation>div>div{
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.debt-allocation b{
+  color:#3D5166;
+  font-size:8.5px;
+}
+.debt-allocation small{
+  color:#8793A0;
+  font-size:7.3px;
+}
+.debt-allocation strong{
+  color:#A26714;
+  font-size:8.8px;
+}
+.debt-collect-actions{
+  display:grid;
+  grid-template-columns:95px minmax(0,1fr);
+  gap:5px;
+  margin-top:6px;
+}
+.debt-collect-actions .button{min-height:31px}
+
+.debt-customer-summary{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:5px;
+}
+.debt-customer-summary>div{
+  min-height:55px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:2px;
+  padding:6px 8px;
+  border:1px solid #E0E6EB;
+  border-radius:5px;
+  background:#FBFCFD;
+}
+.debt-customer-summary>div.warning{
+  border-color:#E8D4B0;
+  background:#FFFCF7;
+}
+.debt-customer-summary span{
+  color:#8793A0;
+  font-size:7.5px;
+}
+.debt-customer-summary b{
+  color:#3D5166;
+  font-size:10px;
+}
+.debt-customer-summary .warning b{
+  color:#A26714;
+  font-size:13px;
+}
+.debt-main-collect{
+  width:100%;
+  min-height:33px;
+  margin-top:7px;
+}
+.debt-panel-section{
+  margin-top:8px;
+  border:1px solid #E0E6EB;
+  border-radius:5px;
+  overflow:hidden;
+}
+.debt-panel-section-head{
+  min-height:34px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:5px 7px;
+  border-bottom:1px solid #E6EBEF;
+  background:#F8FAFC;
+}
+.debt-panel-section-head b{
+  color:#405267;
+  font-size:8.8px;
+}
+.debt-panel-section-head span{
+  color:#8793A0;
+  font-size:7.5px;
+}
+.debt-invoice-mini{
+  min-height:49px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:5px 7px;
+  border-bottom:1px solid #EEF2F5;
+}
+.debt-invoice-mini:last-child{border-bottom:0}
+.debt-invoice-mini>div{
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.debt-invoice-mini>div:last-child{align-items:flex-end}
+.debt-invoice-mini b{color:#405267;font-size:8.8px}
+.debt-invoice-mini span,
+.debt-invoice-mini small{color:#8793A0;font-size:7.5px}
+.debt-invoice-mini>div:last-child b{color:#A26714}
+
+.debt-invoice-table thead th{
+  background:#F8FAFC;
+  color:#69798A;
+  font-size:8.2px!important;
+}
+.debt-invoice-table tbody td{
+  color:#405064;
+  font-size:8.8px!important;
+}
+.debt-receipt-row{
+  min-height:48px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  border-bottom:1px solid #EEF2F5;
+}
+.debt-receipt-row>div{
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.debt-receipt-row b{color:#405267;font-size:8.8px}
+.debt-receipt-row span{color:#8793A0;font-size:7.5px}
+.debt-receipt-row strong{color:#2F8055;font-size:9px}
+
+@media(max-width:1440px){
+  .sales-customers-demo.with-panel .customer-demo-workspace,
+  .sales-debt-demo.with-panel .debt-demo-workspace{
+    grid-template-columns:minmax(0,1fr) 410px;
+  }
+  .debt-demo-kpis{
+    grid-template-columns:repeat(5,minmax(120px,1fr));
+  }
+}
+@media(max-width:1180px){
+  .customer-demo-kpis,
+  .debt-demo-kpis{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .sales-customers-demo.with-panel .customer-demo-workspace,
+  .sales-debt-demo.with-panel .debt-demo-workspace{
+    grid-template-columns:1fr;
+  }
+  .customer-demo-panel,
+  .debt-demo-panel{
+    min-height:620px;
+  }
+}
