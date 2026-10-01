@@ -424,29 +424,6 @@ export function SalesPOSWorkspace({
     </header>
 
     <section className="tracking-command-center-v2 pos-command-center-v2">
-      <div className="tracking-status-strip-v2 pos-status-strip-v2">
-        <div className="tracking-status-metric info pos-status-metric">
-          <span>Kho bán</span>
-          <b>{warehouse?.code??'—'}</b>
-          <small>{warehouse?.address??warehouse?.name??'Chưa chọn kho'}</small>
-        </div>
-        <div className="tracking-status-metric success pos-status-metric">
-          <span>SKU có hàng</span>
-          <b>{warehouseProducts.length}</b>
-          <small>{warehouseProducts.reduce((sum,p)=>sum+p.quantity,0)} đơn vị tồn</small>
-        </div>
-        <div className="tracking-status-metric amber pos-status-metric">
-          <span>Giỏ hàng</span>
-          <b>{cartQty}</b>
-          <small>{cart.length} SKU · {selectedCustomer?.name??'Khách lẻ'}</small>
-        </div>
-        <div className="tracking-status-metric warning pos-status-metric">
-          <span>Tạm tính</span>
-          <b className="money">{money(total)}</b>
-          <small>{held.length} đơn đang giữ</small>
-        </div>
-      </div>
-
       <div className="tracking-control-row-v2 pos-control-row-v2">
         <label className="pos-warehouse pos-warehouse-v2">
           <span>Kho bán</span>
