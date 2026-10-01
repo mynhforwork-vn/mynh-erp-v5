@@ -5,7 +5,7 @@ export default async function POSPage(){
   const {supabase,user}=await requireUser()
   const role=String(user.app_metadata?.role??'viewer')
 
-  const [{data:warehouses,error:warehouseError},{data:balances,error:balanceError},{data:customers,error:customerError}]=await Promise.all([
+  const [{data:warehouses,error:warehouseError},{data:balances,error:balanceError},{data:customers,error:customerError},bankTransferResult]=await Promise.all([
     supabase.from('warehouses')
       .select('id,code,name,address')
       .eq('is_active',true)
@@ -19,6 +19,10 @@ export default async function POSPage(){
       .select('id,name,phone,address')
       .order('updated_at',{ascending:false})
       .limit(1000),
+    supabase.from('bank_transfer_configs')
+      .select('config_key,bank_id,bank_name,account_no,account_name,qr_template,transfer_prefix,is_active')
+      .eq('config_key','DEFAULT')
+      .maybeSingle(),
   ])
 
   const variantIds=[...new Set((balances??[]).map((row:any)=>String(row.product_variant_id??'')).filter(Boolean))]
@@ -47,12 +51,13 @@ export default async function POSPage(){
     }
   })
 
-  const errors=[warehouseError,balanceError,customerError].filter(Boolean).map((e:any)=>e.message)
+  const errors=[warehouseError,balanceError,customerError,bankTransferResult.error].filter(Boolean).map((e:any)=>e.message)
 
   return <SalesPOSWorkspace
     warehouses={(warehouses??[]) as any[]}
     products={products}
     customers={(customers??[]) as any[]}
+    transferConfig={(bankTransferResult.data??null) as any}
     canSell={['admin','operator'].includes(role)}
     loadError={errors.join(' · ')||null}
   />
