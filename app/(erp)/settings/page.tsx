@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/supabase/auth'
 import { DestinationHubSettings } from '@/components/destination-hub-config-panel'
 import { ShippingCarrierSettings } from '@/components/shipping-carrier-settings'
 import { DataManagementSettings } from '@/components/data-management-settings'
+import { BankTransferSettings } from '@/components/bank-transfer-settings'
 
 type SP={section?:string,purged?:string,protected?:string}
 
@@ -15,7 +16,9 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     ? 'spx-hubs'
     : sp.section==='data-management'
       ? 'data-management'
-      : 'shipping-carriers'
+      : sp.section==='payments'
+        ? 'payments'
+        : 'shipping-carriers'
 
   const [
     {data:carrierRows,error:carrierError},
@@ -26,6 +29,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     archivedOrdersResult,
     activeUsersResult,
     archivedUsersResult,
+    bankTransferResult,
   ]=await Promise.all([
     supabase.from('shipping_carrier_configs')
       .select('id,carrier_code,display_name,tracking_prefixes,supports_tracking,supports_destination_hub,priority,is_active,note')
@@ -49,6 +53,10 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     supabase.from('orders').select('*',{count:'exact',head:true}).not('archived_at','is',null),
     supabase.from('erp_users').select('*',{count:'exact',head:true}).is('archived_at',null),
     supabase.from('erp_users').select('*',{count:'exact',head:true}).not('archived_at','is',null),
+    supabase.from('bank_transfer_configs')
+      .select('config_key,bank_id,bank_name,account_no,account_name,qr_template,transfer_prefix,is_active')
+      .eq('config_key','DEFAULT')
+      .maybeSingle(),
   ])
 
   const assignments=(assignmentRows??[]) as any[]
@@ -61,6 +69,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
 
   const error=carrierError??hubError??shipperError??assignmentError
     ??activeOrdersResult.error??archivedOrdersResult.error??activeUsersResult.error??archivedUsersResult.error
+    ??bankTransferResult.error
 
   const activeOrders=activeOrdersResult.count??0
   const archivedOrders=archivedOrdersResult.count??0
@@ -83,6 +92,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     <nav className="settings-page-tabs-v3" aria-label="Nhóm cài đặt">
       <Link className={section==='shipping-carriers'?'active':''} href="/settings?section=shipping-carriers">Đơn vị vận chuyển</Link>
       <Link className={section==='spx-hubs'?'active':''} href="/settings?section=spx-hubs">SPX · Kho đích & Shipper</Link>
+      <Link className={section==='payments'?'active':''} href="/settings?section=payments">Thanh toán & QR</Link>
       <Link className={section==='data-management'?'active':''} href="/settings?section=data-management">Quản lý dữ liệu</Link>
       <span className="disabled">Tài khoản & phân quyền</span>
       <span className="disabled">Tích hợp</span>
@@ -97,15 +107,17 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
               configs={configs}
               shippers={(shipperRows??[]) as any[]}
             />
-          : <DataManagementSettings
-              activeOrders={activeOrders}
-              archivedOrders={archivedOrders}
-              activeUsers={activeUsers}
-              archivedUsers={archivedUsers}
-              canDelete={role==='admin'}
-              purged={Number.isFinite(purged as number)?purged:null}
-              protectedCount={Number.isFinite(protectedCount as number)?protectedCount:null}
-            />}
+          : section==='payments'
+            ? <BankTransferSettings config={(bankTransferResult.data??null) as any} canEdit={canEdit}/>
+            : <DataManagementSettings
+                activeOrders={activeOrders}
+                archivedOrders={archivedOrders}
+                activeUsers={activeUsers}
+                archivedUsers={archivedUsers}
+                canDelete={role==='admin'}
+                purged={Number.isFinite(purged as number)?purged:null}
+                protectedCount={Number.isFinite(protectedCount as number)?protectedCount:null}
+              />}
     </section>
   </div>
 }
