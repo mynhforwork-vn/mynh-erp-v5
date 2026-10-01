@@ -15127,3 +15127,1096 @@ a{text-decoration:none}
 .sales-placeholder-screen .muted{
   color:#526579!important;
 }
+
+/* =====================================================================
+   Sales Unified Operations V4
+   Sales now inherits the same light operational language as Purchase/Warehouse.
+   No separate dark POS palette.
+   ===================================================================== */
+
+/* ---------------------------------------------------------------------
+   Shared sales shell: use native MYNH tokens only
+   --------------------------------------------------------------------- */
+.sales-dashboard-v2,
+.pos-screen-v2,
+.sales-history-v3,
+.sales-placeholder-screen{
+  color:var(--mynh-text);
+  background:transparent;
+}
+.sales-dashboard-v2 .page-head,
+.pos-screen-v2 .page-head,
+.sales-history-v3 .page-head,
+.sales-placeholder-screen .page-head{
+  min-height:48px;
+  margin-bottom:10px;
+}
+.sales-dashboard-v2 .page-head h1,
+.pos-screen-v2 .page-head h1,
+.sales-history-v3 .page-head h1,
+.sales-placeholder-screen .page-head h1{
+  color:var(--mynh-text)!important;
+  font-size:19px!important;
+  font-weight:700!important;
+}
+.sales-dashboard-v2 .page-head p,
+.pos-screen-v2 .page-head p,
+.sales-history-v3 .page-head p,
+.sales-placeholder-screen .page-head p{
+  color:var(--mynh-text-2)!important;
+  font-size:10.5px!important;
+  font-weight:500!important;
+}
+.sales-dashboard-v2 .module-eyebrow,
+.pos-screen-v2 .module-eyebrow,
+.sales-history-v3 .module-eyebrow,
+.sales-placeholder-screen .module-eyebrow{
+  color:#70859A!important;
+  font-size:8.5px!important;
+  font-weight:700!important;
+  letter-spacing:.08em!important;
+}
+
+/* Native controls, same as Purchase/Warehouse */
+.sales-dashboard-v2 .button,
+.pos-screen-v2 .button,
+.sales-history-v3 .button,
+.sales-placeholder-screen .button{
+  border-color:var(--mynh-border-2)!important;
+  background:#fff!important;
+  color:#4B6075!important;
+  font-weight:650!important;
+}
+.sales-dashboard-v2 .button:hover,
+.pos-screen-v2 .button:hover,
+.sales-history-v3 .button:hover,
+.sales-placeholder-screen .button:hover{
+  border-color:#AFC0CF!important;
+  background:#EEF4F8!important;
+  color:#285B86!important;
+}
+.sales-dashboard-v2 .button.primary,
+.pos-screen-v2 .button.primary,
+.sales-history-v3 .button.primary{
+  border-color:#315D8A!important;
+  background:#315D8A!important;
+  color:#fff!important;
+}
+.sales-dashboard-v2 .button.primary:hover,
+.pos-screen-v2 .button.primary:hover,
+.sales-history-v3 .button.primary:hover{
+  border-color:#294F75!important;
+  background:#294F75!important;
+  color:#fff!important;
+}
+
+/* ---------------------------------------------------------------------
+   POS top: same command strip treatment as Purchase
+   --------------------------------------------------------------------- */
+.pos-screen-v2{
+  height:calc(100vh - 44px);
+  min-height:0;
+  gap:0;
+  overflow:hidden;
+}
+.pos-page-head-v2{flex:0 0 auto}
+.pos-live-status{
+  min-height:24px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:5px!important;
+  padding:0 7px!important;
+  border:1px solid #C9DDD1!important;
+  border-radius:4px!important;
+  background:#F0F8F3!important;
+  color:#33704E!important;
+  font-size:8.8px!important;
+  font-weight:700!important;
+}
+.pos-live-status i{
+  width:6px!important;
+  height:6px!important;
+  border-radius:50%!important;
+  background:#6FA981!important;
+}
+
+.pos-command-center-v2{
+  flex:0 0 auto!important;
+  margin-bottom:5px!important;
+  border:0!important;
+  background:transparent!important;
+}
+.pos-status-strip-v2{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:5px!important;
+  min-height:0!important;
+  margin-bottom:5px!important;
+  border:0!important;
+  background:transparent!important;
+}
+.pos-status-metric{
+  min-width:0!important;
+  min-height:64px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  gap:2px!important;
+  padding:7px 9px!important;
+  border:1px solid var(--mynh-border)!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  box-shadow:0 1px 2px rgba(23,33,47,.025)!important;
+}
+.pos-status-metric:hover{
+  border-color:#CCD6E1!important;
+  background:#FCFDFE!important;
+}
+.pos-status-metric>span{
+  color:#6E7B8D!important;
+  font-size:8.2px!important;
+  font-weight:700!important;
+  letter-spacing:.02em!important;
+  text-transform:uppercase!important;
+}
+.pos-status-metric>b{
+  color:#23384F!important;
+  font-size:18px!important;
+  line-height:1.05!important;
+  font-weight:760!important;
+}
+.pos-status-metric>b.money{font-size:14px!important}
+.pos-status-metric>small{
+  color:#7D8998!important;
+  font-size:8.4px!important;
+  font-weight:500!important;
+}
+.pos-status-metric.info{
+  border-left:3px solid #8EABC8!important;
+  box-shadow:none!important;
+}
+.pos-status-metric.success{
+  border-left:3px solid #6FA981!important;
+  background:#FAFDFB!important;
+  box-shadow:none!important;
+}
+.pos-status-metric.amber,
+.pos-status-metric.warning{
+  border-left:3px solid #D8A14A!important;
+  background:#FFFCF7!important;
+  box-shadow:none!important;
+}
+.pos-status-metric.info>b{color:#315D8A!important}
+.pos-status-metric.success>b{color:#2F8055!important}
+.pos-status-metric.amber>b,
+.pos-status-metric.warning>b{color:#A26714!important}
+
+.pos-control-row-v2{
+  min-height:38px!important;
+  display:grid!important;
+  grid-template-columns:220px minmax(320px,1fr) auto!important;
+  align-items:center!important;
+  gap:6px!important;
+  padding:4px 6px!important;
+  border:1px solid var(--mynh-border)!important;
+  border-radius:6px!important;
+  background:#FBFCFD!important;
+}
+.pos-warehouse-v2{
+  display:grid!important;
+  grid-template-columns:auto minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:6px!important;
+}
+.pos-warehouse-v2>span{
+  color:#69798A!important;
+  font-size:8.8px!important;
+  font-weight:650!important;
+}
+.pos-warehouse-v2 select{
+  height:27px!important;
+  border:1px solid #D7E0E8!important;
+  border-radius:4px!important;
+  background:#fff!important;
+  color:#435467!important;
+  font-size:9.2px!important;
+  font-weight:600!important;
+}
+.pos-search-v2{
+  height:28px!important;
+  border:1px solid #D7E0E8!important;
+  border-radius:4px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.pos-search-v2:focus-within{
+  border-color:#91A9BD!important;
+  box-shadow:0 0 0 2px rgba(49,93,138,.07)!important;
+}
+.pos-search-icon{color:#6C8195!important}
+.pos-search-v2 input{
+  color:#405064!important;
+  font-size:9.5px!important;
+}
+.pos-search-v2 input::placeholder{color:#8A95A4!important}
+.pos-control-actions{
+  display:flex!important;
+  align-items:center!important;
+  gap:5px!important;
+}
+.pos-control-actions .button{height:27px!important;font-size:9px!important}
+
+/* ---------------------------------------------------------------------
+   POS main workspace: same surfaces as Warehouse
+   --------------------------------------------------------------------- */
+.pos-screen-v2>.pos-workspace{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  grid-template-columns:minmax(0,1fr) clamp(410px,32vw,465px)!important;
+  gap:6px!important;
+}
+.pos-screen-v2 .pos-products,
+.pos-screen-v2 .pos-cart{
+  border:1px solid var(--mynh-border)!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.pos-product-toolbar-v2{
+  min-height:42px!important;
+  padding:6px 8px!important;
+  border-bottom:1px solid var(--mynh-border)!important;
+  background:#FBFCFD!important;
+}
+.pos-product-toolbar-v2>div:first-child{
+  min-width:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:1px!important;
+}
+.pos-section-kicker{
+  color:#8390A0!important;
+  font-size:7.6px!important;
+  font-weight:700!important;
+  letter-spacing:.075em!important;
+}
+.pos-product-toolbar-v2>div:first-child>b{
+  color:#405267!important;
+  font-size:9.8px!important;
+  font-weight:700!important;
+}
+.pos-product-meta>b{
+  color:#315D8A!important;
+  font-size:13px!important;
+  font-weight:760!important;
+}
+.pos-product-meta>span{
+  color:#84909D!important;
+  font-size:8px!important;
+}
+
+/* Product tile = warehouse item card, not retail card */
+.pos-screen-v2 .pos-product-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  align-content:start!important;
+  gap:6px!important;
+  padding:7px!important;
+  background:#F7F9FB!important;
+}
+.pos-screen-v2 .pos-product-card{
+  min-width:0!important;
+  min-height:104px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:1px solid #DEE5EB!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  color:#405064!important;
+  box-shadow:none!important;
+  text-align:left!important;
+  transition:border-color .12s ease,background .12s ease!important;
+}
+.pos-screen-v2 .pos-product-card:hover{
+  border-color:#B9C8D7!important;
+  background:#FCFDFE!important;
+  box-shadow:none!important;
+}
+.pos-screen-v2 .pos-product-card:focus-visible{
+  outline:2px solid rgba(49,93,138,.20)!important;
+  outline-offset:1px!important;
+}
+.pos-product-card-head{
+  min-height:58px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:8px;
+  padding:7px 8px;
+  border-bottom:1px solid #EEF2F5;
+  background:#fff;
+}
+.pos-product-card-main{
+  min-width:0;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:2px!important;
+}
+.pos-product-card-main>b{
+  overflow:hidden!important;
+  color:#3A5066!important;
+  font-size:9.5px!important;
+  line-height:1.28!important;
+  font-weight:700!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.pos-product-card-main>span{
+  overflow:hidden!important;
+  color:#7F8D9A!important;
+  font-size:8.3px!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.pos-product-card-code{
+  min-width:92px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-end!important;
+  gap:1px!important;
+}
+.pos-product-card-code>span{
+  color:#8B97A4!important;
+  font-size:6.9px!important;
+  font-weight:650!important;
+  text-transform:uppercase!important;
+}
+.pos-product-card-code>b{
+  max-width:118px!important;
+  overflow:hidden!important;
+  color:#315D8A!important;
+  font-size:8.4px!important;
+  font-weight:750!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.pos-product-card-code>small{
+  max-width:118px!important;
+  overflow:hidden!important;
+  color:#8A95A3!important;
+  font-size:6.9px!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.pos-product-card-stats{
+  min-height:45px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  background:#FBFCFD;
+}
+.pos-product-card-stats>div{
+  min-width:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  grid-template-rows:auto auto;
+  align-content:center;
+  gap:0 5px;
+  padding:5px 8px;
+  border-right:1px solid #EEF2F5;
+}
+.pos-product-card-stats>div:last-child{border-right:0}
+.pos-product-card-stats span{
+  grid-column:1;
+  color:#8793A0;
+  font-size:7px;
+  font-weight:600;
+}
+.pos-product-card-stats b{
+  grid-column:1;
+  color:#294A6B;
+  font-size:10px;
+  line-height:1.15;
+  font-weight:780;
+  font-variant-numeric:tabular-nums;
+}
+.pos-product-card-stats small{
+  grid-column:2;
+  grid-row:1 / span 2;
+  align-self:center;
+  padding:2px 4px;
+  border:1px solid #DCE4EA;
+  border-radius:4px;
+  background:#fff;
+  color:#718094;
+  font-size:6.8px;
+  font-weight:700;
+}
+.pos-product-card-stats>div.low{
+  background:#FFFCF7;
+}
+.pos-product-card-stats>div.low b{color:#A26714}
+.pos-product-card-stats>div.low small{
+  border-color:#E5D7B9;
+  background:#FFF7E8;
+  color:#A26714;
+}
+
+/* ---------------------------------------------------------------------
+   POS cart: mirror Warehouse right detail panel
+   --------------------------------------------------------------------- */
+.pos-screen-v2 .pos-cart{
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+}
+.pos-cart-head-v2{
+  min-height:62px!important;
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  padding:9px 10px 7px!important;
+  border-bottom:1px solid #F0F3F5!important;
+  background:#fff!important;
+}
+.pos-cart-head-v2 .module-eyebrow{
+  color:#70859A!important;
+  font-size:8px!important;
+}
+.pos-cart-head-v2 b{
+  color:#2D4358!important;
+  font-size:13px!important;
+  font-weight:720!important;
+}
+.pos-cart-head-v2 small{
+  color:#7B8997!important;
+  font-size:8.3px!important;
+}
+.pos-cart-head-v2 .pos-text-danger{
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  color:#A65A5A!important;
+  font-size:8px!important;
+  font-weight:700!important;
+}
+.pos-screen-v2 .pos-cart-lines{background:#fff!important}
+.pos-screen-v2 .pos-cart-line{
+  min-height:58px!important;
+  padding:5px 7px!important;
+  border-bottom:1px solid #EEF2F5!important;
+  background:#fff!important;
+}
+.pos-screen-v2 .pos-cart-line:hover{background:#FBFCFD!important}
+.pos-screen-v2 .pos-cart-product b{
+  color:#3A5066!important;
+  font-size:9px!important;
+  font-weight:700!important;
+}
+.pos-screen-v2 .pos-cart-product span{
+  color:#7F8D9A!important;
+  font-size:7.8px!important;
+}
+.pos-screen-v2 .pos-cart-product small{
+  color:#8A95A3!important;
+  font-size:7.2px!important;
+}
+.pos-screen-v2 .pos-qty button{
+  border-color:#D6DFE7!important;
+  background:#F8FAFC!important;
+  color:#556A7E!important;
+}
+.pos-screen-v2 .pos-qty input,
+.pos-screen-v2 .pos-price input{
+  border-color:#D6DFE7!important;
+  background:#fff!important;
+  color:#405064!important;
+}
+.pos-screen-v2 .pos-price span{
+  color:#8793A0!important;
+  font-size:7px!important;
+}
+.pos-screen-v2 .pos-cart-line>strong{
+  color:#294A6B!important;
+  font-size:9px!important;
+  font-weight:750!important;
+}
+.pos-screen-v2 .pos-customer-row{
+  min-height:46px!important;
+  padding:5px 8px!important;
+  border-color:#E5EAF0!important;
+  background:#F8FAFC!important;
+}
+.pos-screen-v2 .pos-customer-row span{
+  color:#7A8797!important;
+  font-size:7.8px!important;
+  font-weight:600!important;
+}
+.pos-screen-v2 .pos-customer-row b{
+  color:#405267!important;
+  font-size:9px!important;
+}
+.pos-screen-v2 .pos-customer-row small{
+  color:#8793A0!important;
+  font-size:7.4px!important;
+}
+.pos-screen-v2 .pos-summary{
+  padding:6px 8px!important;
+  background:#fff!important;
+}
+.pos-screen-v2 .pos-summary>div>span{
+  color:#69798A!important;
+  font-size:8.5px!important;
+  font-weight:600!important;
+}
+.pos-screen-v2 .pos-summary>div>b{
+  color:#3D4D61!important;
+  font-size:9px!important;
+}
+.pos-screen-v2 .pos-summary input,
+.pos-screen-v2 .pos-summary select,
+.pos-screen-v2 .pos-summary textarea{
+  border-color:#D6DFE7!important;
+  background:#fff!important;
+  color:#405064!important;
+}
+.pos-screen-v2 .pos-total{
+  min-height:42px!important;
+  margin-top:3px!important;
+  padding-top:5px!important;
+  border-top:1px solid #DCE4EA!important;
+  background:#FBFCFD!important;
+}
+.pos-screen-v2 .pos-total span{
+  color:#405469!important;
+  font-size:9px!important;
+  font-weight:700!important;
+}
+.pos-screen-v2 .pos-total b{
+  color:#294A6B!important;
+  font-size:18px!important;
+  font-weight:780!important;
+}
+.pos-screen-v2 .pos-cart-actions{
+  padding:5px 8px 7px!important;
+  border-top:1px solid var(--mynh-border)!important;
+  background:#FBFCFD!important;
+}
+.pos-screen-v2 .pos-pay-button{
+  border-color:#315D8A!important;
+  background:#315D8A!important;
+  color:#fff!important;
+  box-shadow:none!important;
+}
+
+/* Checkout is just another light right-panel state */
+.pos-screen-v2 .pos-checkout{
+  padding:0!important;
+  background:#fff!important;
+}
+.pos-screen-v2 .pos-checkout-head{
+  min-height:62px!important;
+  padding:8px 9px!important;
+  border-bottom:1px solid #F0F3F5!important;
+  background:#fff!important;
+}
+.pos-screen-v2 .pos-checkout-head>button{
+  border:1px solid #D0DAE3!important;
+  background:#fff!important;
+  color:#657789!important;
+}
+.pos-screen-v2 .pos-checkout-head .module-eyebrow{
+  color:#70859A!important;
+  font-size:8px!important;
+}
+.pos-screen-v2 .pos-checkout-head b{
+  color:#2D4358!important;
+  font-size:13px!important;
+  font-weight:720!important;
+}
+.pos-screen-v2 .pos-checkout-head span:not(.module-eyebrow){
+  color:#7B8997!important;
+  font-size:8px!important;
+}
+.pos-screen-v2 .pos-pay-methods{
+  margin-top:7px!important;
+}
+.pos-screen-v2 .pos-pay-methods button{
+  border:1px solid #DDE4EB!important;
+  border-radius:5px!important;
+  background:#F8FAFC!important;
+  color:#607086!important;
+  font-size:8.5px!important;
+  font-weight:650!important;
+}
+.pos-screen-v2 .pos-pay-methods button.active{
+  border-color:#AFC2D5!important;
+  background:#EEF5FB!important;
+  color:#2E587F!important;
+  box-shadow:none!important;
+}
+.pos-screen-v2 .pos-checkout-total{
+  border-top:1px dashed #D5DEE6!important;
+  border-bottom:1px dashed #D5DEE6!important;
+}
+.pos-screen-v2 .pos-checkout-total span{
+  color:#526579!important;
+  font-size:9px!important;
+}
+.pos-screen-v2 .pos-checkout-total b{
+  color:#294A6B!important;
+  font-size:18px!important;
+}
+.pos-screen-v2 .pos-cash-panel,
+.pos-screen-v2 .pos-combined-panel,
+.pos-screen-v2 .pos-payment-note{
+  border-color:#DEE5EB!important;
+  background:#FBFCFD!important;
+}
+.pos-screen-v2 .pos-payment-note.warning{
+  border-color:#EAD6B4!important;
+  background:#FFFCF7!important;
+}
+.pos-screen-v2 .pos-confirm-payment{
+  border-color:#315D8A!important;
+  background:#315D8A!important;
+  color:#fff!important;
+}
+
+/* POS supporting overlays same as warehouse/settings */
+.pos-screen-v2 .pos-popover{
+  border-color:#D7E0E9!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  box-shadow:0 12px 26px rgba(29,44,63,.12)!important;
+}
+.pos-screen-v2 .pos-popover-head{
+  border-bottom-color:#E5EAF0!important;
+  background:#fff!important;
+}
+.pos-screen-v2 .pos-popover-head b{color:#405267!important}
+.pos-screen-v2 .pos-success-card{
+  border-color:#C9D5DF!important;
+  border-radius:7px!important;
+  background:#fff!important;
+}
+.pos-screen-v2 .pos-success-icon{
+  background:#F0F8F3!important;
+  color:#33704E!important;
+}
+.pos-screen-v2 .pos-success-money{color:#294A6B!important}
+.pos-screen-v2 .pos-shortcuts{
+  min-height:29px!important;
+  margin-top:5px!important;
+  border-color:var(--mynh-border)!important;
+  border-radius:6px!important;
+  background:#FBFCFD!important;
+  color:#7A8797!important;
+  font-size:8px!important;
+}
+
+/* ---------------------------------------------------------------------
+   Sales dashboard = Purchase Dashboard visual language
+   --------------------------------------------------------------------- */
+.sales-dashboard-v2 .sales-dashboard-toolbar{
+  min-height:34px!important;
+  margin-bottom:7px!important;
+  border:1px solid var(--mynh-border)!important;
+  border-radius:6px!important;
+  background:#FBFCFD!important;
+}
+.sales-dashboard-v2 .sales-warehouse-filter>span{
+  color:#6E7B8D!important;
+  font-size:8px!important;
+  font-weight:700!important;
+}
+.sales-dashboard-v2 .sales-warehouse-filter a{
+  height:25px!important;
+  border:1px solid transparent!important;
+  border-radius:4px!important;
+  color:#607086!important;
+  background:transparent!important;
+  font-size:8.8px!important;
+  font-weight:650!important;
+}
+.sales-dashboard-v2 .sales-warehouse-filter a.active{
+  border-color:#AFC2D5!important;
+  background:#EEF5FB!important;
+  color:#2E587F!important;
+}
+.sales-dashboard-v2 .sales-demo-badge{
+  border-color:#E5D7B9!important;
+  background:#FFFCF7!important;
+  color:#9A681D!important;
+  font-size:7.8px!important;
+}
+
+.sales-command-center-v2{
+  margin-bottom:7px!important;
+  border:0!important;
+  background:transparent!important;
+}
+.sales-command-center-v2 .sales-kpi-strip{
+  display:grid!important;
+  grid-template-columns:repeat(7,minmax(0,1fr))!important;
+  gap:5px!important;
+  margin:0 0 5px!important;
+  border:0!important;
+  background:transparent!important;
+}
+.sales-command-center-v2 .sales-kpi{
+  min-width:0!important;
+  min-height:68px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  gap:2px!important;
+  padding:7px 9px!important;
+  border:1px solid var(--mynh-border)!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  box-shadow:0 1px 2px rgba(23,33,47,.025)!important;
+}
+.sales-command-center-v2 .sales-kpi>span{
+  color:#6E7B8D!important;
+  font-size:7.8px!important;
+  font-weight:700!important;
+  letter-spacing:.02em!important;
+  text-transform:uppercase!important;
+}
+.sales-command-center-v2 .sales-kpi>b{
+  color:#23384F!important;
+  font-size:18px!important;
+  font-weight:760!important;
+}
+.sales-command-center-v2 .sales-kpi>b.money{font-size:13px!important}
+.sales-command-center-v2 .sales-kpi>small{
+  color:#8B96A4!important;
+  font-size:7.5px!important;
+  font-weight:500!important;
+}
+.sales-command-center-v2 .sales-kpi.info{
+  border-left:3px solid #8EABC8!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.sales-command-center-v2 .sales-kpi.success{
+  border-left:3px solid #6FA981!important;
+  background:#FAFDFB!important;
+  box-shadow:none!important;
+}
+.sales-command-center-v2 .sales-kpi.warning{
+  border-left:3px solid #D8A14A!important;
+  background:#FFFCF7!important;
+  box-shadow:none!important;
+}
+.sales-command-center-v2 .sales-kpi.danger{
+  border-left:3px solid #D88989!important;
+  background:#FFFBFB!important;
+  box-shadow:none!important;
+}
+.sales-command-center-v2 .sales-kpi.info>b{color:#315D8A!important}
+.sales-command-center-v2 .sales-kpi.success>b{color:#2F8055!important}
+.sales-command-center-v2 .sales-kpi.warning>b{color:#A26714!important}
+.sales-command-center-v2 .sales-kpi.danger>b{color:#A94E4E!important}
+.sales-control-row-v2{
+  min-height:38px!important;
+  padding:4px 6px!important;
+  border:1px solid var(--mynh-border)!important;
+  border-radius:6px!important;
+  background:#FBFCFD!important;
+}
+.sales-control-row-v2 .tracking-console-title b{
+  color:#2D435A!important;
+  font-size:10px!important;
+}
+.sales-control-row-v2 .tracking-console-title span{
+  color:#7D8998!important;
+  font-size:8px!important;
+}
+.sales-dashboard-v2 .sales-dashboard-grid{
+  gap:7px!important;
+  margin-bottom:7px!important;
+}
+.sales-dashboard-v2 .sales-dashboard-grid>.card{
+  border:1px solid var(--mynh-border)!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.sales-dashboard-v2 .sales-dashboard-grid .card-head{
+  min-height:40px!important;
+  padding:7px 9px!important;
+  border-bottom:1px solid var(--mynh-border)!important;
+  background:#fff!important;
+}
+.sales-dashboard-v2 .sales-dashboard-grid .card-head h2{
+  color:#3D4651!important;
+  font-size:10.5px!important;
+  font-weight:700!important;
+}
+.sales-dashboard-v2 .sales-dashboard-grid .card-head .muted{
+  color:#7D8794!important;
+  font-size:8px!important;
+  font-weight:500!important;
+}
+.sales-dashboard-v2 .sales-revenue-card,
+.sales-dashboard-v2 .sales-attention-card{box-shadow:none!important}
+.sales-dashboard-v2 .sales-chart-track{
+  border-bottom-color:#DCE4EA!important;
+  background:#F8FAFC!important;
+}
+.sales-dashboard-v2 .sales-chart-track i{background:#7DA4C7!important}
+.sales-dashboard-v2 .sales-summary-table thead th{
+  background:#F8FAFC!important;
+  color:#69798A!important;
+  font-size:8.8px!important;
+  font-weight:700!important;
+}
+.sales-dashboard-v2 .sales-summary-table tbody td{
+  color:#405064!important;
+  font-size:9.5px!important;
+}
+.sales-dashboard-v2 .sales-flow-strip{
+  border:1px solid var(--mynh-border)!important;
+  border-radius:6px!important;
+  background:#FBFCFD!important;
+}
+
+/* ---------------------------------------------------------------------
+   Sales history = Order/Warehouse detail language, never dark
+   --------------------------------------------------------------------- */
+.sales-history-v3 .sales-history-command{
+  margin-bottom:6px!important;
+  border:1px solid var(--mynh-border)!important;
+  border-radius:6px!important;
+  background:#FBFCFD!important;
+}
+.sales-history-v3 .sales-history-command input,
+.sales-history-v3 .sales-history-command select{
+  min-height:28px!important;
+  border-color:#D7E0E8!important;
+  background:#fff!important;
+  color:#435467!important;
+  font-size:9.3px!important;
+  font-weight:500!important;
+}
+.sales-history-v3 .sales-history-list,
+.sales-history-v3 .sales-history-panel{
+  border:1px solid var(--mynh-border)!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.sales-history-v3 .entity-result-meta{
+  border-bottom:1px solid var(--mynh-border)!important;
+  background:#FBFCFD!important;
+  color:#718094!important;
+}
+.sales-history-v3 .entity-result-meta b{
+  color:#3D4D61!important;
+  font-size:10px!important;
+}
+.sales-history-v3 .entity-result-meta span{
+  color:#7D8998!important;
+  font-size:8.5px!important;
+}
+.sales-history-v3 .sales-history-table thead th{
+  background:#F8FAFC!important;
+  color:#69798A!important;
+  font-size:9px!important;
+  font-weight:700!important;
+  border-bottom-color:#E1E7ED!important;
+}
+.sales-history-v3 .sales-history-table tbody td{
+  color:#405064!important;
+  font-size:9.6px!important;
+  border-bottom-color:#EEF2F5!important;
+}
+.sales-history-v3 .sales-history-table tbody tr:hover td{
+  background:#FAFBFC!important;
+}
+.sales-history-v3 .sales-history-table tr.selected td{
+  background:#F7FAFD!important;
+  box-shadow:none!important;
+}
+.sales-history-v3 .sales-history-table tr.selected td:first-child{
+  box-shadow:inset 2px 0 0 #9CB2C7!important;
+}
+.sales-history-v3 .table-link{
+  color:#2B5278!important;
+  font-weight:750!important;
+}
+.sales-history-v3 .sales-customer-cell b{
+  color:#405267!important;
+  font-size:9.4px!important;
+}
+.sales-history-v3 .sales-customer-cell small{
+  color:#84909D!important;
+  font-size:7.8px!important;
+}
+
+/* Right panel copied from Warehouse visual hierarchy */
+.sales-history-v3 .sales-history-panel-head{
+  min-height:64px!important;
+  padding:10px 11px 8px!important;
+  border-bottom:0!important;
+  background:#fff!important;
+}
+.sales-history-v3 .sales-history-panel-head .module-eyebrow{
+  color:#70859A!important;
+}
+.sales-history-v3 .sales-history-panel-head h2{
+  color:#2D4358!important;
+  font-size:14px!important;
+  font-weight:720!important;
+}
+.sales-history-v3 .sales-history-panel-head p{
+  color:#7B8997!important;
+  font-size:7.8px!important;
+}
+.sales-history-v3 .sales-history-panel .panel-close{
+  width:27px!important;
+  height:27px!important;
+  border:1px solid var(--mynh-border)!important;
+  border-radius:5px!important;
+  background:#fff!important;
+  color:#5D7083!important;
+}
+.sales-history-v3 .sales-history-actions{
+  min-height:36px!important;
+  padding:4px 8px!important;
+  border-top:1px solid #F0F3F5!important;
+  border-bottom:1px solid var(--mynh-border)!important;
+  background:#FBFCFD!important;
+}
+.sales-history-v3 .panel-tabs{
+  height:32px!important;
+  display:flex!important;
+  align-items:stretch!important;
+  gap:16px!important;
+  padding:0 11px!important;
+  border-top:0!important;
+  border-bottom:1px solid var(--mynh-border)!important;
+  background:#fff!important;
+}
+.sales-history-v3 .panel-tabs a{
+  height:32px!important;
+  display:flex!important;
+  align-items:center!important;
+  padding:0!important;
+  border:0!important;
+  border-bottom:2px solid transparent!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#7C8998!important;
+  font-size:8.5px!important;
+  font-weight:650!important;
+}
+.sales-history-v3 .panel-tabs a:hover{
+  background:transparent!important;
+  color:#4D6980!important;
+}
+.sales-history-v3 .panel-tabs a.active{
+  border-bottom-color:#3D74A0!important;
+  background:transparent!important;
+  color:#32668F!important;
+}
+.sales-history-v3 .sales-history-panel-scroll{
+  padding:9px 10px 16px!important;
+  background:#fff!important;
+}
+.sales-history-v3 .sales-detail-grid{
+  border-color:#E0E6EB!important;
+  border-radius:6px!important;
+}
+.sales-history-v3 .sales-detail-grid>div{
+  border-color:#EEF1F4!important;
+  background:#fff!important;
+}
+.sales-history-v3 .sales-detail-grid span,
+.sales-history-v3 .sales-money-summary span,
+.sales-history-v3 .sales-payment-item span,
+.sales-history-v3 .sales-payment-item small,
+.sales-history-v3 .sales-audit-preview span,
+.sales-history-v3 .sales-audit-preview small{
+  color:#8793A0!important;
+  font-size:7.8px!important;
+}
+.sales-history-v3 .sales-detail-grid b,
+.sales-history-v3 .sales-money-summary b,
+.sales-history-v3 .sales-payment-item b,
+.sales-history-v3 .sales-audit-preview b{
+  color:#3B5065!important;
+  font-size:9px!important;
+  font-weight:650!important;
+}
+.sales-history-v3 .sales-money-summary{
+  border-color:#E0E6EB!important;
+  background:#FBFCFD!important;
+}
+.sales-history-v3 .sales-money-summary .total{
+  border-top-color:#DCE4EA!important;
+  background:#F7FAFD!important;
+}
+.sales-history-v3 .sales-money-summary .total b{
+  color:#294A6B!important;
+  font-size:14px!important;
+}
+
+/* Status colors exactly follow other operational modules */
+.sales-history-v3 .status-pill.green,
+.sales-dashboard-v2 .status-pill.green{
+  border-color:#C9DDD1!important;
+  background:#F0F8F3!important;
+  color:#33704E!important;
+}
+.sales-history-v3 .status-pill.orange,
+.sales-dashboard-v2 .status-pill.orange{
+  border-color:#E5D7B9!important;
+  background:#FFF7E8!important;
+  color:#9B620F!important;
+}
+.sales-history-v3 .status-pill.red,
+.sales-dashboard-v2 .status-pill.red{
+  border-color:#E6C9C9!important;
+  background:#FFF4F4!important;
+  color:#A45151!important;
+}
+
+/* Placeholder pages stay visually native, not sales-branded */
+.sales-placeholder-screen .module-placeholder{
+  border:1px solid var(--mynh-border)!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.sales-placeholder-screen .module-placeholder h2{color:#3D4651!important}
+.sales-placeholder-screen .module-placeholder p{
+  color:#7D8794!important;
+  font-size:9px!important;
+}
+.sales-placeholder-screen .module-scope span{
+  border-color:#DCE4EA!important;
+  background:#F8FAFC!important;
+  color:#607086!important;
+  font-size:8px!important;
+  font-weight:650!important;
+}
+
+@media(max-width:1440px){
+  .pos-control-row-v2{
+    grid-template-columns:200px minmax(260px,1fr) auto!important;
+  }
+  .pos-screen-v2>.pos-workspace{
+    grid-template-columns:minmax(0,1fr) 420px!important;
+  }
+  .pos-screen-v2 .pos-product-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+  .sales-command-center-v2 .sales-kpi-strip{
+    gap:4px!important;
+  }
+}
