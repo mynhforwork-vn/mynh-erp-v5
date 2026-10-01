@@ -303,7 +303,7 @@ export function SalesPOSWorkspace({
     if(!warehouseId||!cart.length)return
     setError('')
 
-    let payments:{method:'CASH'|'TRANSFER',amount:number,tendered_amount?:number|null}[]=[]
+    let payments:{method:'CASH'|'TRANSFER',amount:number,tendered_amount?:number|null,reference_code?:string|null}[]=[]
     if(paymentMode==='cash'){
       if(cashTendered<total){setError('Tiền khách đưa chưa đủ');return}
       payments=[{method:'CASH',amount:total,tendered_amount:cashTendered}]
