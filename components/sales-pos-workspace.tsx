@@ -376,7 +376,7 @@ export function SalesPOSWorkspace({
       <div className="head-actions">
         <Link className="button" href="/sales">Tổng quan bán hàng</Link>
         <Link className="button" href="/sales/history">Lịch sử bán</Link>
-        <span className="pos-live-status"><i/>POS sẵn sàng</span>
+        <span className="status-pill green pos-live-status"><i/>POS sẵn sàng</span>
       </div>
     </header>
 
@@ -500,17 +500,27 @@ export function SalesPOSWorkspace({
                 onClick={()=>addProduct(product)}
                 disabled={!canSell||product.quantity<=0}
               >
-                <div className="pos-product-card-main">
-                  <b>{product.name}</b>
-                  <span>{product.variant}</span>
+                <div className="pos-product-card-head">
+                  <div className="pos-product-card-main">
+                    <b>{product.name}</b>
+                    <span>{product.variant}</span>
+                  </div>
+                  <div className="pos-product-card-code">
+                    <span>SKU</span>
+                    <b>{product.sku}</b>
+                    {product.barcode&&<small>{product.barcode}</small>}
+                  </div>
                 </div>
-                <div className="pos-product-card-code">
-                  <small>{product.sku}</small>
-                  {product.barcode&&<small>{product.barcode}</small>}
-                </div>
-                <div className="pos-product-card-foot">
-                  <strong>{money(product.sale_price)}</strong>
-                  <em className={product.quantity<=5?'low':''}>Tồn {product.quantity}</em>
+                <div className="pos-product-card-stats">
+                  <div>
+                    <span>Giá bán</span>
+                    <b>{money(product.sale_price)}</b>
+                  </div>
+                  <div className={product.quantity<=5?'low':''}>
+                    <span>Tồn kho</span>
+                    <b>{product.quantity}</b>
+                    <small>{product.warehouse_code}</small>
+                  </div>
                 </div>
               </button>)}
         </div>
@@ -521,7 +531,7 @@ export function SalesPOSWorkspace({
           ? <>
               <div className="pos-cart-head pos-cart-head-v2">
                 <div>
-                  <span className="pos-section-kicker">HÓA ĐƠN HIỆN TẠI</span>
+                  <span className="module-eyebrow">HÓA ĐƠN HIỆN TẠI</span>
                   <b>Giỏ hàng · {cartQty} SP</b>
                   <small>{cart.length} SKU · {selectedCustomer?.name??'Khách lẻ'}</small>
                 </div>
@@ -580,7 +590,7 @@ export function SalesPOSWorkspace({
           : <div className="pos-checkout">
               <div className="pos-checkout-head">
                 <button type="button" onClick={()=>setCheckoutOpen(false)}>←</button>
-                <div><b>Thanh toán</b><span>{cartQty} sản phẩm · {warehouse?.code}</span></div>
+                <div><span className="module-eyebrow">THANH TOÁN POS</span><b>Thanh toán</b><span>{cartQty} sản phẩm · {warehouse?.code}</span></div>
               </div>
 
               <div className="pos-pay-methods">
