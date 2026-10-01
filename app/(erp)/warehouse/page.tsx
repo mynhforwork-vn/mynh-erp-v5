@@ -86,7 +86,7 @@ export default async function WarehousePage(){
   const lowPct=Math.round(low.length/stockTotal*100)
   const outPct=Math.round(out.length/stockTotal*100)
 
-  return <div className="whx-page">
+  return <div className="whx-page neo-enterprise-v1 neo-warehouse-screen">
     <header className="page-head whx-page-head">
       <div>
         <span className="module-eyebrow">VẬN HÀNH KHO</span>
