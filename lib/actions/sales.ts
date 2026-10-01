@@ -24,6 +24,7 @@ export type POSCheckoutInput={
   other_fee?:number
   payments?:POSPaymentInput[]
   note?:string|null
+  invoice_code?:string|null
 }
 
 async function actor(){
@@ -64,7 +65,7 @@ export async function checkoutPOS(input:POSCheckoutInput){
       reference_code:String(payment.reference_code??'').trim()||null,
     }))
 
-    const {data,error}=await supabase.rpc('create_pos_sale',{
+    const {data,error}=await supabase.rpc('create_pos_sale_v2',{
       p_warehouse_id:input.warehouse_id,
       p_customer_id:input.customer_id||null,
       p_items:items,
@@ -72,6 +73,7 @@ export async function checkoutPOS(input:POSCheckoutInput){
       p_other_fee:Number(input.other_fee??0),
       p_payments:payments,
       p_note:String(input.note??'').trim()||null,
+      p_invoice_code:String(input.invoice_code??'').trim()||null,
     })
     if(error){
       const raw=String(error.message??'')
@@ -109,6 +111,19 @@ export async function checkoutPOS(input:POSCheckoutInput){
     }}
   }catch(error:any){
     return {ok:false as const,error:String(error?.message??'Không thể hoàn tất hóa đơn POS')}
+  }
+}
+
+export async function reservePOSInvoiceCode(){
+  try{
+    const {supabase}=await actor()
+    const {data,error}=await supabase.rpc('reserve_pos_invoice_code')
+    if(error)return {ok:false as const,error:'Không thể tạo mã phiếu bán'}
+    const code=String(data??'').trim()
+    if(!code)return {ok:false as const,error:'Không thể tạo mã phiếu bán'}
+    return {ok:true as const,data:code}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể tạo mã phiếu bán')}
   }
 }
 
