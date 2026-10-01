@@ -83,7 +83,6 @@ export async function checkoutPOS(input:POSCheckoutInput){
     }
 
     revalidatePath('/sales')
-    revalidatePath('/sales/pos')
     revalidatePath('/sales/history')
     revalidatePath('/sales/customers')
     revalidatePath('/sales/debt')
