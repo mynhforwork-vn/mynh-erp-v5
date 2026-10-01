@@ -112,7 +112,7 @@ export default async function WarehouseReceivePage(){
   )
   const waitingCod=rows.reduce((sum,row)=>sum+Number(row.cod??0),0)
 
-  return <div className="tracking-screen tracking-screen-v2 whx-page warehouse-receive-screen">
+  return <div className="tracking-screen tracking-screen-v2 whx-page warehouse-receive-screen neo-enterprise-v1 neo-warehouse-receive">
     <header className="page-head tracking-page-head-v2">
       <div>
         <span className="module-eyebrow">VẬN HÀNH KHO</span>
