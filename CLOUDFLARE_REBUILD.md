@@ -8,3 +8,7 @@ Rules:
 - Do not modify main during rebuild.
 - Rebuild visual system and responsive UI incrementally on this branch.
 - Validate build after each coherent change before porting the next module.
+
+Build environment note:
+- Preview build variables for Supabase were configured in Cloudflare on 2026-10-02.
+- This commit intentionally retriggers the Preview build after that configuration change.
