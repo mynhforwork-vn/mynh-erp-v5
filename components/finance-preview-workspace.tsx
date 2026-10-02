@@ -89,7 +89,7 @@ export function FinancePreviewWorkspace(){
   const [categories,setCategories]=useState<Category[]>(defaultCategories)
   const [docs,setDocs]=useState<DocumentRow[]>(seedDocs)
   const [hydrated,setHydrated]=useState(false)
-  const [panel,setPanel]=useState<'NONE'|'DOCUMENT'|'CATEGORIES'|'DETAIL'>('NONE')
+  const [panel,setPanel]=useState<'NONE'|'DOCUMENT'|'CATEGORIES'|'DETAIL'|'BILL'>('NONE')
   const [detailId,setDetailId]=useState<string|null>(null)
   const [docType,setDocType]=useState<TxType>('EXPENSE')
   const [occurredAt,setOccurredAt]=useState(nowInput())
@@ -103,6 +103,18 @@ export function FinancePreviewWorkspace(){
   const [catType,setCatType]=useState<TxType>('EXPENSE')
   const [catName,setCatName]=useState('')
   const [catParent,setCatParent]=useState('')
+  const [billReading,setBillReading]=useState(false)
+  const [billFileName,setBillFileName]=useState('')
+  const [billPreview,setBillPreview]=useState('')
+  const [billRawText,setBillRawText]=useState('')
+  const [billAmount,setBillAmount]=useState(0)
+  const [billOccurredAt,setBillOccurredAt]=useState(nowInput())
+  const [billCounterparty,setBillCounterparty]=useState('')
+  const [billContent,setBillContent]=useState('')
+  const [billBank,setBillBank]=useState('')
+  const [billType,setBillType]=useState<TxType>('EXPENSE')
+  const [billCategory,setBillCategory]=useState('')
+  const [billError,setBillError]=useState('')
 
   useEffect(()=>{
     try{
@@ -138,6 +150,137 @@ export function FinancePreviewWorkspace(){
 
   const rows=[...docs].sort((a,b)=>new Date(b.occurredAt).getTime()-new Date(a.occurredAt).getTime())
   const activeCategories=categories.filter(c=>c.txType===docType&&c.active)
+
+  function openBillReader(){
+    setBillReading(false)
+    setBillFileName('')
+    setBillPreview('')
+    setBillRawText('')
+    setBillAmount(0)
+    setBillOccurredAt(nowInput())
+    setBillCounterparty('')
+    setBillContent('')
+    setBillBank('')
+    setBillType('EXPENSE')
+    setBillCategory('')
+    setBillError('')
+    setPanel('BILL')
+  }
+
+  function parseBillText(raw:string){
+    const text=raw.replace(/\r/g,'')
+    const lines=text.split('\n').map(x=>x.trim()).filter(Boolean)
+    const lower=text.toLowerCase()
+
+    const bankNames=[
+      ['Techcombank','techcombank'],['Vietcombank','vietcombank'],['MB Bank','mb bank'],
+      ['MB Bank','mbbank'],['BIDV','bidv'],['VietinBank','vietinbank'],['VPBank','vpbank'],
+      ['ACB','ngân hàng á châu'],['ACB','acb'],['TPBank','tpbank'],['Sacombank','sacombank'],
+      ['VIB','vib'],['MSB','msb'],['OCB','ocb'],['SHB','shb'],['SeABank','seabank'],
+    ]
+    const bank=bankNames.find(([,token])=>lower.includes(token))?.[0]??''
+
+    const amountLabels=['số tiền','amount','giá trị giao dịch','thành tiền','transaction amount','số tiền giao dịch']
+    let amount=0
+    for(const line of lines){
+      const l=line.toLowerCase()
+      if(!amountLabels.some(k=>l.includes(k))&&!/(vnd|vnđ|₫|\bđ\b)/i.test(line))continue
+      const candidates=line.match(/[+-]?\s*\d[\d\s.,]{2,}/g)??[]
+      for(const c of candidates){
+        const n=Number(c.replace(/[^\d]/g,''))
+        if(Number.isFinite(n)&&n>=1000&&n>amount)amount=n
+      }
+      if(amount)break
+    }
+    if(!amount){
+      const candidates=(text.match(/[+-]?\s*\d[\d\s.,]{3,}\s*(?:vnd|vnđ|₫|đ)/gi)??[])
+        .map(x=>Number(x.replace(/[^\d]/g,''))).filter(x=>Number.isFinite(x)&&x>=1000)
+      amount=candidates.length?Math.max(...candidates):0
+    }
+
+    let occurred=nowInput()
+    const dateMatch=text.match(/\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})(?:\s+|\s*[,|-]\s*)(\d{1,2}):(\d{2})(?::\d{2})?\b/)
+      ??text.match(/\b(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})(?:\s+|T)(\d{1,2}):(\d{2})(?::\d{2})?\b/)
+    if(dateMatch){
+      if(dateMatch[1].length===4){
+        const [,y,m,d,h,mi]=dateMatch
+        occurred=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}T${String(h).padStart(2,'0')}:${mi}`
+      }else{
+        const [,d,m,y,h,mi]=dateMatch
+        occurred=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}T${String(h).padStart(2,'0')}:${mi}`
+      }
+    }
+
+    function afterLabel(labels:string[]){
+      for(let i=0;i<lines.length;i++){
+        const l=lines[i]
+        const low=l.toLowerCase()
+        for(const label of labels){
+          const at=low.indexOf(label)
+          if(at<0)continue
+          const same=l.slice(at+label.length).replace(/^\s*[:\-]\s*/,'').trim()
+          if(same&&same.toLowerCase()!==label)return same
+          if(lines[i+1])return lines[i+1]
+        }
+      }
+      return ''
+    }
+
+    const counterparty=afterLabel(['người nhận','tên người nhận','chủ tài khoản nhận','người thụ hưởng','beneficiary','receiver'])
+    const content=afterLabel(['nội dung chuyển tiền','nội dung giao dịch','nội dung','message','description'])
+    const incomeHints=['tiền vào','nhận tiền','ghi có','credit','incoming transfer','đã nhận']
+    const expenseHints=['chuyển tiền thành công','người nhận','thụ hưởng','ghi nợ','debit','transfer successful']
+    const detectedType:TxType=incomeHints.some(k=>lower.includes(k))&&!expenseHints.some(k=>lower.includes(k))?'INCOME':'EXPENSE'
+
+    return {bank,amount,occurred,counterparty,content,detectedType}
+  }
+
+  async function readBill(file:File){
+    setBillError('')
+    setBillReading(true)
+    setBillFileName(file.name)
+    const url=URL.createObjectURL(file)
+    setBillPreview(url)
+    try{
+      const {createWorker}=await import('tesseract.js')
+      const worker=await createWorker('vie+eng')
+      const result=await worker.recognize(file)
+      await worker.terminate()
+      const raw=result.data.text??''
+      setBillRawText(raw)
+      const parsed=parseBillText(raw)
+      setBillBank(parsed.bank)
+      setBillAmount(parsed.amount)
+      setBillOccurredAt(parsed.occurred)
+      setBillCounterparty(parsed.counterparty)
+      setBillContent(parsed.content)
+      setBillType(parsed.detectedType)
+      setBillCategory('')
+      if(!parsed.amount)setBillError('Đã đọc bill nhưng chưa nhận diện chắc chắn số tiền. Hãy thử ảnh rõ hơn.')
+    }catch(error:any){
+      setBillError('Không đọc được bill: '+String(error?.message??'OCR thất bại'))
+    }finally{
+      setBillReading(false)
+    }
+  }
+
+  function commitBill(){
+    setBillError('')
+    if(!billAmount){setBillError('Chưa đọc được số tiền từ bill.');return}
+    if(!billCategory){setBillError('Chỉ còn một bước: chọn Hạng mục.');return}
+    const prefix=billType==='INCOME'?'PT':'PC'
+    const code=prefix+'-'+new Date(billOccurredAt).toISOString().slice(2,10).replaceAll('-','')+'-'+String(docs.length+1).padStart(6,'0')
+    const description=billContent||('Giao dịch ngân hàng'+(billBank?' · '+billBank:''))
+    setDocs(v=>[...v,{
+      id:uid(),code,type:billType,status:'POSTED',occurredAt:billOccurredAt,
+      counterparty:billCounterparty,payment:'TRANSFER',
+      cashAmount:0,transferAmount:billAmount,
+      note:'Đọc từ bill ngân hàng'+(billBank?' · '+billBank:'')+(billFileName?' · '+billFileName:''),
+      source:'Bill ngân hàng',
+      lines:[{id:uid(),categoryId:billCategory,description,amount:billAmount}],
+    }])
+    setPanel('NONE')
+  }
 
   function resetDocument(type:TxType){
     setDocType(type)
@@ -241,7 +384,7 @@ export function FinancePreviewWorkspace(){
       <div className={'finance-preview-workspace '+(panel!=='NONE'?'has-slidebar':'')}>
         <section className="finance-preview-content">
           {tab==='overview'&&<Overview docs={docs} income={income} expense={expense}/>}
-          {tab==='cashflow'&&<Cashflow docs={rows} categories={categoryMap} income={income} expense={expense} draftCount={draftCount} onCreate={resetDocument} onCategories={()=>{setFormError('');setPanel('CATEGORIES')}} onDetail={id=>{setDetailId(id);setPanel('DETAIL')}}/>}
+          {tab==='cashflow'&&<Cashflow docs={rows} categories={categoryMap} income={income} expense={expense} draftCount={draftCount} onCreate={resetDocument} onBill={openBillReader} onCategories={()=>{setFormError('');setPanel('CATEGORIES')}} onDetail={id=>{setDetailId(id);setPanel('DETAIL')}}/>}
           {tab==='settlement'&&<Settlement/>}
           {tab==='reports'&&<Reports income={income} expense={expense} docs={postedDocs} categories={categoryMap}/>}
         </section>
@@ -271,6 +414,48 @@ export function FinancePreviewWorkspace(){
             <div className="finance-total"><span>Tổng phiếu</span><b>{money(draftLines.reduce((s,x)=>s+(Number(x.amount)||0),0))}</b></div>
             <label>Ghi chú<textarea rows={3} value={note} onChange={e=>setNote(e.target.value)} placeholder="Ghi chú chứng từ..."/></label>
             <div className="form-actions finance-form-actions"><button className="button" onClick={()=>submitDocument('DRAFT')}>Lưu nháp</button><button className="button primary" onClick={()=>submitDocument('POSTED')}>Ghi nhận</button></div>
+          </div>
+        </>}
+
+        {panel==='BILL'&&<>
+          <div className="panel-head"><div><span className="eyebrow">NGÂN HÀNG</span><h2>Đọc bill giao dịch</h2></div><button className="close" onClick={()=>setPanel('NONE')}>×</button></div>
+          <div className="panel-tabs"><span className="active">Đọc bill</span><span>Gắn hạng mục</span></div>
+          <div className="panel-scroll finance-bill-panel">
+            {billError&&<div className="error-box">{billError}</div>}
+            <label className="finance-bill-upload">
+              <input type="file" accept="image/*" onChange={e=>{const file=e.target.files?.[0];if(file)void readBill(file)}}/>
+              <b>{billReading?'Đang đọc bill...':'Chọn ảnh bill ngân hàng'}</b>
+              <span>PNG, JPG, ảnh chụp màn hình · OCR chạy trong trình duyệt Preview</span>
+            </label>
+
+            {billPreview&&<div className="finance-bill-image"><img src={billPreview} alt="Bill ngân hàng đã chọn"/></div>}
+
+            {(billReading||billRawText)&&<div className="finance-bill-readout">
+              <div className="finance-bill-status"><span>{billReading?'Đang nhận diện...':'Đã đọc bill'}</span><b>{billBank||'Ngân hàng chưa xác định'}</b></div>
+              {!billReading&&<>
+                <div className="detail-grid">
+                  <div><span>Loại giao dịch</span><b>{labelType(billType)}</b></div>
+                  <div><span>Phương thức</span><b>Chuyển khoản</b></div>
+                  <div><span>Thời gian</span><b>{new Date(billOccurredAt).toLocaleString('vi-VN')}</b></div>
+                  <div><span>Số tiền</span><b>{billAmount?money(billAmount):'Chưa nhận diện'}</b></div>
+                  <div className="full"><span>Đối tượng</span><b>{billCounterparty||'Chưa nhận diện'}</b></div>
+                  <div className="full"><span>Nội dung</span><b>{billContent||'Giao dịch ngân hàng'}</b></div>
+                </div>
+
+                <div className="finance-bill-category">
+                  <label>Hạng mục
+                    <select value={billCategory} onChange={e=>setBillCategory(e.target.value)}>
+                      <option value="">Chọn hạng mục...</option>
+                      {categories.filter(c=>c.txType===billType&&c.active).map(c=><option key={c.id} value={c.id}>{c.parentId?'↳ ':''}{c.name}</option>)}
+                    </select>
+                  </label>
+                  <small>Thông tin bill đã được đọc tự động. Bạn chỉ cần gắn Hạng mục trước khi ghi nhận.</small>
+                </div>
+
+                <details className="finance-bill-raw"><summary>Xem văn bản OCR</summary><pre>{billRawText}</pre></details>
+                <div className="form-actions finance-form-actions"><button className="button primary" onClick={commitBill}>Gắn hạng mục & Ghi nhận</button></div>
+              </>}
+            </div>}
           </div>
         </>}
 
@@ -332,9 +517,9 @@ function Overview({docs,income,expense}:{docs:DocumentRow[],income:number,expens
   </div>
 }
 
-function Cashflow({docs,categories,income,expense,draftCount,onCreate,onCategories,onDetail}:{docs:DocumentRow[],categories:Map<string,Category>,income:number,expense:number,draftCount:number,onCreate:(t:TxType)=>void,onCategories:()=>void,onDetail:(id:string)=>void}){
+function Cashflow({docs,categories,income,expense,draftCount,onCreate,onBill,onCategories,onDetail}:{docs:DocumentRow[],categories:Map<string,Category>,income:number,expense:number,draftCount:number,onCreate:(t:TxType)=>void,onBill:()=>void,onCategories:()=>void,onDetail:(id:string)=>void}){
   return <div className="finance-screen">
-    <Header title="Thu / Chi" desc="Sổ giao dịch tài chính trung tâm · Phiếu thu, Phiếu chi và Hạng mục trong cùng một màn hình." actions={<><button className="button" onClick={onCategories}>Hạng mục</button><button className="button" onClick={()=>onCreate('INCOME')}>+ Phiếu thu</button><button className="button primary" onClick={()=>onCreate('EXPENSE')}>+ Phiếu chi</button></>}/>
+    <Header title="Thu / Chi" desc="Sổ giao dịch tài chính trung tâm · Phiếu thu, Phiếu chi và Hạng mục trong cùng một màn hình." actions={<><button className="button" onClick={onBill}>Đọc bill ngân hàng</button><button className="button" onClick={onCategories}>Hạng mục</button><button className="button" onClick={()=>onCreate('INCOME')}>+ Phiếu thu</button><button className="button primary" onClick={()=>onCreate('EXPENSE')}>+ Phiếu chi</button></>}/>
     <section className="finance-kpi-grid">
       <div className="finance-kpi"><span>Tổng thu</span><b className="income">{money(income)}</b><small>Đã ghi nhận</small></div>
       <div className="finance-kpi"><span>Tổng chi</span><b className="expense">{money(expense)}</b><small>Đã ghi nhận</small></div>
