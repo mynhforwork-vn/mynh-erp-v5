@@ -7,7 +7,8 @@ type TxType='INCOME'|'EXPENSE'
 type Payment='CASH'|'TRANSFER'|'COMBINED'
 type DocStatus='DRAFT'|'POSTED'|'CANCELLED'
 type Period='all'|'today'|'7d'|'month'|'custom'
-type SortKey='time'|'code'|'type'|'category'|'amount'|'status'
+type ColumnKey='time'|'code'|'type'|'category'|'content'|'counterparty'|'source'|'method'|'income'|'expense'|'status'
+type SortKey=ColumnKey
 type SortDir='asc'|'desc'
 type SettlementMode='shipper'|'customer'
 type SettlementStatus='PAID'|'PENDING'
@@ -63,6 +64,11 @@ type CustomerRow={
 type SaleDemo={id:string,occurredAt:string,revenue:number,paid:number,debt:number,cogs:number}
 
 const STORE_KEY='mynh-finance-preview-v3'
+const DEFAULT_COLUMN_ORDER:ColumnKey[]=['time','code','type','category','content','counterparty','source','method','income','expense','status']
+const COLUMN_LABELS:Record<ColumnKey,string>={
+  time:'Thời gian',code:'Mã phiếu',type:'Loại',category:'Hạng mục',content:'Nội dung',
+  counterparty:'Đối tượng',source:'Nguồn',method:'Phương thức',income:'Tiền thu',expense:'Tiền chi',status:'Trạng thái'
+}
 const money=(n:number)=>new Intl.NumberFormat('vi-VN').format(Math.round(n))+' ₫'
 const uid=()=>Math.random().toString(36).slice(2)+Date.now().toString(36)
 const nowInput=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16)}
@@ -147,6 +153,8 @@ export function FinancePreviewWorkspace(){
   const [panel,setPanel]=useState<'NONE'|'DOCUMENT'|'CATEGORIES'|'DETAIL'|'BILL'>('NONE')
   const [detailId,setDetailId]=useState<string|null>(null)
   const [detailTab,setDetailTab]=useState<'INFO'|'REF'|'HISTORY'>('INFO')
+  const [documentTab,setDocumentTab]=useState<'INFO'|'MONEY'>('INFO')
+  const [billTab,setBillTab]=useState<'READ'|'CATEGORY'>('READ')
 
   const [period,setPeriod]=useState<Period>('all')
   const [customFrom,setCustomFrom]=useState('')
@@ -181,6 +189,10 @@ export function FinancePreviewWorkspace(){
   const [sortDir,setSortDir]=useState<SortDir>('desc')
   const [page,setPage]=useState(1)
   const [pageSize,setPageSize]=useState(10)
+  const [columnOrder,setColumnOrder]=useState<ColumnKey[]>(DEFAULT_COLUMN_ORDER)
+  const [hiddenColumns,setHiddenColumns]=useState<ColumnKey[]>([])
+  const [columnMenu,setColumnMenu]=useState(false)
+  const [draggedColumn,setDraggedColumn]=useState<ColumnKey|null>(null)
 
   const [settlementMode,setSettlementMode]=useState<SettlementMode>('shipper')
   const [settlementSearch,setSettlementSearch]=useState('')
@@ -206,18 +218,25 @@ export function FinancePreviewWorkspace(){
         const parsed=JSON.parse(raw)
         if(Array.isArray(parsed.categories))setCategories(parsed.categories)
         if(Array.isArray(parsed.docs))setDocs(parsed.docs)
+        if(Array.isArray(parsed.columnOrder)&&parsed.columnOrder.length===DEFAULT_COLUMN_ORDER.length)setColumnOrder(parsed.columnOrder)
+        if(Array.isArray(parsed.hiddenColumns))setHiddenColumns(parsed.hiddenColumns)
       }
     }catch{}
     setHydrated(true)
   },[])
   useEffect(()=>{
     if(!hydrated)return
-    localStorage.setItem(STORE_KEY,JSON.stringify({categories,docs}))
-  },[hydrated,categories,docs])
+    localStorage.setItem(STORE_KEY,JSON.stringify({categories,docs,columnOrder,hiddenColumns}))
+  },[hydrated,categories,docs,columnOrder,hiddenColumns])
   useEffect(()=>{
-    const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape')setPanel('NONE')}
+    const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape'){setPanel('NONE');setColumnMenu(false)}}
+    const onPointer=(event:MouseEvent)=>{
+      const target=event.target as HTMLElement
+      if(!target.closest('.finance-column-manager-wrap'))setColumnMenu(false)
+    }
     window.addEventListener('keydown',onKey)
-    return ()=>window.removeEventListener('keydown',onKey)
+    document.addEventListener('mousedown',onPointer)
+    return ()=>{window.removeEventListener('keydown',onKey);document.removeEventListener('mousedown',onPointer)}
   },[])
 
   const categoryMap=useMemo(()=>new Map(categories.map(c=>[c.id,c])),[categories])
@@ -246,8 +265,25 @@ export function FinancePreviewWorkspace(){
     return filtered.sort((a,b)=>{
       const acats=[...new Set(a.lines.map(l=>categoryMap.get(l.categoryId)?.name??''))].join(', ')
       const bcats=[...new Set(b.lines.map(l=>categoryMap.get(l.categoryId)?.name??''))].join(', ')
-      const av=sortKey==='time'?new Date(a.occurredAt).getTime():sortKey==='code'?a.code:sortKey==='type'?a.type:sortKey==='category'?acats:sortKey==='amount'?totalDoc(a):a.status
-      const bv=sortKey==='time'?new Date(b.occurredAt).getTime():sortKey==='code'?b.code:sortKey==='type'?b.type:sortKey==='category'?bcats:sortKey==='amount'?totalDoc(b):b.status
+      const contentA=a.lines.length===1?a.lines[0].description:a.lines.length+' hạng mục'
+      const contentB=b.lines.length===1?b.lines[0].description:b.lines.length+' hạng mục'
+      const sortValue=(d:DocumentRow,cats:string,content:string)=>{
+        switch(sortKey){
+          case 'time':return new Date(d.occurredAt).getTime()
+          case 'code':return d.code
+          case 'type':return d.type
+          case 'category':return cats
+          case 'content':return content
+          case 'counterparty':return d.counterparty
+          case 'source':return d.source
+          case 'method':return d.payment
+          case 'income':return d.type==='INCOME'?totalDoc(d):-1
+          case 'expense':return d.type==='EXPENSE'?totalDoc(d):-1
+          case 'status':return d.status
+        }
+      }
+      const av=sortValue(a,acats,contentA)
+      const bv=sortValue(b,bcats,contentB)
       const cmp=typeof av==='number'&&typeof bv==='number'?av-bv:String(av).localeCompare(String(bv),'vi')
       return sortDir==='asc'?cmp:-cmp
     })
@@ -282,18 +318,38 @@ export function FinancePreviewWorkspace(){
     else{setSortKey(next);setSortDir('asc')}
     setPage(1)
   }
+  function toggleColumn(key:ColumnKey){
+    setHiddenColumns(prev=>{
+      if(prev.includes(key))return prev.filter(x=>x!==key)
+      const visible=columnOrder.filter(x=>!prev.includes(x))
+      if(visible.length<=1)return prev
+      return [...prev,key]
+    })
+  }
+  function moveColumn(from:ColumnKey,to:ColumnKey){
+    if(from===to)return
+    setColumnOrder(prev=>{
+      const next=[...prev]
+      const fromIndex=next.indexOf(from),toIndex=next.indexOf(to)
+      if(fromIndex<0||toIndex<0)return prev
+      next.splice(fromIndex,1)
+      next.splice(toIndex,0,from)
+      return next
+    })
+  }
+  function resetColumns(){setColumnOrder(DEFAULT_COLUMN_ORDER);setHiddenColumns([])}
   function openCashflowFilter(type:'ALL'|TxType,status:'ALL'|DocStatus='ALL'){
     setTab('cashflow');setFilterType(type);setFilterStatus(status);setPage(1);setPanel('NONE')
   }
 
   function resetDocument(type:TxType){
-    setEditingId(null);setDocType(type);setOccurredAt(nowInput());setCounterparty('');setPayment('CASH')
+    setEditingId(null);setDocumentTab('INFO');setDocType(type);setOccurredAt(nowInput());setCounterparty('');setPayment('CASH')
     setCashAmount('');setTransferAmount('');setNote('');setDraftLines([{id:uid(),categoryId:'',description:'',amount:''}])
     setFormError('');setPanel('DOCUMENT')
   }
   function editDraft(d:DocumentRow){
     if(d.status!=='DRAFT')return
-    setEditingId(d.id);setDocType(d.type);setOccurredAt(d.occurredAt);setCounterparty(d.counterparty);setPayment(d.payment)
+    setEditingId(d.id);setDocumentTab('INFO');setDocType(d.type);setOccurredAt(d.occurredAt);setCounterparty(d.counterparty);setPayment(d.payment)
     setCashAmount(String(d.cashAmount||''));setTransferAmount(String(d.transferAmount||''));setNote(d.note)
     setDraftLines(d.lines.map(l=>({id:l.id,categoryId:l.categoryId,description:l.description,amount:String(l.amount)})))
     setFormError('');setPanel('DOCUMENT')
@@ -352,11 +408,11 @@ export function FinancePreviewWorkspace(){
   }
 
   function resetPreview(){
-    localStorage.removeItem(STORE_KEY);setCategories(defaultCategories);setDocs(seedDocs);setPanel('NONE');resetAllFilters();setPeriod('all')
+    localStorage.removeItem(STORE_KEY);setCategories(defaultCategories);setDocs(seedDocs);setColumnOrder(DEFAULT_COLUMN_ORDER);setHiddenColumns([]);setPanel('NONE');resetAllFilters();setPeriod('all')
   }
 
   function openBillReader(){
-    setBillReading(false);setBillFileName('');setBillPreview('');setBillRawText('');setBillAmount(0);setBillOccurredAt(nowInput())
+    setBillTab('READ');setBillReading(false);setBillFileName('');setBillPreview('');setBillRawText('');setBillAmount(0);setBillOccurredAt(nowInput())
     setBillCounterparty('');setBillContent('');setBillBank('');setBillType('EXPENSE');setBillCategory('');setBillError('');setPanel('BILL')
   }
   function parseBillText(raw:string){
@@ -389,6 +445,7 @@ export function FinancePreviewWorkspace(){
       const {createWorker}=await import('tesseract.js');const worker=await createWorker('vie+eng');const result=await worker.recognize(file);await worker.terminate()
       const raw=result.data.text??'';setBillRawText(raw);const parsed=parseBillText(raw)
       setBillBank(parsed.bank);setBillAmount(parsed.amount);setBillOccurredAt(parsed.occurred);setBillCounterparty(parsed.counterparty);setBillContent(parsed.content);setBillType(parsed.detectedType);setBillCategory('')
+      if(parsed.amount)setBillTab('CATEGORY')
       if(!parsed.amount)setBillError('Đã đọc bill nhưng chưa nhận diện chắc chắn số tiền. Hãy thử ảnh rõ hơn.')
     }catch(error:any){setBillError('Không đọc được bill: '+String(error?.message??'OCR thất bại'))}finally{setBillReading(false)}
   }
@@ -421,7 +478,7 @@ export function FinancePreviewWorkspace(){
       <div className={'finance-preview-workspace '+(panel!=='NONE'?'has-slidebar':'')}>
         <section className="finance-preview-content">
           {tab==='overview'&&<Overview docs={periodDocs} categories={categoryMap} income={income} expense={expense} period={period} from={customFrom} to={customTo} onPeriod={setPeriodSafe} onFrom={setCustomFrom} onTo={setCustomTo} onOpenCashflow={openCashflowFilter}/>}
-          {tab==='cashflow'&&<Cashflow docs={pageRows} allCount={cashflowRows.length} incomeCount={periodDocs.filter(d=>d.type==='INCOME'&&d.status!=='CANCELLED').length} expenseCount={periodDocs.filter(d=>d.type==='EXPENSE'&&d.status!=='CANCELLED').length} categories={categories} categoryMap={categoryMap} income={income} expense={expense} draftCount={periodDocs.filter(d=>d.status==='DRAFT').length} search={search} setSearch={v=>{setSearch(v);setPage(1)}} filterType={filterType} setFilterType={v=>{setFilterType(v);setPage(1)}} filterCategory={filterCategory} setFilterCategory={v=>{setFilterCategory(v);setPage(1)}} filterSource={filterSource} setFilterSource={v=>{setFilterSource(v);setPage(1)}} filterMethod={filterMethod} setFilterMethod={v=>{setFilterMethod(v);setPage(1)}} filterStatus={filterStatus} setFilterStatus={v=>{setFilterStatus(v);setPage(1)}} sources={sourceOptions} period={period} from={customFrom} to={customTo} onPeriod={setPeriodSafe} onFrom={setCustomFrom} onTo={setCustomTo} resetFilters={resetAllFilters} sortKey={sortKey} sortDir={sortDir} onSort={changeSort} page={safePage} maxPage={maxPage} pageSize={pageSize} setPage={setPage} setPageSize={v=>{setPageSize(v);setPage(1)}} onCreate={resetDocument} onBill={openBillReader} onCategories={openCategoryPanel} onDetail={openDetail}/>}
+          {tab==='cashflow'&&<Cashflow docs={pageRows} allCount={cashflowRows.length} incomeCount={periodDocs.filter(d=>d.type==='INCOME'&&d.status!=='CANCELLED').length} expenseCount={periodDocs.filter(d=>d.type==='EXPENSE'&&d.status!=='CANCELLED').length} categories={categories} categoryMap={categoryMap} income={income} expense={expense} draftCount={periodDocs.filter(d=>d.status==='DRAFT').length} search={search} setSearch={v=>{setSearch(v);setPage(1)}} filterType={filterType} setFilterType={v=>{setFilterType(v);setPage(1)}} filterCategory={filterCategory} setFilterCategory={v=>{setFilterCategory(v);setPage(1)}} filterSource={filterSource} setFilterSource={v=>{setFilterSource(v);setPage(1)}} filterMethod={filterMethod} setFilterMethod={v=>{setFilterMethod(v);setPage(1)}} filterStatus={filterStatus} setFilterStatus={v=>{setFilterStatus(v);setPage(1)}} sources={sourceOptions} period={period} from={customFrom} to={customTo} onPeriod={setPeriodSafe} onFrom={setCustomFrom} onTo={setCustomTo} resetFilters={resetAllFilters} sortKey={sortKey} sortDir={sortDir} onSort={changeSort} page={safePage} maxPage={maxPage} pageSize={pageSize} setPage={setPage} setPageSize={v=>{setPageSize(v);setPage(1)}} columnOrder={columnOrder} hiddenColumns={hiddenColumns} columnMenu={columnMenu} setColumnMenu={setColumnMenu} draggedColumn={draggedColumn} setDraggedColumn={setDraggedColumn} onToggleColumn={toggleColumn} onMoveColumn={moveColumn} onResetColumns={resetColumns} onCreate={resetDocument} onBill={openBillReader} onCategories={openCategoryPanel} onDetail={openDetail}/>}
           {tab==='settlement'&&<Settlement mode={settlementMode} setMode={setSettlementMode} period={period} from={customFrom} to={customTo} onPeriod={setPeriodSafe} onFrom={setCustomFrom} onTo={setCustomTo} search={settlementSearch} setSearch={setSettlementSearch} status={settlementStatus} setStatus={setSettlementStatus} shipperRows={shipperRows} customerRows={customerRows}/>}
           {tab==='reports'&&<Reports docs={postedPeriod} categories={categoryMap} income={income} expense={expense} period={period} from={customFrom} to={customTo} onPeriod={setPeriodSafe} onFrom={setCustomFrom} onTo={setCustomTo}/>}
         </section>
@@ -429,33 +486,52 @@ export function FinancePreviewWorkspace(){
         {panel!=='NONE'&&<aside className="detail-panel finance-panel finance-preview-slidebar">
           {panel==='DOCUMENT'&&<>
             <div className="panel-head"><div><span className="eyebrow">{docType==='INCOME'?'PHIẾU THU':'PHIẾU CHI'}</span><h2>{editingId?'Sửa phiếu nháp':docType==='INCOME'?'Tạo Phiếu thu':'Tạo Phiếu chi'}</h2></div><button className="close" onClick={()=>setPanel('NONE')}>×</button></div>
-            <div className="panel-tabs"><span className="active">Thông tin</span><span>Chi tiết tiền</span></div>
+            <div className="panel-tabs">
+              <button className={documentTab==='INFO'?'active':''} onClick={()=>setDocumentTab('INFO')}>Thông tin</button>
+              <button className={documentTab==='MONEY'?'active':''} onClick={()=>setDocumentTab('MONEY')}>Chi tiết tiền <span className="panel-tab-count">{draftLines.length}</span></button>
+            </div>
             <div className="panel-scroll finance-form">
               {formError&&<div className="error-box">{formError}</div>}
-              <div className="form-grid"><label>Ngày {docType==='INCOME'?'thu':'chi'}<input type="datetime-local" value={occurredAt} onChange={e=>setOccurredAt(e.target.value)}/></label><label>Phương thức<select value={payment} onChange={e=>setPayment(e.target.value as Payment)}><option value="CASH">Tiền mặt</option><option value="TRANSFER">Chuyển khoản</option><option value="COMBINED">Kết hợp</option></select></label></div>
-              <label>{docType==='INCOME'?'Người nộp':'Người nhận'}<input value={counterparty} onChange={e=>setCounterparty(e.target.value)} placeholder="Không bắt buộc"/></label>
-              <div className="finance-lines-head"><div><b>Chi tiết hạng mục</b><span>{draftLines.length} dòng</span></div><button className="mini-add" type="button" onClick={addLine}>+ Thêm dòng</button></div>
-              <div className="finance-lines">{draftLines.map((line,index)=><div className="finance-line-card" key={line.id}><div className="finance-line-number">#{index+1}</div><label>Hạng mục<select value={line.categoryId} onChange={e=>patchLine(line.id,{categoryId:e.target.value})}><option value="">Chọn hạng mục...</option>{activeCategories.map(c=><option key={c.id} value={c.id}>{c.parentId?'↳ ':''}{c.name}</option>)}</select></label><label>Nội dung<input value={line.description} onChange={e=>patchLine(line.id,{description:e.target.value})}/></label><label>Số tiền<input type="number" min="0" step="1000" value={line.amount} onChange={e=>patchLine(line.id,{amount:e.target.value})}/></label>{draftLines.length>1&&<button className="finance-remove-line" type="button" onClick={()=>removeLine(line.id)}>Xoá</button>}</div>)}</div>
-              {payment==='COMBINED'&&<div className="finance-split-payment"><label>Tiền mặt<input type="number" min="0" value={cashAmount} onChange={e=>setCashAmount(e.target.value)}/></label><label>Chuyển khoản<input type="number" min="0" value={transferAmount} onChange={e=>setTransferAmount(e.target.value)}/></label></div>}
-              <div className="finance-total"><span>Tổng phiếu</span><b>{money(draftLines.reduce((s,x)=>s+(Number(x.amount)||0),0))}</b></div>
-              <label>Ghi chú<textarea rows={3} value={note} onChange={e=>setNote(e.target.value)}/></label>
+              {documentTab==='INFO'&&<>
+                <div className="form-grid"><label>Ngày {docType==='INCOME'?'thu':'chi'}<input className="finance-datetime" type="datetime-local" value={occurredAt} onChange={e=>setOccurredAt(e.target.value)}/></label><label>Phương thức<select value={payment} onChange={e=>setPayment(e.target.value as Payment)}><option value="CASH">Tiền mặt</option><option value="TRANSFER">Chuyển khoản</option><option value="COMBINED">Kết hợp</option></select></label></div>
+                <label>{docType==='INCOME'?'Người nộp':'Người nhận'}<input value={counterparty} onChange={e=>setCounterparty(e.target.value)} placeholder="Không bắt buộc"/></label>
+                <label>Ghi chú<textarea rows={4} value={note} onChange={e=>setNote(e.target.value)} placeholder="Ghi chú chứng từ..."/></label>
+                <div className="finance-panel-hint"><b>Bước tiếp theo</b><span>Mở tab “Chi tiết tiền” để chọn hạng mục, nhập nội dung và số tiền.</span><button className="button small" type="button" onClick={()=>setDocumentTab('MONEY')}>Mở Chi tiết tiền →</button></div>
+              </>}
+              {documentTab==='MONEY'&&<>
+                <div className="finance-lines-head"><div><b>Chi tiết hạng mục</b><span>{draftLines.length} dòng</span></div><button className="mini-add" type="button" onClick={addLine}>+ Thêm dòng</button></div>
+                <div className="finance-lines">{draftLines.map((line,index)=><div className="finance-line-card" key={line.id}><div className="finance-line-number">#{index+1}</div><label>Hạng mục<select value={line.categoryId} onChange={e=>patchLine(line.id,{categoryId:e.target.value})}><option value="">Chọn hạng mục...</option>{activeCategories.map(c=><option key={c.id} value={c.id}>{c.parentId?'↳ ':''}{c.name}</option>)}</select></label><label>Nội dung<input value={line.description} onChange={e=>patchLine(line.id,{description:e.target.value})} placeholder="Nội dung thu / chi"/></label><label>Số tiền<input type="number" min="0" step="1000" value={line.amount} onChange={e=>patchLine(line.id,{amount:e.target.value})}/></label>{draftLines.length>1&&<button className="finance-remove-line" type="button" onClick={()=>removeLine(line.id)}>Xoá</button>}</div>)}</div>
+                {payment==='COMBINED'&&<div className="finance-split-payment"><label>Tiền mặt<input type="number" min="0" value={cashAmount} onChange={e=>setCashAmount(e.target.value)}/></label><label>Chuyển khoản<input type="number" min="0" value={transferAmount} onChange={e=>setTransferAmount(e.target.value)}/></label></div>}
+                <div className="finance-total"><span>Tổng phiếu</span><b>{money(draftLines.reduce((sum,x)=>sum+(Number(x.amount)||0),0))}</b></div>
+              </>}
               <div className="form-actions finance-form-actions"><button className="button" onClick={()=>submitDocument('DRAFT')}>Lưu nháp</button><button className="button primary" onClick={()=>submitDocument('POSTED')}>Ghi nhận</button></div>
             </div>
           </>}
 
           {panel==='BILL'&&<>
             <div className="panel-head"><div><span className="eyebrow">NGÂN HÀNG</span><h2>Đọc bill giao dịch</h2></div><button className="close" onClick={()=>setPanel('NONE')}>×</button></div>
-            <div className="panel-tabs"><span className="active">Đọc bill</span><span>Gắn hạng mục</span></div>
+            <div className="panel-tabs">
+              <button className={billTab==='READ'?'active':''} onClick={()=>setBillTab('READ')}>Đọc bill</button>
+              <button className={billTab==='CATEGORY'?'active':''} onClick={()=>setBillTab('CATEGORY')}>Gắn hạng mục {billAmount>0&&<span className="panel-tab-count">1</span>}</button>
+            </div>
             <div className="panel-scroll finance-bill-panel">
               {billError&&<div className="error-box">{billError}</div>}
-              <label className="finance-bill-upload"><input type="file" accept="image/*" onChange={e=>{const file=e.target.files?.[0];if(file)void readBill(file)}}/><b>{billReading?'Đang đọc bill...':'Chọn ảnh bill ngân hàng'}</b><span>PNG, JPG, ảnh chụp màn hình · OCR chạy trong trình duyệt Preview</span></label>
-              {billPreview&&<div className="finance-bill-image"><img src={billPreview} alt="Bill ngân hàng đã chọn"/></div>}
-              {(billReading||billRawText)&&<div className="finance-bill-readout"><div className="finance-bill-status"><span>{billReading?'Đang nhận diện...':'Đã đọc bill'}</span><b>{billBank||'Ngân hàng chưa xác định'}</b></div>{!billReading&&<>
-                <div className="detail-grid"><div><span>Loại giao dịch</span><b>{labelType(billType)}</b></div><div><span>Phương thức</span><b>Chuyển khoản</b></div><div><span>Thời gian</span><b>{new Date(billOccurredAt).toLocaleString('vi-VN')}</b></div><div><span>Số tiền</span><b>{billAmount?money(billAmount):'Chưa nhận diện'}</b></div><div className="full"><span>Đối tượng</span><b>{billCounterparty||'Chưa nhận diện'}</b></div><div className="full"><span>Nội dung</span><b>{billContent||'Giao dịch ngân hàng'}</b></div></div>
-                <div className="finance-bill-category"><label>Hạng mục<select value={billCategory} onChange={e=>setBillCategory(e.target.value)}><option value="">Chọn hạng mục...</option>{categories.filter(c=>c.txType===billType&&c.active).map(c=><option key={c.id} value={c.id}>{c.parentId?'↳ ':''}{c.name}</option>)}</select></label><small>Thông tin bill được đọc tự động. Bạn chỉ cần gắn Hạng mục.</small></div>
-                <details className="finance-bill-raw"><summary>Xem văn bản OCR</summary><pre>{billRawText}</pre></details>
-                <div className="form-actions finance-form-actions"><button className="button primary" onClick={commitBill}>Gắn hạng mục & Ghi nhận</button></div>
-              </>}</div>}
+              {billTab==='READ'&&<>
+                <label className="finance-bill-upload"><input type="file" accept="image/*" onChange={e=>{const file=e.target.files?.[0];if(file)void readBill(file)}}/><b>{billReading?'Đang đọc bill...':'Chọn ảnh bill ngân hàng'}</b><span>PNG, JPG, ảnh chụp màn hình · OCR chạy trong trình duyệt Preview</span></label>
+                {billPreview&&<div className="finance-bill-image"><img src={billPreview} alt="Bill ngân hàng đã chọn"/></div>}
+                {(billReading||billRawText)&&<div className="finance-bill-readout"><div className="finance-bill-status"><span>{billReading?'Đang nhận diện...':'Đã đọc bill'}</span><b>{billBank||'Ngân hàng chưa xác định'}</b></div>{!billReading&&<>
+                  <div className="detail-grid"><div><span>Loại giao dịch</span><b>{labelType(billType)}</b></div><div><span>Phương thức</span><b>Chuyển khoản</b></div><div><span>Thời gian</span><b>{new Date(billOccurredAt).toLocaleString('vi-VN')}</b></div><div><span>Số tiền</span><b>{billAmount?money(billAmount):'Chưa nhận diện'}</b></div><div className="full"><span>Đối tượng</span><b>{billCounterparty||'Chưa nhận diện'}</b></div><div className="full"><span>Nội dung</span><b>{billContent||'Giao dịch ngân hàng'}</b></div></div>
+                  <details className="finance-bill-raw"><summary>Xem văn bản OCR</summary><pre>{billRawText}</pre></details>
+                  <div className="form-actions finance-form-actions"><button className="button primary" disabled={!billAmount} onClick={()=>setBillTab('CATEGORY')}>Tiếp tục: Gắn hạng mục →</button></div>
+                </>}</div>}
+              </>}
+              {billTab==='CATEGORY'&&<>
+                {!billRawText?<div className="finance-panel-empty"><b>Chưa có bill để gắn hạng mục</b><span>Quay lại tab “Đọc bill” và chọn ảnh giao dịch trước.</span><button className="button" onClick={()=>setBillTab('READ')}>← Đọc bill</button></div>:<>
+                  <div className="finance-bill-summary"><div><span>Số tiền</span><b>{money(billAmount)}</b></div><div><span>Đối tượng</span><b>{billCounterparty||'Chưa nhận diện'}</b></div><div><span>Ngân hàng</span><b>{billBank||'Chưa xác định'}</b></div></div>
+                  <div className="finance-bill-category"><label>Hạng mục<select value={billCategory} onChange={e=>setBillCategory(e.target.value)}><option value="">Chọn hạng mục...</option>{categories.filter(c=>c.txType===billType&&c.active).map(c=><option key={c.id} value={c.id}>{c.parentId?'↳ ':''}{c.name}</option>)}</select></label><small>OCR đã đọc thông tin bill. Đây là bước duy nhất cần bạn xác nhận thủ công trước khi ghi nhận.</small></div>
+                  <div className="form-actions finance-form-actions"><button className="button" onClick={()=>setBillTab('READ')}>← Kiểm tra bill</button><button className="button primary" onClick={commitBill}>Gắn hạng mục & Ghi nhận</button></div>
+                </>}
+              </>}
             </div>
           </>}
 
@@ -529,6 +605,7 @@ function Cashflow(p:{
   filterSource:string,setFilterSource:(v:string)=>void,filterMethod:'ALL'|Payment,setFilterMethod:(v:'ALL'|Payment)=>void,filterStatus:'ALL'|DocStatus,setFilterStatus:(v:'ALL'|DocStatus)=>void,
   sources:string[],period:Period,from:string,to:string,onPeriod:(x:Period)=>void,onFrom:(s:string)=>void,onTo:(s:string)=>void,resetFilters:()=>void,
   sortKey:SortKey,sortDir:SortDir,onSort:(k:SortKey)=>void,page:number,maxPage:number,pageSize:number,setPage:(n:number)=>void,setPageSize:(n:number)=>void,
+  columnOrder:ColumnKey[],hiddenColumns:ColumnKey[],columnMenu:boolean,setColumnMenu:(v:boolean)=>void,draggedColumn:ColumnKey|null,setDraggedColumn:(v:ColumnKey|null)=>void,onToggleColumn:(k:ColumnKey)=>void,onMoveColumn:(from:ColumnKey,to:ColumnKey)=>void,onResetColumns:()=>void,
   onCreate:(t:TxType)=>void,onBill:()=>void,onCategories:()=>void,onDetail:(id:string)=>void
 }){
   return <div className="finance-screen"><Header title="Thu / Chi" desc="Phiếu thu, Phiếu chi, Hạng mục và dòng tiền trên cùng một sổ." actions={<><button className="button" onClick={p.onBill}>Đọc bill ngân hàng</button><button className="button" onClick={p.onCategories}>Hạng mục</button><button className="button" onClick={()=>p.onCreate('INCOME')}>+ Phiếu thu</button><button className="button primary" onClick={()=>p.onCreate('EXPENSE')}>+ Phiếu chi</button></>}/>
@@ -538,14 +615,49 @@ function Cashflow(p:{
       <input className="search" value={p.search} onChange={e=>p.setSearch(e.target.value)} placeholder="Tìm mã phiếu / nội dung / đối tượng..."/>
       <select value={p.filterType} onChange={e=>p.setFilterType(e.target.value as 'ALL'|TxType)}><option value="ALL">Thu / Chi</option><option value="INCOME">Thu</option><option value="EXPENSE">Chi</option></select>
       <select value={p.filterCategory} onChange={e=>p.setFilterCategory(e.target.value)}><option value="ALL">Hạng mục</option>{p.categories.filter(c=>c.active).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
-      <select value={p.filterSource} onChange={e=>p.setFilterSource(e.target.value)}><option value="ALL">Nguồn</option>{p.sources.map(s=><option key={s} value={s}>{s}</option>)}</select>
+      <select value={p.filterSource} onChange={e=>p.setFilterSource(e.target.value)}><option value="ALL">Nguồn</option>{p.sources.map(src=><option key={src} value={src}>{src}</option>)}</select>
       <select value={p.filterMethod} onChange={e=>p.setFilterMethod(e.target.value as 'ALL'|Payment)}><option value="ALL">Phương thức</option><option value="CASH">Tiền mặt</option><option value="TRANSFER">Chuyển khoản</option><option value="COMBINED">Kết hợp</option></select>
       <select value={p.filterStatus} onChange={e=>p.setFilterStatus(e.target.value as 'ALL'|DocStatus)}><option value="ALL">Trạng thái</option><option value="POSTED">Đã ghi nhận</option><option value="DRAFT">Nháp</option><option value="CANCELLED">Đã huỷ</option></select>
-      <button className="button small" onClick={p.resetFilters}>Xoá lọc</button><span className="toolbar-note">{p.allCount} giao dịch</span>
+      <button className="button small" onClick={p.resetFilters}>Xoá lọc</button>
+      <div className="finance-column-manager-wrap">
+        <button className={'button small finance-column-button '+(p.columnMenu?'active':'')} type="button" onClick={()=>p.setColumnMenu(!p.columnMenu)}>☷ Cột</button>
+        {p.columnMenu&&<div className="finance-column-manager-menu" onClick={e=>e.stopPropagation()}>
+          <div className="finance-column-menu-head"><div><b>Hiển thị & thứ tự cột</b><span>Kéo ⋮⋮ để sắp xếp</span></div><button type="button" onClick={p.onResetColumns}>Đặt lại</button></div>
+          <div className="finance-column-menu-list">{p.columnOrder.map(key=>{
+            const hidden=p.hiddenColumns.includes(key)
+            return <div className={'finance-column-menu-row '+(hidden?'hidden':'')} key={key} draggable onDragStart={()=>p.setDraggedColumn(key)} onDragOver={e=>e.preventDefault()} onDrop={()=>{if(p.draggedColumn)p.onMoveColumn(p.draggedColumn,key);p.setDraggedColumn(null)}} onDragEnd={()=>p.setDraggedColumn(null)}>
+              <span className="finance-drag-handle" title="Kéo để đổi vị trí">⋮⋮</span>
+              <label><input type="checkbox" checked={!hidden} onChange={()=>p.onToggleColumn(key)}/><span>{COLUMN_LABELS[key]}</span></label>
+            </div>
+          })}</div>
+        </div>}
+      </div>
+      <span className="toolbar-note">{p.allCount} giao dịch</span>
     </div>
-    <div className="card table-card finance-table-card"><table className="table finance-table"><thead><tr><SortHead label="Thời gian" k="time" active={p.sortKey==='time'} dir={p.sortDir} onSort={p.onSort}/><SortHead label="Mã phiếu" k="code" active={p.sortKey==='code'} dir={p.sortDir} onSort={p.onSort}/><SortHead label="Loại" k="type" active={p.sortKey==='type'} dir={p.sortDir} onSort={p.onSort}/><SortHead label="Hạng mục" k="category" active={p.sortKey==='category'} dir={p.sortDir} onSort={p.onSort}/><th>Nội dung</th><th>Đối tượng</th><th>Nguồn</th><th>Phương thức</th><th>Tiền thu</th><SortHead label="Tiền chi" k="amount" active={p.sortKey==='amount'} dir={p.sortDir} onSort={p.onSort}/><SortHead label="Trạng thái" k="status" active={p.sortKey==='status'} dir={p.sortDir} onSort={p.onSort}/></tr></thead><tbody>
-      {!p.docs.length?<tr><td colSpan={11} className="empty">Không có giao dịch phù hợp.</td></tr>:p.docs.map(d=>{const total=totalDoc(d);const cats=[...new Set(d.lines.map(l=>p.categoryMap.get(l.categoryId)?.name??'Hạng mục'))];return <tr key={d.id} onClick={()=>p.onDetail(d.id)}><td>{new Date(d.occurredAt).toLocaleString('vi-VN')}</td><td className="strong finance-code">{d.code}</td><td><span className={'finance-type '+(d.type==='INCOME'?'income':'expense')}>{labelType(d.type)}</span></td><td className="finance-category-cell">{cats.join(', ')}</td><td className="truncate">{d.lines.length===1?d.lines[0].description:d.lines.length+' hạng mục'}</td><td>{d.counterparty||'—'}</td><td>{d.source}</td><td>{labelPayment(d.payment)}</td><td className="money finance-money income">{d.type==='INCOME'?money(total):'—'}</td><td className="money finance-money expense">{d.type==='EXPENSE'?money(total):'—'}</td><td><span className={'finance-status '+d.status.toLowerCase()}>{labelStatus(d.status)}</span></td></tr>})}
-    </tbody></table></div>
+    {(()=>{
+      const visible=p.columnOrder.filter(key=>!p.hiddenColumns.includes(key))
+      const renderCell=(d:DocumentRow,key:ColumnKey)=>{
+        const total=totalDoc(d)
+        const cats=[...new Set(d.lines.map(line=>p.categoryMap.get(line.categoryId)?.name??'Hạng mục'))].join(', ')
+        const content=d.lines.length===1?d.lines[0].description:d.lines.length+' hạng mục'
+        switch(key){
+          case 'time':return <td key={key}>{new Date(d.occurredAt).toLocaleString('vi-VN')}</td>
+          case 'code':return <td key={key} className="strong finance-code">{d.code}</td>
+          case 'type':return <td key={key}><span className={'finance-type '+(d.type==='INCOME'?'income':'expense')}>{labelType(d.type)}</span></td>
+          case 'category':return <td key={key} className="finance-category-cell">{cats}</td>
+          case 'content':return <td key={key} className="truncate">{content}</td>
+          case 'counterparty':return <td key={key}>{d.counterparty||'—'}</td>
+          case 'source':return <td key={key}>{d.source}</td>
+          case 'method':return <td key={key}>{labelPayment(d.payment)}</td>
+          case 'income':return <td key={key} className="money finance-money income">{d.type==='INCOME'?money(total):'—'}</td>
+          case 'expense':return <td key={key} className="money finance-money expense">{d.type==='EXPENSE'?money(total):'—'}</td>
+          case 'status':return <td key={key}><span className={'finance-status '+d.status.toLowerCase()}>{labelStatus(d.status)}</span></td>
+        }
+      }
+      return <div className="card table-card finance-table-card"><table className="table finance-table"><thead><tr>{visible.map(key=><SortHead key={key} label={COLUMN_LABELS[key]} k={key} active={p.sortKey===key} dir={p.sortDir} onSort={p.onSort}/>)}</tr></thead><tbody>
+        {!p.docs.length?<tr><td colSpan={visible.length} className="empty">Không có giao dịch phù hợp.</td></tr>:p.docs.map(d=><tr key={d.id} onClick={()=>p.onDetail(d.id)}>{visible.map(key=>renderCell(d,key))}</tr>)}
+      </tbody></table></div>
+    })()}
     <div className="finance-pagination"><span>Trang {p.page}/{p.maxPage}</span><div><button className="button small" disabled={p.page<=1} onClick={()=>p.setPage(p.page-1)}>‹</button><button className="button small" disabled={p.page>=p.maxPage} onClick={()=>p.setPage(p.page+1)}>›</button><select value={p.pageSize} onChange={e=>p.setPageSize(Number(e.target.value))}><option value={10}>10 dòng</option><option value={20}>20 dòng</option><option value={50}>50 dòng</option></select></div></div>
   </div>
 }
