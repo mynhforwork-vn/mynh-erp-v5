@@ -214,3 +214,128 @@
   }
   .finance-preview-slidebar .panel-scroll{max-height:calc(100vh - 102px)}
 }
+
+/* Finance typography aligned with the existing MYNH ERP visual system */
+.finance-preview-old-shell,
+.finance-preview-old-shell button,
+.finance-preview-old-shell input,
+.finance-preview-old-shell select,
+.finance-preview-old-shell textarea,
+.finance-preview-old-shell table{
+  font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+.finance-kpi span{font-size:9.5px;font-weight:600}
+.finance-kpi b{font-size:21px;font-weight:700;letter-spacing:-.02em}
+.finance-kpi small{font-size:8.25px}
+.finance-page-head h1{font-size:19px;font-weight:700;letter-spacing:-.015em}
+.finance-page-head p{font-size:10.5px}
+.finance-panel .panel-head h2{font-size:14px;font-weight:700}
+.finance-form>label,.finance-split-payment label,.finance-category-form label{font-size:9px;font-weight:600}
+
+/* Ledger adapts to the remaining width when a right slidebar is open */
+.finance-preview-workspace.has-slidebar .finance-table-card{
+  overflow-x:hidden;
+}
+.finance-preview-workspace.has-slidebar .finance-table{
+  width:100%;
+  min-width:0;
+  table-layout:fixed;
+}
+.finance-preview-workspace.has-slidebar .finance-table th,
+.finance-preview-workspace.has-slidebar .finance-table td{
+  padding-left:6px;
+  padding-right:6px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.finance-preview-workspace.has-slidebar .finance-table th:nth-child(1),
+.finance-preview-workspace.has-slidebar .finance-table td:nth-child(1){width:112px}
+.finance-preview-workspace.has-slidebar .finance-table th:nth-child(2),
+.finance-preview-workspace.has-slidebar .finance-table td:nth-child(2){width:118px}
+.finance-preview-workspace.has-slidebar .finance-table th:nth-child(3),
+.finance-preview-workspace.has-slidebar .finance-table td:nth-child(3){width:54px}
+.finance-preview-workspace.has-slidebar .finance-table th:nth-child(4),
+.finance-preview-workspace.has-slidebar .finance-table td:nth-child(4){width:130px}
+.finance-preview-workspace.has-slidebar .finance-table th:nth-child(5),
+.finance-preview-workspace.has-slidebar .finance-table td:nth-child(5){width:auto}
+.finance-preview-workspace.has-slidebar .finance-table th:nth-child(6),
+.finance-preview-workspace.has-slidebar .finance-table td:nth-child(6),
+.finance-preview-workspace.has-slidebar .finance-table th:nth-child(7),
+.finance-preview-workspace.has-slidebar .finance-table td:nth-child(7),
+.finance-preview-workspace.has-slidebar .finance-table th:nth-child(8),
+.finance-preview-workspace.has-slidebar .finance-table td:nth-child(8){
+  display:none;
+}
+.finance-preview-workspace.has-slidebar .finance-table th:nth-child(9),
+.finance-preview-workspace.has-slidebar .finance-table td:nth-child(9),
+.finance-preview-workspace.has-slidebar .finance-table th:nth-child(10),
+.finance-preview-workspace.has-slidebar .finance-table td:nth-child(10){width:104px}
+.finance-preview-workspace.has-slidebar .finance-table th:nth-child(11),
+.finance-preview-workspace.has-slidebar .finance-table td:nth-child(11){width:92px}
+.finance-preview-workspace.has-slidebar .finance-table{font-size:9.6px}
+.finance-preview-workspace.has-slidebar .finance-table th{font-size:7.7px}
+
+/* Bank bill OCR */
+.finance-bill-panel{display:flex;flex-direction:column;gap:9px}
+.finance-bill-upload{
+  min-height:78px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  padding:12px;
+  border:1px dashed #bfcbd8;
+  border-radius:7px;
+  background:#f8fafc;
+  color:var(--mynh-text-2);
+  text-align:center;
+  cursor:pointer;
+}
+.finance-bill-upload:hover{border-color:#8fa4bb;background:#f4f8fc}
+.finance-bill-upload input{position:absolute;opacity:0;pointer-events:none}
+.finance-bill-upload b{font-size:10px;font-weight:650;color:var(--mynh-brand)}
+.finance-bill-upload span{font-size:8px;color:var(--mynh-text-3);font-weight:500}
+.finance-bill-image{
+  max-height:220px;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  border:1px solid var(--mynh-border);
+  border-radius:7px;
+  background:#f7f9fb;
+}
+.finance-bill-image img{display:block;max-width:100%;max-height:220px;object-fit:contain}
+.finance-bill-readout{display:flex;flex-direction:column;gap:9px}
+.finance-bill-status{
+  min-height:36px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:6px 8px;
+  border:1px solid #d6e2ee;
+  border-radius:6px;
+  background:#f3f8fc;
+}
+.finance-bill-status span{color:#607286;font-size:8.5px}
+.finance-bill-status b{color:#294d70;font-size:9.5px}
+.finance-bill-category{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  padding:9px;
+  border:1px solid #dce4ed;
+  border-radius:7px;
+  background:#fafcfe;
+}
+.finance-bill-category label{display:flex;flex-direction:column;gap:4px;color:var(--mynh-text-2);font-size:9px;font-weight:600}
+.finance-bill-category select{height:31px;padding:0 8px;border:1px solid var(--mynh-border-2);border-radius:6px;background:#fff;color:var(--mynh-text);font:inherit}
+.finance-bill-category small{color:var(--mynh-text-3);font-size:8px;line-height:1.4}
+.finance-bill-raw{border:1px solid var(--mynh-border);border-radius:6px;background:#fbfcfd}
+.finance-bill-raw summary{padding:7px 8px;color:var(--mynh-text-2);font-size:8.5px;cursor:pointer}
+.finance-bill-raw pre{max-height:180px;overflow:auto;margin:0;padding:8px;border-top:1px solid var(--mynh-border);white-space:pre-wrap;color:#59687a;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:7.5px;line-height:1.45}
+@media(max-width:1280px){
+  .finance-preview-workspace.has-slidebar .finance-table th:nth-child(4),
+  .finance-preview-workspace.has-slidebar .finance-table td:nth-child(4){display:none}
+}
