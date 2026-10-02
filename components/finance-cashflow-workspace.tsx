@@ -217,11 +217,13 @@ export function FinanceCashflowWorkspace({
   const legacy=transactions.find(t=>t.id===legacyId)??null
 
   const activeTransactions=transactions.filter(t=>t.status!=='VOID')
-  const totalIncome=activeTransactions.filter(t=>t.tx_type==='INCOME').reduce((s,t)=>s+num(t.amount),0)
-  const totalExpense=activeTransactions.filter(t=>t.tx_type==='EXPENSE').reduce((s,t)=>s+num(t.amount),0)
-  const incomeDocuments=documents.filter(d=>d.document_type==='INCOME'&&d.document_status!=='CANCELLED').length
-  const expenseDocuments=documents.filter(d=>d.document_type==='EXPENSE'&&d.document_status!=='CANCELLED').length
-  const pendingDocuments=documents.filter(d=>d.document_status==='DRAFT').length
+  const periodTransactions=activeTransactions.filter(t=>periodMatch(t.transaction_at,period,customFrom,customTo))
+  const periodDocuments=documents.filter(d=>periodMatch(d.occurred_at,period,customFrom,customTo))
+  const totalIncome=periodTransactions.filter(t=>t.tx_type==='INCOME').reduce((sum,t)=>sum+num(t.amount),0)
+  const totalExpense=periodTransactions.filter(t=>t.tx_type==='EXPENSE').reduce((sum,t)=>sum+num(t.amount),0)
+  const incomeDocuments=periodDocuments.filter(d=>d.document_type==='INCOME'&&d.document_status!=='CANCELLED').length
+  const expenseDocuments=periodDocuments.filter(d=>d.document_type==='EXPENSE'&&d.document_status!=='CANCELLED').length
+  const pendingDocuments=periodDocuments.filter(d=>d.document_status==='DRAFT').length
 
   const rows=useMemo(()=>{
     const docRows=documents.map(doc=>{
