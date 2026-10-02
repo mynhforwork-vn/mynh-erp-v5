@@ -27,3 +27,4 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
+      - run: npx wrangler deploy --dry-run
