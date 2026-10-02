@@ -149,3 +149,15 @@
 .finance-mode-tabs span{min-width:128px;padding:5px 8px;text-align:center;border-radius:4px;color:var(--mynh-text-2);font-size:9px;font-weight:600}.finance-mode-tabs span.active{background:#fff;color:var(--mynh-brand);box-shadow:0 1px 2px rgba(23,33,47,.06)}
 .finance-preview-customer-mini{min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;padding:8px 10px;border:1px dashed #c8d4e1;border-radius:7px;background:#f8fafc}.finance-preview-customer-mini>div{display:flex;flex-direction:column;gap:2px}.finance-preview-customer-mini b{font-size:9.5px}.finance-preview-customer-mini span{color:var(--mynh-text-3);font-size:8px}.finance-preview-customer-mini strong{font-size:13px}
 @media(max-width:1000px){.finance-public-preview{grid-template-columns:72px minmax(0,1fr)}.finance-preview-brand span,.finance-preview-sidebar>a{font-size:0}.finance-preview-sidebar>a:before{content:'•';font-size:18px}.finance-preview-group,.finance-preview-note{display:none}}
+
+/* Interactive passwordless finance preview */
+.finance-preview-old-shell{min-height:100vh}
+.finance-preview-main-old{position:relative}
+.finance-preview-old-shell .sidebar button.button.ghost{font-size:8.5px}
+.finance-preview-overlay{position:fixed;inset:0;z-index:70;background:rgba(21,31,44,.12)}
+.finance-preview-panel{z-index:71!important}
+.finance-preview-panel .panel-tabs button{height:32px}
+.finance-preview-banner{min-height:32px;display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:0 9px;border:1px solid #d9e3ed;border-radius:6px;background:#eef5fb}
+.finance-preview-banner b{font-size:8.5px;color:#2e587e}.finance-preview-banner span{font-size:8px;color:#66788b}
+.finance-preview-old-shell .nav-icon{font-size:10px;font-weight:700}
+.finance-preview-old-shell .nav a[href="#"]{cursor:pointer}
