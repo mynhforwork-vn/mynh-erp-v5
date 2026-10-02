@@ -1196,3 +1196,77 @@
   .finance-hub-grid{grid-template-columns:1fr}
   .finance-hub-explainer{align-items:flex-start;flex-direction:column}
 }
+
+
+/* KPI layout freeze — always exactly one row */
+.finance-kpi-grid{
+  display:grid!important;
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  gap:6px!important;
+  overflow:visible;
+}
+.finance-overview-kpis{
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+}
+.finance-settlement-kpis{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+}
+.finance-report-kpis{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+.finance-report-kpis.five{
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+}
+
+/* Opening the right slidebar must never change KPI row count */
+.finance-preview-workspace.has-slidebar .finance-kpi-grid{
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+}
+.finance-preview-workspace.has-slidebar .finance-overview-kpis{
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+}
+.finance-preview-workspace.has-slidebar .finance-settlement-kpis{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+}
+.finance-preview-workspace.has-slidebar .finance-report-kpis{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+.finance-preview-workspace.has-slidebar .finance-report-kpis.five{
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+}
+
+.finance-kpi{
+  min-width:0!important;
+  width:auto!important;
+}
+.finance-kpi span,
+.finance-kpi b,
+.finance-kpi small{
+  min-width:0;
+  max-width:100%;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+/* On very narrow screens keep one row and scroll horizontally instead of wrapping */
+@media(max-width:900px){
+  .finance-kpi-grid,
+  .finance-overview-kpis,
+  .finance-settlement-kpis,
+  .finance-report-kpis,
+  .finance-report-kpis.five,
+  .finance-preview-workspace.has-slidebar .finance-kpi-grid,
+  .finance-preview-workspace.has-slidebar .finance-overview-kpis,
+  .finance-preview-workspace.has-slidebar .finance-settlement-kpis,
+  .finance-preview-workspace.has-slidebar .finance-report-kpis,
+  .finance-preview-workspace.has-slidebar .finance-report-kpis.five{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    overflow-x:auto!important;
+    gap:6px!important;
+  }
+  .finance-kpi{
+    flex:0 0 142px!important;
+  }
+}
