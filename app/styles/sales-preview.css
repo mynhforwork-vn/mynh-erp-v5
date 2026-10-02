@@ -29,3 +29,469 @@
 .sp-debt-total{min-height:88px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;border:1px solid #E5CFA9;border-radius:6px;background:#FFF8EC}.sp-debt-total span{font-size:8px;color:#8B6E42}.sp-debt-total b{font-size:21px;color:#A66A13}.sp-debt-total small{font-size:7.5px;color:#9A8059}.sp-payment-methods{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:7px}.sp-payment-methods button{height:31px;border:1px solid #D1DAE3;border-radius:4px;background:#fff;color:#61758A;font-size:8px;font-weight:700}.sp-payment-methods button.active{border-color:#AFC8DD;background:#EAF3FA;color:#245F8C}.sp-panel-actions{display:grid;grid-template-columns:100px 1fr;gap:5px;margin-top:10px}
 @media(max-width:1440px){.sp-kpis.seven{grid-template-columns:repeat(7,minmax(0,1fr))}.sp-kpi{padding:7px}.sp-kpi b{font-size:13px}.sp-overview-grid{grid-template-columns:1.15fr .85fr 1fr 1fr}.sp-pos-grid{grid-template-columns:minmax(0,1fr) 390px}.sp-with-panel.open{grid-template-columns:minmax(0,1fr) 390px}}
 @media(max-width:1120px){.sp-kpis.seven{grid-template-columns:repeat(4,minmax(0,1fr))}.sp-overview-grid{grid-template-columns:1fr 1fr}.sp-pos-grid,.sp-with-panel.open{grid-template-columns:1fr}.sp-slidebar{position:relative;height:auto}.sp-product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+/* =====================================================================
+   Sales Preview V2 — exact MYNH system / Finance visual language
+   No independent Sales palette: use global MYNH tokens.
+   ===================================================================== */
+.sales-preview-root{
+  --sp-ink:var(--mynh-text);
+  --sp-text:var(--mynh-text);
+  --sp-muted:var(--mynh-text-2);
+  --sp-line:var(--mynh-border);
+  --sp-bg:var(--mynh-bg);
+  --sp-card:var(--mynh-surface);
+  --sp-blue:var(--mynh-info);
+  --sp-blue-soft:var(--mynh-info-bg);
+  --sp-green:var(--mynh-success);
+  --sp-green-soft:var(--mynh-success-bg);
+  --sp-amber:var(--mynh-warning);
+  --sp-amber-soft:var(--mynh-warning-bg);
+  --sp-red:var(--mynh-danger);
+  --sp-red-soft:var(--mynh-danger-bg);
+  --sp-purple:var(--mynh-brand-3);
+  --sp-purple-soft:var(--mynh-info-bg);
+  --sp-cyan:var(--mynh-info);
+  --sp-cyan-soft:var(--mynh-info-bg);
+  --sp-navy:var(--mynh-brand);
+  --sp-navy-soft:#F1F4F7;
+  padding:14px 16px 28px;
+  background:var(--mynh-bg);
+  color:var(--mynh-text);
+  font-size:12px;
+}
+.sp-preview-banner{
+  min-height:34px;
+  margin-bottom:10px;
+  padding:0 10px;
+  border:1px solid #D9E3ED;
+  border-radius:6px;
+  background:#EEF5FB;
+  color:var(--mynh-brand-3);
+}
+.sp-preview-banner b{font-size:9px}
+.sp-preview-banner span{color:#6C7F94;font-size:8px}
+
+/* Top module tabs = Finance period tabs */
+.sp-module-nav{
+  min-height:36px;
+  display:flex;
+  align-items:center;
+  gap:2px;
+  margin-bottom:8px;
+  padding:3px;
+  border:1px solid var(--mynh-border);
+  border-radius:7px;
+  background:#fff;
+  box-shadow:none;
+}
+.sp-module-nav button{
+  height:28px;
+  padding:0 10px;
+  border:0;
+  border-radius:5px;
+  background:transparent;
+  color:var(--mynh-text-2);
+  font-size:9px;
+  line-height:1;
+  font-weight:650;
+  box-shadow:none;
+}
+.sp-module-nav button:hover{
+  background:#F8FAFC;
+  color:var(--mynh-brand);
+}
+.sp-module-nav button.active{
+  border:0;
+  background:var(--mynh-brand);
+  color:#fff;
+  box-shadow:none;
+}
+
+/* Page header = system page-head */
+.sp-head{
+  min-height:48px;
+  margin:0 0 8px;
+}
+.sp-head>div:first-child{gap:0}
+.sp-head span{
+  color:var(--mynh-text-3);
+  font-size:7.5px;
+  line-height:1.2;
+  font-weight:700;
+  letter-spacing:.095em;
+}
+.sp-head h1{
+  margin:2px 0 0;
+  color:var(--mynh-text);
+  font-size:19px;
+  line-height:1.28;
+  letter-spacing:-.015em;
+  font-weight:700;
+}
+.sp-head p{
+  margin:3px 0 0;
+  color:var(--mynh-text-2);
+  font-size:10.5px;
+  line-height:1.4;
+}
+.sp-head-actions{gap:6px;padding-top:1px}
+
+/* Buttons = system button */
+.sp-btn{
+  height:30px;
+  padding:0 10px;
+  border:1px solid var(--mynh-border-2);
+  border-radius:6px;
+  background:#fff;
+  color:#354254;
+  box-shadow:0 1px 1px rgba(23,33,47,.025);
+  font-size:10.5px;
+  line-height:1;
+  font-weight:600;
+}
+.sp-btn:hover{background:#F8FAFC;border-color:#BCC8D6;color:var(--mynh-brand)}
+.sp-btn.primary{
+  border-color:var(--mynh-brand);
+  background:var(--mynh-brand);
+  color:#fff;
+}
+.sp-btn.primary:hover{border-color:#2A3E5A;background:#2A3E5A;color:#fff}
+.sp-btn.small{height:27px;padding:0 8px;font-size:9.5px}
+
+/* Period / toolbar = Finance */
+.sp-period,
+.sp-toolbar,
+.sp-pos-toolbar{
+  min-height:40px;
+  padding:5px 7px;
+  gap:6px;
+  margin-bottom:8px;
+  border:1px solid var(--mynh-border);
+  border-radius:7px;
+  background:#fff;
+}
+.sp-period{min-height:36px;padding:3px}
+.sp-period button{
+  height:28px;
+  padding:0 9px;
+  border:0;
+  border-radius:5px;
+  background:transparent;
+  color:var(--mynh-text-2);
+  font-size:9px;
+  font-weight:650;
+}
+.sp-period button.active{
+  background:var(--mynh-brand);
+  color:#fff;
+}
+.sp-period select,
+.sp-toolbar select,
+.sp-pos-toolbar select{
+  height:29px;
+  border:1px solid var(--mynh-border-2);
+  border-radius:6px;
+  background:#fff;
+  color:var(--mynh-text-2);
+  font-size:9.5px;
+}
+.sp-toolbar input,
+.sp-pos-toolbar input{
+  height:29px;
+  padding:0 9px;
+  border:1px solid var(--mynh-border-2);
+  border-radius:6px;
+  color:var(--mynh-text);
+  font-size:10.5px;
+}
+.sp-toolbar input:focus,
+.sp-pos-toolbar input:focus{
+  border-color:#95A8BF;
+  box-shadow:0 0 0 2px rgba(49,93,138,.08);
+}
+
+/* KPI = Finance: white surface, subtle semantic only */
+.sp-kpis{gap:7px;margin-bottom:8px}
+.sp-kpi{
+  position:relative;
+  min-height:72px;
+  padding:9px 10px;
+  gap:0;
+  overflow:hidden;
+  border:1px solid var(--mynh-border);
+  border-top:1px solid var(--mynh-border);
+  border-radius:7px;
+  background:#fff!important;
+  box-shadow:0 1px 2px rgba(23,33,47,.035);
+}
+.sp-kpi:before{
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;
+  height:2px;
+  background:#DDE5EE;
+}
+.sp-kpi:hover{border-color:#C7D2DF}
+.sp-kpi span{
+  display:block;
+  color:var(--mynh-text-2);
+  font-size:9px;
+  line-height:1.25;
+  font-weight:650;
+}
+.sp-kpi b{
+  display:block;
+  margin:6px 0 3px;
+  color:var(--mynh-text);
+  font-size:18px;
+  line-height:1;
+  font-weight:750;
+  letter-spacing:0;
+}
+.sp-kpi small{color:var(--mynh-text-3);font-size:8px}
+.sp-kpi.blue:before,
+.sp-kpi.purple:before,
+.sp-kpi.cyan:before,
+.sp-kpi.navy:before{background:#DDE5EE}
+.sp-kpi.green:before{background:var(--mynh-success)}
+.sp-kpi.amber:before{background:#D89B32}
+.sp-kpi.red:before{background:#C75A5A}
+.sp-kpi.blue b,
+.sp-kpi.purple b,
+.sp-kpi.cyan b,
+.sp-kpi.navy b{color:var(--mynh-text)}
+.sp-kpi.green b{color:var(--mynh-success)}
+.sp-kpi.amber b{color:var(--mynh-warning)}
+.sp-kpi.red b{color:var(--mynh-danger)}
+
+/* Cards = system surface; remove decorative multi-color accents */
+.sp-card{
+  border:1px solid var(--mynh-border);
+  border-radius:7px;
+  background:var(--mynh-surface);
+  box-shadow:var(--mynh-shadow);
+}
+.revenue-card,.payment-card,.customer-card,.stock-card{box-shadow:var(--mynh-shadow)}
+.sp-card-head{
+  min-height:40px;
+  padding:8px 10px;
+  border-bottom:1px solid var(--mynh-border);
+  background:#fff;
+}
+.sp-card-head b{color:var(--mynh-text);font-size:10px;font-weight:650}
+.sp-card-head span{color:var(--mynh-text-3);font-size:8px}
+.sp-card-head strong{color:var(--mynh-text);font-size:10px}
+.sp-card-head button{color:var(--mynh-info);font-size:8.5px;font-weight:650}
+
+/* Data visual: semantic only, not decorative palette */
+.sp-bars i{background:#EDF1F5}
+.sp-bars em{background:#8195AD}
+.sp-payment-ring{min-height:188px}
+.sp-donut{
+  background:conic-gradient(var(--mynh-success) 0 71%,#D89B32 71% 87%,var(--mynh-danger) 87% 100%);
+}
+.sp-donut b{color:var(--mynh-success)}
+.sp-legend .green i{background:var(--mynh-success)}
+.sp-legend .amber i{background:#D89B32}
+.sp-legend .red i{background:var(--mynh-danger)}
+
+/* Tables = system table */
+.sp-recent th,.sp-table-card th{
+  height:33px;
+  padding:0 9px;
+  border-bottom:1px solid var(--mynh-border);
+  background:#F7F9FB;
+  color:#657284;
+  font-size:8.75px;
+  font-weight:650;
+}
+.sp-recent td,.sp-table-card td{
+  height:40px;
+  padding:5px 9px;
+  border-bottom:1px solid #EDF1F5;
+  color:#344154;
+  font-size:9.5px;
+}
+.sp-recent tbody tr:hover td,.sp-table-card tbody tr:hover td{background:#F9FBFD}
+.sp-table-card tr.selected td{background:#EDF4FA}
+.sp-recent td b,.sp-table-card td b{font-size:9px;color:var(--mynh-text)}
+.sp-recent td small,.sp-table-card td small{font-size:7.8px;color:var(--mynh-text-3)}
+.income{color:var(--mynh-success)!important}
+.expense{color:var(--mynh-danger)!important}
+
+/* Status badges = system semantic badges */
+.sp-status,.sp-customer-tag,.sp-risk{
+  min-height:20px;
+  padding:0 7px;
+  border-radius:999px;
+  font-size:8.25px;
+  line-height:1;
+  font-weight:650;
+}
+.sp-status.paid,.sp-customer-tag.good{
+  border-color:#CBE6D5;background:var(--mynh-success-bg);color:var(--mynh-success)
+}
+.sp-status.partial,.sp-customer-tag.debt,.sp-risk.medium{
+  border-color:#EED8B5;background:var(--mynh-warning-bg);color:var(--mynh-warning)
+}
+.sp-status.unpaid,.sp-risk.high{
+  border-color:#EFCFCF;background:var(--mynh-danger-bg);color:var(--mynh-danger)
+}
+.sp-customer-tag.vip{
+  border-color:#D4E0ED;background:var(--mynh-info-bg);color:var(--mynh-info)
+}
+
+/* POS surfaces align with system; keep semantic action buttons only */
+.sp-products,.sp-cart{
+  border-color:var(--mynh-border);
+  border-radius:7px;
+  box-shadow:var(--mynh-shadow);
+}
+.sp-section-title{
+  min-height:44px;
+  padding:6px 9px;
+  border-bottom:1px solid var(--mynh-border);
+  background:#F8FAFC;
+}
+.sp-product-grid{background:#F5F7FA}
+.sp-product-grid>button{
+  border-color:var(--mynh-border);
+  border-radius:6px;
+  box-shadow:inset 2px 0 0 #C7D2DF;
+}
+.sp-product-grid>button:hover{
+  border-color:#B8C7D7;
+  background:#F9FBFD;
+  box-shadow:inset 2px 0 0 var(--mynh-info);
+}
+.sp-product-grid>button.low{box-shadow:inset 2px 0 0 #D89B32}
+.sp-product-grid strong{color:var(--mynh-text)}
+.sp-product-grid em{
+  background:var(--mynh-success-bg);
+  color:var(--mynh-success);
+}
+.sp-product-grid>button.low em{
+  background:var(--mynh-warning-bg);
+  color:var(--mynh-warning);
+}
+.sp-cart-head{
+  min-height:56px;
+  padding:8px 10px;
+  border-bottom:1px solid var(--mynh-border);
+  background:#fff;
+  color:var(--mynh-text);
+}
+.sp-cart-head span{color:var(--mynh-text-3)}
+.sp-cart-head b{color:var(--mynh-text)}
+.sp-cart-head small{color:var(--mynh-text-2)}
+.sp-cart-head button{color:var(--mynh-danger)}
+.sp-cart-customer{background:#F8FAFC}
+.sp-cart-summary .total{background:#F8FAFC}
+.sp-cart-summary .total b{color:var(--mynh-text);font-size:18px}
+.sp-pay-actions{background:#F8FAFC}
+.sp-pay-actions button{border-color:var(--mynh-border-2);background:#fff;color:#354254}
+.sp-pay-actions .cash{
+  border-color:#CBE6D5;background:var(--mynh-success-bg);color:var(--mynh-success)
+}
+.sp-pay-actions .transfer{
+  border-color:var(--mynh-brand);background:var(--mynh-brand);color:#fff
+}
+.sp-pay-actions .debt{
+  border-color:#EED8B5;background:var(--mynh-warning-bg);color:var(--mynh-warning)
+}
+
+/* Slidebar = exact system / Finance panel language */
+.sp-with-panel.open{grid-template-columns:minmax(0,1fr) 420px}
+.sp-slidebar{
+  height:calc(100vh - 32px);
+  top:16px;
+  border:1px solid var(--mynh-border);
+  border-radius:7px;
+  background:#fff;
+  box-shadow:0 4px 18px rgba(23,33,47,.055);
+}
+.sp-panel-head,
+.sp-panel-head.amber{
+  min-height:56px;
+  padding:11px 12px 9px;
+  border-bottom:0;
+  background:#fff;
+  color:var(--mynh-text);
+}
+.sp-panel-head span{
+  color:var(--mynh-text-3);
+  font-size:7.5px;
+  font-weight:700;
+  letter-spacing:.095em;
+}
+.sp-panel-head h2{
+  margin:2px 0 0;
+  color:var(--mynh-text);
+  font-size:14px;
+  line-height:1.25;
+  font-weight:700;
+}
+.sp-panel-head p{margin:2px 0 0;color:var(--mynh-text-2);font-size:8px}
+.sp-panel-head>button{
+  width:27px;height:27px;
+  border:1px solid var(--mynh-border);
+  border-radius:5px;
+  background:#fff;
+  color:var(--mynh-text-2);
+  font-size:17px;
+}
+.sp-panel-head>button:hover{background:#F7F9FB;color:var(--mynh-brand)}
+.sp-panel-tabs{
+  height:32px;
+  gap:17px;
+  padding:0 12px;
+  border-top:1px solid #F0F2F5;
+  border-bottom:1px solid var(--mynh-border);
+}
+.sp-panel-tabs button{
+  padding:0;
+  border:0;
+  border-bottom:2px solid transparent;
+  background:transparent;
+  color:var(--mynh-text-3);
+  font-size:9.25px;
+  font-weight:600;
+}
+.sp-panel-tabs button.active{
+  border-bottom-color:var(--mynh-brand);
+  color:var(--mynh-brand);
+}
+.sp-panel-scroll{padding:10px 12px 18px}
+.sp-detail-grid{border-color:var(--mynh-border);border-radius:6px}
+.sp-detail-grid>div{border-color:#EDF1F5}
+.sp-money-box{border-color:var(--mynh-border);border-radius:6px}
+.sp-customer-summary .sp-kpi{min-height:72px}
+.sp-debt-total{
+  border-color:#EED8B5;
+  background:var(--mynh-warning-bg);
+}
+.sp-debt-total b{color:var(--mynh-warning)}
+.sp-payment-methods button.active{
+  border-color:var(--mynh-brand);
+  background:var(--mynh-brand);
+  color:#fff;
+}
+.sp-panel-actions{border-top:1px solid #EDF1F5;padding-top:8px}
+
+/* Remove remaining Sales-only decorative colors */
+.sp-live{
+  border-color:#CBE6D5;
+  background:var(--mynh-success-bg);
+  color:var(--mynh-success)!important;
+}
+.sp-stock-alert.red{border-color:#EFCFCF;background:var(--mynh-danger-bg);color:var(--mynh-danger)}
+.sp-stock-alert.amber{border-color:#EED8B5;background:var(--mynh-warning-bg);color:var(--mynh-warning)}
+.sp-stock-alert.green{border-color:#CBE6D5;background:var(--mynh-success-bg);color:var(--mynh-success)}
+
+@media(max-width:1440px){
+  .sp-kpi{padding:8px}
+  .sp-kpi b{font-size:16px}
+  .sp-with-panel.open{grid-template-columns:minmax(0,1fr) 390px}
+}
