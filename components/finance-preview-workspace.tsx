@@ -11,6 +11,7 @@ type ColumnKey='time'|'code'|'type'|'category'|'content'|'counterparty'|'source'
 type SortKey=ColumnKey
 type SortDir='asc'|'desc'
 type SettlementMode='shipper'|'customer'
+type SettlementView='batch'|'hub'
 type SettlementStatus='PAID'|'PENDING'
 
 type Category={
@@ -40,6 +41,7 @@ type DocumentRow={
   cancelReason?:string
 }
 type DraftLine={id:string,categoryId:string,description:string,amount:string}
+type ShipperOrder={orderId:string,tracking:string,cod:number,receivedAt:string}
 type ShipperBatch={
   id:string
   occurredAt:string
@@ -50,6 +52,7 @@ type ShipperBatch={
   transferred:number
   tip:number
   status:SettlementStatus
+  orderItems:ShipperOrder[]
 }
 type CustomerRow={
   id:string
@@ -107,10 +110,20 @@ const seedDocs:DocumentRow[]=[
 ]
 
 const shipperSeed:ShipperBatch[]=[
-  {id:'sp1',occurredAt:'2026-10-02T11:05',shipper:'Nguyễn Minh',hub:'HUB HN - Hồng Mai',orders:3,cod:1020000,transferred:1040000,tip:20000,status:'PAID'},
-  {id:'sp2',occurredAt:'2026-09-30T18:40',shipper:'Trần Đức',hub:'HUB BG - Nguyễn Công Hãng',orders:1,cod:400000,transferred:420000,tip:20000,status:'PAID'},
-  {id:'sp3',occurredAt:'2026-10-02T19:10',shipper:'Nguyễn Minh',hub:'HUB HN - Hồng Mai',orders:2,cod:760000,transferred:0,tip:0,status:'PENDING'},
+  {id:'sp1',occurredAt:'2026-10-02T11:05',shipper:'Nguyễn Minh',hub:'HUB HN - Hồng Mai',orders:3,cod:1020000,transferred:1040000,tip:20000,status:'PAID',orderItems:[
+    {orderId:'260930A01',tracking:'SPXVN03822101',cod:320000,receivedAt:'2026-10-02T10:42'},
+    {orderId:'260930A02',tracking:'SPXVN03822118',cod:280000,receivedAt:'2026-10-02T10:48'},
+    {orderId:'260930A03',tracking:'SPXVN03822127',cod:420000,receivedAt:'2026-10-02T10:55'},
+  ]},
+  {id:'sp2',occurredAt:'2026-09-30T18:40',shipper:'Trần Đức',hub:'HUB BG - Nguyễn Công Hãng',orders:1,cod:400000,transferred:420000,tip:20000,status:'PAID',orderItems:[
+    {orderId:'260929B01',tracking:'GHNBG2209411',cod:400000,receivedAt:'2026-09-30T18:22'},
+  ]},
+  {id:'sp3',occurredAt:'2026-10-02T19:10',shipper:'Nguyễn Minh',hub:'HUB HN - Hồng Mai',orders:2,cod:760000,transferred:0,tip:0,status:'PENDING',orderItems:[
+    {orderId:'261002A11',tracking:'SPXVN03825591',cod:360000,receivedAt:'2026-10-02T18:54'},
+    {orderId:'261002A12',tracking:'SPXVN03825603',cod:400000,receivedAt:'2026-10-02T19:02'},
+  ]},
 ]
+
 const customerSeed:CustomerRow[]=[
   {id:'c1',name:'Nguyễn Văn A',phone:'0988 123 456',totalSales:1200000,paid:800000,debt:400000,openInvoices:1,lastPayment:'2026-09-30T16:30'},
   {id:'c2',name:'Trần Thị B',phone:'0912 456 789',totalSales:860000,paid:850000,debt:10000,openInvoices:1,lastPayment:'2026-10-01T10:20'},
@@ -149,8 +162,9 @@ export function FinancePreviewWorkspace(){
   const [tab,setTab]=useState<Tab>('overview')
   const [categories,setCategories]=useState<Category[]>(defaultCategories)
   const [docs,setDocs]=useState<DocumentRow[]>(seedDocs)
+  const [shipperBatches,setShipperBatches]=useState<ShipperBatch[]>(shipperSeed)
   const [hydrated,setHydrated]=useState(false)
-  const [panel,setPanel]=useState<'NONE'|'DOCUMENT'|'CATEGORIES'|'DETAIL'|'BILL'>('NONE')
+  const [panel,setPanel]=useState<'NONE'|'DOCUMENT'|'CATEGORIES'|'DETAIL'|'BILL'|'HUB'>('NONE')
   const [detailId,setDetailId]=useState<string|null>(null)
   const [detailTab,setDetailTab]=useState<'INFO'|'REF'|'HISTORY'>('INFO')
   const [documentTab,setDocumentTab]=useState<'INFO'|'MONEY'>('INFO')
@@ -195,8 +209,13 @@ export function FinancePreviewWorkspace(){
   const [draggedColumn,setDraggedColumn]=useState<ColumnKey|null>(null)
 
   const [settlementMode,setSettlementMode]=useState<SettlementMode>('shipper')
+  const [settlementView,setSettlementView]=useState<SettlementView>('batch')
   const [settlementSearch,setSettlementSearch]=useState('')
   const [settlementStatus,setSettlementStatus]=useState<'ALL'|SettlementStatus>('ALL')
+  const [selectedHub,setSelectedHub]=useState<string|null>(null)
+  const [hubPayBatchId,setHubPayBatchId]=useState<string|null>(null)
+  const [hubTransferAmount,setHubTransferAmount]=useState('')
+  const [hubError,setHubError]=useState('')
 
   const [billReading,setBillReading]=useState(false)
   const [billFileName,setBillFileName]=useState('')
@@ -218,6 +237,7 @@ export function FinancePreviewWorkspace(){
         const parsed=JSON.parse(raw)
         if(Array.isArray(parsed.categories))setCategories(parsed.categories)
         if(Array.isArray(parsed.docs))setDocs(parsed.docs)
+        if(Array.isArray(parsed.shipperBatches))setShipperBatches(parsed.shipperBatches)
         if(Array.isArray(parsed.columnOrder)&&parsed.columnOrder.length===DEFAULT_COLUMN_ORDER.length)setColumnOrder(parsed.columnOrder)
         if(Array.isArray(parsed.hiddenColumns))setHiddenColumns(parsed.hiddenColumns)
       }
@@ -226,8 +246,8 @@ export function FinancePreviewWorkspace(){
   },[])
   useEffect(()=>{
     if(!hydrated)return
-    localStorage.setItem(STORE_KEY,JSON.stringify({categories,docs,columnOrder,hiddenColumns}))
-  },[hydrated,categories,docs,columnOrder,hiddenColumns])
+    localStorage.setItem(STORE_KEY,JSON.stringify({categories,docs,shipperBatches,columnOrder,hiddenColumns}))
+  },[hydrated,categories,docs,shipperBatches,columnOrder,hiddenColumns])
   useEffect(()=>{
     const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape'){setPanel('NONE');setColumnMenu(false)}}
     const onPointer=(event:MouseEvent)=>{
@@ -294,12 +314,12 @@ export function FinancePreviewWorkspace(){
   const pageRows=cashflowRows.slice((safePage-1)*pageSize,safePage*pageSize)
   const sourceOptions=[...new Set(docs.map(d=>d.source))]
 
-  const shipperRows=useMemo(()=>shipperSeed.filter(x=>{
+  const shipperRows=useMemo(()=>shipperBatches.filter(x=>{
     if(!periodMatch(x.occurredAt,period,customFrom,customTo))return false
     if(settlementStatus!=='ALL'&&x.status!==settlementStatus)return false
     const q=settlementSearch.trim().toLowerCase()
     return !q||[x.shipper,x.hub].join(' ').toLowerCase().includes(q)
-  }),[period,customFrom,customTo,settlementStatus,settlementSearch])
+  }),[shipperBatches,period,customFrom,customTo,settlementStatus,settlementSearch])
   const customerRows=useMemo(()=>customerSeed.filter(x=>{
     const q=settlementSearch.trim().toLowerCase()
     if(q&&![x.name,x.phone].join(' ').toLowerCase().includes(q))return false
@@ -307,6 +327,11 @@ export function FinancePreviewWorkspace(){
     if(settlementStatus==='PAID'&&x.debt>0)return false
     return true
   }),[settlementStatus,settlementSearch])
+
+  const selectedHubBatches=useMemo(()=>selectedHub?shipperBatches.filter(x=>x.hub===selectedHub):[],[selectedHub,shipperBatches])
+  const selectedHubCod=selectedHubBatches.reduce((sum,x)=>sum+x.cod,0)
+  const selectedHubTransferred=selectedHubBatches.reduce((sum,x)=>sum+x.transferred,0)
+  const selectedHubTip=selectedHubBatches.reduce((sum,x)=>sum+x.tip,0)
 
   function resetAllFilters(){
     setSearch('');setFilterType('ALL');setFilterCategory('ALL');setFilterSource('ALL')
@@ -408,7 +433,30 @@ export function FinancePreviewWorkspace(){
   }
 
   function resetPreview(){
-    localStorage.removeItem(STORE_KEY);setCategories(defaultCategories);setDocs(seedDocs);setColumnOrder(DEFAULT_COLUMN_ORDER);setHiddenColumns([]);setPanel('NONE');resetAllFilters();setPeriod('all')
+    localStorage.removeItem(STORE_KEY);setCategories(defaultCategories);setDocs(seedDocs);setShipperBatches(shipperSeed);setColumnOrder(DEFAULT_COLUMN_ORDER);setHiddenColumns([]);setPanel('NONE');resetAllFilters();setPeriod('all')
+  }
+
+  function openHub(hub:string){
+    setSelectedHub(hub);setHubPayBatchId(null);setHubTransferAmount('');setHubError('');setPanel('HUB')
+  }
+  function startHubPayment(batch:ShipperBatch){
+    setHubPayBatchId(batch.id);setHubTransferAmount(String(batch.cod));setHubError('')
+  }
+  function confirmHubPayment(){
+    setHubError('')
+    const batch=shipperBatches.find(x=>x.id===hubPayBatchId)
+    if(!batch)return
+    const amount=Number(hubTransferAmount)
+    if(!Number.isFinite(amount)||amount<batch.cod){setHubError('Thực chuyển phải bằng hoặc lớn hơn tổng COD của đợt.');return}
+    const tip=amount-batch.cod
+    setShipperBatches(v=>v.map(x=>x.id===batch.id?{...x,transferred:amount,tip,status:'PAID'}:x))
+    const exists=docs.some(d=>d.source==='Đối soát'&&d.note.includes(batch.id))
+    if(!exists){
+      const lines:Line[]=[{id:uid(),categoryId:'purchase',description:'Thanh toán COD '+batch.orders+' đơn',amount:batch.cod}]
+      if(tip>0)lines.push({id:uid(),categoryId:'tip',description:'Tip Shipper',amount:tip})
+      setDocs(v=>[...v,{id:uid(),code:'PC-'+new Date().toISOString().slice(2,10).replaceAll('-','')+'-'+String(v.length+1).padStart(6,'0'),type:'EXPENSE',status:'POSTED',occurredAt:nowInput(),counterparty:batch.shipper,payment:'TRANSFER',cashAmount:0,transferAmount:amount,note:'Đối soát '+batch.id+' · '+batch.hub,source:'Đối soát',lines}])
+    }
+    setHubPayBatchId(null);setHubTransferAmount('')
   }
 
   function openBillReader(){
@@ -479,7 +527,7 @@ export function FinancePreviewWorkspace(){
         <section className="finance-preview-content">
           {tab==='overview'&&<Overview docs={periodDocs} categories={categoryMap} income={income} expense={expense} period={period} from={customFrom} to={customTo} onPeriod={setPeriodSafe} onFrom={setCustomFrom} onTo={setCustomTo} onOpenCashflow={openCashflowFilter}/>}
           {tab==='cashflow'&&<Cashflow docs={pageRows} allCount={cashflowRows.length} incomeCount={periodDocs.filter(d=>d.type==='INCOME'&&d.status!=='CANCELLED').length} expenseCount={periodDocs.filter(d=>d.type==='EXPENSE'&&d.status!=='CANCELLED').length} categories={categories} categoryMap={categoryMap} income={income} expense={expense} draftCount={periodDocs.filter(d=>d.status==='DRAFT').length} search={search} setSearch={v=>{setSearch(v);setPage(1)}} filterType={filterType} setFilterType={v=>{setFilterType(v);setPage(1)}} filterCategory={filterCategory} setFilterCategory={v=>{setFilterCategory(v);setPage(1)}} filterSource={filterSource} setFilterSource={v=>{setFilterSource(v);setPage(1)}} filterMethod={filterMethod} setFilterMethod={v=>{setFilterMethod(v);setPage(1)}} filterStatus={filterStatus} setFilterStatus={v=>{setFilterStatus(v);setPage(1)}} sources={sourceOptions} period={period} from={customFrom} to={customTo} onPeriod={setPeriodSafe} onFrom={setCustomFrom} onTo={setCustomTo} resetFilters={resetAllFilters} sortKey={sortKey} sortDir={sortDir} onSort={changeSort} page={safePage} maxPage={maxPage} pageSize={pageSize} setPage={setPage} setPageSize={v=>{setPageSize(v);setPage(1)}} columnOrder={columnOrder} hiddenColumns={hiddenColumns} columnMenu={columnMenu} setColumnMenu={setColumnMenu} draggedColumn={draggedColumn} setDraggedColumn={setDraggedColumn} onToggleColumn={toggleColumn} onMoveColumn={moveColumn} onResetColumns={resetColumns} onCreate={resetDocument} onBill={openBillReader} onCategories={openCategoryPanel} onDetail={openDetail}/>}
-          {tab==='settlement'&&<Settlement mode={settlementMode} setMode={setSettlementMode} period={period} from={customFrom} to={customTo} onPeriod={setPeriodSafe} onFrom={setCustomFrom} onTo={setCustomTo} search={settlementSearch} setSearch={setSettlementSearch} status={settlementStatus} setStatus={setSettlementStatus} shipperRows={shipperRows} customerRows={customerRows}/>}
+          {tab==='settlement'&&<Settlement mode={settlementMode} setMode={setSettlementMode} view={settlementView} setView={setSettlementView} period={period} from={customFrom} to={customTo} onPeriod={setPeriodSafe} onFrom={setCustomFrom} onTo={setCustomTo} search={settlementSearch} setSearch={setSettlementSearch} status={settlementStatus} setStatus={setSettlementStatus} shipperRows={shipperRows} customerRows={customerRows} onOpenHub={openHub}/>} 
           {tab==='reports'&&<Reports docs={postedPeriod} categories={categoryMap} income={income} expense={expense} period={period} from={customFrom} to={customTo} onPeriod={setPeriodSafe} onFrom={setCustomFrom} onTo={setCustomTo}/>}
         </section>
 
@@ -532,6 +580,23 @@ export function FinancePreviewWorkspace(){
                   <div className="form-actions finance-form-actions"><button className="button" onClick={()=>setBillTab('READ')}>← Kiểm tra bill</button><button className="button primary" onClick={commitBill}>Gắn hạng mục & Ghi nhận</button></div>
                 </>}
               </>}
+            </div>
+          </>}
+
+          {panel==='HUB'&&selectedHub&&<>
+            <div className="panel-head"><div><span className="eyebrow">ĐỐI SOÁT HUB</span><h2>{selectedHub}</h2></div><button className="close" onClick={()=>setPanel('NONE')}>×</button></div>
+            <div className="panel-tabs"><button className="active">Tổng quan & thanh toán</button></div>
+            <div className="panel-scroll finance-hub-panel">
+              {hubError&&<div className="error-box">{hubError}</div>}
+              <div className="finance-hub-purpose"><b>HUB dùng để làm gì?</b><span>Đối chiếu nguồn giao trước khi nhận: HUB → Shipper → các đơn đã nhận → COD phải chuyển → thực chuyển → tip. Sau khi đã nhận hàng, HUB chỉ là dữ liệu tham chiếu, không dùng để phân nhóm kho.</span></div>
+              <div className="finance-hub-summary"><div><span>Đợt</span><b>{selectedHubBatches.length}</b></div><div><span>Đơn</span><b>{selectedHubBatches.reduce((sum,x)=>sum+x.orders,0)}</b></div><div><span>Tổng COD</span><b>{money(selectedHubCod)}</b></div><div><span>Đã chuyển</span><b>{money(selectedHubTransferred)}</b></div><div><span>Tip</span><b>{money(selectedHubTip)}</b></div></div>
+              <div className="finance-hub-batches">{selectedHubBatches.map(batch=><section className={'finance-hub-batch '+batch.status.toLowerCase()} key={batch.id}>
+                <div className="finance-hub-batch-head"><div><b>{batch.shipper}</b><span>{new Date(batch.occurredAt).toLocaleString('vi-VN')} · {batch.orders} đơn</span></div><strong>{statusSettle(batch.status)}</strong></div>
+                <div className="finance-hub-batch-metrics"><span>COD <b>{money(batch.cod)}</b></span><span>Thực chuyển <b>{money(batch.transferred)}</b></span><span>Tip <b>{money(batch.tip)}</b></span></div>
+                <div className="finance-hub-orders">{batch.orderItems.map(order=><div key={order.orderId}><span><b>{order.orderId}</b><small>{order.tracking}</small></span><span><b>{money(order.cod)}</b><small>Nhận {new Date(order.receivedAt).toLocaleString('vi-VN')}</small></span></div>)}</div>
+                {batch.status==='PENDING'&&hubPayBatchId!==batch.id&&<button className="button primary small" onClick={()=>startHubPayment(batch)}>Ghi nhận thanh toán đợt này</button>}
+                {hubPayBatchId===batch.id&&<div className="finance-hub-payment"><label>Thực chuyển<input type="number" min={batch.cod} step="1000" value={hubTransferAmount} onChange={e=>setHubTransferAmount(e.target.value)}/></label><div><span>Tip tự tính</span><b>{money(Math.max(0,(Number(hubTransferAmount)||0)-batch.cod))}</b></div><div className="form-actions"><button className="button" onClick={()=>{setHubPayBatchId(null);setHubTransferAmount('')}}>Bỏ qua</button><button className="button primary" onClick={confirmHubPayment}>Xác nhận thanh toán</button></div></div>}
+              </section>)}</div>
             </div>
           </>}
 
@@ -662,17 +727,24 @@ function Cashflow(p:{
   </div>
 }
 
-function Settlement({mode,setMode,period,from,to,onPeriod,onFrom,onTo,search,setSearch,status,setStatus,shipperRows,customerRows}:{mode:SettlementMode,setMode:(m:SettlementMode)=>void,period:Period,from:string,to:string,onPeriod:(p:Period)=>void,onFrom:(s:string)=>void,onTo:(s:string)=>void,search:string,setSearch:(s:string)=>void,status:'ALL'|SettlementStatus,setStatus:(s:'ALL'|SettlementStatus)=>void,shipperRows:ShipperBatch[],customerRows:CustomerRow[]}){
-  const cod=shipperRows.reduce((s,x)=>s+x.cod,0),transferred=shipperRows.reduce((s,x)=>s+x.transferred,0),tip=shipperRows.reduce((s,x)=>s+x.tip,0)
-  const debt=customerRows.reduce((s,x)=>s+x.debt,0),paid=customerRows.reduce((s,x)=>s+x.paid,0)
-  return <div className="finance-screen"><Header title="Đối soát & Thanh toán" desc="Đối chiếu Đơn nhập / Shipper và công nợ khách hàng."/>
+function Settlement({mode,setMode,view,setView,period,from,to,onPeriod,onFrom,onTo,search,setSearch,status,setStatus,shipperRows,customerRows,onOpenHub}:{mode:SettlementMode,setMode:(m:SettlementMode)=>void,view:SettlementView,setView:(v:SettlementView)=>void,period:Period,from:string,to:string,onPeriod:(p:Period)=>void,onFrom:(s:string)=>void,onTo:(s:string)=>void,search:string,setSearch:(s:string)=>void,status:'ALL'|SettlementStatus,setStatus:(s:'ALL'|SettlementStatus)=>void,shipperRows:ShipperBatch[],customerRows:CustomerRow[],onOpenHub:(hub:string)=>void}){
+  const cod=shipperRows.reduce((sum,x)=>sum+x.cod,0),transferred=shipperRows.reduce((sum,x)=>sum+x.transferred,0),tip=shipperRows.reduce((sum,x)=>sum+x.tip,0)
+  const debt=customerRows.reduce((sum,x)=>sum+x.debt,0),paid=customerRows.reduce((sum,x)=>sum+x.paid,0)
+  const hubGroups=[...new Set(shipperRows.map(x=>x.hub))].map(hub=>{
+    const batches=shipperRows.filter(x=>x.hub===hub)
+    return {hub,batches,shippers:[...new Set(batches.map(x=>x.shipper))],orders:batches.reduce((sum,x)=>sum+x.orders,0),cod:batches.reduce((sum,x)=>sum+x.cod,0),transferred:batches.reduce((sum,x)=>sum+x.transferred,0),tip:batches.reduce((sum,x)=>sum+x.tip,0),pending:batches.filter(x=>x.status==='PENDING').length}
+  }).sort((a,b)=>b.pending-a.pending||b.cod-a.cod)
+
+  return <div className="finance-screen"><Header title="Đối soát & Thanh toán" desc="Đối chiếu tiền Shipper theo đợt thanh toán; HUB là lớp truy vết nguồn giao trước khi nhận hàng."/>
     <div className="finance-mode-bar"><div className="segmented finance-mode-tabs"><button className={mode==='shipper'?'active':''} onClick={()=>setMode('shipper')}>Đơn nhập / Shipper</button><button className={mode==='customer'?'active':''} onClick={()=>setMode('customer')}>Khách hàng</button></div><PeriodBar period={period} from={from} to={to} onPeriod={onPeriod} onFrom={onFrom} onTo={onTo}/></div>
     <div className="finance-toolbar settlement-toolbar"><input className="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder={mode==='shipper'?'Tìm Shipper / HUB...':'Tìm khách hàng / SĐT...'}/><select value={status} onChange={e=>setStatus(e.target.value as 'ALL'|SettlementStatus)}><option value="ALL">Trạng thái</option><option value="PAID">{mode==='shipper'?'Đã thanh toán':'Đã hết nợ'}</option><option value="PENDING">{mode==='shipper'?'Chờ thanh toán':'Còn nợ'}</option></select><button className="button small" onClick={()=>{setSearch('');setStatus('ALL')}}>Xoá lọc</button></div>
     {mode==='shipper'?<>
-      <section className="finance-kpi-grid finance-settlement-kpis"><div className="finance-kpi"><span>Đợt đối soát</span><b>{shipperRows.length}</b><small>{shipperRows.reduce((s,x)=>s+x.orders,0)} đơn</small></div><div className="finance-kpi"><span>Tổng COD</span><b>{money(cod)}</b></div><div className="finance-kpi"><span>Thực chuyển</span><b className="expense">{money(transferred)}</b></div><div className="finance-kpi warning"><span>Tip Shipper</span><b>{money(tip)}</b></div></section>
-      <div className="finance-settlement-list">{shipperRows.length?shipperRows.map(r=><article className="card shipper-payment-batch" key={r.id}><div className="shipper-payment-batch-head"><div><span className="module-eyebrow">ĐỢT ĐỐI SOÁT</span><h2>{r.shipper}</h2><small>{r.hub} · {new Date(r.occurredAt).toLocaleString('vi-VN')}</small></div><div className="shipper-payment-batch-metrics"><div><span>Đơn</span><b>{r.orders}</b></div><div><span>COD</span><b>{money(r.cod)}</b></div><div><span>Thực chuyển</span><b>{money(r.transferred)}</b></div><div><span>Tip</span><b>{money(r.tip)}</b></div><div><span>Trạng thái</span><b>{statusSettle(r.status)}</b></div></div></div></article>):<div className="card empty">Không có đợt đối soát phù hợp.</div>}</div>
+      <div className="finance-hub-explainer"><div><b>HUB đối soát = điểm truy vết, không phải sổ tiền riêng</b><span>Dùng HUB để biết nhóm đơn nào được giao từ đâu và Shipper nào phụ trách. Tiền vẫn được ghi nhận theo từng đợt thanh toán Shipper.</span></div><div className="segmented finance-settlement-view"><button className={view==='batch'?'active':''} onClick={()=>setView('batch')}>Theo đợt thanh toán</button><button className={view==='hub'?'active':''} onClick={()=>setView('hub')}>Theo HUB</button></div></div>
+      <section className="finance-kpi-grid finance-settlement-kpis"><div className="finance-kpi"><span>Đợt đối soát</span><b>{shipperRows.length}</b><small>{shipperRows.reduce((sum,x)=>sum+x.orders,0)} đơn</small></div><div className="finance-kpi"><span>Tổng COD</span><b>{money(cod)}</b></div><div className="finance-kpi"><span>Thực chuyển</span><b className="expense">{money(transferred)}</b></div><div className="finance-kpi warning"><span>Tip Shipper</span><b>{money(tip)}</b></div></section>
+      {view==='batch'?<div className="finance-settlement-list">{shipperRows.length?shipperRows.map(r=><article className="card shipper-payment-batch" key={r.id}><div className="shipper-payment-batch-head"><div><span className="module-eyebrow">ĐỢT THANH TOÁN</span><h2>{r.shipper}</h2><small>HUB nguồn giao: {r.hub} · {new Date(r.occurredAt).toLocaleString('vi-VN')}</small></div><div className="shipper-payment-batch-metrics"><div><span>Đơn</span><b>{r.orders}</b></div><div><span>COD</span><b>{money(r.cod)}</b></div><div><span>Thực chuyển</span><b>{money(r.transferred)}</b></div><div><span>Tip</span><b>{money(r.tip)}</b></div><div><span>Trạng thái</span><b>{statusSettle(r.status)}</b></div></div><button className="button small" onClick={()=>onOpenHub(r.hub)}>Xem HUB →</button></div></article>):<div className="card empty">Không có đợt đối soát phù hợp.</div>}</div>
+      :<div className="finance-hub-grid">{hubGroups.length?hubGroups.map(group=><button className={'finance-hub-card '+(group.pending?'pending':'')} key={group.hub} onClick={()=>onOpenHub(group.hub)}><div className="finance-hub-card-head"><div><span>HUB nguồn giao</span><b>{group.hub}</b></div>{group.pending>0?<strong>{group.pending} đợt chờ</strong>:<strong className="done">Đã đối soát</strong>}</div><div className="finance-hub-card-meta"><span>Shipper <b>{group.shippers.join(', ')}</b></span><span>Đợt <b>{group.batches.length}</b></span><span>Đơn <b>{group.orders}</b></span></div><div className="finance-hub-card-money"><div><span>COD</span><b>{money(group.cod)}</b></div><div><span>Đã chuyển</span><b>{money(group.transferred)}</b></div><div><span>Tip</span><b>{money(group.tip)}</b></div></div><small>Click để xem đơn và xử lý thanh toán</small></button>):<div className="card empty">Không có HUB phù hợp.</div>}</div>}
     </>:<>
-      <section className="finance-kpi-grid finance-settlement-kpis"><div className="finance-kpi warning"><span>Phải thu</span><b>{money(debt)}</b><small>{customerRows.filter(x=>x.debt>0).length} khách còn nợ</small></div><div className="finance-kpi"><span>Khách hàng</span><b>{customerRows.length}</b></div><div className="finance-kpi"><span>Đã thu</span><b className="income">{money(paid)}</b></div><div className="finance-kpi"><span>HĐ còn nợ</span><b>{customerRows.reduce((s,x)=>s+x.openInvoices,0)}</b></div></section>
+      <section className="finance-kpi-grid finance-settlement-kpis"><div className="finance-kpi warning"><span>Phải thu</span><b>{money(debt)}</b><small>{customerRows.filter(x=>x.debt>0).length} khách còn nợ</small></div><div className="finance-kpi"><span>Khách hàng</span><b>{customerRows.length}</b></div><div className="finance-kpi"><span>Đã thu</span><b className="income">{money(paid)}</b></div><div className="finance-kpi"><span>HĐ còn nợ</span><b>{customerRows.reduce((sum,x)=>sum+x.openInvoices,0)}</b></div></section>
       <div className="card table-card finance-customer-table"><table className="table"><thead><tr><th>Khách hàng</th><th>SĐT</th><th>HĐ còn nợ</th><th>Tổng mua</th><th>Đã thu</th><th>Còn phải thu</th><th>Thu gần nhất</th></tr></thead><tbody>{customerRows.length?customerRows.map(r=><tr key={r.id}><td className="strong">{r.name}</td><td>{r.phone}</td><td>{r.openInvoices}</td><td className="money">{money(r.totalSales)}</td><td className="money finance-money income">{money(r.paid)}</td><td className="money">{money(r.debt)}</td><td>{r.lastPayment?new Date(r.lastPayment).toLocaleString('vi-VN'):'—'}</td></tr>):<tr><td colSpan={7} className="empty">Không có khách hàng phù hợp.</td></tr>}</tbody></table></div>
     </>}
   </div>
