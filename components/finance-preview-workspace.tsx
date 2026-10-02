@@ -84,13 +84,6 @@ const seedDocs:DocumentRow[]=[
   },
 ]
 
-const navGroups=[
-  ['TỔNG QUAN',['Tổng quan hệ thống']],
-  ['MUA HÀNG',['Tổng quan mua hàng','Tài khoản mua hàng','Đơn nhập hàng','Cảnh báo vận chuyển']],
-  ['VẬN HÀNH KHO',['Tổng quan kho','Nhập kho','Tồn kho','Lịch sử kho']],
-  ['BÁN HÀNG',['Tổng quan bán hàng','POS','Lịch sử bán','Khách hàng','Công nợ']],
-] as const
-
 export function FinancePreviewWorkspace(){
   const [tab,setTab]=useState<Tab>('overview')
   const [categories,setCategories]=useState<Category[]>(defaultCategories)
@@ -127,6 +120,14 @@ export function FinancePreviewWorkspace(){
     if(!hydrated)return
     localStorage.setItem(STORE_KEY,JSON.stringify({categories,docs}))
   },[hydrated,categories,docs])
+
+  useEffect(()=>{
+    const onKey=(event:KeyboardEvent)=>{
+      if(event.key==='Escape')setPanel('NONE')
+    }
+    window.addEventListener('keydown',onKey)
+    return ()=>window.removeEventListener('keydown',onKey)
+  },[])
 
   const categoryMap=useMemo(()=>new Map(categories.map(c=>[c.id,c])),[categories])
   const postedDocs=docs.filter(d=>d.status==='POSTED')
@@ -219,20 +220,15 @@ export function FinancePreviewWorkspace(){
     <aside className="sidebar">
       <div className="brand"><span className="brand-mark small">M</span><span><b>MYNH ERP</b><small>HỆ THỐNG VẬN HÀNH</small></span></div>
       <nav className="nav">
-        {navGroups.map(([group,items])=><section className="nav-group" key={group}>
-          <div className="nav-section-label">{group}</div>
-          <div className="nav-group-items">{items.map(label=><a key={label} href="#" onClick={e=>e.preventDefault()}><span className="nav-icon">·</span><span>{label}</span></a>)}</div>
-        </section>)}
         <section className="nav-group">
           <div className="nav-section-label">TÀI CHÍNH</div>
           <div className="nav-group-items">
-            <a href="#" className={tab==='overview'?'active':''} onClick={e=>{e.preventDefault();setTab('overview')}}><span className="nav-icon">₫</span><span>Tổng quan tài chính</span></a>
-            <a href="#" className={tab==='cashflow'?'active':''} onClick={e=>{e.preventDefault();setTab('cashflow')}}><span className="nav-icon">↕</span><span>Thu / Chi</span></a>
-            <a href="#" className={tab==='settlement'?'active':''} onClick={e=>{e.preventDefault();setTab('settlement')}}><span className="nav-icon">✓</span><span>Đối soát & Thanh toán</span></a>
-            <a href="#" className={tab==='reports'?'active':''} onClick={e=>{e.preventDefault();setTab('reports')}}><span className="nav-icon">▥</span><span>Báo cáo tài chính</span></a>
+            <a href="#" className={tab==='overview'?'active':''} onClick={e=>{e.preventDefault();setTab('overview');setPanel('NONE')}}><span className="nav-icon">₫</span><span>Tổng quan tài chính</span></a>
+            <a href="#" className={tab==='cashflow'?'active':''} onClick={e=>{e.preventDefault();setTab('cashflow');setPanel('NONE')}}><span className="nav-icon">↕</span><span>Thu / Chi</span></a>
+            <a href="#" className={tab==='settlement'?'active':''} onClick={e=>{e.preventDefault();setTab('settlement');setPanel('NONE')}}><span className="nav-icon">✓</span><span>Đối soát & Thanh toán</span></a>
+            <a href="#" className={tab==='reports'?'active':''} onClick={e=>{e.preventDefault();setTab('reports');setPanel('NONE')}}><span className="nav-icon">▥</span><span>Báo cáo tài chính</span></a>
           </div>
         </section>
-        <section className="nav-group"><div className="nav-section-label">HỆ THỐNG</div><div className="nav-group-items"><a href="#" onClick={e=>e.preventDefault()}><span className="nav-icon">⚙</span><span>Cài đặt hệ thống</span></a></div></section>
       </nav>
       <div className="sidebar-foot">
         <div className="account"><b>Finance Preview</b><span>Không ghi dữ liệu production</span></div>
@@ -241,15 +237,16 @@ export function FinancePreviewWorkspace(){
     </aside>
 
     <main className="main finance-preview-main-old">
-      <div className="finance-preview-banner"><b>Cloudflare Preview</b><span>Tương tác thật trong trình duyệt · không ghi Supabase production</span></div>
-      {tab==='overview'&&<Overview docs={docs} income={income} expense={expense}/>}
-      {tab==='cashflow'&&<Cashflow docs={rows} categories={categoryMap} income={income} expense={expense} draftCount={draftCount} onCreate={resetDocument} onCategories={()=>{setFormError('');setPanel('CATEGORIES')}} onDetail={id=>{setDetailId(id);setPanel('DETAIL')}}/>}
-      {tab==='settlement'&&<Settlement/>}
-      {tab==='reports'&&<Reports income={income} expense={expense} docs={postedDocs} categories={categoryMap}/>}
-    </main>
+      <div className="finance-preview-banner"><b>Cloudflare Preview · Tài chính</b><span>Chỉ preview nhóm Tài chính · dữ liệu lưu trong trình duyệt · không ghi Supabase production</span></div>
+      <div className={'finance-preview-workspace '+(panel!=='NONE'?'has-slidebar':'')}>
+        <section className="finance-preview-content">
+          {tab==='overview'&&<Overview docs={docs} income={income} expense={expense}/>}
+          {tab==='cashflow'&&<Cashflow docs={rows} categories={categoryMap} income={income} expense={expense} draftCount={draftCount} onCreate={resetDocument} onCategories={()=>{setFormError('');setPanel('CATEGORIES')}} onDetail={id=>{setDetailId(id);setPanel('DETAIL')}}/>}
+          {tab==='settlement'&&<Settlement/>}
+          {tab==='reports'&&<Reports income={income} expense={expense} docs={postedDocs} categories={categoryMap}/>}
+        </section>
 
-    {panel!=='NONE'&&<div className="finance-preview-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setPanel('NONE')}}>
-      <aside className="detail-panel floating finance-panel finance-preview-panel">
+        {panel!=='NONE'&&<aside className="detail-panel finance-panel finance-preview-slidebar">
         {panel==='DOCUMENT'&&<>
           <div className="panel-head"><div><span className="eyebrow">{docType==='INCOME'?'PHIẾU THU':'PHIẾU CHI'}</span><h2>{docType==='INCOME'?'Tạo Phiếu thu':'Tạo Phiếu chi'}</h2></div><button className="close" onClick={()=>setPanel('NONE')}>×</button></div>
           <div className="panel-tabs"><span className="active">Thông tin</span><span>Chi tiết tiền</span></div>
@@ -307,8 +304,9 @@ export function FinancePreviewWorkspace(){
             {selectedDetail.status!=='CANCELLED'&&<div className="panel-action-row"><button className="button finance-danger-button" onClick={()=>cancelDocument(selectedDetail.id)}>Huỷ phiếu</button></div>}
           </div>
         </>}
-      </aside>
-    </div>}
+      </aside>}
+      </div>
+    </main>
   </div>
 }
 
