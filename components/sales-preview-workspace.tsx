@@ -40,6 +40,20 @@ function Header({title,desc,actions}:{title:string,desc:string,actions?:React.Re
   return <header className="sp-head"><div><span>BÁN HÀNG · PREVIEW</span><h1>{title}</h1><p>{desc}</p></div><div className="sp-head-actions">{actions}</div></header>
 }
 
+function PreviewNavIcon({kind}:{kind:'home'|'purchase'|'warehouse'|'sales'|'pos'|'history'|'customer'|'debt'|'finance'|'settings'}){
+  const p={width:16,height:16,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.8,strokeLinecap:'round' as const,strokeLinejoin:'round' as const,'aria-hidden':true}
+  if(kind==='home')return <svg {...p}><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 9.8V21h13V9.8"/></svg>
+  if(kind==='purchase')return <svg {...p}><path d="M6 3h12l2 5v13H4V8l2-5Z"/><path d="M4 8h16"/><path d="M9 12h6"/></svg>
+  if(kind==='warehouse')return <svg {...p}><path d="M3 9 12 4l9 5v11H3Z"/><path d="M7 13h10"/><path d="M9 20v-7h6v7"/></svg>
+  if(kind==='sales')return <svg {...p}><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19H2"/></svg>
+  if(kind==='pos')return <svg {...p}><path d="M3 4h2l2.2 10h9.8l2-7H7"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg>
+  if(kind==='history')return <svg {...p}><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
+  if(kind==='customer')return <svg {...p}><circle cx="12" cy="8" r="3"/><path d="M5 20c.6-4.3 3-6.5 7-6.5s6.4 2.2 7 6.5"/></svg>
+  if(kind==='debt')return <svg {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h10"/><path d="M7 14h6"/></svg>
+  if(kind==='finance')return <svg {...p}><path d="M3 9h18"/><path d="M5 9V6l7-3 7 3v3"/><path d="M6 9v8M10 9v8M14 9v8M18 9v8"/><path d="M3 20h18"/></svg>
+  return <svg {...p}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.06.06-2.12 2.12-.06-.06a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.1 1.65V20.5h-3v-.09a1.8 1.8 0 0 0-1.1-1.65 1.8 1.8 0 0 0-1.98.36l-.06.06-2.12-2.12.06-.06A1.8 1.8 0 0 0 6.6 15"/></svg>
+}
+
 export function SalesPreviewWorkspace(){
   const [view,setView]=useState<View>('overview')
   const [selectedSale,setSelectedSale]=useState<Sale|null>(null)
@@ -61,13 +75,67 @@ export function SalesPreviewWorkspace(){
   const collected=SALES.reduce((s,x)=>s+x.paid,0)
   const debt=SALES.reduce((s,x)=>s+x.debt,0)
 
-  return <div className="sales-preview-root">
-    <div className="sp-preview-banner"><b>PREVIEW RIÊNG · BÁN HÀNG</b><span>Chưa thay đổi nhóm Bán hàng trên main</span></div>
-    <nav className="sp-module-nav">
-      {([
-        ['overview','Tổng quan bán hàng'],['pos','POS'],['history','Lịch sử bán'],['customers','Khách hàng'],['debt','Công nợ']
-      ] as [View,string][]).map(([key,label])=><button key={key} className={view===key?'active':''} onClick={()=>{setView(key);setSelectedSale(null);setSelectedCustomer(null);setDebtPanel(null)}}>{label}</button>)}
-    </nav>
+  const openView=(next:View)=>{setView(next);setSelectedSale(null);setSelectedCustomer(null);setDebtPanel(null)}
+  const salesNav:[View,string,'sales'|'pos'|'history'|'customer'|'debt'][]=[
+    ['overview','Tổng quan bán hàng','sales'],
+    ['pos','POS','pos'],
+    ['history','Lịch sử bán','history'],
+    ['customers','Khách hàng','customer'],
+    ['debt','Công nợ','debt'],
+  ]
+  return <div className="shell sales-preview-shell">
+    <aside className="sidebar sales-preview-sidebar">
+      <div className="brand"><span className="brand-mark small">M</span><span><b>MYNH ERP</b><small>HỆ THỐNG VẬN HÀNH</small></span></div>
+      <nav className="nav" aria-label="Điều hướng Preview">
+        <section className="nav-group">
+          <div className="nav-section-label">TỔNG QUAN</div>
+          <div className="nav-group-items"><button className="sales-preview-nav-static"><span className="nav-icon"><PreviewNavIcon kind="home"/></span><span>Tổng quan hệ thống</span></button></div>
+        </section>
+        <section className="nav-group">
+          <div className="nav-section-label">MUA HÀNG</div>
+          <div className="nav-group-items">
+            <button className="sales-preview-nav-static"><span className="nav-icon"><PreviewNavIcon kind="purchase"/></span><span>Tổng quan mua hàng</span></button>
+            <button className="sales-preview-nav-static"><span className="nav-icon"><PreviewNavIcon kind="customer"/></span><span>Tài khoản mua hàng</span></button>
+            <button className="sales-preview-nav-static"><span className="nav-icon"><PreviewNavIcon kind="purchase"/></span><span>Đơn nhập hàng</span></button>
+            <button className="sales-preview-nav-static"><span className="nav-icon"><PreviewNavIcon kind="history"/></span><span>Cảnh báo vận chuyển</span></button>
+          </div>
+        </section>
+        <section className="nav-group">
+          <div className="nav-section-label">VẬN HÀNH KHO</div>
+          <div className="nav-group-items">
+            <button className="sales-preview-nav-static"><span className="nav-icon"><PreviewNavIcon kind="warehouse"/></span><span>Tổng quan kho</span></button>
+            <button className="sales-preview-nav-static"><span className="nav-icon"><PreviewNavIcon kind="warehouse"/></span><span>Nhập kho</span></button>
+            <button className="sales-preview-nav-static"><span className="nav-icon"><PreviewNavIcon kind="warehouse"/></span><span>Tồn kho</span></button>
+            <button className="sales-preview-nav-static"><span className="nav-icon"><PreviewNavIcon kind="history"/></span><span>Lịch sử kho</span></button>
+          </div>
+        </section>
+        <section className="nav-group">
+          <div className="nav-section-label">BÁN HÀNG</div>
+          <div className="nav-group-items">
+            {salesNav.map(([key,label,icon])=><button key={key} className={view===key?'active':''} onClick={()=>openView(key)}><span className="nav-icon"><PreviewNavIcon kind={icon}/></span><span>{label}</span></button>)}
+          </div>
+        </section>
+        <section className="nav-group">
+          <div className="nav-section-label">TÀI CHÍNH</div>
+          <div className="nav-group-items">
+            <button className="sales-preview-nav-static"><span className="nav-icon"><PreviewNavIcon kind="finance"/></span><span>Tổng quan tài chính</span></button>
+            <button className="sales-preview-nav-static"><span className="nav-icon"><PreviewNavIcon kind="finance"/></span><span>Thu / Chi</span></button>
+            <button className="sales-preview-nav-static"><span className="nav-icon"><PreviewNavIcon kind="finance"/></span><span>Đối soát & Thanh toán</span></button>
+            <button className="sales-preview-nav-static"><span className="nav-icon"><PreviewNavIcon kind="finance"/></span><span>Báo cáo tài chính</span></button>
+          </div>
+        </section>
+        <section className="nav-group">
+          <div className="nav-section-label">HỆ THỐNG</div>
+          <div className="nav-group-items"><button className="sales-preview-nav-static"><span className="nav-icon"><PreviewNavIcon kind="settings"/></span><span>Cài đặt hệ thống</span></button></div>
+        </section>
+      </nav>
+      <div className="sidebar-foot">
+        <div className="account"><b>Sales Preview</b><span>Chưa ghi vào main</span></div>
+      </div>
+    </aside>
+    <main className="main sales-preview-main">
+      <div className="sales-preview-root">
+        <div className="sp-preview-banner"><b>PREVIEW RIÊNG · BÁN HÀNG</b><span>Khung tỷ lệ sử dụng đúng sidebar 216px của MYNH ERP</span></div>
 
     {view==='overview'&&<div className="sp-screen">
       <Header title="Tổng quan bán hàng" desc="Doanh thu, dòng tiền, khách hàng và cảnh báo bán hàng trên cùng một màn hình"
@@ -194,5 +262,7 @@ export function SalesPreviewWorkspace(){
       </main>
       {debtPanel&&<aside className="sp-slidebar"><div className="sp-panel-head amber"><div><span>THU CÔNG NỢ</span><h2>{debtPanel.name}</h2><p>{debtPanel.phone}</p></div><button onClick={()=>setDebtPanel(null)}>×</button></div><div className="sp-panel-tabs"><button className="active">Thu tiền</button><button>Phân bổ</button><button>Lịch sử</button></div><div className="sp-panel-scroll"><div className="sp-debt-total"><span>Số tiền cần thu</span><b>{money(debtPanel.debt)}</b><small>2 hóa đơn còn công nợ</small></div><div className="sp-payment-methods"><button className="active">Tiền mặt</button><button>Chuyển khoản</button><button>Kết hợp</button></div><div className="sp-panel-section"><b>Phân bổ vào hóa đơn</b><div className="sp-mini-row"><span><b>POS-261002-00128</b><small>02/10/2026 20:16</small></span><strong>{money(debtPanel.debt)}</strong></div></div><div className="sp-panel-actions"><button className="sp-btn">In phiếu thu</button><button className="sp-btn primary">Xác nhận thu {money(debtPanel.debt)}</button></div></div></aside>}
     </div>}
+      </div>
+    </main>
   </div>
 }
