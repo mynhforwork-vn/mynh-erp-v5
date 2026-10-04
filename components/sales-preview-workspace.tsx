@@ -292,13 +292,23 @@ export function SalesPreviewWorkspace(){
     return ''
   }
 
-  const filteredSales=useMemo(()=>SALES.filter(s=>{
-    if(saleFilter!=='ALL'&&s.status!==saleFilter)return false
-    if(query&&!([s.code,s.customer,s.phone,s.method].join(' ').toLowerCase().includes(query.toLowerCase())))return false
+  const dashboardSales=useMemo(()=>salesRows.filter(row=>{
+    if(!periodMatch(row.time,dashboardPeriod,dashboardFrom,dashboardTo))return false
+    if(dashboardWarehouse!=='ALL'&&row.warehouse!==dashboardWarehouse)return false
     return true
-  }),[query,saleFilter])
+  }),[salesRows,dashboardPeriod,dashboardFrom,dashboardTo,dashboardWarehouse])
+
+  const filteredSales=useMemo(()=>salesRows.filter(row=>{
+    if(!periodMatch(row.time,historyPeriod,historyFrom,historyTo))return false
+    if(historyWarehouse!=='ALL'&&row.warehouse!==historyWarehouse)return false
+    if(saleFilter!=='ALL'&&row.status!==saleFilter)return false
+    if(historySaleState!=='ALL'&&row.saleStatus!==historySaleState)return false
+    if(query&&!([row.code,row.customer,row.phone,row.method].join(' ').toLowerCase().includes(query.toLowerCase())))return false
+    return true
+  }),[salesRows,query,saleFilter,historyPeriod,historyFrom,historyTo,historyWarehouse,historySaleState])
+
   const historyRows=useMemo(()=>sortedSales(filteredSales,'history'),[filteredSales,tableSort.history])
-  const recentRows=useMemo(()=>sortedSales(SALES.slice(0,5),'recent'),[tableSort.recent])
+  const recentRows=useMemo(()=>sortedSales(dashboardSales.slice(0,5),'recent'),[dashboardSales,tableSort.recent])
   const customerRows=useMemo(()=>{
     const sort=tableSort.customers
     return [...CUSTOMERS].sort((a,b)=>(sort.dir==='asc'?1:-1)*cmp(customerValue(a,sort.key),customerValue(b,sort.key)))
@@ -318,10 +328,118 @@ export function SalesPreviewWorkspace(){
     }
     return rows.sort((a,b)=>(sort.dir==='asc'?1:-1)*cmp(value(a,sort.key),value(b,sort.key)))
   },[tableSort.debt])
-  const cartTotal=cart.reduce((sum,x)=>sum+x.qty*x.price,0)
-  const revenue=SALES.reduce((s,x)=>s+x.total,0)
-  const collected=SALES.reduce((s,x)=>s+x.paid,0)
-  const debt=SALES.reduce((s,x)=>s+x.debt,0)
+
+  const activeCategories=posCategories.filter(x=>x.active)
+  const filteredProducts=PRODUCTS.filter(product=>{
+    if(posCategory!=='ALL'&&product[5]!==posCategory)return false
+    const q=posSearch.trim().toLowerCase()
+    if(q&&![product[0],product[1],product[2]].join(' ').toLowerCase().includes(q))return false
+    return true
+  })
+  const posCustomer=CUSTOMERS.find(x=>x.id===posCustomerId)??null
+  const cartSubtotal=cart.reduce((sum,x)=>sum+x.qty*x.price,0)
+  const cartTotal=Math.max(0,cartSubtotal-Math.max(0,posDiscount)+Math.max(0,posOtherFee))
+  const dashboardRevenue=dashboardSales.reduce((sum,x)=>sum+x.total,0)
+  const dashboardCollected=dashboardSales.reduce((sum,x)=>sum+x.paid,0)
+  const dashboardDebt=dashboardSales.reduce((sum,x)=>sum+x.debt,0)
+  const dashboardCustomerCount=new Set(dashboardSales.filter(x=>x.customer!=='Khách lẻ').map(x=>x.customer)).size
+  const dashboardUnits=dashboardSales.reduce((sum,x)=>sum+x.items,0)
+  const dashboardPaidCount=dashboardSales.filter(x=>x.status==='PAID').length
+  const dashboardPartialCount=dashboardSales.filter(x=>x.status==='PARTIAL').length
+  const dashboardUnpaidCount=dashboardSales.filter(x=>x.status==='UNPAID').length
+  const dashboardCollectedRate=dashboardRevenue?Math.round(dashboardCollected/dashboardRevenue*100):0
+  const dashboardDaily=useMemo(()=>{
+    const map=new Map<string,number>()
+    for(const row of dashboardSales){
+      const key=dateKey(row.time)
+      map.set(key,(map.get(key)??0)+row.total)
+    }
+    return [...map.entries()].sort((a,b)=>a[0].localeCompare(b[0])).slice(-6)
+  },[dashboardSales])
+  const dashboardMaxDay=Math.max(...dashboardDaily.map(x=>x[1]),1)
+  const historyRevenue=filteredSales.reduce((sum,x)=>sum+x.total,0)
+
+  function setDashboardPeriodSafe(next:Period){setDashboardPeriod(next)}
+  function setHistoryPeriodSafe(next:Period){setHistoryPeriod(next)}
+  function addPosProduct(product:typeof PRODUCTS[number]){
+    const [name,sku,,price]=product
+    setCart(prev=>{
+      const found=prev.find(x=>x.sku===sku)
+      return found
+        ? prev.map(x=>x.sku===sku?{...x,qty:x.qty+1}:x)
+        : [...prev,{name,sku,qty:1,price}]
+    })
+  }
+  function holdCurrentOrder(){
+    if(!cart.length){setPosMessage('Giỏ hàng đang trống');return}
+    setHeldOrders(prev=>[{id:'HOLD-'+Date.now(),cart:cart.map(x=>({...x}))},...prev].slice(0,20))
+    setCart([])
+    setPosMessage('Đã giữ đơn tạm')
+  }
+  function restoreHeldOrder(id:string){
+    const order=heldOrders.find(x=>x.id===id)
+    if(!order)return
+    setCart(order.cart.map(x=>({...x})))
+    setHeldOrders(prev=>prev.filter(x=>x.id!==id))
+    setHeldOpen(false)
+    setPosMessage('Đã mở lại đơn tạm')
+  }
+  function openPosPayment(mode:PosPaymentMode){
+    setPosMessage('')
+    if(!cart.length){setPosMessage('Giỏ hàng đang trống');return}
+    if(mode==='debt'&&!posCustomer){setPosMessage('Ghi nợ cần gắn khách hàng trước');setPosCustomerOpen(true);return}
+    setPosPaymentMode(mode)
+    setCashTendered(cartTotal)
+    setCombinedCash(0)
+    setCombinedTransfer(0)
+    setPosPaymentOpen(true)
+  }
+  function confirmPosPayment(){
+    let paid=0
+    let debt=0
+    if(posPaymentMode==='cash'){
+      if(cashTendered<cartTotal){setPosMessage('Tiền khách đưa chưa đủ');return}
+      paid=cartTotal
+    }else if(posPaymentMode==='transfer'){
+      paid=cartTotal
+    }else if(posPaymentMode==='debt'){
+      if(!posCustomer){setPosMessage('Cần gắn khách hàng để ghi nợ');return}
+      debt=cartTotal
+    }else{
+      if(combinedCash+combinedTransfer>cartTotal){setPosMessage('Tổng tiền nhận vượt số phải thu');return}
+      paid=Math.max(0,combinedCash)+Math.max(0,combinedTransfer)
+      debt=Math.max(0,cartTotal-paid)
+      if(debt>0&&!posCustomer){setPosMessage('Phần còn nợ cần gắn khách hàng');return}
+    }
+    const now=new Date()
+    const date=now.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'})
+    const time=now.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',hour12:false})
+    const code='POS-'+String(now.getFullYear()).slice(-2)+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'-'+String(Date.now()).slice(-5)
+    const next:Sale={
+      id:'preview-'+Date.now(),code,time:date+' '+time,customer:posCustomer?.name??'Khách lẻ',phone:posCustomer?.phone??'—',
+      warehouse:posWarehouse,total:cartTotal,paid,debt,status:debt===0?'PAID':paid>0?'PARTIAL':'UNPAID',saleStatus:'COMPLETED',
+      method:posPaymentMode==='cash'?'Tiền mặt':posPaymentMode==='transfer'?'Chuyển khoản':posPaymentMode==='debt'?'Ghi nợ':'Kết hợp',items:cart.reduce((sum,x)=>sum+x.qty,0)
+    }
+    setSalesRows(prev=>[next,...prev])
+    setCart([])
+    setPosPaymentOpen(false)
+    setPosDiscount(0);setPosOtherFee(0);setPosNote('')
+    setPosMessage((debt>0?'Đã ghi nhận hóa đơn công nợ ':'Thanh toán thành công ')+code)
+  }
+  function addCategory(){
+    const name=newCategoryName.trim()
+    if(!name)return
+    const id='custom-'+Date.now()
+    setPosCategories(prev=>[...prev,{id,name,active:true}])
+    setNewCategoryName('')
+  }
+  function deleteSelectedSales(){
+    if(!selectedSaleIds.length)return
+    if(!window.confirm(`Xóa ${selectedSaleIds.length} hóa đơn khỏi dữ liệu Preview?`))return
+    setSalesRows(prev=>prev.filter(x=>!selectedSaleIds.includes(x.id)))
+    if(selectedSale&&selectedSaleIds.includes(selectedSale.id))setSelectedSale(null)
+    setSelectedSaleIds([])
+  }
 
   function saleCell(row:Sale,key:string,compact=false){
     if(key==='time')return <td key={key}>{row.time}</td>
