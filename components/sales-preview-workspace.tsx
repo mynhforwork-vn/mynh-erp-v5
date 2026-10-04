@@ -2,16 +2,19 @@
 import { useEffect,useMemo,useState } from 'react'
 
 type View='overview'|'pos'|'history'|'customers'|'debt'
-type Sale={id:string,code:string,time:string,customer:string,phone:string,warehouse:string,total:number,paid:number,debt:number,status:'PAID'|'PARTIAL'|'UNPAID',method:string,items:number}
+type Sale={id:string,code:string,time:string,customer:string,phone:string,warehouse:string,total:number,paid:number,debt:number,status:'PAID'|'PARTIAL'|'UNPAID',saleStatus:'COMPLETED'|'CANCELLED'|'PARTIAL_RETURN'|'RETURNED',method:string,items:number}
 type Customer={id:string,name:string,phone:string,address:string,orders:number,revenue:number,debt:number,last:string,status:'GOOD'|'DEBT'|'VIP'}
 type TableId='recent'|'history'|'customers'|'debt'
 type SortDir='asc'|'desc'
 type TablePrefs={order:string[],hidden:string[]}
 type DebtRow=Customer&{invoiceCount:number,oldest:string,lastPaid:string,risk:'high'|'medium'}
-type SalePanelTab='INFO'|'PAYMENT'|'HISTORY'
+type SalePanelTab='INFO'|'PRODUCTS'|'PAYMENT'|'HISTORY'
 type CustomerPanelTab='OVERVIEW'|'PURCHASES'|'DEBT'
 type DebtPanelTab='PAY'|'ALLOCATE'|'HISTORY'
 type DebtPaymentMethod='CASH'|'TRANSFER'|'COMBINED'
+type Period='all'|'today'|'7d'|'month'|'custom'
+type PosPaymentMode='cash'|'transfer'|'debt'|'combined'
+type PosCategory={id:string,name:string,active:boolean}
 
 const TABLE_COLUMNS:Record<TableId,{key:string,label:string}[]>={
   recent:[
@@ -22,7 +25,7 @@ const TABLE_COLUMNS:Record<TableId,{key:string,label:string}[]>={
   history:[
     {key:'time',label:'Thời gian'},{key:'code',label:'Mã HĐ'},{key:'customer',label:'Khách hàng'},
     {key:'warehouse',label:'Kho'},{key:'items',label:'SP'},{key:'method',label:'Phương thức'},
-    {key:'total',label:'Tổng tiền'},{key:'debt',label:'Còn nợ'},{key:'status',label:'Trạng thái'},
+    {key:'total',label:'Tổng tiền'},{key:'debt',label:'Còn nợ'},{key:'status',label:'Thanh toán'},{key:'saleStatus',label:'Trạng thái'},
   ],
   customers:[
     {key:'name',label:'Khách hàng'},{key:'phone',label:'SĐT'},{key:'address',label:'Địa chỉ'},
@@ -45,12 +48,12 @@ const SALES_TABLE_PREFS_KEY='mynh-sales-preview-table-prefs-v1'
 
 const money=(v:number)=>new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(v)
 const SALES:Sale[]=[
-  {id:'1',code:'POS-261002-00128',time:'02/10/2026 20:16',customer:'Nguyễn Văn An',phone:'0986 123 456',warehouse:'HN',total:685000,paid:500000,debt:185000,status:'PARTIAL',method:'Kết hợp',items:4},
-  {id:'2',code:'POS-261002-00127',time:'02/10/2026 19:42',customer:'Khách lẻ',phone:'—',warehouse:'HN',total:493000,paid:493000,debt:0,status:'PAID',method:'Chuyển khoản',items:3},
-  {id:'3',code:'POS-261002-00126',time:'02/10/2026 18:05',customer:'Phạm Thu Trang',phone:'0388 223 344',warehouse:'BG',total:622000,paid:0,debt:622000,status:'UNPAID',method:'Ghi nợ',items:4},
-  {id:'4',code:'POS-261002-00125',time:'02/10/2026 17:21',customer:'Lê Minh C',phone:'0966 456 789',warehouse:'HN',total:1163000,paid:1163000,debt:0,status:'PAID',method:'Tiền mặt',items:2},
-  {id:'5',code:'POS-261002-00124',time:'02/10/2026 16:08',customer:'Bùi Lan Anh',phone:'0855 332 211',warehouse:'BG',total:410000,paid:210000,debt:200000,status:'PARTIAL',method:'Kết hợp',items:3},
-  {id:'6',code:'POS-261002-00123',time:'02/10/2026 14:56',customer:'Khách lẻ',phone:'—',warehouse:'HN',total:278000,paid:278000,debt:0,status:'PAID',method:'Tiền mặt',items:6},
+  {id:'1',code:'POS-261004-00128',time:'04/10/2026 20:16',customer:'Nguyễn Văn An',phone:'0986 123 456',warehouse:'HN',total:685000,paid:500000,debt:185000,status:'PARTIAL',saleStatus:'COMPLETED',method:'Kết hợp',items:4},
+  {id:'2',code:'POS-261004-00127',time:'04/10/2026 19:42',customer:'Khách lẻ',phone:'—',warehouse:'HN',total:493000,paid:493000,debt:0,status:'PAID',saleStatus:'COMPLETED',method:'Chuyển khoản',items:3},
+  {id:'3',code:'POS-261003-00126',time:'03/10/2026 18:05',customer:'Phạm Thu Trang',phone:'0388 223 344',warehouse:'BG',total:622000,paid:0,debt:622000,status:'UNPAID',saleStatus:'COMPLETED',method:'Ghi nợ',items:4},
+  {id:'4',code:'POS-261002-00125',time:'02/10/2026 17:21',customer:'Lê Minh C',phone:'0966 456 789',warehouse:'HN',total:1163000,paid:1163000,debt:0,status:'PAID',saleStatus:'COMPLETED',method:'Tiền mặt',items:2},
+  {id:'5',code:'POS-261001-00124',time:'01/10/2026 16:08',customer:'Bùi Lan Anh',phone:'0855 332 211',warehouse:'BG',total:410000,paid:210000,debt:200000,status:'PARTIAL',saleStatus:'PARTIAL_RETURN',method:'Kết hợp',items:3},
+  {id:'6',code:'POS-260930-00123',time:'30/09/2026 14:56',customer:'Khách lẻ',phone:'—',warehouse:'HN',total:278000,paid:278000,debt:0,status:'PAID',saleStatus:'COMPLETED',method:'Tiền mặt',items:6},
 ]
 const CUSTOMERS:Customer[]=[
   {id:'c1',name:'Nguyễn Văn An',phone:'0986 123 456',address:'Hoàng Mai, Hà Nội',orders:14,revenue:6850000,debt:185000,last:'02/10/2026 20:16',status:'VIP'},
@@ -60,19 +63,51 @@ const CUSTOMERS:Customer[]=[
   {id:'c5',name:'Trần Thị Mai',phone:'0912 110 245',address:'Bắc Giang',orders:9,revenue:3960000,debt:0,last:'30/09/2026 20:18',status:'GOOD'},
 ]
 const PRODUCTS=[
-  ['OMO Matic 3kg','OMO-3KG-D','Túi 3kg',289000,18],
-  ['Ensure Gold 850g','ENS-850','Lon',535000,6],
-  ['Dove 640g','DOVE-640','Chai',195000,11],
-  ['Nước rửa chén Sunlight','SUN-750','750g',64000,4],
-  ['Coca Cola 1.5L','COKE-15','Chai',18000,26],
-  ['Mì Hảo Hảo','MI-HAOHAO','Gói',4500,84],
+  ['OMO Matic 3kg','OMO-3KG-D','Túi 3kg',289000,18,'household'],
+  ['Ensure Gold 850g','ENS-850','Lon',535000,6,'nutrition'],
+  ['Dove 640g','DOVE-640','Chai',195000,11,'personal'],
+  ['Nước rửa chén Sunlight','SUN-750','750g',64000,4,'household'],
+  ['Coca Cola 1.5L','COKE-15','Chai',18000,26,'beverage'],
+  ['Mì Hảo Hảo','MI-HAOHAO','Gói',4500,84,'food'],
 ] as const
+const DEFAULT_POS_CATEGORIES:PosCategory[]=[
+  {id:'household',name:'Gia dụng',active:true},
+  {id:'nutrition',name:'Sữa & dinh dưỡng',active:true},
+  {id:'personal',name:'Chăm sóc cá nhân',active:true},
+  {id:'beverage',name:'Đồ uống',active:true},
+  {id:'food',name:'Thực phẩm',active:true},
+]
 
 function vnTimeValue(value:string){
   const match=value.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?$/)
   if(!match)return value
   const [,d,m,y,h='00',min='00']=match
   return new Date(Number(y),Number(m)-1,Number(d),Number(h),Number(min)).getTime()
+}
+function dateKey(value:string){
+  const match=value.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
+  return match?`${match[3]}-${match[2]}-${match[1]}`:''
+}
+function periodMatch(value:string,period:Period,from:string,to:string){
+  const ts=vnTimeValue(value)
+  if(period==='all')return true
+  const now=new Date()
+  if(period==='today'){
+    const start=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime()
+    return Number(ts)>=start
+  }
+  if(period==='7d')return Number(ts)>=Date.now()-6*24*60*60*1000
+  if(period==='month')return Number(ts)>=new Date(now.getFullYear(),now.getMonth(),1).getTime()
+  const key=dateKey(value)
+  if(from&&key<from)return false
+  if(to&&key>to)return false
+  return true
+}
+function saleStatusLabel(status:Sale['saleStatus']){
+  if(status==='COMPLETED')return 'Hoàn tất'
+  if(status==='CANCELLED')return 'Đã huỷ'
+  if(status==='PARTIAL_RETURN')return 'Hoàn một phần'
+  return 'Đã hoàn toàn bộ'
 }
 function cmp(a:string|number,b:string|number){
   if(typeof a==='number'&&typeof b==='number')return a-b
@@ -133,6 +168,37 @@ export function SalesPreviewWorkspace(){
   const [customerPanelTab,setCustomerPanelTab]=useState<CustomerPanelTab>('OVERVIEW')
   const [debtPanelTab,setDebtPanelTab]=useState<DebtPanelTab>('PAY')
   const [debtPaymentMethod,setDebtPaymentMethod]=useState<DebtPaymentMethod>('CASH')
+  const [salesRows,setSalesRows]=useState<Sale[]>(SALES)
+  const [dashboardPeriod,setDashboardPeriod]=useState<Period>('all')
+  const [dashboardFrom,setDashboardFrom]=useState('')
+  const [dashboardTo,setDashboardTo]=useState('')
+  const [dashboardWarehouse,setDashboardWarehouse]=useState<'ALL'|'HN'|'BG'>('ALL')
+  const [historyPeriod,setHistoryPeriod]=useState<Period>('all')
+  const [historyFrom,setHistoryFrom]=useState('')
+  const [historyTo,setHistoryTo]=useState('')
+  const [historyWarehouse,setHistoryWarehouse]=useState<'ALL'|'HN'|'BG'>('ALL')
+  const [historySaleState,setHistorySaleState]=useState<'ALL'|Sale['saleStatus']>('ALL')
+  const [selectedSaleIds,setSelectedSaleIds]=useState<string[]>([])
+  const [posSearch,setPosSearch]=useState('')
+  const [posWarehouse,setPosWarehouse]=useState<'HN'|'BG'>('HN')
+  const [posCategory,setPosCategory]=useState('ALL')
+  const [posCategories,setPosCategories]=useState<PosCategory[]>(DEFAULT_POS_CATEGORIES)
+  const [categorySettingsOpen,setCategorySettingsOpen]=useState(false)
+  const [newCategoryName,setNewCategoryName]=useState('')
+  const [posCustomerId,setPosCustomerId]=useState('')
+  const [posCustomerOpen,setPosCustomerOpen]=useState(false)
+  const [heldOrders,setHeldOrders]=useState<{id:string,cart:{name:string,sku:string,qty:number,price:number}[]}[]>([])
+  const [heldOpen,setHeldOpen]=useState(false)
+  const [posPaymentOpen,setPosPaymentOpen]=useState(false)
+  const [posPaymentMode,setPosPaymentMode]=useState<PosPaymentMode>('cash')
+  const [cashTendered,setCashTendered]=useState(0)
+  const [combinedCash,setCombinedCash]=useState(0)
+  const [combinedTransfer,setCombinedTransfer]=useState(0)
+  const [posDiscount,setPosDiscount]=useState(0)
+  const [posOtherFee,setPosOtherFee]=useState(0)
+  const [posNote,setPosNote]=useState('')
+  const [posExtrasOpen,setPosExtrasOpen]=useState(false)
+  const [posMessage,setPosMessage]=useState('')
   const [query,setQuery]=useState('')
   const [saleFilter,setSaleFilter]=useState<'ALL'|Sale['status']>('ALL')
   const [debtPanel,setDebtPanel]=useState<Customer|null>(null)
@@ -142,8 +208,8 @@ export function SalesPreviewWorkspace(){
   })
   const [columnMenu,setColumnMenu]=useState<TableId|null>(null)
   const [draggedColumn,setDraggedColumn]=useState<{table:TableId,key:string}|null>(null)
-  const [cart,setCart]=useState<{name:string,qty:number,price:number}[]>([
-    {name:'OMO Matic 3kg',qty:1,price:289000},{name:'Dove 640g',qty:1,price:195000}
+  const [cart,setCart]=useState<{name:string,sku:string,qty:number,price:number}[]>([
+    {name:'OMO Matic 3kg',sku:'OMO-3KG-D',qty:1,price:289000},{name:'Dove 640g',sku:'DOVE-640',qty:1,price:195000}
   ])
 
   useEffect(()=>{
@@ -207,6 +273,7 @@ export function SalesPreviewWorkspace(){
     if(key==='paid')return row.paid
     if(key==='debt')return row.debt
     if(key==='status')return row.status
+    if(key==='saleStatus')return row.saleStatus
     return ''
   }
   function sortedSales(rows:Sale[],table:'recent'|'history'){
@@ -266,7 +333,8 @@ export function SalesPreviewWorkspace(){
     if(key==='total')return <td key={key} className="money">{money(row.total)}</td>
     if(key==='paid')return <td key={key} className="income">{money(row.paid)}</td>
     if(key==='debt')return <td key={key} className={row.debt?'expense':''}>{row.debt?money(row.debt):'—'}</td>
-    return <td key={key}><Status status={row.status}/></td>
+    if(key==='status')return <td key={key}><Status status={row.status}/></td>
+    return <td key={key}><span className={'sp-sale-state '+row.saleStatus.toLowerCase()}>{saleStatusLabel(row.saleStatus)}</span></td>
   }
   function customerCell(row:Customer,key:string){
     if(key==='name')return <td key={key}><b>{row.name}</b></td>
