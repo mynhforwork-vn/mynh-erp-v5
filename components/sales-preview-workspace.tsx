@@ -332,7 +332,7 @@ export function SalesPreviewWorkspace(){
       invoiceCount:Math.max(1,salesRows.filter(s=>s.customer===c.name&&s.debt>0).length),
       oldest:salesRows.filter(s=>s.customer===c.name&&s.debt>0).sort((a,b)=>vnTimeValue(a.time)-vnTimeValue(b.time))[0]?.time.split(' ')[0]??(i===1?'25/09/2026':'01/10/2026'),
       lastPaid:debtReceipts.find(r=>r.customerId===c.id)?.time??'—',
-      risk:i===1?'high':'medium'
+      risk:(i===1?'high':'medium') as 'high'|'medium'
     }))
     const sort=tableSort.debt
     const value=(row:DebtRow,key:string):string|number=>{
