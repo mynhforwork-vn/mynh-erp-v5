@@ -358,13 +358,13 @@ export function SalesPreviewWorkspace(){
       </section>
       <div className="sp-overview-grid">
         <section className="sp-card revenue-card">
-          <div className="sp-card-head"><div><b>Doanh thu theo ngày</b><span>Màu xanh = doanh thu thực tế</span></div><strong>{money(revenue)}</strong></div>
+          <div className="sp-card-head sp-card-head-inline"><b>Doanh thu theo ngày</b><strong>{money(revenue)}</strong></div>
           <div className="sp-bars">
             {[['27/09',620000],['28/09',980000],['29/09',1340000],['30/09',890000],['01/10',1580000],['02/10',3651000]].map(([d,v])=><div key={d as string}><span>{d}</span><i><em style={{width:(Number(v)/3651000*100)+'%'}}/></i><b>{money(Number(v))}</b></div>)}
           </div>
         </section>
         <section className="sp-card payment-card">
-          <div className="sp-card-head"><div><b>Tình trạng thanh toán</b><span>Phân biệt rõ đã thu / công nợ</span></div></div>
+          <div className="sp-card-head sp-card-head-inline"><b>Tình trạng thanh toán</b></div>
           <div className="sp-payment-ring">
             <div className="sp-donut"><b>71%</b><span>đã thu</span></div>
             <div className="sp-legend">
@@ -375,18 +375,18 @@ export function SalesPreviewWorkspace(){
           </div>
         </section>
         <section className="sp-card customer-card">
-          <div className="sp-card-head"><div><b>Khách hàng cần chú ý</b><span>Công nợ và tần suất mua</span></div><button onClick={()=>setView('customers')}>Xem tất cả</button></div>
+          <div className="sp-card-head sp-card-head-inline"><b>Khách hàng cần chú ý</b><button onClick={()=>setView('customers')}>Xem tất cả</button></div>
           {CUSTOMERS.slice(0,4).map(c=><div className="sp-customer-row" key={c.id}><span><b>{c.name}</b><small>{c.phone} · {c.orders} đơn</small></span><span className={c.debt?'debt':'ok'}><b>{c.debt?money(c.debt):'Không nợ'}</b><small>{c.status==='VIP'?'Khách VIP':c.debt?'Cần theo dõi':'Ổn định'}</small></span></div>)}
         </section>
         <section className="sp-card stock-card">
-          <div className="sp-card-head"><div><b>Cảnh báo tồn bán</b><span>Chỉ SKU cần hành động</span></div></div>
+          <div className="sp-card-head sp-card-head-inline"><b>Cảnh báo tồn bán</b></div>
           <div className="sp-stock-alert red"><span><b>Sunlight 750g</b><small>SUN-750 · Kho HN</small></span><strong>4</strong></div>
           <div className="sp-stock-alert amber"><span><b>Ensure Gold 850g</b><small>ENS-850 · Kho BG</small></span><strong>6</strong></div>
           <div className="sp-stock-alert green"><span><b>Dove 640g</b><small>DOVE-640 · Kho HN</small></span><strong>11</strong></div>
         </section>
       </div>
       <section className="sp-card sp-recent">
-        <div className="sp-card-head"><div><b>Giao dịch gần nhất</b><span>Click tiêu đề để sắp xếp · kéo cột trong menu Cột</span></div><div className="sp-card-actions"><button onClick={()=>setView('history')}>Mở lịch sử</button><ColumnManager table="recent" prefs={tablePrefs.recent} open={columnMenu==='recent'} setOpen={setColumnMenu} dragged={draggedColumn} setDragged={setDraggedColumn} onToggle={toggleColumn} onMove={moveColumn} onReset={resetColumns}/></div></div>
+        <div className="sp-card-head sp-card-head-inline"><b>Giao dịch gần nhất</b><div className="sp-card-actions"><button onClick={()=>setView('history')}>Mở lịch sử</button><ColumnManager table="recent" prefs={tablePrefs.recent} open={columnMenu==='recent'} setOpen={setColumnMenu} dragged={draggedColumn} setDragged={setDraggedColumn} onToggle={toggleColumn} onMove={moveColumn} onReset={resetColumns}/></div></div>
         <div className="sp-table-scroll"><table><thead><tr>{visibleColumns('recent').map(col=><SortHead key={col.key} table="recent" col={col} sort={tableSort.recent} onSort={changeSort}/>)}</tr></thead>
           <tbody>{recentRows.map(row=><tr key={row.id} onClick={()=>{setSelectedSale(row);setView('history')}}>{visibleColumns('recent').map(col=>saleCell(row,col.key,true))}</tr>)}</tbody>
         </table></div>
@@ -405,11 +405,11 @@ export function SalesPreviewWorkspace(){
       <div className="sp-pos-toolbar"><select><option>Kho HN · Hà Nội</option><option>Kho BG · Bắc Giang</option></select><input placeholder="Tìm tên sản phẩm / SKU / quét barcode..."/><button className="sp-btn">Gắn khách</button></div>
       <div className="sp-pos-grid">
         <section className="sp-products">
-          <div className="sp-section-title"><div><span>SẢN PHẨM ĐANG BÁN</span><b>Kho HN · 148 SKU có tồn</b></div><strong>Chọn để thêm vào giỏ</strong></div>
+          <div className="sp-section-title sp-section-title-inline"><b>Sản phẩm đang bán</b><span>Kho HN · 148 SKU có tồn</span><strong>Chọn để thêm vào giỏ</strong></div>
           <div className="sp-product-grid">{PRODUCTS.map(p=><button key={p[1]} onClick={()=>setCart(prev=>[...prev,{name:p[0],qty:1,price:p[3]}])} className={(p[4] as number)<=6?'low':''}><div><b>{p[0]}</b><span>{p[2]}</span></div><small>{p[1]}</small><footer><strong>{money(p[3] as number)}</strong><em>{p[4]} tồn</em></footer></button>)}</div>
         </section>
         <aside className="sp-cart">
-          <div className="sp-cart-head"><div><span>HÓA ĐƠN HIỆN TẠI</span><b>Giỏ hàng · {cart.reduce((s,x)=>s+x.qty,0)} SP</b><small>Khách lẻ · Kho HN</small></div><button onClick={()=>setCart([])}>Xóa giỏ</button></div>
+          <div className="sp-cart-head sp-cart-head-compact"><div><b>Hóa đơn hiện tại · {cart.reduce((s,x)=>s+x.qty,0)} SP</b><small>Khách lẻ · Kho HN</small></div><button onClick={()=>setCart([])}>Xóa giỏ</button></div>
           <div className="sp-cart-lines">{cart.length===0?<div className="sp-empty">Chưa có sản phẩm</div>:cart.map((line,i)=><div className="sp-cart-line" key={i}><span><b>{line.name}</b><small>{money(line.price)}</small></span><div><button onClick={()=>setCart(prev=>prev.map((x,j)=>j===i?{...x,qty:Math.max(1,x.qty-1)}:x))}>−</button><b>{line.qty}</b><button onClick={()=>setCart(prev=>prev.map((x,j)=>j===i?{...x,qty:x.qty+1}:x))}>+</button></div><strong>{money(line.qty*line.price)}</strong></div>)}</div>
           <div className="sp-cart-customer"><span>Khách hàng</span><b>Khách lẻ</b><button>Gắn khách</button></div>
           <div className="sp-cart-summary"><div><span>Tiền hàng</span><b>{money(cartTotal)}</b></div><div><span>Giảm giá</span><b>0 ₫</b></div><div className="total"><span>PHẢI THU</span><b>{money(cartTotal)}</b></div></div>
