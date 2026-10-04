@@ -2450,3 +2450,297 @@ body:has(.sales-preview-shell){
   .sales-preview-main .sp-pos-products-body{grid-template-columns:122px minmax(0,1fr)}
   .sp-history-toolbar select{min-width:112px}
 }
+
+
+/* V10 — functional debt receipt workflow */
+.sp-debt-message{
+  min-height:31px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:7px;
+  padding:4px 7px;
+  border:1px solid #CDE1D5;
+  border-radius:5px;
+  background:#F1F9F4;
+  color:#2F6C45;
+  font-size:8px;
+  font-weight:650;
+}
+.sp-debt-message button{
+  border:0;
+  background:transparent;
+  color:inherit;
+  cursor:pointer;
+}
+.sp-debt-quick-amounts{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+  margin:6px 0;
+}
+.sp-debt-quick-amounts button{
+  height:25px;
+  padding:0 7px;
+  border:1px solid #D5DEE7;
+  border-radius:5px;
+  background:#fff;
+  color:#526679;
+  font:inherit;
+  font-size:7.4px;
+  cursor:pointer;
+}
+.sp-debt-quick-amounts button:hover{
+  border-color:#AFC2D4;
+  background:#F6F9FB;
+}
+.sp-debt-transfer-box{
+  display:grid;
+  grid-template-columns:70px minmax(0,1fr);
+  gap:8px;
+  align-items:center;
+  padding:7px;
+  border:1px solid #D8E2EB;
+  border-radius:6px;
+  background:#F8FAFC;
+}
+.sp-debt-transfer-box>div:last-child{
+  display:grid;
+  grid-template-columns:74px minmax(0,1fr);
+  gap:4px 6px;
+  align-items:center;
+}
+.sp-debt-transfer-box span{
+  color:var(--mynh-text-3);
+  font-size:7px;
+}
+.sp-debt-transfer-box b{
+  color:var(--mynh-text);
+  font-size:8.5px;
+}
+.sp-debt-transfer-box small{
+  grid-column:1/-1;
+  color:var(--mynh-text-3);
+  font-size:6.8px;
+}
+.sp-combined-check{
+  grid-column:1/-1;
+  min-height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 7px;
+  border:1px solid #D8E2EB;
+  border-radius:5px;
+}
+.sp-combined-check span{font-size:7px;color:var(--mynh-text-3)}
+.sp-combined-check b{font-size:8.4px}
+.sp-combined-check.ok{
+  border-color:#CBE6D5;
+  background:var(--mynh-success-bg);
+  color:var(--mynh-success);
+}
+.sp-combined-check.bad{
+  border-color:#EFCFCF;
+  background:var(--mynh-danger-bg);
+  color:var(--mynh-danger);
+}
+.sp-debt-allocation-preview{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:4px;
+  margin-top:7px;
+  padding:6px;
+  border:1px solid #DCE4EB;
+  border-radius:6px;
+  background:#F9FBFC;
+}
+.sp-debt-allocation-preview>div{
+  min-height:32px;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.sp-debt-allocation-preview span{
+  color:var(--mynh-text-3);
+  font-size:6.8px;
+}
+.sp-debt-allocation-preview b{
+  color:var(--mynh-text);
+  font-size:8.6px;
+}
+.sp-debt-allocation-preview>button{
+  grid-column:1/-1;
+  justify-self:start;
+}
+.sp-allocation-edit-row{
+  min-height:50px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 112px;
+  gap:7px;
+  align-items:center;
+  border-bottom:1px solid #EDF1F5;
+}
+.sp-allocation-edit-row>span{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.sp-allocation-edit-row b{
+  color:var(--mynh-text);
+  font-size:8.3px;
+}
+.sp-allocation-edit-row small{
+  color:var(--mynh-text-3);
+  font-size:7px;
+}
+.sp-allocation-edit-row input{
+  width:112px;
+  height:28px;
+  padding:0 6px;
+  border:1px solid #D3DCE6;
+  border-radius:5px;
+  font:inherit;
+  font-size:8.3px;
+  text-align:right;
+}
+.sp-allocation-summary.ok{
+  border-color:#CBE6D5;
+  background:var(--mynh-success-bg);
+}
+.sp-allocation-summary.ok b{color:var(--mynh-success)}
+.sp-allocation-summary.bad{
+  border-color:#EFCFCF;
+  background:var(--mynh-danger-bg);
+}
+.sp-allocation-summary.bad b{color:var(--mynh-danger)}
+.sp-debt-receipt-card{
+  margin-bottom:8px;
+  padding:7px;
+  border:1px solid #C9D7E4;
+  border-radius:7px;
+  background:#FBFCFD;
+}
+.sp-debt-receipt-head{
+  min-height:37px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding-bottom:5px;
+  border-bottom:1px solid #E8EDF2;
+}
+.sp-debt-receipt-head>div{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.sp-debt-receipt-head span{
+  color:var(--mynh-text-3);
+  font-size:6.5px;
+  font-weight:750;
+  letter-spacing:.06em;
+}
+.sp-debt-receipt-head b{
+  color:var(--mynh-brand);
+  font-size:9px;
+}
+.sp-debt-receipt-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:4px;
+  padding-top:6px;
+}
+.sp-debt-receipt-grid>div{
+  min-height:38px;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  padding:4px 5px;
+  border:1px solid #E6EBF0;
+  border-radius:5px;
+  background:#fff;
+}
+.sp-debt-receipt-grid span{
+  color:var(--mynh-text-3);
+  font-size:6.7px;
+}
+.sp-debt-receipt-grid b{
+  color:var(--mynh-text);
+  font-size:8.2px;
+}
+.sp-receipt-allocations{
+  margin-top:6px;
+  padding-top:5px;
+  border-top:1px solid #E8EDF2;
+}
+.sp-receipt-allocations>span,
+.sp-receipt-note>span{
+  display:block;
+  margin-bottom:3px;
+  color:var(--mynh-text-3);
+  font-size:6.8px;
+  font-weight:650;
+}
+.sp-receipt-allocations>div{
+  min-height:26px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:7px;
+}
+.sp-receipt-allocations b{
+  font-size:7.8px;
+  color:var(--mynh-text-2);
+}
+.sp-receipt-allocations strong{
+  font-size:8px;
+  color:var(--mynh-success);
+}
+.sp-receipt-note{
+  margin-top:5px;
+  padding-top:5px;
+  border-top:1px solid #E8EDF2;
+}
+.sp-receipt-note b{
+  font-size:7.8px;
+  color:var(--mynh-text-2);
+}
+.sp-debt-receipt-row{
+  width:100%;
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:4px 2px;
+  border:0;
+  border-bottom:1px solid #EDF1F5;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+.sp-debt-receipt-row:hover{background:#F8FAFC}
+.sp-debt-receipt-row>span{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:1px;
+}
+.sp-debt-receipt-row b{
+  color:var(--mynh-brand);
+  font-size:8px;
+}
+.sp-debt-receipt-row small{
+  color:var(--mynh-text-3);
+  font-size:6.8px;
+}
+.sp-debt-receipt-row strong{
+  color:var(--mynh-success);
+  font-size:8.5px;
+}
