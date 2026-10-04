@@ -594,25 +594,82 @@ export function SalesPreviewWorkspace(){
 
     {view==='pos'&&<div className="sp-screen sp-pos-screen">
       <Header title="POS bán hàng" desc="Bán nhanh, nhìn rõ tồn kho, giá bán và trạng thái thanh toán"
-        actions={<><span className="sp-live"><i/> POS sẵn sàng</span><button className="sp-btn">Đơn tạm (2)</button></>}/>
+        actions={<><span className="sp-live"><i/> POS sẵn sàng</span><button className="sp-btn" onClick={()=>setHeldOpen(v=>!v)}>Đơn tạm ({heldOrders.length})</button></>}/>
       <section className="sp-kpis four">
-        <Kpi tone="blue" label="Kho bán" value="HN" sub="Kho Hà Nội"/>
-        <Kpi tone="green" label="SKU có tồn" value="148" sub="Có thể bán"/>
-        <Kpi tone="amber" label="Tồn thấp" value="12" sub="≤ 10 sản phẩm"/>
-        <Kpi tone="purple" label="Doanh thu hôm nay" value={money(3651000)} sub="6 hóa đơn"/>
+        <Kpi tone="blue" label="Kho bán" value={posWarehouse} sub={posWarehouse==='HN'?'Kho Hà Nội':'Kho Bắc Giang'}/>
+        <Kpi tone="green" label="SKU có tồn" value={String(PRODUCTS.length)} sub="Có thể bán"/>
+        <Kpi tone="amber" label="Tồn thấp" value={String(PRODUCTS.filter(x=>Number(x[4])<=10).length)} sub="≤ 10 sản phẩm"/>
+        <Kpi tone="purple" label="Doanh thu hôm nay" value={money(salesRows.filter(x=>periodMatch(x.time,'today','','')&&x.warehouse===posWarehouse).reduce((sum,x)=>sum+x.total,0))} sub={salesRows.filter(x=>periodMatch(x.time,'today','','')&&x.warehouse===posWarehouse).length+' hóa đơn'}/>
       </section>
-      <div className="sp-pos-toolbar"><select><option>Kho HN · Hà Nội</option><option>Kho BG · Bắc Giang</option></select><input placeholder="Tìm tên sản phẩm / SKU / quét barcode..."/><button className="sp-btn">Gắn khách</button></div>
+
+      <div className="sp-pos-toolbar">
+        <select value={posWarehouse} onChange={e=>setPosWarehouse(e.target.value as any)}><option value="HN">Kho HN · Hà Nội</option><option value="BG">Kho BG · Bắc Giang</option></select>
+        <input value={posSearch} onChange={e=>setPosSearch(e.target.value)} placeholder="Tìm tên sản phẩm / SKU / quét barcode..."/>
+        <button className="sp-btn" onClick={()=>setPosCustomerOpen(v=>!v)}>{posCustomer?posCustomer.name:'Gắn khách'}</button>
+      </div>
+
+      {posCustomerOpen&&<div className="sp-pos-inline-popover customer">
+        <div className="sp-inline-popover-head"><b>Gắn khách hàng</b><button onClick={()=>setPosCustomerOpen(false)}>×</button></div>
+        <button className={!posCustomerId?'active':''} onClick={()=>{setPosCustomerId('');setPosCustomerOpen(false)}}>Khách lẻ</button>
+        {CUSTOMERS.map(c=><button key={c.id} className={posCustomerId===c.id?'active':''} onClick={()=>{setPosCustomerId(c.id);setPosCustomerOpen(false)}}><span>{c.name}</span><small>{c.phone}</small></button>)}
+      </div>}
+
+      {heldOpen&&<div className="sp-pos-inline-popover held">
+        <div className="sp-inline-popover-head"><b>Đơn tạm ({heldOrders.length})</b><button onClick={()=>setHeldOpen(false)}>×</button></div>
+        {!heldOrders.length?<div className="sp-panel-empty">Chưa có đơn tạm.</div>:heldOrders.map(order=><div className="sp-held-row" key={order.id}><span><b>{order.cart.reduce((sum,x)=>sum+x.qty,0)} SP</b><small>{order.id}</small></span><strong>{money(order.cart.reduce((sum,x)=>sum+x.qty*x.price,0))}</strong><button className="sp-btn small primary" onClick={()=>restoreHeldOrder(order.id)}>Mở</button><button className="sp-btn small" onClick={()=>setHeldOrders(prev=>prev.filter(x=>x.id!==order.id))}>Xóa</button></div>)}
+      </div>}
+
+      {posMessage&&<div className="sp-pos-message">{posMessage}<button onClick={()=>setPosMessage('')}>×</button></div>}
+
       <div className="sp-pos-grid">
         <section className="sp-products">
-          <div className="sp-section-title sp-section-title-inline"><b>Sản phẩm đang bán</b><span>Kho HN · 148 SKU có tồn</span><strong>Chọn để thêm vào giỏ</strong></div>
-          <div className="sp-product-grid">{PRODUCTS.map(p=><button key={p[1]} onClick={()=>setCart(prev=>[...prev,{name:p[0],qty:1,price:p[3]}])} className={(p[4] as number)<=6?'low':''}><div className="sp-product-title"><b>{p[0]}</b><span>{p[2]}</span></div><div className="sp-product-meta"><code>{p[1]}</code><strong>{money(p[3] as number)}</strong><em>{p[4]} tồn</em></div></button>)}</div>
+          <div className="sp-section-title sp-section-title-inline"><b>Sản phẩm đang bán</b><span>Kho {posWarehouse} · {filteredProducts.length} SKU hiển thị</span><strong>Chọn để thêm vào giỏ</strong></div>
+          <div className="sp-pos-products-body">
+            <aside className="sp-category-rail">
+              <div className="sp-category-rail-head"><b>Phân loại</b><button title="Cài đặt phân loại" onClick={()=>setCategorySettingsOpen(v=>!v)}>⚙</button></div>
+              <button className={posCategory==='ALL'?'active':''} onClick={()=>setPosCategory('ALL')}><span>Tất cả</span><b>{PRODUCTS.length}</b></button>
+              {activeCategories.map(cat=><button key={cat.id} className={posCategory===cat.id?'active':''} onClick={()=>setPosCategory(cat.id)}><span>{cat.name}</span><b>{PRODUCTS.filter(x=>x[5]===cat.id).length}</b></button>)}
+            </aside>
+            <div className="sp-product-pane">
+              {categorySettingsOpen&&<div className="sp-category-settings">
+                <div className="sp-inline-popover-head"><div><b>Cài đặt phân loại</b><span>Preview · lưu trong phiên</span></div><button onClick={()=>setCategorySettingsOpen(false)}>×</button></div>
+                <div className="sp-category-settings-list">{posCategories.map(cat=><div key={cat.id}><input value={cat.name} onChange={e=>setPosCategories(prev=>prev.map(x=>x.id===cat.id?{...x,name:e.target.value}:x))}/><label><input type="checkbox" checked={cat.active} onChange={()=>setPosCategories(prev=>prev.map(x=>x.id===cat.id?{...x,active:!x.active}:x))}/> Hiện</label></div>)}</div>
+                <div className="sp-category-add"><input value={newCategoryName} onChange={e=>setNewCategoryName(e.target.value)} placeholder="Tên phân loại mới"/><button className="sp-btn small primary" onClick={addCategory}>+ Thêm</button></div>
+              </div>}
+              <div className="sp-product-grid">{filteredProducts.map(p=><button key={p[1]} onClick={()=>addPosProduct(p)} className={(p[4] as number)<=6?'low':''}><div className="sp-product-title"><b>{p[0]}</b><span>{p[2]}</span></div><div className="sp-product-meta"><code>{p[1]}</code><strong>{money(p[3] as number)}</strong><em>{p[4]} tồn</em></div></button>)}</div>
+            </div>
+          </div>
         </section>
+
         <aside className="sp-cart">
-          <div className="sp-cart-head sp-cart-head-compact"><div><b>Hóa đơn hiện tại · {cart.reduce((s,x)=>s+x.qty,0)} SP</b><small>Khách lẻ · Kho HN</small></div><button onClick={()=>setCart([])}>Xóa giỏ</button></div>
-          <div className="sp-cart-lines">{cart.length===0?<div className="sp-empty">Chưa có sản phẩm</div>:cart.map((line,i)=><div className="sp-cart-line" key={i}><span><b>{line.name}</b><small>{money(line.price)}</small></span><div><button onClick={()=>setCart(prev=>prev.map((x,j)=>j===i?{...x,qty:Math.max(1,x.qty-1)}:x))}>−</button><b>{line.qty}</b><button onClick={()=>setCart(prev=>prev.map((x,j)=>j===i?{...x,qty:x.qty+1}:x))}>+</button></div><strong>{money(line.qty*line.price)}</strong></div>)}</div>
-          <div className="sp-cart-customer"><span>Khách hàng</span><b>Khách lẻ</b><button>Gắn khách</button></div>
-          <div className="sp-cart-summary"><div><span>Tiền hàng</span><b>{money(cartTotal)}</b></div><div><span>Giảm giá</span><b>0 ₫</b></div><div className="total"><span>PHẢI THU</span><b>{money(cartTotal)}</b></div></div>
-          <div className="sp-pay-actions"><button>Giữ</button><button className="cash">Tiền mặt</button><button className="transfer">Chuyển khoản</button><button className="debt">Ghi nợ</button></div>
+          {!posPaymentOpen?<>
+            <div className="sp-cart-head sp-cart-head-compact"><div><b>Hóa đơn hiện tại · {cart.reduce((sum,x)=>sum+x.qty,0)} SP</b><small>{posCustomer?.name??'Khách lẻ'} · Kho {posWarehouse}</small></div>{cart.length>0&&<button onClick={()=>setCart([])}>Xóa giỏ</button>}</div>
+            <div className="sp-cart-lines">{cart.length===0?<div className="sp-empty">Chưa có sản phẩm</div>:cart.map((line,i)=><div className="sp-cart-line" key={line.sku}><span><b>{line.name}</b><small>{line.sku} · {money(line.price)}</small></span><div><button onClick={()=>setCart(prev=>prev.map((x,j)=>j===i?{...x,qty:Math.max(1,x.qty-1)}:x))}>−</button><b>{line.qty}</b><button onClick={()=>setCart(prev=>prev.map((x,j)=>j===i?{...x,qty:x.qty+1}:x))}>+</button></div><strong>{money(line.qty*line.price)}</strong></div>)}</div>
+            <div className="sp-cart-customer"><span>Khách hàng</span><b>{posCustomer?.name??'Khách lẻ'}</b><button onClick={()=>setPosCustomerOpen(true)}>Gắn khách</button></div>
+            <div className="sp-cart-summary">
+              <div><span>Tiền hàng</span><b>{money(cartSubtotal)}</b></div>
+              {posDiscount>0&&<div><span>Giảm giá</span><b>−{money(posDiscount)}</b></div>}
+              {posOtherFee>0&&<div><span>Phí khác</span><b>{money(posOtherFee)}</b></div>}
+              <button className="sp-pos-extras-toggle" onClick={()=>setPosExtrasOpen(v=>!v)}>{posExtrasOpen?'Thu gọn tùy chỉnh':'Tùy chỉnh hóa đơn'} <span>{posExtrasOpen?'▴':'▾'}</span></button>
+              {posExtrasOpen&&<div className="sp-pos-extras"><label>Giảm giá<input type="number" value={posDiscount} onChange={e=>setPosDiscount(Math.max(0,Number(e.target.value)||0))}/></label><label>Phí khác<input type="number" value={posOtherFee} onChange={e=>setPosOtherFee(Math.max(0,Number(e.target.value)||0))}/></label><textarea value={posNote} onChange={e=>setPosNote(e.target.value)} placeholder="Ghi chú hóa đơn..."/></div>}
+              <div className="total"><span>PHẢI THU</span><b>{money(cartTotal)}</b></div>
+            </div>
+            <div className="sp-pay-actions"><button onClick={holdCurrentOrder}>Giữ</button><button className="cash" onClick={()=>openPosPayment('cash')}>Tiền mặt</button><button className="transfer" onClick={()=>openPosPayment('transfer')}>Chuyển khoản</button><button className="debt" onClick={()=>openPosPayment('debt')}>Ghi nợ</button></div>
+          </>:<div className="sp-pos-checkout">
+            <div className="sp-pos-checkout-head"><button onClick={()=>setPosPaymentOpen(false)}>←</button><div><span>THANH TOÁN POS</span><b>{money(cartTotal)}</b><small>{cart.reduce((sum,x)=>sum+x.qty,0)} SP · Kho {posWarehouse}</small></div></div>
+            <div className="sp-pos-payment-tabs">
+              <button className={posPaymentMode==='cash'?'active':''} onClick={()=>openPosPayment('cash')}>Tiền mặt</button>
+              <button className={posPaymentMode==='transfer'?'active':''} onClick={()=>openPosPayment('transfer')}>Chuyển khoản</button>
+              <button className={posPaymentMode==='debt'?'active':''} onClick={()=>openPosPayment('debt')}>Ghi nợ</button>
+              <button className={posPaymentMode==='combined'?'active':''} onClick={()=>openPosPayment('combined')}>Kết hợp</button>
+            </div>
+            {posPaymentMode==='cash'&&<div className="sp-pos-payment-body"><label>Khách đưa<input type="number" value={cashTendered} onChange={e=>setCashTendered(Math.max(0,Number(e.target.value)||0))}/></label><div className="sp-money-presets">{[100000,200000,500000,1000000].map(v=><button key={v} onClick={()=>setCashTendered(v)}>{v===1000000?'1tr':v/1000+'k'}</button>)}<button onClick={()=>setCashTendered(cartTotal)}>Vừa đủ</button></div><div className="sp-pos-change"><span>Tiền thừa</span><b>{money(Math.max(0,cashTendered-cartTotal))}</b></div></div>}
+            {posPaymentMode==='transfer'&&<div className="sp-pos-payment-body sp-transfer-demo"><div className="sp-demo-qr">QR</div><div><span>Số tiền</span><b>{money(cartTotal)}</b><span>Ngân hàng</span><b>MB Bank · 0123456789</b><span>Nội dung CK</span><b>POS-{String(Date.now()).slice(-6)}</b></div><small>Preview mô phỏng luồng VietQR của main. Chỉ xác nhận sau khi nhận tiền.</small><button className="sp-btn" onClick={()=>window.print()}>In phiếu trước thanh toán</button></div>}
+            {posPaymentMode==='debt'&&<div className="sp-pos-payment-body"><div className="sp-pos-debt-note"><b>Ghi nợ toàn bộ</b><span>{posCustomer?'Công nợ sẽ ghi cho '+posCustomer.name:'Cần gắn khách hàng trước.'}</span></div></div>}
+            {posPaymentMode==='combined'&&<div className="sp-pos-payment-body"><div className="sp-combined-fields"><label>Tiền mặt<input type="number" value={combinedCash} onChange={e=>setCombinedCash(Math.max(0,Number(e.target.value)||0))}/></label><label>Chuyển khoản<input type="number" value={combinedTransfer} onChange={e=>setCombinedTransfer(Math.max(0,Number(e.target.value)||0))}/></label></div><div className="sp-pos-change"><span>Còn nợ</span><b>{money(Math.max(0,cartTotal-combinedCash-combinedTransfer))}</b></div></div>}
+            <div className="sp-cart-customer"><span>Khách hàng</span><b>{posCustomer?.name??'Khách lẻ'}</b><button onClick={()=>setPosCustomerOpen(true)}>Thay đổi</button></div>
+            <button className="sp-btn primary sp-pos-confirm" onClick={confirmPosPayment}>{posPaymentMode==='transfer'?'Đã nhận chuyển khoản · ':'Xác nhận thanh toán · '}{money(cartTotal)}</button>
+          </div>}
         </aside>
       </div>
     </div>}
