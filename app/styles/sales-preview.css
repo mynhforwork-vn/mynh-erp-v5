@@ -1045,3 +1045,345 @@ body:has(.sales-preview-shell){
 .sales-preview-main .sp-panel-scroll::-webkit-scrollbar-track{
   background:transparent;
 }
+
+
+/* V5 — density audit for all Sales tabs */
+.sales-preview-main .sp-preview-banner{
+  flex:0 0 26px;
+  min-height:26px;
+  height:26px;
+  margin-bottom:6px;
+  padding:0 8px;
+}
+.sales-preview-main .sp-head{
+  min-height:40px;
+  margin-bottom:6px;
+}
+.sales-preview-main .sp-head h1{
+  font-size:18px;
+  line-height:1.2;
+}
+.sales-preview-main .sp-head p{
+  margin-top:1px;
+  font-size:9.5px;
+  line-height:1.25;
+}
+.sales-preview-main .sp-head-actions{
+  gap:5px;
+}
+.sales-preview-main .sp-btn{
+  height:27px;
+  padding:0 8px;
+  font-size:9.5px;
+}
+.sales-preview-main .sp-btn.small{
+  height:24px;
+  padding:0 6px;
+  font-size:8.5px;
+}
+
+/* Period/filter rails stay compact */
+.sales-preview-main .sp-period,
+.sales-preview-main .sp-toolbar,
+.sales-preview-main .sp-pos-toolbar{
+  min-height:34px;
+  height:34px;
+  padding:3px 5px;
+  gap:5px;
+  margin-bottom:6px;
+}
+.sales-preview-main .sp-period button{
+  height:26px;
+  padding:0 8px;
+  font-size:8.5px;
+}
+.sales-preview-main .sp-period select,
+.sales-preview-main .sp-toolbar select,
+.sales-preview-main .sp-pos-toolbar select,
+.sales-preview-main .sp-toolbar input,
+.sales-preview-main .sp-pos-toolbar input{
+  height:26px;
+  font-size:9px;
+}
+
+/* KPI: always one row, lower height, same typography across open/closed panel */
+.sales-preview-main .sp-kpis{
+  display:grid!important;
+  gap:5px!important;
+  margin-bottom:6px!important;
+  overflow:visible!important;
+}
+.sales-preview-main .sp-kpis.seven{grid-template-columns:repeat(7,minmax(0,1fr))!important}
+.sales-preview-main .sp-kpis.five{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+.sales-preview-main .sp-kpis.four{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.sales-preview-main .sp-kpi{
+  min-width:0!important;
+  min-height:60px!important;
+  height:60px;
+  padding:6px 8px!important;
+  gap:0!important;
+}
+.sales-preview-main .sp-kpi span{
+  font-size:8.25px!important;
+  line-height:1.15!important;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.sales-preview-main .sp-kpi b{
+  margin:4px 0 2px!important;
+  font-size:15px!important;
+  line-height:1!important;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.sales-preview-main .sp-kpi small{
+  font-size:7.25px!important;
+  line-height:1.1!important;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* Dashboard cards: title + actions must remain on one row */
+.sales-preview-main .sp-overview-grid{
+  gap:5px;
+  margin-bottom:5px;
+}
+.sales-preview-main .sp-card-head{
+  min-height:32px;
+  height:32px;
+  padding:4px 7px;
+}
+.sales-preview-main .sp-card-head-inline{
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:space-between;
+  gap:7px;
+  white-space:nowrap;
+}
+.sales-preview-main .sp-card-head-inline>b{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--mynh-text);
+  font-size:9px;
+  font-weight:650;
+}
+.sales-preview-main .sp-card-head-inline>strong{
+  flex:0 0 auto;
+  font-size:9px;
+  white-space:nowrap;
+}
+.sales-preview-main .sp-card-head-inline>button{
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+.sales-preview-main .sp-card-actions{
+  flex:0 0 auto;
+  gap:4px;
+  white-space:nowrap;
+}
+.sales-preview-main .sp-card-actions>button,
+.sales-preview-main .sp-column-manager-wrap>.sp-btn{
+  height:24px!important;
+  padding:0 6px!important;
+  font-size:8px!important;
+}
+.sales-preview-main .sp-bars{
+  padding:4px 7px;
+}
+.sales-preview-main .sp-bars>div{
+  min-height:23px;
+  grid-template-columns:34px minmax(0,1fr) 82px;
+  gap:5px;
+}
+.sales-preview-main .sp-bars span{font-size:7px}
+.sales-preview-main .sp-bars b{font-size:7.3px}
+.sales-preview-main .sp-payment-ring{
+  min-height:145px;
+  grid-template-columns:88px 1fr;
+  gap:5px;
+  padding:6px;
+}
+.sales-preview-main .sp-donut{
+  width:78px;
+  height:78px;
+}
+.sales-preview-main .sp-donut:before{
+  width:54px;
+  height:54px;
+}
+.sales-preview-main .sp-donut b{font-size:14px}
+.sales-preview-main .sp-donut span{font-size:7px}
+.sales-preview-main .sp-legend{gap:5px}
+.sales-preview-main .sp-customer-row{
+  min-height:36px;
+  height:36px;
+  padding:3px 7px;
+}
+.sales-preview-main .sp-customer-row b{font-size:8px}
+.sales-preview-main .sp-customer-row small{font-size:6.8px}
+.sales-preview-main .sp-stock-alert{
+  min-height:35px;
+  height:35px;
+  margin:4px 5px;
+  padding:4px 6px;
+}
+.sales-preview-main .sp-stock-alert b{font-size:8px}
+.sales-preview-main .sp-stock-alert small{font-size:6.8px}
+.sales-preview-main .sp-stock-alert strong{font-size:12px}
+
+/* Tables: maximize visible row count */
+.sales-preview-main .sp-recent th,
+.sales-preview-main .sp-table-card th{
+  height:28px;
+  padding:0 7px;
+  font-size:8px;
+}
+.sales-preview-main .sp-recent td,
+.sales-preview-main .sp-table-card td{
+  height:34px;
+  padding:3px 7px;
+  font-size:8.7px;
+}
+.sales-preview-main .sp-recent td b,
+.sales-preview-main .sp-table-card td b{
+  font-size:8.5px;
+}
+.sales-preview-main .sp-recent td small,
+.sales-preview-main .sp-table-card td small{
+  font-size:7px;
+}
+
+/* POS: remove vertical waste, keep product/cart as primary canvas */
+.sales-preview-main .sp-section-title{
+  min-height:34px;
+  height:34px;
+  padding:4px 7px;
+}
+.sales-preview-main .sp-section-title-inline{
+  display:grid;
+  grid-template-columns:auto auto minmax(0,1fr);
+  align-items:center;
+  gap:7px;
+  white-space:nowrap;
+}
+.sales-preview-main .sp-section-title-inline>b{
+  color:var(--mynh-text);
+  font-size:9px;
+}
+.sales-preview-main .sp-section-title-inline>span{
+  color:var(--mynh-text-3);
+  font-size:7.5px;
+}
+.sales-preview-main .sp-section-title-inline>strong{
+  justify-self:end;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-size:7.5px;
+}
+.sales-preview-main .sp-product-grid{
+  gap:4px;
+  padding:4px;
+}
+.sales-preview-main .sp-product-grid>button{
+  min-height:82px;
+  padding:5px 7px;
+}
+.sales-preview-main .sp-product-grid b{font-size:8.8px}
+.sales-preview-main .sp-product-grid span{font-size:7.2px}
+.sales-preview-main .sp-product-grid footer{padding-top:4px}
+.sales-preview-main .sp-product-grid strong{font-size:10px}
+.sales-preview-main .sp-cart-head{
+  min-height:46px;
+  height:46px;
+  padding:6px 8px;
+}
+.sales-preview-main .sp-cart-head-compact>div{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:1px;
+  min-width:0;
+}
+.sales-preview-main .sp-cart-head-compact b{
+  color:var(--mynh-text);
+  font-size:9px;
+  white-space:nowrap;
+}
+.sales-preview-main .sp-cart-head-compact small{font-size:7px}
+.sales-preview-main .sp-cart-line{
+  min-height:46px;
+  height:46px;
+  grid-template-columns:minmax(0,1fr) 82px 90px;
+  padding:4px 6px;
+}
+.sales-preview-main .sp-cart-customer{
+  min-height:36px;
+  height:36px;
+  padding:4px 7px;
+}
+.sales-preview-main .sp-cart-summary{
+  padding:4px 7px;
+}
+.sales-preview-main .sp-cart-summary>div{
+  min-height:22px;
+}
+.sales-preview-main .sp-cart-summary .total{
+  min-height:38px;
+}
+.sales-preview-main .sp-cart-summary .total b{
+  font-size:16px;
+}
+.sales-preview-main .sp-pay-actions{
+  gap:3px;
+  padding:4px 7px;
+}
+.sales-preview-main .sp-pay-actions button{
+  height:31px;
+  font-size:7.5px;
+}
+
+/* Detail slidebars stay compact but keep the same font when opened */
+.sales-preview-main .sp-panel-head{
+  min-height:50px;
+  height:50px;
+  padding:7px 9px;
+}
+.sales-preview-main .sp-panel-head h2{font-size:12px}
+.sales-preview-main .sp-panel-tabs{
+  min-height:30px;
+  height:30px;
+  gap:14px;
+  padding:0 9px;
+}
+.sales-preview-main .sp-panel-tabs button{font-size:8.5px}
+.sales-preview-main .sp-panel-scroll{padding:7px 9px 12px}
+.sales-preview-main .sp-detail-grid>div{
+  min-height:42px;
+  padding:4px 6px;
+}
+.sales-preview-main .sp-money-box>div{
+  min-height:30px;
+  padding:0 7px;
+}
+.sales-preview-main .sp-mini-row{
+  min-height:38px;
+}
+
+/* 1440px and smaller: still one KPI row, never wrap */
+@media(max-width:1440px){
+  .sales-preview-main .sp-kpis.seven{grid-template-columns:repeat(7,minmax(0,1fr))!important}
+  .sales-preview-main .sp-kpis.five{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  .sales-preview-main .sp-kpis.four{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+  .sales-preview-main .sp-kpi b{font-size:14px!important}
+}
+@media(max-width:1120px){
+  .sales-preview-main .sp-kpis.seven{grid-template-columns:repeat(7,minmax(0,1fr))!important}
+  .sales-preview-main .sp-kpis.five{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+  .sales-preview-main .sp-kpis.four{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+}
