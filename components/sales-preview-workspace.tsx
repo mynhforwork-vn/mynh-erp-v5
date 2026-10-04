@@ -1,9 +1,43 @@
 'use client'
-import { useMemo,useState } from 'react'
+import { useEffect,useMemo,useState } from 'react'
 
 type View='overview'|'pos'|'history'|'customers'|'debt'
 type Sale={id:string,code:string,time:string,customer:string,phone:string,warehouse:string,total:number,paid:number,debt:number,status:'PAID'|'PARTIAL'|'UNPAID',method:string,items:number}
 type Customer={id:string,name:string,phone:string,address:string,orders:number,revenue:number,debt:number,last:string,status:'GOOD'|'DEBT'|'VIP'}
+type TableId='recent'|'history'|'customers'|'debt'
+type SortDir='asc'|'desc'
+type TablePrefs={order:string[],hidden:string[]}
+type DebtRow=Customer&{invoiceCount:number,oldest:string,lastPaid:string,risk:'high'|'medium'}
+
+const TABLE_COLUMNS:Record<TableId,{key:string,label:string}[]>={
+  recent:[
+    {key:'code',label:'Mã HĐ'},{key:'customer',label:'Khách hàng'},{key:'warehouse',label:'Kho'},
+    {key:'method',label:'Thanh toán'},{key:'total',label:'Tổng tiền'},{key:'paid',label:'Đã thu'},
+    {key:'debt',label:'Còn nợ'},{key:'status',label:'Trạng thái'},
+  ],
+  history:[
+    {key:'time',label:'Thời gian'},{key:'code',label:'Mã HĐ'},{key:'customer',label:'Khách hàng'},
+    {key:'warehouse',label:'Kho'},{key:'items',label:'SP'},{key:'method',label:'Phương thức'},
+    {key:'total',label:'Tổng tiền'},{key:'debt',label:'Còn nợ'},{key:'status',label:'Trạng thái'},
+  ],
+  customers:[
+    {key:'name',label:'Khách hàng'},{key:'phone',label:'SĐT'},{key:'address',label:'Địa chỉ'},
+    {key:'orders',label:'Số đơn'},{key:'revenue',label:'Doanh thu'},{key:'debt',label:'Công nợ'},
+    {key:'last',label:'Mua gần nhất'},{key:'status',label:'Nhóm'},
+  ],
+  debt:[
+    {key:'name',label:'Khách hàng'},{key:'phone',label:'SĐT'},{key:'invoiceCount',label:'HĐ nợ'},
+    {key:'debt',label:'Công nợ'},{key:'oldest',label:'Nợ cũ nhất'},{key:'lastPaid',label:'Thu gần nhất'},
+    {key:'risk',label:'Mức độ'},{key:'action',label:'Xử lý'},
+  ],
+}
+const DEFAULT_TABLE_PREFS:Record<TableId,TablePrefs>={
+  recent:{order:TABLE_COLUMNS.recent.map(x=>x.key),hidden:[]},
+  history:{order:TABLE_COLUMNS.history.map(x=>x.key),hidden:[]},
+  customers:{order:TABLE_COLUMNS.customers.map(x=>x.key),hidden:[]},
+  debt:{order:TABLE_COLUMNS.debt.map(x=>x.key),hidden:[]},
+}
+const SALES_TABLE_PREFS_KEY='mynh-sales-preview-table-prefs-v1'
 
 const money=(v:number)=>new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(v)
 const SALES:Sale[]=[
@@ -30,6 +64,39 @@ const PRODUCTS=[
   ['Mì Hảo Hảo','MI-HAOHAO','Gói',4500,84],
 ] as const
 
+function vnTimeValue(value:string){
+  const match=value.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?$/)
+  if(!match)return value
+  const [,d,m,y,h='00',min='00']=match
+  return new Date(Number(y),Number(m)-1,Number(d),Number(h),Number(min)).getTime()
+}
+function cmp(a:string|number,b:string|number){
+  if(typeof a==='number'&&typeof b==='number')return a-b
+  return String(a).localeCompare(String(b),'vi',{numeric:true,sensitivity:'base'})
+}
+function SortHead({table,col,sort,onSort}:{table:TableId,col:{key:string,label:string},sort:{key:string,dir:SortDir},onSort:(table:TableId,key:string)=>void}){
+  return <th><button className="sp-sort-head" type="button" onClick={()=>onSort(table,col.key)}><span>{col.label}</span>{sort.key===col.key&&<b>{sort.dir==='asc'?'↑':'↓'}</b>}</button></th>
+}
+function ColumnManager({table,prefs,open,setOpen,dragged,setDragged,onToggle,onMove,onReset}:{table:TableId,prefs:TablePrefs,open:boolean,setOpen:(table:TableId|null)=>void,dragged:{table:TableId,key:string}|null,setDragged:(v:{table:TableId,key:string}|null)=>void,onToggle:(table:TableId,key:string)=>void,onMove:(table:TableId,from:string,to:string)=>void,onReset:(table:TableId)=>void}){
+  const labels=new Map(TABLE_COLUMNS[table].map(x=>[x.key,x.label]))
+  return <div className="sp-column-manager-wrap">
+    <button className={'sp-btn '+(open?'active':'')} type="button" onClick={()=>setOpen(open?null:table)}>☷ Cột</button>
+    {open&&<div className="sp-column-menu" onClick={e=>e.stopPropagation()}>
+      <div className="sp-column-menu-head"><div><b>Hiển thị & thứ tự cột</b><span>Kéo ⋮⋮ để sắp xếp</span></div><button type="button" onClick={()=>onReset(table)}>Đặt lại</button></div>
+      <div className="sp-column-menu-list">{prefs.order.map(key=>{
+        const hidden=prefs.hidden.includes(key)
+        return <div className={'sp-column-menu-row '+(hidden?'hidden':'')} key={key} draggable
+          onDragStart={()=>setDragged({table,key})}
+          onDragOver={e=>e.preventDefault()}
+          onDrop={()=>{if(dragged?.table===table)onMove(table,dragged.key,key);setDragged(null)}}
+          onDragEnd={()=>setDragged(null)}>
+          <span className="sp-drag-handle">⋮⋮</span>
+          <label><input type="checkbox" checked={!hidden} onChange={()=>onToggle(table,key)}/><span>{labels.get(key)}</span></label>
+        </div>
+      })}</div>
+    </div>}
+  </div>
+}
 function Status({status}:{status:Sale['status']}){
   return <span className={'sp-status '+status.toLowerCase()}>{status==='PAID'?'Đã thanh toán':status==='PARTIAL'?'Một phần':'Chưa thanh toán'}</span>
 }
@@ -61,19 +128,158 @@ export function SalesPreviewWorkspace(){
   const [query,setQuery]=useState('')
   const [saleFilter,setSaleFilter]=useState<'ALL'|Sale['status']>('ALL')
   const [debtPanel,setDebtPanel]=useState<Customer|null>(null)
+  const [tablePrefs,setTablePrefs]=useState<Record<TableId,TablePrefs>>(DEFAULT_TABLE_PREFS)
+  const [tableSort,setTableSort]=useState<Record<TableId,{key:string,dir:SortDir}>>({
+    recent:{key:'code',dir:'desc'},history:{key:'time',dir:'desc'},customers:{key:'revenue',dir:'desc'},debt:{key:'debt',dir:'desc'},
+  })
+  const [columnMenu,setColumnMenu]=useState<TableId|null>(null)
+  const [draggedColumn,setDraggedColumn]=useState<{table:TableId,key:string}|null>(null)
   const [cart,setCart]=useState<{name:string,qty:number,price:number}[]>([
     {name:'OMO Matic 3kg',qty:1,price:289000},{name:'Dove 640g',qty:1,price:195000}
   ])
+
+  useEffect(()=>{
+    try{
+      const raw=localStorage.getItem(SALES_TABLE_PREFS_KEY)
+      if(raw){
+        const parsed=JSON.parse(raw) as Partial<Record<TableId,TablePrefs>>
+        setTablePrefs(prev=>{
+          const next={...prev}
+          ;(['recent','history','customers','debt'] as TableId[]).forEach(table=>{
+            const value=parsed[table]
+            const allowed=new Set(TABLE_COLUMNS[table].map(x=>x.key))
+            if(value&&Array.isArray(value.order)&&value.order.length===TABLE_COLUMNS[table].length&&value.order.every(x=>allowed.has(x))){
+              next[table]={order:value.order,hidden:Array.isArray(value.hidden)?value.hidden.filter(x=>allowed.has(x)):[]}
+            }
+          })
+          return next
+        })
+      }
+    }catch{}
+  },[])
+  useEffect(()=>{try{localStorage.setItem(SALES_TABLE_PREFS_KEY,JSON.stringify(tablePrefs))}catch{}},[tablePrefs])
+  useEffect(()=>{
+    const close=(event:MouseEvent)=>{if(!(event.target as HTMLElement).closest('.sp-column-manager-wrap'))setColumnMenu(null)}
+    const key=(event:KeyboardEvent)=>{if(event.key==='Escape')setColumnMenu(null)}
+    document.addEventListener('mousedown',close);window.addEventListener('keydown',key)
+    return ()=>{document.removeEventListener('mousedown',close);window.removeEventListener('keydown',key)}
+  },[])
+
+  function toggleColumn(table:TableId,key:string){
+    setTablePrefs(prev=>{
+      const current=prev[table]
+      if(current.hidden.includes(key))return {...prev,[table]:{...current,hidden:current.hidden.filter(x=>x!==key)}}
+      const visible=current.order.filter(x=>!current.hidden.includes(x))
+      if(visible.length<=1)return prev
+      return {...prev,[table]:{...current,hidden:[...current.hidden,key]}}
+    })
+  }
+  function moveColumn(table:TableId,from:string,to:string){
+    if(from===to)return
+    setTablePrefs(prev=>{
+      const current=prev[table],order=[...current.order],a=order.indexOf(from),b=order.indexOf(to)
+      if(a<0||b<0)return prev
+      order.splice(a,1);order.splice(b,0,from)
+      return {...prev,[table]:{...current,order}}
+    })
+  }
+  function resetColumns(table:TableId){setTablePrefs(prev=>({...prev,[table]:DEFAULT_TABLE_PREFS[table]}))}
+  function changeSort(table:TableId,key:string){
+    setTableSort(prev=>({...prev,[table]:prev[table].key===key?{key,dir:prev[table].dir==='asc'?'desc':'asc'}:{key,dir:'asc'}}))
+  }
+  function visibleColumns(table:TableId){return tablePrefs[table].order.filter(key=>!tablePrefs[table].hidden.includes(key)).map(key=>TABLE_COLUMNS[table].find(x=>x.key===key)!)}
+  function saleValue(row:Sale,key:string){
+    if(key==='time')return vnTimeValue(row.time)
+    if(key==='code')return row.code
+    if(key==='customer')return row.customer
+    if(key==='warehouse')return row.warehouse
+    if(key==='items')return row.items
+    if(key==='method')return row.method
+    if(key==='total')return row.total
+    if(key==='paid')return row.paid
+    if(key==='debt')return row.debt
+    if(key==='status')return row.status
+    return ''
+  }
+  function sortedSales(rows:Sale[],table:'recent'|'history'){
+    const sort=tableSort[table]
+    return [...rows].sort((a,b)=>(sort.dir==='asc'?1:-1)*cmp(saleValue(a,sort.key),saleValue(b,sort.key)))
+  }
+  function customerValue(row:Customer,key:string){
+    if(key==='name')return row.name
+    if(key==='phone')return row.phone
+    if(key==='address')return row.address
+    if(key==='orders')return row.orders
+    if(key==='revenue')return row.revenue
+    if(key==='debt')return row.debt
+    if(key==='last')return vnTimeValue(row.last)
+    if(key==='status')return row.status
+    return ''
+  }
 
   const filteredSales=useMemo(()=>SALES.filter(s=>{
     if(saleFilter!=='ALL'&&s.status!==saleFilter)return false
     if(query&&!([s.code,s.customer,s.phone,s.method].join(' ').toLowerCase().includes(query.toLowerCase())))return false
     return true
   }),[query,saleFilter])
+  const historyRows=useMemo(()=>sortedSales(filteredSales,'history'),[filteredSales,tableSort.history])
+  const recentRows=useMemo(()=>sortedSales(SALES.slice(0,5),'recent'),[tableSort.recent])
+  const customerRows=useMemo(()=>{
+    const sort=tableSort.customers
+    return [...CUSTOMERS].sort((a,b)=>(sort.dir==='asc'?1:-1)*cmp(customerValue(a,sort.key),customerValue(b,sort.key)))
+  },[tableSort.customers])
+  const debtRows=useMemo(()=>{
+    const rows:DebtRow[]=CUSTOMERS.filter(c=>c.debt>0).map((c,i)=>({...c,invoiceCount:i+1,oldest:i===1?'25/09/2026':'01/10/2026',lastPaid:i===1?'—':'01/10/2026 10:20',risk:i===1?'high':'medium'}))
+    const sort=tableSort.debt
+    const value=(row:DebtRow,key:string):string|number=>{
+      if(key==='name')return row.name
+      if(key==='phone')return row.phone
+      if(key==='invoiceCount')return row.invoiceCount
+      if(key==='debt')return row.debt
+      if(key==='oldest')return vnTimeValue(row.oldest)
+      if(key==='lastPaid')return row.lastPaid==='—'?0:vnTimeValue(row.lastPaid)
+      if(key==='risk')return row.risk
+      return ''
+    }
+    return rows.sort((a,b)=>(sort.dir==='asc'?1:-1)*cmp(value(a,sort.key),value(b,sort.key)))
+  },[tableSort.debt])
   const cartTotal=cart.reduce((sum,x)=>sum+x.qty*x.price,0)
   const revenue=SALES.reduce((s,x)=>s+x.total,0)
   const collected=SALES.reduce((s,x)=>s+x.paid,0)
   const debt=SALES.reduce((s,x)=>s+x.debt,0)
+
+  function saleCell(row:Sale,key:string,compact=false){
+    if(key==='time')return <td key={key}>{row.time}</td>
+    if(key==='code')return <td key={key}><b>{row.code}</b>{compact&&<small>{row.time}</small>}</td>
+    if(key==='customer')return <td key={key}><b>{row.customer}</b>{!compact&&<small>{row.phone}</small>}</td>
+    if(key==='warehouse')return <td key={key}>{row.warehouse}</td>
+    if(key==='items')return <td key={key}>{row.items}</td>
+    if(key==='method')return <td key={key}>{row.method}</td>
+    if(key==='total')return <td key={key} className="money">{money(row.total)}</td>
+    if(key==='paid')return <td key={key} className="income">{money(row.paid)}</td>
+    if(key==='debt')return <td key={key} className={row.debt?'expense':''}>{row.debt?money(row.debt):'—'}</td>
+    return <td key={key}><Status status={row.status}/></td>
+  }
+  function customerCell(row:Customer,key:string){
+    if(key==='name')return <td key={key}><b>{row.name}</b></td>
+    if(key==='phone')return <td key={key}>{row.phone}</td>
+    if(key==='address')return <td key={key}>{row.address}</td>
+    if(key==='orders')return <td key={key}>{row.orders}</td>
+    if(key==='revenue')return <td key={key} className="income">{money(row.revenue)}</td>
+    if(key==='debt')return <td key={key} className={row.debt?'expense':''}>{row.debt?money(row.debt):'—'}</td>
+    if(key==='last')return <td key={key}>{row.last}</td>
+    return <td key={key}><span className={'sp-customer-tag '+row.status.toLowerCase()}>{row.status==='VIP'?'VIP':row.status==='DEBT'?'Đang nợ':'Ổn định'}</span></td>
+  }
+  function debtCell(row:DebtRow,key:string){
+    if(key==='name')return <td key={key}><b>{row.name}</b><small>{row.address}</small></td>
+    if(key==='phone')return <td key={key}>{row.phone}</td>
+    if(key==='invoiceCount')return <td key={key}>{row.invoiceCount}</td>
+    if(key==='debt')return <td key={key} className="expense"><b>{money(row.debt)}</b></td>
+    if(key==='oldest')return <td key={key}>{row.oldest}</td>
+    if(key==='lastPaid')return <td key={key}>{row.lastPaid}</td>
+    if(key==='risk')return <td key={key}><span className={'sp-risk '+row.risk}>{row.risk==='high'?'Ưu tiên':'Theo dõi'}</span></td>
+    return <td key={key}><button className="sp-btn small primary" onClick={e=>{e.stopPropagation();setDebtPanel(row)}}>Thu nợ</button></td>
+  }
 
   const openView=(next:View)=>{setView(next);setSelectedSale(null);setSelectedCustomer(null);setDebtPanel(null)}
   const salesNav:[View,string,'sales'|'pos'|'history'|'customer'|'debt'][]=[
@@ -180,10 +386,10 @@ export function SalesPreviewWorkspace(){
         </section>
       </div>
       <section className="sp-card sp-recent">
-        <div className="sp-card-head"><div><b>Giao dịch gần nhất</b><span>Click để mở chi tiết</span></div><button onClick={()=>setView('history')}>Mở lịch sử</button></div>
-        <table><thead><tr><th>Mã HĐ</th><th>Khách hàng</th><th>Kho</th><th>Thanh toán</th><th>Tổng tiền</th><th>Đã thu</th><th>Còn nợ</th><th>Trạng thái</th></tr></thead>
-          <tbody>{SALES.slice(0,5).map(s=><tr key={s.id} onClick={()=>{setSelectedSale(s);setView('history')}}><td><b>{s.code}</b><small>{s.time}</small></td><td>{s.customer}</td><td>{s.warehouse}</td><td>{s.method}</td><td>{money(s.total)}</td><td className="income">{money(s.paid)}</td><td className={s.debt?'expense':''}>{s.debt?money(s.debt):'—'}</td><td><Status status={s.status}/></td></tr>)}</tbody>
-        </table>
+        <div className="sp-card-head"><div><b>Giao dịch gần nhất</b><span>Click tiêu đề để sắp xếp · kéo cột trong menu Cột</span></div><div className="sp-card-actions"><button onClick={()=>setView('history')}>Mở lịch sử</button><ColumnManager table="recent" prefs={tablePrefs.recent} open={columnMenu==='recent'} setOpen={setColumnMenu} dragged={draggedColumn} setDragged={setDraggedColumn} onToggle={toggleColumn} onMove={moveColumn} onReset={resetColumns}/></div></div>
+        <div className="sp-table-scroll"><table><thead><tr>{visibleColumns('recent').map(col=><SortHead key={col.key} table="recent" col={col} sort={tableSort.recent} onSort={changeSort}/>)}</tr></thead>
+          <tbody>{recentRows.map(row=><tr key={row.id} onClick={()=>{setSelectedSale(row);setView('history')}}>{visibleColumns('recent').map(col=>saleCell(row,col.key,true))}</tr>)}</tbody>
+        </table></div>
       </section>
     </div>}
 
@@ -223,8 +429,8 @@ export function SalesPreviewWorkspace(){
           <Kpi tone="red" label="Chưa thanh toán" value="11" sub="Cần theo dõi"/>
           <Kpi tone="purple" label="Doanh thu" value={money(48260000)} sub="Tháng này"/>
         </section>
-        <div className="sp-toolbar"><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tìm mã hóa đơn / khách hàng / SĐT..."/><select value={saleFilter} onChange={e=>setSaleFilter(e.target.value as any)}><option value="ALL">Tất cả trạng thái</option><option value="PAID">Đã thanh toán</option><option value="PARTIAL">Một phần</option><option value="UNPAID">Chưa thanh toán</option></select><select><option>Tất cả kho</option></select><button className="sp-btn">Cột</button></div>
-        <section className="sp-card sp-table-card"><table><thead><tr><th>Thời gian</th><th>Mã HĐ</th><th>Khách hàng</th><th>Kho</th><th>SP</th><th>Phương thức</th><th>Tổng tiền</th><th>Còn nợ</th><th>Trạng thái</th></tr></thead><tbody>{filteredSales.map(s=><tr key={s.id} className={selectedSale?.id===s.id?'selected':''} onClick={()=>setSelectedSale(s)}><td>{s.time}</td><td><b>{s.code}</b></td><td><b>{s.customer}</b><small>{s.phone}</small></td><td>{s.warehouse}</td><td>{s.items}</td><td>{s.method}</td><td className="money">{money(s.total)}</td><td className={s.debt?'expense':''}>{s.debt?money(s.debt):'—'}</td><td><Status status={s.status}/></td></tr>)}</tbody></table></section>
+        <div className="sp-toolbar"><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tìm mã hóa đơn / khách hàng / SĐT..."/><select value={saleFilter} onChange={e=>setSaleFilter(e.target.value as any)}><option value="ALL">Tất cả trạng thái</option><option value="PAID">Đã thanh toán</option><option value="PARTIAL">Một phần</option><option value="UNPAID">Chưa thanh toán</option></select><select><option>Tất cả kho</option></select><ColumnManager table="history" prefs={tablePrefs.history} open={columnMenu==='history'} setOpen={setColumnMenu} dragged={draggedColumn} setDragged={setDraggedColumn} onToggle={toggleColumn} onMove={moveColumn} onReset={resetColumns}/></div>
+        <section className="sp-card sp-table-card"><div className="sp-table-scroll"><table><thead><tr>{visibleColumns('history').map(col=><SortHead key={col.key} table="history" col={col} sort={tableSort.history} onSort={changeSort}/>)}</tr></thead><tbody>{historyRows.map(row=><tr key={row.id} className={selectedSale?.id===row.id?'selected':''} onClick={()=>setSelectedSale(row)}>{visibleColumns('history').map(col=>saleCell(row,col.key))}</tr>)}</tbody></table></div></section>
       </main>
       {selectedSale&&<aside className="sp-slidebar"><div className="sp-panel-head"><div><span>CHI TIẾT HÓA ĐƠN</span><h2>{selectedSale.code}</h2><p>{selectedSale.customer} · {selectedSale.time}</p></div><button onClick={()=>setSelectedSale(null)}>×</button></div><div className="sp-panel-tabs"><button className="active">Thông tin</button><button>Thanh toán</button><button>Lịch sử</button></div><div className="sp-panel-scroll"><div className="sp-detail-grid"><div><span>Khách hàng</span><b>{selectedSale.customer}</b></div><div><span>Kho bán</span><b>{selectedSale.warehouse}</b></div><div><span>Phương thức</span><b>{selectedSale.method}</b></div><div><span>Trạng thái</span><Status status={selectedSale.status}/></div></div><div className="sp-money-box"><div><span>Tổng hóa đơn</span><b>{money(selectedSale.total)}</b></div><div className="income"><span>Đã thu</span><b>{money(selectedSale.paid)}</b></div><div className="expense"><span>Còn nợ</span><b>{money(selectedSale.debt)}</b></div></div><div className="sp-panel-section"><b>Sản phẩm</b>{PRODUCTS.slice(0,selectedSale.items>3?3:2).map(p=><div className="sp-mini-row" key={p[1]}><span><b>{p[0]}</b><small>{p[1]} · {p[2]}</small></span><strong>{money(p[3] as number)}</strong></div>)}</div></div></aside>}
     </div>}
@@ -240,8 +446,8 @@ export function SalesPreviewWorkspace(){
           <Kpi tone="amber" label="Khách đang nợ" value="27" sub={money(2860000)}/>
           <Kpi tone="red" label="Nợ từ 7 ngày" value="6" sub="Cần xử lý"/>
         </section>
-        <div className="sp-toolbar"><input placeholder="Tìm tên / SĐT / địa chỉ..."/><select><option>Tất cả khách</option><option>Đang nợ</option><option>VIP</option></select><button className="sp-btn">Cột</button></div>
-        <section className="sp-card sp-table-card"><table><thead><tr><th>Khách hàng</th><th>SĐT</th><th>Địa chỉ</th><th>Số đơn</th><th>Doanh thu</th><th>Công nợ</th><th>Mua gần nhất</th><th>Nhóm</th></tr></thead><tbody>{CUSTOMERS.map(c=><tr key={c.id} className={selectedCustomer?.id===c.id?'selected':''} onClick={()=>setSelectedCustomer(c)}><td><b>{c.name}</b></td><td>{c.phone}</td><td>{c.address}</td><td>{c.orders}</td><td className="income">{money(c.revenue)}</td><td className={c.debt?'expense':''}>{c.debt?money(c.debt):'—'}</td><td>{c.last}</td><td><span className={'sp-customer-tag '+c.status.toLowerCase()}>{c.status==='VIP'?'VIP':c.status==='DEBT'?'Đang nợ':'Ổn định'}</span></td></tr>)}</tbody></table></section>
+        <div className="sp-toolbar"><input placeholder="Tìm tên / SĐT / địa chỉ..."/><select><option>Tất cả khách</option><option>Đang nợ</option><option>VIP</option></select><ColumnManager table="customers" prefs={tablePrefs.customers} open={columnMenu==='customers'} setOpen={setColumnMenu} dragged={draggedColumn} setDragged={setDraggedColumn} onToggle={toggleColumn} onMove={moveColumn} onReset={resetColumns}/></div>
+        <section className="sp-card sp-table-card"><div className="sp-table-scroll"><table><thead><tr>{visibleColumns('customers').map(col=><SortHead key={col.key} table="customers" col={col} sort={tableSort.customers} onSort={changeSort}/>)}</tr></thead><tbody>{customerRows.map(row=><tr key={row.id} className={selectedCustomer?.id===row.id?'selected':''} onClick={()=>setSelectedCustomer(row)}>{visibleColumns('customers').map(col=>customerCell(row,col.key))}</tr>)}</tbody></table></div></section>
       </main>
       {selectedCustomer&&<aside className="sp-slidebar"><div className="sp-panel-head"><div><span>KHÁCH HÀNG</span><h2>{selectedCustomer.name}</h2><p>{selectedCustomer.phone} · {selectedCustomer.address}</p></div><button onClick={()=>setSelectedCustomer(null)}>×</button></div><div className="sp-panel-tabs"><button className="active">Tổng quan</button><button>Lịch sử mua</button><button>Công nợ</button></div><div className="sp-panel-scroll"><div className="sp-customer-summary"><Kpi tone="blue" label="Số đơn" value={String(selectedCustomer.orders)} sub="Toàn thời gian"/><Kpi tone="green" label="Doanh thu" value={money(selectedCustomer.revenue)} sub="Tổng mua"/><Kpi tone={selectedCustomer.debt?'amber':'green'} label="Công nợ" value={money(selectedCustomer.debt)} sub={selectedCustomer.debt?'Cần theo dõi':'Không nợ'}/></div><div className="sp-panel-section"><b>Giao dịch gần đây</b>{SALES.filter(s=>s.customer===selectedCustomer.name).map(s=><div className="sp-mini-row" key={s.id}><span><b>{s.code}</b><small>{s.time}</small></span><strong>{money(s.total)}</strong></div>)}</div></div></aside>}
     </div>}
@@ -257,8 +463,8 @@ export function SalesPreviewWorkspace(){
           <Kpi tone="green" label="Đã thu hôm nay" value={money(1250000)} sub="8 phiếu thu"/>
           <Kpi tone="blue" label="Thu trong tháng" value={money(14380000)} sub="92 phiếu thu"/>
         </section>
-        <div className="sp-toolbar"><input placeholder="Tìm khách / SĐT / mã hóa đơn..."/><select><option>Tất cả công nợ</option><option>Nợ một phần</option><option>Nợ từ 7 ngày</option></select><button className="sp-btn">Bộ lọc</button></div>
-        <section className="sp-card sp-table-card"><table><thead><tr><th>Khách hàng</th><th>SĐT</th><th>HĐ nợ</th><th>Công nợ</th><th>Nợ cũ nhất</th><th>Thu gần nhất</th><th>Mức độ</th><th>Xử lý</th></tr></thead><tbody>{CUSTOMERS.filter(c=>c.debt>0).map((c,i)=><tr key={c.id}><td><b>{c.name}</b><small>{c.address}</small></td><td>{c.phone}</td><td>{i+1}</td><td className="expense"><b>{money(c.debt)}</b></td><td>{i===1?'25/09/2026':'01/10/2026'}</td><td>{i===1?'—':'01/10/2026 10:20'}</td><td><span className={'sp-risk '+(i===1?'high':'medium')}>{i===1?'Ưu tiên':'Theo dõi'}</span></td><td><button className="sp-btn small primary" onClick={()=>setDebtPanel(c)}>Thu nợ</button></td></tr>)}</tbody></table></section>
+        <div className="sp-toolbar"><input placeholder="Tìm khách / SĐT / mã hóa đơn..."/><select><option>Tất cả công nợ</option><option>Nợ một phần</option><option>Nợ từ 7 ngày</option></select><button className="sp-btn">Bộ lọc</button><ColumnManager table="debt" prefs={tablePrefs.debt} open={columnMenu==='debt'} setOpen={setColumnMenu} dragged={draggedColumn} setDragged={setDraggedColumn} onToggle={toggleColumn} onMove={moveColumn} onReset={resetColumns}/></div>
+        <section className="sp-card sp-table-card"><div className="sp-table-scroll"><table><thead><tr>{visibleColumns('debt').map(col=><SortHead key={col.key} table="debt" col={col} sort={tableSort.debt} onSort={changeSort}/>)}</tr></thead><tbody>{debtRows.map(row=><tr key={row.id}>{visibleColumns('debt').map(col=>debtCell(row,col.key))}</tr>)}</tbody></table></div></section>
       </main>
       {debtPanel&&<aside className="sp-slidebar"><div className="sp-panel-head amber"><div><span>THU CÔNG NỢ</span><h2>{debtPanel.name}</h2><p>{debtPanel.phone}</p></div><button onClick={()=>setDebtPanel(null)}>×</button></div><div className="sp-panel-tabs"><button className="active">Thu tiền</button><button>Phân bổ</button><button>Lịch sử</button></div><div className="sp-panel-scroll"><div className="sp-debt-total"><span>Số tiền cần thu</span><b>{money(debtPanel.debt)}</b><small>2 hóa đơn còn công nợ</small></div><div className="sp-payment-methods"><button className="active">Tiền mặt</button><button>Chuyển khoản</button><button>Kết hợp</button></div><div className="sp-panel-section"><b>Phân bổ vào hóa đơn</b><div className="sp-mini-row"><span><b>POS-261002-00128</b><small>02/10/2026 20:16</small></span><strong>{money(debtPanel.debt)}</strong></div></div><div className="sp-panel-actions"><button className="sp-btn">In phiếu thu</button><button className="sp-btn primary">Xác nhận thu {money(debtPanel.debt)}</button></div></div></aside>}
     </div>}
