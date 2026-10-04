@@ -539,50 +539,55 @@ export function SalesPreviewWorkspace(){
 
     {view==='overview'&&<div className="sp-screen">
       <Header title="Tổng quan bán hàng" desc="Doanh thu, dòng tiền, khách hàng và cảnh báo bán hàng trên cùng một màn hình"
-        actions={<><button className="sp-btn">Lịch sử bán</button><button className="sp-btn primary" onClick={()=>setView('pos')}>Mở POS</button></>}/>
-      <div className="sp-period"><button className="active">Toàn thời gian</button><button>Hôm nay</button><button>7 ngày</button><button>Tháng này</button><select><option>Tất cả kho</option><option>Kho HN</option><option>Kho BG</option></select></div>
+        actions={<><button className="sp-btn" onClick={()=>setView('history')}>Lịch sử bán</button><button className="sp-btn primary" onClick={()=>setView('pos')}>Mở POS</button></>}/>
+      <div className="sp-period sp-dashboard-filter">
+        {([['all','Toàn thời gian'],['today','Hôm nay'],['7d','7 ngày'],['month','Tháng này'],['custom','Tùy chọn']] as [Period,string][]).map(([key,label])=><button key={key} className={dashboardPeriod===key?'active':''} onClick={()=>setDashboardPeriodSafe(key)}>{label}</button>)}
+        {dashboardPeriod==='custom'&&<div className="sp-custom-range"><input type="date" value={dashboardFrom} onChange={e=>setDashboardFrom(e.target.value)}/><span>→</span><input type="date" value={dashboardTo} onChange={e=>setDashboardTo(e.target.value)}/></div>}
+        <select value={dashboardWarehouse} onChange={e=>setDashboardWarehouse(e.target.value as any)}><option value="ALL">Tất cả kho</option><option value="HN">HN · Hà Nội</option><option value="BG">BG · Bắc Giang</option></select>
+        <strong className="sp-filter-result">{dashboardSales.length} HĐ</strong>
+      </div>
       <section className="sp-kpis seven">
-        <Kpi tone="blue" label="Doanh thu" value={money(revenue)} sub="6 hóa đơn"/>
-        <Kpi tone="green" label="Đã thu" value={money(collected)} sub="Tiền thực nhận"/>
-        <Kpi tone="amber" label="Công nợ mới" value={money(debt)} sub="3 khách đang nợ" onClick={()=>setView('debt')}/>
-        <Kpi tone="purple" label="Khách mua" value="5" sub="4 khách có hồ sơ"/>
-        <Kpi tone="cyan" label="Sản phẩm bán" value="22" sub="6 SKU"/>
-        <Kpi tone="navy" label="Giá trị TB/HĐ" value={money(Math.round(revenue/SALES.length))} sub="Trung bình"/>
-        <Kpi tone="red" label="Tồn thấp" value="2" sub="Cần bổ sung"/>
+        <Kpi tone="blue" label="Doanh thu" value={money(dashboardRevenue)} sub={dashboardSales.length+' hóa đơn'}/>
+        <Kpi tone="green" label="Đã thu" value={money(dashboardCollected)} sub={dashboardCollectedRate+'% doanh thu'}/>
+        <Kpi tone="amber" label="Công nợ" value={money(dashboardDebt)} sub={dashboardSales.filter(x=>x.debt>0).length+' HĐ còn nợ'} onClick={()=>setView('debt')}/>
+        <Kpi tone="purple" label="Khách mua" value={String(dashboardCustomerCount)} sub="Có hồ sơ"/>
+        <Kpi tone="cyan" label="Sản phẩm bán" value={String(dashboardUnits)} sub="Tổng số lượng"/>
+        <Kpi tone="navy" label="Giá trị TB/HĐ" value={money(dashboardSales.length?Math.round(dashboardRevenue/dashboardSales.length):0)} sub="Trung bình"/>
+        <Kpi tone="red" label="Tồn thấp" value={dashboardWarehouse==='BG'?'1':'2'} sub="Cần bổ sung"/>
       </section>
       <div className="sp-overview-grid">
         <section className="sp-card revenue-card">
-          <div className="sp-card-head sp-card-head-inline"><b>Doanh thu theo ngày</b><strong>{money(revenue)}</strong></div>
+          <div className="sp-card-head sp-card-head-inline"><b>Doanh thu theo ngày</b><strong>{money(dashboardRevenue)}</strong></div>
           <div className="sp-bars">
-            {[['27/09',620000],['28/09',980000],['29/09',1340000],['30/09',890000],['01/10',1580000],['02/10',3651000]].map(([d,v])=><div key={d as string}><span>{d}</span><i><em style={{width:(Number(v)/3651000*100)+'%'}}/></i><b>{money(Number(v))}</b></div>)}
+            {!dashboardDaily.length?<div className="sp-empty compact">Không có doanh thu trong bộ lọc.</div>:dashboardDaily.map(([day,value])=><div key={day}><span>{day.slice(8,10)+'/'+day.slice(5,7)}</span><i><em style={{width:(value/dashboardMaxDay*100)+'%'}}/></i><b>{money(value)}</b></div>)}
           </div>
         </section>
         <section className="sp-card payment-card">
           <div className="sp-card-head sp-card-head-inline"><b>Tình trạng thanh toán</b></div>
           <div className="sp-payment-ring">
-            <div className="sp-donut"><b>71%</b><span>đã thu</span></div>
+            <div className="sp-donut" style={{background:`conic-gradient(var(--mynh-success) 0 ${dashboardSales.length?dashboardPaidCount/dashboardSales.length*100:0}%, #D89B32 ${dashboardSales.length?dashboardPaidCount/dashboardSales.length*100:0}% ${dashboardSales.length?(dashboardPaidCount+dashboardPartialCount)/dashboardSales.length*100:0}%, var(--mynh-danger) ${dashboardSales.length?(dashboardPaidCount+dashboardPartialCount)/dashboardSales.length*100:0}% 100%)`}}><b>{dashboardCollectedRate}%</b><span>đã thu</span></div>
             <div className="sp-legend">
-              <div className="green"><i/><span>Đã thanh toán</span><b>3 HĐ</b></div>
-              <div className="amber"><i/><span>Một phần</span><b>2 HĐ</b></div>
-              <div className="red"><i/><span>Chưa thanh toán</span><b>1 HĐ</b></div>
+              <div className="green"><i/><span>Đã thanh toán</span><b>{dashboardPaidCount} HĐ</b></div>
+              <div className="amber"><i/><span>Một phần</span><b>{dashboardPartialCount} HĐ</b></div>
+              <div className="red"><i/><span>Chưa thanh toán</span><b>{dashboardUnpaidCount} HĐ</b></div>
             </div>
           </div>
         </section>
         <section className="sp-card customer-card">
           <div className="sp-card-head sp-card-head-inline"><b>Khách hàng cần chú ý</b><button onClick={()=>setView('customers')}>Xem tất cả</button></div>
-          {CUSTOMERS.slice(0,4).map(c=><div className="sp-customer-row" key={c.id}><span><b>{c.name}</b><small>{c.phone} · {c.orders} đơn</small></span><span className={c.debt?'debt':'ok'}><b>{c.debt?money(c.debt):'Không nợ'}</b><small>{c.status==='VIP'?'Khách VIP':c.debt?'Cần theo dõi':'Ổn định'}</small></span></div>)}
+          {CUSTOMERS.filter(c=>c.debt>0||c.status==='VIP').slice(0,4).map(c=><div className="sp-customer-row" key={c.id}><span><b>{c.name}</b><small>{c.phone} · {c.orders} đơn</small></span><span className={c.debt?'debt':'ok'}><b>{c.debt?money(c.debt):'Không nợ'}</b><small>{c.status==='VIP'?'Khách VIP':c.debt?'Cần theo dõi':'Ổn định'}</small></span></div>)}
         </section>
         <section className="sp-card stock-card">
           <div className="sp-card-head sp-card-head-inline"><b>Cảnh báo tồn bán</b></div>
-          <div className="sp-stock-alert red"><span><b>Sunlight 750g</b><small>SUN-750 · Kho HN</small></span><strong>4</strong></div>
-          <div className="sp-stock-alert amber"><span><b>Ensure Gold 850g</b><small>ENS-850 · Kho BG</small></span><strong>6</strong></div>
-          <div className="sp-stock-alert green"><span><b>Dove 640g</b><small>DOVE-640 · Kho HN</small></span><strong>11</strong></div>
+          {(dashboardWarehouse==='ALL'||dashboardWarehouse==='HN')&&<div className="sp-stock-alert red"><span><b>Sunlight 750g</b><small>SUN-750 · Kho HN</small></span><strong>4</strong></div>}
+          {(dashboardWarehouse==='ALL'||dashboardWarehouse==='BG')&&<div className="sp-stock-alert amber"><span><b>Ensure Gold 850g</b><small>ENS-850 · Kho BG</small></span><strong>6</strong></div>}
+          {(dashboardWarehouse==='ALL'||dashboardWarehouse==='HN')&&<div className="sp-stock-alert green"><span><b>Dove 640g</b><small>DOVE-640 · Kho HN</small></span><strong>11</strong></div>}
         </section>
       </div>
       <section className="sp-card sp-recent">
         <div className="sp-card-head sp-card-head-inline"><b>Giao dịch gần nhất</b><div className="sp-card-actions"><button onClick={()=>setView('history')}>Mở lịch sử</button><ColumnManager table="recent" prefs={tablePrefs.recent} open={columnMenu==='recent'} setOpen={setColumnMenu} dragged={draggedColumn} setDragged={setDraggedColumn} onToggle={toggleColumn} onMove={moveColumn} onReset={resetColumns}/></div></div>
         <div className="sp-table-scroll"><table><thead><tr>{visibleColumns('recent').map(col=><SortHead key={col.key} table="recent" col={col} sort={tableSort.recent} onSort={changeSort}/>)}</tr></thead>
-          <tbody>{recentRows.map(row=><tr key={row.id} onClick={()=>{setSelectedSale(row);setSalePanelTab('INFO');setView('history')}}>{visibleColumns('recent').map(col=>saleCell(row,col.key,true))}</tr>)}</tbody>
+          <tbody>{!recentRows.length?<tr><td colSpan={visibleColumns('recent').length} className="sp-empty">Không có giao dịch phù hợp.</td></tr>:recentRows.map(row=><tr key={row.id} onClick={()=>{setSelectedSale(row);setSalePanelTab('INFO');setView('history')}}>{visibleColumns('recent').map(col=>saleCell(row,col.key,true))}</tr>)}</tbody>
         </table></div>
       </section>
     </div>}
