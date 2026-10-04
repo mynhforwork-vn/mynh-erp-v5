@@ -414,7 +414,7 @@ export function SalesPreviewWorkspace(){
       <div className="sp-pos-grid">
         <section className="sp-products">
           <div className="sp-section-title sp-section-title-inline"><b>Sản phẩm đang bán</b><span>Kho HN · 148 SKU có tồn</span><strong>Chọn để thêm vào giỏ</strong></div>
-          <div className="sp-product-grid">{PRODUCTS.map(p=><button key={p[1]} onClick={()=>setCart(prev=>[...prev,{name:p[0],qty:1,price:p[3]}])} className={(p[4] as number)<=6?'low':''}><div><b>{p[0]}</b><span>{p[2]}</span></div><small>{p[1]}</small><footer><strong>{money(p[3] as number)}</strong><em>{p[4]} tồn</em></footer></button>)}</div>
+          <div className="sp-product-grid">{PRODUCTS.map(p=><button key={p[1]} onClick={()=>setCart(prev=>[...prev,{name:p[0],qty:1,price:p[3]}])} className={(p[4] as number)<=6?'low':''}><div className="sp-product-title"><b>{p[0]}</b><span>{p[2]}</span></div><div className="sp-product-meta"><code>{p[1]}</code><strong>{money(p[3] as number)}</strong><em>{p[4]} tồn</em></div></button>)}</div>
         </section>
         <aside className="sp-cart">
           <div className="sp-cart-head sp-cart-head-compact"><div><b>Hóa đơn hiện tại · {cart.reduce((s,x)=>s+x.qty,0)} SP</b><small>Khách lẻ · Kho HN</small></div><button onClick={()=>setCart([])}>Xóa giỏ</button></div>
