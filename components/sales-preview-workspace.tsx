@@ -676,39 +676,63 @@ export function SalesPreviewWorkspace(){
 
     {view==='history'&&<div className={'sp-screen sp-with-panel '+(selectedSale?'open':'')}>
       <main>
-        <Header title="Lịch sử bán" desc="Tra cứu hóa đơn, thanh toán và công nợ phát sinh"
+        <Header title="Lịch sử bán" desc="Tra cứu hóa đơn POS, sản phẩm, thanh toán và lịch sử sau bán"
           actions={<button className="sp-btn primary" onClick={()=>setView('pos')}>+ Bán hàng</button>}/>
         <section className="sp-kpis five">
-          <Kpi tone="blue" label="Tổng hóa đơn" value="128" sub="Tháng này"/>
-          <Kpi tone="green" label="Đã thanh toán" value="96" sub="75%"/>
-          <Kpi tone="amber" label="Một phần" value="21" sub="Còn công nợ"/>
-          <Kpi tone="red" label="Chưa thanh toán" value="11" sub="Cần theo dõi"/>
-          <Kpi tone="purple" label="Doanh thu" value={money(48260000)} sub="Tháng này"/>
+          <Kpi tone="blue" label="Tổng hóa đơn" value={String(filteredSales.length)} sub={historyPeriod==='all'?'Toàn thời gian':'Theo bộ lọc'}/>
+          <Kpi tone="green" label="Đã thanh toán" value={String(filteredSales.filter(x=>x.status==='PAID').length)} sub="Đã thu đủ"/>
+          <Kpi tone="amber" label="Một phần" value={String(filteredSales.filter(x=>x.status==='PARTIAL').length)} sub="Còn công nợ"/>
+          <Kpi tone="red" label="Chưa thanh toán" value={String(filteredSales.filter(x=>x.status==='UNPAID').length)} sub="Cần theo dõi"/>
+          <Kpi tone="purple" label="Doanh thu" value={money(historyRevenue)} sub="Theo bộ lọc"/>
         </section>
-        <div className="sp-toolbar"><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tìm mã hóa đơn / khách hàng / SĐT..."/><select value={saleFilter} onChange={e=>setSaleFilter(e.target.value as any)}><option value="ALL">Tất cả trạng thái</option><option value="PAID">Đã thanh toán</option><option value="PARTIAL">Một phần</option><option value="UNPAID">Chưa thanh toán</option></select><select><option>Tất cả kho</option></select><ColumnManager table="history" prefs={tablePrefs.history} open={columnMenu==='history'} setOpen={setColumnMenu} dragged={draggedColumn} setDragged={setDraggedColumn} onToggle={toggleColumn} onMove={moveColumn} onReset={resetColumns}/></div>
-        <section className="sp-card sp-table-card"><div className="sp-table-scroll"><table><thead><tr>{visibleColumns('history').map(col=><SortHead key={col.key} table="history" col={col} sort={tableSort.history} onSort={changeSort}/>)}</tr></thead><tbody>{historyRows.map(row=><tr key={row.id} className={selectedSale?.id===row.id?'selected':''} onClick={()=>{setSelectedSale(row);setSalePanelTab('INFO')}}>{visibleColumns('history').map(col=>saleCell(row,col.key))}</tr>)}</tbody></table></div></section>
+
+        <div className="sp-period sp-history-period">
+          {([['all','Toàn thời gian'],['today','Hôm nay'],['7d','7 ngày'],['month','Tháng này'],['custom','Tùy chọn']] as [Period,string][]).map(([key,label])=><button key={key} className={historyPeriod===key?'active':''} onClick={()=>setHistoryPeriodSafe(key)}>{label}</button>)}
+          {historyPeriod==='custom'&&<div className="sp-custom-range"><input type="date" value={historyFrom} onChange={e=>setHistoryFrom(e.target.value)}/><span>→</span><input type="date" value={historyTo} onChange={e=>setHistoryTo(e.target.value)}/></div>}
+          <strong className="sp-filter-result">{filteredSales.length} HĐ</strong>
+        </div>
+
+        <div className="sp-toolbar sp-history-toolbar">
+          <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tìm mã hóa đơn / khách hàng / SĐT..."/>
+          <select value={historyWarehouse} onChange={e=>setHistoryWarehouse(e.target.value as any)}><option value="ALL">Tất cả kho</option><option value="HN">HN · Hà Nội</option><option value="BG">BG · Bắc Giang</option></select>
+          <select value={saleFilter} onChange={e=>setSaleFilter(e.target.value as any)}><option value="ALL">Tất cả thanh toán</option><option value="PAID">Đã thanh toán</option><option value="PARTIAL">Thanh toán một phần</option><option value="UNPAID">Chưa thanh toán</option></select>
+          <select value={historySaleState} onChange={e=>setHistorySaleState(e.target.value as any)}><option value="ALL">Tất cả trạng thái</option><option value="COMPLETED">Hoàn tất</option><option value="CANCELLED">Đã huỷ</option><option value="PARTIAL_RETURN">Hoàn một phần</option><option value="RETURNED">Đã hoàn toàn bộ</option></select>
+          {selectedSaleIds.length>0&&<button className="sp-btn danger" onClick={deleteSelectedSales}>Xóa ({selectedSaleIds.length})</button>}
+          <ColumnManager table="history" prefs={tablePrefs.history} open={columnMenu==='history'} setOpen={setColumnMenu} dragged={draggedColumn} setDragged={setDraggedColumn} onToggle={toggleColumn} onMove={moveColumn} onReset={resetColumns}/>
+        </div>
+
+        <section className="sp-card sp-table-card"><div className="sp-table-scroll"><table>
+          <thead><tr><th className="sp-select-col"><input type="checkbox" checked={historyRows.length>0&&historyRows.every(x=>selectedSaleIds.includes(x.id))} onChange={e=>setSelectedSaleIds(e.target.checked?historyRows.map(x=>x.id):[])}/></th>{visibleColumns('history').map(col=><SortHead key={col.key} table="history" col={col} sort={tableSort.history} onSort={changeSort}/>)}</tr></thead>
+          <tbody>{!historyRows.length?<tr><td colSpan={visibleColumns('history').length+1} className="sp-empty">Không có hóa đơn phù hợp.</td></tr>:historyRows.map(row=><tr key={row.id} className={selectedSale?.id===row.id?'selected':''} onClick={()=>{setSelectedSale(row);setSalePanelTab('INFO')}}><td className="sp-select-col"><input type="checkbox" checked={selectedSaleIds.includes(row.id)} onClick={e=>e.stopPropagation()} onChange={e=>setSelectedSaleIds(prev=>e.target.checked?[...prev,row.id]:prev.filter(id=>id!==row.id))}/></td>{visibleColumns('history').map(col=>saleCell(row,col.key))}</tr>)}</tbody>
+        </table></div></section>
       </main>
+
       {selectedSale&&<aside className="sp-slidebar">
-        <div className="sp-panel-head"><div><span>CHI TIẾT HÓA ĐƠN</span><h2>{selectedSale.code}</h2><p>{selectedSale.customer} · {selectedSale.time}</p></div><button onClick={()=>setSelectedSale(null)}>×</button></div>
+        <div className="sp-panel-head"><div><span>HÓA ĐƠN POS</span><h2>{selectedSale.code}</h2><p>{selectedSale.customer} · {selectedSale.time} · {selectedSale.warehouse}</p></div><button onClick={()=>setSelectedSale(null)}>×</button></div>
+        <div className="sp-history-panel-actions"><button className="sp-btn small" onClick={()=>window.print()}>In hóa đơn</button><button className="sp-btn small" disabled title="Main hiện chưa nối backend">Huỷ hóa đơn</button><button className="sp-btn small" disabled title="Main hiện chưa nối backend">Hoàn hàng</button><button className="sp-btn small danger" onClick={()=>{if(window.confirm('Xóa hóa đơn khỏi dữ liệu Preview?')){setSalesRows(prev=>prev.filter(x=>x.id!==selectedSale.id));setSelectedSale(null)}}}>Xóa</button></div>
         <div className="sp-panel-tabs">
           <button className={salePanelTab==='INFO'?'active':''} onClick={()=>setSalePanelTab('INFO')}>Thông tin</button>
+          <button className={salePanelTab==='PRODUCTS'?'active':''} onClick={()=>setSalePanelTab('PRODUCTS')}>Sản phẩm</button>
           <button className={salePanelTab==='PAYMENT'?'active':''} onClick={()=>setSalePanelTab('PAYMENT')}>Thanh toán</button>
           <button className={salePanelTab==='HISTORY'?'active':''} onClick={()=>setSalePanelTab('HISTORY')}>Lịch sử</button>
         </div>
         <div className="sp-panel-scroll">
           {salePanelTab==='INFO'&&<>
-            <div className="sp-detail-grid"><div><span>Khách hàng</span><b>{selectedSale.customer}</b></div><div><span>Kho bán</span><b>{selectedSale.warehouse}</b></div><div><span>Phương thức</span><b>{selectedSale.method}</b></div><div><span>Trạng thái</span><Status status={selectedSale.status}/></div><div><span>Sản phẩm</span><b>{selectedSale.items} mặt hàng</b></div><div><span>Thời gian</span><b>{selectedSale.time}</b></div></div>
-            <div className="sp-panel-section"><b>Sản phẩm</b>{PRODUCTS.slice(0,Math.min(selectedSale.items,4)).map((p,i)=><div className="sp-mini-row" key={p[1]}><span><b>{p[0]}</b><small>{p[1]} · {p[2]} · SL {i===0?2:1}</small></span><strong>{money((p[3] as number)*(i===0?2:1))}</strong></div>)}</div>
-          </>}
-          {salePanelTab==='PAYMENT'&&<>
+            <div className="sp-detail-grid"><div><span>Mã hóa đơn</span><b>{selectedSale.code}</b></div><div><span>Trạng thái</span><b>{saleStatusLabel(selectedSale.saleStatus)}</b></div><div><span>Khách hàng</span><b>{selectedSale.customer}</b></div><div><span>SĐT</span><b>{selectedSale.phone}</b></div><div><span>Kho bán</span><b>{selectedSale.warehouse}</b></div><div><span>Thời gian</span><b>{selectedSale.time}</b></div></div>
             <div className="sp-money-box"><div><span>Tổng hóa đơn</span><b>{money(selectedSale.total)}</b></div><div className="income"><span>Đã thu</span><b>{money(selectedSale.paid)}</b></div><div className="expense"><span>Còn nợ</span><b>{money(selectedSale.debt)}</b></div></div>
-            <div className="sp-panel-section"><b>Chi tiết thanh toán</b><div className="sp-payment-record"><span><b>{selectedSale.method}</b><small>{selectedSale.time}</small></span><strong className="income">{money(selectedSale.paid)}</strong></div>{selectedSale.debt>0&&<div className="sp-payment-record pending"><span><b>Công nợ còn lại</b><small>Chưa thu đủ</small></span><strong className="expense">{money(selectedSale.debt)}</strong></div>}</div>
+          </>}
+          {salePanelTab==='PRODUCTS'&&<div className="sp-panel-section sp-panel-section-flush"><div className="sp-panel-section-title"><b>Sản phẩm</b><span>{selectedSale.items} SP</span></div>{PRODUCTS.slice(0,Math.min(selectedSale.items,5)).map((p,i)=><div className="sp-mini-row" key={p[1]}><span><b>{p[0]}</b><small>SKU {p[1]} · {p[2]} · SL {i===0?2:1}</small></span><strong>{money((p[3] as number)*(i===0?2:1))}</strong></div>)}</div>}
+          {salePanelTab==='PAYMENT'&&<>
+            <div className="sp-money-box"><div><span>Tổng thanh toán</span><b>{money(selectedSale.total)}</b></div><div className="income"><span>Đã thu</span><b>{money(selectedSale.paid)}</b></div><div className="expense"><span>Còn nợ</span><b>{money(selectedSale.debt)}</b></div></div>
+            <div className="sp-panel-section"><b>Lịch sử thanh toán</b><div className="sp-payment-record"><span><b>{selectedSale.method}</b><small>{selectedSale.time}</small></span><strong className="income">{money(selectedSale.paid)}</strong></div>{selectedSale.debt>0&&<div className="sp-payment-record pending"><span><b>Công nợ còn lại</b><small>Chưa thu đủ</small></span><strong className="expense">{money(selectedSale.debt)}</strong></div>}</div>
+            {selectedSale.method.includes('Chuyển khoản')&&<div className="sp-transfer-reference"><div className="sp-demo-qr small">QR</div><div><span>Nội dung CK</span><b>{selectedSale.code}</b><small>Hiển thị lại QR theo cấu hình thanh toán của main</small></div></div>}
             {selectedSale.debt>0&&<button className="sp-btn primary sp-panel-wide-action" onClick={()=>{const customer=CUSTOMERS.find(c=>c.name===selectedSale.customer);if(customer){setDebtPanel(customer);setDebtPanelTab('PAY');setView('debt');setSelectedSale(null)}}}>Mở thu công nợ →</button>}
           </>}
           {salePanelTab==='HISTORY'&&<div className="sp-timeline">
             <div><i className="green"/><span><b>Tạo hóa đơn</b><small>{selectedSale.time} · POS tại kho {selectedSale.warehouse}</small></span></div>
             <div><i className={selectedSale.paid>0?'green':'amber'}/><span><b>{selectedSale.paid>0?'Ghi nhận thanh toán':'Chưa có thanh toán'}</b><small>{selectedSale.paid>0?money(selectedSale.paid)+' · '+selectedSale.method:'Đang chờ xử lý'}</small></span></div>
             {selectedSale.debt>0&&<div><i className="amber"/><span><b>Phát sinh công nợ</b><small>Còn phải thu {money(selectedSale.debt)}</small></span></div>}
+            {selectedSale.saleStatus!=='COMPLETED'&&<div><i className="amber"/><span><b>{saleStatusLabel(selectedSale.saleStatus)}</b><small>Trạng thái sau bán</small></span></div>}
             <div><i/><span><b>Cập nhật gần nhất</b><small>{selectedSale.time}</small></span></div>
           </div>}
         </div>
@@ -741,10 +765,10 @@ export function SalesPreviewWorkspace(){
             <div className="sp-customer-summary"><Kpi tone="blue" label="Số đơn" value={String(selectedCustomer.orders)} sub="Toàn thời gian"/><Kpi tone="green" label="Doanh thu" value={money(selectedCustomer.revenue)} sub="Tổng mua"/><Kpi tone={selectedCustomer.debt?'amber':'green'} label="Công nợ" value={money(selectedCustomer.debt)} sub={selectedCustomer.debt?'Cần theo dõi':'Không nợ'}/></div>
             <div className="sp-detail-grid sp-customer-info-grid"><div><span>SĐT</span><b>{selectedCustomer.phone}</b></div><div><span>Nhóm</span><b>{selectedCustomer.status==='VIP'?'VIP':selectedCustomer.status==='DEBT'?'Đang nợ':'Ổn định'}</b></div><div className="full"><span>Địa chỉ</span><b>{selectedCustomer.address}</b></div><div><span>Mua gần nhất</span><b>{selectedCustomer.last}</b></div><div><span>Giá trị TB/đơn</span><b>{money(Math.round(selectedCustomer.revenue/Math.max(1,selectedCustomer.orders)))}</b></div></div>
           </>}
-          {customerPanelTab==='PURCHASES'&&<div className="sp-panel-section sp-panel-section-flush"><div className="sp-panel-section-title"><b>Lịch sử mua</b><span>{selectedCustomer.orders} đơn</span></div>{SALES.filter(x=>x.customer===selectedCustomer.name).length?SALES.filter(x=>x.customer===selectedCustomer.name).map(row=><button className="sp-purchase-history-row" key={row.id} onClick={()=>{setSelectedSale(row);setSalePanelTab('INFO');setView('history');setSelectedCustomer(null)}}><span><b>{row.code}</b><small>{row.time} · {row.items} SP · {row.method}</small></span><span><strong>{money(row.total)}</strong><Status status={row.status}/></span></button>):<div className="sp-panel-empty">Chưa có giao dịch demo trong danh sách hiện tại.</div>}</div>}
+          {customerPanelTab==='PURCHASES'&&<div className="sp-panel-section sp-panel-section-flush"><div className="sp-panel-section-title"><b>Lịch sử mua</b><span>{selectedCustomer.orders} đơn</span></div>{salesRows.filter(x=>x.customer===selectedCustomer.name).length?salesRows.filter(x=>x.customer===selectedCustomer.name).map(row=><button className="sp-purchase-history-row" key={row.id} onClick={()=>{setSelectedSale(row);setSalePanelTab('INFO');setView('history');setSelectedCustomer(null)}}><span><b>{row.code}</b><small>{row.time} · {row.items} SP · {row.method}</small></span><span><strong>{money(row.total)}</strong><Status status={row.status}/></span></button>):<div className="sp-panel-empty">Chưa có giao dịch demo trong danh sách hiện tại.</div>}</div>}
           {customerPanelTab==='DEBT'&&<>
             <div className={'sp-debt-total '+(!selectedCustomer.debt?'settled':'')}><span>Công nợ hiện tại</span><b>{money(selectedCustomer.debt)}</b><small>{selectedCustomer.debt?'Cần thu tiếp':'Đã thanh toán đủ'}</small></div>
-            <div className="sp-panel-section"><div className="sp-panel-section-title"><b>Hóa đơn liên quan</b><span>{selectedCustomer.debt?1:0} hóa đơn còn nợ</span></div>{SALES.filter(x=>x.customer===selectedCustomer.name&&x.debt>0).map(row=><div className="sp-mini-row" key={row.id}><span><b>{row.code}</b><small>{row.time}</small></span><strong className="expense">{money(row.debt)}</strong></div>)}</div>
+            <div className="sp-panel-section"><div className="sp-panel-section-title"><b>Hóa đơn liên quan</b><span>{selectedCustomer.debt?1:0} hóa đơn còn nợ</span></div>{salesRows.filter(x=>x.customer===selectedCustomer.name&&x.debt>0).map(row=><div className="sp-mini-row" key={row.id}><span><b>{row.code}</b><small>{row.time}</small></span><strong className="expense">{money(row.debt)}</strong></div>)}</div>
             {selectedCustomer.debt>0&&<button className="sp-btn primary sp-panel-wide-action" onClick={()=>{setDebtPanel(selectedCustomer);setDebtPanelTab('PAY');setView('debt');setSelectedCustomer(null)}}>Thu công nợ {money(selectedCustomer.debt)} →</button>}
           </>}
         </div>
