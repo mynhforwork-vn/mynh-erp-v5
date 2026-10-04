@@ -330,7 +330,7 @@ export function SalesPreviewWorkspace(){
     const rows:DebtRow[]=CUSTOMERS.map(c=>({...c,debt:debtBalances[c.id]??c.debt})).filter(c=>c.debt>0).map((c,i)=>({
       ...c,
       invoiceCount:Math.max(1,salesRows.filter(s=>s.customer===c.name&&s.debt>0).length),
-      oldest:salesRows.filter(s=>s.customer===c.name&&s.debt>0).sort((a,b)=>vnTimeValue(a.time)-vnTimeValue(b.time))[0]?.time.split(' ')[0]??(i===1?'25/09/2026':'01/10/2026'),
+      oldest:salesRows.filter(s=>s.customer===c.name&&s.debt>0).sort((a,b)=>Number(vnTimeValue(a.time))-Number(vnTimeValue(b.time)))[0]?.time.split(' ')[0]??(i===1?'25/09/2026':'01/10/2026'),
       lastPaid:debtReceipts.find(r=>r.customerId===c.id)?.time??'—',
       risk:(i===1?'high':'medium') as 'high'|'medium'
     }))
@@ -378,7 +378,7 @@ export function SalesPreviewWorkspace(){
   const dashboardMaxDay=Math.max(...dashboardDaily.map(x=>x[1]),1)
   const historyRevenue=filteredSales.reduce((sum,x)=>sum+x.total,0)
   const activeDebtBalance=debtPanel?(debtBalances[debtPanel.id]??debtPanel.debt):0
-  const debtInvoices=debtPanel?salesRows.filter(x=>x.customer===debtPanel.name&&x.debt>0).sort((a,b)=>vnTimeValue(a.time)-vnTimeValue(b.time)):[]
+  const debtInvoices=debtPanel?salesRows.filter(x=>x.customer===debtPanel.name&&x.debt>0).sort((a,b)=>Number(vnTimeValue(a.time))-Number(vnTimeValue(b.time))):[]
   const debtAllocatedTotal=Object.values(debtAllocations).reduce((sum,x)=>sum+Number(x||0),0)
   const debtReceiptsForPanel=debtPanel?debtReceipts.filter(x=>x.customerId===debtPanel.id):[]
   const totalDebtLive=Object.values(debtBalances).reduce((sum,x)=>sum+Math.max(0,Number(x||0)),0)
@@ -388,7 +388,7 @@ export function SalesPreviewWorkspace(){
   function autoAllocateDebt(customer:Customer,amount:number){
     let left=Math.max(0,amount)
     const allocations:Record<string,number>={}
-    const rows=salesRows.filter(x=>x.customer===customer.name&&x.debt>0).sort((a,b)=>vnTimeValue(a.time)-vnTimeValue(b.time))
+    const rows=salesRows.filter(x=>x.customer===customer.name&&x.debt>0).sort((a,b)=>Number(vnTimeValue(a.time))-Number(vnTimeValue(b.time)))
     for(const row of rows){
       if(left<=0)break
       const value=Math.min(left,row.debt)
