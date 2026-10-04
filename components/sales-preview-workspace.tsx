@@ -12,6 +12,7 @@ type SalePanelTab='INFO'|'PRODUCTS'|'PAYMENT'|'HISTORY'
 type CustomerPanelTab='OVERVIEW'|'PURCHASES'|'DEBT'
 type DebtPanelTab='PAY'|'ALLOCATE'|'HISTORY'
 type DebtPaymentMethod='CASH'|'TRANSFER'|'COMBINED'
+type DebtReceipt={id:string,code:string,customerId:string,time:string,amount:number,method:string,note:string,allocations:{saleId:string,code:string,amount:number}[]}
 type Period='all'|'today'|'7d'|'month'|'custom'
 type PosPaymentMode='cash'|'transfer'|'debt'|'combined'
 type PosCategory={id:string,name:string,active:boolean}
@@ -168,6 +169,18 @@ export function SalesPreviewWorkspace(){
   const [customerPanelTab,setCustomerPanelTab]=useState<CustomerPanelTab>('OVERVIEW')
   const [debtPanelTab,setDebtPanelTab]=useState<DebtPanelTab>('PAY')
   const [debtPaymentMethod,setDebtPaymentMethod]=useState<DebtPaymentMethod>('CASH')
+  const [debtBalances,setDebtBalances]=useState<Record<string,number>>(()=>Object.fromEntries(CUSTOMERS.map(c=>[c.id,c.debt])))
+  const [debtReceipts,setDebtReceipts]=useState<DebtReceipt[]>([
+    {id:'r1',code:'PTN-261001-000014',customerId:'c1',time:'01/10/2026 10:20',amount:493000,method:'Chuyển khoản',note:'Thu công nợ kỳ trước',allocations:[]},
+    {id:'r2',code:'PTN-260930-000020',customerId:'c4',time:'30/09/2026 15:21',amount:215000,method:'Tiền mặt',note:'',allocations:[]},
+  ])
+  const [debtCollectAmount,setDebtCollectAmount]=useState(0)
+  const [debtCashPart,setDebtCashPart]=useState(0)
+  const [debtTransferPart,setDebtTransferPart]=useState(0)
+  const [debtNote,setDebtNote]=useState('')
+  const [debtAllocations,setDebtAllocations]=useState<Record<string,number>>({})
+  const [lastDebtReceipt,setLastDebtReceipt]=useState<DebtReceipt|null>(null)
+  const [debtMessage,setDebtMessage]=useState('')
   const [salesRows,setSalesRows]=useState<Sale[]>(SALES)
   const [dashboardPeriod,setDashboardPeriod]=useState<Period>('all')
   const [dashboardFrom,setDashboardFrom]=useState('')
@@ -311,10 +324,16 @@ export function SalesPreviewWorkspace(){
   const recentRows=useMemo(()=>sortedSales(dashboardSales.slice(0,5),'recent'),[dashboardSales,tableSort.recent])
   const customerRows=useMemo(()=>{
     const sort=tableSort.customers
-    return [...CUSTOMERS].sort((a,b)=>(sort.dir==='asc'?1:-1)*cmp(customerValue(a,sort.key),customerValue(b,sort.key)))
-  },[tableSort.customers])
+    return CUSTOMERS.map(c=>({...c,debt:debtBalances[c.id]??c.debt})).sort((a,b)=>(sort.dir==='asc'?1:-1)*cmp(customerValue(a,sort.key),customerValue(b,sort.key)))
+  },[tableSort.customers,debtBalances])
   const debtRows=useMemo(()=>{
-    const rows:DebtRow[]=CUSTOMERS.filter(c=>c.debt>0).map((c,i)=>({...c,invoiceCount:i+1,oldest:i===1?'25/09/2026':'01/10/2026',lastPaid:i===1?'—':'01/10/2026 10:20',risk:i===1?'high':'medium'}))
+    const rows:DebtRow[]=CUSTOMERS.map(c=>({...c,debt:debtBalances[c.id]??c.debt})).filter(c=>c.debt>0).map((c,i)=>({
+      ...c,
+      invoiceCount:Math.max(1,salesRows.filter(s=>s.customer===c.name&&s.debt>0).length),
+      oldest:salesRows.filter(s=>s.customer===c.name&&s.debt>0).sort((a,b)=>vnTimeValue(a.time)-vnTimeValue(b.time))[0]?.time.split(' ')[0]??(i===1?'25/09/2026':'01/10/2026'),
+      lastPaid:debtReceipts.find(r=>r.customerId===c.id)?.time??'—',
+      risk:i===1?'high':'medium'
+    }))
     const sort=tableSort.debt
     const value=(row:DebtRow,key:string):string|number=>{
       if(key==='name')return row.name
@@ -327,7 +346,7 @@ export function SalesPreviewWorkspace(){
       return ''
     }
     return rows.sort((a,b)=>(sort.dir==='asc'?1:-1)*cmp(value(a,sort.key),value(b,sort.key)))
-  },[tableSort.debt])
+  },[tableSort.debt,debtBalances,debtReceipts,salesRows])
 
   const activeCategories=posCategories.filter(x=>x.active)
   const filteredProducts=PRODUCTS.filter(product=>{
@@ -358,6 +377,84 @@ export function SalesPreviewWorkspace(){
   },[dashboardSales])
   const dashboardMaxDay=Math.max(...dashboardDaily.map(x=>x[1]),1)
   const historyRevenue=filteredSales.reduce((sum,x)=>sum+x.total,0)
+  const activeDebtBalance=debtPanel?(debtBalances[debtPanel.id]??debtPanel.debt):0
+  const debtInvoices=debtPanel?salesRows.filter(x=>x.customer===debtPanel.name&&x.debt>0).sort((a,b)=>vnTimeValue(a.time)-vnTimeValue(b.time)):[]
+  const debtAllocatedTotal=Object.values(debtAllocations).reduce((sum,x)=>sum+Number(x||0),0)
+  const debtReceiptsForPanel=debtPanel?debtReceipts.filter(x=>x.customerId===debtPanel.id):[]
+  const totalDebtLive=Object.values(debtBalances).reduce((sum,x)=>sum+Math.max(0,Number(x||0)),0)
+  const collectedDebtToday=debtReceipts.filter(x=>periodMatch(x.time,'today','','')).reduce((sum,x)=>sum+x.amount,0)
+  const collectedDebtMonth=debtReceipts.filter(x=>periodMatch(x.time,'month','','')).reduce((sum,x)=>sum+x.amount,0)
+
+  function autoAllocateDebt(customer:Customer,amount:number){
+    let left=Math.max(0,amount)
+    const allocations:Record<string,number>={}
+    const rows=salesRows.filter(x=>x.customer===customer.name&&x.debt>0).sort((a,b)=>vnTimeValue(a.time)-vnTimeValue(b.time))
+    for(const row of rows){
+      if(left<=0)break
+      const value=Math.min(left,row.debt)
+      allocations[row.id]=value
+      left-=value
+    }
+    return allocations
+  }
+  function openDebtPanel(customer:Customer){
+    const balance=debtBalances[customer.id]??customer.debt
+    const live={...customer,debt:balance}
+    setDebtPanel(live)
+    setDebtPanelTab('PAY')
+    setDebtPaymentMethod('CASH')
+    setDebtCollectAmount(balance)
+    setDebtCashPart(balance)
+    setDebtTransferPart(0)
+    setDebtNote('')
+    setDebtAllocations(autoAllocateDebt(live,balance))
+    setDebtMessage('')
+    setLastDebtReceipt(null)
+  }
+  function updateDebtCollectAmount(value:number){
+    if(!debtPanel)return
+    const amount=Math.max(0,Math.min(activeDebtBalance,Number(value)||0))
+    setDebtCollectAmount(amount)
+    setDebtCashPart(amount)
+    setDebtTransferPart(0)
+    setDebtAllocations(autoAllocateDebt(debtPanel,amount))
+  }
+  function confirmDebtPayment(){
+    if(!debtPanel)return
+    const amount=Math.max(0,Number(debtCollectAmount)||0)
+    if(amount<=0){setDebtMessage('Số tiền thu phải lớn hơn 0');return}
+    if(amount>activeDebtBalance){setDebtMessage('Số tiền thu vượt công nợ hiện tại');return}
+    if(debtPaymentMethod==='COMBINED'&&Math.round(debtCashPart+debtTransferPart)!==Math.round(amount)){
+      setDebtMessage('Tiền mặt + Chuyển khoản phải bằng số tiền thu');return
+    }
+    if(Math.round(debtAllocatedTotal)!==Math.round(amount)){
+      setDebtMessage('Số tiền phân bổ phải bằng số tiền thu');setDebtPanelTab('ALLOCATE');return
+    }
+    const now=new Date()
+    const time=now.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+now.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',hour12:false})
+    const code='PTN-'+String(now.getFullYear()).slice(-2)+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'-'+String(Date.now()).slice(-6)
+    const allocations=debtInvoices.filter(x=>Number(debtAllocations[x.id]||0)>0).map(x=>({saleId:x.id,code:x.code,amount:Number(debtAllocations[x.id]||0)}))
+    const method=debtPaymentMethod==='CASH'?'Tiền mặt':debtPaymentMethod==='TRANSFER'?'Chuyển khoản':'Kết hợp'
+    const receipt:DebtReceipt={id:'receipt-'+Date.now(),code,customerId:debtPanel.id,time,amount,method,note:debtNote,allocations}
+    setSalesRows(prev=>prev.map(row=>{
+      const paid=Number(debtAllocations[row.id]||0)
+      if(paid<=0)return row
+      const nextDebt=Math.max(0,row.debt-paid)
+      const nextPaid=Math.min(row.total,row.paid+paid)
+      return {...row,debt:nextDebt,paid:nextPaid,status:nextDebt<=0?'PAID':nextPaid>0?'PARTIAL':'UNPAID'}
+    }))
+    const nextBalance=Math.max(0,activeDebtBalance-amount)
+    setDebtBalances(prev=>({...prev,[debtPanel.id]:nextBalance}))
+    setDebtReceipts(prev=>[receipt,...prev])
+    setLastDebtReceipt(receipt)
+    setDebtPanel(prev=>prev?{...prev,debt:nextBalance}:prev)
+    setDebtCollectAmount(nextBalance)
+    setDebtCashPart(nextBalance)
+    setDebtTransferPart(0)
+    setDebtAllocations(autoAllocateDebt({...debtPanel,debt:nextBalance},nextBalance))
+    setDebtMessage('Đã tạo '+code+' · Thu '+money(amount))
+    setDebtPanelTab('HISTORY')
+  }
 
   function setDashboardPeriodSafe(next:Period){setDashboardPeriod(next)}
   function setHistoryPeriodSafe(next:Period){setHistoryPeriod(next)}
@@ -421,6 +518,7 @@ export function SalesPreviewWorkspace(){
       method:posPaymentMode==='cash'?'Tiền mặt':posPaymentMode==='transfer'?'Chuyển khoản':posPaymentMode==='debt'?'Ghi nợ':'Kết hợp',items:cart.reduce((sum,x)=>sum+x.qty,0)
     }
     setSalesRows(prev=>[next,...prev])
+    if(debt>0&&posCustomer)setDebtBalances(prev=>({...prev,[posCustomer.id]:(prev[posCustomer.id]??posCustomer.debt)+debt}))
     setCart([])
     setPosPaymentOpen(false)
     setPosDiscount(0);setPosOtherFee(0);setPosNote('')
@@ -472,7 +570,7 @@ export function SalesPreviewWorkspace(){
     if(key==='oldest')return <td key={key}>{row.oldest}</td>
     if(key==='lastPaid')return <td key={key}>{row.lastPaid}</td>
     if(key==='risk')return <td key={key}><span className={'sp-risk '+row.risk}>{row.risk==='high'?'Ưu tiên':'Theo dõi'}</span></td>
-    return <td key={key}><button className="sp-btn small primary" onClick={e=>{e.stopPropagation();setDebtPanel(row);setDebtPanelTab('PAY')}}>Thu nợ</button></td>
+    return <td key={key}><button className="sp-btn small primary" onClick={e=>{e.stopPropagation();openDebtPanel(row)}}>Thu nợ</button></td>
   }
 
   const openView=(next:View)=>{setView(next);setSelectedSale(null);setSelectedCustomer(null);setDebtPanel(null);setSalePanelTab('INFO');setCustomerPanelTab('OVERVIEW');setDebtPanelTab('PAY')}
@@ -726,7 +824,7 @@ export function SalesPreviewWorkspace(){
             <div className="sp-money-box"><div><span>Tổng thanh toán</span><b>{money(selectedSale.total)}</b></div><div className="income"><span>Đã thu</span><b>{money(selectedSale.paid)}</b></div><div className="expense"><span>Còn nợ</span><b>{money(selectedSale.debt)}</b></div></div>
             <div className="sp-panel-section"><b>Lịch sử thanh toán</b><div className="sp-payment-record"><span><b>{selectedSale.method}</b><small>{selectedSale.time}</small></span><strong className="income">{money(selectedSale.paid)}</strong></div>{selectedSale.debt>0&&<div className="sp-payment-record pending"><span><b>Công nợ còn lại</b><small>Chưa thu đủ</small></span><strong className="expense">{money(selectedSale.debt)}</strong></div>}</div>
             {selectedSale.method.includes('Chuyển khoản')&&<div className="sp-transfer-reference"><div className="sp-demo-qr small">QR</div><div><span>Nội dung CK</span><b>{selectedSale.code}</b><small>Hiển thị lại QR theo cấu hình thanh toán của main</small></div></div>}
-            {selectedSale.debt>0&&<button className="sp-btn primary sp-panel-wide-action" onClick={()=>{const customer=CUSTOMERS.find(c=>c.name===selectedSale.customer);if(customer){setDebtPanel(customer);setDebtPanelTab('PAY');setView('debt');setSelectedSale(null)}}}>Mở thu công nợ →</button>}
+            {selectedSale.debt>0&&<button className="sp-btn primary sp-panel-wide-action" onClick={()=>{const customer=CUSTOMERS.find(c=>c.name===selectedSale.customer);if(customer){openDebtPanel(customer);setView('debt');setSelectedSale(null)}}}>Mở thu công nợ →</button>}
           </>}
           {salePanelTab==='HISTORY'&&<div className="sp-timeline">
             <div><i className="green"/><span><b>Tạo hóa đơn</b><small>{selectedSale.time} · POS tại kho {selectedSale.warehouse}</small></span></div>
@@ -769,7 +867,7 @@ export function SalesPreviewWorkspace(){
           {customerPanelTab==='DEBT'&&<>
             <div className={'sp-debt-total '+(!selectedCustomer.debt?'settled':'')}><span>Công nợ hiện tại</span><b>{money(selectedCustomer.debt)}</b><small>{selectedCustomer.debt?'Cần thu tiếp':'Đã thanh toán đủ'}</small></div>
             <div className="sp-panel-section"><div className="sp-panel-section-title"><b>Hóa đơn liên quan</b><span>{selectedCustomer.debt?1:0} hóa đơn còn nợ</span></div>{salesRows.filter(x=>x.customer===selectedCustomer.name&&x.debt>0).map(row=><div className="sp-mini-row" key={row.id}><span><b>{row.code}</b><small>{row.time}</small></span><strong className="expense">{money(row.debt)}</strong></div>)}</div>
-            {selectedCustomer.debt>0&&<button className="sp-btn primary sp-panel-wide-action" onClick={()=>{setDebtPanel(selectedCustomer);setDebtPanelTab('PAY');setView('debt');setSelectedCustomer(null)}}>Thu công nợ {money(selectedCustomer.debt)} →</button>}
+            {selectedCustomer.debt>0&&<button className="sp-btn primary sp-panel-wide-action" onClick={()=>{openDebtPanel(selectedCustomer);setView('debt');setSelectedCustomer(null)}}>Thu công nợ {money(selectedCustomer.debt)} →</button>}
           </>}
         </div>
       </aside>}
