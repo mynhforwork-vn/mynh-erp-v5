@@ -1,76 +1,76 @@
 import fs from 'node:fs'
+import crypto from 'node:crypto'
 
 const SUPABASE_URL=process.env.SUPABASE_URL
 const SUPABASE_KEY=process.env.SUPABASE_KEY
-if(!SUPABASE_URL||!SUPABASE_KEY)throw new Error('Missing Supabase QA environment')
+const SERVICE_KEY=process.env.SUPABASE_SERVICE_ROLE_KEY
+if(!SUPABASE_URL||!SUPABASE_KEY||!SERVICE_KEY)throw new Error('Missing Supabase QA environment')
 
-async function post(path,body,token=SUPABASE_KEY){
+async function request(path,{method='GET',body,key=SUPABASE_KEY,token=key}={}){
   const res=await fetch(SUPABASE_URL+path,{
-    method:'POST',
+    method,
     headers:{
       'content-type':'application/json',
-      'apikey':SUPABASE_KEY,
+      'apikey':key,
       'authorization':'Bearer '+token,
     },
-    body:JSON.stringify(body),
-  })
-  const text=await res.text()
-  let json={}; try{json=JSON.parse(text)}catch{}
-  return {ok:res.ok,status:res.status,json,text}
-}
-async function getUser(token){
-  const res=await fetch(SUPABASE_URL+'/auth/v1/user',{
-    headers:{'apikey':SUPABASE_KEY,'authorization':'Bearer '+token},
+    body:body===undefined?undefined:JSON.stringify(body),
   })
   const text=await res.text()
   let json={}; try{json=JSON.parse(text)}catch{}
   return {ok:res.ok,status:res.status,json,text}
 }
 
-const signup=await post('/auth/v1/signup',{data:{purpose:'cloudflare-preview-ui-qa'}})
-if(!signup.ok){
-  console.log('QA_ANON_UNAVAILABLE status='+signup.status+' body='+signup.text.slice(0,400))
-  process.exit(2)
-}
-const user=signup.json?.user??signup.json
-const access=signup.json?.access_token
-const refresh=signup.json?.refresh_token
-const id=user?.id
-if(!id||!access||!refresh){
-  console.log('QA_ANON_UNAVAILABLE status=200 body_shape='+JSON.stringify(Object.keys(signup.json||{})))
-  process.exit(2)
-}
-
-console.log('QA_ANON_CREATED id='+id)
-console.log('QA_ANON_WAITING_FOR_OPERATOR_ROLE')
-
-let currentAccess=access
-let currentRefresh=refresh
-let ready=false
-for(let i=0;i<48;i++){
-  const u=await getUser(currentAccess)
-  const role=u.json?.app_metadata?.role
-  if(role==='operator'||role==='admin'){
-    const refreshed=await post('/auth/v1/token?grant_type=refresh_token',{refresh_token:currentRefresh})
-    if(refreshed.ok&&refreshed.json?.access_token){
-      currentAccess=refreshed.json.access_token
-      currentRefresh=refreshed.json.refresh_token??currentRefresh
-      const verified=await getUser(currentAccess)
-      const refreshedRole=verified.json?.app_metadata?.role
-      if(refreshedRole==='operator'||refreshedRole==='admin'){
-        ready=true
-        console.log('QA_ANON_READY role='+refreshedRole)
-        break
-      }
-    }
+async function cleanupOldQaUsers(){
+  const list=await request('/auth/v1/admin/users?page=1&per_page=100',{key:SERVICE_KEY,token:SERVICE_KEY})
+  if(!list.ok)return
+  const users=Array.isArray(list.json?.users)?list.json.users:[]
+  for(const user of users){
+    if(user?.user_metadata?.purpose!=='cloudflare-preview-ui-qa')continue
+    await request('/auth/v1/admin/users/'+encodeURIComponent(user.id),{
+      method:'DELETE',key:SERVICE_KEY,token:SERVICE_KEY,
+    })
+    console.log('QA_OLD_USER_REMOVED id='+user.id)
   }
-  await new Promise(r=>setTimeout(r,5000))
 }
-if(!ready)throw new Error('QA anonymous user was not promoted to operator within 240 seconds')
+
+await cleanupOldQaUsers()
+
+const suffix=Date.now().toString(36)+'-'+crypto.randomBytes(3).toString('hex')
+const email='qa-preview-'+suffix+'@mynh-v5.internal'
+const password='Qa!'+crypto.randomBytes(12).toString('base64url')+'9'
+
+const created=await request('/auth/v1/admin/users',{
+  method:'POST',
+  key:SERVICE_KEY,
+  token:SERVICE_KEY,
+  body:{
+    email,
+    password,
+    email_confirm:true,
+    app_metadata:{role:'operator'},
+    user_metadata:{purpose:'cloudflare-preview-ui-qa'},
+  },
+})
+if(!created.ok)throw new Error('QA user create failed status='+created.status+' body='+created.text.slice(0,500))
+
+const id=created.json?.id??created.json?.user?.id
+if(!id)throw new Error('QA user create returned no id')
+console.log('QA_USER_CREATED id='+id+' role=operator')
+
+const login=await request('/auth/v1/token?grant_type=password',{
+  method:'POST',
+  body:{email,password},
+})
+if(!login.ok)throw new Error('QA sign-in failed status='+login.status+' body='+login.text.slice(0,500))
+
+const access=login.json?.access_token
+const refresh=login.json?.refresh_token
+if(!access||!refresh)throw new Error('QA sign-in returned no session')
 
 fs.writeFileSync('qa-session.json',JSON.stringify({
   user_id:id,
-  access_token:currentAccess,
-  refresh_token:currentRefresh,
+  access_token:access,
+  refresh_token:refresh,
 }))
 console.log('QA_SESSION_WRITTEN id='+id)
