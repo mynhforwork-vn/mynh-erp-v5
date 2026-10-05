@@ -366,10 +366,20 @@ export function SalesPreviewWorkspace(){
   const recentRows=useMemo(()=>sortedSales(dashboardSales.slice(0,5),'recent'),[dashboardSales,tableSort.recent])
   const customerRows=useMemo(()=>{
     const sort=tableSort.customers
-    return CUSTOMERS.map(c=>({...c,debt:debtBalances[c.id]??c.debt})).sort((a,b)=>(sort.dir==='asc'?1:-1)*cmp(customerValue(a,sort.key),customerValue(b,sort.key)))
-  },[tableSort.customers,debtBalances])
+    let rows=customerData.map(c=>({...c,debt:debtBalances[c.id]??c.debt}))
+    if(customerFilter==='DEBT')rows=rows.filter(c=>c.debt>0)
+    if(customerFilter==='REPEAT')rows=rows.filter(c=>c.orders>=2)
+    if(customerFilter==='NEW')rows=rows.filter(c=>c.orders<=1)
+    const q=customerQuery.trim().toLowerCase()
+    if(q)rows=rows.filter(c=>[c.name,c.phone,c.address].join(' ').toLowerCase().includes(q))
+    return rows.sort((a,b)=>(sort.dir==='asc'?1:-1)*cmp(customerValue(a,sort.key),customerValue(b,sort.key)))
+  },[tableSort.customers,debtBalances,customerData,customerFilter,customerQuery])
   const debtRows=useMemo(()=>{
-    const rows:DebtRow[]=CUSTOMERS.map(c=>({...c,debt:debtBalances[c.id]??c.debt})).filter(c=>c.debt>0).map((c,i)=>({
+    let base=customerData.map(c=>({...c,debt:debtBalances[c.id]??c.debt})).filter(c=>c.debt>0)
+    const q=debtQuery.trim().toLowerCase()
+    if(q)base=base.filter(c=>[c.name,c.phone,c.address].join(' ').toLowerCase().includes(q)||salesRows.some(s=>s.customer===c.name&&s.code.toLowerCase().includes(q)))
+    if(debtFilter==='PARTIAL')base=base.filter(c=>salesRows.some(s=>s.customer===c.name&&s.status==='PARTIAL'&&s.debt>0))
+    const rows:DebtRow[]=base.map((c,i)=>({
       ...c,
       invoiceCount:Math.max(1,salesRows.filter(s=>s.customer===c.name&&s.debt>0).length),
       oldest:salesRows.filter(s=>s.customer===c.name&&s.debt>0).sort((a,b)=>Number(vnTimeValue(a.time))-Number(vnTimeValue(b.time)))[0]?.time.split(' ')[0]??(i===1?'25/09/2026':'01/10/2026'),
@@ -388,16 +398,18 @@ export function SalesPreviewWorkspace(){
       return ''
     }
     return rows.sort((a,b)=>(sort.dir==='asc'?1:-1)*cmp(value(a,sort.key),value(b,sort.key)))
-  },[tableSort.debt,debtBalances,debtReceipts,salesRows])
+  },[tableSort.debt,debtBalances,debtReceipts,salesRows,customerData,debtQuery,debtFilter])
 
   const activeCategories=posCategories.filter(x=>x.active)
+  const productStock=(sku:string,warehouse:'HN'|'BG'=posWarehouse)=>Math.max(0,Number(posStocks[`${warehouse}:${sku}`]??0))
   const filteredProducts=PRODUCTS.filter(product=>{
+    if(productStock(String(product[1]))<=0)return false
     if(posCategory!=='ALL'&&product[5]!==posCategory)return false
     const q=posSearch.trim().toLowerCase()
-    if(q&&![product[0],product[1],product[2]].join(' ').toLowerCase().includes(q))return false
+    if(q&&![product[0],product[1],product[2],product[6]].join(' ').toLowerCase().includes(q))return false
     return true
   })
-  const posCustomer=CUSTOMERS.find(x=>x.id===posCustomerId)??null
+  const posCustomer=customerData.find(x=>x.id===posCustomerId)??null
   const cartSubtotal=cart.reduce((sum,x)=>sum+x.qty*x.price,0)
   const cartTotal=Math.max(0,cartSubtotal-Math.max(0,posDiscount)+Math.max(0,posOtherFee))
   const dashboardRevenue=dashboardSales.reduce((sum,x)=>sum+x.total,0)
@@ -418,6 +430,17 @@ export function SalesPreviewWorkspace(){
     return [...map.entries()].sort((a,b)=>a[0].localeCompare(b[0])).slice(-6)
   },[dashboardSales])
   const dashboardMaxDay=Math.max(...dashboardDaily.map(x=>x[1]),1)
+  const dashboardSaleIds=new Set(dashboardSales.map(x=>x.id))
+  const dashboardTopProducts=useMemo(()=>{
+    const map=new Map<string,{sku:string,name:string,qty:number,revenue:number}>()
+    for(const item of SALE_ITEMS){
+      if(!dashboardSaleIds.has(item.saleId))continue
+      if(dashboardWarehouse!=='ALL'&&item.warehouse!==dashboardWarehouse)continue
+      const current=map.get(item.sku)??{sku:item.sku,name:item.name,qty:0,revenue:0}
+      current.qty+=item.qty;current.revenue+=item.revenue;map.set(item.sku,current)
+    }
+    return [...map.values()].sort((a,b)=>b.qty-a.qty||b.revenue-a.revenue).slice(0,5)
+  },[dashboardSales,dashboardWarehouse])
   const historyRevenue=filteredSales.reduce((sum,x)=>sum+x.total,0)
   const activeDebtBalance=debtPanel?(debtBalances[debtPanel.id]??debtPanel.debt):0
   const debtInvoices=debtPanel?salesRows.filter(x=>x.customer===debtPanel.name&&x.debt>0).sort((a,b)=>Number(vnTimeValue(a.time))-Number(vnTimeValue(b.time))):[]
