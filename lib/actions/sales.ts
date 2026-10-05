@@ -342,3 +342,38 @@ export async function assignProductSalesCategory(input:{product_id:string,catego
   }
 }
 
+
+
+export async function cancelPOSSale(input:{sale_id:string,reason?:string|null}){
+  try{
+    const {supabase}=await actor()
+    const sale_id=String(input?.sale_id??'').trim()
+    const reason=String(input?.reason??'').trim()||null
+    if(!sale_id)return {ok:false as const,error:'Thiếu hóa đơn cần huỷ'}
+
+    const {data,error}=await supabase.rpc('cancel_pos_sale',{
+      p_sale_id:sale_id,
+      p_reason:reason,
+    })
+    if(error){
+      const raw=String(error.message??'')
+      const friendly=
+        raw.includes('không tìm thấy')||raw.includes('Không tìm thấy')?'Không tìm thấy hóa đơn':
+        raw.includes('Chỉ có thể huỷ')?'Hóa đơn không còn ở trạng thái cho phép huỷ':
+        raw.includes('đã có nghiệp vụ')?'Hóa đơn đã được huỷ/hoàn trước đó':
+        raw.includes('Operator role required')?'Bạn không có quyền huỷ hóa đơn':
+        'Không thể huỷ hóa đơn'
+      return {ok:false as const,error:friendly,detail:raw}
+    }
+
+    for(const path of [
+      '/sales','/sales/history','/sales/customers','/sales/debt',
+      '/warehouse','/warehouse/inventory','/warehouse/history',
+      '/finance','/finance/cashflow',
+    ])revalidatePath(path)
+
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể huỷ hóa đơn')}
+  }
+}
