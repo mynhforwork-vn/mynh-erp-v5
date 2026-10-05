@@ -460,6 +460,7 @@ export function SalesPreviewWorkspace(){
   const dashboardPartialCount=dashboardSales.filter(x=>x.status==='PARTIAL').length
   const dashboardUnpaidCount=dashboardSales.filter(x=>x.status==='UNPAID').length
   const dashboardCollectedRate=dashboardRevenue?Math.round(dashboardCollected/dashboardRevenue*100):0
+  const dashboardReturnCancel=dashboardSales.filter(x=>x.saleStatus!=='COMPLETED').length
   const dashboardDaily=useMemo(()=>{
     const map=new Map<string,number>()
     for(const row of dashboardSales){
@@ -470,6 +471,31 @@ export function SalesPreviewWorkspace(){
   },[dashboardSales])
   const dashboardMaxDay=Math.max(...dashboardDaily.map(x=>x[1]),1)
   const dashboardSaleIds=new Set(dashboardSales.map(x=>x.id))
+  const dashboardLowStock=PRODUCTS.flatMap(p=>{
+    const rows:{warehouse:'HN'|'BG',sku:string,name:string,variant:string,stock:number}[]=[]
+    for(const wh of ['HN','BG'] as const){
+      if(dashboardWarehouse!=='ALL'&&dashboardWarehouse!==wh)continue
+      const stock=productStock(String(p[1]),wh)
+      if(stock<=10)rows.push({warehouse:wh,sku:String(p[1]),name:String(p[0]),variant:String(p[2]),stock})
+    }
+    return rows
+  }).sort((a,b)=>a.stock-b.stock).slice(0,6)
+  const dashboardWarehouseStats=(['HN','BG'] as const).map(warehouse=>{
+    const rows=dashboardSales.filter(x=>x.warehouse===warehouse)
+    const ids=new Set(rows.map(x=>x.id))
+    const items=saleItems.filter(x=>ids.has(x.saleId))
+    const revenue=rows.reduce((sum,x)=>sum+x.total,0)
+    return {
+      warehouse,
+      address:warehouse==='HN'?'164 Hồng Mai':'320 Nguyễn Công Hãng',
+      invoices:rows.length,
+      units:items.reduce((sum,x)=>sum+x.qty,0),
+      revenue,
+      avg:rows.length?Math.round(revenue/rows.length):0,
+      debt:rows.reduce((sum,x)=>sum+x.debt,0),
+    }
+  }).filter(x=>dashboardWarehouse==='ALL'||x.warehouse===dashboardWarehouse)
+
   const dashboardTopProducts=useMemo(()=>{
     const map=new Map<string,{sku:string,name:string,qty:number,revenue:number}>()
     for(const item of saleItems){
