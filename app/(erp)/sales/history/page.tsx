@@ -2,14 +2,20 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime,formatMoney,statusLabel } from '@/lib/format'
 import { PrintPageButton } from '@/components/print-page-button'
+import { PurchaseDateFilter } from '@/components/purchase-date-filter'
+import { SalesHistoryActions } from '@/components/sales-history-actions'
 import { buildTransferDescription,buildVietQRUrl } from '@/lib/vietqr'
 
+type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
 type SP={
   sale?:string
   q?:string
   warehouse?:string
   payment?:string
   state?:string
+  range?:RangeKey
+  from?:string
+  to?:string
   tab?:'info'|'products'|'payment'|'history'
 }
 
@@ -19,13 +25,57 @@ function paymentLabel(method?:string|null){
   return method??'—'
 }
 
+const HOUR=60*60*1000
+const DAY=24*HOUR
+function vnDateParts(date=new Date()){
+  const shifted=new Date(date.getTime()+7*HOUR)
+  return {year:shifted.getUTCFullYear(),month:shifted.getUTCMonth()+1,day:shifted.getUTCDate()}
+}
+function ymd(y:number,m:number,d:number){return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`}
+function localStartIso(dateText:string){return new Date(`${dateText}T00:00:00+07:00`).toISOString()}
+function localEndIso(dateText:string){return new Date(`${dateText}T23:59:59.999+07:00`).toISOString()}
+function shiftLocalDays(y:number,m:number,d:number,days:number){
+  const x=new Date(Date.UTC(y,m-1,d)+days*DAY)
+  return ymd(x.getUTCFullYear(),x.getUTCMonth()+1,x.getUTCDate())
+}
+function currentWeekRange(y:number,m:number,d:number){
+  const weekday=new Date(Date.UTC(y,m-1,d)).getUTCDay()
+  const daysFromMonday=(weekday+6)%7
+  return {from:shiftLocalDays(y,m,d,-daysFromMonday),to:shiftLocalDays(y,m,d,6-daysFromMonday)}
+}
+function resolveRange(sp:SP){
+  const key:RangeKey=sp.range??'all'
+  const p=vnDateParts()
+  const today=ymd(p.year,p.month,p.day)
+  let from=today,to=today,label='Hôm nay'
+  if(key==='week'){const x=currentWeekRange(p.year,p.month,p.day);from=x.from;to=x.to;label='Tuần này'}
+  if(key==='7d'){from=shiftLocalDays(p.year,p.month,p.day,-6);label='7 ngày'}
+  if(key==='30d'){from=shiftLocalDays(p.year,p.month,p.day,-29);label='30 ngày'}
+  if(key==='month'){from=ymd(p.year,p.month,1);label='Tháng này'}
+  if(key==='quarter'){from=ymd(p.year,Math.floor((p.month-1)/3)*3+1,1);label='Quý này'}
+  if(key==='year'){from=ymd(p.year,1,1);label='Năm nay'}
+  if(key==='all'){from='1970-01-01';to='9999-12-31';label='Toàn thời gian'}
+  if(key==='custom'){
+    from=/^\d{4}-\d{2}-\d{2}$/.test(sp.from??'')?String(sp.from):today
+    to=/^\d{4}-\d{2}-\d{2}$/.test(sp.to??'')?String(sp.to):today
+    if(from>to)[from,to]=[to,from]
+    label=`${from.split('-').reverse().join('/')} → ${to.split('-').reverse().join('/')}`
+  }
+  return {key,from,to,label,start:localStartIso(from),end:localEndIso(to)}
+}
+
 export default async function SalesHistoryPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
-  const {supabase}=await requireUser()
+  const {supabase,user}=await requireUser()
+  const role=String(user.app_metadata?.role??'viewer')
+  const canOperate=['admin','operator'].includes(role)
+  const range=resolveRange(sp)
 
   const [salesResult,bankTransferResult]=await Promise.all([
     supabase.from('sales')
-      .select('id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,note,subtotal,discount_amount,other_fee,sale_status,cash_received,change_amount,warehouse_id,created_by,warehouses(id,code,name,address),customers(id,name,phone,address),sale_items(id,quantity,sale_price,unit_cost,product_variant_id,product_variants(id,variant_name,barcode,products(id,sku,name))),sale_payments(id,method,amount,tendered_amount,change_amount,reference_code,created_at)')
+      .select('id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,note,subtotal,discount_amount,other_fee,sale_status,cash_received,change_amount,warehouse_id,created_by,warehouses(id,code,name,address),customers(id,name,phone,address),sale_items(id,quantity,sale_price,unit_cost,product_variant_id,product_variants(id,variant_name,barcode,products(id,sku,name))),sale_payments(id,method,amount,tendered_amount,change_amount,reference_code,created_at),sale_returns(id,return_type,reason,refund_amount,created_at)')
+      .gte('sale_at',range.start)
+      .lte('sale_at',range.end)
       .order('sale_at',{ascending:false})
       .limit(1500),
     supabase.from('bank_transfer_configs')
@@ -57,7 +107,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
   const transferPayment=selected
     ? (selected.sale_payments??[]).find((payment:any)=>payment.method==='TRANSFER')
     : null
-  const receiptQRAmount=selected
+  const receiptQRAmount=selected&&selected.sale_status==='COMPLETED'
     ? Number(selected.debt_amount)>0
       ? Number(selected.debt_amount)
       : Number(transferPayment?.amount??0)
@@ -78,7 +128,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
 
   function href(extra:Record<string,string|null|undefined>={}){
     const p=new URLSearchParams()
-    for(const key of ['sale','q','warehouse','payment','state','tab'] as const){
+    for(const key of ['sale','q','warehouse','payment','state','range','from','to','tab'] as const){
       const value=(sp as any)[key]
       if(value)p.set(key,String(value))
     }
@@ -107,7 +157,24 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
       </div>
     </header>
 
+    <div className="tracking-date-row-v2 sales-date-row-v2"><PurchaseDateFilter
+      activeRange={range.key}
+      from={range.from}
+      to={range.to}
+      label={range.label}
+      basePath="/sales/history"
+      showAll
+      preserveParams={{
+        q:sp.q??null,
+        warehouse:sp.warehouse??null,
+        payment:sp.payment??null,
+        state:sp.state??null,
+      }}
+    /></div>
+
     <form className="entity-command-bar sales-history-command" action="/sales/history">
+      <input type="hidden" name="range" value={range.key}/>
+      {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
       <input className="search" name="q" defaultValue={sp.q??''} placeholder="Tìm mã HĐ / khách hàng / SĐT..."/>
       <select name="warehouse" defaultValue={sp.warehouse??''}>
         <option value="">Tất cả kho</option>
@@ -158,7 +225,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
                       <td>{qty}</td>
                       <td className="money">{formatMoney(row.total_amount)}</td>
                       <td className="money">{formatMoney(row.paid_amount)}</td>
-                      <td className="money">{formatMoney(row.debt_amount)}</td>
+                      <td className="money">{formatMoney(row.sale_status==='CANCELLED'?0:row.debt_amount)}</td>
                       <td><span className={'status-pill '+(row.payment_status==='PAID'?'green':row.payment_status==='PARTIAL'?'orange':'red')}>{statusLabel(row.payment_status)}</span></td>
                       <td><span className={'status-pill '+(row.sale_status==='COMPLETED'?'green':row.sale_status==='CANCELLED'?'red':'orange')}>{statusLabel(row.sale_status)}</span></td>
                     </tr>
@@ -180,8 +247,12 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
 
         <div className="sales-history-actions">
           <PrintPageButton label="In hóa đơn"/>
-          <button className="button small" type="button" disabled>Huỷ hóa đơn</button>
-          <button className="button small" type="button" disabled>Hoàn hàng</button>
+          <SalesHistoryActions
+            saleId={String(selected.id)}
+            invoiceCode={String(selected.invoice_code??'POS-'+String(selected.id).slice(0,8))}
+            saleStatus={String(selected.sale_status??'COMPLETED')}
+            canOperate={canOperate}
+          />
         </div>
 
         <div className="panel-tabs">
@@ -210,7 +281,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
               <div><span>Phí khác</span><b>{formatMoney(selected.other_fee)}</b></div>
               <div className="total"><span>Tổng thanh toán</span><b>{formatMoney(selected.total_amount)}</b></div>
               <div><span>Đã thu</span><b>{formatMoney(selected.paid_amount)}</b></div>
-              <div><span>Còn nợ</span><b className="warning-text">{formatMoney(selected.debt_amount)}</b></div>
+              <div><span>Còn nợ</span><b className="warning-text">{formatMoney(selected.sale_status==='CANCELLED'?0:selected.debt_amount)}</b></div>
             </div>
           </>}
 
@@ -230,7 +301,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
             <div className="sales-money-summary compact">
               <div><span>Tổng thanh toán</span><b>{formatMoney(selected.total_amount)}</b></div>
               <div><span>Đã thu</span><b>{formatMoney(selected.paid_amount)}</b></div>
-              <div><span>Còn nợ</span><b className="warning-text">{formatMoney(selected.debt_amount)}</b></div>
+              <div><span>Còn nợ</span><b className="warning-text">{formatMoney(selected.sale_status==='CANCELLED'?0:selected.debt_amount)}</b></div>
               <div><span>Tiền khách đưa</span><b>{formatMoney(selected.cash_received)}</b></div>
               <div><span>Tiền thừa</span><b>{formatMoney(selected.change_amount)}</b></div>
             </div>
@@ -247,6 +318,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
             <div><i></i><span>{formatDateTime(selected.sale_at)}</span><b>Tạo hóa đơn POS</b><small>{selected.invoice_code}</small></div>
             <div><i></i><span>{formatDateTime(selected.sale_at)}</span><b>Trừ tồn kho</b><small>{(selected.sale_items??[]).length} dòng SKU</small></div>
             {(selected.sale_payments??[]).map((payment:any)=><div key={payment.id}><i></i><span>{formatDateTime(payment.created_at)}</span><b>Thanh toán {paymentLabel(payment.method)}</b><small>{formatMoney(payment.amount)}</small></div>)}
+            {(selected.sale_returns??[]).map((entry:any)=><div key={entry.id}><i></i><span>{formatDateTime(entry.created_at)}</span><b>{entry.return_type==='CANCEL'?'Huỷ hóa đơn':entry.return_type==='FULL'?'Hoàn toàn bộ':'Hoàn một phần'}</b><small>{formatMoney(entry.refund_amount)}{entry.reason?' · '+entry.reason:''}</small></div>)}
           </div>}
         </div>
 
@@ -279,7 +351,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
             <div className="total"><span>TỔNG THANH TOÁN</span><b>{formatMoney(selected.total_amount)}</b></div>
             <div><span>Đã thu</span><b>{formatMoney(selected.paid_amount)}</b></div>
             {Number(selected.change_amount)>0&&<div><span>Tiền thừa</span><b>{formatMoney(selected.change_amount)}</b></div>}
-            {Number(selected.debt_amount)>0&&<div><span>Còn nợ</span><b>{formatMoney(selected.debt_amount)}</b></div>}
+            {selected.sale_status==='COMPLETED'&&Number(selected.debt_amount)>0&&<div><span>Còn nợ</span><b>{formatMoney(selected.debt_amount)}</b></div>}
           </div>
           <div className="receipt-payments">
             <b>THANH TOÁN</b>
@@ -288,7 +360,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
                   <span>{paymentLabel(payment.method)}</span>
                   <b>{formatMoney(payment.amount)}</b>
                 </div>)
-              : <div><span>Ghi nợ</span><b>{formatMoney(selected.debt_amount)}</b></div>}
+              : <div><span>{selected.sale_status==='CANCELLED'?'Đã huỷ':'Ghi nợ'}</span><b>{formatMoney(selected.sale_status==='CANCELLED'?0:selected.debt_amount)}</b></div>}
           </div>
           {receiptQR&&<div className="receipt-qr">
             <div>
