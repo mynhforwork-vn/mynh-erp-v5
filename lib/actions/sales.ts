@@ -142,6 +142,7 @@ export async function createPOSCustomer(input:{name:string,phone?:string,address
         .from('customers')
         .select('id,name,phone,address')
         .eq('phone',phone)
+        .is('archived_at',null)
         .maybeSingle()
       if(existingError)return {ok:false as const,error:'Không thể tìm khách hàng'}
       if(existing)return {ok:true as const,data:existing}
