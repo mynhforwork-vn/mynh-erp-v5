@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo,useState,useTransition } from 'react'
+import { useEffect,useMemo,useState,useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { cancelPOSSale,returnPOSSale } from '@/lib/actions/sales'
 
@@ -34,6 +34,15 @@ export function SalesHistoryActions({
   const [pending,startTransition]=useTransition()
   const cancellable=saleStatus==='COMPLETED'&&canOperate
   const returnable=['COMPLETED','PARTIAL_RETURN'].includes(saleStatus)&&canOperate
+
+  useEffect(()=>{
+    if(!mode)return
+    const onKey=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'&&!pending)close()
+    }
+    window.addEventListener('keydown',onKey)
+    return ()=>window.removeEventListener('keydown',onKey)
+  },[mode,pending])
   const availableItems=useMemo(()=>items.map(item=>({
     ...item,
     available:Math.max(0,item.quantity-item.returnedQuantity),
