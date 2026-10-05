@@ -153,10 +153,15 @@ if(await page.getByRole('button',{name:'Import TSV'}).count()){
 
 await go('/sales/history')
 const invoiceLinks=page.locator('.sales-history-table .table-link')
+let invoicePanelOpened=false
 if(await invoiceLinks.count()){
-  await invoiceLinks.first().click()
-  await page.waitForTimeout(800)
+  const href=await invoiceLinks.first().getAttribute('href')
+  if(href){
+    await go(href)
+    invoicePanelOpened=page.url().includes('sale=')&&await page.locator('.sales-history-panel').count()>0
+  }
 }
+summary.interactions.push({name:'Sales History invoice panel opens',pass:invoicePanelOpened})
 const cancel=page.getByRole('button',{name:'Huỷ hóa đơn'})
 const returnButton=page.getByRole('button',{name:'Hoàn hàng'})
 const cancelReady=await cancel.count()>0&&await cancel.first().isEnabled()
