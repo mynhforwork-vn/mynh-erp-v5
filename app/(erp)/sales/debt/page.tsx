@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { formatMoney } from '@/lib/format'
 import { requireUser } from '@/lib/supabase/auth'
-import { buildTransferDescription,buildVietQRUrl } from '@/lib/vietqr'
+import { DebtCollectForm } from '@/components/debt-collect-form'
 
 type SP={
   q?:string
@@ -9,77 +9,115 @@ type SP={
   customer?:string
   tab?:'summary'|'invoices'|'receipts'
   mode?:'collect'
-  pay?:'cash'|'transfer'
 }
 
-const DEMO_DEBTS=[
-  {
-    customer_id:'cus-001',name:'Nguyễn Văn An',phone:'0986123456',address:'Hoàng Mai, Hà Nội',
-    debt:185000,invoices:1,oldest:'01/10/2026',age:0,lastPayment:'01/10/2026 10:20',
-    receiptCode:'PTN-261001-000021',
-    rows:[{code:'POS-261001-000005',date:'01/10/2026 10:20',warehouse:'HN',total:685000,paid:500000,debt:185000}],
-    receipts:[{code:'PTN-260925-000014',date:'25/09/2026 19:16',method:'Chuyển khoản',amount:493000}],
-  },
-  {
-    customer_id:'cus-003',name:'Lê Văn Cường',phone:'0966456789',address:'Lạng Giang, Bắc Giang',
-    debt:263000,invoices:1,oldest:'30/09/2026',age:1,lastPayment:'30/09/2026 15:21',
-    receiptCode:'PTN-261001-000022',
-    rows:[{code:'POS-260930-000116',date:'30/09/2026 15:20',warehouse:'HN',total:1163000,paid:900000,debt:263000}],
-    receipts:[{code:'PTN-260930-000020',date:'30/09/2026 15:21',method:'Tiền mặt',amount:900000}],
-  },
-  {
-    customer_id:'cus-004',name:'Phạm Thu Trang',phone:'0388223344',address:'Thanh Xuân, Hà Nội',
-    debt:622000,invoices:1,oldest:'29/09/2026',age:2,lastPayment:'—',
-    receiptCode:'PTN-261001-000023',
-    rows:[{code:'POS-260929-000108',date:'29/09/2026 12:12',warehouse:'HN',total:622000,paid:0,debt:622000}],
-    receipts:[],
-  },
-  {
-    customer_id:'cus-008',name:'Bùi Lan Anh',phone:'0855332211',address:'Cầu Giấy, Hà Nội',
-    debt:410000,invoices:2,oldest:'15/09/2026',age:16,lastPayment:'22/09/2026 11:41',
-    receiptCode:'PTN-261001-000024',
-    rows:[
-      {code:'POS-260922-000079',date:'22/09/2026 11:40',warehouse:'HN',total:278000,paid:68000,debt:210000},
-      {code:'POS-260915-000051',date:'15/09/2026 16:10',warehouse:'HN',total:415000,paid:215000,debt:200000},
-    ],
-    receipts:[
-      {code:'PTN-260922-000011',date:'22/09/2026 11:41',method:'Chuyển khoản',amount:68000},
-      {code:'PTN-260915-000006',date:'15/09/2026 16:12',method:'Tiền mặt',amount:215000},
-    ],
-  },
-]
+const DAY=24*60*60*1000
 
-function phone(v:string){return v.replace(/(\d{4})(\d{3})(\d{3})/,'$1 $2 $3')}
+function phone(value?:string|null){
+  const v=String(value??'').replace(/\D/g,'')
+  if(v.length===10)return v.replace(/(\d{4})(\d{3})(\d{3})/,'$1 $2 $3')
+  return value||'—'
+}
+function fmtDate(value?:string|null,withTime=true){
+  if(!value)return '—'
+  const d=new Date(value)
+  if(Number.isNaN(d.getTime()))return '—'
+  return new Intl.DateTimeFormat('vi-VN',withTime
+    ?{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Ho_Chi_Minh'}
+    :{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Asia/Ho_Chi_Minh'}
+  ).format(d)
+}
+function startOfTodayVN(){
+  const now=new Date()
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(now)
+  return new Date(parts+'T00:00:00+07:00').toISOString()
+}
+function startOfMonthVN(){
+  const now=new Date()
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit'}).format(now)
+  return new Date(parts+'-01T00:00:00+07:00').toISOString()
+}
 
-export default async function DebtDemoPage({searchParams}:{searchParams:Promise<SP>}){
+export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
   const state=sp.state??'all'
   const q=String(sp.q??'').trim().toLowerCase()
   const {supabase}=await requireUser()
-  const bankResult=await supabase.from('bank_transfer_configs')
-    .select('config_key,bank_id,bank_name,account_no,account_name,qr_template,transfer_prefix,is_active')
-    .eq('config_key','DEFAULT')
-    .maybeSingle()
-  const bankConfig=(bankResult.data??null) as any
 
-  let rows=[...DEMO_DEBTS]
-  if(state==='partial')rows=rows.filter(x=>x.rows.some(r=>r.paid>0))
-  if(state==='old')rows=rows.filter(x=>x.age>=7)
+  const [customersRes,debtRes,salesRes,paymentsRes,allocRes,warehouseRes,bankResult]=await Promise.all([
+    supabase.from('customers').select('id,name,phone,address,note'),
+    supabase.from('customer_debt_balances').select('customer_id,balance'),
+    supabase.from('sales').select('id,customer_id,warehouse_id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,sale_status').not('customer_id','is',null).order('sale_at',{ascending:true}),
+    supabase.from('customer_payments').select('id,customer_id,amount,paid_at,note,receipt_code,payment_method,cash_amount,transfer_amount').order('paid_at',{ascending:false}),
+    supabase.from('customer_payment_allocations').select('id,customer_payment_id,sale_id,amount,created_at'),
+    supabase.from('warehouses').select('id,code,name,address'),
+    supabase.from('bank_transfer_configs').select('config_key,bank_id,bank_name,account_no,account_name,qr_template,transfer_prefix,is_active').eq('config_key','DEFAULT').maybeSingle(),
+  ])
+
+  const customers=(customersRes.data??[]) as any[]
+  const sales=(salesRes.data??[]) as any[]
+  const payments=(paymentsRes.data??[]) as any[]
+  const allocations=(allocRes.data??[]) as any[]
+  const whMap=new Map((warehouseRes.data??[]).map((x:any)=>[String(x.id),x]))
+  const debtMap=new Map((debtRes.data??[]).map((x:any)=>[String(x.customer_id),Number(x.balance??0)]))
+  const customerMap=new Map(customers.map((x:any)=>[String(x.id),x]))
+  const paymentByCustomer=new Map<string,any[]>()
+  for(const payment of payments){
+    const key=String(payment.customer_id)
+    const arr=paymentByCustomer.get(key)??[]
+    arr.push(payment)
+    paymentByCustomer.set(key,arr)
+  }
+  const allocByPayment=new Map<string,any[]>()
+  for(const allocation of allocations){
+    const key=String(allocation.customer_payment_id)
+    const arr=allocByPayment.get(key)??[]
+    arr.push(allocation)
+    allocByPayment.set(key,arr)
+  }
+
+  const allRows=customers
+    .map(customer=>{
+      const id=String(customer.id)
+      const balance=Number(debtMap.get(id)??0)
+      const invoices=sales.filter(s=>String(s.customer_id)===id&&Number(s.debt_amount??Math.max(0,Number(s.total_amount??0)-Number(s.paid_amount??0)))>0)
+      const oldest=invoices[0]?.sale_at??null
+      const age=oldest?Math.max(0,Math.floor((Date.now()-new Date(oldest).getTime())/DAY)):0
+      const receipts=paymentByCustomer.get(id)??[]
+      return {
+        customer_id:id,name:String(customer.name??''),phone:String(customer.phone??''),address:String(customer.address??''),
+        debt:balance,invoices:invoices.length,oldest,age,lastPayment:receipts[0]?.paid_at??null,
+        rows:invoices.map(row=>{
+          const wh=whMap.get(String(row.warehouse_id))
+          return {
+            id:String(row.id),code:String(row.invoice_code??'—'),date:row.sale_at,warehouse:String(wh?.code??'—'),
+            total:Number(row.total_amount??0),paid:Number(row.paid_amount??0),
+            debt:Number(row.debt_amount??Math.max(0,Number(row.total_amount??0)-Number(row.paid_amount??0))),
+          }
+        }),
+        receipts,
+      }
+    })
+    .filter(row=>row.debt>0)
+
+  let rows=[...allRows]
   if(state==='open')rows=rows.filter(x=>x.debt>0)
+  if(state==='partial')rows=rows.filter(x=>x.rows.some(r=>r.paid>0&&r.debt>0))
+  if(state==='old')rows=rows.filter(x=>x.age>=7)
   if(q)rows=rows.filter(x=>[x.name,x.phone,x.address,...x.rows.map(r=>r.code)].join(' ').toLowerCase().includes(q))
 
-  const selected=DEMO_DEBTS.find(x=>x.customer_id===sp.customer)??null
+  const selected=allRows.find(x=>x.customer_id===sp.customer)??null
   const tab=sp.tab??'summary'
-  const pay=sp.pay??'cash'
   const collectMode=sp.mode==='collect'&&Boolean(selected)
-  const totalDebt=DEMO_DEBTS.reduce((s,x)=>s+x.debt,0)
-  const openInvoices=DEMO_DEBTS.reduce((s,x)=>s+x.invoices,0)
-  const collectedToday=450000
-
-  const transferDescription=selected?buildTransferDescription(null,selected.receiptCode):''
-  const transferQR=selected&&pay==='transfer'&&bankConfig?.is_active
-    ? buildVietQRUrl(bankConfig,selected.debt,transferDescription,'compact2')
-    : ''
+  const totalDebt=allRows.reduce((sum,x)=>sum+x.debt,0)
+  const openInvoices=allRows.reduce((sum,x)=>sum+x.invoices,0)
+  const partialCustomers=allRows.filter(x=>x.rows.some(r=>r.paid>0&&r.debt>0)).length
+  const oldCustomers=allRows.filter(x=>x.age>=7)
+  const todayStart=startOfTodayVN()
+  const monthStart=startOfMonthVN()
+  const collectedToday=payments.filter(x=>String(x.paid_at)>=todayStart).reduce((sum,x)=>sum+Number(x.amount??0),0)
+  const collectedMonth=payments.filter(x=>String(x.paid_at)>=monthStart).reduce((sum,x)=>sum+Number(x.amount??0),0)
+  const bankConfig=(bankResult.data??null) as any
 
   function href(extra:Record<string,string|null|undefined>={}){
     const p=new URLSearchParams()
@@ -88,7 +126,6 @@ export default async function DebtDemoPage({searchParams}:{searchParams:Promise<
     if(sp.customer)p.set('customer',sp.customer)
     if(sp.tab)p.set('tab',sp.tab)
     if(sp.mode)p.set('mode',sp.mode)
-    if(sp.pay)p.set('pay',sp.pay)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v===''||v==='all')p.delete(k)
       else p.set(k,v)
@@ -97,35 +134,30 @@ export default async function DebtDemoPage({searchParams}:{searchParams:Promise<
     return '/sales/debt'+(qs?'?'+qs:'')
   }
 
-  return <div className={'sales-debt-demo '+(selected?'with-panel':'')}>
+  return <div className={'sales-debt-demo sales-live-debt '+(selected?'with-panel':'')}>
     <header className="page-head entity-page-head">
       <div>
-        <span className="module-eyebrow">BÁN HÀNG · DEMO</span>
+        <span className="module-eyebrow">BÁN HÀNG</span>
         <h1>Công nợ khách hàng</h1>
-        <p>Theo dõi hóa đơn còn nợ, thu nợ và phiếu thu</p>
+        <p>Theo dõi hóa đơn còn nợ, thu nợ, phân bổ và phiếu thu</p>
       </div>
-      <div className="head-actions">
-        <span className="sales-demo-badge">DỮ LIỆU DEMO</span>
-        <Link className="button" href="/sales/customers">Khách hàng</Link>
-      </div>
+      <div className="head-actions"><Link className="button" href="/sales/customers">Khách hàng</Link></div>
     </header>
 
     <section className="entity-status-strip debt-demo-kpis">
-      <Link className={'entity-status-metric warning '+(state==='all'?'active':'')} href={href({state:null,customer:null,tab:null,mode:null,pay:null})}>
-        <span>Tổng công nợ</span><b className="money">{formatMoney(totalDebt)}</b><small>{DEMO_DEBTS.length} khách còn nợ</small>
+      <Link className={'entity-status-metric warning '+(state==='all'?'active':'')} href={href({state:null,customer:null,tab:null,mode:null})}>
+        <span>Tổng công nợ</span><b className="money">{formatMoney(totalDebt)}</b><small>{allRows.length} khách còn nợ</small>
       </Link>
-      <Link className={'entity-status-metric '+(state==='open'?'active':'')} href={href({state:'open',customer:null,tab:null,mode:null,pay:null})}>
+      <Link className={'entity-status-metric '+(state==='open'?'active':'')} href={href({state:'open',customer:null,tab:null,mode:null})}>
         <span>Hóa đơn còn nợ</span><b>{openInvoices}</b><small>Chưa thu đủ</small>
       </Link>
-      <Link className={'entity-status-metric info '+(state==='partial'?'active':'')} href={href({state:'partial',customer:null,tab:null,mode:null,pay:null})}>
-        <span>Nợ một phần</span><b>{DEMO_DEBTS.filter(x=>x.rows.some(r=>r.paid>0)).length}</b><small>Đã thu một phần</small>
+      <Link className={'entity-status-metric info '+(state==='partial'?'active':'')} href={href({state:'partial',customer:null,tab:null,mode:null})}>
+        <span>Nợ một phần</span><b>{partialCustomers}</b><small>Đã thu một phần</small>
       </Link>
-      <Link className={'entity-status-metric danger '+(state==='old'?'active':'')} href={href({state:'old',customer:null,tab:null,mode:null,pay:null})}>
-        <span>Nợ từ 7 ngày</span><b>{DEMO_DEBTS.filter(x=>x.age>=7).length}</b><small>Cần ưu tiên xử lý</small>
+      <Link className={'entity-status-metric danger '+(state==='old'?'active':'')} href={href({state:'old',customer:null,tab:null,mode:null})}>
+        <span>Nợ từ 7 ngày</span><b>{oldCustomers.length}</b><small>{formatMoney(oldCustomers.reduce((sum,x)=>sum+x.debt,0))}</small>
       </Link>
-      <div className="entity-status-metric success">
-        <span>Đã thu hôm nay</span><b className="money">{formatMoney(collectedToday)}</b><small>Demo</small>
-      </div>
+      <div className="entity-status-metric success"><span>Đã thu hôm nay</span><b className="money">{formatMoney(collectedToday)}</b><small>Tháng này {formatMoney(collectedMonth)}</small></div>
     </section>
 
     <form className="entity-command-bar debt-demo-command" action="/sales/debt">
@@ -141,92 +173,43 @@ export default async function DebtDemoPage({searchParams}:{searchParams:Promise<
       <div className="entity-result-meta"><b>{rows.length}</b><span> khách còn nợ</span></div>
     </form>
 
+    {(customersRes.error||salesRes.error||debtRes.error)&&<div className="error-box">Không thể tải đầy đủ dữ liệu công nợ.</div>}
+
     <div className="debt-demo-workspace">
       <section className="debt-demo-list">
         <div className="debt-demo-table-wrap">
           <table className="table debt-demo-table">
-            <thead><tr>
-              <th>Khách hàng</th><th>SĐT</th><th>Số HĐ nợ</th><th>Công nợ</th>
-              <th>Nợ cũ nhất</th><th>Thu gần nhất</th><th>Xử lý</th>
-            </tr></thead>
-            <tbody>{rows.map(row=><tr key={row.customer_id} className={selected?.customer_id===row.customer_id?'selected':''}>
-              <td><Link className="table-link" href={href({customer:row.customer_id,tab:'summary',mode:null,pay:null})}>{row.name}</Link><small>{row.address}</small></td>
+            <thead><tr><th>Khách hàng</th><th>SĐT</th><th>Số HĐ nợ</th><th>Công nợ</th><th>Nợ cũ nhất</th><th>Thu gần nhất</th><th>Xử lý</th></tr></thead>
+            <tbody>{rows.length?rows.map(row=><tr key={row.customer_id} className={selected?.customer_id===row.customer_id?'selected':''}>
+              <td><Link className="table-link" href={href({customer:row.customer_id,tab:'summary',mode:null})}>{row.name}</Link><small>{row.address||'—'}</small></td>
               <td>{phone(row.phone)}</td>
               <td>{row.invoices}</td>
               <td className="money warning-text">{formatMoney(row.debt)}</td>
-              <td>{row.oldest}<small>{row.age===0?'Hôm nay':row.age+' ngày'}</small></td>
-              <td>{row.lastPayment}</td>
-              <td><Link className="button small primary" href={href({customer:row.customer_id,tab:'summary',mode:'collect',pay:'cash'})}>Thu nợ</Link></td>
-            </tr>)}</tbody>
+              <td>{fmtDate(row.oldest,false)}<small>{row.age===0?'Hôm nay':row.age+' ngày'}</small></td>
+              <td>{fmtDate(row.lastPayment)}</td>
+              <td><Link className="button small primary" href={href({customer:row.customer_id,tab:'summary',mode:'collect'})}>Thu nợ</Link></td>
+            </tr>):<tr><td colSpan={7}><div className="empty compact">Không có công nợ phù hợp bộ lọc.</div></td></tr>}</tbody>
           </table>
         </div>
       </section>
 
       {selected&&<aside className="debt-demo-panel">
         <div className="sales-detail-panel-head">
-          <div>
-            <span className="module-eyebrow">CÔNG NỢ KHÁCH HÀNG</span>
-            <h2>{selected.name}</h2>
-            <p>{phone(selected.phone)} · {selected.address}</p>
-          </div>
-          <Link className="panel-close" href={href({customer:null,tab:null,mode:null,pay:null})}>×</Link>
+          <div><span className="module-eyebrow">CÔNG NỢ KHÁCH HÀNG</span><h2>{selected.name}</h2><p>{phone(selected.phone)} · {selected.address||'—'}</p></div>
+          <Link className="panel-close" href={href({customer:null,tab:null,mode:null})}>×</Link>
         </div>
 
-        {collectMode&&<div className="debt-collect-demo">
-          <div className="debt-collect-head">
-            <div><span className="module-eyebrow">THU NỢ · DEMO</span><b>{selected.receiptCode}</b></div>
-            <Link href={href({mode:null,pay:null})}>×</Link>
-          </div>
-
-          <div className="debt-collect-amount">
-            <span>Số tiền thu</span>
-            <b>{formatMoney(selected.debt)}</b>
-            <small>Thu toàn bộ công nợ hiện tại</small>
-          </div>
-
-          <div className="debt-collect-methods">
-            <Link className={pay==='cash'?'active':''} href={href({mode:'collect',pay:'cash'})}>Tiền mặt</Link>
-            <Link className={pay==='transfer'?'active':''} href={href({mode:'collect',pay:'transfer'})}>Chuyển khoản</Link>
-          </div>
-
-          {pay==='cash'
-            ? <div className="debt-collect-cash">
-                <div><span>Khách thanh toán</span><b>{formatMoney(selected.debt)}</b></div>
-                <div><span>Mã phiếu thu</span><b>{selected.receiptCode}</b></div>
-              </div>
-            : <div className="debt-collect-transfer">
-                {transferQR
-                  ? <img src={transferQR} alt="QR thu công nợ"/>
-                  : <div className="debt-qr-empty">
-                      <b>Chưa cấu hình QR</b>
-                      <span>Cài đặt → Thanh toán & QR</span>
-                    </div>}
-                <div>
-                  <div><span>Số tiền</span><b className="amount">{formatMoney(selected.debt)}</b></div>
-                  <div><span>Ngân hàng</span><b>{bankConfig?.bank_name??'—'}</b></div>
-                  <div><span>Số tài khoản</span><b>{bankConfig?.account_no??'—'}</b></div>
-                  <div><span>Nội dung CK</span><b>{selected.receiptCode}</b></div>
-                </div>
-              </div>}
-
-          <div className="debt-allocation">
-            <span>Phân bổ vào hóa đơn</span>
-            {selected.rows.map(row=><div key={row.code}>
-              <div><b>{row.code}</b><small>{row.date}</small></div>
-              <strong>{formatMoney(row.debt)}</strong>
-            </div>)}
-          </div>
-
-          <div className="debt-collect-actions">
-            <button className="button" type="button" disabled>In phiếu thu</button>
-            <button className="button primary" type="button" disabled>DEMO · Xác nhận thu {formatMoney(selected.debt)}</button>
-          </div>
-        </div>}
+        {collectMode&&<DebtCollectForm
+          customer={{id:selected.customer_id,name:selected.name,phone:phone(selected.phone)}}
+          balance={selected.debt}
+          invoices={selected.rows.map(row=>({id:row.id,code:row.code,time:fmtDate(row.date),total:row.total,paid:row.paid,debt:row.debt,warehouse:row.warehouse}))}
+          bankConfig={bankConfig}
+        />}
 
         <div className="panel-tabs">
-          <Link className={tab==='summary'?'active':''} href={href({customer:selected.customer_id,tab:'summary'})}>Tổng quan</Link>
-          <Link className={tab==='invoices'?'active':''} href={href({customer:selected.customer_id,tab:'invoices'})}>Hóa đơn nợ</Link>
-          <Link className={tab==='receipts'?'active':''} href={href({customer:selected.customer_id,tab:'receipts'})}>Lịch sử thu</Link>
+          <Link className={tab==='summary'?'active':''} href={href({customer:selected.customer_id,tab:'summary',mode:null})}>Tổng quan</Link>
+          <Link className={tab==='invoices'?'active':''} href={href({customer:selected.customer_id,tab:'invoices',mode:null})}>Hóa đơn nợ</Link>
+          <Link className={tab==='receipts'?'active':''} href={href({customer:selected.customer_id,tab:'receipts',mode:null})}>Lịch sử thu</Link>
         </div>
 
         <div className="debt-demo-panel-scroll">
@@ -234,14 +217,14 @@ export default async function DebtDemoPage({searchParams}:{searchParams:Promise<
             <div className="debt-customer-summary">
               <div className="warning"><span>Công nợ hiện tại</span><b>{formatMoney(selected.debt)}</b></div>
               <div><span>Hóa đơn còn nợ</span><b>{selected.invoices}</b></div>
-              <div><span>Nợ cũ nhất</span><b>{selected.oldest}</b></div>
+              <div><span>Nợ cũ nhất</span><b>{fmtDate(selected.oldest,false)}</b></div>
               <div><span>Tuổi nợ</span><b>{selected.age===0?'Hôm nay':selected.age+' ngày'}</b></div>
             </div>
-            {!collectMode&&<Link className="button primary debt-main-collect" href={href({customer:selected.customer_id,tab:'summary',mode:'collect',pay:'cash'})}>Thu nợ · {formatMoney(selected.debt)}</Link>}
+            {!collectMode&&<Link className="button primary debt-main-collect" href={href({customer:selected.customer_id,tab:'summary',mode:'collect'})}>Thu nợ · {formatMoney(selected.debt)}</Link>}
             <div className="debt-panel-section">
               <div className="debt-panel-section-head"><b>Hóa đơn đang nợ</b><span>{selected.invoices} hóa đơn</span></div>
-              {selected.rows.map(row=><div className="debt-invoice-mini" key={row.code}>
-                <div><b>{row.code}</b><span>{row.date} · {row.warehouse}</span></div>
+              {selected.rows.map(row=><div className="debt-invoice-mini" key={row.id}>
+                <div><b>{row.code}</b><span>{fmtDate(row.date)} · {row.warehouse}</span></div>
                 <div><small>Đã thu {formatMoney(row.paid)}</small><b>{formatMoney(row.debt)}</b></div>
               </div>)}
             </div>
@@ -249,21 +232,22 @@ export default async function DebtDemoPage({searchParams}:{searchParams:Promise<
 
           {tab==='invoices'&&<table className="table debt-invoice-table">
             <thead><tr><th>Mã HĐ</th><th>Ngày</th><th>Tổng</th><th>Đã thu</th><th>Còn nợ</th></tr></thead>
-            <tbody>{selected.rows.map(row=><tr key={row.code}>
-              <td><b>{row.code}</b></td><td>{row.date}</td>
-              <td className="money">{formatMoney(row.total)}</td>
-              <td className="money">{formatMoney(row.paid)}</td>
-              <td className="money warning-text">{formatMoney(row.debt)}</td>
+            <tbody>{selected.rows.map(row=><tr key={row.id}>
+              <td><Link href={'/sales/history?sale='+row.id}><b>{row.code}</b></Link></td><td>{fmtDate(row.date)}</td>
+              <td className="money">{formatMoney(row.total)}</td><td className="money">{formatMoney(row.paid)}</td><td className="money warning-text">{formatMoney(row.debt)}</td>
             </tr>)}</tbody>
           </table>}
 
           {tab==='receipts'&&<div className="debt-receipt-history">
             {!selected.receipts.length
               ? <div className="empty compact">Chưa có phiếu thu nợ.</div>
-              : selected.receipts.map(row=><div className="debt-receipt-row" key={row.code}>
-                  <div><b>{row.code}</b><span>{row.date} · {row.method}</span></div>
-                  <strong>{formatMoney(row.amount)}</strong>
-                </div>)}
+              : selected.receipts.map((row:any)=>{
+                  const allocated=allocByPayment.get(String(row.id))??[]
+                  return <div className="debt-receipt-row" key={row.id}>
+                    <div><b>{row.receipt_code??'PTN'}</b><span>{fmtDate(row.paid_at)} · {row.payment_method}</span><small>{allocated.length} phân bổ · {row.note||'Không ghi chú'}</small></div>
+                    <strong>{formatMoney(Number(row.amount??0))}</strong>
+                  </div>
+                })}
           </div>}
         </div>
       </aside>}
