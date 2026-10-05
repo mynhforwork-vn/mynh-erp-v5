@@ -116,6 +116,7 @@ for(const path of routes){
     hasBrand:r.body.includes('MYNH ERP'),
     hasServerError:/Internal Server Error|Application error|Something went wrong/i.test(r.body),
     navigationError:r.navigationError,
+    navigationError:r.navigationError,
     horizontalOverflow:Math.max(metrics.scrollWidth,metrics.bodyScrollWidth)>metrics.innerWidth+2,
     ...metrics,
   }
@@ -124,6 +125,7 @@ for(const path of routes){
     const safe=path.replaceAll('/','-').replace(/^-+/,'')||'home'
     await page.screenshot({path:`${outDir}/desktop-${safe}.png`,fullPage:true})
   }
+  fs.writeFileSync(`${outDir}/summary-partial.json`,JSON.stringify(summary,null,2))
 }
 
 // Non-mutating interaction tests.
@@ -233,10 +235,12 @@ for(const path of ['/purchase/orders','/purchase/tracking','/warehouse','/sales/
     path,status:r.status,finalUrl:r.url,
     authenticated:!r.url.includes('/login'),
     horizontalOverflow:Math.max(metrics.scrollWidth,metrics.bodyScrollWidth)>metrics.innerWidth+2,
+    navigationError:r.navigationError,
     ...metrics,
   })
   const safe=path.replaceAll('/','-').replace(/^-+/,'')
   await page.screenshot({path:`${outDir}/mobile-${safe}.png`,fullPage:true})
+  fs.writeFileSync(`${outDir}/summary-partial.json`,JSON.stringify(summary,null,2))
 }
 
 await browser.close()
