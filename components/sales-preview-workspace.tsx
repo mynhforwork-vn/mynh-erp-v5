@@ -687,6 +687,11 @@ export function SalesPreviewWorkspace(){
     setPrintReceipt(receipt)
     window.setTimeout(()=>window.print(),80)
   }
+  function currentReceiptPreview(method=posPaymentMode==='cash'?'Tiền mặt':posPaymentMode==='transfer'?'Chuyển khoản':posPaymentMode==='debt'?'Ghi nợ':'Kết hợp'):PreviewReceipt{
+    const now=new Date()
+    const time=now.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+now.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',hour12:false})
+    return {code:transferRef||'POS-DỰ-KIẾN',time,warehouse:posWarehouse,customer:posCustomer?.name??'Khách lẻ',total:cartTotal,paid:0,debt:0,method,items:cart.map(x=>({...x})),note:posNote,transferRef}
+  }
   function confirmPosPayment(){
     let paid=0,debt=0
     if(posPaymentMode==='cash'){
