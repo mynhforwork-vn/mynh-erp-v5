@@ -418,13 +418,19 @@ export function SalesPreviewWorkspace(){
     const q=debtQuery.trim().toLowerCase()
     if(q)base=base.filter(c=>[c.name,c.phone,c.address].join(' ').toLowerCase().includes(q)||salesRows.some(s=>s.customer===c.name&&s.code.toLowerCase().includes(q)))
     if(debtFilter==='PARTIAL')base=base.filter(c=>salesRows.some(s=>s.customer===c.name&&s.status==='PARTIAL'&&s.debt>0))
-    const rows:DebtRow[]=base.map((c,i)=>({
-      ...c,
-      invoiceCount:Math.max(1,salesRows.filter(s=>s.customer===c.name&&s.debt>0).length),
-      oldest:salesRows.filter(s=>s.customer===c.name&&s.debt>0).sort((a,b)=>Number(vnTimeValue(a.time))-Number(vnTimeValue(b.time)))[0]?.time.split(' ')[0]??(i===1?'25/09/2026':'01/10/2026'),
-      lastPaid:debtReceipts.find(r=>r.customerId===c.id)?.time??'—',
-      risk:(i===1?'high':'medium') as 'high'|'medium'
-    }))
+    let rows:DebtRow[]=base.map(c=>{
+      const invoices=salesRows.filter(s=>s.customer===c.name&&s.debt>0).sort((a,b)=>Number(vnTimeValue(a.time))-Number(vnTimeValue(b.time)))
+      const oldest=invoices[0]?.time.split(' ')[0]??c.last.split(' ')[0]
+      const ageDays=Math.max(0,Math.floor((Date.now()-Number(vnTimeValue(oldest)))/(24*60*60*1000)))
+      return {
+        ...c,
+        invoiceCount:Math.max(1,invoices.length),
+        oldest,
+        lastPaid:debtReceipts.find(r=>r.customerId===c.id)?.time??'—',
+        risk:(ageDays>=7?'high':'medium') as 'high'|'medium'
+      }
+    })
+    if(debtFilter==='OVERDUE')rows=rows.filter(r=>r.risk==='high')
     const sort=tableSort.debt
     const value=(row:DebtRow,key:string):string|number=>{
       if(key==='name')return row.name
