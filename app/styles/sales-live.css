@@ -645,3 +645,25 @@
   .sales-return-line{grid-template-columns:minmax(0,1fr) 76px}
   .sales-return-line input{width:76px}
 }
+
+
+/* Sales History bulk archive controls */
+.sales-history-bulkbar{
+  display:flex;align-items:center;gap:10px;min-height:38px;padding:6px 10px;
+  border-bottom:1px solid #e2e8f0;background:#f8fafc;font-size:12px
+}
+.sales-history-bulkbar label{display:flex;align-items:center;gap:7px}
+.sales-history-bulkbar b{font-size:12px}
+.sales-history-table .select-col{width:34px;min-width:34px;text-align:center;padding-left:6px;padding-right:6px}
+.sales-history-table tr.bulk-selected td{background:#f1f5f9}
+.user-import-dialog{width:min(920px,calc(100vw - 32px))}
+.user-import-textarea{width:100%;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre}
+.user-import-summary{display:flex;align-items:center;gap:18px;margin:8px 0;font-size:12px}
+.user-import-preview{max-height:270px;overflow:auto;border:1px solid #e2e8f0;border-radius:10px}
+.record-delete-confirm{display:flex;align-items:center;gap:8px;min-width:280px}
+.record-delete-confirm input{min-width:180px}
+@media(max-width:720px){
+  .sales-history-bulkbar{overflow:auto}
+  .record-delete-confirm{min-width:0;flex-direction:column;align-items:stretch}
+  .record-delete-confirm input{min-width:0}
+}
