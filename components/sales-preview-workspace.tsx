@@ -1,5 +1,5 @@
 'use client'
-import { useEffect,useMemo,useState } from 'react'
+import { useEffect,useMemo,useRef,useState } from 'react'
 
 type View='overview'|'pos'|'history'|'customers'|'debt'
 type Sale={id:string,code:string,time:string,customer:string,phone:string,warehouse:string,total:number,paid:number,debt:number,status:'PAID'|'PARTIAL'|'UNPAID',saleStatus:'COMPLETED'|'CANCELLED'|'PARTIAL_RETURN'|'RETURNED',method:string,items:number}
@@ -9,13 +9,17 @@ type SortDir='asc'|'desc'
 type TablePrefs={order:string[],hidden:string[]}
 type DebtRow=Customer&{invoiceCount:number,oldest:string,lastPaid:string,risk:'high'|'medium'}
 type SalePanelTab='INFO'|'PRODUCTS'|'PAYMENT'|'HISTORY'
-type CustomerPanelTab='OVERVIEW'|'PURCHASES'|'DEBT'
-type DebtPanelTab='PAY'|'ALLOCATE'|'HISTORY'
+type CustomerPanelTab='OVERVIEW'|'PURCHASES'|'DEBT'|'HISTORY'
+type DebtPanelTab='OVERVIEW'|'INVOICES'|'PAY'|'ALLOCATE'|'HISTORY'
 type DebtPaymentMethod='CASH'|'TRANSFER'|'COMBINED'
 type DebtReceipt={id:string,code:string,customerId:string,time:string,amount:number,method:string,note:string,allocations:{saleId:string,code:string,amount:number}[]}
-type Period='all'|'today'|'7d'|'month'|'custom'
+type Period='all'|'today'|'week'|'7d'|'30d'|'month'|'quarter'|'year'|'custom'
 type PosPaymentMode='cash'|'transfer'|'debt'|'combined'
 type PosCategory={id:string,name:string,active:boolean}
+type PosCartLine={name:string,sku:string,variant:string,qty:number,price:number,stock:number,barcode:string}
+type HeldOrder={id:string,time:string,warehouse:'HN'|'BG',customerId:string,cart:PosCartLine[],discount:number,otherFee:number,note:string}
+type PreviewReceipt={code:string,time:string,warehouse:string,customer:string,total:number,paid:number,debt:number,method:string,items:PosCartLine[],note:string,transferRef:string}
+type SaleItemSeed={saleId:string,sku:string,name:string,qty:number,revenue:number,warehouse:'HN'|'BG'}
 
 const TABLE_COLUMNS:Record<TableId,{key:string,label:string}[]>={
   recent:[
@@ -64,13 +68,27 @@ const CUSTOMERS:Customer[]=[
   {id:'c5',name:'Trần Thị Mai',phone:'0912 110 245',address:'Bắc Giang',orders:9,revenue:3960000,debt:0,last:'30/09/2026 20:18',status:'GOOD'},
 ]
 const PRODUCTS=[
-  ['OMO Matic 3kg','OMO-3KG-D','Túi 3kg',289000,18,'household'],
-  ['Ensure Gold 850g','ENS-850','Lon',535000,6,'nutrition'],
-  ['Dove 640g','DOVE-640','Chai',195000,11,'personal'],
-  ['Nước rửa chén Sunlight','SUN-750','750g',64000,4,'household'],
-  ['Coca Cola 1.5L','COKE-15','Chai',18000,26,'beverage'],
-  ['Mì Hảo Hảo','MI-HAOHAO','Gói',4500,84,'food'],
+  ['OMO Matic 3kg','OMO-3KG-D','Túi 3kg',289000,18,'household','8934868123001',12],
+  ['Ensure Gold 850g','ENS-850','Lon',535000,6,'nutrition','8710428015884',9],
+  ['Dove 640g','DOVE-640','Chai',195000,11,'personal','8934868176403',7],
+  ['Nước rửa chén Sunlight','SUN-750','750g',64000,4,'household','8934868117505',16],
+  ['Coca Cola 1.5L','COKE-15','Chai',18000,26,'beverage','8935049500124',21],
+  ['Mì Hảo Hảo','MI-HAOHAO','Gói',4500,84,'food','8934563138164',65],
 ] as const
+const SALE_ITEMS:SaleItemSeed[]=[
+  {saleId:'1',sku:'OMO-3KG-D',name:'OMO Matic 3kg',qty:1,revenue:289000,warehouse:'HN'},
+  {saleId:'1',sku:'DOVE-640',name:'Dove 640g',qty:2,revenue:390000,warehouse:'HN'},
+  {saleId:'1',sku:'MI-HAOHAO',name:'Mì Hảo Hảo',qty:1,revenue:6000,warehouse:'HN'},
+  {saleId:'2',sku:'ENS-850',name:'Ensure Gold 850g',qty:1,revenue:535000,warehouse:'HN'},
+  {saleId:'2',sku:'COKE-15',name:'Coca Cola 1.5L',qty:3,revenue:54000,warehouse:'HN'},
+  {saleId:'3',sku:'ENS-850',name:'Ensure Gold 850g',qty:1,revenue:535000,warehouse:'BG'},
+  {saleId:'3',sku:'SUN-750',name:'Nước rửa chén Sunlight',qty:1,revenue:64000,warehouse:'BG'},
+  {saleId:'4',sku:'OMO-3KG-D',name:'OMO Matic 3kg',qty:3,revenue:867000,warehouse:'HN'},
+  {saleId:'4',sku:'DOVE-640',name:'Dove 640g',qty:1,revenue:296000,warehouse:'HN'},
+  {saleId:'5',sku:'COKE-15',name:'Coca Cola 1.5L',qty:10,revenue:180000,warehouse:'BG'},
+  {saleId:'5',sku:'MI-HAOHAO',name:'Mì Hảo Hảo',qty:20,revenue:90000,warehouse:'BG'},
+  {saleId:'6',sku:'MI-HAOHAO',name:'Mì Hảo Hảo',qty:20,revenue:90000,warehouse:'HN'},
+]
 const DEFAULT_POS_CATEGORIES:PosCategory[]=[
   {id:'household',name:'Gia dụng',active:true},
   {id:'nutrition',name:'Sữa & dinh dưỡng',active:true},
