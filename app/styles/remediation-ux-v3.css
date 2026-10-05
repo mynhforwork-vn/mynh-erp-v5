@@ -359,3 +359,275 @@
   .bank-transfer-toggle,.bank-transfer-actions{grid-column:auto!important}
   .debt-receipt-money-grid{grid-template-columns:1fr!important}
 }
+
+
+/* =====================================================================
+   Remediation v4 — conflict-free POS tiles, QR stack, fixed inventory drawer
+   ===================================================================== */
+
+/* POS product tiles: do not inherit legacy .pos-product-card rules. */
+.pos-product-pane>.pos-product-grid{
+  grid-template-columns:repeat(auto-fill,minmax(190px,1fr))!important;
+  grid-auto-rows:84px!important;
+  gap:7px!important;
+  padding:7px!important;
+}
+.pos-product-tile-v3{
+  min-width:0!important;
+  height:84px!important;
+  display:grid!important;
+  grid-template-rows:24px 22px 26px!important;
+  gap:3px!important;
+  padding:7px 9px!important;
+  overflow:hidden!important;
+  border:1px solid #d7e1e9!important;
+  border-radius:7px!important;
+  background:#fff!important;
+  color:#22374a!important;
+  text-align:left!important;
+  box-shadow:0 1px 2px rgba(18,38,58,.04)!important;
+  cursor:pointer!important;
+}
+.pos-product-tile-v3:hover:not(:disabled){
+  border-color:#95afc4!important;
+  background:#fbfdff!important;
+  box-shadow:0 3px 10px rgba(24,52,76,.08)!important;
+}
+.pos-product-tile-v3:disabled{cursor:not-allowed!important;opacity:.52!important}
+.pos-tile-name{
+  min-width:0!important;
+  overflow:hidden!important;
+  color:#20384e!important;
+  font-size:11px!important;
+  line-height:1.2!important;
+  font-weight:800!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.pos-tile-meta{
+  min-width:0!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  overflow:hidden!important;
+}
+.pos-tile-sku{
+  flex:0 1 auto!important;
+  min-width:0!important;
+  max-width:115px!important;
+  height:20px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  padding:0 6px!important;
+  overflow:hidden!important;
+  border:1px solid #bfd0de!important;
+  border-radius:4px!important;
+  background:#eef4f8!important;
+  color:#28506f!important;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;
+  font-size:8.5px!important;
+  font-weight:800!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.pos-tile-variant{
+  min-width:0!important;
+  overflow:hidden!important;
+  color:#6f8090!important;
+  font-size:8.5px!important;
+  font-weight:650!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.pos-tile-foot{
+  min-width:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:8px!important;
+  padding-top:4px!important;
+  border-top:1px solid #edf2f5!important;
+}
+.pos-tile-foot strong{
+  color:#152f45!important;
+  font-size:11.5px!important;
+  font-weight:850!important;
+  font-variant-numeric:tabular-nums!important;
+  white-space:nowrap!important;
+}
+.pos-tile-foot>span{
+  flex:0 0 auto!important;
+  padding:3px 6px!important;
+  border-radius:4px!important;
+  background:#edf8f3!important;
+  color:#237258!important;
+  font-size:8px!important;
+  font-weight:800!important;
+  white-space:nowrap!important;
+}
+.pos-tile-foot>span.low{background:#fff4df!important;color:#a36510!important}
+
+/* QR preview: QR smaller, four information rows clearly visible. */
+.bank-transfer-preview-compact{
+  padding:12px!important;
+}
+.bank-transfer-preview-head{
+  margin-bottom:7px!important;
+}
+.bank-transfer-preview-head small{
+  color:#315a79!important;
+  font-size:9px!important;
+  font-weight:750!important;
+}
+.bank-transfer-preview-body{
+  display:grid!important;
+  grid-template-columns:136px minmax(0,1fr)!important;
+  align-items:start!important;
+  gap:10px!important;
+}
+.bank-transfer-preview-body>img{
+  width:136px!important;
+  max-width:136px!important;
+  height:auto!important;
+  margin:0!important;
+  border:1px solid #dbe3e9!important;
+  border-radius:7px!important;
+  background:#fff!important;
+}
+.bank-preview-empty{
+  min-height:136px!important;
+  display:grid!important;
+  place-items:center!important;
+}
+.bank-transfer-info-stack{
+  min-width:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:6px!important;
+}
+.bank-transfer-info-stack>div{
+  min-width:0!important;
+  min-height:39px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  gap:2px!important;
+  padding:6px 8px!important;
+  border:1px solid #e0e7ed!important;
+  border-radius:6px!important;
+  background:#fff!important;
+}
+.bank-transfer-info-stack span{
+  color:#788999!important;
+  font-size:7.5px!important;
+  font-weight:750!important;
+  text-transform:uppercase!important;
+  letter-spacing:.035em!important;
+}
+.bank-transfer-info-stack b{
+  min-width:0!important;
+  overflow-wrap:anywhere!important;
+  color:#2b4359!important;
+  font-size:9.5px!important;
+  line-height:1.25!important;
+  font-weight:800!important;
+}
+
+/* Inventory drawer must overlay; never widen or vertically stretch the page. */
+.whx-page{overflow-x:clip!important}
+.whx-stock-layout.with-panel{
+  position:relative!important;
+  grid-template-columns:minmax(0,1fr)!important;
+}
+.whx-stock-main{
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+}
+.whx-table-card,.whx-table-scroll{
+  min-width:0!important;
+  max-width:100%!important;
+}
+.whx-table-scroll{overflow:auto!important}
+.whx-detail-panel-v2{
+  position:fixed!important;
+  z-index:700!important;
+  top:168px!important;
+  right:16px!important;
+  bottom:16px!important;
+  width:min(420px,calc(100vw - 300px))!important;
+  min-width:0!important;
+  max-width:420px!important;
+  height:auto!important;
+  max-height:calc(100vh - 184px)!important;
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+  border:1px solid #cedae4!important;
+  border-radius:9px!important;
+  background:#f8fafc!important;
+  box-shadow:0 18px 45px rgba(21,42,63,.20)!important;
+}
+.whx-detail-panel-v2 .whx-panel-head-v2{
+  flex:0 0 auto!important;
+  min-width:0!important;
+}
+.whx-detail-panel-v2 .whx-panel-tabs{
+  flex:0 0 auto!important;
+  overflow:hidden!important;
+}
+.whx-detail-panel-v2 .whx-panel-scroll{
+  flex:1 1 auto!important;
+  min-width:0!important;
+  min-height:0!important;
+  max-width:100%!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain!important;
+}
+.whx-detail-panel-v2 .whx-panel-card,
+.whx-detail-panel-v2 .whx-panel-kpis,
+.whx-detail-panel-v2 .whx-info-grid,
+.whx-detail-panel-v2 .whx-warehouse-stock-list,
+.whx-detail-panel-v2 .whx-sku-ledger{
+  min-width:0!important;
+  max-width:100%!important;
+}
+.whx-detail-panel-v2 .whx-panel-title-row{
+  min-width:0!important;
+  flex-wrap:wrap!important;
+}
+.whx-detail-panel-v2 .whx-panel-title-row h2,
+.whx-detail-panel-v2 .whx-panel-head p,
+.whx-detail-panel-v2 .whx-info-grid b,
+.whx-detail-panel-v2 .whx-warehouse-stock-list small,
+.whx-detail-panel-v2 .whx-ledger-row>div{
+  min-width:0!important;
+  overflow-wrap:anywhere!important;
+}
+
+@media(max-width:1180px){
+  .whx-detail-panel-v2{
+    right:10px!important;
+    width:min(390px,calc(100vw - 250px))!important;
+    max-width:390px!important;
+  }
+}
+@media(max-width:760px){
+  .pos-product-pane>.pos-product-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    grid-auto-rows:82px!important;
+  }
+  .pos-product-tile-v3{height:82px!important;grid-template-rows:23px 21px 25px!important}
+  .bank-transfer-preview-body{grid-template-columns:112px minmax(0,1fr)!important}
+  .bank-transfer-preview-body>img{width:112px!important;max-width:112px!important}
+  .whx-detail-panel-v2{
+    top:72px!important;
+    right:8px!important;
+    bottom:8px!important;
+    left:8px!important;
+    width:auto!important;
+    max-width:none!important;
+    max-height:none!important;
+  }
+}
