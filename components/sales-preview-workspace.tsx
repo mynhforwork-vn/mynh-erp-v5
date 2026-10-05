@@ -108,15 +108,23 @@ function dateKey(value:string){
   return match?`${match[3]}-${match[2]}-${match[1]}`:''
 }
 function periodMatch(value:string,period:Period,from:string,to:string){
-  const ts=vnTimeValue(value)
+  const ts=Number(vnTimeValue(value))
   if(period==='all')return true
   const now=new Date()
-  if(period==='today'){
-    const start=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime()
-    return Number(ts)>=start
+  const startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime()
+  if(period==='today')return ts>=startToday
+  if(period==='7d')return ts>=startToday-6*24*60*60*1000
+  if(period==='30d')return ts>=startToday-29*24*60*60*1000
+  if(period==='week'){
+    const day=(now.getDay()+6)%7
+    return ts>=startToday-day*24*60*60*1000
   }
-  if(period==='7d')return Number(ts)>=Date.now()-6*24*60*60*1000
-  if(period==='month')return Number(ts)>=new Date(now.getFullYear(),now.getMonth(),1).getTime()
+  if(period==='month')return ts>=new Date(now.getFullYear(),now.getMonth(),1).getTime()
+  if(period==='quarter'){
+    const qStart=Math.floor(now.getMonth()/3)*3
+    return ts>=new Date(now.getFullYear(),qStart,1).getTime()
+  }
+  if(period==='year')return ts>=new Date(now.getFullYear(),0,1).getTime()
   const key=dateKey(value)
   if(from&&key<from)return false
   if(to&&key>to)return false
