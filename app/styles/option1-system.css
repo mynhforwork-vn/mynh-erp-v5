@@ -17458,3 +17458,32 @@ a{text-decoration:none}
     min-height:620px;
   }
 }
+
+
+/* Mobile viewport integrity — override the legacy 960px compact-desktop floor. */
+@media(max-width:900px){
+  html,body{width:100%;max-width:100%;min-width:0!important;overflow-x:hidden}
+  .shell{
+    width:100%;
+    max-width:100vw;
+    min-width:0;
+    grid-template-columns:58px minmax(0,1fr)!important;
+  }
+  .sidebar{min-width:0;padding-left:6px!important;padding-right:6px!important}
+  .main{
+    width:100%;
+    max-width:100%;
+    min-width:0!important;
+    padding:10px 8px 18px!important;
+    overflow-x:hidden;
+  }
+  .table-card,
+  .customer-demo-table-wrap,
+  .debt-demo-table-wrap,
+  .sales-history-table-wrap,
+  .whx-stock-main{
+    max-width:100%;
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+  }
+}
