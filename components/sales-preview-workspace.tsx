@@ -215,6 +215,7 @@ export function SalesPreviewWorkspace(){
   const [debtQuery,setDebtQuery]=useState('')
   const [debtFilter,setDebtFilter]=useState<'ALL'|'PARTIAL'|'OVERDUE'>('ALL')
   const [salesRows,setSalesRows]=useState<Sale[]>(SALES)
+  const [saleItems,setSaleItems]=useState<SaleItemSeed[]>(SALE_ITEMS)
   const [dashboardPeriod,setDashboardPeriod]=useState<Period>('all')
   const [dashboardFrom,setDashboardFrom]=useState('')
   const [dashboardTo,setDashboardTo]=useState('')
@@ -433,14 +434,14 @@ export function SalesPreviewWorkspace(){
   const dashboardSaleIds=new Set(dashboardSales.map(x=>x.id))
   const dashboardTopProducts=useMemo(()=>{
     const map=new Map<string,{sku:string,name:string,qty:number,revenue:number}>()
-    for(const item of SALE_ITEMS){
+    for(const item of saleItems){
       if(!dashboardSaleIds.has(item.saleId))continue
       if(dashboardWarehouse!=='ALL'&&item.warehouse!==dashboardWarehouse)continue
       const current=map.get(item.sku)??{sku:item.sku,name:item.name,qty:0,revenue:0}
       current.qty+=item.qty;current.revenue+=item.revenue;map.set(item.sku,current)
     }
     return [...map.values()].sort((a,b)=>b.qty-a.qty||b.revenue-a.revenue).slice(0,5)
-  },[dashboardSales,dashboardWarehouse])
+  },[dashboardSales,dashboardWarehouse,saleItems])
   const historyRevenue=filteredSales.reduce((sum,x)=>sum+x.total,0)
   const activeDebtBalance=debtPanel?(debtBalances[debtPanel.id]??debtPanel.debt):0
   const debtInvoices=debtPanel?salesRows.filter(x=>x.customer===debtPanel.name&&x.debt>0).sort((a,b)=>Number(vnTimeValue(a.time))-Number(vnTimeValue(b.time))):[]
