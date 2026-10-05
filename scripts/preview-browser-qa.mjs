@@ -29,7 +29,8 @@ const browser=await chromium.launch({headless:true})
 // Public / unauthenticated checks.
 const publicContext=await browser.newContext({viewport:{width:1440,height:900}})
 const publicPage=await publicContext.newPage()
-const loginRes=await publicPage.goto(PREVIEW_URL+'/login',{waitUntil:'networkidle',timeout:60000})
+const loginRes=await publicPage.goto(PREVIEW_URL+'/login',{waitUntil:'domcontentloaded',timeout:30000})
+await publicPage.waitForTimeout(800)
 const loginBody=(await publicPage.locator('body').innerText()).slice(0,3000)
 summary.public.login={
   status:loginRes?.status()??0,
@@ -40,7 +41,8 @@ summary.public.login={
   submitButtons:await publicPage.getByRole('button',{name:/Đăng nhập/}).count(),
 }
 await publicPage.screenshot({path:`${outDir}/login-desktop.png`,fullPage:true})
-await publicPage.goto(PREVIEW_URL+'/sales/pos',{waitUntil:'networkidle',timeout:60000})
+await publicPage.goto(PREVIEW_URL+'/sales/pos',{waitUntil:'domcontentloaded',timeout:30000})
+await publicPage.waitForTimeout(800)
 summary.public.protectedRedirect={
   requested:'/sales/pos',
   finalUrl:publicPage.url(),
@@ -78,8 +80,13 @@ page.on('pageerror',e=>summary.pageErrors.push({url:page.url(),text:String(e)}))
 page.on('response',r=>{if(r.status()>=500)summary.network5xx.push({url:r.url(),status:r.status()})})
 
 async function go(path){
-  const res=await page.goto(PREVIEW_URL+path,{waitUntil:'networkidle',timeout:60000})
-  return {status:res?.status()??0,url:page.url(),body:(await page.locator('body').innerText()).slice(0,5000)}
+  try{
+    const res=await page.goto(PREVIEW_URL+path,{waitUntil:'domcontentloaded',timeout:30000})
+    await page.waitForTimeout(900)
+    return {status:res?.status()??0,url:page.url(),body:(await page.locator('body').innerText()).slice(0,5000),navigationError:null}
+  }catch(error){
+    return {status:0,url:page.url(),body:(await page.locator('body').innerText().catch(()=>'' )).slice(0,5000),navigationError:String(error)}
+  }
 }
 
 const routes=[
@@ -104,9 +111,11 @@ for(const path of routes){
   }))
   const rec={
     path,status:r.status,finalUrl:r.url,
+    navigationError:r.navigationError,
     authenticated:!r.url.includes('/login'),
     hasBrand:r.body.includes('MYNH ERP'),
     hasServerError:/Internal Server Error|Application error|Something went wrong/i.test(r.body),
+    navigationError:r.navigationError,
     horizontalOverflow:Math.max(metrics.scrollWidth,metrics.bodyScrollWidth)>metrics.innerWidth+2,
     ...metrics,
   }
@@ -180,10 +189,10 @@ summary.failures=[]
 if(!summary.public.login.hasBrand||summary.public.login.emailInputs!==1||summary.public.login.passwordInputs!==1)summary.failures.push('Login UI')
 if(!summary.public.protectedRedirect.redirectedToLogin)summary.failures.push('Protected route redirect')
 for(const r of summary.desktop){
-  if(!r.authenticated||r.status>=500||r.hasServerError)summary.failures.push(`Desktop route ${r.path}`)
+  if(!r.authenticated||r.status>=500||r.hasServerError||r.navigationError)summary.failures.push(`Desktop route ${r.path}`)
 }
 for(const r of summary.mobile){
-  if(!r.authenticated||r.status>=500)summary.failures.push(`Mobile route ${r.path}`)
+  if(!r.authenticated||r.status>=500||r.navigationError)summary.failures.push(`Mobile route ${r.path}`)
 }
 if(summary.consoleErrors.length)summary.failures.push(`Console errors: ${summary.consoleErrors.length}`)
 if(summary.pageErrors.length)summary.failures.push(`Page errors: ${summary.pageErrors.length}`)
