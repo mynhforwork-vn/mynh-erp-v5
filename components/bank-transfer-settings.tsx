@@ -110,6 +110,18 @@ export function BankTransferSettings({
         </label>
 
         <label>
+          <span>Tiền tố nội dung CK</span>
+          <input
+            name="transfer_prefix"
+            value={String(form.transfer_prefix??'MYNH')}
+            onChange={e=>setForm(v=>({...v,transfer_prefix:e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12)}))}
+            placeholder="MYNH"
+            disabled={!canEdit}
+          />
+          <small>Tối đa 12 ký tự, tự ghép với mã hóa đơn/phiếu thu.</small>
+        </label>
+
+        <label>
           <span>Mẫu QR</span>
           <select
             name="qr_template"
@@ -143,7 +155,7 @@ export function BankTransferSettings({
         </div>
       </form>
 
-      <div className="bank-transfer-preview">
+      <div className="bank-transfer-preview bank-transfer-preview-compact">
         <div className="bank-transfer-preview-head">
           <span className="module-eyebrow">XEM TRƯỚC</span>
           <b>QR chuyển khoản</b>
