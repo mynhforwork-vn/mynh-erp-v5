@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo,useState,useTransition } from 'react'
+import { useEffect,useMemo,useState,useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { bulkImportERPUsers } from '@/lib/actions/core'
 
@@ -57,6 +57,15 @@ export function UserBulkImport(){
 
   const errorCount=parsed.reduce((sum,row)=>sum+row.errors.length,0)
   const valid=parsed.length>0&&parsed.length<=200&&errorCount===0
+
+  useEffect(()=>{
+    if(!open)return
+    const onKey=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'&&!pending)close()
+    }
+    window.addEventListener('keydown',onKey)
+    return ()=>window.removeEventListener('keydown',onKey)
+  },[open,pending])
 
   function close(){
     if(pending)return
