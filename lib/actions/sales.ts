@@ -472,3 +472,34 @@ export async function restoreSalesCustomerForm(formData:FormData):Promise<void>{
   revalidatePath('/sales/pos')
   redirect('/sales/customers?customer='+encodeURIComponent(customerId)+'&tab=info')
 }
+
+
+export async function archivePOSSalesBulk(ids:string[]){
+  try{
+    const {supabase}=await actor()
+    const saleIds=[...new Set((ids??[]).map(x=>String(x).trim()).filter(Boolean))]
+    if(!saleIds.length)return {ok:false as const,error:'Chưa chọn hóa đơn'}
+    if(saleIds.length>200)return {ok:false as const,error:'Tối đa 200 hóa đơn mỗi lần'}
+    const {data,error}=await supabase.rpc('archive_pos_sales',{p_sale_ids:saleIds})
+    if(error)return {ok:false as const,error:error.message}
+    revalidatePath('/sales/history')
+    return {ok:true as const,count:Number(data??0)}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể lưu trữ hóa đơn')}
+  }
+}
+
+export async function restorePOSSalesBulk(ids:string[]){
+  try{
+    const {supabase}=await actor()
+    const saleIds=[...new Set((ids??[]).map(x=>String(x).trim()).filter(Boolean))]
+    if(!saleIds.length)return {ok:false as const,error:'Chưa chọn hóa đơn'}
+    if(saleIds.length>200)return {ok:false as const,error:'Tối đa 200 hóa đơn mỗi lần'}
+    const {data,error}=await supabase.rpc('restore_pos_sales',{p_sale_ids:saleIds})
+    if(error)return {ok:false as const,error:error.message}
+    revalidatePath('/sales/history')
+    return {ok:true as const,count:Number(data??0)}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể khôi phục hóa đơn')}
+  }
+}
