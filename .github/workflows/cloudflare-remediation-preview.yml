@@ -25,10 +25,8 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: Static QA
         run: node scripts/remediation-static-qa.mjs
-      - name: Build Next.js
-        run: npm run build
       - name: Build OpenNext Worker
-        run: npx opennextjs-cloudflare build --skipNextBuild
+        run: npm run cf:build
       - name: Publish isolated Cloudflare Preview
         id: cfpreview
         shell: bash
@@ -78,7 +76,7 @@ jobs:
             echo "- Commit: `$GITHUB_SHA`"
             echo "- Preview: $PREVIEW_URL"
             echo "- Static QA: PASS"
-            echo "- Next build: PASS"
+            echo "- OpenNext Cloudflare build: PASS"
             echo "- /api/health: PASS"
             echo "- /login: PASS"
           } >> "$GITHUB_STEP_SUMMARY"
