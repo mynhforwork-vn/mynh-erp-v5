@@ -530,9 +530,14 @@ export function SalesPOSWorkspace({
             ref={searchRef}
             value={search}
             onChange={e=>setSearch(e.target.value)}
-            onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();scanEnter()}}}
-            placeholder="Quét barcode / nhập SKU / tìm tên sản phẩm..."
+            onKeyDown={e=>{
+              if(e.key==='Enter'){e.preventDefault();scanEnter()}
+              if(e.key==='Escape'){e.preventDefault();setSearch('')}
+            }}
+            aria-label="Tìm sản phẩm theo barcode, SKU hoặc tên"
+            placeholder="Quét barcode · nhập SKU · tìm tên sản phẩm"
           />
+          {search&&<button className="pos-search-clear" type="button" onClick={()=>{setSearch('');searchRef.current?.focus()}} aria-label="Xóa từ khóa">×</button>}
           <kbd>F4</kbd>
         </div>
 
@@ -631,8 +636,8 @@ export function SalesPOSWorkspace({
                     disabled={!canSell||product.quantity<=0}
                   >
                     <div className="pos-product-card-head">
-                      <div className="pos-product-card-main"><b>{product.name}</b><span>{product.variant}</span></div>
-                      <div className="pos-product-card-code"><span>SKU</span><b>{product.sku}</b>{product.barcode&&<small>{product.barcode}</small>}</div>
+                      <div className="pos-product-card-main"><b title={product.name}>{product.name}</b><span title={product.variant}>{product.variant}</span></div>
+                      <div className="pos-product-card-code"><span>SKU</span><b title={product.sku}>{product.sku}</b>{product.barcode&&<small>{product.barcode}</small>}</div>
                     </div>
                     <div className="pos-product-card-stats">
                       <div><span>Giá bán</span><b>{money(product.sale_price)}</b></div>
