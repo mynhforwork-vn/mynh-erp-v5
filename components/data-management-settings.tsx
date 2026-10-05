@@ -113,8 +113,9 @@ export function DataManagementSettings({
     </div>
 
     <div className="data-management-footnote">
-      <b>Không có nút “Xóa sạch toàn bộ dữ liệu”.</b>
-      <span>Reset toàn hệ thống là thao tác riêng, cần phạm vi và xác nhận nhiều bước để tránh mất dữ liệu do nhầm thao tác.</span>
+      <b>Reset toàn hệ thống được tách khỏi thao tác lưu trữ/xóa đơn.</b>
+      <span>{canDelete?'Admin có thể mở tab Phân quyền & tài khoản để reset dữ liệu vận hành hoặc toàn bộ cấu hình với xác nhận nhiều bước.':'Chỉ Admin được truy cập chức năng reset toàn hệ thống.'}</span>
+      {canDelete&&<Link className="button small danger" href="/settings?section=access">Mở khu vực Admin</Link>}
     </div>
   </div>
 }
