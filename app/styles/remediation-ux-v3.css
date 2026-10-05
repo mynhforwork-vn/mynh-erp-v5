@@ -1,0 +1,361 @@
+/* Final remediation UX pass: POS, debt receipts, payments, admin access, inventory panel. */
+
+/* POS search + product cards */
+.pos-control-row-v2{
+  display:grid!important;
+  grid-template-columns:minmax(210px,250px) minmax(320px,1fr) auto!important;
+  align-items:stretch!important;
+  gap:8px!important;
+}
+.pos-search-v2{
+  position:relative!important;
+  min-width:0!important;
+  height:38px!important;
+  display:flex!important;
+  align-items:center!important;
+  overflow:hidden!important;
+  border:1px solid #cbd7e3!important;
+  border-radius:7px!important;
+  background:#fff!important;
+  box-shadow:0 1px 2px rgba(15,23,42,.04)!important;
+}
+.pos-search-v2:focus-within{
+  border-color:#6f92b5!important;
+  box-shadow:0 0 0 2px rgba(55,101,146,.10)!important;
+}
+.pos-search-v2 .pos-search-icon{
+  flex:0 0 34px!important;
+  display:grid!important;
+  place-items:center!important;
+  color:#58708a!important;
+  font-size:15px!important;
+}
+.pos-search-v2 input{
+  width:100%!important;
+  min-width:0!important;
+  height:100%!important;
+  padding:0 64px 0 0!important;
+  border:0!important;
+  outline:0!important;
+  background:transparent!important;
+  color:#17283a!important;
+  font-size:11.5px!important;
+}
+.pos-search-v2 input::placeholder{color:#8a99a8!important}
+.pos-search-v2 kbd{
+  position:absolute!important;
+  right:7px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  min-width:25px!important;
+  height:22px!important;
+  display:grid!important;
+  place-items:center!important;
+  border:1px solid #d6e0e8!important;
+  border-radius:4px!important;
+  background:#f5f8fa!important;
+  color:#6f7f8e!important;
+  font-size:8px!important;
+}
+.pos-search-clear{
+  position:absolute!important;
+  right:38px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  width:22px!important;
+  height:22px!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:4px!important;
+  background:transparent!important;
+  color:#788896!important;
+  font-size:14px!important;
+  cursor:pointer!important;
+}
+.pos-search-clear:hover{background:#edf2f6!important;color:#20384f!important}
+
+.pos-product-pane>.pos-product-grid{
+  grid-template-columns:repeat(auto-fill,minmax(180px,1fr))!important;
+  grid-auto-rows:76px!important;
+  gap:6px!important;
+  padding:6px!important;
+}
+.pos-screen-v2 .pos-product-card{
+  height:76px!important;
+  min-height:76px!important;
+  grid-template-rows:minmax(32px,1fr) 28px!important;
+  gap:4px!important;
+  padding:7px 8px!important;
+  border:1px solid #dce5ec!important;
+  border-radius:7px!important;
+  background:#fff!important;
+  text-align:left!important;
+  box-shadow:0 1px 2px rgba(15,23,42,.035)!important;
+}
+.pos-screen-v2 .pos-product-card:hover:not(:disabled){
+  border-color:#9fb6ca!important;
+  background:#fbfdff!important;
+  box-shadow:0 3px 10px rgba(29,55,80,.08)!important;
+}
+.pos-screen-v2 .pos-product-card-head{
+  align-items:start!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:7px!important;
+}
+.pos-screen-v2 .pos-product-card-main{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  align-content:start!important;
+  gap:2px!important;
+}
+.pos-screen-v2 .pos-product-card-main b{
+  font-size:11.5px!important;
+  line-height:1.15!important;
+  font-weight:750!important;
+}
+.pos-screen-v2 .pos-product-card-main span{
+  max-width:100%!important;
+  color:#6d7e8f!important;
+  font-size:8.5px!important;
+  line-height:1.1!important;
+}
+.pos-screen-v2 .pos-product-card-code>b{
+  height:21px!important;
+  max-width:104px!important;
+  padding:0 6px!important;
+  font-size:8.6px!important;
+  border-color:#bfd0de!important;
+  background:#eef4f8!important;
+}
+.pos-screen-v2 .pos-product-card-stats{
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:7px!important;
+  padding-top:4px!important;
+}
+.pos-screen-v2 .pos-product-card-stats>div:first-child b{
+  font-size:11.5px!important;
+  font-weight:800!important;
+}
+.pos-screen-v2 .pos-product-card-stats>div:last-child{
+  min-width:46px!important;
+  justify-content:center!important;
+  padding:3px 6px!important;
+}
+.pos-screen-v2 .pos-product-card-stats>div:last-child b{font-size:8.8px!important}
+.pos-screen-v2 .pos-product-card-stats small{font-size:7.2px!important}
+
+/* Payment settings */
+.bank-transfer-settings{display:flex;flex-direction:column;gap:10px}
+.bank-transfer-settings .carrier-settings-head{padding:14px 16px!important}
+.bank-transfer-settings-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 320px!important;
+  align-items:start!important;
+  gap:12px!important;
+  padding:0!important;
+}
+.bank-transfer-form{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px 12px!important;
+  padding:14px!important;
+  border:1px solid #dbe4ec!important;
+  border-radius:8px!important;
+  background:#fff!important;
+}
+.bank-transfer-form label{min-width:0!important}
+.bank-transfer-form label>span{
+  display:block!important;
+  margin-bottom:5px!important;
+  color:#526a80!important;
+  font-size:9px!important;
+  font-weight:800!important;
+  text-transform:uppercase!important;
+  letter-spacing:.04em!important;
+}
+.bank-transfer-form input,.bank-transfer-form select{
+  width:100%!important;
+  height:36px!important;
+  border:1px solid #cdd9e4!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  color:#203448!important;
+  font-size:11px!important;
+}
+.bank-transfer-form small{display:block!important;margin-top:4px!important;color:#8191a0!important;font-size:8px!important}
+.bank-transfer-toggle{
+  grid-column:1/-1!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  padding:10px!important;
+  border-radius:6px!important;
+  background:#f7fafc!important;
+}
+.bank-transfer-toggle input{width:16px!important;height:16px!important}
+.bank-transfer-toggle span{margin:0!important;text-transform:none!important;font-size:10px!important}
+.bank-transfer-actions{
+  grid-column:1/-1!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:10px!important;
+  padding-top:4px!important;
+}
+.bank-transfer-preview-compact{
+  position:sticky!important;
+  top:10px!important;
+  padding:14px!important;
+  border:1px solid #dbe4ec!important;
+  border-radius:8px!important;
+  background:#f8fafc!important;
+}
+.bank-transfer-preview-compact img{
+  display:block!important;
+  width:210px!important;
+  max-width:100%!important;
+  height:auto!important;
+  margin:10px auto!important;
+  border-radius:8px!important;
+}
+.bank-transfer-preview-meta{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:6px!important;
+}
+.bank-transfer-preview-meta>div{
+  min-width:0!important;
+  padding:7px!important;
+  border-radius:5px!important;
+  background:#fff!important;
+}
+.bank-transfer-preview-meta>div:last-child{grid-column:1/-1!important}
+.bank-transfer-preview-meta span{display:block!important;color:#7b8b9a!important;font-size:7.5px!important}
+.bank-transfer-preview-meta b{display:block!important;overflow:hidden!important;font-size:9.5px!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+
+/* Admin access */
+.admin-access-settings{display:flex;flex-direction:column;gap:12px}
+.admin-access-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  padding:14px 16px;border:1px solid #dbe4ec;border-radius:8px;background:#fff
+}
+.admin-access-head h3{margin:2px 0 3px;font-size:17px}
+.admin-access-head p{margin:0;color:#738497;font-size:10px}
+.admin-role-matrix,.admin-user-table-card,.admin-danger-zone{
+  border:1px solid #dbe4ec;border-radius:8px;background:#fff;overflow:hidden
+}
+.admin-role-matrix-head{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:11px 13px;border-bottom:1px solid #e4ebf1
+}
+.admin-role-matrix-head>div{display:flex;flex-direction:column;gap:2px}
+.admin-role-matrix-head>b,.admin-role-matrix-head>div>b{font-size:11px}
+.admin-role-matrix-head span{color:#7b8c9d;font-size:8.5px}
+.admin-role-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px}
+.admin-role-card{display:flex;flex-direction:column;gap:4px;padding:10px;border:1px solid #e0e7ee;border-radius:7px;background:#f9fbfc}
+.admin-role-card strong{font-size:11px;color:#1d3d5b}.admin-role-card span{font-size:9px;font-weight:700}.admin-role-card small{color:#718395;font-size:8px;line-height:1.35}
+.admin-user-table-wrap{overflow:auto}
+.admin-user-table td>small{display:block;margin-top:2px;color:#718395;font-size:8px}
+.admin-user-table select{height:30px;min-width:110px;border:1px solid #ccd8e3;border-radius:5px;background:#fff;font-size:9px}
+.admin-reset-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}
+.admin-reset-card{
+  display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:12px;text-align:left;
+  border:1px solid #dbe4ec;border-radius:7px;background:#f8fafc;color:#20364b;cursor:pointer
+}
+.admin-reset-card:hover{border-color:#9fb4c7;background:#f4f8fb}
+.admin-reset-card.danger{border-color:#f0c6c6;background:#fff8f8;color:#7a2929}
+.admin-reset-card b{font-size:11px}.admin-reset-card span{font-size:9px;line-height:1.4}.admin-reset-card small{font-size:8px;color:#7c8a97}
+.admin-reset-backdrop{
+  position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:20px;background:rgba(15,23,42,.32)
+}
+.admin-reset-dialog{width:min(520px,100%);padding:16px;border-radius:10px;background:#fff;box-shadow:0 24px 70px rgba(15,23,42,.24)}
+.admin-reset-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.admin-reset-dialog-head h3{margin:3px 0 0}.admin-reset-dialog-head>button{border:0;background:transparent;font-size:22px;cursor:pointer}
+.admin-reset-dialog>p{color:#657789;font-size:10px;line-height:1.5}
+.admin-reset-dialog label{display:flex;flex-direction:column;gap:6px;font-size:9px}
+.admin-reset-dialog input{height:36px;border:1px solid #d5dee6;border-radius:6px;padding:0 9px}
+
+/* Debt bills */
+.debt-receipt-card{
+  border:1px solid #dfe7ee;border-radius:7px;background:#fff;overflow:hidden
+}
+.debt-receipt-card+ .debt-receipt-card{margin-top:7px}
+.debt-receipt-card summary{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;cursor:pointer;list-style:none
+}
+.debt-receipt-card summary::-webkit-details-marker{display:none}
+.debt-receipt-card summary>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.debt-receipt-card summary b{font-size:10px}.debt-receipt-card summary span,.debt-receipt-card summary small{color:#758697;font-size:8px}
+.debt-receipt-card summary strong{font-size:11px;color:#1c6d58}
+.debt-receipt-detail{padding:0 10px 10px;border-top:1px solid #edf1f4;background:#fafcfd}
+.debt-receipt-money-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:9px 0}
+.debt-receipt-money-grid>div{padding:7px;border-radius:5px;background:#fff}
+.debt-receipt-money-grid span{display:block;color:#82909c;font-size:7px}.debt-receipt-money-grid b{font-size:9px}
+.debt-receipt-invoice{padding:8px 0;border-top:1px dashed #dfe6ec}
+.debt-receipt-invoice-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.debt-receipt-invoice-head>div{display:flex;flex-direction:column}.debt-receipt-invoice-head b{font-size:9.5px}.debt-receipt-invoice-head span{color:#768696;font-size:8px}
+.debt-receipt-invoice-head a{font-size:8px;font-weight:700}
+.debt-receipt-products{margin-top:5px;border-left:2px solid #d7e2ea;padding-left:7px}
+.debt-receipt-products>div{display:flex;justify-content:space-between;gap:8px;padding:4px 0}
+.debt-receipt-products span{display:flex;min-width:0;flex-direction:column}.debt-receipt-products b{font-size:8.5px}.debt-receipt-products small{color:#8493a0;font-size:7px}.debt-receipt-products strong{font-size:8px;white-space:nowrap}
+.debt-allocation-invoice{border:1px solid #e1e8ee;border-radius:6px;overflow:hidden;background:#fff}
+.debt-allocation-invoice+.debt-allocation-invoice{margin-top:6px}
+.debt-allocation-invoice>label{border:0!important;border-radius:0!important}
+.debt-allocation-products{padding:4px 8px 7px;background:#f8fafc;border-top:1px solid #edf1f4}
+.debt-allocation-products>div{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 0}
+.debt-allocation-products span{display:flex;flex-direction:column}.debt-allocation-products b{font-size:8px}.debt-allocation-products small{color:#81909e;font-size:7px}.debt-allocation-products strong{font-size:8px}
+.debt-receipt-success{padding:10px;border:1px solid #b9ddcf;border-radius:7px;background:#f5fbf8}
+.debt-receipt-success-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.debt-receipt-success-head>div{display:flex;flex-direction:column;gap:2px}.debt-receipt-success-head strong{font-size:15px;color:#17634e}
+.debt-receipt-success-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.debt-receipt-success-grid>div{padding:6px;border-radius:5px;background:#fff}.debt-receipt-success-grid span{display:block;color:#7e8e9a;font-size:7px}.debt-receipt-success-grid b{font-size:8.5px}
+.debt-receipt-success-line{padding:6px 0;border-top:1px dashed #cadfd6}.debt-receipt-success-line>div:first-child{display:flex;justify-content:space-between}.debt-receipt-success-line>div:last-child{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px;color:#71867d;font-size:7px}
+
+/* Inventory slide panel v2 */
+.whx-detail-panel-v2{width:430px!important;min-width:430px!important;border-left:1px solid #d8e2ea!important;background:#f7f9fb!important}
+.whx-panel-head-v2{padding:13px 14px 10px!important;background:#fff!important;border-bottom:1px solid #e1e8ee!important}
+.whx-panel-title-row{display:flex;align-items:center;gap:8px}.whx-panel-title-row h2{margin:2px 0!important}
+.whx-panel-tabs{display:flex;gap:4px;padding:7px 10px;background:#fff;border-bottom:1px solid #e1e8ee}
+.whx-panel-tabs button{height:30px;padding:0 10px;border:0;border-radius:5px;background:transparent;color:#64788b;font-size:9px;font-weight:700;cursor:pointer}
+.whx-panel-tabs button.active{background:#e9f0f6;color:#224866}.whx-panel-tabs span{margin-left:4px;padding:1px 4px;border-radius:8px;background:#dbe5ed;font-size:7px}
+.whx-detail-panel-v2 .whx-panel-scroll{padding:10px!important}
+.whx-panel-kpis{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.whx-panel-kpis>div{padding:9px;border:1px solid #e0e7ed;border-radius:7px;background:#fff}.whx-panel-kpis>div.primary{border-color:#bad0e0;background:#f2f7fb}
+.whx-panel-kpis span,.whx-panel-kpis small{display:block;color:#7a8a98;font-size:7px}.whx-panel-kpis b{display:block;margin:2px 0;font-size:14px;color:#203a51}
+.whx-panel-card{margin-top:8px;padding:9px;border:1px solid #e0e7ed;border-radius:7px;background:#fff}
+.whx-panel-card .whx-panel-section-head{padding:0 0 7px!important;border-bottom:1px solid #edf1f4}
+.whx-info-grid-v2{margin-top:7px!important}
+.whx-warehouse-stock-list>div{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #edf1f4}.whx-warehouse-stock-list>div:last-child{border-bottom:0}
+.whx-warehouse-stock-list span{display:flex;flex-direction:column}.whx-warehouse-stock-list b{font-size:9px}.whx-warehouse-stock-list small{color:#81909d;font-size:7px}.whx-warehouse-stock-list strong{font-size:12px;text-align:right}
+.whx-movement-summary{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:7px 0}.whx-movement-summary>div{padding:7px;border-radius:5px;background:#f6f9fb}.whx-movement-summary span{display:block;font-size:7px;color:#82909d}.whx-movement-summary b{font-size:11px}.whx-movement-summary .in b{color:#14715a}.whx-movement-summary .out b{color:#a74343}
+.whx-history-head{display:flex!important;align-items:center!important;justify-content:space-between!important;padding:0 0 8px!important}
+.whx-sku-ledger-v2 .whx-ledger-row{position:relative;grid-template-columns:12px minmax(0,1fr) auto!important;gap:7px!important;padding:8px 0!important}
+.whx-ledger-dot{width:8px;height:8px;margin-top:3px;border-radius:50%;background:#9aa9b7}.whx-ledger-dot.in{background:#32a47e}.whx-ledger-dot.out{background:#df7474}
+.whx-sku-ledger-v2 .whx-ledger-row>div{display:flex;flex-direction:column;gap:1px}.whx-sku-ledger-v2 .whx-ledger-row small{color:#93a0aa;font-size:7px}
+
+/* Standard receipt print treatment */
+@media print{
+  .pos-inline-receipt-print,.debt-receipt-success{
+    width:80mm!important;
+    margin:0 auto!important;
+    color:#111!important;
+    background:#fff!important;
+    box-shadow:none!important;
+  }
+}
+
+@media(max-width:1100px){
+  .bank-transfer-settings-grid{grid-template-columns:1fr!important}
+  .bank-transfer-preview-compact{position:static!important}
+  .admin-role-grid,.admin-reset-options{grid-template-columns:1fr!important}
+}
+@media(max-width:760px){
+  .pos-control-row-v2{grid-template-columns:1fr!important}
+  .pos-product-pane>.pos-product-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))!important}
+  .whx-detail-panel-v2{width:100%!important;min-width:0!important}
+  .bank-transfer-form{grid-template-columns:1fr!important}
+  .bank-transfer-toggle,.bank-transfer-actions{grid-column:auto!important}
+  .debt-receipt-money-grid{grid-template-columns:1fr!important}
+}
