@@ -4,6 +4,7 @@ import { formatDateTime,formatMoney,statusLabel } from '@/lib/format'
 import { PrintPageButton } from '@/components/print-page-button'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import { SalesHistoryActions } from '@/components/sales-history-actions'
+import { SalesHistoryTable } from '@/components/sales-history-table'
 import { buildTransferDescription,buildVietQRUrl } from '@/lib/vietqr'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
@@ -16,6 +17,7 @@ type SP={
   range?:RangeKey
   from?:string
   to?:string
+  archive?:'archived'
   tab?:'info'|'products'|'payment'|'history'
 }
 
@@ -70,14 +72,20 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
   const role=String(user.app_metadata?.role??'viewer')
   const canOperate=['admin','operator'].includes(role)
   const range=resolveRange(sp)
+  const archiveView=sp.archive==='archived'
+
+  let salesQuery=supabase.from('sales')
+    .select('id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,note,subtotal,discount_amount,other_fee,sale_status,cash_received,change_amount,warehouse_id,created_by,archived_at,archived_by,warehouses(id,code,name,address),customers(id,name,phone,address),sale_items(id,quantity,sale_price,unit_cost,product_variant_id,product_variants(id,variant_name,barcode,products(id,sku,name))),sale_payments(id,method,amount,tendered_amount,change_amount,reference_code,created_at),sale_returns(id,return_type,reason,return_value,debt_relief,refund_amount,created_at,sale_return_items(sale_item_id,quantity))')
+    .gte('sale_at',range.start)
+    .lte('sale_at',range.end)
+    .order('sale_at',{ascending:false})
+    .limit(1500)
+  salesQuery=archiveView
+    ? salesQuery.not('archived_at','is',null)
+    : salesQuery.is('archived_at',null)
 
   const [salesResult,bankTransferResult]=await Promise.all([
-    supabase.from('sales')
-      .select('id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,note,subtotal,discount_amount,other_fee,sale_status,cash_received,change_amount,warehouse_id,created_by,warehouses(id,code,name,address),customers(id,name,phone,address),sale_items(id,quantity,sale_price,unit_cost,product_variant_id,product_variants(id,variant_name,barcode,products(id,sku,name))),sale_payments(id,method,amount,tendered_amount,change_amount,reference_code,created_at),sale_returns(id,return_type,reason,return_value,debt_relief,refund_amount,created_at,sale_return_items(sale_item_id,quantity))')
-      .gte('sale_at',range.start)
-      .lte('sale_at',range.end)
-      .order('sale_at',{ascending:false})
-      .limit(1500),
+    salesQuery,
     supabase.from('bank_transfer_configs')
       .select('config_key,bank_id,bank_name,account_no,account_name,qr_template,transfer_prefix,is_active')
       .eq('config_key','DEFAULT')
@@ -128,7 +136,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
 
   function href(extra:Record<string,string|null|undefined>={}){
     const p=new URLSearchParams()
-    for(const key of ['sale','q','warehouse','payment','state','range','from','to','tab'] as const){
+    for(const key of ['sale','q','warehouse','payment','state','range','from','to','archive','tab'] as const){
       const value=(sp as any)[key]
       if(value)p.set(key,String(value))
     }
@@ -169,12 +177,14 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
         warehouse:sp.warehouse??null,
         payment:sp.payment??null,
         state:sp.state??null,
+        archive:archiveView?'archived':null,
       }}
     /></div>
 
     <form className="entity-command-bar sales-history-command" action="/sales/history">
       <input type="hidden" name="range" value={range.key}/>
       {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
+      {archiveView&&<input type="hidden" name="archive" value="archived"/>}
       <input className="search" name="q" defaultValue={sp.q??''} placeholder="Tìm mã HĐ / khách hàng / SĐT..."/>
       <select name="warehouse" defaultValue={sp.warehouse??''}>
         <option value="">Tất cả kho</option>
@@ -194,7 +204,11 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
         <option value="RETURNED">Đã hoàn toàn bộ</option>
       </select>
       <button className="button primary" type="submit">Lọc</button>
-      <Link className="button" href="/sales/history">Đặt lại</Link>
+      <Link className="button" href={archiveView?'/sales/history?archive=archived':'/sales/history'}>Đặt lại</Link>
+      <div className="archive-view-toggle">
+        <Link className={!archiveView?'active':''} href={href({archive:null,sale:null,tab:null})}>Đang dùng</Link>
+        <Link className={archiveView?'active':''} href={href({archive:'archived',sale:null,tab:null})}>Đã lưu trữ</Link>
+      </div>
     </form>
 
     {error&&<div className="error-box">Không thể tải lịch sử bán: {error.message}</div>}
@@ -205,34 +219,13 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
           <div><b>{rows.length}</b><span> hóa đơn</span></div>
           <span>Click mã hóa đơn để xem chi tiết</span>
         </div>
-        <div className="sales-history-table-wrap">
-          <table className="table sales-history-table">
-            <thead><tr>
-              <th>Mã HĐ</th><th>Thời gian</th><th>Kho</th><th>Khách hàng</th>
-              <th>SP</th><th>Tổng tiền</th><th>Đã thu</th><th>Còn nợ</th><th>Thanh toán</th><th>Trạng thái</th>
-            </tr></thead>
-            <tbody>
-              {!rows.length
-                ? <tr><td colSpan={10} className="empty">Chưa có hóa đơn POS phù hợp.</td></tr>
-                : rows.map((row:any)=>{
-                    const qty=(row.sale_items??[]).reduce((sum:number,item:any)=>sum+Number(item.quantity??0),0)
-                    const selectedRow=selected&&String(selected.id)===String(row.id)
-                    return <tr key={row.id} className={selectedRow?'selected':''}>
-                      <td><Link className="table-link" href={href({sale:String(row.id),tab:'info'})}>{row.invoice_code??'POS-'+String(row.id).slice(0,8)}</Link></td>
-                      <td>{formatDateTime(row.sale_at)}</td>
-                      <td><b>{row.warehouses?.code??'—'}</b></td>
-                      <td><div className="sales-customer-cell"><b>{row.customers?.name??'Khách lẻ'}</b>{row.customers?.phone&&<small>{row.customers.phone}</small>}</div></td>
-                      <td>{qty}</td>
-                      <td className="money">{formatMoney(row.total_amount)}</td>
-                      <td className="money">{formatMoney(row.paid_amount)}</td>
-                      <td className="money">{formatMoney(row.sale_status==='CANCELLED'?0:row.debt_amount)}</td>
-                      <td><span className={'status-pill '+(row.payment_status==='PAID'?'green':row.payment_status==='PARTIAL'?'orange':'red')}>{statusLabel(row.payment_status)}</span></td>
-                      <td><span className={'status-pill '+(row.sale_status==='COMPLETED'?'green':row.sale_status==='CANCELLED'?'red':'orange')}>{statusLabel(row.sale_status)}</span></td>
-                    </tr>
-                  })}
-            </tbody>
-          </table>
-        </div>
+        <SalesHistoryTable
+          rows={rows}
+          selectedId={selected?.id??null}
+          baseQuery={href({sale:null,tab:null}).split('?')[1]??''}
+          archiveView={archiveView}
+          canOperate={canOperate}
+        />
       </section>
 
       {selected&&<aside className="sales-history-panel">
