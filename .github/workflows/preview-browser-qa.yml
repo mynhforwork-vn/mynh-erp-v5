@@ -5,8 +5,14 @@ on:
     branches:
       - fix/76aed41c-remediation
     paths:
+      - app/**
+      - components/**
+      - lib/**
+      - supabase/migrations/**
       - scripts/preview-browser-qa.mjs
+      - scripts/preview-auth-setup.mjs
       - .github/workflows/preview-browser-qa.yml
+  workflow_dispatch:
 
 jobs:
   browser-qa:
