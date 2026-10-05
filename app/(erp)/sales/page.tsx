@@ -96,7 +96,7 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
 
   const [{data:salesData,error:salesError},{count:allSalesCount},{data:warehouses},{data:balances}]=await Promise.all([
     supabase.from('sales')
-      .select('id,customer_id,sale_at,total_amount,paid_amount,debt_amount,payment_status,created_by,customers(name,phone)')
+      .select('id,customer_id,sale_at,total_amount,paid_amount,debt_amount,payment_status,sale_status,created_by,customers(name,phone)')
       .gte('sale_at',range.start)
       .lte('sale_at',range.end)
       .order('sale_at',{ascending:false})
@@ -137,6 +137,7 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
           paid:Number(s.paid_amount??0),
           debt:Number(s.debt_amount??Math.max(0,Number(s.total_amount??0)-Number(s.paid_amount??0))),
           status:String(s.payment_status??'UNPAID'),
+          saleStatus:String(s.sale_status??'COMPLETED'),
         }
       })
     : DEMO_SALES
@@ -169,6 +170,7 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
   const collected=visibleSales.reduce((sum,s)=>sum+s.paid,0)
   const debt=visibleSales.reduce((sum,s)=>sum+s.debt,0)
   const customerCount=new Set(visibleSales.filter(s=>s.customer!=='Khách lẻ').map(s=>s.customer)).size
+  const returnCancel=visibleSales.filter((s:any)=>s.saleStatus&&s.saleStatus!=='COMPLETED').length
 
   const byWarehouse=[...(warehouses??[])].map((w:any)=>{
     const code=String(w.code)
@@ -276,7 +278,7 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
       <div className="tracking-status-metric sales-kpi"><span>Giá trị TB/HĐ</span><b className="money">{formatMoney(avg)}</b><small>Trung bình mỗi hóa đơn</small></div>
       <div className="tracking-status-metric success sales-kpi"><span>Đã thu</span><b className="money">{formatMoney(collected)}</b><small>{revenue?Math.round(collected/revenue*100):0}% doanh thu</small></div>
       <div className="tracking-status-metric warning sales-kpi"><span>Công nợ</span><b className="money">{formatMoney(debt)}</b><small>{visibleSales.filter(s=>s.debt>0).length} hóa đơn còn nợ</small></div>
-      <div className="tracking-status-metric danger sales-kpi"><span>Hoàn / huỷ</span><b>0</b><small>Sẽ lấy từ luồng POS hoàn/hủy</small></div>
+      <div className="tracking-status-metric danger sales-kpi"><span>Hoàn / huỷ</span><b>{returnCancel}</b><small>Theo trạng thái hóa đơn</small></div>
       </div>
       <div className="tracking-control-row-v2 sales-control-row-v2">
         <div className="tracking-console-title">

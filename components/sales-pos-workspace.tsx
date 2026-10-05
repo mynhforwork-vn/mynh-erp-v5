@@ -3,11 +3,12 @@
 import { useEffect,useMemo,useRef,useState,useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { checkoutPOS,createPOSCustomer,reservePOSInvoiceCode } from '@/lib/actions/sales'
+import { assignProductSalesCategory,checkoutPOS,createPOSCustomer,createSalesProductCategory,reservePOSInvoiceCode,updateSalesProductCategory } from '@/lib/actions/sales'
 import { buildTransferDescription,buildVietQRUrl,type BankTransferConfig } from '@/lib/vietqr'
 
 type Warehouse={id:string,code:string,name:string,address?:string|null}
 type Product={
+  product_id:string
   variant_id:string
   warehouse_id:string
   warehouse_code:string
@@ -17,7 +18,10 @@ type Product={
   quantity:number
   sale_price:number
   barcode?:string
+  category_id?:string|null
+  category_name?:string|null
 }
+type ProductCategory={id:string,name:string,sort_order:number,is_active:boolean}
 type Customer={id:string,name:string,phone?:string|null,address?:string|null}
 type CartLine=Product&{cart_qty:number,unit_price:number}
 type HeldOrder={
@@ -68,6 +72,7 @@ export function SalesPOSWorkspace({
   warehouses,
   products,
   customers,
+  categories,
   transferConfig,
   canSell,
   loadError,
@@ -75,6 +80,7 @@ export function SalesPOSWorkspace({
   warehouses:Warehouse[]
   products:Product[]
   customers:Customer[]
+  categories:ProductCategory[]
   transferConfig:BankTransferConfig|null
   canSell:boolean
   loadError?:string|null
@@ -105,6 +111,11 @@ export function SalesPOSWorkspace({
   const [error,setError]=useState('')
   const [receipt,setReceipt]=useState<Receipt|null>(null)
   const [printTarget,setPrintTarget]=useState<'prepay'|'final'|null>(null)
+  const [categoryId,setCategoryId]=useState('ALL')
+  const [categoryRows,setCategoryRows]=useState<ProductCategory[]>(categories)
+  const [categoryOpen,setCategoryOpen]=useState(false)
+  const [newCategory,setNewCategory]=useState('')
+  const [categoryError,setCategoryError]=useState('')
 
   useEffect(()=>{
     const saved=localStorage.getItem(WAREHOUSE_KEY)
@@ -126,6 +137,8 @@ export function SalesPOSWorkspace({
     if(warehouseId)localStorage.setItem(WAREHOUSE_KEY,warehouseId)
   },[warehouseId])
 
+  useEffect(()=>{setCategoryRows(categories)},[categories])
+
   function persistHeld(next:HeldOrder[]){
     setHeld(next)
     localStorage.setItem(HOLD_KEY,JSON.stringify(next))
@@ -139,14 +152,20 @@ export function SalesPOSWorkspace({
 
   const filteredProducts=useMemo(()=>{
     const q=search.trim().toLowerCase()
-    if(!q)return warehouseProducts
-    return warehouseProducts.filter(p=>
+    let rows=warehouseProducts
+    if(categoryId!=='ALL'){
+      rows=categoryId==='UNCATEGORIZED'
+        ? rows.filter(p=>!p.category_id)
+        : rows.filter(p=>p.category_id===categoryId)
+    }
+    if(!q)return rows
+    return rows.filter(p=>
       p.sku.toLowerCase().includes(q)||
       p.name.toLowerCase().includes(q)||
       p.variant.toLowerCase().includes(q)||
       String(p.barcode??'').toLowerCase().includes(q)
     )
-  },[warehouseProducts,search])
+  },[warehouseProducts,search,categoryId])
 
   const subtotal=cart.reduce((sum,line)=>sum+line.cart_qty*line.unit_price,0)
   const discountAmount=Math.min(
@@ -290,6 +309,39 @@ export function SalesPOSWorkspace({
 
   function removeHeld(holdId:string){
     persistHeld(held.filter(x=>x.id!==holdId))
+  }
+
+  function createCategory(){
+    const name=newCategory.trim()
+    if(!name)return
+    setCategoryError('')
+    startTransition(async()=>{
+      const result=await createSalesProductCategory({name})
+      if(!result.ok){setCategoryError(result.error);return}
+      setCategoryRows(prev=>[...prev,result.data].sort((a,b)=>a.sort_order-b.sort_order||a.name.localeCompare(b.name,'vi')))
+      setNewCategory('')
+      router.refresh()
+    })
+  }
+
+  function toggleCategory(category:ProductCategory){
+    setCategoryError('')
+    startTransition(async()=>{
+      const result=await updateSalesProductCategory({id:category.id,is_active:!category.is_active})
+      if(!result.ok){setCategoryError(result.error);return}
+      setCategoryRows(prev=>prev.map(x=>x.id===category.id?{...x,is_active:!x.is_active}:x))
+      if(categoryId===category.id&&category.is_active)setCategoryId('ALL')
+      router.refresh()
+    })
+  }
+
+  function assignCategory(productId:string,categoryIdValue:string){
+    setCategoryError('')
+    startTransition(async()=>{
+      const result=await assignProductSalesCategory({product_id:productId,category_id:categoryIdValue||null})
+      if(!result.ok){setCategoryError(result.error);return}
+      router.refresh()
+    })
   }
 
   async function openPayment(mode:'cash'|'transfer'|'debt'|'combined'){
@@ -545,44 +597,50 @@ export function SalesPOSWorkspace({
             <b>{warehouse?.code??'—'} · {warehouse?.address??warehouse?.name??''}</b>
           </div>
           <div className="pos-product-meta">
-            <b>{search?filteredProducts.length:warehouseProducts.length}</b>
-            <span>{search?'kết quả':'SKU có tồn'}</span>
+            <b>{filteredProducts.length}</b>
+            <span>{search?'kết quả':'SKU hiển thị'}</span>
           </div>
+          <button className="button small pos-category-settings-button" type="button" onClick={()=>setCategoryOpen(v=>!v)}>⚙ Phân loại</button>
         </div>
 
-        <div className="pos-product-grid">
-          {!filteredProducts.length
-            ? <div className="empty">Không tìm thấy sản phẩm phù hợp trong kho này.</div>
-            : filteredProducts.map(product=><button
-                type="button"
-                className="pos-product-card"
-                key={product.warehouse_id+product.variant_id}
-                onClick={()=>addProduct(product)}
-                disabled={!canSell||product.quantity<=0}
-              >
-                <div className="pos-product-card-head">
-                  <div className="pos-product-card-main">
-                    <b>{product.name}</b>
-                    <span>{product.variant}</span>
-                  </div>
-                  <div className="pos-product-card-code">
-                    <span>SKU</span>
-                    <b>{product.sku}</b>
-                    {product.barcode&&<small>{product.barcode}</small>}
-                  </div>
-                </div>
-                <div className="pos-product-card-stats">
-                  <div>
-                    <span>Giá bán</span>
-                    <b>{money(product.sale_price)}</b>
-                  </div>
-                  <div className={product.quantity<=5?'low':''}>
-                    <span>Tồn kho</span>
-                    <b>{product.quantity}</b>
-                    <small>{product.warehouse_code}</small>
-                  </div>
-                </div>
-              </button>)}
+        <div className="pos-product-body">
+          <aside className="pos-category-rail">
+            <button className={categoryId==='ALL'?'active':''} type="button" onClick={()=>setCategoryId('ALL')}><span>Tất cả</span><b>{warehouseProducts.length}</b></button>
+            {categoryRows.filter(x=>x.is_active).map(category=><button key={category.id} className={categoryId===category.id?'active':''} type="button" onClick={()=>setCategoryId(category.id)}><span>{category.name}</span><b>{warehouseProducts.filter(p=>p.category_id===category.id).length}</b></button>)}
+            {warehouseProducts.some(p=>!p.category_id)&&<button className={categoryId==='UNCATEGORIZED'?'active':''} type="button" onClick={()=>setCategoryId('UNCATEGORIZED')}><span>Chưa phân loại</span><b>{warehouseProducts.filter(p=>!p.category_id).length}</b></button>}
+          </aside>
+          <div className="pos-product-pane">
+            {categoryOpen&&<div className="pos-category-settings">
+              <div className="pos-popover-head"><div><b>Cài đặt phân loại</b><span>Lưu trực tiếp vào dữ liệu sản phẩm</span></div><button type="button" onClick={()=>setCategoryOpen(false)}>×</button></div>
+              {categoryError&&<div className="error-box compact">{categoryError}</div>}
+              <div className="pos-category-settings-list">
+                {categoryRows.map(category=><div key={category.id}><span><b>{category.name}</b><small>{category.is_active?'Đang hiển thị':'Đã ẩn'}</small></span><button className="button small" type="button" onClick={()=>toggleCategory(category)}>{category.is_active?'Ẩn':'Hiện'}</button></div>)}
+              </div>
+              <div className="pos-category-add"><input value={newCategory} onChange={e=>setNewCategory(e.target.value)} placeholder="Tên phân loại mới"/><button className="button small primary" type="button" onClick={createCategory} disabled={pending}>+ Thêm</button></div>
+              <div className="pos-category-product-list"><b>Gắn phân loại sản phẩm</b>{Array.from(new Map(warehouseProducts.map(p=>[p.product_id,p])).values()).map(product=><label key={product.product_id}><span>{product.name}<small>{product.sku}</small></span><select value={product.category_id??''} onChange={e=>assignCategory(product.product_id,e.target.value)}><option value="">Chưa phân loại</option>{categoryRows.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select></label>)}</div>
+            </div>}
+
+            <div className="pos-product-grid">
+              {!filteredProducts.length
+                ? <div className="empty">Không tìm thấy sản phẩm phù hợp trong kho này.</div>
+                : filteredProducts.map(product=><button
+                    type="button"
+                    className="pos-product-card"
+                    key={product.warehouse_id+product.variant_id}
+                    onClick={()=>addProduct(product)}
+                    disabled={!canSell||product.quantity<=0}
+                  >
+                    <div className="pos-product-card-head">
+                      <div className="pos-product-card-main"><b>{product.name}</b><span>{product.variant}</span></div>
+                      <div className="pos-product-card-code"><span>SKU</span><b>{product.sku}</b>{product.barcode&&<small>{product.barcode}</small>}</div>
+                    </div>
+                    <div className="pos-product-card-stats">
+                      <div><span>Giá bán</span><b>{money(product.sale_price)}</b></div>
+                      <div className={product.quantity<=5?'low':''}><span>Tồn kho</span><b>{product.quantity}</b><small>{product.warehouse_code}</small></div>
+                    </div>
+                  </button>)}
+            </div>
+          </div>
         </div>
       </section>
 

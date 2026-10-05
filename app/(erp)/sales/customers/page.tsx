@@ -1,48 +1,29 @@
 import Link from 'next/link'
 import { formatMoney } from '@/lib/format'
+import { requireUser } from '@/lib/supabase/auth'
+import { createSalesCustomer } from '@/lib/actions/sales'
 
 type SP={
   q?:string
   state?:'all'|'debt'|'repeat'|'new'
   customer?:string
   tab?:'info'|'purchases'|'debt'|'history'
+  mode?:'new'
 }
 
-const DEMO_CUSTOMERS=[
-  {id:'cus-001',name:'Nguyễn Văn An',phone:'0986123456',address:'Hoàng Mai, Hà Nội',orders:8,total:3684000,debt:185000,last:'01/10/2026 10:20',first:'12/07/2026',note:'Khách mua thường xuyên tại kho HN.',status:'repeat'},
-  {id:'cus-002',name:'Trần Thị Mai',phone:'0912345678',address:'Hai Bà Trưng, Hà Nội',orders:12,total:5826000,debt:0,last:'30/09/2026 20:18',first:'18/05/2026',note:'Ưu tiên thanh toán chuyển khoản.',status:'repeat'},
-  {id:'cus-003',name:'Lê Văn Cường',phone:'0966456789',address:'Lạng Giang, Bắc Giang',orders:4,total:2363000,debt:263000,last:'30/09/2026 15:20',first:'03/08/2026',note:'Còn nợ một phần hóa đơn gần nhất.',status:'repeat'},
-  {id:'cus-004',name:'Phạm Thu Trang',phone:'0388223344',address:'Thanh Xuân, Hà Nội',orders:1,total:622000,debt:622000,last:'29/09/2026 12:12',first:'29/09/2026',note:'Khách mới, đang ghi nợ toàn bộ hóa đơn đầu tiên.',status:'new'},
-  {id:'cus-005',name:'Hoàng Minh Đức',phone:'0904987654',address:'Yên Dũng, Bắc Giang',orders:6,total:3145000,debt:0,last:'28/09/2026 18:44',first:'22/06/2026',note:'',status:'repeat'},
-  {id:'cus-006',name:'Nguyễn Thu Hà',phone:'0977554433',address:'Long Biên, Hà Nội',orders:2,total:884000,debt:0,last:'26/09/2026 09:05',first:'11/09/2026',note:'',status:'repeat'},
-  {id:'cus-007',name:'Đỗ Văn Nam',phone:'0326889977',address:'Lục Nam, Bắc Giang',orders:1,total:341000,debt:0,last:'24/09/2026 16:35',first:'24/09/2026',note:'Khách mới.',status:'new'},
-  {id:'cus-008',name:'Bùi Lan Anh',phone:'0855332211',address:'Cầu Giấy, Hà Nội',orders:5,total:2478000,debt:410000,last:'22/09/2026 11:40',first:'19/07/2026',note:'Có 2 hóa đơn còn nợ.',status:'repeat'},
-]
-
-const DEMO_PURCHASES:Record<string,any[]> = {
-  'cus-001':[
-    {code:'POS-261001-000005',time:'01/10/2026 10:20',warehouse:'HN',items:3,total:685000,paid:500000,debt:185000,status:'PARTIAL'},
-    {code:'POS-260925-000091',time:'25/09/2026 19:15',warehouse:'HN',items:2,total:493000,paid:493000,debt:0,status:'PAID'},
-    {code:'POS-260918-000064',time:'18/09/2026 08:42',warehouse:'HN',items:4,total:826000,paid:826000,debt:0,status:'PAID'},
-  ],
-  'cus-002':[
-    {code:'POS-260930-000118',time:'30/09/2026 20:18',warehouse:'HN',items:4,total:826000,paid:826000,debt:0,status:'PAID'},
-    {code:'POS-260921-000073',time:'21/09/2026 14:21',warehouse:'HN',items:5,total:1135000,paid:1135000,debt:0,status:'PAID'},
-  ],
-  'cus-003':[
-    {code:'POS-260930-000116',time:'30/09/2026 15:20',warehouse:'HN',items:3,total:1163000,paid:900000,debt:263000,status:'PARTIAL'},
-  ],
-  'cus-004':[
-    {code:'POS-260929-000108',time:'29/09/2026 12:12',warehouse:'HN',items:4,total:622000,paid:0,debt:622000,status:'UNPAID'},
-  ],
-  'cus-008':[
-    {code:'POS-260922-000079',time:'22/09/2026 11:40',warehouse:'HN',items:2,total:278000,paid:68000,debt:210000,status:'PARTIAL'},
-    {code:'POS-260915-000051',time:'15/09/2026 16:10',warehouse:'HN',items:2,total:415000,paid:215000,debt:200000,status:'PARTIAL'},
-  ],
+function fmtDate(value?:string|null,withTime=true){
+  if(!value)return '—'
+  const d=new Date(value)
+  if(Number.isNaN(d.getTime()))return '—'
+  return new Intl.DateTimeFormat('vi-VN',withTime
+    ?{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Ho_Chi_Minh'}
+    :{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Asia/Ho_Chi_Minh'}
+  ).format(d)
 }
-
-function phone(v:string){
-  return v.replace(/(\d{4})(\d{3})(\d{3})/,'$1 $2 $3')
+function phone(value?:string|null){
+  const v=String(value??'').replace(/\D/g,'')
+  if(v.length===10)return v.replace(/(\d{4})(\d{3})(\d{3})/,'$1 $2 $3')
+  return value||'—'
 }
 function paymentLabel(v:string){
   if(v==='PAID')return 'Đã thanh toán'
@@ -55,23 +36,81 @@ function pill(v:string){
   return 'red'
 }
 
-export default async function CustomersDemoPage({searchParams}:{searchParams:Promise<SP>}){
+export default async function CustomersPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
   const state=sp.state??'all'
   const q=String(sp.q??'').trim().toLowerCase()
+  const {supabase}=await requireUser()
 
-  let rows=[...DEMO_CUSTOMERS]
+  const [customersRes,salesRes,debtRes,paymentsRes,warehousesRes,itemsRes]=await Promise.all([
+    supabase.from('customers').select('id,name,phone,address,note,created_at,updated_at').order('created_at',{ascending:false}),
+    supabase.from('sales').select('id,customer_id,warehouse_id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,sale_status,note').not('customer_id','is',null).order('sale_at',{ascending:false}),
+    supabase.from('customer_debt_balances').select('customer_id,balance'),
+    supabase.from('customer_payments').select('id,customer_id,amount,paid_at,note,receipt_code,payment_method,cash_amount,transfer_amount').order('paid_at',{ascending:false}),
+    supabase.from('warehouses').select('id,code,name,address'),
+    supabase.from('sale_items').select('sale_id,quantity'),
+  ])
+
+  const customers=(customersRes.data??[]) as any[]
+  const sales=(salesRes.data??[]) as any[]
+  const debtMap=new Map((debtRes.data??[]).map((x:any)=>[String(x.customer_id),Number(x.balance??0)]))
+  const payments=(paymentsRes.data??[]) as any[]
+  const warehouseMap=new Map((warehousesRes.data??[]).map((x:any)=>[String(x.id),x]))
+  const itemCount=new Map<string,number>()
+  for(const row of (itemsRes.data??[]) as any[])itemCount.set(String(row.sale_id),(itemCount.get(String(row.sale_id))??0)+Number(row.quantity??0))
+
+  const salesByCustomer=new Map<string,any[]>()
+  for(const sale of sales){
+    const key=String(sale.customer_id)
+    const arr=salesByCustomer.get(key)??[]
+    arr.push(sale)
+    salesByCustomer.set(key,arr)
+  }
+  const paymentsByCustomer=new Map<string,any[]>()
+  for(const payment of payments){
+    const key=String(payment.customer_id)
+    const arr=paymentsByCustomer.get(key)??[]
+    arr.push(payment)
+    paymentsByCustomer.set(key,arr)
+  }
+
+  const allRows=customers.map(customer=>{
+    const rows=salesByCustomer.get(String(customer.id))??[]
+    const total=rows.reduce((sum,x)=>sum+Number(x.total_amount??0),0)
+    const debt=Number(debtMap.get(String(customer.id))??0)
+    const sorted=[...rows].sort((a,b)=>new Date(b.sale_at).getTime()-new Date(a.sale_at).getTime())
+    return {
+      id:String(customer.id),name:String(customer.name??''),phone:String(customer.phone??''),
+      address:String(customer.address??''),note:String(customer.note??''),orders:rows.length,total,debt,
+      last:sorted[0]?.sale_at??null,first:sorted[sorted.length-1]?.sale_at??customer.created_at,
+      status:rows.length>=2?'repeat':'new',
+    }
+  })
+
+  let rows=[...allRows]
   if(state==='debt')rows=rows.filter(x=>x.debt>0)
   if(state==='repeat')rows=rows.filter(x=>x.orders>=2)
-  if(state==='new')rows=rows.filter(x=>x.orders===1)
+  if(state==='new')rows=rows.filter(x=>x.orders<=1)
   if(q)rows=rows.filter(x=>[x.name,x.phone,x.address].join(' ').toLowerCase().includes(q))
 
-  const selected=DEMO_CUSTOMERS.find(x=>x.id===sp.customer)??null
+  const selected=allRows.find(x=>x.id===sp.customer)??null
   const tab=sp.tab??'info'
-  const purchases=selected?DEMO_PURCHASES[selected.id]??[]:[]
+  const purchases=selected
+    ? (salesByCustomer.get(selected.id)??[]).map(row=>{
+        const wh=warehouseMap.get(String(row.warehouse_id))
+        return {
+          id:String(row.id),code:String(row.invoice_code??'—'),time:row.sale_at,
+          warehouse:String(wh?.code??'—'),items:itemCount.get(String(row.id))??0,
+          total:Number(row.total_amount??0),paid:Number(row.paid_amount??0),
+          debt:Number(row.debt_amount??Math.max(0,Number(row.total_amount??0)-Number(row.paid_amount??0))),
+          status:String(row.payment_status??'UNPAID'),
+        }
+      })
+    : []
+  const selectedPayments=selected?(paymentsByCustomer.get(selected.id)??[]):[]
 
-  const totalDebt=DEMO_CUSTOMERS.reduce((s,x)=>s+x.debt,0)
-  const totalRevenue=DEMO_CUSTOMERS.reduce((s,x)=>s+x.total,0)
+  const totalDebt=allRows.reduce((sum,x)=>sum+x.debt,0)
+  const totalRevenue=allRows.reduce((sum,x)=>sum+x.total,0)
 
   function href(extra:Record<string,string|null|undefined>={}){
     const p=new URLSearchParams()
@@ -79,6 +118,7 @@ export default async function CustomersDemoPage({searchParams}:{searchParams:Pro
     if(state!=='all')p.set('state',state)
     if(sp.customer)p.set('customer',sp.customer)
     if(sp.tab)p.set('tab',sp.tab)
+    if(sp.mode)p.set('mode',sp.mode)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v===''||v==='all')p.delete(k)
       else p.set(k,v)
@@ -87,34 +127,43 @@ export default async function CustomersDemoPage({searchParams}:{searchParams:Pro
     return '/sales/customers'+(qs?'?'+qs:'')
   }
 
-  return <div className={'sales-customers-demo '+(selected?'with-panel':'')}>
+  return <div className={'sales-customers-demo sales-live-customers '+(selected?'with-panel':'')}>
     <header className="page-head entity-page-head">
       <div>
-        <span className="module-eyebrow">BÁN HÀNG · DEMO</span>
+        <span className="module-eyebrow">BÁN HÀNG</span>
         <h1>Khách hàng</h1>
         <p>Hồ sơ khách, lịch sử mua, doanh số và công nợ</p>
       </div>
       <div className="head-actions">
-        <span className="sales-demo-badge">DỮ LIỆU DEMO</span>
         <Link className="button" href="/sales/debt">Công nợ</Link>
-        <button className="button primary" type="button" disabled>+ Thêm khách</button>
+        <Link className="button primary" href={href({mode:'new',customer:null,tab:null})}>+ Thêm khách</Link>
       </div>
     </header>
 
     <section className="entity-status-strip customer-demo-kpis">
       <Link className={'entity-status-metric '+(state==='all'?'active':'')} href={href({state:null,customer:null,tab:null})}>
-        <span>Tổng khách hàng</span><b>{DEMO_CUSTOMERS.length}</b><small>{formatMoney(totalRevenue)} tổng mua</small>
+        <span>Tổng khách hàng</span><b>{allRows.length}</b><small>{formatMoney(totalRevenue)} tổng mua</small>
       </Link>
       <Link className={'entity-status-metric success '+(state==='repeat'?'active':'')} href={href({state:'repeat',customer:null,tab:null})}>
-        <span>Khách quay lại</span><b>{DEMO_CUSTOMERS.filter(x=>x.orders>=2).length}</b><small>Từ 2 hóa đơn trở lên</small>
+        <span>Khách quay lại</span><b>{allRows.filter(x=>x.orders>=2).length}</b><small>Từ 2 hóa đơn trở lên</small>
       </Link>
       <Link className={'entity-status-metric info '+(state==='new'?'active':'')} href={href({state:'new',customer:null,tab:null})}>
-        <span>Khách mới</span><b>{DEMO_CUSTOMERS.filter(x=>x.orders===1).length}</b><small>1 hóa đơn</small>
+        <span>Khách mới</span><b>{allRows.filter(x=>x.orders<=1).length}</b><small>Tối đa 1 hóa đơn</small>
       </Link>
       <Link className={'entity-status-metric warning '+(state==='debt'?'active':'')} href={href({state:'debt',customer:null,tab:null})}>
-        <span>Khách còn nợ</span><b>{DEMO_CUSTOMERS.filter(x=>x.debt>0).length}</b><small>{formatMoney(totalDebt)}</small>
+        <span>Khách còn nợ</span><b>{allRows.filter(x=>x.debt>0).length}</b><small>{formatMoney(totalDebt)}</small>
       </Link>
     </section>
+
+    {sp.mode==='new'&&<section className="sales-live-create-card">
+      <div className="card-head"><div><h2>Thêm khách hàng</h2><span className="muted">Tạo hồ sơ thật trong Supabase</span></div><Link className="panel-close" href={href({mode:null})}>×</Link></div>
+      <form action={createSalesCustomer} className="sales-live-create-grid">
+        <label>Họ tên *<input name="name" required placeholder="Nguyễn Văn A"/></label>
+        <label>SĐT<input name="phone" placeholder="09..."/></label>
+        <label>Địa chỉ<input name="address" placeholder="Quận/Huyện, Tỉnh/TP"/></label>
+        <button className="button primary" type="submit">Tạo khách hàng</button>
+      </form>
+    </section>}
 
     <form className="entity-command-bar customer-demo-command" action="/sales/customers">
       <input className="search" name="q" defaultValue={sp.q??''} placeholder="Tìm tên khách / SĐT / địa chỉ..."/>
@@ -129,6 +178,8 @@ export default async function CustomersDemoPage({searchParams}:{searchParams:Pro
       <div className="entity-result-meta"><b>{rows.length}</b><span> khách hàng</span></div>
     </form>
 
+    {customersRes.error&&<div className="error-box">Không thể tải khách hàng: {customersRes.error.message}</div>}
+
     <div className="customer-demo-workspace">
       <section className="customer-demo-list">
         <div className="customer-demo-table-wrap">
@@ -137,17 +188,17 @@ export default async function CustomersDemoPage({searchParams}:{searchParams:Pro
               <th>Khách hàng</th><th>SĐT</th><th>Lần mua gần nhất</th><th>Số HĐ</th>
               <th>Tổng mua</th><th>Còn nợ</th><th>Trạng thái</th>
             </tr></thead>
-            <tbody>{rows.map(row=><tr key={row.id} className={selected?.id===row.id?'selected':''}>
-              <td><Link className="table-link" href={href({customer:row.id,tab:'info'})}>{row.name}</Link><small>{row.address}</small></td>
+            <tbody>{rows.length?rows.map(row=><tr key={row.id} className={selected?.id===row.id?'selected':''}>
+              <td><Link className="table-link" href={href({customer:row.id,tab:'info',mode:null})}>{row.name}</Link><small>{row.address||'—'}</small></td>
               <td>{phone(row.phone)}</td>
-              <td>{row.last}</td>
+              <td>{fmtDate(row.last)}</td>
               <td>{row.orders}</td>
               <td className="money">{formatMoney(row.total)}</td>
               <td className={'money '+(row.debt>0?'warning-text':'')}>{formatMoney(row.debt)}</td>
               <td>{row.debt>0
                 ? <span className="status-pill orange">Còn nợ</span>
                 : <span className="status-pill green">Bình thường</span>}</td>
-            </tr>)}</tbody>
+            </tr>):<tr><td colSpan={7}><div className="empty compact">Không có khách hàng phù hợp.</div></td></tr>}</tbody>
           </table>
         </div>
       </section>
@@ -157,7 +208,7 @@ export default async function CustomersDemoPage({searchParams}:{searchParams:Pro
           <div>
             <span className="module-eyebrow">KHÁCH HÀNG</span>
             <h2>{selected.name}</h2>
-            <p>{phone(selected.phone)} · {selected.address}</p>
+            <p>{phone(selected.phone)} · {selected.address||'—'}</p>
           </div>
           <Link className="panel-close" href={href({customer:null,tab:null})}>×</Link>
         </div>
@@ -174,9 +225,9 @@ export default async function CustomersDemoPage({searchParams}:{searchParams:Pro
             <div className="sales-detail-grid">
               <div><span>Họ tên</span><b>{selected.name}</b></div>
               <div><span>SĐT</span><b>{phone(selected.phone)}</b></div>
-              <div className="full"><span>Địa chỉ</span><b>{selected.address}</b></div>
-              <div><span>Khách từ</span><b>{selected.first}</b></div>
-              <div><span>Mua gần nhất</span><b>{selected.last}</b></div>
+              <div className="full"><span>Địa chỉ</span><b>{selected.address||'—'}</b></div>
+              <div><span>Khách từ</span><b>{fmtDate(selected.first,false)}</b></div>
+              <div><span>Mua gần nhất</span><b>{fmtDate(selected.last)}</b></div>
             </div>
             <div className="customer-demo-summary">
               <div><span>Số hóa đơn</span><b>{selected.orders}</b></div>
@@ -188,11 +239,11 @@ export default async function CustomersDemoPage({searchParams}:{searchParams:Pro
 
           {tab==='purchases'&&<div className="customer-demo-purchases">
             {!purchases.length
-              ? <div className="empty compact">Chưa có dữ liệu demo cho khách này.</div>
-              : purchases.map(row=><div className="customer-purchase-row" key={row.code}>
-                  <div><b>{row.code}</b><span>{row.time} · {row.warehouse} · {row.items} SP</span></div>
+              ? <div className="empty compact">Khách hàng chưa có hóa đơn.</div>
+              : purchases.map(row=><Link className="customer-purchase-row" key={row.id} href={'/sales/history?sale='+row.id}>
+                  <div><b>{row.code}</b><span>{fmtDate(row.time)} · {row.warehouse} · {row.items} SP</span></div>
                   <div><strong>{formatMoney(row.total)}</strong><span className={'status-pill '+pill(row.status)}>{paymentLabel(row.status)}</span></div>
-                </div>)}
+                </Link>)}
           </div>}
 
           {tab==='debt'&&<div className="customer-demo-debt">
@@ -200,8 +251,8 @@ export default async function CustomersDemoPage({searchParams}:{searchParams:Pro
             {selected.debt<=0
               ? <div className="empty compact">Khách hàng không còn công nợ.</div>
               : <>
-                  {purchases.filter(x=>x.debt>0).map(row=><div className="customer-debt-invoice" key={row.code}>
-                    <div><b>{row.code}</b><span>{row.time}</span></div>
+                  {purchases.filter(x=>x.debt>0).map(row=><div className="customer-debt-invoice" key={row.id}>
+                    <div><b>{row.code}</b><span>{fmtDate(row.time)}</span></div>
                     <div><span>Đã thu {formatMoney(row.paid)}</span><b>{formatMoney(row.debt)} còn nợ</b></div>
                   </div>)}
                   <Link className="button primary customer-collect-button" href={'/sales/debt?customer='+selected.id+'&mode=collect'}>Thu nợ</Link>
@@ -209,8 +260,9 @@ export default async function CustomersDemoPage({searchParams}:{searchParams:Pro
           </div>}
 
           {tab==='history'&&<div className="sales-audit-preview">
-            <div><i></i><span>{selected.first}</span><b>Tạo khách hàng</b><small>Nguồn: POS</small></div>
-            {purchases.slice().reverse().map(row=><div key={row.code}><i></i><span>{row.time}</span><b>Phát sinh hóa đơn</b><small>{row.code} · {formatMoney(row.total)}</small></div>)}
+            <div><i></i><span>{fmtDate(selected.first)}</span><b>Tạo khách hàng</b><small>Nguồn: hệ thống</small></div>
+            {purchases.slice().reverse().map(row=><div key={'sale-'+row.id}><i></i><span>{fmtDate(row.time)}</span><b>Phát sinh hóa đơn</b><small>{row.code} · {formatMoney(row.total)}</small></div>)}
+            {selectedPayments.slice().reverse().map((row:any)=><div key={'pay-'+row.id}><i></i><span>{fmtDate(row.paid_at)}</span><b>Thu công nợ</b><small>{row.receipt_code??'PTN'} · {formatMoney(Number(row.amount??0))} · {row.payment_method}</small></div>)}
           </div>}
         </div>
       </aside>}
