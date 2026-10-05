@@ -1,58 +1,20 @@
 import { chromium } from 'playwright'
-import crypto from 'node:crypto'
+import { createBrowserClient } from '@supabase/ssr'
 import fs from 'node:fs'
 
 const PREVIEW_URL=process.env.PREVIEW_URL
 const SUPABASE_URL=process.env.SUPABASE_URL
 const SUPABASE_KEY=process.env.SUPABASE_KEY
 if(!PREVIEW_URL||!SUPABASE_URL||!SUPABASE_KEY)throw new Error('Missing QA environment')
+if(!fs.existsSync('qa-session.json'))throw new Error('Missing qa-session.json')
 
-const suffix=Date.now().toString(36)+'-'+crypto.randomBytes(3).toString('hex')
-const email=`qa.preview.mynh.${suffix}@gmail.com`
-const password=crypto.randomBytes(24).toString('base64url')+'Aa1!'
-
-async function authFetch(path,body){
-  const res=await fetch(SUPABASE_URL+path,{
-    method:'POST',
-    headers:{'content-type':'application/json','apikey':SUPABASE_KEY,'authorization':'Bearer '+SUPABASE_KEY},
-    body:JSON.stringify(body),
-  })
-  const text=await res.text()
-  let json={}; try{json=JSON.parse(text)}catch{}
-  return {ok:res.ok,status:res.status,json,text}
-}
-
-const signup=await authFetch('/auth/v1/signup',{
-  email,password,
-  data:{purpose:'cloudflare-preview-ui-qa',preview_commit:process.env.GITHUB_SHA||null},
-})
-if(!signup.ok)throw new Error(`QA signup failed ${signup.status}: ${signup.text.slice(0,500)}`)
-const qaUserId=signup.json?.user?.id??signup.json?.id
-if(!qaUserId)throw new Error('QA signup did not return user id')
-console.log(`QA_AUTH_CREATED email=${email} id=${qaUserId}`)
-console.log('QA_AUTH_WAITING_FOR_OPERATOR_ROLE')
-
-let token=null
-for(let i=0;i<36;i++){
-  const login=await authFetch('/auth/v1/token?grant_type=password',{email,password})
-  if(login.ok&&login.json?.access_token){
-    const payload=JSON.parse(Buffer.from(login.json.access_token.split('.')[1],'base64url').toString())
-    const role=payload?.app_metadata?.role
-    if(role==='operator'||role==='admin'){
-      token=login.json
-      console.log(`QA_AUTH_READY role=${role}`)
-      break
-    }
-  }
-  await new Promise(r=>setTimeout(r,5000))
-}
-if(!token)throw new Error('QA auth was not confirmed/promoted to operator within 180 seconds')
-
+const session=JSON.parse(fs.readFileSync('qa-session.json','utf8'))
 const outDir='qa-browser-artifacts'
 fs.mkdirSync(outDir,{recursive:true})
+
 const summary={
   preview:PREVIEW_URL,
-  qaUserId,
+  qaUserId:session.user_id,
   public:{},
   desktop:[],
   mobile:[],
@@ -63,7 +25,53 @@ const summary={
 }
 
 const browser=await chromium.launch({headless:true})
+
+// Public / unauthenticated checks.
+const publicContext=await browser.newContext({viewport:{width:1440,height:900}})
+const publicPage=await publicContext.newPage()
+const loginRes=await publicPage.goto(PREVIEW_URL+'/login',{waitUntil:'networkidle',timeout:60000})
+const loginBody=(await publicPage.locator('body').innerText()).slice(0,3000)
+summary.public.login={
+  status:loginRes?.status()??0,
+  finalUrl:publicPage.url(),
+  hasBrand:loginBody.includes('MYNH ERP'),
+  emailInputs:await publicPage.locator('input[type=email]').count(),
+  passwordInputs:await publicPage.locator('input[type=password]').count(),
+  submitButtons:await publicPage.getByRole('button',{name:/Đăng nhập/}).count(),
+}
+await publicPage.screenshot({path:`${outDir}/login-desktop.png`,fullPage:true})
+await publicPage.goto(PREVIEW_URL+'/sales/pos',{waitUntil:'networkidle',timeout:60000})
+summary.public.protectedRedirect={
+  requested:'/sales/pos',
+  finalUrl:publicPage.url(),
+  redirectedToLogin:publicPage.url().includes('/login'),
+}
+await publicContext.close()
+
+// Produce the exact cookie representation used by @supabase/ssr.
+const cookieMap=new Map()
+const cookieClient=createBrowserClient(SUPABASE_URL,SUPABASE_KEY,{
+  cookies:{
+    getAll(){return [...cookieMap.values()].map(x=>({name:x.name,value:x.value}))},
+    setAll(items){for(const item of items)cookieMap.set(item.name,item)},
+  },
+})
+const {error:setSessionError}=await cookieClient.auth.setSession({
+  access_token:session.access_token,
+  refresh_token:session.refresh_token,
+})
+if(setSessionError)throw new Error('Unable to serialize Supabase QA session: '+setSessionError.message)
+if(!cookieMap.size)throw new Error('Supabase SSR did not emit auth cookies')
+
 const context=await browser.newContext({viewport:{width:1440,height:900}})
+await context.addCookies([...cookieMap.values()].map(c=>({
+  name:c.name,
+  value:c.value,
+  url:PREVIEW_URL,
+  httpOnly:Boolean(c.options?.httpOnly),
+  secure:c.options?.secure!==false,
+  sameSite:c.options?.sameSite==='strict'?'Strict':c.options?.sameSite==='none'?'None':'Lax',
+})))
 const page=await context.newPage()
 page.on('console',m=>{if(m.type()==='error')summary.consoleErrors.push({url:page.url(),text:m.text()})})
 page.on('pageerror',e=>summary.pageErrors.push({url:page.url(),text:String(e)}))
@@ -71,34 +79,8 @@ page.on('response',r=>{if(r.status()>=500)summary.network5xx.push({url:r.url(),s
 
 async function go(path){
   const res=await page.goto(PREVIEW_URL+path,{waitUntil:'networkidle',timeout:60000})
-  return {status:res?.status()??0,url:page.url(),body:(await page.locator('body').innerText()).slice(0,4000)}
+  return {status:res?.status()??0,url:page.url(),body:(await page.locator('body').innerText()).slice(0,5000)}
 }
-
-const loginPage=await go('/login')
-summary.public.login={
-  status:loginPage.status,
-  finalUrl:loginPage.url,
-  hasBrand:loginPage.body.includes('MYNH ERP'),
-  emailInputs:await page.locator('input[type=email]').count(),
-  passwordInputs:await page.locator('input[type=password]').count(),
-  submitButtons:await page.getByRole('button',{name:/Đăng nhập/}).count(),
-}
-await page.screenshot({path:`${outDir}/login-desktop.png`,fullPage:true})
-
-const protectedCheck=await go('/sales/pos')
-summary.public.protectedRedirect={
-  requested:'/sales/pos',
-  finalUrl:protectedCheck.url,
-  redirectedToLogin:protectedCheck.url.includes('/login'),
-}
-
-// UI login with the generated credentials.
-await page.goto(PREVIEW_URL+'/login',{waitUntil:'networkidle'})
-await page.getByLabel('Thư điện tử').fill(email)
-await page.getByLabel('Mật khẩu').fill(password)
-await page.getByRole('button',{name:'Đăng nhập'}).click()
-await page.waitForURL(url=>!url.pathname.endsWith('/login'),{timeout:30000})
-await page.waitForLoadState('networkidle')
 
 const routes=[
   '/','/purchase','/purchase/accounts','/purchase/orders','/purchase/tracking',
@@ -107,6 +89,7 @@ const routes=[
   '/finance','/finance/cashflow','/finance/shipper-payments','/finance/customer-payments','/finance/reports',
   '/settings','/account'
 ]
+const screenshotRoutes=new Set(['/purchase/orders','/purchase/tracking','/warehouse','/sales','/sales/pos','/sales/history','/sales/customers','/sales/debt','/finance','/settings'])
 
 for(const path of routes){
   const r=await go(path)
@@ -119,23 +102,22 @@ for(const path of routes){
     links:document.querySelectorAll('a').length,
     dialogs:document.querySelectorAll('[role=dialog]').length,
   }))
-  const body=r.body
   const rec={
     path,status:r.status,finalUrl:r.url,
     authenticated:!r.url.includes('/login'),
-    hasBrand:body.includes('MYNH ERP'),
-    hasServerError:/Internal Server Error|Application error|Something went wrong/i.test(body),
+    hasBrand:r.body.includes('MYNH ERP'),
+    hasServerError:/Internal Server Error|Application error|Something went wrong/i.test(r.body),
     horizontalOverflow:Math.max(metrics.scrollWidth,metrics.bodyScrollWidth)>metrics.innerWidth+2,
     ...metrics,
   }
   summary.desktop.push(rec)
-  const safe=path==='/'?'home':path.replaceAll('/','-').replace(/^-+/,'')
-  if(['/purchase/orders','/purchase/tracking','/warehouse','/sales','/sales/pos','/sales/history','/sales/customers','/sales/debt','/finance','/settings'].includes(path)){
+  if(screenshotRoutes.has(path)){
+    const safe=path.replaceAll('/','-').replace(/^-+/,'')||'home'
     await page.screenshot({path:`${outDir}/desktop-${safe}.png`,fullPage:true})
   }
 }
 
-// Non-mutating interaction checks.
+// Non-mutating interaction tests.
 await go('/purchase/accounts')
 if(await page.getByRole('button',{name:'Import TSV'}).count()){
   await page.getByRole('button',{name:'Import TSV'}).click()
@@ -174,7 +156,6 @@ summary.interactions.push({
   pass:!settingsBody.includes('Tài khoản & phân quyền')&&!settingsBody.includes('Tích hợp')&&!settingsBody.includes('Thông báo'),
 })
 
-// Mobile smoke.
 await page.setViewportSize({width:390,height:844})
 for(const path of ['/purchase/orders','/purchase/tracking','/warehouse','/sales/pos','/sales/history','/sales/customers','/sales/debt']){
   const r=await go(path)
@@ -183,12 +164,12 @@ for(const path of ['/purchase/orders','/purchase/tracking','/warehouse','/sales/
     scrollWidth:document.documentElement.scrollWidth,
     bodyScrollWidth:document.body.scrollWidth,
   }))
-  const rec={
+  summary.mobile.push({
     path,status:r.status,finalUrl:r.url,
+    authenticated:!r.url.includes('/login'),
     horizontalOverflow:Math.max(metrics.scrollWidth,metrics.bodyScrollWidth)>metrics.innerWidth+2,
     ...metrics,
-  }
-  summary.mobile.push(rec)
+  })
   const safe=path.replaceAll('/','-').replace(/^-+/,'')
   await page.screenshot({path:`${outDir}/mobile-${safe}.png`,fullPage:true})
 }
@@ -202,7 +183,7 @@ for(const r of summary.desktop){
   if(!r.authenticated||r.status>=500||r.hasServerError)summary.failures.push(`Desktop route ${r.path}`)
 }
 for(const r of summary.mobile){
-  if(r.status>=500||r.finalUrl.includes('/login'))summary.failures.push(`Mobile route ${r.path}`)
+  if(!r.authenticated||r.status>=500)summary.failures.push(`Mobile route ${r.path}`)
 }
 if(summary.consoleErrors.length)summary.failures.push(`Console errors: ${summary.consoleErrors.length}`)
 if(summary.pageErrors.length)summary.failures.push(`Page errors: ${summary.pageErrors.length}`)
@@ -212,5 +193,5 @@ fs.writeFileSync(`${outDir}/summary.json`,JSON.stringify(summary,null,2))
 console.log('QA_BROWSER_SUMMARY_START')
 console.log(JSON.stringify(summary,null,2))
 console.log('QA_BROWSER_SUMMARY_END')
-console.log(`QA_AUTH_CLEANUP id=${qaUserId} email=${email}`)
+console.log(`QA_AUTH_CLEANUP id=${session.user_id}`)
 process.exit(summary.failures.length?1:0)
