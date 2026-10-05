@@ -1,0 +1,36 @@
+name: Preview Browser QA
+
+on:
+  push:
+    branches:
+      - fix/76aed41c-remediation
+    paths:
+      - scripts/preview-browser-qa.mjs
+      - .github/workflows/preview-browser-qa.yml
+
+jobs:
+  browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PREVIEW_URL: https://remediation-76aed41c-mynh-erp-v5.mynh-forwork.workers.dev
+      SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+      SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run Preview browser QA
+        run: node scripts/preview-browser-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: preview-browser-qa-${{ github.sha }}
+          path: qa-browser-artifacts/
+          retention-days: 7
