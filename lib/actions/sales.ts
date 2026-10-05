@@ -204,3 +204,141 @@ export async function saveBankTransferConfig(formData:FormData){
     return {ok:false as const,error:String(error?.message??'Không thể lưu cấu hình chuyển khoản')}
   }
 }
+
+export async function createSalesCustomer(formData:FormData){
+  const name=String(formData.get('name')??'').trim()
+  const phone=String(formData.get('phone')??'').trim()
+  const address=String(formData.get('address')??'').trim()
+  const result=await createPOSCustomer({name,phone,address})
+  revalidatePath('/sales/customers')
+  revalidatePath('/sales/pos')
+  return result
+}
+
+export async function registerCustomerDebtPayment(input:{
+  customer_id:string
+  amount:number
+  payment_method:'CASH'|'TRANSFER'|'COMBINED'
+  cash_amount?:number
+  transfer_amount?:number
+  note?:string|null
+  receipt_code?:string|null
+  allocations?:{sale_id:string,amount:number}[]
+}){
+  try{
+    const {supabase}=await actor()
+    const customer_id=String(input?.customer_id??'').trim()
+    const amount=Number(input?.amount??0)
+    const method=String(input?.payment_method??'CASH').toUpperCase() as 'CASH'|'TRANSFER'|'COMBINED'
+    const cash_amount=Math.max(0,Number(input?.cash_amount??0))
+    const transfer_amount=Math.max(0,Number(input?.transfer_amount??0))
+    const receipt_code=String(input?.receipt_code??'').trim()||null
+    const note=String(input?.note??'').trim()||null
+    const allocations=Array.isArray(input?.allocations)
+      ? input.allocations
+          .map(x=>({sale_id:String(x.sale_id??''),amount:Number(x.amount??0)}))
+          .filter(x=>x.sale_id&&Number.isFinite(x.amount)&&x.amount>0)
+      : []
+
+    if(!customer_id)return {ok:false as const,error:'Thiếu khách hàng'}
+    if(!Number.isFinite(amount)||amount<=0)return {ok:false as const,error:'Số tiền thu phải lớn hơn 0'}
+    if(!['CASH','TRANSFER','COMBINED'].includes(method))return {ok:false as const,error:'Phương thức thanh toán không hợp lệ'}
+    if(method==='COMBINED'&&Math.round((cash_amount+transfer_amount)*100)!==Math.round(amount*100)){
+      return {ok:false as const,error:'Tiền mặt + Chuyển khoản phải bằng số tiền thu'}
+    }
+
+    const {data,error}=await supabase.rpc('register_customer_payment_v2',{
+      p_customer_id:customer_id,
+      p_amount:amount,
+      p_payment_method:method,
+      p_cash_amount:method==='CASH'?amount:method==='TRANSFER'?0:cash_amount,
+      p_transfer_amount:method==='TRANSFER'?amount:method==='CASH'?0:transfer_amount,
+      p_note:note,
+      p_receipt_code:receipt_code,
+      p_allocations:allocations.length?allocations:null,
+    })
+
+    if(error){
+      const raw=String(error.message??'')
+      const friendly=
+        raw.includes('exceed outstanding debt')?'Số tiền thu vượt công nợ hiện tại':
+        raw.includes('Allocation total')?'Tổng phân bổ phải bằng số tiền thu':
+        raw.includes('Allocation exceeds')?'Phân bổ vượt số nợ của hóa đơn':
+        raw.includes('no outstanding debt')?'Khách hàng không còn công nợ':
+        raw.includes('Combined payment')?'Tiền mặt + Chuyển khoản phải bằng số tiền thu':
+        'Không thể ghi nhận phiếu thu nợ'
+      return {ok:false as const,error:friendly,detail:raw}
+    }
+
+    revalidatePath('/sales')
+    revalidatePath('/sales/history')
+    revalidatePath('/sales/customers')
+    revalidatePath('/sales/debt')
+    revalidatePath('/finance')
+    revalidatePath('/finance/cashflow')
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể ghi nhận phiếu thu nợ')}
+  }
+}
+
+export async function createSalesProductCategory(input:{name:string}){
+  try{
+    const {supabase}=await actor()
+    const name=String(input?.name??'').trim()
+    if(!name)return {ok:false as const,error:'Chưa nhập tên phân loại'}
+    const {data,error}=await supabase
+      .from('sales_product_categories')
+      .insert({name,sort_order:999})
+      .select('id,name,sort_order,is_active')
+      .single()
+    if(error)return {ok:false as const,error:error.message}
+    revalidatePath('/sales/pos')
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể tạo phân loại')}
+  }
+}
+
+export async function updateSalesProductCategory(input:{id:string,name?:string,is_active?:boolean,sort_order?:number}){
+  try{
+    const {supabase}=await actor()
+    const id=String(input?.id??'').trim()
+    if(!id)return {ok:false as const,error:'Thiếu phân loại'}
+    const patch:any={updated_at:new Date().toISOString()}
+    if(input.name!==undefined){
+      const name=String(input.name).trim()
+      if(!name)return {ok:false as const,error:'Tên phân loại không được để trống'}
+      patch.name=name
+    }
+    if(input.is_active!==undefined)patch.is_active=Boolean(input.is_active)
+    if(input.sort_order!==undefined)patch.sort_order=Math.trunc(Number(input.sort_order)||0)
+    const {data,error}=await supabase
+      .from('sales_product_categories')
+      .update(patch)
+      .eq('id',id)
+      .select('id,name,sort_order,is_active')
+      .single()
+    if(error)return {ok:false as const,error:error.message}
+    revalidatePath('/sales/pos')
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể cập nhật phân loại')}
+  }
+}
+
+export async function assignProductSalesCategory(input:{product_id:string,category_id:string|null}){
+  try{
+    const {supabase}=await actor()
+    const product_id=String(input?.product_id??'').trim()
+    const category_id=input?.category_id?String(input.category_id):null
+    if(!product_id)return {ok:false as const,error:'Thiếu sản phẩm'}
+    const {error}=await supabase.from('products').update({sales_category_id:category_id}).eq('id',product_id)
+    if(error)return {ok:false as const,error:error.message}
+    revalidatePath('/sales/pos')
+    return {ok:true as const}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể gắn phân loại')}
+  }
+}
+
