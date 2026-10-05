@@ -1,3 +1,4 @@
+// Final visual verification after mobile composition fixes
 import { chromium } from 'playwright'
 import { createBrowserClient } from '@supabase/ssr'
 import fs from 'node:fs'
