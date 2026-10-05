@@ -2744,3 +2744,282 @@ body:has(.sales-preview-shell){
   color:var(--mynh-success);
   font-size:8.5px;
 }
+
+
+/* V11 — feature-complete Sales preview layout */
+
+/* Dashboard main-parity sections live inside the internal workspace scroll */
+.sales-preview-main .sp-screen:not(.sp-pos-screen):not(.sp-with-panel){
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding-right:1px;
+}
+.sales-preview-main .sp-dashboard-main-grid,
+.sales-preview-main .sp-dashboard-analytics-grid,
+.sales-preview-main .sp-dashboard-bottom-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.35fr) minmax(300px,.85fr);
+  gap:6px;
+  margin-bottom:6px;
+  flex:0 0 auto;
+}
+.sales-preview-main .sp-dashboard-analytics-grid,
+.sales-preview-main .sp-dashboard-bottom-grid{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+}
+.sp-attention-card{overflow:hidden}
+.sp-attention-summary-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:4px;
+  padding:5px;
+}
+.sp-attention-summary-row button{
+  min-height:50px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  grid-template-rows:auto auto;
+  align-items:center;
+  gap:1px 7px;
+  padding:5px 7px;
+  border:1px solid #E1E7ED;
+  border-radius:5px;
+  background:#FAFBFC;
+  color:var(--mynh-text-2);
+  font:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+.sp-attention-summary-row button:first-child{border-color:#EED8B5;background:var(--mynh-warning-bg)}
+.sp-attention-summary-row span{font-size:7.5px;font-weight:650}
+.sp-attention-summary-row b{grid-row:1/3;grid-column:2;font-size:15px;color:var(--mynh-text)}
+.sp-attention-summary-row small{font-size:7px;color:var(--mynh-text-3)}
+.sp-attention-list{padding:0 5px 5px}
+.sp-attention-list>div{
+  min-height:31px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:7px;
+  border-top:1px solid #EDF1F5;
+}
+.sp-attention-list span{display:flex;flex-direction:column;gap:1px;min-width:0}
+.sp-attention-list b{font-size:7.8px;color:var(--mynh-text)}
+.sp-attention-list small{font-size:6.7px;color:var(--mynh-text-3)}
+.sp-attention-list strong{font-size:7.8px;color:var(--mynh-warning)}
+.sp-compact-table{
+  max-height:152px;
+  overflow:auto;
+}
+.sp-compact-table table{width:100%;border-collapse:collapse}
+.sp-compact-table th{
+  height:27px;padding:0 6px;border-bottom:1px solid var(--mynh-border);background:#F7F9FB;color:#657284;font-size:7.5px;text-align:left;white-space:nowrap;
+}
+.sp-compact-table td{
+  height:31px;padding:3px 6px;border-bottom:1px solid #EDF1F5;color:#3E4B5B;font-size:7.8px;white-space:nowrap;
+}
+.sp-compact-table td small{display:block;color:var(--mynh-text-3);font-size:6.5px}
+.sp-compact-table code{padding:1px 4px;border-radius:3px;background:#EEF3F7;color:var(--mynh-brand);font-size:7px;font-weight:750}
+.sp-payment-breakdown-compact{padding:6px 8px}
+.sp-payment-breakdown-compact>div{
+  min-height:31px;
+  display:grid;
+  grid-template-columns:115px minmax(0,1fr) 24px;
+  align-items:center;
+  gap:6px;
+}
+.sp-payment-breakdown-compact span{font-size:7.5px;color:var(--mynh-text-2)}
+.sp-payment-breakdown-compact>div>i{height:6px;border-radius:999px;background:#E8EDF2;overflow:hidden}
+.sp-payment-breakdown-compact>div>i em{display:block;height:100%;border-radius:inherit;background:#8398AE}
+.sp-payment-breakdown-compact>div>b{font-size:8px;text-align:right}
+.sp-payment-breakdown-compact footer{
+  min-height:34px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-top:4px;
+  padding-top:4px;
+  border-top:1px solid #EDF1F5;
+}
+.sp-payment-breakdown-compact footer span{font-size:7.5px}
+.sp-payment-breakdown-compact footer b{margin-left:4px;font-size:8px}
+.sp-dashboard-bottom-grid .sp-recent{
+  min-height:0!important;
+  max-height:190px;
+}
+.sp-dashboard-bottom-grid .sp-recent>.sp-table-scroll{max-height:156px}
+
+/* Period buttons may exceed one line on narrow content: horizontal rail only, never page overflow */
+.sp-dashboard-filter{
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  flex-wrap:nowrap!important;
+  scrollbar-width:thin;
+}
+.sp-dashboard-filter>button,
+.sp-dashboard-filter>select,
+.sp-dashboard-filter>.sp-custom-range,
+.sp-dashboard-filter>.sp-filter-result{flex:0 0 auto}
+
+/* POS engine parity */
+.sp-pos-search-wrap{
+  position:relative;
+  flex:1 1 auto;
+  min-width:180px;
+}
+.sp-pos-search-wrap input{width:100%;padding-right:34px!important}
+.sp-pos-search-wrap kbd{
+  position:absolute;right:5px;top:50%;transform:translateY(-50%);
+  min-width:24px;height:18px;display:grid;place-items:center;border:1px solid #D6DEE6;border-bottom-width:2px;border-radius:4px;background:#F8FAFC;color:#728196;font-size:6.8px;font-family:inherit;
+}
+.sp-pos-create-customer-toggle{
+  width:100%;height:29px;margin-top:4px;border:1px dashed #BFCBD7;border-radius:5px;background:#F9FBFD;color:var(--mynh-brand)!important;font-size:7.8px!important;font-weight:700!important;justify-content:center!important;
+}
+.sp-pos-create-customer{
+  display:grid;
+  gap:4px;
+  padding:5px 0 1px;
+}
+.sp-pos-create-customer input{
+  height:27px;padding:0 7px;border:1px solid #D3DCE6;border-radius:5px;font:inherit;font-size:8px;
+}
+.sp-cart-line{
+  grid-template-columns:minmax(0,1fr) 96px 85px 20px!important;
+}
+.sp-cart-line>div{
+  display:grid!important;
+  grid-template-columns:26px 36px 26px!important;
+  align-items:center!important;
+  gap:2px!important;
+}
+.sp-cart-line>div input{
+  width:36px;height:27px;padding:0 2px;border:1px solid #D4DDE6;border-radius:4px;text-align:center;font:inherit;font-size:8px;
+}
+.sp-cart-remove{
+  width:19px!important;height:24px!important;border:0!important;background:transparent!important;color:var(--mynh-danger)!important;font-size:12px!important;
+}
+.sp-pos-receipt-result{
+  height:100%;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.sp-receipt-result-summary{
+  display:grid;
+  grid-template-columns:110px minmax(0,1fr);
+  gap:5px 8px;
+  padding:8px;
+  border-bottom:1px solid #EDF1F5;
+}
+.sp-receipt-result-summary span{font-size:7px;color:var(--mynh-text-3)}
+.sp-receipt-result-summary b{font-size:8.4px;color:var(--mynh-text)}
+.sp-receipt-result-summary strong{font-size:12px;color:var(--mynh-text)}
+.sp-receipt-result-items{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:auto;
+  padding:0 8px;
+}
+.sp-receipt-result-items>div{
+  min-height:38px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #EDF1F5;
+}
+.sp-receipt-result-items span{display:flex;flex-direction:column;gap:1px}
+.sp-receipt-result-items b{font-size:8px}.sp-receipt-result-items small{font-size:6.7px;color:var(--mynh-text-3)}.sp-receipt-result-items strong{font-size:8px}
+.sp-transfer-reference.compact{margin:5px 0}
+.sp-pos-shortcuts{
+  flex:0 0 25px;
+  min-height:25px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  padding:0 6px;
+  border-top:1px solid #E4EAF0;
+  background:#F8FAFC;
+  overflow:hidden;
+  white-space:nowrap;
+}
+.sp-pos-shortcuts span{font-size:6.7px;color:#718194}
+.sp-pos-shortcuts kbd{margin-right:3px;padding:1px 3px;border:1px solid #D0D9E2;border-bottom-width:2px;border-radius:3px;background:#fff;color:#4C6175;font-size:6.5px}
+.sp-print-receipt{display:none}
+
+/* Customer creation and filters */
+.sp-inline-create-card{
+  flex:0 0 auto;
+  margin-bottom:6px;
+  padding:6px;
+  border:1px solid #D8E1E9;
+  border-radius:7px;
+  background:#fff;
+  box-shadow:0 3px 10px rgba(23,33,47,.05);
+}
+.sp-inline-create-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1.35fr auto;
+  gap:5px;
+  align-items:end;
+}
+.sp-inline-create-grid label{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  color:var(--mynh-text-2);
+  font-size:7px;
+  font-weight:650;
+}
+.sp-inline-create-grid input{
+  height:27px;padding:0 6px;border:1px solid #D3DCE6;border-radius:5px;font:inherit;font-size:8px;
+}
+
+/* Debt detail parity */
+.sp-panel-tabs-five{
+  gap:10px!important;
+  padding:0 8px!important;
+}
+.sp-panel-tabs-five button{font-size:7.6px!important;white-space:nowrap}
+.sp-debt-overview-grid{margin-top:7px}
+.sp-debt-overview-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:5px;
+  margin-top:7px;
+}
+.sp-debt-invoice-detail{
+  position:relative;
+  padding:7px 0;
+  border-bottom:1px solid #EDF1F5;
+}
+.sp-debt-invoice-detail>div:first-child{
+  display:flex;flex-direction:column;gap:1px;padding-right:88px;
+}
+.sp-debt-invoice-detail>div:first-child b{font-size:8.5px;color:var(--mynh-text)}
+.sp-debt-invoice-detail>div:first-child small{font-size:6.8px;color:var(--mynh-text-3)}
+.sp-debt-invoice-detail>div:nth-child(2){
+  display:flex;align-items:center;gap:10px;margin-top:5px;
+}
+.sp-debt-invoice-detail>div:nth-child(2) span{font-size:6.8px;color:var(--mynh-text-3)}
+.sp-debt-invoice-detail>div:nth-child(2) b{margin-left:2px;font-size:7.5px}
+.sp-debt-invoice-detail>button{position:absolute;right:0;top:7px}
+
+/* Internal scrolling remains inside the module, never the browser page */
+.sales-preview-main .sp-screen.sp-pos-screen,
+.sales-preview-main .sp-screen.sp-with-panel{overflow:hidden!important}
+
+@media(max-width:1440px){
+  .sales-preview-main .sp-dashboard-main-grid,
+  .sales-preview-main .sp-dashboard-analytics-grid,
+  .sales-preview-main .sp-dashboard-bottom-grid{gap:5px}
+  .sp-panel-tabs-five{gap:7px!important}
+  .sp-panel-tabs-five button{font-size:7.2px!important}
+}
+@media print{
+  body:has(.sales-preview-shell) *{visibility:hidden!important}
+  body:has(.sales-preview-shell) .sp-print-receipt,
+  body:has(.sales-preview-shell) .sp-print-receipt *{visibility:visible!important}
+  body:has(.sales-preview-shell) .sp-print-receipt{
+    display:block!important;position:absolute;left:0;top:0;width:80mm;padding:8mm;background:#fff;color:#111;font:12px/1.4 Arial,sans-serif;
+  }
+  .sp-print-receipt h2{font-size:15px;margin:0 0 4px}.sp-print-receipt>p{margin:2px 0 7px}.sp-print-receipt table{width:100%;border-collapse:collapse}.sp-print-receipt td{padding:4px 0;border-bottom:1px dashed #bbb}.sp-print-receipt td:last-child{text-align:right}.sp-print-receipt td small{display:block}.sp-print-receipt>div{display:flex;justify-content:space-between;padding:4px 0}
+}
