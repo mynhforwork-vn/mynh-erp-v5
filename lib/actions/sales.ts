@@ -377,3 +377,53 @@ export async function cancelPOSSale(input:{sale_id:string,reason?:string|null}){
     return {ok:false as const,error:String(error?.message??'Không thể huỷ hóa đơn')}
   }
 }
+
+
+export async function returnPOSSale(input:{
+  sale_id:string
+  items:{sale_item_id:string,quantity:number}[]
+  reason?:string|null
+}){
+  try{
+    const {supabase}=await actor()
+    const sale_id=String(input?.sale_id??'').trim()
+    const reason=String(input?.reason??'').trim()||null
+    const items=(input?.items??[])
+      .map(item=>({
+        sale_item_id:String(item.sale_item_id??'').trim(),
+        quantity:Math.trunc(Number(item.quantity??0)),
+      }))
+      .filter(item=>item.sale_item_id&&item.quantity>0)
+
+    if(!sale_id)return {ok:false as const,error:'Thiếu hóa đơn cần hoàn'}
+    if(!items.length)return {ok:false as const,error:'Chưa chọn sản phẩm hoàn'}
+    if(items.length>200)return {ok:false as const,error:'Tối đa 200 dòng hoàn hàng mỗi lần'}
+
+    const {data,error}=await supabase.rpc('return_pos_sale',{
+      p_sale_id:sale_id,
+      p_items:items,
+      p_reason:reason,
+    })
+    if(error){
+      const raw=String(error.message??'')
+      const friendly=
+        raw.includes('không tìm thấy')||raw.includes('Không tìm thấy')?'Không tìm thấy hóa đơn':
+        raw.includes('không còn ở trạng thái')?'Hóa đơn không còn ở trạng thái cho phép hoàn hàng':
+        raw.includes('Số lượng hoàn')?'Số lượng hoàn vượt quá số lượng còn có thể trả':
+        raw.includes('Chưa chọn sản phẩm')?'Chưa chọn sản phẩm hoàn':
+        raw.includes('Operator role required')?'Bạn không có quyền hoàn hàng':
+        'Không thể hoàn hàng'
+      return {ok:false as const,error:friendly,detail:raw}
+    }
+
+    for(const path of [
+      '/sales','/sales/history','/sales/customers','/sales/debt',
+      '/warehouse','/warehouse/inventory','/warehouse/history',
+      '/finance','/finance/cashflow',
+    ])revalidatePath(path)
+
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể hoàn hàng')}
+  }
+}
