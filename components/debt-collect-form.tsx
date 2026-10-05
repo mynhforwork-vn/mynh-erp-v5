@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { registerCustomerDebtPayment } from '@/lib/actions/sales'
 import { buildTransferDescription,buildVietQRUrl,type BankTransferConfig } from '@/lib/vietqr'
 
-type Invoice={id:string,code:string,time:string,total:number,paid:number,debt:number,warehouse:string}
+type InvoiceItem={id:string,sku:string,name:string,variant:string,quantity:number,sale_price:number}
+type Invoice={id:string,code:string,time:string,total:number,paid:number,debt:number,warehouse:string,items:InvoiceItem[]}
 type Props={
   customer:{id:string,name:string,phone:string}
   balance:number
@@ -101,7 +102,25 @@ export function DebtCollectForm({customer,balance,invoices,bankConfig}:Props){
     </div>
 
     {error&&<div className="error-box">{error}</div>}
-    {success&&<div className="success-box">Đã ghi nhận {String(success.receipt_code??receiptCode)} · {money(Number(success.amount??amount))}</div>}
+    {success&&<div className="debt-receipt-success">
+      <div className="debt-receipt-success-head">
+        <div><span className="module-eyebrow">PHIẾU THU NỢ</span><b>{String(success.receipt_code??receiptCode)}</b><small>{customer.name} · {customer.phone}</small></div>
+        <strong>{money(Number(success.amount??amount))}</strong>
+      </div>
+      <div className="debt-receipt-success-grid">
+        <div><span>Phương thức</span><b>{method==='CASH'?'Tiền mặt':method==='TRANSFER'?'Chuyển khoản':'Kết hợp'}</b></div>
+        <div><span>Đã phân bổ</span><b>{money(allocated)}</b></div>
+        <div><span>Công nợ trước thu</span><b>{money(balance)}</b></div>
+        <div><span>Còn lại dự kiến</span><b>{money(Math.max(0,balance-amount))}</b></div>
+      </div>
+      <div className="debt-receipt-success-lines">
+        {invoices.filter(row=>Number(allocations[row.id]??0)>0).map(row=><div className="debt-receipt-success-line" key={row.id}>
+          <div><b>{row.code}</b><span>Thu {money(Number(allocations[row.id]??0))}</span></div>
+          <div>{row.items.map(item=><span key={item.id}>{item.name} · {item.sku} · {item.quantity}×</span>)}</div>
+        </div>)}
+      </div>
+      <button className="button small" type="button" onClick={()=>window.print()}>In phiếu thu</button>
+    </div>}
 
     <div className="debt-collect-amount">
       <span>Số tiền thu</span>
@@ -141,13 +160,21 @@ export function DebtCollectForm({customer,balance,invoices,bankConfig}:Props){
 
     <div className="debt-allocation debt-allocation-edit">
       <span>Phân bổ vào hóa đơn</span>
-      {invoices.length?invoices.map(row=><label key={row.id}>
-        <div><b>{row.code}</b><small>{row.time} · {row.warehouse} · còn {money(row.debt)}</small></div>
-        <input type="number" min={0} max={row.debt} value={allocations[row.id]??0} onChange={e=>{
-          const value=Math.max(0,Math.min(row.debt,Number(e.target.value)||0))
-          setAllocations(prev=>({...prev,[row.id]:value}))
-        }}/>
-      </label>):<div className="empty compact">Không còn hóa đơn nợ.</div>}
+      {invoices.length?invoices.map(row=><div className="debt-allocation-invoice" key={row.id}>
+        <label>
+          <div><b>{row.code}</b><small>{row.time} · {row.warehouse} · còn {money(row.debt)}</small></div>
+          <input type="number" min={0} max={row.debt} value={allocations[row.id]??0} onChange={e=>{
+            const value=Math.max(0,Math.min(row.debt,Number(e.target.value)||0))
+            setAllocations(prev=>({...prev,[row.id]:value}))
+          }}/>
+        </label>
+        <div className="debt-allocation-products">
+          {row.items.map(item=><div key={item.id}>
+            <span><b>{item.name}</b><small>{item.sku} · {item.variant}</small></span>
+            <strong>{item.quantity} × {money(item.sale_price)}</strong>
+          </div>)}
+        </div>
+      </div>):<div className="empty compact">Không còn hóa đơn nợ.</div>}
       <div className={(Math.round(allocated*100)===Math.round(amount*100))?'allocation-ok':'allocation-bad'}>
         <span>Đã phân bổ</span><b>{money(allocated)}</b><small>Chênh lệch {money(amount-allocated)}</small>
       </div>
