@@ -1165,25 +1165,31 @@ export function SalesPreviewWorkspace(){
         <Header title="Công nợ khách hàng" desc="Theo dõi hóa đơn còn nợ, tạo phiếu thu nợ và phân bổ thanh toán"
           actions={<button className="sp-btn" onClick={()=>setView('customers')}>Khách hàng</button>}/>
         <section className="sp-kpis five">
-          <Kpi tone="amber" label="Tổng công nợ" value={money(totalDebtLive)} sub={debtRows.length+' khách còn nợ'}/>
-          <Kpi tone="red" label="Nợ từ 7 ngày" value={money(debtRows.filter(x=>x.risk==='high').reduce((sum,x)=>sum+x.debt,0))} sub={debtRows.filter(x=>x.risk==='high').length+' khách ưu tiên'}/>
+          <Kpi tone="amber" label="Tổng công nợ" value={money(totalDebtLive)} sub={allDebtCustomers.length+' khách còn nợ'} onClick={()=>setDebtFilter('ALL')}/>
+          <Kpi tone="red" label="Nợ từ 7 ngày" value={money(overdueDebtTotal)} sub={overdueDebtCustomers.length+' khách ưu tiên'} onClick={()=>setDebtFilter('OVERDUE')}/>
           <Kpi tone="purple" label="Hóa đơn còn nợ" value={String(salesRows.filter(x=>x.debt>0).length)} sub="Chưa thu đủ"/>
           <Kpi tone="green" label="Đã thu hôm nay" value={money(collectedDebtToday)} sub={debtReceipts.filter(x=>periodMatch(x.time,'today','','')).length+' phiếu thu'}/>
           <Kpi tone="blue" label="Thu trong tháng" value={money(collectedDebtMonth)} sub={debtReceipts.filter(x=>periodMatch(x.time,'month','','')).length+' phiếu thu'}/>
         </section>
 
         <div className="sp-toolbar">
-          <input placeholder="Tìm khách / SĐT / mã hóa đơn..."/>
-          <select><option>Tất cả công nợ</option><option>Nợ một phần</option><option>Nợ từ 7 ngày</option></select>
-          <button className="sp-btn">Bộ lọc</button>
+          <input value={debtQuery} onChange={e=>setDebtQuery(e.target.value)} placeholder="Tìm khách / SĐT / mã hóa đơn..."/>
+          <select value={debtFilter} onChange={e=>setDebtFilter(e.target.value as any)}>
+            <option value="ALL">Tất cả công nợ</option><option value="PARTIAL">Nợ một phần</option><option value="OVERDUE">Nợ từ 7 ngày</option>
+          </select>
+          {(debtQuery||debtFilter!=='ALL')&&<button className="sp-btn" onClick={()=>{setDebtQuery('');setDebtFilter('ALL')}}>Đặt lại</button>}
+          <strong className="sp-filter-result">{debtRows.length} khách</strong>
           <ColumnManager table="debt" prefs={tablePrefs.debt} open={columnMenu==='debt'} setOpen={setColumnMenu} dragged={draggedColumn} setDragged={setDraggedColumn} onToggle={toggleColumn} onMove={moveColumn} onReset={resetColumns}/>
         </div>
-        <section className="sp-card sp-table-card"><div className="sp-table-scroll"><table><thead><tr>{visibleColumns('debt').map(col=><SortHead key={col.key} table="debt" col={col} sort={tableSort.debt} onSort={changeSort}/>)}</tr></thead><tbody>{debtRows.length?debtRows.map(row=><tr key={row.id} onDoubleClick={()=>openDebtPanel(row)}>{visibleColumns('debt').map(col=>debtCell(row,col.key))}</tr>):<tr><td className="sp-empty" colSpan={visibleColumns('debt').length}>Không còn công nợ.</td></tr>}</tbody></table></div></section>
+
+        <section className="sp-card sp-table-card"><div className="sp-table-scroll"><table><thead><tr>{visibleColumns('debt').map(col=><SortHead key={col.key} table="debt" col={col} sort={tableSort.debt} onSort={changeSort}/>)}</tr></thead><tbody>{debtRows.length?debtRows.map(row=><tr key={row.id} className={debtPanel?.id===row.id?'selected':''} onClick={()=>openDebtPanel(row,'OVERVIEW')}>{visibleColumns('debt').map(col=>debtCell(row,col.key))}</tr>):<tr><td className="sp-empty" colSpan={visibleColumns('debt').length}>Không có công nợ phù hợp bộ lọc.</td></tr>}</tbody></table></div></section>
       </main>
 
       {debtPanel&&<aside className="sp-slidebar">
-        <div className="sp-panel-head"><div><span>PHIẾU THU NỢ</span><h2>{debtPanel.name}</h2><p>{debtPanel.phone} · Còn nợ {money(activeDebtBalance)}</p></div><button onClick={()=>setDebtPanel(null)}>×</button></div>
-        <div className="sp-panel-tabs">
+        <div className="sp-panel-head"><div><span>CÔNG NỢ KHÁCH HÀNG</span><h2>{debtPanel.name}</h2><p>{debtPanel.phone} · Còn nợ {money(activeDebtBalance)}</p></div><button onClick={()=>setDebtPanel(null)}>×</button></div>
+        <div className="sp-panel-tabs sp-panel-tabs-five">
+          <button className={debtPanelTab==='OVERVIEW'?'active':''} onClick={()=>setDebtPanelTab('OVERVIEW')}>Tổng quan</button>
+          <button className={debtPanelTab==='INVOICES'?'active':''} onClick={()=>setDebtPanelTab('INVOICES')}>HĐ nợ</button>
           <button className={debtPanelTab==='PAY'?'active':''} onClick={()=>setDebtPanelTab('PAY')}>Thu tiền</button>
           <button className={debtPanelTab==='ALLOCATE'?'active':''} onClick={()=>setDebtPanelTab('ALLOCATE')}>Phân bổ</button>
           <button className={debtPanelTab==='HISTORY'?'active':''} onClick={()=>setDebtPanelTab('HISTORY')}>Lịch sử thu</button>
@@ -1192,105 +1198,77 @@ export function SalesPreviewWorkspace(){
         <div className="sp-panel-scroll">
           {debtMessage&&<div className="sp-debt-message"><span>{debtMessage}</span><button onClick={()=>setDebtMessage('')}>×</button></div>}
 
+          {debtPanelTab==='OVERVIEW'&&<>
+            <div className={'sp-debt-total '+(activeDebtBalance<=0?'settled':'')}><span>Công nợ hiện tại</span><b>{money(activeDebtBalance)}</b><small>{debtInvoices.length} hóa đơn còn nợ</small></div>
+            <div className="sp-detail-grid sp-debt-overview-grid">
+              <div><span>Khách hàng</span><b>{debtPanel.name}</b></div><div><span>SĐT</span><b>{debtPanel.phone}</b></div>
+              <div className="full"><span>Địa chỉ</span><b>{debtPanel.address}</b></div>
+              <div><span>HĐ nợ</span><b>{debtInvoices.length}</b></div><div><span>Nợ cũ nhất</span><b>{debtInvoices[0]?.time.split(' ')[0]??'—'}</b></div>
+              <div><span>Phiếu thu</span><b>{debtReceiptsForPanel.length}</b></div><div><span>Thu gần nhất</span><b>{debtReceiptsForPanel[0]?.time??'—'}</b></div>
+            </div>
+            <div className="sp-debt-overview-actions"><button className="sp-btn" onClick={()=>setDebtPanelTab('INVOICES')}>Xem hóa đơn nợ</button>{activeDebtBalance>0&&<button className="sp-btn primary" onClick={()=>{updateDebtCollectAmount(activeDebtBalance);setDebtPanelTab('PAY')}}>Thu công nợ →</button>}</div>
+          </>}
+
+          {debtPanelTab==='INVOICES'&&<div className="sp-panel-section sp-panel-section-flush">
+            <div className="sp-panel-section-title"><b>Hóa đơn còn nợ</b><span>{debtInvoices.length} hóa đơn · {money(activeDebtBalance)}</span></div>
+            {!debtInvoices.length?<div className="sp-panel-empty">Khách hàng không còn hóa đơn nợ.</div>:debtInvoices.map(row=><div className="sp-debt-invoice-detail" key={row.id}>
+              <div><b>{row.code}</b><small>{row.time} · Kho {row.warehouse} · {row.method}</small></div>
+              <div><span>Tổng <b>{money(row.total)}</b></span><span>Đã thu <b className="income">{money(row.paid)}</b></span><span>Còn nợ <b className="expense">{money(row.debt)}</b></span></div>
+              <button className="sp-btn small primary" onClick={()=>{updateDebtCollectAmount(row.debt);setDebtAllocations({[row.id]:row.debt});setDebtPanelTab('PAY')}}>Thu HĐ này</button>
+            </div>)}
+          </div>}
+
           {debtPanelTab==='PAY'&&<>
             <div className={'sp-debt-total '+(activeDebtBalance<=0?'settled':'')}>
               <span>Công nợ hiện tại</span><b>{money(activeDebtBalance)}</b><small>{activeDebtBalance>0?'Có thể thu một phần hoặc toàn bộ':'Đã thanh toán đủ'}</small>
             </div>
-
             {activeDebtBalance>0&&<>
               <div className="sp-debt-quick-amounts">
-                <button onClick={()=>updateDebtCollectAmount(activeDebtBalance)}>Thu toàn bộ</button>
-                <button onClick={()=>updateDebtCollectAmount(Math.round(activeDebtBalance/2))}>50%</button>
-                <button onClick={()=>updateDebtCollectAmount(Math.min(activeDebtBalance,100000))}>100.000 ₫</button>
+                <button onClick={()=>updateDebtCollectAmount(activeDebtBalance)}>Thu toàn bộ</button><button onClick={()=>updateDebtCollectAmount(Math.round(activeDebtBalance/2))}>50%</button><button onClick={()=>updateDebtCollectAmount(Math.min(activeDebtBalance,100000))}>100.000 ₫</button>
               </div>
-
               <div className="sp-payment-methods">
                 <button className={debtPaymentMethod==='CASH'?'active':''} onClick={()=>{setDebtPaymentMethod('CASH');setDebtCashPart(debtCollectAmount);setDebtTransferPart(0)}}>Tiền mặt</button>
                 <button className={debtPaymentMethod==='TRANSFER'?'active':''} onClick={()=>{setDebtPaymentMethod('TRANSFER');setDebtCashPart(0);setDebtTransferPart(debtCollectAmount)}}>Chuyển khoản</button>
                 <button className={debtPaymentMethod==='COMBINED'?'active':''} onClick={()=>{setDebtPaymentMethod('COMBINED');setDebtCashPart(Math.floor(debtCollectAmount/2));setDebtTransferPart(debtCollectAmount-Math.floor(debtCollectAmount/2))}}>Kết hợp</button>
               </div>
-
               <div className="sp-payment-form">
-                <label>Số tiền thu
-                  <input type="number" value={debtCollectAmount} min={0} max={activeDebtBalance} onChange={e=>updateDebtCollectAmount(Number(e.target.value))}/>
-                </label>
-
-                {debtPaymentMethod==='TRANSFER'&&<div className="sp-debt-transfer-box">
-                  <div className="sp-demo-qr small">QR</div>
-                  <div><span>Số tiền</span><b>{money(debtCollectAmount)}</b><span>Nội dung CK</span><b>PTN-AUTO</b><small>Preview mô phỏng VietQR theo cấu hình ngân hàng của main.</small></div>
-                </div>}
-
+                <label>Số tiền thu<input type="number" value={debtCollectAmount} min={0} max={activeDebtBalance} onChange={e=>updateDebtCollectAmount(Number(e.target.value))}/></label>
+                {debtPaymentMethod==='TRANSFER'&&<div className="sp-debt-transfer-box"><div className="sp-demo-qr small">QR</div><div><span>Số tiền</span><b>{money(debtCollectAmount)}</b><span>Nội dung CK</span><b>PTN-{debtPanel.id.toUpperCase()}</b><small>Preview mô phỏng VietQR theo cấu hình ngân hàng của main.</small></div></div>}
                 {debtPaymentMethod==='COMBINED'&&<div className="sp-combined-fields">
                   <label>Tiền mặt<input type="number" value={debtCashPart} min={0} onChange={e=>setDebtCashPart(Math.max(0,Number(e.target.value)||0))}/></label>
                   <label>Chuyển khoản<input type="number" value={debtTransferPart} min={0} onChange={e=>setDebtTransferPart(Math.max(0,Number(e.target.value)||0))}/></label>
-                  <div className={'sp-combined-check '+(Math.round(debtCashPart+debtTransferPart)===Math.round(debtCollectAmount)?'ok':'bad')}>
-                    <span>Tổng nhận</span><b>{money(debtCashPart+debtTransferPart)}</b>
-                  </div>
+                  <div className={'sp-combined-check '+(Math.round(debtCashPart+debtTransferPart)===Math.round(debtCollectAmount)?'ok':'bad')}><span>Tổng nhận</span><b>{money(debtCashPart+debtTransferPart)}</b></div>
                 </div>}
-
                 <label>Ghi chú<input value={debtNote} onChange={e=>setDebtNote(e.target.value)} placeholder="Ghi chú phiếu thu nợ..."/></label>
               </div>
-
               <div className="sp-debt-allocation-preview">
-                <div><span>Đã phân bổ</span><b>{money(debtAllocatedTotal)}</b></div>
-                <div><span>Chưa phân bổ</span><b className={Math.round(debtAllocatedTotal)===Math.round(debtCollectAmount)?'income':'expense'}>{money(Math.max(0,debtCollectAmount-debtAllocatedTotal))}</b></div>
+                <div><span>Đã phân bổ</span><b>{money(debtAllocatedTotal)}</b></div><div><span>Chưa phân bổ</span><b className={Math.round(debtAllocatedTotal)===Math.round(debtCollectAmount)?'income':'expense'}>{money(Math.max(0,debtCollectAmount-debtAllocatedTotal))}</b></div>
                 <button className="sp-btn small" onClick={()=>setDebtPanelTab('ALLOCATE')}>Xem / sửa phân bổ →</button>
               </div>
-
-              <div className="sp-panel-actions">
-                <button className="sp-btn" onClick={()=>window.print()}>In phiếu dự kiến</button>
-                <button className="sp-btn primary" onClick={confirmDebtPayment}>Xác nhận thu {money(debtCollectAmount)}</button>
-              </div>
+              <div className="sp-panel-actions"><button className="sp-btn" onClick={()=>window.print()}>In phiếu dự kiến</button><button className="sp-btn primary" onClick={confirmDebtPayment}>Xác nhận thu {money(debtCollectAmount)}</button></div>
             </>}
           </>}
 
           {debtPanelTab==='ALLOCATE'&&<>
             <div className="sp-allocation-head"><span>Số tiền cần phân bổ</span><b>{money(debtCollectAmount)}</b></div>
-            <div className="sp-panel-section sp-panel-section-flush">
-              <div className="sp-panel-section-title"><b>Hóa đơn còn nợ</b><span>{debtInvoices.length} hóa đơn</span></div>
-              {!debtInvoices.length?<div className="sp-panel-empty">Không còn hóa đơn cần phân bổ.</div>:debtInvoices.map(row=><div className="sp-allocation-edit-row" key={row.id}>
-                <span><b>{row.code}</b><small>{row.time} · Còn nợ {money(row.debt)}</small></span>
-                <input type="number" min={0} max={row.debt} value={debtAllocations[row.id]??0} onChange={e=>{
-                  const value=Math.max(0,Math.min(row.debt,Number(e.target.value)||0))
-                  setDebtAllocations(prev=>({...prev,[row.id]:value}))
-                }}/>
-              </div>)}
+            <div className="sp-panel-section sp-panel-section-flush"><div className="sp-panel-section-title"><b>Hóa đơn còn nợ</b><span>{debtInvoices.length} hóa đơn</span></div>
+              {!debtInvoices.length?<div className="sp-panel-empty">Không còn hóa đơn cần phân bổ.</div>:debtInvoices.map(row=><div className="sp-allocation-edit-row" key={row.id}><span><b>{row.code}</b><small>{row.time} · Còn nợ {money(row.debt)}</small></span><input type="number" min={0} max={row.debt} value={debtAllocations[row.id]??0} onChange={e=>{const value=Math.max(0,Math.min(row.debt,Number(e.target.value)||0));setDebtAllocations(prev=>({...prev,[row.id]:value}))}}/></div>)}
             </div>
-            <div className={'sp-allocation-summary '+(Math.round(debtAllocatedTotal)===Math.round(debtCollectAmount)?'ok':'bad')}>
-              <span>{Math.round(debtAllocatedTotal)===Math.round(debtCollectAmount)?'Phân bổ hợp lệ':'Còn chênh lệch'}</span>
-              <b>{money(debtCollectAmount-debtAllocatedTotal)}</b>
-            </div>
-            <div className="sp-panel-actions">
-              <button className="sp-btn" onClick={()=>setDebtAllocations(autoAllocateDebt(debtPanel,debtCollectAmount))}>Tự phân bổ nợ cũ</button>
-              <button className="sp-btn primary" onClick={()=>setDebtPanelTab('PAY')}>Quay lại thu tiền →</button>
-            </div>
+            <div className={'sp-allocation-summary '+(Math.round(debtAllocatedTotal)===Math.round(debtCollectAmount)?'ok':'bad')}><span>{Math.round(debtAllocatedTotal)===Math.round(debtCollectAmount)?'Phân bổ hợp lệ':'Còn chênh lệch'}</span><b>{money(debtCollectAmount-debtAllocatedTotal)}</b></div>
+            <div className="sp-panel-actions"><button className="sp-btn" onClick={()=>setDebtAllocations(autoAllocateDebt(debtPanel,debtCollectAmount))}>Tự phân bổ nợ cũ</button><button className="sp-btn primary" onClick={()=>setDebtPanelTab('PAY')}>Quay lại thu tiền →</button></div>
           </>}
 
           {debtPanelTab==='HISTORY'&&<>
             {lastDebtReceipt&&lastDebtReceipt.customerId===debtPanel.id&&<div className="sp-debt-receipt-card">
-              <div className="sp-debt-receipt-head"><div><span>PHIẾU THU NỢ VỪA TẠO</span><b>{lastDebtReceipt.code}</b></div><button className="sp-btn small" onClick={()=>window.print()}>In phiếu</button></div>
-              <div className="sp-debt-receipt-grid">
-                <div><span>Thời gian</span><b>{lastDebtReceipt.time}</b></div>
-                <div><span>Phương thức</span><b>{lastDebtReceipt.method}</b></div>
-                <div><span>Số tiền</span><b className="income">{money(lastDebtReceipt.amount)}</b></div>
-                <div><span>Còn nợ sau thu</span><b>{money(activeDebtBalance)}</b></div>
-              </div>
+              <div className="sp-debt-receipt-head"><div><span>PHIẾU THU NỢ</span><b>{lastDebtReceipt.code}</b></div><button className="sp-btn small" onClick={()=>window.print()}>In phiếu</button></div>
+              <div className="sp-debt-receipt-grid"><div><span>Thời gian</span><b>{lastDebtReceipt.time}</b></div><div><span>Phương thức</span><b>{lastDebtReceipt.method}</b></div><div><span>Số tiền</span><b className="income">{money(lastDebtReceipt.amount)}</b></div><div><span>Còn nợ hiện tại</span><b>{money(activeDebtBalance)}</b></div></div>
               {lastDebtReceipt.allocations.length>0&&<div className="sp-receipt-allocations"><span>Phân bổ</span>{lastDebtReceipt.allocations.map(a=><div key={a.saleId}><b>{a.code}</b><strong>{money(a.amount)}</strong></div>)}</div>}
               {lastDebtReceipt.note&&<div className="sp-receipt-note"><span>Ghi chú</span><b>{lastDebtReceipt.note}</b></div>}
             </div>}
-
-            <div className="sp-panel-section sp-panel-section-flush">
-              <div className="sp-panel-section-title"><b>Lịch sử phiếu thu</b><span>{debtReceiptsForPanel.length} phiếu</span></div>
-              {!debtReceiptsForPanel.length?<div className="sp-panel-empty">Chưa có phiếu thu nợ.</div>:debtReceiptsForPanel.map(receipt=><button className="sp-debt-receipt-row" key={receipt.id} onClick={()=>setLastDebtReceipt(receipt)}>
-                <span><b>{receipt.code}</b><small>{receipt.time} · {receipt.method}</small></span>
-                <strong>{money(receipt.amount)}</strong>
-              </button>)}
+            <div className="sp-panel-section sp-panel-section-flush"><div className="sp-panel-section-title"><b>Lịch sử phiếu thu</b><span>{debtReceiptsForPanel.length} phiếu</span></div>
+              {!debtReceiptsForPanel.length?<div className="sp-panel-empty">Chưa có phiếu thu nợ.</div>:debtReceiptsForPanel.map(receipt=><button className="sp-debt-receipt-row" key={receipt.id} onClick={()=>setLastDebtReceipt(receipt)}><span><b>{receipt.code}</b><small>{receipt.time} · {receipt.method}</small></span><strong>{money(receipt.amount)}</strong></button>)}
             </div>
-
-            <div className="sp-timeline">
-              {salesRows.filter(x=>x.customer===debtPanel.name&&x.debt>0).map(row=><div key={row.id}><i className="amber"/><span><b>{row.time} · Phát sinh công nợ</b><small>{row.code} · Còn {money(row.debt)}</small></span></div>)}
-              <div><i className={activeDebtBalance>0?'amber':'green'}/><span><b>Trạng thái hiện tại</b><small>{activeDebtBalance>0?'Còn phải thu '+money(activeDebtBalance):'Đã thanh toán đủ'}</small></span></div>
-            </div>
+            <div className="sp-timeline">{salesRows.filter(x=>x.customer===debtPanel.name).map(row=><div key={row.id}><i className={row.debt>0?'amber':'green'}/><span><b>{row.time} · {row.debt>0?'Phát sinh công nợ':'Hóa đơn đã thanh toán'}</b><small>{row.code} · còn {money(row.debt)}</small></span></div>)}<div><i className={activeDebtBalance>0?'amber':'green'}/><span><b>Trạng thái hiện tại</b><small>{activeDebtBalance>0?'Còn phải thu '+money(activeDebtBalance):'Đã thanh toán đủ'}</small></span></div></div>
           </>}
         </div>
       </aside>}
