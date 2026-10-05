@@ -1029,3 +1029,19 @@
     max-width:112px!important;
   }
 }
+
+
+/* Keep warehouse panel scrollbar discoverable on desktop Chromium/macOS. */
+.whx-detail-panel-v2 .whx-panel-scroll{
+  scrollbar-width:thin!important;
+  scrollbar-color:#b8c6d2 #f3f6f8!important;
+}
+.whx-detail-panel-v2 .whx-panel-scroll::-webkit-scrollbar{width:8px!important}
+.whx-detail-panel-v2 .whx-panel-scroll::-webkit-scrollbar-track{background:#f3f6f8!important}
+.whx-detail-panel-v2 .whx-panel-scroll::-webkit-scrollbar-thumb{
+  min-height:34px!important;
+  border:2px solid #f3f6f8!important;
+  border-radius:8px!important;
+  background:#b8c6d2!important;
+}
+.whx-detail-panel-v2 .whx-panel-scroll::-webkit-scrollbar-thumb:hover{background:#91a5b6!important}
