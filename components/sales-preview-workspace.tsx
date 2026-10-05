@@ -331,7 +331,7 @@ export function SalesPreviewWorkspace(){
     }
     window.addEventListener('keydown',onKeyDown)
     return ()=>window.removeEventListener('keydown',onKeyDown)
-  },[view,cart,cartTotal,posCustomerId,posWarehouse,posDiscount,posOtherFee,posNote,heldOrders])
+  },[view,cart,posCustomerId,posWarehouse,posDiscount,posOtherFee,posNote,heldOrders])
 
   function toggleColumn(table:TableId,key:string){
     setTablePrefs(prev=>{
