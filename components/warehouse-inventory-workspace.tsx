@@ -87,8 +87,11 @@ export function WarehouseInventoryWorkspace({
     setPanelTab('overview')
   }
 
-  return <div className={'whx-stock-layout '+(active?'with-panel':'')}>
-    <section className="whx-stock-main">
+  return <div
+    className={'whx-stock-layout '+(active?'with-panel':'')}
+    style={{minWidth:0,maxWidth:'100%',overflowX:'hidden'}}
+  >
+    <section className="whx-stock-main" style={{minWidth:0,maxWidth:'100%',overflow:'hidden'}}>
       <div className="whx-table-card">
         <div className="whx-table-head">
           <div>
@@ -147,7 +150,16 @@ export function WarehouseInventoryWorkspace({
       </div>
     </section>
 
-    {active&&<aside className="whx-detail-panel whx-detail-panel-v2">
+    {active&&<aside
+      className="whx-detail-panel whx-detail-panel-v2"
+      style={{
+        minWidth:0,
+        height:'calc(100vh - 188px)',
+        maxHeight:'calc(100vh - 188px)',
+        alignSelf:'start',
+        overflow:'hidden',
+      }}
+    >
       <div className="whx-panel-head whx-panel-head-v2">
         <div>
           <span className="module-eyebrow">CHI TIẾT TỒN KHO</span>
@@ -162,7 +174,17 @@ export function WarehouseInventoryWorkspace({
         <button className={panelTab==='history'?'active':''} type="button" onClick={()=>setPanelTab('history')}>Lịch sử <span>{activeTx.length}</span></button>
       </div>
 
-      <div className="whx-panel-scroll">
+      <div
+        className="whx-panel-scroll"
+        style={{
+          minWidth:0,
+          minHeight:0,
+          flex:'1 1 auto',
+          overflowY:'auto',
+          overflowX:'hidden',
+          overscrollBehavior:'contain',
+        }}
+      >
         {panelTab==='overview'&&<>
           <div className="whx-panel-kpis">
             <div className="primary"><span>Tồn hiện tại</span><b>{active.quantity}</b><small>{active.warehouse_code}</small></div>
