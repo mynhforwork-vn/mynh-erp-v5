@@ -1081,38 +1081,75 @@ export function SalesPreviewWorkspace(){
       </aside>}
     </div>}
 
-    {view==='customers'&&<div className={'sp-screen sp-with-panel '+(selectedCustomer?'open':'')}>
+    {view==='customers'&&<div className={'sp-screen sp-with-panel '+(selectedCustomerLive?'open':'')}>
       <main>
-        <Header title="Khách hàng" desc="Hồ sơ mua hàng, doanh thu và công nợ theo từng khách"
-          actions={<button className="sp-btn primary">+ Khách hàng</button>}/>
+        <Header title="Khách hàng" desc="Hồ sơ khách, lịch sử mua, doanh số và công nợ"
+          actions={<button className="sp-btn primary" onClick={()=>setCustomerCreateOpen(v=>!v)}>+ Thêm khách</button>}/>
         <section className="sp-kpis five">
-          <Kpi tone="blue" label="Tổng khách" value="248" sub="Có hồ sơ"/>
-          <Kpi tone="green" label="Mua trong 30 ngày" value="86" sub="Đang hoạt động"/>
-          <Kpi tone="purple" label="Khách VIP" value="18" sub="Doanh thu cao"/>
-          <Kpi tone="amber" label="Khách đang nợ" value="27" sub={money(2860000)}/>
-          <Kpi tone="red" label="Nợ từ 7 ngày" value="6" sub="Cần xử lý"/>
+          <Kpi tone="blue" label="Tổng khách hàng" value={String(allCustomersLive.length)} sub={money(customerTotalRevenue)+' tổng mua'} onClick={()=>setCustomerFilter('ALL')}/>
+          <Kpi tone="green" label="Khách quay lại" value={String(customerRepeatCount)} sub="Từ 2 hóa đơn trở lên" onClick={()=>setCustomerFilter('REPEAT')}/>
+          <Kpi tone="cyan" label="Khách mới" value={String(customerNewCount)} sub="Tối đa 1 hóa đơn" onClick={()=>setCustomerFilter('NEW')}/>
+          <Kpi tone="amber" label="Khách còn nợ" value={String(customerDebtCount)} sub={money(customerTotalDebt)} onClick={()=>setCustomerFilter('DEBT')}/>
+          <Kpi tone="navy" label="Giá trị TB/khách" value={money(allCustomersLive.length?Math.round(customerTotalRevenue/allCustomersLive.length):0)} sub="Theo toàn bộ hồ sơ"/>
         </section>
-        <div className="sp-toolbar"><input placeholder="Tìm tên / SĐT / địa chỉ..."/><select><option>Tất cả khách</option><option>Đang nợ</option><option>VIP</option></select><ColumnManager table="customers" prefs={tablePrefs.customers} open={columnMenu==='customers'} setOpen={setColumnMenu} dragged={draggedColumn} setDragged={setDraggedColumn} onToggle={toggleColumn} onMove={moveColumn} onReset={resetColumns}/></div>
-        <section className="sp-card sp-table-card"><div className="sp-table-scroll"><table><thead><tr>{visibleColumns('customers').map(col=><SortHead key={col.key} table="customers" col={col} sort={tableSort.customers} onSort={changeSort}/>)}</tr></thead><tbody>{customerRows.map(row=><tr key={row.id} className={selectedCustomer?.id===row.id?'selected':''} onClick={()=>{setSelectedCustomer(row);setCustomerPanelTab('OVERVIEW')}}>{visibleColumns('customers').map(col=>customerCell(row,col.key))}</tr>)}</tbody></table></div></section>
+
+        {customerCreateOpen&&<div className="sp-inline-create-card">
+          <div className="sp-inline-popover-head"><div><b>Thêm khách hàng</b><span>Tạo trong Preview · sau này nối action main</span></div><button onClick={()=>setCustomerCreateOpen(false)}>×</button></div>
+          <div className="sp-inline-create-grid">
+            <label>Họ tên *<input value={customerDraft.name} onChange={e=>setCustomerDraft(v=>({...v,name:e.target.value}))} placeholder="Nguyễn Văn A"/></label>
+            <label>SĐT<input value={customerDraft.phone} onChange={e=>setCustomerDraft(v=>({...v,phone:e.target.value}))} placeholder="09..."/></label>
+            <label>Địa chỉ<input value={customerDraft.address} onChange={e=>setCustomerDraft(v=>({...v,address:e.target.value}))} placeholder="Quận/Huyện, Tỉnh/TP"/></label>
+            <button className="sp-btn primary" onClick={()=>createPreviewCustomer('customers')}>Tạo khách hàng</button>
+          </div>
+        </div>}
+
+        <div className="sp-toolbar">
+          <input value={customerQuery} onChange={e=>setCustomerQuery(e.target.value)} placeholder="Tìm tên khách / SĐT / địa chỉ..."/>
+          <select value={customerFilter} onChange={e=>setCustomerFilter(e.target.value as any)}>
+            <option value="ALL">Tất cả khách</option><option value="REPEAT">Khách quay lại</option><option value="NEW">Khách mới</option><option value="DEBT">Còn công nợ</option>
+          </select>
+          {(customerQuery||customerFilter!=='ALL')&&<button className="sp-btn" onClick={()=>{setCustomerQuery('');setCustomerFilter('ALL')}}>Đặt lại</button>}
+          <strong className="sp-filter-result">{customerRows.length} khách</strong>
+          <ColumnManager table="customers" prefs={tablePrefs.customers} open={columnMenu==='customers'} setOpen={setColumnMenu} dragged={draggedColumn} setDragged={setDraggedColumn} onToggle={toggleColumn} onMove={moveColumn} onReset={resetColumns}/>
+        </div>
+        <section className="sp-card sp-table-card"><div className="sp-table-scroll"><table><thead><tr>{visibleColumns('customers').map(col=><SortHead key={col.key} table="customers" col={col} sort={tableSort.customers} onSort={changeSort}/>)}</tr></thead><tbody>{customerRows.length?customerRows.map(row=><tr key={row.id} className={selectedCustomerLive?.id===row.id?'selected':''} onClick={()=>{setSelectedCustomer(row);setCustomerPanelTab('OVERVIEW')}}>{visibleColumns('customers').map(col=>customerCell(row,col.key))}</tr>):<tr><td className="sp-empty" colSpan={visibleColumns('customers').length}>Không có khách hàng phù hợp.</td></tr>}</tbody></table></div></section>
       </main>
-      {selectedCustomer&&<aside className="sp-slidebar">
-        <div className="sp-panel-head"><div><span>KHÁCH HÀNG</span><h2>{selectedCustomer.name}</h2><p>{selectedCustomer.phone} · {selectedCustomer.address}</p></div><button onClick={()=>setSelectedCustomer(null)}>×</button></div>
+
+      {selectedCustomerLive&&<aside className="sp-slidebar">
+        <div className="sp-panel-head"><div><span>KHÁCH HÀNG</span><h2>{selectedCustomerLive.name}</h2><p>{selectedCustomerLive.phone} · {selectedCustomerLive.address}</p></div><button onClick={()=>setSelectedCustomer(null)}>×</button></div>
         <div className="sp-panel-tabs">
-          <button className={customerPanelTab==='OVERVIEW'?'active':''} onClick={()=>setCustomerPanelTab('OVERVIEW')}>Tổng quan</button>
+          <button className={customerPanelTab==='OVERVIEW'?'active':''} onClick={()=>setCustomerPanelTab('OVERVIEW')}>Thông tin</button>
           <button className={customerPanelTab==='PURCHASES'?'active':''} onClick={()=>setCustomerPanelTab('PURCHASES')}>Lịch sử mua</button>
           <button className={customerPanelTab==='DEBT'?'active':''} onClick={()=>setCustomerPanelTab('DEBT')}>Công nợ</button>
+          <button className={customerPanelTab==='HISTORY'?'active':''} onClick={()=>setCustomerPanelTab('HISTORY')}>Lịch sử</button>
         </div>
         <div className="sp-panel-scroll">
           {customerPanelTab==='OVERVIEW'&&<>
-            <div className="sp-customer-summary"><Kpi tone="blue" label="Số đơn" value={String(selectedCustomer.orders)} sub="Toàn thời gian"/><Kpi tone="green" label="Doanh thu" value={money(selectedCustomer.revenue)} sub="Tổng mua"/><Kpi tone={selectedCustomer.debt?'amber':'green'} label="Công nợ" value={money(selectedCustomer.debt)} sub={selectedCustomer.debt?'Cần theo dõi':'Không nợ'}/></div>
-            <div className="sp-detail-grid sp-customer-info-grid"><div><span>SĐT</span><b>{selectedCustomer.phone}</b></div><div><span>Nhóm</span><b>{selectedCustomer.status==='VIP'?'VIP':selectedCustomer.status==='DEBT'?'Đang nợ':'Ổn định'}</b></div><div className="full"><span>Địa chỉ</span><b>{selectedCustomer.address}</b></div><div><span>Mua gần nhất</span><b>{selectedCustomer.last}</b></div><div><span>Giá trị TB/đơn</span><b>{money(Math.round(selectedCustomer.revenue/Math.max(1,selectedCustomer.orders)))}</b></div></div>
+            <div className="sp-customer-summary"><Kpi tone="blue" label="Số hóa đơn" value={String(selectedCustomerLive.orders)} sub="Toàn thời gian"/><Kpi tone="green" label="Tổng mua" value={money(selectedCustomerLive.revenue)} sub="Doanh thu"/><Kpi tone={selectedCustomerLive.debt?'amber':'green'} label="Công nợ" value={money(selectedCustomerLive.debt)} sub={selectedCustomerLive.debt?'Cần theo dõi':'Không nợ'}/></div>
+            <div className="sp-detail-grid sp-customer-info-grid">
+              <div><span>Họ tên</span><b>{selectedCustomerLive.name}</b></div><div><span>SĐT</span><b>{selectedCustomerLive.phone}</b></div>
+              <div className="full"><span>Địa chỉ</span><b>{selectedCustomerLive.address}</b></div>
+              <div><span>Mua gần nhất</span><b>{selectedCustomerLive.last}</b></div><div><span>Nhóm</span><b>{selectedCustomerLive.orders>=2?'Khách quay lại':'Khách mới'}</b></div>
+              <div><span>Giá trị TB/đơn</span><b>{money(selectedCustomerLive.orders?Math.round(selectedCustomerLive.revenue/selectedCustomerLive.orders):0)}</b></div><div><span>Trạng thái nợ</span><b>{selectedCustomerLive.debt>0?'Còn nợ':'Bình thường'}</b></div>
+            </div>
           </>}
-          {customerPanelTab==='PURCHASES'&&<div className="sp-panel-section sp-panel-section-flush"><div className="sp-panel-section-title"><b>Lịch sử mua</b><span>{selectedCustomer.orders} đơn</span></div>{salesRows.filter(x=>x.customer===selectedCustomer.name).length?salesRows.filter(x=>x.customer===selectedCustomer.name).map(row=><button className="sp-purchase-history-row" key={row.id} onClick={()=>{setSelectedSale(row);setSalePanelTab('INFO');setView('history');setSelectedCustomer(null)}}><span><b>{row.code}</b><small>{row.time} · {row.items} SP · {row.method}</small></span><span><strong>{money(row.total)}</strong><Status status={row.status}/></span></button>):<div className="sp-panel-empty">Chưa có giao dịch demo trong danh sách hiện tại.</div>}</div>}
+
+          {customerPanelTab==='PURCHASES'&&<div className="sp-panel-section sp-panel-section-flush">
+            <div className="sp-panel-section-title"><b>Lịch sử mua</b><span>{salesRows.filter(x=>x.customer===selectedCustomerLive.name).length} hóa đơn trong Preview</span></div>
+            {salesRows.filter(x=>x.customer===selectedCustomerLive.name).length?salesRows.filter(x=>x.customer===selectedCustomerLive.name).sort((a,b)=>Number(vnTimeValue(b.time))-Number(vnTimeValue(a.time))).map(row=><button className="sp-purchase-history-row" key={row.id} onClick={()=>{setSelectedSale(row);setSalePanelTab('INFO');setView('history');setSelectedCustomer(null)}}><span><b>{row.code}</b><small>{row.time} · {row.warehouse} · {row.items} SP · {row.method}</small></span><span><strong>{money(row.total)}</strong><Status status={row.status}/></span></button>):<div className="sp-panel-empty">Khách hàng chưa có hóa đơn trong Preview.</div>}
+          </div>}
+
           {customerPanelTab==='DEBT'&&<>
-            <div className={'sp-debt-total '+(!selectedCustomer.debt?'settled':'')}><span>Công nợ hiện tại</span><b>{money(selectedCustomer.debt)}</b><small>{selectedCustomer.debt?'Cần thu tiếp':'Đã thanh toán đủ'}</small></div>
-            <div className="sp-panel-section"><div className="sp-panel-section-title"><b>Hóa đơn liên quan</b><span>{selectedCustomer.debt?1:0} hóa đơn còn nợ</span></div>{salesRows.filter(x=>x.customer===selectedCustomer.name&&x.debt>0).map(row=><div className="sp-mini-row" key={row.id}><span><b>{row.code}</b><small>{row.time}</small></span><strong className="expense">{money(row.debt)}</strong></div>)}</div>
-            {selectedCustomer.debt>0&&<button className="sp-btn primary sp-panel-wide-action" onClick={()=>{openDebtPanel(selectedCustomer);setView('debt');setSelectedCustomer(null)}}>Thu công nợ {money(selectedCustomer.debt)} →</button>}
+            <div className={'sp-debt-total '+(!selectedCustomerLive.debt?'settled':'')}><span>Công nợ hiện tại</span><b>{money(selectedCustomerLive.debt)}</b><small>{selectedCustomerLive.debt?'Cần thu tiếp':'Đã thanh toán đủ'}</small></div>
+            <div className="sp-panel-section"><div className="sp-panel-section-title"><b>Hóa đơn còn nợ</b><span>{salesRows.filter(x=>x.customer===selectedCustomerLive.name&&x.debt>0).length} hóa đơn</span></div>{salesRows.filter(x=>x.customer===selectedCustomerLive.name&&x.debt>0).map(row=><div className="sp-mini-row" key={row.id}><span><b>{row.code}</b><small>{row.time} · đã thu {money(row.paid)}</small></span><strong className="expense">{money(row.debt)}</strong></div>)}</div>
+            {selectedCustomerLive.debt>0&&<button className="sp-btn primary sp-panel-wide-action" onClick={()=>{openDebtPanel(selectedCustomerLive);setView('debt');setSelectedCustomer(null)}}>Thu công nợ {money(selectedCustomerLive.debt)} →</button>}
           </>}
+
+          {customerPanelTab==='HISTORY'&&<div className="sp-timeline">
+            {salesRows.filter(x=>x.customer===selectedCustomerLive.name).sort((a,b)=>Number(vnTimeValue(b.time))-Number(vnTimeValue(a.time))).map(row=><div key={'sale-'+row.id}><i className="green"/><span><b>{row.time} · Mua hàng</b><small>{row.code} · {money(row.total)} · {row.warehouse}</small></span></div>)}
+            {debtReceipts.filter(x=>x.customerId===selectedCustomerLive.id).map(receipt=><div key={'receipt-'+receipt.id}><i className="green"/><span><b>{receipt.time} · Thu công nợ</b><small>{receipt.code} · {money(receipt.amount)} · {receipt.method}</small></span></div>)}
+            {!salesRows.some(x=>x.customer===selectedCustomerLive.name)&&!debtReceipts.some(x=>x.customerId===selectedCustomerLive.id)&&<div><i/><span><b>Hồ sơ vừa tạo</b><small>Chưa có hoạt động bán hàng hoặc thu nợ.</small></span></div>}
+          </div>}
         </div>
       </aside>}
     </div>}
