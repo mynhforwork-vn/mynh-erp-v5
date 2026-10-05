@@ -1,6 +1,6 @@
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
-import { archiveERPUser, createERPUser, restoreERPUser, updateERPUser } from '@/lib/actions/core'
+import { archiveERPUser, createERPUser, deleteERPUserPermanent, restoreERPUser, updateERPUser } from '@/lib/actions/core'
 import { PurchaseAccountTable } from '@/components/purchase-account-table'
 import { VoucherTags } from '@/components/voucher-tags'
 import { UserBulkImport } from '@/components/user-bulk-import'
