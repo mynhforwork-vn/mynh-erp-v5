@@ -112,12 +112,25 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
   const realSales=(salesData??[]) as any[]
   const saleIds=realSales.map(x=>x.id)
   let realItems:any[]=[]
+  const returnedBySaleItem=new Map<string,number>()
   if(saleIds.length){
-    const {data}=await supabase.from('sale_items')
-      .select('sale_id,warehouse_id,product_variant_id,quantity,sale_price,warehouses(code,address),product_variants(variant_name,products(sku,name))')
-      .in('sale_id',saleIds)
-      .limit(10000)
-    realItems=(data??[]) as any[]
+    const [{data:itemData},{data:returnData}]=await Promise.all([
+      supabase.from('sale_items')
+        .select('id,sale_id,warehouse_id,product_variant_id,quantity,sale_price,warehouses(code,address),product_variants(variant_name,products(sku,name))')
+        .in('sale_id',saleIds)
+        .limit(10000),
+      supabase.from('sale_returns')
+        .select('sale_id,sale_return_items(sale_item_id,quantity)')
+        .in('sale_id',saleIds)
+        .limit(10000),
+    ])
+    realItems=(itemData??[]) as any[]
+    for(const entry of (returnData??[]) as any[]){
+      for(const returned of (entry.sale_return_items??[]) as any[]){
+        const key=String(returned.sale_item_id)
+        returnedBySaleItem.set(key,(returnedBySaleItem.get(key)??0)+Number(returned.quantity??0))
+      }
+    }
   }
 
   const hasRealSales=(allSalesCount??0)>0
@@ -149,8 +162,8 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
         sku:String(i.product_variants?.products?.sku??'—'),
         name:String(i.product_variants?.products?.name??'Sản phẩm'),
         variant:String(i.product_variants?.variant_name??''),
-        qty:Number(i.quantity??0),
-        revenue:Number(i.quantity??0)*Number(i.sale_price??0),
+        qty:Math.max(0,Number(i.quantity??0)-Number(returnedBySaleItem.get(String(i.id))??0)),
+        revenue:Math.max(0,Number(i.quantity??0)-Number(returnedBySaleItem.get(String(i.id))??0))*Number(i.sale_price??0),
       }))
     : DEMO_ITEMS
 
