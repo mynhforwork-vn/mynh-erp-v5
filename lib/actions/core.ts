@@ -1724,3 +1724,55 @@ export async function resetERPSystemData(input:{scope:'DATA'|'ALL',confirm:strin
     return {ok:false as const,error:String(error?.message??'Không thể reset dữ liệu hệ thống')}
   }
 }
+
+
+export async function createSystemUserAccount(input:{
+  email:string
+  password:string
+  role:'admin'|'operator'|'viewer'
+}){
+  try{
+    const {supabase,role}=await actor()
+    requireAdmin(role)
+    const email=String(input?.email??'').trim().toLowerCase()
+    const password=String(input?.password??'')
+    const nextRole=String(input?.role??'viewer').trim().toLowerCase()
+    if(!email||!email.includes('@'))return {ok:false as const,error:'Email không hợp lệ'}
+    if(password.length<10)return {ok:false as const,error:'Mật khẩu tạm cần ít nhất 10 ký tự'}
+    if(!['admin','operator','viewer'].includes(nextRole))return {ok:false as const,error:'Vai trò không hợp lệ'}
+
+    const {data,error}=await supabase.functions.invoke('admin-system-users',{
+      body:{action:'create',email,password,role:nextRole},
+    })
+    if(error)return {ok:false as const,error:String((data as any)?.error??error.message??'Không thể tạo tài khoản')}
+    if((data as any)?.error)return {ok:false as const,error:String((data as any).error)}
+
+    revalidatePath('/settings')
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể tạo tài khoản hệ thống')}
+  }
+}
+
+export async function setSystemUserTemporaryPassword(input:{
+  user_id:string
+  password:string
+}){
+  try{
+    const {supabase,role}=await actor()
+    requireAdmin(role)
+    const userId=String(input?.user_id??'').trim()
+    const password=String(input?.password??'')
+    if(!userId)return {ok:false as const,error:'Thiếu tài khoản hệ thống'}
+    if(password.length<10)return {ok:false as const,error:'Mật khẩu mới cần ít nhất 10 ký tự'}
+
+    const {data,error}=await supabase.functions.invoke('admin-system-users',{
+      body:{action:'set_password',user_id:userId,password},
+    })
+    if(error)return {ok:false as const,error:String((data as any)?.error??error.message??'Không thể cấp lại mật khẩu')}
+    if((data as any)?.error)return {ok:false as const,error:String((data as any).error)}
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể cấp lại mật khẩu')}
+  }
+}
