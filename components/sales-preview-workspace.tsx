@@ -413,6 +413,13 @@ export function SalesPreviewWorkspace(){
     if(q)rows=rows.filter(c=>[c.name,c.phone,c.address].join(' ').toLowerCase().includes(q))
     return rows.sort((a,b)=>(sort.dir==='asc'?1:-1)*cmp(customerValue(a,sort.key),customerValue(b,sort.key)))
   },[tableSort.customers,debtBalances,customerData,customerFilter,customerQuery])
+  const allCustomersLive=useMemo(()=>customerData.map(c=>({...c,debt:debtBalances[c.id]??c.debt})),[customerData,debtBalances])
+  const selectedCustomerLive=selectedCustomer?allCustomersLive.find(c=>c.id===selectedCustomer.id)??selectedCustomer:null
+  const customerTotalRevenue=allCustomersLive.reduce((sum,c)=>sum+c.revenue,0)
+  const customerTotalDebt=allCustomersLive.reduce((sum,c)=>sum+c.debt,0)
+  const customerRepeatCount=allCustomersLive.filter(c=>c.orders>=2).length
+  const customerNewCount=allCustomersLive.filter(c=>c.orders<=1).length
+  const customerDebtCount=allCustomersLive.filter(c=>c.debt>0).length
   const debtRows=useMemo(()=>{
     let base=customerData.map(c=>({...c,debt:debtBalances[c.id]??c.debt})).filter(c=>c.debt>0)
     const q=debtQuery.trim().toLowerCase()
