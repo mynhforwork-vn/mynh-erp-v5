@@ -11,6 +11,7 @@ on:
       - supabase/migrations/**
       - scripts/preview-browser-qa.mjs
       - scripts/preview-auth-setup.mjs
+      - scripts/preview-auth-cleanup.mjs
       - .github/workflows/preview-browser-qa.yml
   workflow_dispatch:
 
@@ -43,3 +44,6 @@ jobs:
           name: preview-browser-qa-${{ github.sha }}
           path: qa-browser-artifacts/
           retention-days: 7
+      - name: Cleanup temporary QA auth user
+        if: always()
+        run: node scripts/preview-auth-cleanup.mjs
