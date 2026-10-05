@@ -3,6 +3,7 @@ import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } fr
 import { archiveERPUser, createERPUser, restoreERPUser, updateERPUser } from '@/lib/actions/core'
 import { PurchaseAccountTable } from '@/components/purchase-account-table'
 import { VoucherTags } from '@/components/voucher-tags'
+import { UserBulkImport } from '@/components/user-bulk-import'
 import Link from 'next/link'
 
 type SP={
@@ -306,6 +307,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       </div>
       <div className="head-actions">
         <span className="platform-badge">SHOPEE</span>
+        <UserBulkImport/>
         <Link className="button primary" href={filterHref({mode:'create',user:null,tab:null,archive:null})}>+ Thêm tài khoản</Link>
       </div>
     </header>
