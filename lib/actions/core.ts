@@ -1628,3 +1628,31 @@ export async function bulkImportERPUsers(rows:Array<{
     return {ok:false as const,error:String(error?.message??'Không thể import User')}
   }
 }
+
+
+export async function deleteERPUserPermanent(formData:FormData){
+  const {supabase,role}=await actor()
+  requireAdmin(role)
+  const returnQuery=text(formData.get('return_query'))
+  const userId=text(formData.get('user_id'))
+  const confirmText=text(formData.get('confirm_text'))
+  if(!userId)throw new Error('Thiếu User cần xóa')
+
+  const {data:row,error:readError}=await supabase
+    .from('erp_users')
+    .select('id,username,archived_at,order_count')
+    .eq('id',userId)
+    .maybeSingle()
+  if(readError)throw new Error(readError.message)
+  if(!row)throw new Error('User không tồn tại')
+  if(!row.archived_at)throw new Error('Cần lưu trữ User trước khi xóa vĩnh viễn')
+  if(confirmText!==row.username)throw new Error('Username xác nhận chưa đúng')
+  if(Number(row.order_count??0)>0)throw new Error('User có đơn hàng liên kết; chỉ được lưu trữ')
+
+  const {error}=await supabase.rpc('delete_erp_user_permanent',{p_user_id:userId})
+  if(error)throw new Error(error.message)
+
+  revalidatePath('/purchase/accounts')
+  revalidatePath('/users')
+  redirect(returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'}))
+}
