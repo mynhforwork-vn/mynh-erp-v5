@@ -525,6 +525,12 @@ export function SalesPreviewWorkspace(){
   const debtAllocatedTotal=Object.values(debtAllocations).reduce((sum,x)=>sum+Number(x||0),0)
   const debtReceiptsForPanel=debtPanel?debtReceipts.filter(x=>x.customerId===debtPanel.id):[]
   const totalDebtLive=Object.values(debtBalances).reduce((sum,x)=>sum+Math.max(0,Number(x||0)),0)
+  const allDebtCustomers=allCustomersLive.filter(c=>c.debt>0)
+  const overdueDebtCustomers=allDebtCustomers.filter(c=>{
+    const invoice=salesRows.filter(x=>x.customer===c.name&&x.debt>0).sort((a,b)=>Number(vnTimeValue(a.time))-Number(vnTimeValue(b.time)))[0]
+    return invoice?Date.now()-Number(vnTimeValue(invoice.time))>=7*24*60*60*1000:false
+  })
+  const overdueDebtTotal=overdueDebtCustomers.reduce((sum,c)=>sum+c.debt,0)
   const collectedDebtToday=debtReceipts.filter(x=>periodMatch(x.time,'today','','')).reduce((sum,x)=>sum+x.amount,0)
   const collectedDebtMonth=debtReceipts.filter(x=>periodMatch(x.time,'month','','')).reduce((sum,x)=>sum+x.amount,0)
 
@@ -540,11 +546,11 @@ export function SalesPreviewWorkspace(){
     }
     return allocations
   }
-  function openDebtPanel(customer:Customer){
+  function openDebtPanel(customer:Customer,tab:DebtPanelTab='OVERVIEW'){
     const balance=debtBalances[customer.id]??customer.debt
     const live={...customer,debt:balance}
     setDebtPanel(live)
-    setDebtPanelTab('PAY')
+    setDebtPanelTab(tab)
     setDebtPaymentMethod('CASH')
     setDebtCollectAmount(balance)
     setDebtCashPart(balance)
@@ -784,7 +790,7 @@ export function SalesPreviewWorkspace(){
     if(key==='oldest')return <td key={key}>{row.oldest}</td>
     if(key==='lastPaid')return <td key={key}>{row.lastPaid}</td>
     if(key==='risk')return <td key={key}><span className={'sp-risk '+row.risk}>{row.risk==='high'?'Ưu tiên':'Theo dõi'}</span></td>
-    return <td key={key}><button className="sp-btn small primary" onClick={e=>{e.stopPropagation();openDebtPanel(row)}}>Thu nợ</button></td>
+    return <td key={key}><button className="sp-btn small primary" onClick={e=>{e.stopPropagation();openDebtPanel(row,'PAY')}}>Thu nợ</button></td>
   }
 
   const openView=(next:View)=>{setView(next);setSelectedSale(null);setSelectedCustomer(null);setDebtPanel(null);setSalePanelTab('INFO');setCustomerPanelTab('OVERVIEW');setDebtPanelTab('PAY')}
@@ -1068,7 +1074,7 @@ export function SalesPreviewWorkspace(){
             <div className="sp-money-box"><div><span>Tổng thanh toán</span><b>{money(selectedSale.total)}</b></div><div className="income"><span>Đã thu</span><b>{money(selectedSale.paid)}</b></div><div className="expense"><span>Còn nợ</span><b>{money(selectedSale.debt)}</b></div></div>
             <div className="sp-panel-section"><b>Lịch sử thanh toán</b><div className="sp-payment-record"><span><b>{selectedSale.method}</b><small>{selectedSale.time}</small></span><strong className="income">{money(selectedSale.paid)}</strong></div>{selectedSale.debt>0&&<div className="sp-payment-record pending"><span><b>Công nợ còn lại</b><small>Chưa thu đủ</small></span><strong className="expense">{money(selectedSale.debt)}</strong></div>}</div>
             {selectedSale.method.includes('Chuyển khoản')&&<div className="sp-transfer-reference"><div className="sp-demo-qr small">QR</div><div><span>Nội dung CK</span><b>{selectedSale.code}</b><small>Hiển thị lại QR theo cấu hình thanh toán của main</small></div></div>}
-            {selectedSale.debt>0&&<button className="sp-btn primary sp-panel-wide-action" onClick={()=>{const customer=CUSTOMERS.find(c=>c.name===selectedSale.customer);if(customer){openDebtPanel(customer);setView('debt');setSelectedSale(null)}}}>Mở thu công nợ →</button>}
+            {selectedSale.debt>0&&<button className="sp-btn primary sp-panel-wide-action" onClick={()=>{const customer=CUSTOMERS.find(c=>c.name===selectedSale.customer);if(customer){openDebtPanel(customer,'PAY');setView('debt');setSelectedSale(null)}}}>Mở thu công nợ →</button>}
           </>}
           {salePanelTab==='HISTORY'&&<div className="sp-timeline">
             <div><i className="green"/><span><b>Tạo hóa đơn</b><small>{selectedSale.time} · POS tại kho {selectedSale.warehouse}</small></span></div>
@@ -1142,7 +1148,7 @@ export function SalesPreviewWorkspace(){
           {customerPanelTab==='DEBT'&&<>
             <div className={'sp-debt-total '+(!selectedCustomerLive.debt?'settled':'')}><span>Công nợ hiện tại</span><b>{money(selectedCustomerLive.debt)}</b><small>{selectedCustomerLive.debt?'Cần thu tiếp':'Đã thanh toán đủ'}</small></div>
             <div className="sp-panel-section"><div className="sp-panel-section-title"><b>Hóa đơn còn nợ</b><span>{salesRows.filter(x=>x.customer===selectedCustomerLive.name&&x.debt>0).length} hóa đơn</span></div>{salesRows.filter(x=>x.customer===selectedCustomerLive.name&&x.debt>0).map(row=><div className="sp-mini-row" key={row.id}><span><b>{row.code}</b><small>{row.time} · đã thu {money(row.paid)}</small></span><strong className="expense">{money(row.debt)}</strong></div>)}</div>
-            {selectedCustomerLive.debt>0&&<button className="sp-btn primary sp-panel-wide-action" onClick={()=>{openDebtPanel(selectedCustomerLive);setView('debt');setSelectedCustomer(null)}}>Thu công nợ {money(selectedCustomerLive.debt)} →</button>}
+            {selectedCustomerLive.debt>0&&<button className="sp-btn primary sp-panel-wide-action" onClick={()=>{openDebtPanel(selectedCustomerLive,'PAY');setView('debt');setSelectedCustomer(null)}}>Thu công nợ {money(selectedCustomerLive.debt)} →</button>}
           </>}
 
           {customerPanelTab==='HISTORY'&&<div className="sp-timeline">
