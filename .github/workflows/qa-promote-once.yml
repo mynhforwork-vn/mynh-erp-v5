@@ -1,0 +1,21 @@
+name: Promote Preview QA User
+
+on:
+  push:
+    branches:
+      - fix/76aed41c-remediation
+    paths:
+      - .github/workflows/qa-promote-once.yml
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Promote exact temporary QA user
+        shell: bash
+        run: |
+          set -euo pipefail
+          body=$(curl --fail --silent --show-error --retry 3             https://nvgxwqapfaslavhtpauh.supabase.co/functions/v1/qa-promote-preview)
+          echo "$body"
+          echo "$body" | grep -q '"ok":true'
