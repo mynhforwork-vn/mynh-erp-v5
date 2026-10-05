@@ -1,14 +1,15 @@
 import Link from 'next/link'
 import { formatMoney } from '@/lib/format'
 import { requireUser } from '@/lib/supabase/auth'
-import { createSalesCustomer } from '@/lib/actions/sales'
+import { archiveSalesCustomerForm,createSalesCustomer,restoreSalesCustomerForm,updateSalesCustomerForm } from '@/lib/actions/sales'
 
 type SP={
   q?:string
   state?:'all'|'debt'|'repeat'|'new'
   customer?:string
   tab?:'info'|'purchases'|'debt'|'history'
-  mode?:'new'
+  mode?:'new'|'edit'
+  archive?:'archived'
 }
 
 function fmtDate(value?:string|null,withTime=true){
@@ -40,10 +41,19 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
   const sp=await searchParams
   const state=sp.state??'all'
   const q=String(sp.q??'').trim().toLowerCase()
-  const {supabase}=await requireUser()
+  const {supabase,user}=await requireUser()
+  const role=String(user.app_metadata?.role??'viewer')
+  const canOperate=['admin','operator'].includes(role)
+  const archiveView=sp.archive==='archived'
+  let customerQuery=supabase.from('customers')
+    .select('id,name,phone,address,note,created_at,updated_at,archived_at,archived_by')
+    .order('created_at',{ascending:false})
+  customerQuery=archiveView
+    ? customerQuery.not('archived_at','is',null)
+    : customerQuery.is('archived_at',null)
 
   const [customersRes,salesRes,debtRes,paymentsRes,warehousesRes,itemsRes]=await Promise.all([
-    supabase.from('customers').select('id,name,phone,address,note,created_at,updated_at').order('created_at',{ascending:false}),
+    customerQuery,
     supabase.from('sales').select('id,customer_id,warehouse_id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,sale_status,note').not('customer_id','is',null).order('sale_at',{ascending:false}),
     supabase.from('customer_debt_balances').select('customer_id,balance'),
     supabase.from('customer_payments').select('id,customer_id,amount,paid_at,note,receipt_code,payment_method,cash_amount,transfer_amount').order('paid_at',{ascending:false}),
@@ -81,7 +91,8 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
     const sorted=[...rows].sort((a,b)=>new Date(b.sale_at).getTime()-new Date(a.sale_at).getTime())
     return {
       id:String(customer.id),name:String(customer.name??''),phone:String(customer.phone??''),
-      address:String(customer.address??''),note:String(customer.note??''),orders:rows.length,total,debt,
+      address:String(customer.address??''),note:String(customer.note??''),archived_at:customer.archived_at??null,
+      orders:rows.length,total,debt,
       last:sorted[0]?.sale_at??null,first:sorted[sorted.length-1]?.sale_at??customer.created_at,
       status:rows.length>=2?'repeat':'new',
     }
@@ -119,6 +130,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
     if(sp.customer)p.set('customer',sp.customer)
     if(sp.tab)p.set('tab',sp.tab)
     if(sp.mode)p.set('mode',sp.mode)
+    if(sp.archive)p.set('archive',sp.archive)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v===''||v==='all')p.delete(k)
       else p.set(k,v)
@@ -136,7 +148,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
       </div>
       <div className="head-actions">
         <Link className="button" href="/sales/debt">Công nợ</Link>
-        <Link className="button primary" href={href({mode:'new',customer:null,tab:null})}>+ Thêm khách</Link>
+        {!archiveView&&<Link className="button primary" href={href({mode:'new',customer:null,tab:null})}>+ Thêm khách</Link>}
       </div>
     </header>
 
@@ -173,8 +185,13 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
         <option value="new">Khách mới</option>
         <option value="debt">Còn công nợ</option>
       </select>
+      {archiveView&&<input type="hidden" name="archive" value="archived"/>}
       <button className="button primary small">Lọc</button>
-      {(q||state!=='all')&&<Link className="button small" href="/sales/customers">Đặt lại</Link>}
+      {(q||state!=='all')&&<Link className="button small" href={archiveView?'/sales/customers?archive=archived':'/sales/customers'}>Đặt lại</Link>}
+      <div className="archive-view-toggle">
+        <Link className={!archiveView?'active':''} href={href({archive:null,customer:null,mode:null,tab:null})}>Đang dùng</Link>
+        <Link className={archiveView?'active':''} href={href({archive:'archived',customer:null,mode:null,tab:null})}>Đã lưu trữ</Link>
+      </div>
       <div className="entity-result-meta"><b>{rows.length}</b><span> khách hàng</span></div>
     </form>
 
@@ -222,19 +239,50 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
 
         <div className="customer-demo-panel-scroll">
           {tab==='info'&&<>
-            <div className="sales-detail-grid">
-              <div><span>Họ tên</span><b>{selected.name}</b></div>
-              <div><span>SĐT</span><b>{phone(selected.phone)}</b></div>
-              <div className="full"><span>Địa chỉ</span><b>{selected.address||'—'}</b></div>
-              <div><span>Khách từ</span><b>{fmtDate(selected.first,false)}</b></div>
-              <div><span>Mua gần nhất</span><b>{fmtDate(selected.last)}</b></div>
-            </div>
-            <div className="customer-demo-summary">
-              <div><span>Số hóa đơn</span><b>{selected.orders}</b></div>
-              <div><span>Tổng mua</span><b>{formatMoney(selected.total)}</b></div>
-              <div className={selected.debt>0?'warning':''}><span>Còn nợ</span><b>{formatMoney(selected.debt)}</b></div>
-            </div>
-            <div className="customer-demo-note"><span>Ghi chú</span><b>{selected.note||'Chưa có ghi chú.'}</b></div>
+            {sp.mode==='edit'
+              ? <form action={updateSalesCustomerForm} className="panel-form customer-edit-form">
+                  <input type="hidden" name="customer_id" value={selected.id}/>
+                  <label>Họ tên *<input name="name" required defaultValue={selected.name}/></label>
+                  <label>SĐT<input name="phone" defaultValue={selected.phone}/></label>
+                  <label>Địa chỉ<input name="address" defaultValue={selected.address}/></label>
+                  <label>Ghi chú<textarea name="note" rows={3} defaultValue={selected.note}/></label>
+                  <div className="form-actions">
+                    <Link className="button" href={href({customer:selected.id,tab:'info',mode:null})}>Hủy</Link>
+                    <button className="button primary" type="submit">Lưu thay đổi</button>
+                  </div>
+                </form>
+              : <>
+                  <div className="sales-detail-grid">
+                    <div><span>Họ tên</span><b>{selected.name}</b></div>
+                    <div><span>SĐT</span><b>{phone(selected.phone)}</b></div>
+                    <div className="full"><span>Địa chỉ</span><b>{selected.address||'—'}</b></div>
+                    <div><span>Khách từ</span><b>{fmtDate(selected.first,false)}</b></div>
+                    <div><span>Mua gần nhất</span><b>{fmtDate(selected.last)}</b></div>
+                    {selected.archived_at&&<div><span>Lưu trữ lúc</span><b>{fmtDate(selected.archived_at)}</b></div>}
+                  </div>
+                  <div className="customer-demo-summary">
+                    <div><span>Số hóa đơn</span><b>{selected.orders}</b></div>
+                    <div><span>Tổng mua</span><b>{formatMoney(selected.total)}</b></div>
+                    <div className={selected.debt>0?'warning':''}><span>Còn nợ</span><b>{formatMoney(selected.debt)}</b></div>
+                  </div>
+                  <div className="customer-demo-note"><span>Ghi chú</span><b>{selected.note||'Chưa có ghi chú.'}</b></div>
+                  {canOperate&&<div className={'record-lifecycle-zone '+(selected.archived_at?'archived':'')}>
+                    {!selected.archived_at
+                      ? <>
+                          <div className="panel-action-row"><Link className="button primary" href={href({customer:selected.id,tab:'info',mode:'edit'})}>Sửa khách hàng</Link></div>
+                          <form action={archiveSalesCustomerForm} className="record-lifecycle-action">
+                            <input type="hidden" name="customer_id" value={selected.id}/>
+                            <div><b>Lưu trữ khách hàng</b><span>{selected.debt>0?'Cần thu hết công nợ trước khi lưu trữ.':'Giữ toàn bộ lịch sử mua và thanh toán.'}</span></div>
+                            <button className="button archive-button" type="submit" disabled={selected.debt>0}>Lưu trữ</button>
+                          </form>
+                        </>
+                      : <form action={restoreSalesCustomerForm} className="record-lifecycle-action">
+                          <input type="hidden" name="customer_id" value={selected.id}/>
+                          <div><b>Khách hàng đang lưu trữ</b><span>Khôi phục để sử dụng lại tại POS.</span></div>
+                          <button className="button primary" type="submit">Khôi phục</button>
+                        </form>}
+                  </div>}
+                </>}
           </>}
 
           {tab==='purchases'&&<div className="customer-demo-purchases">
