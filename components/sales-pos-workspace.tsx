@@ -330,7 +330,7 @@ export function SalesPOSWorkspace({
       const result=await updateSalesProductCategory({id:category.id,is_active:!category.is_active})
       if(!result.ok){setCategoryError(result.error);return}
       setCategoryRows(prev=>prev.map(x=>x.id===category.id?{...x,is_active:!x.is_active}:x))
-      if(categoryId===category.id&&!category.is_active===false)setCategoryId('ALL')
+      if(categoryId===category.id&&category.is_active)setCategoryId('ALL')
       router.refresh()
     })
   }
