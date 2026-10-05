@@ -94,9 +94,6 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       <Link className={section==='spx-hubs'?'active':''} href="/settings?section=spx-hubs">SPX · Kho đích & Shipper</Link>
       <Link className={section==='payments'?'active':''} href="/settings?section=payments">Thanh toán & QR</Link>
       <Link className={section==='data-management'?'active':''} href="/settings?section=data-management">Quản lý dữ liệu</Link>
-      <span className="disabled">Tài khoản & phân quyền</span>
-      <span className="disabled">Tích hợp</span>
-      <span className="disabled">Thông báo</span>
     </nav>
 
     <section className="settings-workspace-v3">
