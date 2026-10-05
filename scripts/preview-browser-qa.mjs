@@ -27,7 +27,7 @@ const signup=await authFetch('/auth/v1/signup',{
   data:{purpose:'cloudflare-preview-ui-qa',preview_commit:process.env.GITHUB_SHA||null},
 })
 if(!signup.ok)throw new Error(`QA signup failed ${signup.status}: ${signup.text.slice(0,500)}`)
-const qaUserId=signup.json?.user?.id
+const qaUserId=signup.json?.user?.id??signup.json?.id
 if(!qaUserId)throw new Error('QA signup did not return user id')
 console.log(`QA_AUTH_CREATED email=${email} id=${qaUserId}`)
 console.log('QA_AUTH_WAITING_FOR_OPERATOR_ROLE')
