@@ -631,3 +631,85 @@
     max-height:none!important;
   }
 }
+
+
+/* Admin account creation / password controls */
+.admin-create-user-card{
+  border:1px solid #dbe4ec;
+  border-radius:8px;
+  background:#fff;
+  overflow:hidden;
+}
+.admin-create-user-form{
+  display:grid;
+  grid-template-columns:minmax(210px,1.3fr) minmax(220px,1.2fr) 140px auto;
+  align-items:end;
+  gap:9px;
+  padding:10px;
+}
+.admin-create-user-form>label{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.admin-create-user-form>label>span{
+  color:#677b8e;
+  font-size:8px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.035em;
+}
+.admin-create-user-form input,
+.admin-create-user-form select{
+  width:100%;
+  min-width:0;
+  height:34px;
+  border:1px solid #ccd9e3;
+  border-radius:6px;
+  background:#fff;
+  padding:0 8px;
+  color:#22394e;
+  font-size:9.5px;
+}
+.admin-password-field{
+  min-width:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:5px;
+}
+.admin-password-field>button{
+  height:34px;
+  padding:0 8px;
+  border:1px solid #c9d5df;
+  border-radius:6px;
+  background:#f5f8fa;
+  color:#35546e;
+  font-size:8px;
+  font-weight:750;
+  cursor:pointer;
+}
+.admin-user-actions{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  white-space:nowrap;
+}
+.admin-text-action{
+  padding:0;
+  border:0;
+  background:transparent;
+  color:#42729a;
+  font-size:8px;
+  font-weight:700;
+  cursor:pointer;
+}
+.admin-password-dialog .admin-password-field{margin-top:1px}
+
+@media(max-width:1100px){
+  .admin-create-user-form{grid-template-columns:1fr 1fr}
+}
+@media(max-width:760px){
+  .admin-create-user-form{grid-template-columns:1fr}
+  .admin-user-actions{align-items:flex-start;flex-direction:column}
+}
