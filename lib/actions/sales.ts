@@ -205,14 +205,14 @@ export async function saveBankTransferConfig(formData:FormData){
   }
 }
 
-export async function createSalesCustomer(formData:FormData){
+export async function createSalesCustomer(formData:FormData):Promise<void>{
   const name=String(formData.get('name')??'').trim()
   const phone=String(formData.get('phone')??'').trim()
   const address=String(formData.get('address')??'').trim()
   const result=await createPOSCustomer({name,phone,address})
+  if(!result.ok)throw new Error(result.error)
   revalidatePath('/sales/customers')
   revalidatePath('/sales/pos')
-  return result
 }
 
 export async function registerCustomerDebtPayment(input:{
