@@ -153,15 +153,26 @@ if(await page.getByRole('button',{name:'Import TSV'}).count()){
 
 await go('/sales/history')
 const invoiceLinks=page.locator('.sales-history-table .table-link')
+const invoiceHrefs=[]
+for(let i=0;i<Math.min(await invoiceLinks.count(),12);i++){
+  const href=await invoiceLinks.nth(i).getAttribute('href')
+  if(href)invoiceHrefs.push(href)
+}
+
 let invoicePanelOpened=false
-if(await invoiceLinks.count()){
-  const href=await invoiceLinks.first().getAttribute('href')
-  if(href){
-    await go(href)
-    invoicePanelOpened=page.url().includes('sale=')&&await page.locator('.sales-history-panel').count()>0
+let returnableInvoiceFound=false
+for(const href of invoiceHrefs){
+  await go(href)
+  invoicePanelOpened=page.url().includes('sale=')&&await page.locator('.sales-history-panel').count()>0
+  const candidate=page.getByRole('button',{name:'Hoàn hàng'})
+  if(invoicePanelOpened&&await candidate.count()>0&&await candidate.first().isEnabled()){
+    returnableInvoiceFound=true
+    break
   }
 }
 summary.interactions.push({name:'Sales History invoice panel opens',pass:invoicePanelOpened})
+summary.interactions.push({name:'Sales History returnable invoice found',pass:returnableInvoiceFound})
+
 const cancel=page.getByRole('button',{name:'Huỷ hóa đơn'})
 const returnButton=page.getByRole('button',{name:'Hoàn hàng'})
 const cancelReady=await cancel.count()>0&&await cancel.first().isEnabled()
