@@ -140,11 +140,30 @@ if(await page.getByRole('button',{name:'Import TSV'}).count()){
     const close=page.getByRole('button',{name:'Đóng'})
     if(await close.count())await close.first().click()
   }
+
+  await page.getByRole('button',{name:'Import TSV'}).click()
+  const reopened=await page.locator('[role=dialog]').count()>0
+  if(reopened){
+    await page.locator('.sales-action-backdrop').click({position:{x:4,y:4}})
+    await page.waitForTimeout(250)
+  }
+  const closedByOutside=await page.locator('[role=dialog]').count()===0
+  summary.interactions.push({name:'User Import TSV modal closes by outside click',pass:reopened&&closedByOutside})
 }
 
 await go('/sales/history')
+const invoiceLinks=page.locator('.sales-history-table .table-link')
+if(await invoiceLinks.count()){
+  await invoiceLinks.first().click()
+  await page.waitForTimeout(800)
+}
 const cancel=page.getByRole('button',{name:'Huỷ hóa đơn'})
-if(await cancel.count()&&await cancel.first().isEnabled()){
+const returnButton=page.getByRole('button',{name:'Hoàn hàng'})
+const cancelReady=await cancel.count()>0&&await cancel.first().isEnabled()
+const returnReady=await returnButton.count()>0&&await returnButton.first().isEnabled()
+summary.interactions.push({name:'Sales History cancellation action available',pass:cancelReady})
+summary.interactions.push({name:'Sales History return action available',pass:returnReady})
+if(cancelReady){
   await cancel.first().click()
   const opened=await page.locator('[role=dialog]').count()>0
   await page.keyboard.press('Escape')
@@ -156,6 +175,27 @@ if(await cancel.count()&&await cancel.first().isEnabled()){
     const close=page.getByRole('button',{name:'Đóng'})
     if(await close.count())await close.first().click()
   }
+
+  await cancel.first().click()
+  const reopened=await page.locator('[role=dialog]').count()>0
+  if(reopened){
+    await page.locator('.sales-action-backdrop').click({position:{x:4,y:4}})
+    await page.waitForTimeout(250)
+  }
+  summary.interactions.push({
+    name:'Sales cancel modal closes by outside click',
+    pass:reopened&&await page.locator('[role=dialog]').count()===0,
+  })
+}
+if(returnReady){
+  await returnButton.first().click()
+  const returnOpened=await page.locator('[role=dialog]').count()>0
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(250)
+  summary.interactions.push({
+    name:'Sales return modal opens and closes by Esc',
+    pass:returnOpened&&await page.locator('[role=dialog]').count()===0,
+  })
 }
 
 await go('/settings')
@@ -189,10 +229,13 @@ summary.failures=[]
 if(!summary.public.login.hasBrand||summary.public.login.emailInputs!==1||summary.public.login.passwordInputs!==1)summary.failures.push('Login UI')
 if(!summary.public.protectedRedirect.redirectedToLogin)summary.failures.push('Protected route redirect')
 for(const r of summary.desktop){
-  if(!r.authenticated||r.status>=500||r.hasServerError||r.navigationError)summary.failures.push(`Desktop route ${r.path}`)
+  if(!r.authenticated||r.status>=500||r.hasServerError||r.navigationError||r.horizontalOverflow)summary.failures.push(`Desktop route ${r.path}`)
 }
 for(const r of summary.mobile){
-  if(!r.authenticated||r.status>=500||r.navigationError)summary.failures.push(`Mobile route ${r.path}`)
+  if(!r.authenticated||r.status>=500||r.navigationError||r.horizontalOverflow)summary.failures.push(`Mobile route ${r.path}`)
+}
+for(const interaction of summary.interactions){
+  if(!interaction.pass)summary.failures.push(`Interaction: ${interaction.name}`)
 }
 if(summary.consoleErrors.length)summary.failures.push(`Console errors: ${summary.consoleErrors.length}`)
 if(summary.pageErrors.length)summary.failures.push(`Page errors: ${summary.pageErrors.length}`)
