@@ -8,7 +8,7 @@ const SUPABASE_KEY=process.env.SUPABASE_KEY
 if(!PREVIEW_URL||!SUPABASE_URL||!SUPABASE_KEY)throw new Error('Missing QA environment')
 
 const suffix=Date.now().toString(36)+'-'+crypto.randomBytes(3).toString('hex')
-const email=`qa-preview-${suffix}@example.com`
+const email=`qa.preview.mynh.${suffix}@gmail.com`
 const password=crypto.randomBytes(24).toString('base64url')+'Aa1!'
 
 async function authFetch(path,body){
