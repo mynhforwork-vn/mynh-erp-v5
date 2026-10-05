@@ -23,18 +23,12 @@ jobs:
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
+      - name: Create temporary QA auth session
+        run: node scripts/preview-auth-setup.mjs
       - name: Install Playwright
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Check optional Supabase admin credential
-        shell: bash
-        run: |
-          if [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "HAS_SUPABASE_SERVICE_ROLE=true"
-          else
-            echo "HAS_SUPABASE_SERVICE_ROLE=false"
-          fi
       - name: Run Preview browser QA
         run: node scripts/preview-browser-qa.mjs
       - uses: actions/upload-artifact@v4
