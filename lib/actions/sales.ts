@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/supabase/auth'
 
 type POSItemInput={
@@ -426,4 +427,48 @@ export async function returnPOSSale(input:{
   }catch(error:any){
     return {ok:false as const,error:String(error?.message??'Không thể hoàn hàng')}
   }
+}
+
+
+export async function updateSalesCustomerForm(formData:FormData):Promise<void>{
+  const {supabase}=await actor()
+  const customerId=String(formData.get('customer_id')??'').trim()
+  const name=String(formData.get('name')??'').trim()
+  const phone=String(formData.get('phone')??'').trim()||null
+  const address=String(formData.get('address')??'').trim()||null
+  const note=String(formData.get('note')??'').trim()||null
+  if(!customerId)throw new Error('Thiếu khách hàng')
+  if(!name)throw new Error('Tên khách hàng là bắt buộc')
+
+  const {error}=await supabase.rpc('update_sales_customer',{
+    p_customer_id:customerId,p_name:name,p_phone:phone,p_address:address,p_note:note,
+  })
+  if(error)throw new Error(error.message)
+
+  revalidatePath('/sales/customers')
+  revalidatePath('/sales/pos')
+  revalidatePath('/sales/debt')
+  redirect('/sales/customers?customer='+encodeURIComponent(customerId)+'&tab=info')
+}
+
+export async function archiveSalesCustomerForm(formData:FormData):Promise<void>{
+  const {supabase}=await actor()
+  const customerId=String(formData.get('customer_id')??'').trim()
+  if(!customerId)throw new Error('Thiếu khách hàng')
+  const {error}=await supabase.rpc('archive_sales_customer',{p_customer_id:customerId})
+  if(error)throw new Error(error.message)
+  revalidatePath('/sales/customers')
+  revalidatePath('/sales/pos')
+  redirect('/sales/customers?archive=archived&customer='+encodeURIComponent(customerId)+'&tab=info')
+}
+
+export async function restoreSalesCustomerForm(formData:FormData):Promise<void>{
+  const {supabase}=await actor()
+  const customerId=String(formData.get('customer_id')??'').trim()
+  if(!customerId)throw new Error('Thiếu khách hàng')
+  const {error}=await supabase.rpc('restore_sales_customer',{p_customer_id:customerId})
+  if(error)throw new Error(error.message)
+  revalidatePath('/sales/customers')
+  revalidatePath('/sales/pos')
+  redirect('/sales/customers?customer='+encodeURIComponent(customerId)+'&tab=info')
 }
