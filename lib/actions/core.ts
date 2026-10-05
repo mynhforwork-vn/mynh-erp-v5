@@ -36,7 +36,7 @@ async function actor(){
   return {supabase,user,role}
 }
 function requireAdmin(role:string){
-  if(role!=='admin')throw new Error('Chỉ Admin được xóa vĩnh viễn dữ liệu')
+  if(role!=='admin')throw new Error('Chỉ Admin được thực hiện thao tác này')
 }
 
 export async function createERPUser(formData:FormData){
@@ -1655,4 +1655,72 @@ export async function deleteERPUserPermanent(formData:FormData){
   revalidatePath('/purchase/accounts')
   revalidatePath('/users')
   redirect(returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'}))
+}
+
+
+export async function updateSystemUserRole(input:{user_id:string,role:'admin'|'operator'|'viewer'}){
+  try{
+    const {supabase,role}=await actor()
+    requireAdmin(role)
+    const userId=String(input?.user_id??'').trim()
+    const nextRole=String(input?.role??'viewer').trim().toLowerCase()
+    if(!userId)return {ok:false as const,error:'Thiếu tài khoản hệ thống'}
+    if(!['admin','operator','viewer'].includes(nextRole))return {ok:false as const,error:'Vai trò không hợp lệ'}
+
+    const {data,error}=await supabase.rpc('admin_set_system_user_role',{
+      p_user_id:userId,
+      p_role:nextRole,
+    })
+    if(error)return {ok:false as const,error:error.message}
+    revalidatePath('/settings')
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể cập nhật phân quyền')}
+  }
+}
+
+export async function sendSystemUserPasswordReset(input:{email:string}){
+  try{
+    const {supabase,role}=await actor()
+    requireAdmin(role)
+    const email=String(input?.email??'').trim().toLowerCase()
+    if(!email)return {ok:false as const,error:'Tài khoản chưa có email'}
+    const {error}=await supabase.auth.resetPasswordForEmail(email)
+    if(error)return {ok:false as const,error:error.message}
+    return {ok:true as const}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể gửi yêu cầu cấp lại mật khẩu')}
+  }
+}
+
+export async function resetERPSystemData(input:{scope:'DATA'|'ALL',confirm:string}){
+  try{
+    const {supabase,role}=await actor()
+    requireAdmin(role)
+    const scope=input.scope
+    const confirm=String(input.confirm??'').trim()
+    const {data,error}=await supabase.rpc('admin_reset_erp_data',{
+      p_scope:scope,
+      p_confirm:confirm,
+    })
+    if(error)return {ok:false as const,error:error.message}
+    revalidatePath('/')
+    revalidatePath('/purchase')
+    revalidatePath('/purchase/accounts')
+    revalidatePath('/purchase/orders')
+    revalidatePath('/purchase/tracking')
+    revalidatePath('/warehouse')
+    revalidatePath('/warehouse/inventory')
+    revalidatePath('/warehouse/history')
+    revalidatePath('/sales')
+    revalidatePath('/sales/pos')
+    revalidatePath('/sales/history')
+    revalidatePath('/sales/customers')
+    revalidatePath('/sales/debt')
+    revalidatePath('/finance')
+    revalidatePath('/settings')
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể reset dữ liệu hệ thống')}
+  }
 }
