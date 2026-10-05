@@ -3,11 +3,12 @@
 import { useEffect,useMemo,useRef,useState,useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { checkoutPOS,createPOSCustomer,reservePOSInvoiceCode } from '@/lib/actions/sales'
+import { assignProductSalesCategory,checkoutPOS,createPOSCustomer,createSalesProductCategory,reservePOSInvoiceCode,updateSalesProductCategory } from '@/lib/actions/sales'
 import { buildTransferDescription,buildVietQRUrl,type BankTransferConfig } from '@/lib/vietqr'
 
 type Warehouse={id:string,code:string,name:string,address?:string|null}
 type Product={
+  product_id:string
   variant_id:string
   warehouse_id:string
   warehouse_code:string
@@ -17,7 +18,10 @@ type Product={
   quantity:number
   sale_price:number
   barcode?:string
+  category_id?:string|null
+  category_name?:string|null
 }
+type ProductCategory={id:string,name:string,sort_order:number,is_active:boolean}
 type Customer={id:string,name:string,phone?:string|null,address?:string|null}
 type CartLine=Product&{cart_qty:number,unit_price:number}
 type HeldOrder={
@@ -68,6 +72,7 @@ export function SalesPOSWorkspace({
   warehouses,
   products,
   customers,
+  categories,
   transferConfig,
   canSell,
   loadError,
@@ -75,6 +80,7 @@ export function SalesPOSWorkspace({
   warehouses:Warehouse[]
   products:Product[]
   customers:Customer[]
+  categories:ProductCategory[]
   transferConfig:BankTransferConfig|null
   canSell:boolean
   loadError?:string|null
@@ -105,6 +111,11 @@ export function SalesPOSWorkspace({
   const [error,setError]=useState('')
   const [receipt,setReceipt]=useState<Receipt|null>(null)
   const [printTarget,setPrintTarget]=useState<'prepay'|'final'|null>(null)
+  const [categoryId,setCategoryId]=useState('ALL')
+  const [categoryRows,setCategoryRows]=useState<ProductCategory[]>(categories)
+  const [categoryOpen,setCategoryOpen]=useState(false)
+  const [newCategory,setNewCategory]=useState('')
+  const [categoryError,setCategoryError]=useState('')
 
   useEffect(()=>{
     const saved=localStorage.getItem(WAREHOUSE_KEY)
@@ -139,14 +150,20 @@ export function SalesPOSWorkspace({
 
   const filteredProducts=useMemo(()=>{
     const q=search.trim().toLowerCase()
-    if(!q)return warehouseProducts
-    return warehouseProducts.filter(p=>
+    let rows=warehouseProducts
+    if(categoryId!=='ALL'){
+      rows=categoryId==='UNCATEGORIZED'
+        ? rows.filter(p=>!p.category_id)
+        : rows.filter(p=>p.category_id===categoryId)
+    }
+    if(!q)return rows
+    return rows.filter(p=>
       p.sku.toLowerCase().includes(q)||
       p.name.toLowerCase().includes(q)||
       p.variant.toLowerCase().includes(q)||
       String(p.barcode??'').toLowerCase().includes(q)
     )
-  },[warehouseProducts,search])
+  },[warehouseProducts,search,categoryId])
 
   const subtotal=cart.reduce((sum,line)=>sum+line.cart_qty*line.unit_price,0)
   const discountAmount=Math.min(
