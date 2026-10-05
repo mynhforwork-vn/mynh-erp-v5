@@ -191,6 +191,11 @@ export function SalesPreviewWorkspace(){
   const [view,setView]=useState<View>('overview')
   const [selectedSale,setSelectedSale]=useState<Sale|null>(null)
   const [selectedCustomer,setSelectedCustomer]=useState<Customer|null>(null)
+  const [customerData,setCustomerData]=useState<Customer[]>(CUSTOMERS)
+  const [customerQuery,setCustomerQuery]=useState('')
+  const [customerFilter,setCustomerFilter]=useState<'ALL'|'REPEAT'|'NEW'|'DEBT'>('ALL')
+  const [customerCreateOpen,setCustomerCreateOpen]=useState(false)
+  const [customerDraft,setCustomerDraft]=useState({name:'',phone:'',address:''})
   const [salePanelTab,setSalePanelTab]=useState<SalePanelTab>('INFO')
   const [customerPanelTab,setCustomerPanelTab]=useState<CustomerPanelTab>('OVERVIEW')
   const [debtPanelTab,setDebtPanelTab]=useState<DebtPanelTab>('PAY')
@@ -207,6 +212,8 @@ export function SalesPreviewWorkspace(){
   const [debtAllocations,setDebtAllocations]=useState<Record<string,number>>({})
   const [lastDebtReceipt,setLastDebtReceipt]=useState<DebtReceipt|null>(null)
   const [debtMessage,setDebtMessage]=useState('')
+  const [debtQuery,setDebtQuery]=useState('')
+  const [debtFilter,setDebtFilter]=useState<'ALL'|'PARTIAL'|'OVERDUE'>('ALL')
   const [salesRows,setSalesRows]=useState<Sale[]>(SALES)
   const [dashboardPeriod,setDashboardPeriod]=useState<Period>('all')
   const [dashboardFrom,setDashboardFrom]=useState('')
@@ -226,8 +233,14 @@ export function SalesPreviewWorkspace(){
   const [newCategoryName,setNewCategoryName]=useState('')
   const [posCustomerId,setPosCustomerId]=useState('')
   const [posCustomerOpen,setPosCustomerOpen]=useState(false)
-  const [heldOrders,setHeldOrders]=useState<{id:string,cart:{name:string,sku:string,qty:number,price:number}[]}[]>([])
+  const [posCreateCustomerOpen,setPosCreateCustomerOpen]=useState(false)
+  const [posNewCustomer,setPosNewCustomer]=useState({name:'',phone:'',address:''})
+  const [heldOrders,setHeldOrders]=useState<HeldOrder[]>([])
   const [heldOpen,setHeldOpen]=useState(false)
+  const [posStocks,setPosStocks]=useState<Record<string,number>>(()=>Object.fromEntries(PRODUCTS.flatMap(p=>[[`HN:${p[1]}`,Number(p[4])],[`BG:${p[1]}`,Number(p[7])]])))
+  const [transferRef,setTransferRef]=useState('')
+  const [posReceipt,setPosReceipt]=useState<PreviewReceipt|null>(null)
+  const [printReceipt,setPrintReceipt]=useState<PreviewReceipt|null>(null)
   const [posPaymentOpen,setPosPaymentOpen]=useState(false)
   const [posPaymentMode,setPosPaymentMode]=useState<PosPaymentMode>('cash')
   const [cashTendered,setCashTendered]=useState(0)
@@ -247,9 +260,12 @@ export function SalesPreviewWorkspace(){
   })
   const [columnMenu,setColumnMenu]=useState<TableId|null>(null)
   const [draggedColumn,setDraggedColumn]=useState<{table:TableId,key:string}|null>(null)
-  const [cart,setCart]=useState<{name:string,sku:string,qty:number,price:number}[]>([
-    {name:'OMO Matic 3kg',sku:'OMO-3KG-D',qty:1,price:289000},{name:'Dove 640g',sku:'DOVE-640',qty:1,price:195000}
+  const [cart,setCart]=useState<PosCartLine[]>([
+    {name:'OMO Matic 3kg',sku:'OMO-3KG-D',variant:'Túi 3kg',qty:1,price:289000,stock:18,barcode:'8934868123001'},
+    {name:'Dove 640g',sku:'DOVE-640',variant:'Chai',qty:1,price:195000,stock:11,barcode:'8934868176403'}
   ])
+  const posSearchRef=useRef<HTMLInputElement|null>(null)
+  const discountRef=useRef<HTMLInputElement|null>(null)
 
   useEffect(()=>{
     try{
