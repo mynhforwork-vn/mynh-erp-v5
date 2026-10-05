@@ -295,6 +295,44 @@ export function SalesPreviewWorkspace(){
     return ()=>{document.removeEventListener('mousedown',close);window.removeEventListener('keydown',key)}
   },[])
 
+  useEffect(()=>{
+    try{
+      const raw=localStorage.getItem('mynh-sales-preview-held-orders-v2')
+      if(raw){
+        const parsed=JSON.parse(raw)
+        if(Array.isArray(parsed))setHeldOrders(parsed)
+      }
+      const cats=localStorage.getItem('mynh-sales-preview-pos-categories-v1')
+      if(cats){
+        const parsed=JSON.parse(cats)
+        if(Array.isArray(parsed))setPosCategories(parsed)
+      }
+    }catch{}
+    window.setTimeout(()=>posSearchRef.current?.focus(),40)
+  },[])
+  useEffect(()=>{try{localStorage.setItem('mynh-sales-preview-held-orders-v2',JSON.stringify(heldOrders))}catch{}},[heldOrders])
+  useEffect(()=>{try{localStorage.setItem('mynh-sales-preview-pos-categories-v1',JSON.stringify(posCategories))}catch{}},[posCategories])
+  useEffect(()=>{
+    function onKeyDown(event:KeyboardEvent){
+      if(view!=='pos')return
+      if(event.key==='F2'){event.preventDefault();openPosPayment('cash')}
+      if(event.key==='F3'){event.preventDefault();holdCurrentOrder()}
+      if(event.key==='F4'){event.preventDefault();posSearchRef.current?.focus()}
+      if(event.key==='F5'){event.preventDefault();setPosCustomerOpen(true)}
+      if(event.key==='F7'){event.preventDefault();setPosExtrasOpen(true);window.setTimeout(()=>discountRef.current?.focus(),20)}
+      if(event.key==='F8'){
+        event.preventDefault()
+        const last=cart[cart.length-1]
+        if(last)removeCartLine(last.sku)
+      }
+      if(event.key==='Escape'){
+        setPosPaymentOpen(false);setHeldOpen(false);setPosCustomerOpen(false);setPosCreateCustomerOpen(false);setCategorySettingsOpen(false)
+      }
+    }
+    window.addEventListener('keydown',onKeyDown)
+    return ()=>window.removeEventListener('keydown',onKeyDown)
+  },[view,cart,cartTotal,posCustomerId,posWarehouse,posDiscount,posOtherFee,posNote,heldOrders])
+
   function toggleColumn(table:TableId,key:string){
     setTablePrefs(prev=>{
       const current=prev[table]
@@ -524,83 +562,149 @@ export function SalesPreviewWorkspace(){
 
   function setDashboardPeriodSafe(next:Period){setDashboardPeriod(next)}
   function setHistoryPeriodSafe(next:Period){setHistoryPeriod(next)}
+  function reservePreviewInvoiceCode(){
+    const now=new Date()
+    return 'POS-'+String(now.getFullYear()).slice(-2)+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'-'+String(Date.now()).slice(-6)
+  }
+  function changePosWarehouse(next:'HN'|'BG'){
+    if(next===posWarehouse)return
+    if(cart.length&&!window.confirm('Đổi Kho bán sẽ xóa giỏ hiện tại. Tiếp tục?'))return
+    setPosWarehouse(next)
+    setCart([])
+    setPosCustomerId('')
+    setPosDiscount(0);setPosOtherFee(0);setPosNote('');setTransferRef('');setPosPaymentOpen(false)
+    window.setTimeout(()=>posSearchRef.current?.focus(),20)
+  }
   function addPosProduct(product:typeof PRODUCTS[number]){
-    const [name,sku,,price]=product
+    const [name,sku,variant,price,,,barcode]=product
+    const stock=productStock(String(sku))
+    if(stock<=0){setPosMessage('SKU '+sku+' đã hết tồn tại kho '+posWarehouse);return}
     setCart(prev=>{
       const found=prev.find(x=>x.sku===sku)
-      return found
-        ? prev.map(x=>x.sku===sku?{...x,qty:x.qty+1}:x)
-        : [...prev,{name,sku,qty:1,price}]
+      if(found){
+        if(found.qty>=stock){setPosMessage('Không đủ tồn kho · '+sku+' chỉ còn '+stock);return prev}
+        return prev.map(x=>x.sku===sku?{...x,qty:x.qty+1,stock}:x)
+      }
+      return [...prev,{name:String(name),sku:String(sku),variant:String(variant),qty:1,price:Number(price),stock,barcode:String(barcode)}]
     })
   }
+  function scanPosEnter(){
+    const q=posSearch.trim().toLowerCase()
+    if(!q)return
+    const exact=PRODUCTS.find(p=>String(p[1]).toLowerCase()===q||String(p[6]).toLowerCase()===q)
+    if(exact&&productStock(String(exact[1]))>0){
+      addPosProduct(exact);setPosSearch('');window.setTimeout(()=>posSearchRef.current?.focus(),10);return
+    }
+    if(filteredProducts.length===1){
+      addPosProduct(filteredProducts[0]);setPosSearch('')
+    }else setPosMessage(filteredProducts.length?'Có '+filteredProducts.length+' kết quả · chọn sản phẩm':'Không tìm thấy SKU/barcode trong kho')
+  }
+  function setCartQty(sku:string,next:number){
+    setCart(prev=>prev.map(line=>line.sku===sku?{...line,qty:Math.max(0,Math.min(productStock(sku),Math.floor(next)||0)),stock:productStock(sku)}:line).filter(line=>line.qty>0))
+  }
+  function removeCartLine(sku:string){setCart(prev=>prev.filter(x=>x.sku!==sku))}
   function holdCurrentOrder(){
     if(!cart.length){setPosMessage('Giỏ hàng đang trống');return}
-    setHeldOrders(prev=>[{id:'HOLD-'+Date.now(),cart:cart.map(x=>({...x}))},...prev].slice(0,20))
-    setCart([])
+    const entry:HeldOrder={id:'HOLD-'+Date.now(),time:new Date().toISOString(),warehouse:posWarehouse,customerId:posCustomerId,cart:cart.map(x=>({...x})),discount:posDiscount,otherFee:posOtherFee,note:posNote}
+    setHeldOrders(prev=>[entry,...prev].slice(0,30))
+    setCart([]);setPosCustomerId('');setPosDiscount(0);setPosOtherFee(0);setPosNote('');setTransferRef('')
     setPosMessage('Đã giữ đơn tạm')
   }
   function restoreHeldOrder(id:string){
     const order=heldOrders.find(x=>x.id===id)
     if(!order)return
-    setCart(order.cart.map(x=>({...x})))
+    if(cart.length&&!window.confirm('Mở đơn tạm sẽ thay thế giỏ hiện tại. Tiếp tục?'))return
+    setPosWarehouse(order.warehouse)
+    setPosCustomerId(order.customerId)
+    setCart(order.cart.map(line=>({...line,stock:productStock(line.sku,order.warehouse),qty:Math.min(line.qty,productStock(line.sku,order.warehouse))})).filter(x=>x.qty>0))
+    setPosDiscount(order.discount);setPosOtherFee(order.otherFee);setPosNote(order.note)
     setHeldOrders(prev=>prev.filter(x=>x.id!==id))
-    setHeldOpen(false)
-    setPosMessage('Đã mở lại đơn tạm')
+    setHeldOpen(false);setPosMessage('Đã mở lại đơn tạm')
+  }
+  function createPreviewCustomer(source:'pos'|'customers'){
+    const draft=source==='pos'?posNewCustomer:customerDraft
+    const name=draft.name.trim()
+    if(!name){setPosMessage('Tên khách hàng là bắt buộc');return}
+    const duplicate=customerData.find(c=>draft.phone.trim()&&c.phone.replace(/\s/g,'')===draft.phone.replace(/\s/g,''))
+    if(duplicate){
+      if(source==='pos'){setPosCustomerId(duplicate.id);setPosCreateCustomerOpen(false);setPosCustomerOpen(false)}
+      else setSelectedCustomer(duplicate)
+      return
+    }
+    const row:Customer={id:'c-'+Date.now(),name,phone:draft.phone.trim()||'—',address:draft.address.trim()||'—',orders:0,revenue:0,debt:0,last:'—',status:'GOOD'}
+    setCustomerData(prev=>[row,...prev]);setDebtBalances(prev=>({...prev,[row.id]:0}))
+    if(source==='pos'){
+      setPosCustomerId(row.id);setPosCreateCustomerOpen(false);setPosCustomerOpen(false);setPosNewCustomer({name:'',phone:'',address:''});setPosMessage('Đã tạo và gắn khách '+row.name)
+    }else{
+      setCustomerCreateOpen(false);setCustomerDraft({name:'',phone:'',address:''});setSelectedCustomer(row);setCustomerPanelTab('OVERVIEW')
+    }
   }
   function openPosPayment(mode:PosPaymentMode){
     setPosMessage('')
     if(!cart.length){setPosMessage('Giỏ hàng đang trống');return}
+    if(cartTotal<=0){setPosMessage('Tổng thanh toán phải lớn hơn 0');return}
+    for(const line of cart){
+      const stock=productStock(line.sku)
+      if(line.qty>stock){setPosMessage('Không đủ tồn kho · '+line.sku+' chỉ còn '+stock);return}
+    }
     if(mode==='debt'&&!posCustomer){setPosMessage('Ghi nợ cần gắn khách hàng trước');setPosCustomerOpen(true);return}
-    setPosPaymentMode(mode)
-    setCashTendered(cartTotal)
-    setCombinedCash(0)
-    setCombinedTransfer(0)
-    setPosPaymentOpen(true)
+    if((mode==='transfer'||mode==='combined')&&!transferRef)setTransferRef(reservePreviewInvoiceCode())
+    setPosPaymentMode(mode);setCashTendered(cartTotal);setCombinedCash(0);setCombinedTransfer(0);setPosPaymentOpen(true)
+  }
+  function printPreviewReceipt(receipt:PreviewReceipt){
+    setPrintReceipt(receipt)
+    window.setTimeout(()=>window.print(),80)
   }
   function confirmPosPayment(){
-    let paid=0
-    let debt=0
+    let paid=0,debt=0
     if(posPaymentMode==='cash'){
       if(cashTendered<cartTotal){setPosMessage('Tiền khách đưa chưa đủ');return}
       paid=cartTotal
-    }else if(posPaymentMode==='transfer'){
-      paid=cartTotal
-    }else if(posPaymentMode==='debt'){
-      if(!posCustomer){setPosMessage('Cần gắn khách hàng để ghi nợ');return}
+    }else if(posPaymentMode==='transfer') paid=cartTotal
+    else if(posPaymentMode==='debt'){
+      if(!posCustomer){setPosMessage('Cần chọn khách hàng để ghi nợ');return}
       debt=cartTotal
     }else{
-      if(combinedCash+combinedTransfer>cartTotal){setPosMessage('Tổng tiền nhận vượt số phải thu');return}
-      paid=Math.max(0,combinedCash)+Math.max(0,combinedTransfer)
-      debt=Math.max(0,cartTotal-paid)
+      if(combinedCash+combinedTransfer>cartTotal){setPosMessage('Tổng tiền đã nhận vượt số tiền cần thanh toán');return}
+      paid=Math.max(0,combinedCash)+Math.max(0,combinedTransfer);debt=Math.max(0,cartTotal-paid)
       if(debt>0&&!posCustomer){setPosMessage('Phần còn nợ cần gắn khách hàng');return}
+    }
+    for(const line of cart){
+      const stock=productStock(line.sku)
+      if(line.qty>stock){setPosMessage('Tồn kho vừa thay đổi · '+line.sku+' chỉ còn '+stock);return}
     }
     const now=new Date()
     const date=now.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'})
-    const time=now.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',hour12:false})
-    const code='POS-'+String(now.getFullYear()).slice(-2)+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'-'+String(Date.now()).slice(-5)
-    const next:Sale={
-      id:'preview-'+Date.now(),code,time:date+' '+time,customer:posCustomer?.name??'Khách lẻ',phone:posCustomer?.phone??'—',
-      warehouse:posWarehouse,total:cartTotal,paid,debt,status:debt===0?'PAID':paid>0?'PARTIAL':'UNPAID',saleStatus:'COMPLETED',
-      method:posPaymentMode==='cash'?'Tiền mặt':posPaymentMode==='transfer'?'Chuyển khoản':posPaymentMode==='debt'?'Ghi nợ':'Kết hợp',items:cart.reduce((sum,x)=>sum+x.qty,0)
-    }
+    const time=date+' '+now.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit',hour12:false})
+    const code=transferRef||reservePreviewInvoiceCode()
+    const saleId='preview-'+Date.now()
+    const method=posPaymentMode==='cash'?'Tiền mặt':posPaymentMode==='transfer'?'Chuyển khoản':posPaymentMode==='debt'?'Ghi nợ':'Kết hợp'
+    const next:Sale={id:saleId,code,time,customer:posCustomer?.name??'Khách lẻ',phone:posCustomer?.phone??'—',warehouse:posWarehouse,total:cartTotal,paid,debt,status:debt===0?'PAID':paid>0?'PARTIAL':'UNPAID',saleStatus:'COMPLETED',method,items:cart.reduce((sum,x)=>sum+x.qty,0)}
     setSalesRows(prev=>[next,...prev])
+    setSaleItems(prev=>[...cart.map(x=>({saleId,sku:x.sku,name:x.name,qty:x.qty,revenue:x.qty*x.price,warehouse:posWarehouse} as SaleItemSeed)),...prev])
+    setPosStocks(prev=>{
+      const nextStocks={...prev}
+      for(const line of cart)nextStocks[`${posWarehouse}:${line.sku}`]=Math.max(0,Number(nextStocks[`${posWarehouse}:${line.sku}`]??0)-line.qty)
+      return nextStocks
+    })
+    if(posCustomer){
+      setCustomerData(prev=>prev.map(c=>c.id===posCustomer.id?{...c,orders:c.orders+1,revenue:c.revenue+cartTotal,debt:(debtBalances[c.id]??c.debt)+debt,last:time,status:debt>0?'DEBT':c.status}:c))
+    }
     if(debt>0&&posCustomer)setDebtBalances(prev=>({...prev,[posCustomer.id]:(prev[posCustomer.id]??posCustomer.debt)+debt}))
-    setCart([])
-    setPosPaymentOpen(false)
-    setPosDiscount(0);setPosOtherFee(0);setPosNote('')
+    const receipt:PreviewReceipt={code,time,warehouse:posWarehouse,customer:posCustomer?.name??'Khách lẻ',total:cartTotal,paid,debt,method,items:cart.map(x=>({...x})),note:posNote,transferRef}
+    setPosReceipt(receipt)
+    setCart([]);setPosPaymentOpen(false);setPosDiscount(0);setPosOtherFee(0);setPosNote('');setTransferRef('')
     setPosMessage((debt>0?'Đã ghi nhận hóa đơn công nợ ':'Thanh toán thành công ')+code)
   }
   function addCategory(){
     const name=newCategoryName.trim()
     if(!name)return
-    const id='custom-'+Date.now()
-    setPosCategories(prev=>[...prev,{id,name,active:true}])
-    setNewCategoryName('')
+    setPosCategories(prev=>[...prev,{id:'custom-'+Date.now(),name,active:true}]);setNewCategoryName('')
   }
   function deleteSelectedSales(){
     if(!selectedSaleIds.length)return
-    if(!window.confirm(`Xóa ${selectedSaleIds.length} hóa đơn khỏi dữ liệu Preview?`))return
-    setSalesRows(prev=>prev.filter(x=>!selectedSaleIds.includes(x.id)))
+    if(!window.confirm(`Xóa ${selectedSaleIds.length} hóa đơn khỏi dữ liệu Preview? Dữ liệu Preview sẽ không hoàn tồn.`))return
+    setSalesRows(prev=>prev.filter(x=>!selectedSaleIds.includes(x.id)));setSaleItems(prev=>prev.filter(x=>!selectedSaleIds.includes(x.saleId)))
     if(selectedSale&&selectedSaleIds.includes(selectedSale.id))setSelectedSale(null)
     setSelectedSaleIds([])
   }
