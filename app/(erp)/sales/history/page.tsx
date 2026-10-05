@@ -73,7 +73,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
 
   const [salesResult,bankTransferResult]=await Promise.all([
     supabase.from('sales')
-      .select('id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,note,subtotal,discount_amount,other_fee,sale_status,cash_received,change_amount,warehouse_id,created_by,warehouses(id,code,name,address),customers(id,name,phone,address),sale_items(id,quantity,sale_price,unit_cost,product_variant_id,product_variants(id,variant_name,barcode,products(id,sku,name))),sale_payments(id,method,amount,tendered_amount,change_amount,reference_code,created_at),sale_returns(id,return_type,reason,refund_amount,created_at)')
+      .select('id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,note,subtotal,discount_amount,other_fee,sale_status,cash_received,change_amount,warehouse_id,created_by,warehouses(id,code,name,address),customers(id,name,phone,address),sale_items(id,quantity,sale_price,unit_cost,product_variant_id,product_variants(id,variant_name,barcode,products(id,sku,name))),sale_payments(id,method,amount,tendered_amount,change_amount,reference_code,created_at),sale_returns(id,return_type,reason,return_value,debt_relief,refund_amount,created_at,sale_return_items(sale_item_id,quantity))')
       .gte('sale_at',range.start)
       .lte('sale_at',range.end)
       .order('sale_at',{ascending:false})
@@ -252,6 +252,17 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
             invoiceCode={String(selected.invoice_code??'POS-'+String(selected.id).slice(0,8))}
             saleStatus={String(selected.sale_status??'COMPLETED')}
             canOperate={canOperate}
+            items={(selected.sale_items??[]).map((item:any)=>({
+              id:String(item.id),
+              sku:String(item.product_variants?.products?.sku??'—'),
+              name:String(item.product_variants?.products?.name??'Sản phẩm'),
+              variant:String(item.product_variants?.variant_name??''),
+              quantity:Number(item.quantity??0),
+              returnedQuantity:(selected.sale_returns??[])
+                .flatMap((entry:any)=>entry.sale_return_items??[])
+                .filter((returned:any)=>String(returned.sale_item_id)===String(item.id))
+                .reduce((sum:number,returned:any)=>sum+Number(returned.quantity??0),0),
+            }))}
           />
         </div>
 
@@ -318,7 +329,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
             <div><i></i><span>{formatDateTime(selected.sale_at)}</span><b>Tạo hóa đơn POS</b><small>{selected.invoice_code}</small></div>
             <div><i></i><span>{formatDateTime(selected.sale_at)}</span><b>Trừ tồn kho</b><small>{(selected.sale_items??[]).length} dòng SKU</small></div>
             {(selected.sale_payments??[]).map((payment:any)=><div key={payment.id}><i></i><span>{formatDateTime(payment.created_at)}</span><b>Thanh toán {paymentLabel(payment.method)}</b><small>{formatMoney(payment.amount)}</small></div>)}
-            {(selected.sale_returns??[]).map((entry:any)=><div key={entry.id}><i></i><span>{formatDateTime(entry.created_at)}</span><b>{entry.return_type==='CANCEL'?'Huỷ hóa đơn':entry.return_type==='FULL'?'Hoàn toàn bộ':'Hoàn một phần'}</b><small>{formatMoney(entry.refund_amount)}{entry.reason?' · '+entry.reason:''}</small></div>)}
+            {(selected.sale_returns??[]).map((entry:any)=><div key={entry.id}><i></i><span>{formatDateTime(entry.created_at)}</span><b>{entry.return_type==='CANCEL'?'Huỷ hóa đơn':entry.return_type==='FULL'?'Hoàn toàn bộ':'Hoàn một phần'}</b><small>Giá trị {formatMoney(entry.return_value)} · giảm nợ {formatMoney(entry.debt_relief)} · hoàn tiền {formatMoney(entry.refund_amount)}{entry.reason?' · '+entry.reason:''}</small></div>)}
           </div>}
         </div>
 
