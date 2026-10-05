@@ -47,7 +47,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
   const [customersRes,debtRes,salesRes,paymentsRes,allocRes,warehouseRes,bankResult]=await Promise.all([
     supabase.from('customers').select('id,name,phone,address,note'),
     supabase.from('customer_debt_balances').select('customer_id,balance'),
-    supabase.from('sales').select('id,customer_id,warehouse_id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,sale_status').not('customer_id','is',null).order('sale_at',{ascending:true}),
+    supabase.from('sales').select('id,customer_id,warehouse_id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,sale_status,sale_items(id,quantity,sale_price,product_variants(id,variant_name,products(sku,name)))').not('customer_id','is',null).order('sale_at',{ascending:true}),
     supabase.from('customer_payments').select('id,customer_id,amount,paid_at,note,receipt_code,payment_method,cash_amount,transfer_amount').order('paid_at',{ascending:false}),
     supabase.from('customer_payment_allocations').select('id,customer_payment_id,sale_id,amount,created_at'),
     supabase.from('warehouses').select('id,code,name,address'),
@@ -61,6 +61,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
   const whMap=new Map((warehouseRes.data??[]).map((x:any)=>[String(x.id),x]))
   const debtMap=new Map((debtRes.data??[]).map((x:any)=>[String(x.customer_id),Number(x.balance??0)]))
   const customerMap=new Map(customers.map((x:any)=>[String(x.id),x]))
+  const saleMap=new Map(sales.map((x:any)=>[String(x.id),x]))
   const paymentByCustomer=new Map<string,any[]>()
   for(const payment of payments){
     const key=String(payment.customer_id)
@@ -93,6 +94,14 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
             id:String(row.id),code:String(row.invoice_code??'—'),date:row.sale_at,warehouse:String(wh?.code??'—'),
             total:Number(row.total_amount??0),paid:Number(row.paid_amount??0),
             debt:Number(row.debt_amount??Math.max(0,Number(row.total_amount??0)-Number(row.paid_amount??0))),
+            items:(row.sale_items??[]).map((item:any)=>({
+              id:String(item.id),
+              sku:String(item.product_variants?.products?.sku??'—'),
+              name:String(item.product_variants?.products?.name??'Sản phẩm'),
+              variant:String(item.product_variants?.variant_name??'Mặc định'),
+              quantity:Number(item.quantity??0),
+              sale_price:Number(item.sale_price??0),
+            })),
           }
         }),
         receipts,
@@ -202,7 +211,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
         {collectMode&&<DebtCollectForm
           customer={{id:selected.customer_id,name:selected.name,phone:phone(selected.phone)}}
           balance={selected.debt}
-          invoices={selected.rows.map(row=>({id:row.id,code:row.code,time:fmtDate(row.date),total:row.total,paid:row.paid,debt:row.debt,warehouse:row.warehouse}))}
+          invoices={selected.rows.map(row=>({id:row.id,code:row.code,time:fmtDate(row.date),total:row.total,paid:row.paid,debt:row.debt,warehouse:row.warehouse,items:row.items}))}
           bankConfig={bankConfig}
         />}
 
@@ -243,10 +252,36 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
               ? <div className="empty compact">Chưa có phiếu thu nợ.</div>
               : selected.receipts.map((row:any)=>{
                   const allocated=allocByPayment.get(String(row.id))??[]
-                  return <div className="debt-receipt-row" key={row.id}>
-                    <div><b>{row.receipt_code??'PTN'}</b><span>{fmtDate(row.paid_at)} · {row.payment_method}</span><small>{allocated.length} phân bổ · {row.note||'Không ghi chú'}</small></div>
-                    <strong>{formatMoney(Number(row.amount??0))}</strong>
-                  </div>
+                  return <details className="debt-receipt-card" key={row.id}>
+                    <summary>
+                      <div><b>{row.receipt_code??'PTN'}</b><span>{fmtDate(row.paid_at)} · {row.payment_method}</span><small>{allocated.length} hóa đơn được phân bổ · {row.note||'Không ghi chú'}</small></div>
+                      <strong>{formatMoney(Number(row.amount??0))}</strong>
+                    </summary>
+                    <div className="debt-receipt-detail">
+                      <div className="debt-receipt-money-grid">
+                        <div><span>Tiền mặt</span><b>{formatMoney(Number(row.cash_amount??0))}</b></div>
+                        <div><span>Chuyển khoản</span><b>{formatMoney(Number(row.transfer_amount??0))}</b></div>
+                        <div><span>Tổng thu</span><b>{formatMoney(Number(row.amount??0))}</b></div>
+                      </div>
+                      <div className="debt-receipt-invoices">
+                        {allocated.map((allocation:any)=>{
+                          const sale=saleMap.get(String(allocation.sale_id)) as any
+                          return <div className="debt-receipt-invoice" key={allocation.id}>
+                            <div className="debt-receipt-invoice-head">
+                              <div><b>{sale?.invoice_code??'Hóa đơn'}</b><span>{fmtDate(sale?.sale_at)} · Phân bổ {formatMoney(Number(allocation.amount??0))}</span></div>
+                              <Link href={'/sales/history?sale='+String(allocation.sale_id)}>Mở HĐ</Link>
+                            </div>
+                            <div className="debt-receipt-products">
+                              {(sale?.sale_items??[]).map((item:any)=><div key={item.id}>
+                                <span><b>{item.product_variants?.products?.name??'Sản phẩm'}</b><small>{item.product_variants?.products?.sku??'—'} · {item.product_variants?.variant_name??'Mặc định'}</small></span>
+                                <strong>{Number(item.quantity??0)} × {formatMoney(Number(item.sale_price??0))}</strong>
+                              </div>)}
+                            </div>
+                          </div>
+                        })}
+                      </div>
+                    </div>
+                  </details>
                 })}
           </div>}
         </div>
