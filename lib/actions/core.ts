@@ -1577,3 +1577,54 @@ export async function replaceShipment(formData:FormData){
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,settings:null,tab:isExpress?'info':'tracking'}))
 }
+
+
+export async function bulkImportERPUsers(rows:Array<{
+  username:string
+  phone?:string|null
+  email?:string|null
+  status?:string|null
+  mobile?:boolean
+  web?:boolean
+  note?:string|null
+  spc_f?:string|null
+  spc_st?:string|null
+}>){
+  try{
+    const {supabase}=await actor()
+    if(!Array.isArray(rows)||!rows.length)return {ok:false as const,error:'Không có dữ liệu để import'}
+    if(rows.length>200)return {ok:false as const,error:'Tối đa 200 User mỗi lần import'}
+
+    const normalized=rows.map(row=>({
+      username:String(row.username??'').trim(),
+      phone:String(row.phone??'').trim()||null,
+      email:String(row.email??'').trim()||null,
+      status:String(row.status??'').trim()||'Active',
+      mobile:Boolean(row.mobile),
+      web:Boolean(row.web),
+      note:String(row.note??'').trim()||null,
+      spc_f:String(row.spc_f??'').trim()||null,
+      spc_st:String(row.spc_st??'').trim()||null,
+    }))
+
+    if(normalized.some(row=>!row.username))return {ok:false as const,error:'Có dòng thiếu Username'}
+
+    const {data,error}=await supabase.rpc('bulk_create_erp_users',{p_rows:normalized})
+    if(error){
+      const raw=String(error.message??'')
+      const friendly=
+        raw.includes('trùng trong dữ liệu')?raw:
+        raw.includes('đã tồn tại')?raw:
+        raw.includes('Trạng thái')?raw:
+        raw.includes('200 User')?raw:
+        'Không thể import User'
+      return {ok:false as const,error:friendly,detail:raw}
+    }
+
+    revalidatePath('/purchase/accounts')
+    revalidatePath('/users')
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể import User')}
+  }
+}
