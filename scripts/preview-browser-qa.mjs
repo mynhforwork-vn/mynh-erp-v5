@@ -374,20 +374,20 @@ if(await sellable.count()){
       if(!debtActive&&await page.locator('.pos-customer-popover').count()>0){
         recordInteraction('POS debt requires customer guard',true)
         const customerSelect=page.locator('.pos-customer-popover select').first()
-        if(await customerSelect.count()&&await customerSelect.locator('option').count()>1){
-          const value=await customerSelect.locator('option').nth(1).getAttribute('value')
-          if(value)await customerSelect.selectOption(value)
-        }
+        const fixtureCustomerId=String(session.fixtures?.customer_id??'')
+        const hasFixture=fixtureCustomerId&&await customerSelect.locator('option[value="'+fixtureCustomerId+'"]').count()>0
+        if(hasFixture)await customerSelect.selectOption(fixtureCustomerId)
+        const selectedFixture=hasFixture&&await customerSelect.inputValue()===fixtureCustomerId
         const customerClose=page.locator('.pos-customer-popover .pos-popover-head button').first()
         if(await customerClose.count()){await customerClose.click();await settle(80)}
-        if(await customerSelect.count()&&await customerSelect.inputValue().catch(()=>'')){
+        if(selectedFixture){
           await debtMode.click();await settle(100)
           debtActive=await debtMode.evaluate(el=>el.classList.contains('active'))
-          recordInteraction('POS payment mode Ghi nợ with customer',debtActive)
-        }else{
-          recordInteraction('POS payment mode Ghi nợ with customer',true,{skipped:true,reason:'No existing customer fixture'})
         }
-      }else recordInteraction('POS payment mode Ghi nợ',debtActive)
+        recordInteraction('POS payment mode Ghi nợ with QA customer',selectedFixture&&debtActive,{customerId:fixtureCustomerId||null})
+      }else{
+        recordInteraction('POS payment mode Ghi nợ with QA customer',false,{reason:'Debt guard did not open customer selector'})
+      }
     }
 
     const combinedMode=page.locator('.pos-pay-methods').getByRole('button',{name:'Kết hợp'}).first()
