@@ -12,6 +12,7 @@ on:
       - scripts/preview-browser-qa.mjs
       - scripts/preview-mutation-qa.mjs
       - scripts/preview-mutation-qa-v2.mjs
+      - scripts/preview-rbac-qa.mjs
       - scripts/preview-auth-setup.mjs
       - scripts/preview-auth-cleanup.mjs
       - scripts/preview-fixture-setup.mjs
@@ -118,6 +119,10 @@ jobs:
       - name: Run Preview mutation QA round two
         if: steps.browser_qa_prereq.outputs.ready == 'true'
         run: node scripts/preview-mutation-qa-v2.mjs
+
+      - name: Run Preview RBAC permission QA
+        if: steps.browser_qa_prereq.outputs.ready == 'true'
+        run: node scripts/preview-rbac-qa.mjs
 
       - uses: actions/upload-artifact@v4
         if: always() && steps.browser_qa_prereq.outputs.ready == 'true'
