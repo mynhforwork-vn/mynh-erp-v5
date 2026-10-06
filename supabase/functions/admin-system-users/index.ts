@@ -55,6 +55,20 @@ Deno.serve(async(req)=>{
       return json({ok:true,user:{id:data.user?.id,email:data.user?.email,role}});
     }
 
+
+    if(action==="delete"){
+      const userId=String(body?.user_id??"").trim();
+      if(!userId)return json({error:"Thiếu tài khoản"},400);
+      if(userId===user.id)return json({error:"Không thể xóa chính tài khoản Admin đang đăng nhập"},400);
+
+      const {data:target,error:targetError}=await admin.auth.admin.getUserById(userId);
+      if(targetError||!target?.user)return json({error:"Tài khoản không tồn tại"},404);
+
+      const {error}=await admin.auth.admin.deleteUser(userId);
+      if(error)return json({error:error.message},400);
+      return json({ok:true,user:{id:userId,email:target.user.email??null}});
+    }
+
     if(action==="set_password"){
       const userId=String(body?.user_id??"").trim();
       const password=String(body?.password??"");
