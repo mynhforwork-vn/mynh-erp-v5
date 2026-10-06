@@ -30,12 +30,14 @@ async function insert(table,row){
   if(!res.ok)throw new Error('Fixture insert '+table+' failed '+res.status+' '+res.text.slice(0,300))
 }
 
-const wh=await request('/rest/v1/warehouses?select=id,code&is_active=eq.true&order=code.asc&limit=1')
+const wh=await request('/rest/v1/warehouses?select=id,code&is_active=eq.true&order=code.asc&limit=2')
 if(!wh.ok||!Array.isArray(wh.json)||!wh.json[0]?.id)throw new Error('No active warehouse for QA fixture')
+if(!wh.json[1]?.id)throw new Error('Mutation QA v2 requires two active warehouses')
 
 const suffix=Date.now().toString(36)+'-'+crypto.randomBytes(3).toString('hex')
 const fixtures={
   customer_id:crypto.randomUUID(),
+  erp_user_id:crypto.randomUUID(),
   warehouse_order_id:crypto.randomUUID(),
   warehouse_item_id:crypto.randomUUID(),
   receive_batch_id:crypto.randomUUID(),
@@ -45,7 +47,10 @@ const fixtures={
   hub_shipment_id:crypto.randomUUID(),
   warehouse_id:String(wh.json[0].id),
   warehouse_code:String(wh.json[0].code??''),
+  transfer_warehouse_id:String(wh.json[1].id),
+  transfer_warehouse_code:String(wh.json[1].code??''),
   customer_name:'QA Browser Customer '+suffix,
+  erp_username:'qa_browser_'+suffix.replace(/[^a-z0-9]/gi,'_'),
   warehouse_order_code:'QA-WH-'+suffix,
   hub_order_code:'QA-HUB-'+suffix,
   sale_sku:'QA-MUT-'+suffix.toUpperCase(),
@@ -65,6 +70,17 @@ await insert('customers',{
   phone:'0900000000',
   address:'QA Browser Fixture',
   note:fixtures.marker,
+})
+
+await insert('erp_users',{
+  id:fixtures.erp_user_id,
+  username:fixtures.erp_username,
+  phone:'0900000099',
+  status:'Active',
+  note:fixtures.marker,
+  mobile:false,
+  web:true,
+  platform:'SHOPEE',
 })
 
 await insert('orders',{
@@ -137,7 +153,7 @@ await insert('shipments',{
   order_id:fixtures.hub_order_id,
   tracking_number:'QA'+Date.now(),
   carrier:'SPX',
-  is_active:false,
+  is_active:true,
   tracking_enabled:false,
   current_tracking_status:'DELIVERED',
 })
