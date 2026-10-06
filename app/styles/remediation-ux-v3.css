@@ -3316,3 +3316,13 @@
     max-height:none!important;
   }
 }
+
+
+/* Finance panel vertical geometry: match the ledger row, never a fixed pixel cap. */
+@media(min-width:901px){
+  .finance-ledger-layout.with-panel>.finance-panel{
+    height:100%!important;
+    max-height:none!important;
+    align-self:stretch!important;
+  }
+}
