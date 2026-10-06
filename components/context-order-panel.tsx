@@ -15,6 +15,7 @@ type Props={
   trackingHref:string
   historyHref:string
   openModuleHref:string
+  parentLabel?:string
 }
 
 function activeShipment(order:any){
@@ -26,7 +27,7 @@ function voucherLabel(v:any){
 
 export function ContextOrderPanel({
   order,items,vouchers,trackingEvents,auditRows,activeTab,
-  backHref,closeHref,infoHref,trackingHref,historyHref,openModuleHref,
+  backHref,closeHref,infoHref,trackingHref,historyHref,openModuleHref,parentLabel='User',
 }:Props){
   const shipment=activeShipment(order)
   const voucherText=(vouchers??[]).map(voucherLabel).filter(Boolean).join(' · ')
@@ -40,7 +41,7 @@ export function ContextOrderPanel({
     <div className="panel-head context-stack-head">
       <Link className="context-stack-back" href={backHref} aria-label="Quay lại">←</Link>
       <div className="context-stack-title">
-        <span className="eyebrow">CHI TIẾT ĐƠN · TRONG USER</span>
+        <span className="eyebrow">CHI TIẾT ĐƠN · TRONG {parentLabel.toUpperCase()}</span>
         <h2>{order.shopee_order_id??String(order.id).slice(0,8)}</h2>
         <small>{order.erp_users?.username??'User'}</small>
       </div>
@@ -48,7 +49,7 @@ export function ContextOrderPanel({
     </div>
 
     <div className="context-stack-breadcrumb">
-      <span>User</span><i>›</i><b>Đơn {order.shopee_order_id??String(order.id).slice(0,8)}</b>
+      <span>{parentLabel}</span><i>›</i><b>Đơn {order.shopee_order_id??String(order.id).slice(0,8)}</b>
       {activeTab!=='info'&&<><i>›</i><strong>{activeTab==='tracking'?'Tracking':'Lịch sử'}</strong></>}
     </div>
 
