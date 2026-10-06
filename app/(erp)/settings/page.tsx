@@ -129,6 +129,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
           ? <DestinationHubSettings
               configs={configs}
               shippers={(shipperRows??[]) as any[]}
+              canEdit={canEdit}
             />
           : section==='payments'
             ? <BankTransferSettings config={(bankTransferResult.data??null) as any} canEdit={canEdit}/>
