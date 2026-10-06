@@ -75,9 +75,14 @@ page.on('pageerror',e=>summary.pageErrors.push({url:page.url(),text:String(e)}))
 page.on('response',r=>{if(r.status()>=500)summary.network5xx.push({url:r.url(),status:r.status()})})
 
 async function go(path){
-  const res=await page.goto(PREVIEW_URL+path,{waitUntil:'domcontentloaded',timeout:30000})
-  await page.waitForTimeout(700)
-  if((res?.status()??0)>=500)throw new Error('Navigation failed '+path+' status='+(res?.status()??0))
+  let lastStatus=0
+  for(let attempt=1;attempt<=3;attempt++){
+    const res=await page.goto(PREVIEW_URL+path,{waitUntil:'domcontentloaded',timeout:30000})
+    lastStatus=res?.status()??0
+    await page.waitForTimeout(attempt===1?800:1200)
+    if(lastStatus<500)return
+  }
+  throw new Error('Navigation failed '+path+' status='+lastStatus)
 }
 async function balance(warehouseId){
   const row=await first('/rest/v1/inventory_balances?select=quantity&warehouse_id=eq.'+encodeURIComponent(warehouseId)+'&product_variant_id=eq.'+encodeURIComponent(f.mutation_variant_id))
