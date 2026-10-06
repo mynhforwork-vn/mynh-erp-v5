@@ -60,13 +60,17 @@ jobs:
             const res=await fetch(url,{headers})
             if(!res.ok)throw new Error('Cannot read Cloudflare Preview workflow runs: '+res.status)
             const data=await res.json()
-            const run=(data.workflow_runs??[]).find(x=>x.head_sha===sha)
-            if(run?.status==='completed'){
-              if(run.conclusion!=='success')throw new Error('Cloudflare Preview failed for '+sha+' conclusion='+run.conclusion)
-              console.log('Matching Cloudflare Preview PASS run='+run.id+' sha='+sha)
+            const runs=(data.workflow_runs??[]).filter(x=>x.head_sha===sha)
+            const passed=runs.find(x=>x.status==='completed'&&x.conclusion==='success')
+            if(passed){
+              console.log('Matching Cloudflare Preview PASS run='+passed.id+' sha='+sha)
               process.exit(0)
             }
-            console.log('Waiting for matching Cloudflare Preview '+attempt+'/60')
+            const active=runs.some(x=>x.status==='queued'||x.status==='in_progress'||x.status==='waiting'||x.status==='requested')
+            if(runs.length>0&&!active&&runs.every(x=>x.status==='completed')){
+              throw new Error('No successful Cloudflare Preview for '+sha+' conclusions='+runs.map(x=>x.conclusion).join(','))
+            }
+            console.log('Waiting for matching Cloudflare Preview '+attempt+'/60 runs='+runs.length)
             await sleep(10000)
           }
           throw new Error('Timed out waiting for matching Cloudflare Preview for '+sha)
