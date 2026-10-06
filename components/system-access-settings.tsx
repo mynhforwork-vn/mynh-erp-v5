@@ -50,7 +50,6 @@ export function SystemAccessSettings({
   const [passwordUser,setPasswordUser]=useState<SystemUser|null>(null)
   const [deleteUser,setDeleteUser]=useState<SystemUser|null>(null)
   const [temporaryPassword,setTemporaryPassword]=useState('')
-  const [resetOpen,setResetOpen]=useState(false)
   const [resetScope,setResetScope]=useState<'DATA'|'ALL'|null>(null)
   const [confirm,setConfirm]=useState('')
 
@@ -139,8 +138,8 @@ export function SystemAccessSettings({
       const result=await resetERPSystemData({scope:resetScope,confirm})
       if(!result.ok){setError(result.error);return}
       setMessage(resetScope==='ALL'
-        ? 'Đã reset dữ liệu vận hành và toàn bộ cấu hình người dùng.'
-        : 'Đã reset dữ liệu vận hành. Cấu hình hệ thống được giữ lại.')
+        ? 'Đã xóa dữ liệu vận hành và toàn bộ cấu hình người dùng.'
+        : 'Đã xóa dữ liệu vận hành. Cấu hình hệ thống được giữ lại.')
       setResetScope(null);setConfirm('')
       window.location.reload()
     })
@@ -183,9 +182,6 @@ export function SystemAccessSettings({
     <section className="admin-user-table-card">
       <div className="admin-role-matrix-head admin-account-head">
         <div><b>Tài khoản hệ thống</b><span>{rows.length} tài khoản · phân quyền riêng từng tài khoản</span></div>
-        <button className={'button small '+(resetOpen?'danger':'')} type="button" onClick={()=>setResetOpen(v=>!v)}>
-          {resetOpen?'Đóng khu vực reset':'Reset dữ liệu hệ thống'}
-        </button>
       </div>
       <div className="admin-create-user-inline">
         <label><span>Email đăng nhập</span><input type="email" value={createEmail} onChange={e=>setCreateEmail(e.target.value)} placeholder="operator@company.com"/></label>
@@ -193,23 +189,23 @@ export function SystemAccessSettings({
         <label><span>Role</span><select value={createRole} onChange={e=>setCreateRole(e.target.value as any)}><option value="operator">Operator</option><option value="viewer">Viewer</option><option value="admin">Admin</option></select></label>
         <button className="button primary" type="button" onClick={createAccount} disabled={pending}>{pending?'Đang tạo...':'+ Tạo tài khoản'}</button>
       </div>
-      {resetOpen&&<div className="admin-danger-zone admin-danger-zone-inline">
+      <div className="admin-danger-zone admin-danger-zone-inline">
         <div className="admin-role-matrix-head">
-          <div><b>Reset dữ liệu hệ thống</b><span>Không thể hoàn tác. Chọn đúng phạm vi trước khi xác nhận.</span></div>
+          <div><b>Xóa dữ liệu hệ thống</b><span>Không thể hoàn tác. Chọn đúng phạm vi trước khi xác nhận.</span></div>
         </div>
         <div className="admin-reset-options">
           <button type="button" className="admin-reset-card" onClick={()=>{setResetScope('DATA');setConfirm('');setError('')}}>
-            <b>Reset dữ liệu vận hành</b>
+            <b>Xóa dữ liệu vận hành</b>
             <span>Xóa User Shopee, đơn hàng, tồn phát sinh, bán hàng, khách hàng, công nợ, tài chính và lịch sử vận hành.</span>
             <small>Giữ cấu hình ngân hàng, HUB, ĐVVC và danh mục sản phẩm.</small>
           </button>
           <button type="button" className="admin-reset-card danger" onClick={()=>{setResetScope('ALL');setConfirm('');setError('')}}>
-            <b>Reset toàn hệ thống</b>
+            <b>Xóa toàn bộ dữ liệu + cài đặt</b>
             <span>Xóa cả dữ liệu vận hành và cấu hình người dùng: QR/ngân hàng, HUB/Shipper, ĐVVC, sản phẩm, phân loại.</span>
             <small>Giữ tài khoản đăng nhập, schema, 2 kho nền tảng và danh mục tài chính hệ thống.</small>
           </button>
         </div>
-      </div>}
+      </div>
       <div className="admin-user-table-wrap">
         <table className="table admin-user-table">
           <thead><tr><th>Email</th><th>Role</th><th>Đăng nhập gần nhất</th><th>Trạng thái</th><th>Xử lý</th></tr></thead>
@@ -273,7 +269,7 @@ export function SystemAccessSettings({
     {resetScope&&<div className="admin-reset-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!pending)setResetScope(null)}}>
       <div className="admin-reset-dialog" role="dialog" aria-modal="true">
         <div className="admin-reset-dialog-head">
-          <div><span className="module-eyebrow">XÁC NHẬN NGUY HIỂM</span><h3>{resetScope==='ALL'?'Reset toàn hệ thống':'Reset dữ liệu vận hành'}</h3></div>
+          <div><span className="module-eyebrow">XÁC NHẬN NGUY HIỂM</span><h3>{resetScope==='ALL'?'Xóa toàn bộ dữ liệu + cài đặt':'Xóa dữ liệu vận hành'}</h3></div>
           <button type="button" onClick={()=>!pending&&setResetScope(null)} aria-label="Đóng">×</button>
         </div>
         <p>Hành động này không thể hoàn tác. Hãy nhập chính xác chuỗi xác nhận bên dưới.</p>
@@ -284,7 +280,7 @@ export function SystemAccessSettings({
         <div className="form-actions">
           <button className="button" type="button" onClick={()=>setResetScope(null)} disabled={pending}>Hủy</button>
           <button className="button danger" type="button" onClick={runReset} disabled={pending}>
-            {pending?'Đang reset...':'Xác nhận reset'}
+            {pending?'Đang xóa...':'Xác nhận xóa'}
           </button>
         </div>
       </div>
