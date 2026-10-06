@@ -180,18 +180,18 @@ if(await page.getByRole('button',{name:'Import TSV'}).count()){
 await go('/purchase/accounts')
 const addAccountLink=page.getByRole('link',{name:/Thêm tài khoản/}).first()
 if(await addAccountLink.count()){
-  await addAccountLink.click(); await settle()
-  recordInteraction('User create panel opens',page.url().includes('mode=create')&&await page.locator('aside.account-detail-panel').count()>0)
+  const createUserNav=await followLink(addAccountLink,{waitSelector:'aside.account-detail-panel'})
+  recordInteraction('User create panel opens',page.url().includes('mode=create')&&await page.locator('aside.account-detail-panel').count()>0,{href:createUserNav.href})
   const close=page.locator('aside.account-detail-panel a.close').first()
-  if(await close.count()){await close.click();await settle()}
-  recordInteraction('User create panel closes',!page.url().includes('mode=create'))
+  if(await close.count())await followLink(close)
+  recordInteraction('User create panel closes',!page.url().includes('mode=create')&&await page.locator('aside.account-detail-panel').count()===0)
 }
 
 await go('/purchase/accounts')
 const firstUserLink=page.locator('.account-table-card a.table-link').first()
 if(await firstUserLink.count()){
-  await firstUserLink.click(); await settle()
-  recordInteraction('User detail panel opens',await page.locator('aside.account-detail-panel').count()>0)
+  const userDetailNav=await followLink(firstUserLink,{waitSelector:'aside.account-detail-panel'})
+  recordInteraction('User detail panel opens',await page.locator('aside.account-detail-panel').count()>0,{href:userDetailNav.href})
   for(const tabName of ['Đơn hàng','Lịch sử','Thông tin']){
     const tab=page.locator('aside.account-detail-panel .panel-tabs').getByRole('link',{name:new RegExp('^'+tabName)}).first()
     if(await tab.count()){
