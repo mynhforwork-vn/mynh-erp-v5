@@ -188,6 +188,7 @@ export function FinanceCashflowWorkspace({
   const [billType,setBillType]=useState<FinanceTxType>('EXPENSE')
   const [billCategory,setBillCategory]=useState('')
   const [billError,setBillError]=useState('')
+  const [printDocument,setPrintDocument]=useState<Document|null>(null)
 
   useEffect(()=>{
     try{
@@ -336,6 +337,23 @@ export function FinanceCashflowWorkspace({
   }
   function resetColumns(){setColumnOrder(DEFAULT_COLUMNS);setHiddenColumns([])}
   function clearFilters(){setSearch('');setFilterType('ALL');setFilterSource('ALL');setFilterMethod('ALL');setFilterStatus('ALL');setFilterCategory('ALL');setPage(1)}
+
+  function printFinanceDocument(doc:Document){
+    setPrintDocument(doc)
+    window.setTimeout(()=>{
+      const body=document.body
+      body.classList.add('print-finance-document')
+      const cleanup=()=>{
+        body.classList.remove('print-finance-document')
+        setPrintDocument(null)
+      }
+      window.addEventListener('afterprint',cleanup,{once:true})
+      window.print()
+      window.setTimeout(()=>{
+        if(body.classList.contains('print-finance-document'))cleanup()
+      },1500)
+    },60)
+  }
 
   function openBill(){
     setBillTab('READ');setBillReading(false);setBillFileName('');setBillPreview('');setBillRawText('');setBillAmount(0)
@@ -684,6 +702,17 @@ export function FinanceCashflowWorkspace({
             </div>
             {detail.note&&<div className="finance-note"><span>Ghi chú</span><b>{detail.note}</b></div>}
             {detail.document_status==='CANCELLED'&&<div className="notice warning"><span>Đã huỷ: {detail.cancellation_reason||'Không có lý do'}</span></div>}
+            <div className="panel-action-row finance-print-action">
+              <button className="button" type="button" onClick={()=>printFinanceDocument(detail)}>
+                {detail.document_status==='DRAFT'
+                  ? 'In phiếu tạm'
+                  : detail.document_status==='CANCELLED'
+                    ? 'In phiếu đã hủy'
+                    : detail.document_type==='INCOME'
+                      ? 'In lại phiếu thu'
+                      : 'In lại phiếu chi'}
+              </button>
+            </div>
             {canEdit&&detail.document_status==='DRAFT'&&<div className="panel-action-row"><button className="button primary" type="button" onClick={()=>editDraft(detail)}>Sửa phiếu nháp</button></div>}
             {canEdit&&detail.document_status!=='CANCELLED'&&<div className="panel-action-row"><button className="button finance-danger-button" type="button" onClick={()=>cancelDoc(detail)}>Huỷ phiếu</button></div>}
           </>}
@@ -770,6 +799,61 @@ export function FinanceCashflowWorkspace({
         </div>
       </>}
     </aside>}
+
+    {printDocument&&<section className="finance-document-print" aria-hidden="true">
+      <header className="finance-document-print-head">
+        <div><b>MYNH ERP</b><span>Sổ Thu / Chi</span></div>
+        <div>
+          <strong>{printDocument.document_type==='INCOME'?'PHIẾU THU':'PHIẾU CHI'}</strong>
+          <small>{printDocument.document_code}</small>
+        </div>
+      </header>
+
+      {printDocument.document_status==='DRAFT'&&<div className="finance-document-print-stamp draft">PHIẾU TẠM · CHƯA GHI NHẬN</div>}
+      {printDocument.document_status==='CANCELLED'&&<div className="finance-document-print-stamp cancelled">ĐÃ HỦY{printDocument.cancellation_reason?' · '+printDocument.cancellation_reason:''}</div>}
+
+      <div className="finance-document-print-meta">
+        <div><span>Thời gian</span><b>{formatDateTime(printDocument.occurred_at)}</b></div>
+        <div><span>Phương thức</span><b>{paymentLabel(printDocument.payment_method)}</b></div>
+        <div className="full"><span>{printDocument.document_type==='INCOME'?'Người nộp':'Người nhận'}</span><b>{printDocument.counterparty_name||'—'}</b></div>
+        <div><span>Tiền mặt</span><b>{formatMoney(printDocument.cash_amount)}</b></div>
+        <div><span>Chuyển khoản</span><b>{formatMoney(printDocument.transfer_amount)}</b></div>
+      </div>
+
+      <div className="finance-document-print-total">
+        <span>TỔNG {printDocument.document_type==='INCOME'?'THU':'CHI'}</span>
+        <strong>{formatMoney(printDocument.total_amount)}</strong>
+      </div>
+
+      <div className="finance-document-print-title">Chi tiết hạng mục</div>
+      <div className="finance-document-print-lines">
+        {(printDocument.finance_document_lines??[])
+          .slice()
+          .sort((a,b)=>num(a.line_order)-num(b.line_order))
+          .map((line,index)=><div key={line.id??line.description??index}>
+            <span>
+              <b>{line.finance_categories?.name??categoryMap.get(line.category_id)?.name??'Hạng mục'}</b>
+              <small>{line.description||'—'}</small>
+            </span>
+            <strong>{formatMoney(line.amount)}</strong>
+          </div>)}
+      </div>
+
+      {printDocument.note&&<div className="finance-document-print-note"><span>Ghi chú</span><b>{printDocument.note}</b></div>}
+
+      <div className="finance-document-print-signatures">
+        <div><b>{printDocument.document_type==='INCOME'?'Người nộp tiền':'Người nhận tiền'}</b><span>Ký / ghi rõ họ tên</span></div>
+        <div><b>Người lập phiếu</b><span>Ký / ghi rõ họ tên</span></div>
+      </div>
+
+      <footer>
+        {printDocument.document_status==='POSTED'
+          ? 'Chứng từ đã ghi nhận trên MYNH ERP.'
+          : printDocument.document_status==='DRAFT'
+            ? 'Phiếu tạm chưa ghi nhận vào sổ.'
+            : 'Chứng từ đã hủy; bản in chỉ dùng để đối chiếu.'}
+      </footer>
+    </section>}
     </div>
   </div>
 }
