@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { cancelFinanceDocument,saveFinanceCategory,saveFinanceDocument,type FinanceTxType } from '@/lib/actions/finance'
 import { formatDateTime,formatMoney } from '@/lib/format'
+import { FinanceReferencePanel } from '@/components/finance-reference-panel'
 
 type Category={
   id:string
@@ -762,7 +763,7 @@ export function FinanceCashflowWorkspace({
 
     {panel!=='NONE'&&<aside className="detail-panel floating finance-panel">
       {panel==='CREATE'&&<>
-        <div className="panel-head"><div><span className="eyebrow">{documentType==='INCOME'?'PHIẾU THU':'PHIẾU CHI'}</span><h2>{editingId?'Sửa phiếu nháp':documentType==='INCOME'?'Tạo Phiếu thu':'Tạo Phiếu chi'}</h2></div><button className="close" type="button" onClick={()=>setPanel('NONE')}>×</button></div>
+        <div className="panel-head"><div><span className="eyebrow">{documentType==='INCOME'?'PHIẾU THU':'PHIẾU CHI'}</span><h2>{editingId?'Sửa phiếu nháp':documentType==='INCOME'?'Tạo Phiếu thu':'Tạo Phiếu chi'}</h2></div><button className="close" type="button" onClick={closePanel}>×</button></div>
         <div className="panel-tabs"><button className={documentTab==='INFO'?'active':''} onClick={()=>setDocumentTab('INFO')}>Thông tin</button><button className={documentTab==='MONEY'?'active':''} onClick={()=>setDocumentTab('MONEY')}>Chi tiết tiền <span className="panel-tab-count">{lines.length}</span></button></div>
         <div className="panel-scroll finance-form">
           {error&&<div className="error-box">{error}</div>}
@@ -782,7 +783,7 @@ export function FinanceCashflowWorkspace({
         </div>
       </>}
 
-      {panel==='DETAIL'&&<>
+      {panel==='DETAIL'&&!activeReference&&<>
         <div className="panel-head">
           <div><span className="eyebrow">CHI TIẾT CHỨNG TỪ</span><h2>{detail?.document_code??(legacy?('TX-'+legacy.id.slice(0,8).toUpperCase()):'Giao dịch')}</h2></div>
           <button className="close" type="button" onClick={()=>setPanel('NONE')}>×</button>
@@ -824,7 +825,16 @@ export function FinanceCashflowWorkspace({
             {canEdit&&detail.document_status==='DRAFT'&&<div className="panel-action-row"><button className="button primary" type="button" onClick={()=>editDraft(detail)}>Sửa phiếu nháp</button></div>}
             {canEdit&&detail.document_status!=='CANCELLED'&&<div className="panel-action-row"><button className="button finance-danger-button" type="button" onClick={()=>cancelDoc(detail)}>Huỷ phiếu</button></div>}
           </>}
-          {detail&&detailTab==='REF'&&<div className="detail-grid"><div><span>Nguồn</span><b>{sourceLabel(detail.source_type)}</b></div><div><span>Mã tham chiếu</span><b>{detail.source_id??'—'}</b></div><div className="full"><span>Liên kết nghiệp vụ</span><b>{detail.source_type==='SHIPPER_SETTLEMENT'?'Đối soát Shipper':detail.source_type==='CUSTOMER_PAYMENT'?'Thu công nợ khách hàng':detail.note?.startsWith('[BILL]')?'Bill ngân hàng':'Chứng từ thủ công'}</b></div></div>}
+          {detail&&detailTab==='REF'&&<>
+            <div className="detail-grid">
+              <div><span>Nguồn</span><b>{sourceLabel(detail.source_type)}</b></div>
+              <div><span>Mã tham chiếu</span><b>{detail.source_id??'—'}</b></div>
+              <div className="full"><span>Liên kết nghiệp vụ</span><b>{detail.source_type==='SHIPPER_SETTLEMENT'?'Đối soát Shipper':detail.source_type==='CUSTOMER_PAYMENT'?'Thu công nợ khách hàng':detail.note?.startsWith('[BILL]')?'Bill ngân hàng':'Chứng từ thủ công'}</b></div>
+            </div>
+            {currentReferenceSupported()&&<div className="panel-action-row finance-reference-open">
+              <button className="button primary" type="button" onClick={openCurrentReference}>Mở chi tiết tại đây →</button>
+            </div>}
+          </>}
           {detail&&detailTab==='HISTORY'&&<div className="finance-history-list"><div><b>Tạo chứng từ</b><span>{formatDateTime(detail.occurred_at)}</span></div>{detail.posted_at&&<div><b>Ghi nhận vào sổ</b><span>{formatDateTime(detail.posted_at)}</span></div>}{detail.cancelled_at&&<div><b>Huỷ chứng từ</b><span>{formatDateTime(detail.cancelled_at)} · {detail.cancellation_reason||'—'}</span></div>}{detail.document_status==='DRAFT'&&<div><b>Trạng thái hiện tại</b><span>Đang chờ xử lý</span></div>}</div>}
           {legacy&&<>
             <div className="detail-grid">
@@ -837,10 +847,25 @@ export function FinanceCashflowWorkspace({
               <div className="full"><span>Nguồn</span><b>{sourceLabel(null,legacy.reference_type)}</b></div>
             </div>
             {legacy.note&&<div className="finance-note"><span>Nội dung</span><b>{legacy.note}</b></div>}
+            {currentReferenceSupported()&&<div className="panel-action-row finance-reference-open">
+              <button className="button primary" type="button" onClick={openCurrentReference}>Mở chi tiết tại đây →</button>
+            </div>}
             <div className="panel-meta">Giao dịch hệ thống cũ được giữ nguyên và đã đưa vào Sổ Thu / Chi.</div>
           </>}
         </div>
       </>}
+
+      {panel==='DETAIL'&&activeReference&&<FinanceReferencePanel
+        reference={activeReference}
+        customerPayment={activeCustomerPayment}
+        allocations={activeCustomerPayment?(allocationsByPayment.get(String(activeCustomerPayment.id))??[]):[]}
+        sales={referencedSales}
+        shipperPayment={activeShipperPayment}
+        order={activeReferencedOrder}
+        onBack={()=>setReferenceStack(prev=>prev.slice(0,-1))}
+        onClose={closePanel}
+        onPush={(type,id)=>pushReference(type,id)}
+      />}
 
       {panel==='BILL'&&<>
         <div className="panel-head"><div><span className="eyebrow">NGÂN HÀNG</span><h2>Đọc bill giao dịch</h2></div><button className="close" onClick={()=>setPanel('NONE')}>×</button></div>
