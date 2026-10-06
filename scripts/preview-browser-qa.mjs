@@ -355,9 +355,15 @@ if(await sellable.count()){
     recordInteraction('POS checkout opens',await page.locator('.pos-checkout').count()>0)
     const transferMode=page.locator('.pos-pay-methods').getByRole('button',{name:'Chuyển khoản'}).first()
     if(await transferMode.count()){
-      await transferMode.click();await settle(900)
-      const transferActive=await transferMode.evaluate(el=>el.classList.contains('active'))
-      const transferGuard=!transferActive&&await page.locator('.error-box').filter({hasText:'Chưa cấu hình tài khoản chuyển khoản'}).count()>0
+      await transferMode.click()
+      let transferActive=false
+      let transferGuard=false
+      for(let attempt=0;attempt<40;attempt++){
+        await settle(100)
+        transferActive=await transferMode.evaluate(el=>el.classList.contains('active'))
+        transferGuard=!transferActive&&await page.locator('.error-box').filter({hasText:'Chưa cấu hình tài khoản chuyển khoản'}).count()>0
+        if(transferActive||transferGuard)break
+      }
       recordInteraction('POS payment mode Chuyển khoản',transferActive||transferGuard,transferGuard?{guarded:true,reason:'Transfer account not configured'}:{})
     }
 
