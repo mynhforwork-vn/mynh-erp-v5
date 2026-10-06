@@ -150,6 +150,8 @@ for(const productId of productIds)await del('products','id',productId)
 await del('customers','id',f.customer_id)
 await del('purchase_account_devices','erp_user_id',f.erp_user_id)
 await del('erp_users','id',f.erp_user_id)
+await del('destination_hub_shipper_assignments','hub_config_id',f.hub_config_id)
+await del('destination_hub_configs','id',f.hub_config_id)
 
 async function count(path){
   return (await rows(path)).length
@@ -166,6 +168,7 @@ const leftovers={
   finance_document_lines:0,
   product: f.sale_sku?await count('/rest/v1/products?select=id&sku=eq.'+encodeURIComponent(f.sale_sku)):0,
   erp_user: f.erp_user_id?await count('/rest/v1/erp_users?select=id&id=eq.'+encodeURIComponent(f.erp_user_id)):0,
+  hub_config: f.hub_config_id?await count('/rest/v1/destination_hub_configs?select=id&id=eq.'+encodeURIComponent(f.hub_config_id)):0,
   sale_returns:0,
   transfers:0,
   shipper_payments:0,
