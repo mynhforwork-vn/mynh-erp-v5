@@ -193,6 +193,23 @@ export function SystemAccessSettings({
         <label><span>Role</span><select value={createRole} onChange={e=>setCreateRole(e.target.value as any)}><option value="operator">Operator</option><option value="viewer">Viewer</option><option value="admin">Admin</option></select></label>
         <button className="button primary" type="button" onClick={createAccount} disabled={pending}>{pending?'Đang tạo...':'+ Tạo tài khoản'}</button>
       </div>
+      {resetOpen&&<div className="admin-danger-zone admin-danger-zone-inline">
+        <div className="admin-role-matrix-head">
+          <div><b>Reset dữ liệu hệ thống</b><span>Không thể hoàn tác. Chọn đúng phạm vi trước khi xác nhận.</span></div>
+        </div>
+        <div className="admin-reset-options">
+          <button type="button" className="admin-reset-card" onClick={()=>{setResetScope('DATA');setConfirm('');setError('')}}>
+            <b>Reset dữ liệu vận hành</b>
+            <span>Xóa User Shopee, đơn hàng, tồn phát sinh, bán hàng, khách hàng, công nợ, tài chính và lịch sử vận hành.</span>
+            <small>Giữ cấu hình ngân hàng, HUB, ĐVVC và danh mục sản phẩm.</small>
+          </button>
+          <button type="button" className="admin-reset-card danger" onClick={()=>{setResetScope('ALL');setConfirm('');setError('')}}>
+            <b>Reset toàn hệ thống</b>
+            <span>Xóa cả dữ liệu vận hành và cấu hình người dùng: QR/ngân hàng, HUB/Shipper, ĐVVC, sản phẩm, phân loại.</span>
+            <small>Giữ tài khoản đăng nhập, schema, 2 kho nền tảng và danh mục tài chính hệ thống.</small>
+          </button>
+        </div>
+      </div>}
       <div className="admin-user-table-wrap">
         <table className="table admin-user-table">
           <thead><tr><th>Email</th><th>Role</th><th>Đăng nhập gần nhất</th><th>Trạng thái</th><th>Xử lý</th></tr></thead>
@@ -217,23 +234,7 @@ export function SystemAccessSettings({
       </div>
     </section>
 
-    {resetOpen&&<section className="admin-danger-zone admin-danger-zone-inline">
-      <div className="admin-role-matrix-head">
-        <div><b>Reset dữ liệu hệ thống</b><span>Không thể hoàn tác. Chọn đúng phạm vi trước khi xác nhận.</span></div>
-      </div>
-      <div className="admin-reset-options">
-        <button type="button" className="admin-reset-card" onClick={()=>{setResetScope('DATA');setConfirm('');setError('')}}>
-          <b>Reset dữ liệu vận hành</b>
-          <span>Xóa User Shopee, đơn hàng, tồn phát sinh, bán hàng, khách hàng, công nợ, tài chính và lịch sử vận hành.</span>
-          <small>Giữ cấu hình ngân hàng, HUB, ĐVVC và danh mục sản phẩm.</small>
-        </button>
-        <button type="button" className="admin-reset-card danger" onClick={()=>{setResetScope('ALL');setConfirm('');setError('')}}>
-          <b>Reset toàn hệ thống</b>
-          <span>Xóa cả dữ liệu vận hành và cấu hình người dùng: QR/ngân hàng, HUB/Shipper, ĐVVC, sản phẩm, phân loại.</span>
-          <small>Giữ tài khoản đăng nhập, schema, 2 kho nền tảng và danh mục tài chính hệ thống.</small>
-        </button>
-      </div>
-    </section>}
+
 
     {passwordUser&&<div className="admin-reset-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!pending)setPasswordUser(null)}}>
       <div className="admin-reset-dialog admin-password-dialog" role="dialog" aria-modal="true">
