@@ -234,16 +234,31 @@ await waitFor(async()=>await balance(f.warehouse_id)===3?true:null,{label:'manua
 record('Manual OUT adjustment decreases balance',await balance(f.warehouse_id)===3,{quantity:await balance(f.warehouse_id)})
 
 // E) Transfer one unit source -> destination, dispatch and receive.
-await go('/warehouse/inventory')
-await page.getByRole('button',{name:'Chuyển kho'}).click()
-tool=page.locator('.whx-tool-popover.transfer form').first()
-await tool.locator('select[name="from_warehouse_id"]').selectOption(String(f.warehouse_id))
-await tool.locator('select[name="to_warehouse_id"]').selectOption(String(f.transfer_warehouse_id))
-await tool.locator('select[name="product_variant_id"]').selectOption(String(f.mutation_variant_id))
-await tool.locator('input[name="quantity"]').fill('1')
-await tool.locator('input[name="note"]').fill(f.marker+' transfer')
-await tool.getByRole('button',{name:'Tạo phiếu chuyển'}).click()
-const transfer=await waitFor(async()=>first('/rest/v1/transfer_batches?select=id,status,from_warehouse_id,to_warehouse_id,note&note=eq.'+encodeURIComponent(f.marker+' transfer')+'&order=created_at.desc&limit=1'),{label:'transfer draft'})
+const transferNote=f.marker+' transfer'
+const transferQuery='/rest/v1/transfer_batches?select=id,status,from_warehouse_id,to_warehouse_id,note&note=eq.'+encodeURIComponent(transferNote)+'&order=created_at.desc&limit=1'
+async function submitTransferDraft(){
+  await go('/warehouse/inventory')
+  await page.getByRole('button',{name:'Chuyển kho'}).click()
+  tool=page.locator('.whx-tool-popover.transfer form').first()
+  await tool.locator('select[name="from_warehouse_id"]').selectOption(String(f.warehouse_id))
+  await tool.locator('select[name="to_warehouse_id"]').selectOption(String(f.transfer_warehouse_id))
+  await tool.locator('select[name="product_variant_id"]').selectOption(String(f.mutation_variant_id))
+  await tool.locator('input[name="quantity"]').fill('1')
+  await tool.locator('input[name="note"]').fill(transferNote)
+  await tool.getByRole('button',{name:'Tạo phiếu chuyển'}).click()
+}
+let transfer=null
+for(let attempt=1;attempt<=2&&!transfer;attempt++){
+  const existing=await first(transferQuery)
+  if(existing){transfer=existing;break}
+  await submitTransferDraft()
+  for(let poll=0;poll<35&&!transfer;poll++){
+    transfer=await first(transferQuery)
+    if(!transfer)await new Promise(r=>setTimeout(r,300))
+  }
+  if(!transfer&&attempt===1)console.log('QA_MUTATION_V2_RETRY transfer draft after Preview/server-action miss')
+}
+if(!transfer)throw new Error('Timed out waiting for transfer draft after retry')
 persist({mutation_transfer_id:String(transfer.id)})
 record('Transfer creates DRAFT batch',transfer.status==='DRAFT'&&String(transfer.from_warehouse_id)===String(f.warehouse_id)&&String(transfer.to_warehouse_id)===String(f.transfer_warehouse_id),{transferId:transfer.id})
 
