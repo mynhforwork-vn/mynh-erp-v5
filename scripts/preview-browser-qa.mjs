@@ -114,7 +114,7 @@ async function followLink(locator,{waitSelector=null,waitMs=0}={}){
 
 const routes=[
   '/','/purchase','/purchase/accounts','/purchase/orders','/purchase/tracking',
-  '/warehouse','/warehouse/inventory','/warehouse/history',
+  '/warehouse','/warehouse/receive','/warehouse/inventory','/warehouse/history',
   '/sales','/sales/pos','/sales/history','/sales/customers','/sales/debt',
   '/finance','/finance/cashflow','/finance/shipper-payments','/finance/customer-payments','/finance/reports',
   '/settings','/account'
@@ -264,8 +264,8 @@ if(await trackingOrderLink.count()){
   }
 }else recordInteraction('Tracking contextual fixture available',true,{skipped:true,reason:'No linked order in current tracking rows'})
 
-await go('/warehouse')
-const intakeRow=page.locator('.warehouse-split-table tbody tr, .warehouse-ready-table tbody tr').filter({has:page.locator('.table-link')}).first()
+await go('/warehouse/receive')
+const intakeRow=page.locator('.warehouse-split-table tbody tr').filter({hasText:'QA Warehouse Intake Fixture'}).first()
 if(await intakeRow.count()){
   await intakeRow.click();await settle()
   recordInteraction('Warehouse intake detail panel opens',await page.locator('aside.warehouse-intake-panel').count()>0)
@@ -279,7 +279,7 @@ if(await intakeRow.count()){
   const close=page.locator('aside.warehouse-intake-panel').getByRole('button',{name:'Đóng'}).first()
   if(await close.count()){await close.click();await settle(150)}
   recordInteraction('Warehouse intake detail panel closes',await page.locator('aside.warehouse-intake-panel').count()===0)
-}else recordInteraction('Warehouse intake fixture available',true,{skipped:true,reason:'No received orders waiting for intake'})
+}else recordInteraction('Warehouse intake QA fixture available',false,{reason:'Expected isolated Warehouse Intake fixture is missing'})
 
 await go('/warehouse/inventory')
 const stockRow=page.locator('.whx-stock-main .whx-table tbody tr').filter({has:page.locator('.whx-link-text')}).first()
@@ -619,7 +619,7 @@ summary.interactions.push({
 })
 
 await page.setViewportSize({width:390,height:844})
-for(const path of ['/purchase/orders','/purchase/tracking','/warehouse','/sales/pos','/sales/history','/sales/customers','/sales/debt']){
+for(const path of ['/purchase/orders','/purchase/tracking','/warehouse','/warehouse/receive','/sales/pos','/sales/history','/sales/customers','/sales/debt']){
   const r=await go(path)
   const metrics=await page.evaluate(()=>({
     innerWidth:window.innerWidth,
