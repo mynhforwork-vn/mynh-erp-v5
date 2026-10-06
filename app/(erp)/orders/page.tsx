@@ -95,6 +95,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const sp=await searchParams
   const {supabase,user}=await requireUser()
   const role=String(user.app_metadata?.role??'viewer')
+  const canOperate=['admin','operator'].includes(role)
 
   const range=resolveRange(sp)
   const queryText=String(sp.q??'').trim().toLowerCase()
@@ -337,8 +338,8 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     ? [{...detail,order_items:items,order_vouchers:vouchers},...rows]
     : rows
 
-  const createMode=sp.mode==='create'
-  const editMode=Boolean(detail&&sp.mode==='edit'&&!detail.archived_at)
+  const createMode=canOperate&&sp.mode==='create'
+  const editMode=Boolean(canOperate&&detail&&sp.mode==='edit'&&!detail.archived_at)
   const destinationSettingsMode=sp.settings==='destination-hubs'
   const panelOpen=createMode||Boolean(detail)
   const currentShip=activeShipment(detail)
@@ -365,7 +366,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       </div>
       <div className="head-actions">
         <Link className={`button ${destinationSettingsMode?'active':''}`} href={listHref({settings:'destination-hubs',order:null,mode:null,tab:null})}>⚙ Kho đích SPX</Link>
-        <Link className="button primary" href={listHref({mode:'create',order:null,tab:null,settings:null,archive:null})}>+ Tạo đơn nhập</Link>
+        {canOperate&&<Link className="button primary" href={listHref({mode:'create',order:null,tab:null,settings:null,archive:null})}>+ Tạo đơn nhập</Link>}
       </div>
     </header>
 
@@ -439,7 +440,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               rows={displayRows}
               selectedId={sp.order}
               baseQuery={returnQuery}
-              canEdit={['admin','operator'].includes(role)}
+              canEdit={canOperate}
               canDeletePermanent={role==='admin'}
               carrierConfigs={carrierConfigs}
             />}
@@ -666,10 +667,10 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
               <div className="panel-action-row split-actions">
                 <CopyOrderButton text={`Mã đơn: ${detail.shopee_order_id??''}\nMã vận đơn: ${currentShip?.tracking_number??''}\nCOD: ${detail.cod??0}\nNgười nhận: ${detail.recipient_name??''}\nSĐT: ${detail.recipient_phone??''}\nĐịa chỉ: ${detail.recipient_address??''}`}/>
-                {['admin','operator'].includes(role)&&!detail.archived_at&&<Link className="button primary" href={listHref({order:detail.id,mode:'edit'})}>Sửa đơn</Link>}
+                {canOperate&&!detail.archived_at&&<Link className="button primary" href={listHref({order:detail.id,mode:'edit'})}>Sửa đơn</Link>}
               </div>
 
-              {['admin','operator'].includes(role)&&<div className={'record-lifecycle-zone '+(detail.archived_at?'archived':'')}>
+              {canOperate&&<div className={'record-lifecycle-zone '+(detail.archived_at?'archived':'')}>
                 {!detail.archived_at
                   ? <form action={archiveOrder} className="record-lifecycle-action">
                       <input type="hidden" name="order_id" value={detail.id}/>
@@ -889,6 +890,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         configs={destinationHubConfigs}
         shippers={destinationShipperRows}
         closeHref={listHref({settings:null})}
+        canEdit={canOperate}
       />}
   </div>
 }
