@@ -78,7 +78,7 @@ for(const [file,needle] of required){
    Explicit "Mở module" actions are the only intentional cross-module escape hatch. */
 const contextualRequired=[
   ['components/context-order-panel.tsx','parentLabel'],
-  ['components/context-order-panel.tsx','Mở module Đơn ↗'],
+  ['components/context-order-panel.tsx','Mở trong module Đơn ↗'],
   ['components/context-sale-panel.tsx','context-stack-back'],
   ['app/(erp)/sales/customers/page.tsx','ContextSalePanel'],
   ['app/(erp)/sales/customers/page.tsx','customer-collect-context'],
