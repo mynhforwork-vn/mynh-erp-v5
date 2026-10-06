@@ -74,6 +74,24 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     ? await supabase.rpc('admin_list_system_users')
     : {data:[],error:null}
 
+  const systemUsers=role==='admin'
+    ? (() => {
+        const rows=[...((systemUsersResult.data??[]) as any[])]
+        if(!rows.some((row:any)=>row.user_id===user.id)){
+          rows.unshift({
+            user_id:user.id,
+            email:user.email??null,
+            role:String(user.app_metadata?.role??'admin'),
+            created_at:user.created_at,
+            last_sign_in_at:user.last_sign_in_at??null,
+            email_confirmed_at:user.email_confirmed_at??null,
+            is_anonymous:Boolean((user as any).is_anonymous),
+          })
+        }
+        return rows
+      })()
+    : []
+
   const error=carrierError??hubError??shipperError??assignmentError
     ??activeOrdersResult.error??archivedOrdersResult.error??activeUsersResult.error??archivedUsersResult.error
     ??bankTransferResult.error??systemUsersResult.error
@@ -115,7 +133,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
           : section==='payments'
             ? <BankTransferSettings config={(bankTransferResult.data??null) as any} canEdit={canEdit}/>
             : section==='access'&&role==='admin'
-              ? <SystemAccessSettings users={(systemUsersResult.data??[]) as any[]} currentUserId={user.id}/>
+              ? <SystemAccessSettings users={systemUsers as any[]} currentUserId={user.id}/>
               : <DataManagementSettings
                 activeOrders={activeOrders}
                 archivedOrders={archivedOrders}
