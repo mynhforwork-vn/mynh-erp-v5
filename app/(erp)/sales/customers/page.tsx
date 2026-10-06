@@ -3,6 +3,7 @@ import { formatMoney } from '@/lib/format'
 import { requireUser } from '@/lib/supabase/auth'
 import { archiveSalesCustomerForm,createSalesCustomer,restoreSalesCustomerForm,updateSalesCustomerForm } from '@/lib/actions/sales'
 import { ContextSalePanel } from '@/components/context-sale-panel'
+import { DebtCollectForm } from '@/components/debt-collect-form'
 import { fetchSaleContext } from '@/lib/sales/context'
 
 type SP={
@@ -10,7 +11,7 @@ type SP={
   state?:'all'|'debt'|'repeat'|'new'
   customer?:string
   tab?:'info'|'purchases'|'debt'|'history'
-  mode?:'new'|'edit'
+  mode?:'new'|'edit'|'collect'
   archive?:'archived'
   sale?:string
   saleTab?:'info'|'products'|'payment'|'history'
@@ -56,13 +57,14 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
     ? customerQuery.not('archived_at','is',null)
     : customerQuery.is('archived_at',null)
 
-  const [customersRes,salesRes,debtRes,paymentsRes,warehousesRes,itemsRes]=await Promise.all([
+  const [customersRes,salesRes,debtRes,paymentsRes,warehousesRes,itemsRes,bankResult]=await Promise.all([
     customerQuery,
-    supabase.from('sales').select('id,customer_id,warehouse_id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,sale_status,note').not('customer_id','is',null).order('sale_at',{ascending:false}),
+    supabase.from('sales').select('id,customer_id,warehouse_id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,sale_status,note,sale_items(id,quantity,sale_price,product_variants(id,variant_name,products(sku,name)))').not('customer_id','is',null).order('sale_at',{ascending:false}),
     supabase.from('customer_debt_balances').select('customer_id,balance'),
     supabase.from('customer_payments').select('id,customer_id,amount,paid_at,note,receipt_code,payment_method,cash_amount,transfer_amount').order('paid_at',{ascending:false}),
     supabase.from('warehouses').select('id,code,name,address'),
     supabase.from('sale_items').select('sale_id,quantity'),
+    supabase.from('bank_transfer_configs').select('config_key,bank_id,bank_name,account_no,account_name,qr_template,transfer_prefix,is_active').eq('config_key','DEFAULT').maybeSingle(),
   ])
 
   const customers=(customersRes.data??[]) as any[]
@@ -124,10 +126,20 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
           total:Number(row.total_amount??0),paid:Number(row.paid_amount??0),
           debt:Number(row.debt_amount??Math.max(0,Number(row.total_amount??0)-Number(row.paid_amount??0))),
           status:String(row.payment_status??'UNPAID'),
+          itemRows:(row.sale_items??[]).map((item:any)=>({
+            id:String(item.id),
+            sku:String(item.product_variants?.products?.sku??'—'),
+            name:String(item.product_variants?.products?.name??'Sản phẩm'),
+            variant:String(item.product_variants?.variant_name??'Mặc định'),
+            quantity:Number(item.quantity??0),
+            sale_price:Number(item.sale_price??0),
+          })),
         }
       })
     : []
   const selectedPayments=selected?(paymentsByCustomer.get(selected.id)??[]):[]
+  const bankConfig=(bankResult.data??null) as any
+  const collectMode=sp.mode==='collect'&&Boolean(selected)&&!contextSale
 
   const totalDebt=allRows.reduce((sum,x)=>sum+x.debt,0)
   const totalRevenue=allRows.reduce((sum,x)=>sum+x.total,0)
@@ -235,6 +247,27 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
         </div>
       </section>
 
+      {selected&&collectMode&&<aside className="customer-demo-panel customer-collect-context">
+        <div className="sales-detail-panel-head context-stack-head">
+          <Link className="context-stack-back" href={href({customer:selected.id,tab:'debt',mode:null,sale:null,saleTab:null})} aria-label="Quay lại">←</Link>
+          <div className="context-stack-title">
+            <span className="module-eyebrow">THU NỢ · TRONG KHÁCH HÀNG</span>
+            <h2>{selected.name}</h2>
+            <small>{phone(selected.phone)}</small>
+          </div>
+          <Link className="panel-close" href={href({customer:null,tab:null,mode:null,sale:null,saleTab:null})} aria-label="Đóng toàn bộ">×</Link>
+        </div>
+        <div className="context-stack-breadcrumb"><span>Khách hàng</span><i>›</i><b>Công nợ</b><i>›</i><strong>Thu nợ</strong></div>
+        <DebtCollectForm
+          customer={{id:selected.id,name:selected.name,phone:phone(selected.phone)}}
+          balance={selected.debt}
+          invoices={purchases.filter(row=>row.debt>0).map(row=>({
+            id:row.id,code:row.code,time:fmtDate(row.time),total:row.total,paid:row.paid,debt:row.debt,warehouse:row.warehouse,items:row.itemRows,
+          }))}
+          bankConfig={bankConfig}
+        />
+      </aside>}
+
       {selected&&contextSale&&<ContextSalePanel
         sale={contextSale}
         activeTab={saleTab}
@@ -255,7 +288,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
         openModuleHref={'/sales/history?sale='+contextSale.id}
       />}
 
-      {selected&&!contextSale&&<aside className="customer-demo-panel">
+      {selected&&!contextSale&&!collectMode&&<aside className="customer-demo-panel">
         <div className="sales-detail-panel-head">
           <div>
             <span className="module-eyebrow">KHÁCH HÀNG</span>
@@ -338,7 +371,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
                     <div><b>{row.code}</b><span>{fmtDate(row.time)}</span></div>
                     <div><span>Đã thu {formatMoney(row.paid)}</span><b>{formatMoney(row.debt)} còn nợ</b></div>
                   </Link>)}
-                  <Link className="button primary customer-collect-button" href={'/sales/debt?customer='+selected.id+'&mode=collect'}>Thu nợ</Link>
+                  <Link className="button primary customer-collect-button" href={href({customer:selected.id,tab:'debt',mode:'collect',sale:null,saleTab:null})}>Thu nợ</Link>
                 </>}
           </div>}
 
