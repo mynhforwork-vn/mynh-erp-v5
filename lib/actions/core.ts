@@ -1797,3 +1797,90 @@ export async function deleteSystemUserAccount(input:{user_id:string}){
     return {ok:false as const,error:String(error?.message??'Không thể xóa tài khoản hệ thống')}
   }
 }
+
+
+export async function saveTrackingProviderConfig(formData:FormData){
+  const {supabase,role}=await actor()
+  requireAdmin(role)
+  const carrier=text(formData.get('carrier')).toUpperCase()
+  const endpoint=text(formData.get('endpoint_url'))
+  const method=text(formData.get('http_method')).toUpperCase()||'GET'
+  const timeoutRaw=Number(text(formData.get('timeout_ms'))||8000)
+  if(!carrier)throw new Error('Thiếu ĐVVC cần cấu hình Tracking Provider')
+  const {error}=await supabase.rpc('save_tracking_provider_config_secure',{
+    p_carrier:carrier,
+    p_enabled:formData.get('enabled')==='on',
+    p_endpoint_url:endpoint,
+    p_http_method:method,
+    p_timeout_ms:Number.isFinite(timeoutRaw)?Math.round(timeoutRaw):8000,
+    p_auth_header_name:text(formData.get('auth_header_name'))||null,
+    p_auth_secret:text(formData.get('auth_secret'))||null,
+    p_clear_secret:formData.get('clear_secret')==='on',
+  })
+  if(error)throw new Error(error.message)
+  revalidatePath('/settings')
+}
+
+export async function saveTelegramAlertSettings(formData:FormData){
+  const {supabase,role}=await actor()
+  requireAdmin(role)
+  const alertTypes=formData.getAll('alert_types').map(v=>text(v)).filter(Boolean)
+  const {error}=await supabase.rpc('save_telegram_alert_settings_secure',{
+    p_enabled:formData.get('enabled')==='on',
+    p_default_chat_id:text(formData.get('default_chat_id'))||null,
+    p_alert_types:alertTypes,
+    p_bot_token:text(formData.get('bot_token'))||null,
+    p_clear_token:formData.get('clear_token')==='on',
+  })
+  if(error)throw new Error(error.message)
+  revalidatePath('/settings')
+}
+
+export async function saveTelegramAlertDestination(formData:FormData){
+  const {supabase,role}=await actor()
+  requireAdmin(role)
+  const id=text(formData.get('destination_id'))
+  const destinationHub=text(formData.get('destination_hub'))
+  const chatId=text(formData.get('chat_id'))
+  if(!destinationHub||!chatId)throw new Error('Thiếu HUB hoặc Telegram Chat ID')
+  const payload={
+    destination_hub:destinationHub,
+    chat_id:chatId,
+    alert_types:formData.getAll('alert_types').map(v=>text(v)).filter(Boolean),
+    is_active:formData.get('is_active')==='on',
+    updated_at:new Date().toISOString(),
+  }
+  const mutation=id
+    ? supabase.from('telegram_alert_destinations').update(payload).eq('id',id)
+    : supabase.from('telegram_alert_destinations').upsert(payload,{onConflict:'destination_hub'})
+  const {error}=await mutation
+  if(error)throw new Error(error.message)
+  revalidatePath('/settings')
+}
+
+export async function deleteTelegramAlertDestination(formData:FormData){
+  const {supabase,role}=await actor()
+  requireAdmin(role)
+  const id=text(formData.get('destination_id'))
+  if(!id)throw new Error('Thiếu cấu hình Telegram HUB cần xoá')
+  const {error}=await supabase.from('telegram_alert_destinations').delete().eq('id',id)
+  if(error)throw new Error(error.message)
+  revalidatePath('/settings')
+}
+
+export async function testTelegramConnection(formData:FormData){
+  const {supabase,role}=await actor()
+  requireAdmin(role)
+  const chatId=text(formData.get('chat_id'))
+  const {data,error}=await supabase.functions.invoke('telegram-alert-dispatcher',{
+    body:{test:true,chat_id:chatId||undefined},
+  })
+  const params=new URLSearchParams({section:'tracking-alerts'})
+  if(error||data?.ok!==true){
+    params.set('telegram_test','fail')
+    params.set('telegram_message',String(error?.message??data?.error??'Không gửi được tin thử').slice(0,180))
+  }else{
+    params.set('telegram_test','ok')
+  }
+  redirect('/settings?'+params.toString())
+}
