@@ -1776,3 +1776,24 @@ export async function setSystemUserTemporaryPassword(input:{
     return {ok:false as const,error:String(error?.message??'Không thể cấp lại mật khẩu')}
   }
 }
+
+
+export async function deleteSystemUserAccount(input:{user_id:string}){
+  try{
+    const {supabase,role}=await actor()
+    requireAdmin(role)
+    const userId=String(input?.user_id??'').trim()
+    if(!userId)return {ok:false as const,error:'Thiếu tài khoản hệ thống'}
+
+    const {data,error}=await supabase.functions.invoke('admin-system-users',{
+      body:{action:'delete',user_id:userId},
+    })
+    if(error)return {ok:false as const,error:String((data as any)?.error??error.message??'Không thể xóa tài khoản')}
+    if((data as any)?.error)return {ok:false as const,error:String((data as any).error)}
+
+    revalidatePath('/settings')
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể xóa tài khoản hệ thống')}
+  }
+}
