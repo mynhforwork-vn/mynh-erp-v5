@@ -96,6 +96,10 @@ for(const paymentId of paymentIds){
   const docs=await rows('/rest/v1/finance_documents?select=id&source_type=eq.CUSTOMER_PAYMENT&source_id=eq.'+encodeURIComponent(paymentId))
   financeDocumentIds.push(...docs.map(x=>String(x.id)))
 }
+for(const saleId of saleIds){
+  const docs=await rows('/rest/v1/finance_documents?select=id&source_type=eq.SALE&source_id=eq.'+encodeURIComponent(saleId))
+  financeDocumentIds.push(...docs.map(x=>String(x.id)))
+}
 
 // Remove child rows first. Each QA customer/SKU is unique to this workflow run.
 for(const paymentId of paymentIds)await del('customer_payment_allocations','customer_payment_id',paymentId)
