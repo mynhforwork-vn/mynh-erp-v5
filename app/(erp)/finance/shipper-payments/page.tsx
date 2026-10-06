@@ -177,7 +177,7 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
           <Link className={mode==='customer'?'active':''} href={href({mode:'customer',hub:null,view:null})}>Khách hàng</Link>
         </div>
         <div className="finance-period-tabs compact">
-          {([['all','Toàn thời gian'],['today','Hôm nay'],['7d','7 ngày'],['month','Tháng này']] as const).map(([key,label])=><Link key={key} href={href({period:key,hub:null})} className={period===key?'active':''}>{label}</Link>)}
+          {([['all','Toàn thời gian'],['today','Hôm nay'],['7d','7 ngày'],['month','Tháng này']] as const).map(([key,label])=><Link key={key} href={href({period:key})} className={period===key?'active':''}>{label}</Link>)}
         </div>
       </div>
 
@@ -185,6 +185,9 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
         <input type="hidden" name="mode" value={mode}/>
         {mode==='shipper'&&<input type="hidden" name="view" value={view}/>}
         {period!=='all'&&<input type="hidden" name="period" value={period}/>}
+        {selectedHub&&<input type="hidden" name="hub" value={selectedHub}/>}
+        {sp.order&&<input type="hidden" name="order" value={sp.order}/>}
+        {sp.orderTab&&<input type="hidden" name="orderTab" value={sp.orderTab}/>}
         <input className="search" name="q" defaultValue={sp.q??''} placeholder={mode==='shipper'?'Tìm Shipper / HUB / mã đơn...':'Tìm khách hàng / SĐT...'}/>
         <select name="state" defaultValue={state}>
           <option value="all">Trạng thái</option>
@@ -192,7 +195,7 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
           <option value="paid">{mode==='shipper'?'Đã đối soát':'Đã hết nợ'}</option>
         </select>
         <button className="button small">Lọc</button>
-        {(sp.q||state!=='all')&&<Link className="button small" href={href({q:null,state:null,hub:null})}>Xoá lọc</Link>}
+        {(sp.q||state!=='all')&&<Link className="button small" href={href({q:null,state:null})}>Xoá lọc</Link>}
       </form>
 
       {mode==='shipper'?<>
