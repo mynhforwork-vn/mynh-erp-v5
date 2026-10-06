@@ -229,19 +229,19 @@ export function WarehouseInventoryWorkspace({
             <div><b>Lịch sử nhập / xuất</b><span>{activeTx.length} giao dịch gần nhất</span></div>
             <Link className="button small" href={'/warehouse/history?q='+encodeURIComponent(active.sku)}>Mở lịch sử kho</Link>
           </div>
-          <div className="whx-sku-ledger whx-sku-ledger-v2">
+          <div className="whx-history-list-final">
             {!activeTx.length
               ? <div className="empty compact">Chưa có lịch sử cho SKU này.</div>
               : activeTx.slice(0,40).map(tx=>{
                   const incoming=IN_TYPES.has(tx.tx_type)
-                  return <div key={tx.id} className="whx-ledger-row">
-                    <span className={'whx-ledger-dot '+(incoming?'in':'out')}/>
-                    <div>
+                  return <div key={tx.id} className="whx-history-row-final">
+                    <span className={'whx-history-dot-final '+(incoming?'in':'out')}/>
+                    <div className="whx-history-info-final">
                       <b>{txLabel(tx.tx_type,tx.reference_type)}</b>
                       <span>{formatDateTime(tx.created_at)}</span>
                       <small>{tx.reference_type??'Không có tham chiếu'}</small>
                     </div>
-                    <strong className={incoming?'in':'out'}>{incoming?'+':'-'}{tx.quantity}</strong>
+                    <strong className={'whx-history-qty-final '+(incoming?'in':'out')}>{incoming?'+':'-'}{tx.quantity}</strong>
                   </div>
                 })}
           </div>
