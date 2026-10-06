@@ -3127,3 +3127,44 @@
   text-overflow:ellipsis!important;
   white-space:nowrap!important;
 }
+
+
+/* Tracking contextual order stack */
+.tracking-screen-v2.with-context-order-panel{
+  position:relative!important;
+  padding-right:calc(var(--mynh-slidebar-width) + 8px)!important;
+}
+.tracking-screen-v2.with-context-order-panel>.context-order-panel{
+  position:absolute!important;
+  top:0!important;
+  right:0!important;
+  bottom:0!important;
+  z-index:12!important;
+  width:var(--mynh-slidebar-width)!important;
+  max-width:var(--mynh-slidebar-width)!important;
+  height:100%!important;
+  max-height:100%!important;
+  overflow:hidden!important;
+  border:1px solid #cbd7e1!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  box-shadow:0 3px 12px rgba(30,50,70,.08)!important;
+}
+.tracking-screen-v2.with-context-order-panel>.tracking-hub-stack-v2{
+  padding-right:2px!important;
+}
+@media(max-width:900px){
+  .tracking-screen-v2.with-context-order-panel{
+    padding-right:0!important;
+    overflow-y:auto!important;
+  }
+  .tracking-screen-v2.with-context-order-panel>.context-order-panel{
+    position:relative!important;
+    inset:auto!important;
+    width:auto!important;
+    max-width:none!important;
+    height:auto!important;
+    max-height:none!important;
+    margin-top:6px!important;
+  }
+}
