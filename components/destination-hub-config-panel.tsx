@@ -438,7 +438,7 @@ export function DestinationHubConfigModal({
           <p>Cấu hình riêng cho SPX: HUB → nhiều Phường/Xã → nhiều Shipper.</p>
         </div>
         <div className="settings-modal-actions">
-          <Link className="button" href="/settings?section=spx-hubs">Cài đặt hệ thống</Link>
+          <Link className="button" href="/settings?section=spx-hubs">Mở module Cài đặt ↗</Link>
           <Link className="close" href={closeHref}>×</Link>
         </div>
       </div>
