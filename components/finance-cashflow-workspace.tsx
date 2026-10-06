@@ -2,6 +2,7 @@
 
 import { useEffect,useMemo,useState,useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { cancelFinanceDocument,saveFinanceCategory,saveFinanceDocument,type FinanceTxType } from '@/lib/actions/finance'
 import { formatDateTime,formatMoney } from '@/lib/format'
 
@@ -59,6 +60,41 @@ type Transaction={
   voided_at?:string|null
   void_reason?:string|null
 }
+type CustomerPaymentRef={
+  id:string
+  customer_id:string
+  amount:number|string
+  paid_at:string
+  note?:string|null
+  receipt_code?:string|null
+  payment_method?:string|null
+  cash_amount?:number|string|null
+  transfer_amount?:number|string|null
+  customers?:{id:string,name?:string|null,phone?:string|null,address?:string|null}|null
+}
+type CustomerPaymentAllocationRef={
+  id:string
+  customer_payment_id:string
+  sale_id:string
+  amount:number|string
+  created_at?:string|null
+}
+type ShipperPaymentRef={
+  id:string
+  destination_hub?:string|null
+  shipper_id?:string|null
+  shipper_name?:string|null
+  total_cod:number|string
+  actual_transferred:number|string
+  tip:number|string
+  transferred_at:string
+  note?:string|null
+  destination_shippers?:{name?:string|null,phone?:string|null}|null
+  warehouses?:{code?:string|null,name?:string|null}|null
+  shipper_payment_details?:any[]
+}
+type FinanceReference={type:'CUSTOMER_PAYMENT'|'SHIPPER_PAYMENT'|'SALE'|'ORDER',id:string}
+
 type DraftLine={key:string,category_id:string,description:string,amount:number}
 type PanelMode='NONE'|'CREATE'|'DETAIL'|'CATEGORIES'|'BILL'
 type DocumentTab='INFO'|'MONEY'
@@ -126,11 +162,15 @@ function sourceLabel(source?:string|null,reference?:string|null){
 }
 
 export function FinanceCashflowWorkspace({
-  categories,documents,transactions,canEdit,loadError,
+  categories,documents,transactions,customerPayments,customerPaymentAllocations,shipperPayments,referencedSales,canEdit,loadError,
 }:{
   categories:Category[]
   documents:Document[]
   transactions:Transaction[]
+  customerPayments:CustomerPaymentRef[]
+  customerPaymentAllocations:CustomerPaymentAllocationRef[]
+  shipperPayments:ShipperPaymentRef[]
+  referencedSales:any[]
   canEdit:boolean
   loadError?:string|null
 }){
@@ -189,6 +229,7 @@ export function FinanceCashflowWorkspace({
   const [billCategory,setBillCategory]=useState('')
   const [billError,setBillError]=useState('')
   const [printDocument,setPrintDocument]=useState<Document|null>(null)
+  const [referenceStack,setReferenceStack]=useState<FinanceReference[]>([])
 
   useEffect(()=>{
     try{
@@ -204,18 +245,48 @@ export function FinanceCashflowWorkspace({
     try{localStorage.setItem(COLUMN_PREF_KEY,JSON.stringify({order:columnOrder,hidden:hiddenColumns}))}catch{}
   },[columnOrder,hiddenColumns])
   useEffect(()=>{
-    const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape'){setPanel('NONE');setColumnMenu(false)}}
+    const onKey=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'){
+        if(referenceStack.length)setReferenceStack(prev=>prev.slice(0,-1))
+        else setPanel('NONE')
+        setColumnMenu(false)
+      }
+    }
     const onPointer=(event:MouseEvent)=>{if(!(event.target as HTMLElement).closest('.finance-column-manager-wrap'))setColumnMenu(false)}
     window.addEventListener('keydown',onKey)
     document.addEventListener('mousedown',onPointer)
     return ()=>{window.removeEventListener('keydown',onKey);document.removeEventListener('mousedown',onPointer)}
-  },[])
+  },[referenceStack.length])
 
   const categoryMap=useMemo(()=>new Map(categories.map(c=>[c.id,c])),[categories])
   const categoryCodeMap=useMemo(()=>new Map(categories.map(c=>[c.code,c])),[categories])
   const total=lines.reduce((sum,line)=>sum+Math.max(0,num(line.amount)),0)
   const detail=documents.find(d=>d.id===detailId)??null
   const legacy=transactions.find(t=>t.id===legacyId)??null
+  const activeReference=referenceStack.length?referenceStack[referenceStack.length-1]:null
+  const customerPaymentMap=useMemo(()=>new Map(customerPayments.map(row=>[String(row.id),row])),[customerPayments])
+  const shipperPaymentMap=useMemo(()=>new Map(shipperPayments.map(row=>[String(row.id),row])),[shipperPayments])
+  const referencedSaleMap=useMemo(()=>new Map(referencedSales.map(row=>[String(row.id),row])),[referencedSales])
+  const allocationsByPayment=useMemo(()=>{
+    const map=new Map<string,CustomerPaymentAllocationRef[]>()
+    for(const row of customerPaymentAllocations){
+      const key=String(row.customer_payment_id)
+      const list=map.get(key)??[]
+      list.push(row)
+      map.set(key,list)
+    }
+    return map
+  },[customerPaymentAllocations])
+  const referencedOrderMap=useMemo(()=>{
+    const map=new Map<string,any>()
+    for(const payment of shipperPayments){
+      for(const detail of payment.shipper_payment_details??[]){
+        const order=detail.orders??null
+        if(order?.id)map.set(String(order.id),{...order,cod_snapshot:detail.cod_snapshot,payment_id:payment.id})
+      }
+    }
+    return map
+  },[shipperPayments])
 
   const activeTransactions=transactions.filter(t=>t.status!=='VOID')
   const periodTransactions=activeTransactions.filter(t=>periodMatch(t.transaction_at,period,customFrom,customTo))
@@ -448,6 +519,7 @@ export function FinanceCashflowWorkspace({
   function openRow(kind:'DOCUMENT'|'LEGACY',id:string){
     setError('')
     setMessage('')
+    setReferenceStack([])
     setDetailTab('INFO')
     if(kind==='DOCUMENT'){
       setDetailId(id)
@@ -459,7 +531,31 @@ export function FinanceCashflowWorkspace({
     setPanel('DETAIL')
   }
 
-  function updateLine(lineKey:string,patch:Partial<DraftLine>){
+  function closePanel(){
+    setReferenceStack([])
+    setPanel('NONE')
+  }
+
+  function pushReference(type:FinanceReference['type'],id?:string|null){
+    const value=String(id??'').trim()
+    if(!value)return
+    setReferenceStack(prev=>[...prev,{type,id:value}])
+  }
+
+  function openCurrentReference(){
+    const source=detail?.source_type??legacy?.reference_type??''
+    const id=detail?.source_id??legacy?.reference_id??null
+    if(source==='CUSTOMER_PAYMENT')pushReference('CUSTOMER_PAYMENT',id)
+    else if(source==='SHIPPER_SETTLEMENT'||source==='SHIPPER_PAYMENT')pushReference('SHIPPER_PAYMENT',id)
+    else if(source==='SALE')pushReference('SALE',id)
+  }
+
+  function currentReferenceSupported(){
+    const source=detail?.source_type??legacy?.reference_type??''
+    return ['CUSTOMER_PAYMENT','SHIPPER_SETTLEMENT','SHIPPER_PAYMENT','SALE'].includes(source)
+  }
+
+    function updateLine(lineKey:string,patch:Partial<DraftLine>){
     setLines(prev=>prev.map(line=>line.key===lineKey?{...line,...patch}:line))
   }
 
