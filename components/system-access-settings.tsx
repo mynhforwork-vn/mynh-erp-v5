@@ -164,20 +164,16 @@ export function SystemAccessSettings({
       </div>
     </section>
 
-    <section className="admin-create-user-card">
+    <section className="admin-user-table-card">
       <div className="admin-role-matrix-head">
-        <div><b>Thêm tài khoản hệ thống</b><span>Mỗi người dùng một tài khoản riêng; chọn role ngay khi tạo.</span></div>
+        <div><b>Tài khoản hệ thống</b><span>{rows.length} tài khoản · phân quyền riêng từng tài khoản</span></div>
       </div>
-      <div className="admin-create-user-form">
+      <div className="admin-create-user-inline">
         <label><span>Email đăng nhập</span><input type="email" value={createEmail} onChange={e=>setCreateEmail(e.target.value)} placeholder="operator@company.com"/></label>
         <label><span>Mật khẩu tạm</span><div className="admin-password-field"><input type="text" value={createPassword} onChange={e=>setCreatePassword(e.target.value)} placeholder="Tối thiểu 10 ký tự"/><button type="button" onClick={()=>setCreatePassword(makePassword())}>Tạo</button></div></label>
         <label><span>Role</span><select value={createRole} onChange={e=>setCreateRole(e.target.value as any)}><option value="operator">Operator</option><option value="viewer">Viewer</option><option value="admin">Admin</option></select></label>
         <button className="button primary" type="button" onClick={createAccount} disabled={pending}>{pending?'Đang tạo...':'+ Tạo tài khoản'}</button>
       </div>
-    </section>
-
-    <section className="admin-user-table-card">
-      <div className="admin-role-matrix-head"><b>Tài khoản hệ thống</b><span>{rows.length} tài khoản · phân quyền riêng từng tài khoản</span></div>
       <div className="admin-user-table-wrap">
         <table className="table admin-user-table">
           <thead><tr><th>Email</th><th>Role</th><th>Đăng nhập gần nhất</th><th>Trạng thái</th><th>Xử lý</th></tr></thead>
