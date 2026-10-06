@@ -61,6 +61,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const sp=await searchParams
   const {supabase,user}=await requireUser()
   const role=String(user.app_metadata?.role??'viewer')
+  const canOperate=['admin','operator'].includes(role)
   const archiveView=sp.archive==='archived'
 
   const fields='id,username,phone,email,status,platform,browser_name,note,created_at,updated_at,mobile,web,order_count,created_at_source,password_secret_id,spc_st_secret_id,spc_f_secret_id,password_encrypted,spc_st_encrypted,spc_f_encrypted,archived_at,archived_by'
@@ -334,8 +335,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   }
   const selectedVoucherSummary=[...voucherCounts.keys()].join(' · ')
 
-  const panelOpen=sp.mode==='create'||Boolean(selected)
-  const isEdit=Boolean(selected&&sp.mode==='edit'&&!selected.archived_at)
+  const panelOpen=(canOperate&&sp.mode==='create')||Boolean(selected)
+  const isEdit=Boolean(canOperate&&selected&&sp.mode==='edit'&&!selected.archived_at)
   const filtersActive=Boolean(queryText||state!=='all'||device!=='all'||session!=='all'||voucher!=='all'||orders!=='all'||browser!=='all'||sort!=='newest')
 
   return <div className="account-screen">
@@ -347,8 +348,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       </div>
       <div className="head-actions">
         <span className="platform-badge">SHOPEE</span>
-        <UserBulkImport/>
-        <Link className="button primary" href={filterHref({mode:'create',user:null,tab:null,archive:null})}>+ Thêm tài khoản</Link>
+        {canOperate&&<UserBulkImport/>}
+        {canOperate&&<Link className="button primary" href={filterHref({mode:'create',user:null,tab:null,archive:null})}>+ Thêm tài khoản</Link>}
       </div>
     </header>
 
@@ -432,11 +433,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
           selectedId={selected?.id}
           detailQuery={detailQuery}
           sort={sort}
-          canManage={['admin','operator'].includes(role)}
+          canManage={canOperate}
         />} 
       </section>
 
-      {sp.mode==='create'&&
+      {canOperate&&sp.mode==='create'&&
         <aside className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Thêm tài khoản</h2></div>
@@ -544,11 +545,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
               <div className="panel-note-row"><span>Ghi chú</span><b>{selected.note??'—'}</b></div>
               <div className="panel-action-row split-actions">
-                {!selected.archived_at&&selected.status!=='Blocked'&&<Link className="button" href={contextHref('/purchase/orders',{mode:'create',user:selected.id})}>+ Tạo đơn</Link>}
-                {!selected.archived_at&&<Link className="button primary" href={detailHref({user:selected.id,mode:'edit'})}>Sửa tài khoản</Link>}
+                {canOperate&&!selected.archived_at&&selected.status!=='Blocked'&&<Link className="button" href={contextHref('/purchase/orders',{mode:'create',user:selected.id})}>+ Tạo đơn</Link>}
+                {canOperate&&!selected.archived_at&&<Link className="button primary" href={detailHref({user:selected.id,mode:'edit'})}>Sửa tài khoản</Link>}
               </div>
 
-              {['admin','operator'].includes(role)&&<div className={'record-lifecycle-zone '+(selected.archived_at?'archived':'')}>
+              {canOperate&&<div className={'record-lifecycle-zone '+(selected.archived_at?'archived':'')}>
                 {!selected.archived_at
                   ? <form action={archiveERPUser} className="record-lifecycle-action">
                       <input type="hidden" name="user_id" value={selected.id}/>
