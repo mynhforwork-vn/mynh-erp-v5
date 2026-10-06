@@ -29,7 +29,7 @@ function recordInteraction(name,pass,detail={}){
   summary.interactions.push({name,pass:Boolean(pass),...detail})
 }
 
-async function settle(ms=350){
+async function settle(ms=1100){
   await page.waitForTimeout(ms)
 }
 
@@ -340,7 +340,7 @@ if(await sellable.count()){
     recordInteraction('POS checkout opens',await page.locator('.pos-checkout').count()>0)
     const transferMode=page.locator('.pos-pay-methods').getByRole('button',{name:'Chuyển khoản'}).first()
     if(await transferMode.count()){
-      await transferMode.click();await settle(100)
+      await transferMode.click();await settle(900)
       const transferActive=await transferMode.evaluate(el=>el.classList.contains('active'))
       const transferGuard=!transferActive&&await page.locator('.error-box').filter({hasText:'Chưa cấu hình tài khoản chuyển khoản'}).count()>0
       recordInteraction('POS payment mode Chuyển khoản',transferActive||transferGuard,transferGuard?{guarded:true,reason:'Transfer account not configured'}:{})
@@ -371,7 +371,7 @@ if(await sellable.count()){
 
     const combinedMode=page.locator('.pos-pay-methods').getByRole('button',{name:'Kết hợp'}).first()
     if(await combinedMode.count()){
-      await combinedMode.click();await settle(100)
+      await combinedMode.click();await settle(900)
       const combinedActive=await combinedMode.evaluate(el=>el.classList.contains('active'))
       const combinedGuard=!combinedActive&&await page.locator('.error-box').filter({hasText:'Chưa cấu hình tài khoản chuyển khoản'}).count()>0
       recordInteraction('POS payment mode Kết hợp',combinedActive||combinedGuard,combinedGuard?{guarded:true,reason:'Transfer account not configured'}:{})
