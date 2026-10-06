@@ -571,7 +571,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             {sp.tab==='orders'&&<>
               <div className="panel-section-head">
                 <div><h3>Đơn hàng của User</h3><span>{userOrders.length} đơn · chi tiết sản phẩm, voucher, giao nhận</span></div>
-                <Link className="button small" href={allUserOrdersHref(selected.username)}>Mở toàn bộ</Link>
+                <Link className="button small" href={allUserOrdersHref(selected.username)}>Mở module Đơn ↗</Link>
               </div>
               <div className="user-order-list detailed">
                 {!userOrders.length
