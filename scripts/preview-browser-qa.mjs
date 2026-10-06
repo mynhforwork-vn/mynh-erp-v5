@@ -538,10 +538,11 @@ await go('/settings')
 const settingsSelectors={
   'Đơn vị vận chuyển':'.carrier-settings',
   'SPX · Kho đích & Shipper':'.destination-master-detail',
+  'Tracking & Telegram':'.tracking-telegram-settings',
   'Thanh toán & QR':'.bank-transfer-settings',
   'Quản lý dữ liệu':'.data-management-settings',
 }
-for(const name of ['Đơn vị vận chuyển','SPX · Kho đích & Shipper','Thanh toán & QR','Quản lý dữ liệu']){
+for(const name of ['Đơn vị vận chuyển','SPX · Kho đích & Shipper','Tracking & Telegram','Thanh toán & QR','Quản lý dữ liệu']){
   const tab=page.locator('.settings-page-tabs-v3').getByRole('link',{name}).first()
   if(await tab.count()){
     const tabNav=await followLink(tab)
@@ -558,59 +559,57 @@ for(let i=0;i<Math.min(await invoiceLinks.count(),12);i++){
   if(href)invoiceHrefs.push(href)
 }
 
-let invoicePanelOpened=false
-let returnableInvoiceFound=false
-for(const href of invoiceHrefs){
-  await go(href)
-  invoicePanelOpened=page.url().includes('sale=')&&await page.locator('.sales-history-panel').count()>0
-  const candidate=page.getByRole('button',{name:'Hoàn hàng'})
-  if(invoicePanelOpened&&await candidate.count()>0&&await candidate.first().isEnabled()){
-    returnableInvoiceFound=true
-    break
+if(invoiceHrefs.length===0){
+  recordInteraction('Sales History invoice fixture available',true,{skipped:true,reason:'Clean production has no sales before mutation QA'})
+}else{
+  let invoicePanelOpened=false
+  let returnableInvoiceFound=false
+  for(const href of invoiceHrefs){
+    await go(href)
+    invoicePanelOpened=page.url().includes('sale=')&&await page.locator('.sales-history-panel').count()>0
+    const candidate=page.getByRole('button',{name:'Hoàn hàng'})
+    if(invoicePanelOpened&&await candidate.count()>0&&await candidate.first().isEnabled()){
+      returnableInvoiceFound=true
+      break
+    }
   }
-}
-summary.interactions.push({name:'Sales History invoice panel opens',pass:invoicePanelOpened})
-summary.interactions.push({name:'Sales History returnable invoice found',pass:returnableInvoiceFound})
+  recordInteraction('Sales History invoice panel opens',invoicePanelOpened)
+  recordInteraction('Sales History returnable invoice found',returnableInvoiceFound)
 
-const cancel=page.getByRole('button',{name:'Huỷ hóa đơn'})
-const returnButton=page.getByRole('button',{name:'Hoàn hàng'})
-const cancelReady=await cancel.count()>0&&await cancel.first().isEnabled()
-const returnReady=await returnButton.count()>0&&await returnButton.first().isEnabled()
-summary.interactions.push({name:'Sales History cancellation action available',pass:cancelReady})
-summary.interactions.push({name:'Sales History return action available',pass:returnReady})
-if(cancelReady){
-  await cancel.first().click()
-  const opened=await page.locator('[role=dialog]').count()>0
-  await page.keyboard.press('Escape')
-  await page.waitForTimeout(250)
-  const closedByEsc=await page.locator('[role=dialog]').count()===0
-  summary.interactions.push({name:'Sales cancel modal opens',pass:opened})
-  summary.interactions.push({name:'Sales cancel modal closes by Esc',pass:closedByEsc})
-  if(!closedByEsc){
-    const close=page.getByRole('button',{name:'Đóng'})
-    if(await close.count())await close.first().click()
-  }
-
-  await cancel.first().click()
-  const reopened=await page.locator('[role=dialog]').count()>0
-  if(reopened){
-    await page.locator('.sales-action-backdrop').click({position:{x:4,y:4}})
+  const cancel=page.getByRole('button',{name:'Huỷ hóa đơn'})
+  const returnButton=page.getByRole('button',{name:'Hoàn hàng'})
+  const cancelReady=await cancel.count()>0&&await cancel.first().isEnabled()
+  const returnReady=await returnButton.count()>0&&await returnButton.first().isEnabled()
+  recordInteraction('Sales History cancellation action available',cancelReady)
+  recordInteraction('Sales History return action available',returnReady)
+  if(cancelReady){
+    await cancel.first().click()
+    const opened=await page.locator('[role=dialog]').count()>0
+    await page.keyboard.press('Escape')
     await page.waitForTimeout(250)
+    const closedByEsc=await page.locator('[role=dialog]').count()===0
+    recordInteraction('Sales cancel modal opens',opened)
+    recordInteraction('Sales cancel modal closes by Esc',closedByEsc)
+    if(!closedByEsc){
+      const close=page.getByRole('button',{name:'Đóng'})
+      if(await close.count())await close.first().click()
+    }
+
+    await cancel.first().click()
+    const reopened=await page.locator('[role=dialog]').count()>0
+    if(reopened){
+      await page.locator('.sales-action-backdrop').click({position:{x:4,y:4}})
+      await page.waitForTimeout(250)
+    }
+    recordInteraction('Sales cancel modal closes by outside click',reopened&&await page.locator('[role=dialog]').count()===0)
   }
-  summary.interactions.push({
-    name:'Sales cancel modal closes by outside click',
-    pass:reopened&&await page.locator('[role=dialog]').count()===0,
-  })
-}
-if(returnReady){
-  await returnButton.first().click()
-  const returnOpened=await page.locator('[role=dialog]').count()>0
-  await page.keyboard.press('Escape')
-  await page.waitForTimeout(250)
-  summary.interactions.push({
-    name:'Sales return modal opens and closes by Esc',
-    pass:returnOpened&&await page.locator('[role=dialog]').count()===0,
-  })
+  if(returnReady){
+    await returnButton.first().click()
+    const returnOpened=await page.locator('[role=dialog]').count()>0
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(250)
+    recordInteraction('Sales return modal opens and closes by Esc',returnOpened&&await page.locator('[role=dialog]').count()===0)
+  }
 }
 
 await go('/settings')
