@@ -175,7 +175,7 @@ record('Full return zeroes remaining sale value',full.sale_status==='RETURNED'&&
 record('Full return restores second unit',await balance(f.warehouse_id)===2,{quantity:await balance(f.warehouse_id)})
 const returnRows=await admin('/rest/v1/sale_returns?select=id,return_type,refund_amount&sale_id=eq.'+encodeURIComponent(returnSale.id)+'&order=created_at.asc')
 record('Return flow creates two return records',Array.isArray(returnRows)&&returnRows.length===2&&returnRows.some(x=>x.return_type==='PARTIAL')&&returnRows.some(x=>x.return_type==='FULL'),{count:Array.isArray(returnRows)?returnRows.length:0})
-const returnFinance=await admin('/rest/v1/finance_transactions?select=id,amount,category&reference_type=eq.SALE_RETURN')
+const returnFinance=await admin('/rest/v1/finance_transactions?select=id,amount,category,reference_id&reference_type=eq.SALE_RETURN')
 const relatedReturnIds=new Set((returnRows??[]).map(x=>String(x.id)))
 const relatedFinance=(returnFinance??[]).filter(x=>relatedReturnIds.has(String(x.reference_id??'')))
 record('Return flow refunds collected cash',relatedFinance.reduce((s,x)=>s+Number(x.amount??0),0)===Number(f.mutation_sale_price)*2,{refundTotal:relatedFinance.reduce((s,x)=>s+Number(x.amount??0),0)})
@@ -315,7 +315,7 @@ const hubOrder=await waitFor(async()=>{
 },{label:'HUB receive'})
 record('HUB settlement marks order received',hubOrder.receive_status==='RECEIVED'&&hubOrder.warehouse_status==='READY_TO_TRANSFER',{warehouseStatus:hubOrder.warehouse_status})
 const shipDetail=await waitFor(async()=>first('/rest/v1/shipper_payment_details?select=shipper_payment_id,cod_snapshot&order_id=eq.'+encodeURIComponent(f.hub_order_id)),{label:'shipper payment detail'})
-const shipPayment=await first('/rest/v1/shipper_payments?select=id,destination_hub,total_cod,actual_transferred,tip,warehouse_id& id=eq.'.replace(' ','')+encodeURIComponent(shipDetail.shipper_payment_id))
+const shipPayment=await first('/rest/v1/shipper_payments?select=id,destination_hub,total_cod,actual_transferred,tip,warehouse_id&id=eq.'+encodeURIComponent(shipDetail.shipper_payment_id))
 persist({mutation_shipper_payment_id:String(shipDetail.shipper_payment_id)})
 record('HUB settlement creates payment detail',Number(shipDetail.cod_snapshot)===54321,{paymentId:shipDetail.shipper_payment_id})
 record('HUB settlement persists COD, actual transfer and tip',
