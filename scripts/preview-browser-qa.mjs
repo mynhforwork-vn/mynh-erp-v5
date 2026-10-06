@@ -1,3 +1,4 @@
+// QA trigger: expanded contextual and operational coverage 2026-10-06
 // Final visual verification after mobile composition fixes
 import { chromium } from 'playwright'
 import { createBrowserClient } from '@supabase/ssr'
