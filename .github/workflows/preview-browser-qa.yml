@@ -12,6 +12,8 @@ on:
       - scripts/preview-browser-qa.mjs
       - scripts/preview-auth-setup.mjs
       - scripts/preview-auth-cleanup.mjs
+      - scripts/preview-fixture-setup.mjs
+      - scripts/preview-fixture-cleanup.mjs
       - .github/workflows/preview-browser-qa.yml
   workflow_dispatch:
 
@@ -85,6 +87,10 @@ jobs:
         if: steps.browser_qa_prereq.outputs.ready == 'true'
         run: node scripts/preview-auth-setup.mjs
 
+      - name: Create isolated QA fixtures
+        if: steps.browser_qa_prereq.outputs.ready == 'true'
+        run: node scripts/preview-fixture-setup.mjs
+
       - name: Install Playwright
         if: steps.browser_qa_prereq.outputs.ready == 'true'
         run: |
@@ -101,6 +107,10 @@ jobs:
           name: preview-browser-qa-${{ github.sha }}
           path: qa-browser-artifacts/
           retention-days: 7
+
+      - name: Cleanup isolated QA fixtures
+        if: always() && steps.browser_qa_prereq.outputs.ready == 'true'
+        run: node scripts/preview-fixture-cleanup.mjs
 
       - name: Cleanup temporary QA auth user
         if: always() && steps.browser_qa_prereq.outputs.ready == 'true'
