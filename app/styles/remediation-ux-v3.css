@@ -2380,3 +2380,202 @@
     min-width:0!important;
   }
 }
+
+
+/* =====================================================================
+   Finance receipt reprint — Thu / Chi
+   ===================================================================== */
+.finance-print-action{
+  justify-content:flex-start!important;
+}
+.finance-print-action .button{
+  min-width:128px!important;
+}
+.finance-document-print{
+  display:none;
+}
+
+@media print{
+  body.print-finance-document{
+    background:#fff!important;
+  }
+  body.print-finance-document *{
+    visibility:hidden!important;
+  }
+  body.print-finance-document .finance-document-print,
+  body.print-finance-document .finance-document-print *{
+    visibility:visible!important;
+  }
+  body.print-finance-document .finance-document-print{
+    position:absolute!important;
+    inset:0 auto auto 50%!important;
+    transform:translateX(-50%)!important;
+    width:80mm!important;
+    display:block!important;
+    padding:5mm!important;
+    overflow:visible!important;
+    background:#fff!important;
+    color:#111827!important;
+    font-family:Arial,Helvetica,sans-serif!important;
+    box-sizing:border-box!important;
+  }
+  .finance-document-print-head{
+    display:flex!important;
+    align-items:flex-start!important;
+    justify-content:space-between!important;
+    gap:5mm!important;
+    padding-bottom:3mm!important;
+    border-bottom:1.2px solid #111827!important;
+  }
+  .finance-document-print-head>div{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:1mm!important;
+  }
+  .finance-document-print-head>div:first-child b{
+    font-size:13px!important;
+  }
+  .finance-document-print-head>div:first-child span{
+    color:#4b5563!important;
+    font-size:8px!important;
+  }
+  .finance-document-print-head>div:last-child{
+    align-items:flex-end!important;
+    text-align:right!important;
+  }
+  .finance-document-print-head>div:last-child strong{
+    font-size:12px!important;
+  }
+  .finance-document-print-head>div:last-child small{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;
+    font-size:8px!important;
+  }
+  .finance-document-print-stamp{
+    margin:3mm 0!important;
+    padding:2mm!important;
+    border:1px dashed #9a3412!important;
+    text-align:center!important;
+    font-size:8px!important;
+    font-weight:800!important;
+  }
+  .finance-document-print-stamp.draft{
+    color:#9a3412!important;
+  }
+  .finance-document-print-stamp.cancelled{
+    color:#991b1b!important;
+    border-color:#991b1b!important;
+  }
+  .finance-document-print-meta{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:2mm 4mm!important;
+    padding:3mm 0!important;
+  }
+  .finance-document-print-meta .full{
+    grid-column:1/-1!important;
+  }
+  .finance-document-print-meta span,
+  .finance-document-print-note span{
+    display:block!important;
+    margin-bottom:.6mm!important;
+    color:#6b7280!important;
+    font-size:6.8px!important;
+    text-transform:uppercase!important;
+    letter-spacing:.035em!important;
+  }
+  .finance-document-print-meta b,
+  .finance-document-print-note b{
+    display:block!important;
+    overflow-wrap:anywhere!important;
+    font-size:8.5px!important;
+  }
+  .finance-document-print-total{
+    display:flex!important;
+    align-items:flex-end!important;
+    justify-content:space-between!important;
+    gap:4mm!important;
+    margin:1mm 0 3mm!important;
+    padding:2.5mm 0!important;
+    border-top:1px solid #d1d5db!important;
+    border-bottom:1px solid #d1d5db!important;
+  }
+  .finance-document-print-total span{
+    font-size:8px!important;
+    font-weight:800!important;
+  }
+  .finance-document-print-total strong{
+    font-size:15px!important;
+    font-variant-numeric:tabular-nums!important;
+  }
+  .finance-document-print-title{
+    margin:3mm 0 1.5mm!important;
+    font-size:8px!important;
+    font-weight:800!important;
+    text-transform:uppercase!important;
+  }
+  .finance-document-print-lines{
+    border-top:1px solid #d1d5db!important;
+  }
+  .finance-document-print-lines>div{
+    display:flex!important;
+    align-items:flex-start!important;
+    justify-content:space-between!important;
+    gap:3mm!important;
+    padding:2.2mm 0!important;
+    border-bottom:1px solid #d1d5db!important;
+    break-inside:avoid!important;
+  }
+  .finance-document-print-lines>div>span{
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:.5mm!important;
+  }
+  .finance-document-print-lines b{
+    font-size:8px!important;
+  }
+  .finance-document-print-lines small{
+    color:#6b7280!important;
+    font-size:6.3px!important;
+  }
+  .finance-document-print-lines strong{
+    flex:0 0 auto!important;
+    font-size:8px!important;
+  }
+  .finance-document-print-note{
+    margin-top:3mm!important;
+    padding:2mm!important;
+    border:1px solid #e5e7eb!important;
+    border-radius:2mm!important;
+  }
+  .finance-document-print-signatures{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:8mm!important;
+    margin-top:8mm!important;
+    text-align:center!important;
+    break-inside:avoid!important;
+  }
+  .finance-document-print-signatures>div{
+    min-height:20mm!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:1mm!important;
+  }
+  .finance-document-print-signatures b{
+    font-size:8px!important;
+  }
+  .finance-document-print-signatures span{
+    color:#6b7280!important;
+    font-size:6px!important;
+  }
+  .finance-document-print>footer{
+    margin-top:4mm!important;
+    padding-top:2mm!important;
+    border-top:1px dashed #9ca3af!important;
+    color:#6b7280!important;
+    font-size:6px!important;
+    line-height:1.35!important;
+    text-align:center!important;
+  }
+}
