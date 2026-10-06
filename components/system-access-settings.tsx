@@ -3,6 +3,7 @@
 import { useState,useTransition } from 'react'
 import {
   createSystemUserAccount,
+  deleteSystemUserAccount,
   resetERPSystemData,
   sendSystemUserPasswordReset,
   setSystemUserTemporaryPassword,
@@ -47,7 +48,9 @@ export function SystemAccessSettings({
   const [createPassword,setCreatePassword]=useState('')
   const [createRole,setCreateRole]=useState<'admin'|'operator'|'viewer'>('operator')
   const [passwordUser,setPasswordUser]=useState<SystemUser|null>(null)
+  const [deleteUser,setDeleteUser]=useState<SystemUser|null>(null)
   const [temporaryPassword,setTemporaryPassword]=useState('')
+  const [resetOpen,setResetOpen]=useState(false)
   const [resetScope,setResetScope]=useState<'DATA'|'ALL'|null>(null)
   const [confirm,setConfirm]=useState('')
 
@@ -114,6 +117,19 @@ export function SystemAccessSettings({
     })
   }
 
+  function removeAccount(){
+    if(!deleteUser)return
+    if(deleteUser.user_id===currentUserId){setError('Không thể xóa chính tài khoản Admin đang đăng nhập.');return}
+    setMessage('');setError('')
+    startTransition(async()=>{
+      const result=await deleteSystemUserAccount({user_id:deleteUser.user_id})
+      if(!result.ok){setError(result.error);return}
+      setRows(prev=>prev.filter(row=>row.user_id!==deleteUser.user_id))
+      setMessage('Đã xóa tài khoản '+(deleteUser.email??'hệ thống')+'.')
+      setDeleteUser(null)
+    })
+  }
+
   function runReset(){
     if(!resetScope)return
     const expected=resetScope==='ALL'?'RESET TOAN HE THONG':'RESET DU LIEU'
@@ -165,8 +181,11 @@ export function SystemAccessSettings({
     </section>
 
     <section className="admin-user-table-card">
-      <div className="admin-role-matrix-head">
+      <div className="admin-role-matrix-head admin-account-head">
         <div><b>Tài khoản hệ thống</b><span>{rows.length} tài khoản · phân quyền riêng từng tài khoản</span></div>
+        <button className={'button small '+(resetOpen?'danger':'')} type="button" onClick={()=>setResetOpen(v=>!v)}>
+          {resetOpen?'Đóng khu vực reset':'Reset dữ liệu hệ thống'}
+        </button>
       </div>
       <div className="admin-create-user-inline">
         <label><span>Email đăng nhập</span><input type="email" value={createEmail} onChange={e=>setCreateEmail(e.target.value)} placeholder="operator@company.com"/></label>
@@ -191,29 +210,30 @@ export function SystemAccessSettings({
             <td><div className="admin-user-actions">
               <button className="button small" type="button" onClick={()=>openPassword(user)} disabled={pending}>Cấp mật khẩu</button>
               <button className="admin-text-action" type="button" onClick={()=>emailReset(user)} disabled={pending||!user.email}>Gửi email reset</button>
+              {user.user_id!==currentUserId&&<button className="admin-text-action danger" type="button" onClick={()=>{setDeleteUser(user);setMessage('');setError('')}} disabled={pending}>Xóa</button>}
             </div></td>
           </tr>)}</tbody>
         </table>
       </div>
     </section>
 
-    <section className="admin-danger-zone">
+    {resetOpen&&<section className="admin-danger-zone admin-danger-zone-inline">
       <div className="admin-role-matrix-head">
-        <div><b>Reset dữ liệu hệ thống</b><span>Không thể hoàn tác. Tài khoản đăng nhập Admin và cấu trúc database được giữ lại.</span></div>
+        <div><b>Reset dữ liệu hệ thống</b><span>Không thể hoàn tác. Chọn đúng phạm vi trước khi xác nhận.</span></div>
       </div>
       <div className="admin-reset-options">
         <button type="button" className="admin-reset-card" onClick={()=>{setResetScope('DATA');setConfirm('');setError('')}}>
           <b>Reset dữ liệu vận hành</b>
           <span>Xóa User Shopee, đơn hàng, tồn phát sinh, bán hàng, khách hàng, công nợ, tài chính và lịch sử vận hành.</span>
-          <small>Giữ lại cấu hình ngân hàng, HUB, ĐVVC, danh mục sản phẩm.</small>
+          <small>Giữ cấu hình ngân hàng, HUB, ĐVVC và danh mục sản phẩm.</small>
         </button>
         <button type="button" className="admin-reset-card danger" onClick={()=>{setResetScope('ALL');setConfirm('');setError('')}}>
           <b>Reset toàn hệ thống</b>
-          <span>Xóa dữ liệu vận hành và cấu hình người dùng: QR/ngân hàng, HUB/Shipper, ĐVVC, sản phẩm và phân loại.</span>
+          <span>Xóa cả dữ liệu vận hành và cấu hình người dùng: QR/ngân hàng, HUB/Shipper, ĐVVC, sản phẩm, phân loại.</span>
           <small>Giữ tài khoản đăng nhập, schema, 2 kho nền tảng và danh mục tài chính hệ thống.</small>
         </button>
       </div>
-    </section>
+    </section>}
 
     {passwordUser&&<div className="admin-reset-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!pending)setPasswordUser(null)}}>
       <div className="admin-reset-dialog admin-password-dialog" role="dialog" aria-modal="true">
@@ -228,6 +248,23 @@ export function SystemAccessSettings({
         <div className="form-actions">
           <button className="button" type="button" onClick={()=>setPasswordUser(null)} disabled={pending}>Hủy</button>
           <button className="button primary" type="button" onClick={saveTemporaryPassword} disabled={pending}>{pending?'Đang lưu...':'Cấp mật khẩu mới'}</button>
+        </div>
+      </div>
+    </div>}
+
+    {deleteUser&&<div className="admin-reset-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!pending)setDeleteUser(null)}}>
+      <div className="admin-reset-dialog" role="dialog" aria-modal="true">
+        <div className="admin-reset-dialog-head">
+          <div><span className="module-eyebrow">XÓA TÀI KHOẢN</span><h3>{deleteUser.email??'Tài khoản hệ thống'}</h3></div>
+          <button type="button" onClick={()=>!pending&&setDeleteUser(null)} aria-label="Đóng">×</button>
+        </div>
+        <p>Tài khoản này sẽ không thể đăng nhập MYNH ERP sau khi xóa. Dữ liệu nghiệp vụ đã tạo bởi tài khoản vẫn được giữ lại.</p>
+        <div className="admin-delete-user-summary">
+          <span>Role hiện tại</span><b>{deleteUser.role}</b>
+        </div>
+        <div className="form-actions">
+          <button className="button" type="button" onClick={()=>setDeleteUser(null)} disabled={pending}>Hủy</button>
+          <button className="button danger" type="button" onClick={removeAccount} disabled={pending}>{pending?'Đang xóa...':'Xóa tài khoản'}</button>
         </div>
       </div>
     </div>}
