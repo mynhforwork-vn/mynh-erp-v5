@@ -2904,3 +2904,35 @@
     max-height:none!important;
   }
 }
+
+
+/* Warehouse contextual history stack */
+.whx-history-scope-summary{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:6px!important;
+  margin-bottom:8px!important;
+}
+.whx-history-scope-summary>div{
+  padding:8px!important;
+  border:1px solid #e1e8ed!important;
+  border-radius:6px!important;
+  background:#fff!important;
+}
+.whx-history-scope-summary span{
+  display:block!important;
+  color:#81909d!important;
+  font-size:7px!important;
+}
+.whx-history-scope-summary b{
+  display:block!important;
+  margin-top:2px!important;
+  color:#25445e!important;
+  font-size:11px!important;
+}
+.whx-history-all-final{
+  border:1px solid #e1e8ed!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  padding:0 7px!important;
+}
