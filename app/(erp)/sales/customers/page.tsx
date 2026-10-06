@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { formatMoney } from '@/lib/format'
 import { requireUser } from '@/lib/supabase/auth'
 import { archiveSalesCustomerForm,createSalesCustomer,restoreSalesCustomerForm,updateSalesCustomerForm } from '@/lib/actions/sales'
+import { ContextSalePanel } from '@/components/context-sale-panel'
+import { fetchSaleContext } from '@/lib/sales/context'
 
 type SP={
   q?:string
@@ -10,6 +12,8 @@ type SP={
   tab?:'info'|'purchases'|'debt'|'history'
   mode?:'new'|'edit'
   archive?:'archived'
+  sale?:string
+  saleTab?:'info'|'products'|'payment'|'history'
 }
 
 function fmtDate(value?:string|null,withTime=true){
@@ -106,6 +110,11 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
 
   const selected=allRows.find(x=>x.id===sp.customer)??null
   const tab=sp.tab??'info'
+  const saleContext=sp.sale?await fetchSaleContext(supabase,sp.sale):null
+  const contextSale=saleContext?.sale&&selected&&String(saleContext.sale.customers?.id??'')===selected.id
+    ? saleContext.sale
+    : null
+  const saleTab=sp.saleTab==='products'||sp.saleTab==='payment'||sp.saleTab==='history'?sp.saleTab:'info'
   const purchases=selected
     ? (salesByCustomer.get(selected.id)??[]).map(row=>{
         const wh=warehouseMap.get(String(row.warehouse_id))
@@ -131,6 +140,8 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
     if(sp.tab)p.set('tab',sp.tab)
     if(sp.mode)p.set('mode',sp.mode)
     if(sp.archive)p.set('archive',sp.archive)
+    if(sp.sale)p.set('sale',sp.sale)
+    if(sp.saleTab)p.set('saleTab',sp.saleTab)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v===''||v==='all')p.delete(k)
       else p.set(k,v)
@@ -186,6 +197,10 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
         <option value="debt">Còn công nợ</option>
       </select>
       {archiveView&&<input type="hidden" name="archive" value="archived"/>}
+      {sp.customer&&<input type="hidden" name="customer" value={sp.customer}/>}
+      {sp.tab&&<input type="hidden" name="tab" value={sp.tab}/>}
+      {sp.sale&&<input type="hidden" name="sale" value={sp.sale}/>}
+      {sp.saleTab&&<input type="hidden" name="saleTab" value={sp.saleTab}/>}
       <button className="button primary small">Lọc</button>
       {(q||state!=='all')&&<Link className="button small" href={archiveView?'/sales/customers?archive=archived':'/sales/customers'}>Đặt lại</Link>}
       <div className="archive-view-toggle">
@@ -220,7 +235,27 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
         </div>
       </section>
 
-      {selected&&<aside className="customer-demo-panel">
+      {selected&&contextSale&&<ContextSalePanel
+        sale={contextSale}
+        activeTab={saleTab}
+        parentLabel="Khách hàng"
+        canOperate={canOperate}
+        receiptQR={saleContext?.receiptQR??''}
+        receiptQRAmount={saleContext?.receiptQRAmount??0}
+        receiptQRDescription={saleContext?.receiptQRDescription??''}
+        bankConfig={saleContext?.bankConfig??null}
+        backHref={saleTab!=='info'
+          ? href({customer:selected.id,sale:contextSale.id,saleTab:'info',mode:null})
+          : href({customer:selected.id,tab:sp.tab??'purchases',sale:null,saleTab:null,mode:null})}
+        closeHref={href({customer:null,tab:null,sale:null,saleTab:null,mode:null})}
+        infoHref={href({customer:selected.id,sale:contextSale.id,saleTab:'info',mode:null})}
+        productsHref={href({customer:selected.id,sale:contextSale.id,saleTab:'products',mode:null})}
+        paymentHref={href({customer:selected.id,sale:contextSale.id,saleTab:'payment',mode:null})}
+        historyHref={href({customer:selected.id,sale:contextSale.id,saleTab:'history',mode:null})}
+        openModuleHref={'/sales/history?sale='+contextSale.id}
+      />}
+
+      {selected&&!contextSale&&<aside className="customer-demo-panel">
         <div className="sales-detail-panel-head">
           <div>
             <span className="module-eyebrow">KHÁCH HÀNG</span>
@@ -288,7 +323,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
           {tab==='purchases'&&<div className="customer-demo-purchases">
             {!purchases.length
               ? <div className="empty compact">Khách hàng chưa có hóa đơn.</div>
-              : purchases.map(row=><Link className="customer-purchase-row" key={row.id} href={'/sales/history?sale='+row.id}>
+              : purchases.map(row=><Link className="customer-purchase-row" key={row.id} href={href({customer:selected.id,tab:'purchases',sale:row.id,saleTab:'info',mode:null})}>
                   <div><b>{row.code}</b><span>{fmtDate(row.time)} · {row.warehouse} · {row.items} SP</span></div>
                   <div><strong>{formatMoney(row.total)}</strong><span className={'status-pill '+pill(row.status)}>{paymentLabel(row.status)}</span></div>
                 </Link>)}
@@ -299,10 +334,10 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
             {selected.debt<=0
               ? <div className="empty compact">Khách hàng không còn công nợ.</div>
               : <>
-                  {purchases.filter(x=>x.debt>0).map(row=><div className="customer-debt-invoice" key={row.id}>
+                  {purchases.filter(x=>x.debt>0).map(row=><Link className="customer-debt-invoice context-link-row" key={row.id} href={href({customer:selected.id,tab:'debt',sale:row.id,saleTab:'info',mode:null})}>
                     <div><b>{row.code}</b><span>{fmtDate(row.time)}</span></div>
                     <div><span>Đã thu {formatMoney(row.paid)}</span><b>{formatMoney(row.debt)} còn nợ</b></div>
-                  </div>)}
+                  </Link>)}
                   <Link className="button primary customer-collect-button" href={'/sales/debt?customer='+selected.id+'&mode=collect'}>Thu nợ</Link>
                 </>}
           </div>}
