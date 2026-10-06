@@ -1824,3 +1824,143 @@
     grid-template-columns:minmax(0,1fr) 76px 96px!important;
   }
 }
+
+
+/* =====================================================================
+   SYSTEM SLIDEBAR STANDARD — one width across MYNH ERP
+   ===================================================================== */
+:root{
+  --mynh-slidebar-width:420px;
+  --mynh-slidebar-width-compact:390px;
+  --mynh-slidebar-width-wide:520px;
+}
+
+/* Generic order/user/tracking/detail layouts */
+.split-view.with-panel{
+  grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+}
+.detail-panel.floating{
+  width:var(--mynh-slidebar-width)!important;
+  max-width:var(--mynh-slidebar-width)!important;
+}
+
+/* Sales customers/debt */
+.sales-live-customers.with-panel .customer-demo-workspace,
+.sales-live-debt.with-panel .debt-demo-workspace{
+  grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+}
+.customer-demo-panel,
+.debt-demo-panel{
+  width:100%!important;
+  min-width:0!important;
+  max-width:var(--mynh-slidebar-width)!important;
+}
+.sales-live-debt.with-panel .debt-demo-workspace:has(.debt-demo-panel.collect-mode){
+  grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width-wide)!important;
+}
+.debt-demo-panel.collect-mode{
+  max-width:var(--mynh-slidebar-width-wide)!important;
+}
+
+/* Warehouse */
+.whx-stock-layout.with-panel{
+  grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+}
+.whx-detail-panel-v2{
+  width:var(--mynh-slidebar-width)!important;
+  max-width:var(--mynh-slidebar-width)!important;
+}
+
+/* Finance */
+.finance-preview-workspace.has-slidebar,
+.finance-live-workspace.has-slidebar,
+.finance-settlement-live.has-slidebar{
+  grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+}
+.finance-panel,
+.finance-preview-slidebar,
+.finance-hub-live-panel{
+  width:var(--mynh-slidebar-width)!important;
+  max-width:var(--mynh-slidebar-width)!important;
+}
+
+/* Shared slidebar shape */
+.detail-panel,
+.customer-demo-panel,
+.debt-demo-panel,
+.whx-detail-panel-v2,
+.finance-panel,
+.finance-preview-slidebar,
+.finance-hub-live-panel{
+  border-radius:8px!important;
+  overflow:hidden!important;
+}
+
+/* Data deletion zone must be visible without a toggle. */
+.admin-danger-zone-inline{
+  display:block!important;
+  margin:8px 10px 10px!important;
+  border:1px solid #efcccc!important;
+  border-radius:7px!important;
+  background:#fffafa!important;
+}
+.admin-danger-zone-inline .admin-role-matrix-head{
+  background:#fff5f5!important;
+  border-bottom:1px solid #f0d7d7!important;
+}
+.admin-danger-zone-inline .admin-role-matrix-head b{
+  color:#8d3535!important;
+}
+.admin-danger-zone-inline .admin-reset-options{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:8px!important;
+  padding:9px!important;
+}
+.admin-danger-zone-inline .admin-reset-card{
+  min-height:86px!important;
+}
+.admin-danger-zone-inline .admin-reset-card:first-child{
+  border-color:#e7d7c4!important;
+  background:#fffaf2!important;
+}
+.admin-danger-zone-inline .admin-reset-card.danger{
+  border-color:#e9bcbc!important;
+  background:#fff3f3!important;
+}
+
+@media(max-width:1440px) and (min-width:901px){
+  :root{
+    --mynh-slidebar-width:390px;
+    --mynh-slidebar-width-wide:470px;
+  }
+}
+
+@media(max-width:900px){
+  .split-view.with-panel,
+  .sales-live-customers.with-panel .customer-demo-workspace,
+  .sales-live-debt.with-panel .debt-demo-workspace,
+  .sales-live-debt.with-panel .debt-demo-workspace:has(.debt-demo-panel.collect-mode),
+  .whx-stock-layout.with-panel,
+  .finance-preview-workspace.has-slidebar,
+  .finance-live-workspace.has-slidebar,
+  .finance-settlement-live.has-slidebar{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+
+  .detail-panel.floating,
+  .customer-demo-panel,
+  .debt-demo-panel,
+  .debt-demo-panel.collect-mode,
+  .whx-detail-panel-v2,
+  .finance-panel,
+  .finance-preview-slidebar,
+  .finance-hub-live-panel{
+    width:auto!important;
+    max-width:none!important;
+  }
+
+  .admin-danger-zone-inline .admin-reset-options{
+    grid-template-columns:1fr!important;
+  }
+}
