@@ -46,7 +46,9 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
   const sp=await searchParams
   const state=sp.state??'all'
   const q=String(sp.q??'').trim().toLowerCase()
-  const {supabase}=await requireUser()
+  const {supabase,user}=await requireUser()
+  const role=String(user.app_metadata?.role??'viewer')
+  const canOperate=['admin','operator'].includes(role)
 
   const [customersRes,debtRes,salesRes,paymentsRes,allocRes,warehouseRes,bankResult]=await Promise.all([
     supabase.from('customers').select('id,name,phone,address,note'),
@@ -217,7 +219,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
         sale={contextSale}
         activeTab={saleTab}
         parentLabel="Công nợ"
-        canOperate={true}
+        canOperate={canOperate}
         receiptQR={saleContext?.receiptQR??''}
         receiptQRAmount={saleContext?.receiptQRAmount??0}
         receiptQRDescription={saleContext?.receiptQRDescription??''}
