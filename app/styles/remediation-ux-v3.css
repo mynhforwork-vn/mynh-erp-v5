@@ -2815,3 +2815,92 @@
     max-height:none!important;
   }
 }
+
+
+/* =====================================================================
+   CONTEXT SALE STACK — Customers / Debt
+   ===================================================================== */
+.context-sale-panel{
+  min-width:0!important;
+  width:100%!important;
+  max-width:var(--mynh-slidebar-width)!important;
+  height:calc(100vh - 188px)!important;
+  max-height:calc(100vh - 188px)!important;
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+  align-self:start!important;
+}
+.context-sale-panel .sales-history-panel-head{
+  flex:0 0 auto!important;
+}
+.context-sale-actions{
+  flex:0 0 auto!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:5px!important;
+  padding:6px 10px!important;
+  border-top:1px solid #edf1f4!important;
+  border-bottom:1px solid #e4e9ee!important;
+  background:#fbfcfd!important;
+  overflow-x:auto!important;
+  scrollbar-width:none!important;
+}
+.context-sale-actions::-webkit-scrollbar{display:none!important}
+.context-sale-actions .button{
+  flex:0 0 auto!important;
+  height:28px!important;
+  padding:0 8px!important;
+  font-size:7.8px!important;
+  white-space:nowrap!important;
+}
+.context-sale-tabs{
+  flex:0 0 auto!important;
+  height:33px!important;
+  padding:0 10px!important;
+  gap:14px!important;
+}
+.context-sale-tabs a{
+  height:33px!important;
+  display:flex!important;
+  align-items:center!important;
+  border:0!important;
+  border-bottom:2px solid transparent!important;
+  border-radius:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+.context-sale-tabs a.active{
+  color:#245e88!important;
+  border-bottom-color:#245e88!important;
+}
+.context-sale-scroll{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  scrollbar-gutter:stable!important;
+}
+.context-link-row{
+  text-decoration:none!important;
+  color:inherit!important;
+  cursor:pointer!important;
+}
+.context-link-row:hover{
+  background:#f7fafc!important;
+}
+
+@media(max-width:1440px) and (min-width:901px){
+  .context-sale-panel{
+    height:calc(100vh - 176px)!important;
+    max-height:calc(100vh - 176px)!important;
+  }
+}
+@media(max-width:900px){
+  .context-sale-panel{
+    width:auto!important;
+    max-width:none!important;
+    height:auto!important;
+    max-height:none!important;
+  }
+}
