@@ -25,8 +25,11 @@ async function cleanupOldQaUsers(){
   const list=await request('/auth/v1/admin/users?page=1&per_page=100',{key:SERVICE_KEY,token:SERVICE_KEY})
   if(!list.ok)return
   const users=Array.isArray(list.json?.users)?list.json.users:[]
+  const staleBefore=Date.now()-2*60*60*1000
   for(const user of users){
     if(user?.user_metadata?.purpose!=='cloudflare-preview-ui-qa')continue
+    const createdAt=Date.parse(String(user?.created_at??''))
+    if(!Number.isFinite(createdAt)||createdAt>=staleBefore)continue
     await request('/auth/v1/admin/users/'+encodeURIComponent(user.id),{
       method:'DELETE',key:SERVICE_KEY,token:SERVICE_KEY,
     })
