@@ -568,7 +568,7 @@ export function FinanceCashflowWorkspace({
     return ['CUSTOMER_PAYMENT','SHIPPER_SETTLEMENT','SHIPPER_PAYMENT','SALE'].includes(source)
   }
 
-    function updateLine(lineKey:string,patch:Partial<DraftLine>){
+  function updateLine(lineKey:string,patch:Partial<DraftLine>){
     setLines(prev=>prev.map(line=>line.key===lineKey?{...line,...patch}:line))
   }
 
@@ -859,9 +859,11 @@ export function FinanceCashflowWorkspace({
         reference={activeReference}
         customerPayment={activeCustomerPayment}
         allocations={activeCustomerPayment?(allocationsByPayment.get(String(activeCustomerPayment.id))??[]):[]}
-        sales={referencedSales}
         shipperPayment={activeShipperPayment}
+        sale={activeReferencedSale}
         order={activeReferencedOrder}
+        saleMap={referencedSaleMap}
+        canOperate={canEdit}
         onBack={()=>setReferenceStack(prev=>prev.slice(0,-1))}
         onClose={closePanel}
         onPush={(type,id)=>pushReference(type,id)}
