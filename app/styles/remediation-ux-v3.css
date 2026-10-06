@@ -1832,7 +1832,6 @@
 :root{
   --mynh-slidebar-width:420px;
   --mynh-slidebar-width-compact:390px;
-  --mynh-slidebar-width-wide:520px;
 }
 
 /* Generic order/user/tracking/detail layouts */
@@ -1856,10 +1855,10 @@
   max-width:var(--mynh-slidebar-width)!important;
 }
 .sales-live-debt.with-panel .debt-demo-workspace:has(.debt-demo-panel.collect-mode){
-  grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width-wide)!important;
+  grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
 }
 .debt-demo-panel.collect-mode{
-  max-width:var(--mynh-slidebar-width-wide)!important;
+  max-width:var(--mynh-slidebar-width)!important;
 }
 
 /* Warehouse */
@@ -1932,7 +1931,6 @@
 @media(max-width:1440px) and (min-width:901px){
   :root{
     --mynh-slidebar-width:390px;
-    --mynh-slidebar-width-wide:470px;
   }
 }
 
@@ -1962,5 +1960,138 @@
 
   .admin-danger-zone-inline .admin-reset-options{
     grid-template-columns:1fr!important;
+  }
+}
+
+
+/* =====================================================================
+   FINAL SLIDEBAR GEOMETRY — same width everywhere, finance starts at ledger
+   ===================================================================== */
+:root{
+  --mynh-slidebar-width:420px;
+  --mynh-slidebar-width-compact:390px;
+}
+
+/* No wide exceptions: debt collection uses the same system slidebar width. */
+.sales-live-debt.with-panel .debt-demo-workspace,
+.sales-live-debt.with-panel .debt-demo-workspace:has(.debt-demo-panel.collect-mode){
+  grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+}
+.debt-demo-panel,
+.debt-demo-panel.collect-mode{
+  width:100%!important;
+  max-width:var(--mynh-slidebar-width)!important;
+}
+
+/* Finance header/KPI remain full width. Only ledger + panel form the split view. */
+.finance-live-workspace{
+  display:block!important;
+}
+.finance-ledger-layout{
+  min-width:0!important;
+  width:100%!important;
+}
+.finance-ledger-layout.with-panel{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+  align-items:stretch!important;
+  gap:8px!important;
+}
+.finance-ledger-layout>.finance-ledger{
+  min-width:0!important;
+  width:100%!important;
+}
+.finance-ledger-layout.with-panel>.finance-panel{
+  position:sticky!important;
+  top:8px!important;
+  align-self:stretch!important;
+  width:var(--mynh-slidebar-width)!important;
+  min-width:0!important;
+  max-width:var(--mynh-slidebar-width)!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:560px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+  border:1px solid var(--mynh-border)!important;
+  border-radius:8px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.finance-ledger-layout.with-panel>.finance-panel>.panel-head,
+.finance-ledger-layout.with-panel>.finance-panel>.panel-tabs{
+  flex:0 0 auto!important;
+}
+.finance-ledger-layout.with-panel>.finance-panel>.panel-scroll{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  scrollbar-gutter:stable!important;
+}
+
+/* Remove old finance grid behavior if cached CSS is still present. */
+.finance-live-workspace.has-slidebar{
+  display:block!important;
+  grid-template-columns:none!important;
+}
+.finance-live-workspace.has-slidebar>:not(.finance-panel){
+  grid-column:auto!important;
+}
+.finance-live-workspace.has-slidebar>.finance-panel{
+  grid-column:auto!important;
+  grid-row:auto!important;
+}
+
+/* All standard panels share one desktop width. */
+.split-view.with-panel,
+.sales-live-customers.with-panel .customer-demo-workspace,
+.sales-live-debt.with-panel .debt-demo-workspace,
+.whx-stock-layout.with-panel,
+.finance-preview-workspace.has-slidebar,
+.finance-settlement-live.has-slidebar{
+  grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+}
+.detail-panel.floating,
+.customer-demo-panel,
+.debt-demo-panel,
+.whx-detail-panel-v2,
+.finance-panel,
+.finance-preview-slidebar,
+.finance-hub-live-panel{
+  width:var(--mynh-slidebar-width)!important;
+  max-width:var(--mynh-slidebar-width)!important;
+}
+
+@media(max-width:1440px) and (min-width:901px){
+  :root{--mynh-slidebar-width:390px}
+  .finance-ledger-layout.with-panel{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+  }
+  .finance-ledger-layout.with-panel>.finance-panel{
+    width:var(--mynh-slidebar-width)!important;
+    max-width:var(--mynh-slidebar-width)!important;
+    max-height:520px!important;
+  }
+}
+
+@media(max-width:900px){
+  .finance-ledger-layout.with-panel{
+    display:block!important;
+  }
+  .finance-ledger-layout.with-panel>.finance-panel{
+    position:fixed!important;
+    z-index:800!important;
+    top:72px!important;
+    right:8px!important;
+    bottom:8px!important;
+    left:8px!important;
+    width:auto!important;
+    max-width:none!important;
+    height:auto!important;
+    max-height:none!important;
+    box-shadow:0 18px 45px rgba(21,42,63,.20)!important;
   }
 }
