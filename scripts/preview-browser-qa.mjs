@@ -338,12 +338,53 @@ if(await sellable.count()){
   if(await cash.count()){
     await cash.click();await settle(120)
     recordInteraction('POS checkout opens',await page.locator('.pos-checkout').count()>0)
-    for(const modeName of ['Chuyển khoản','Ghi nợ','Kết hợp','Tiền mặt']){
-      const mode=page.locator('.pos-pay-methods').getByRole('button',{name:modeName}).first()
-      if(await mode.count()){
-        await mode.click();await settle(80)
-        recordInteraction('POS payment mode '+modeName,await mode.evaluate(el=>el.classList.contains('active')))
+    const transferMode=page.locator('.pos-pay-methods').getByRole('button',{name:'Chuyển khoản'}).first()
+    if(await transferMode.count()){
+      await transferMode.click();await settle(100)
+      const transferActive=await transferMode.evaluate(el=>el.classList.contains('active'))
+      const transferGuard=!transferActive&&await page.locator('.error-box').filter({hasText:'Chưa cấu hình tài khoản chuyển khoản'}).count()>0
+      recordInteraction('POS payment mode Chuyển khoản',transferActive||transferGuard,transferGuard?{guarded:true,reason:'Transfer account not configured'}:{})
+    }
+
+    const debtMode=page.locator('.pos-pay-methods').getByRole('button',{name:'Ghi nợ'}).first()
+    if(await debtMode.count()){
+      await debtMode.click();await settle(100)
+      let debtActive=await debtMode.evaluate(el=>el.classList.contains('active'))
+      if(!debtActive&&await page.locator('.pos-customer-popover').count()>0){
+        recordInteraction('POS debt requires customer guard',true)
+        const customerSelect=page.locator('.pos-customer-popover select').first()
+        if(await customerSelect.count()&&await customerSelect.locator('option').count()>1){
+          const value=await customerSelect.locator('option').nth(1).getAttribute('value')
+          if(value)await customerSelect.selectOption(value)
+        }
+        const customerClose=page.locator('.pos-customer-popover .pos-popover-head button').first()
+        if(await customerClose.count()){await customerClose.click();await settle(80)}
+        if(await customerSelect.count()&&await customerSelect.inputValue().catch(()=>'')){
+          await debtMode.click();await settle(100)
+          debtActive=await debtMode.evaluate(el=>el.classList.contains('active'))
+          recordInteraction('POS payment mode Ghi nợ with customer',debtActive)
+        }else{
+          recordInteraction('POS payment mode Ghi nợ with customer',true,{skipped:true,reason:'No existing customer fixture'})
+        }
+      }else recordInteraction('POS payment mode Ghi nợ',debtActive)
+    }
+
+    const combinedMode=page.locator('.pos-pay-methods').getByRole('button',{name:'Kết hợp'}).first()
+    if(await combinedMode.count()){
+      await combinedMode.click();await settle(100)
+      const combinedActive=await combinedMode.evaluate(el=>el.classList.contains('active'))
+      const combinedGuard=!combinedActive&&await page.locator('.error-box').filter({hasText:'Chưa cấu hình tài khoản chuyển khoản'}).count()>0
+      recordInteraction('POS payment mode Kết hợp',combinedActive||combinedGuard,combinedGuard?{guarded:true,reason:'Transfer account not configured'}:{})
+    }
+
+    const cashMode=page.locator('.pos-pay-methods').getByRole('button',{name:'Tiền mặt'}).first()
+    if(await cashMode.count()){
+      if(await page.locator('.pos-customer-popover').count()){
+        const customerClose=page.locator('.pos-customer-popover .pos-popover-head button').first()
+        if(await customerClose.count()){await customerClose.click();await settle(80)}
       }
+      await cashMode.click();await settle(80)
+      recordInteraction('POS payment mode Tiền mặt',await cashMode.evaluate(el=>el.classList.contains('active')))
     }
     const back=page.locator('.pos-checkout-head button').first()
     if(await back.count()){await back.click();await settle(100)}
