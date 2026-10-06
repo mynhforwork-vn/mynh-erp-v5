@@ -134,7 +134,8 @@ if(!await readyRow.count())throw new Error('Mapped QA order did not move to read
 await readyRow.click()
 await page.locator('aside.warehouse-intake-panel').waitFor({state:'visible',timeout:5000})
 const receiveButton=page.locator('aside.warehouse-intake-panel').getByRole('button',{name:'Nhập kho'}).first()
-if(!await receiveButton.count())throw new Error('Warehouse receive button is missing')
+await receiveButton.waitFor({state:'visible',timeout:6000}).catch(()=>{})
+if(!await receiveButton.count()||!await receiveButton.isVisible().catch(()=>false))throw new Error('Warehouse receive button is missing')
 await receiveButton.click()
 
 const receivedOrder=await waitFor(async()=>{
