@@ -2095,3 +2095,288 @@
     box-shadow:0 18px 45px rgba(21,42,63,.20)!important;
   }
 }
+
+
+/* =====================================================================
+   Debt receipt printing — provisional before collection + official after
+   ===================================================================== */
+.debt-collect-actions-v2{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:6px!important;
+}
+.debt-collect-actions-v2>.button:first-child{
+  border-color:#b7c7d5!important;
+  background:#f8fafc!important;
+  color:#35546e!important;
+}
+.debt-print-receipt{
+  display:none;
+}
+
+@media print{
+  body.print-debt-receipt{
+    background:#fff!important;
+  }
+  body.print-debt-receipt *{
+    visibility:hidden!important;
+  }
+  body.print-debt-receipt .debt-print-receipt,
+  body.print-debt-receipt .debt-print-receipt *{
+    visibility:visible!important;
+  }
+  body.print-debt-receipt .debt-print-receipt{
+    position:absolute!important;
+    inset:0 auto auto 50%!important;
+    transform:translateX(-50%)!important;
+    width:80mm!important;
+    display:block!important;
+    padding:5mm!important;
+    overflow:visible!important;
+    background:#fff!important;
+    color:#111827!important;
+    font-family:Arial,Helvetica,sans-serif!important;
+    box-sizing:border-box!important;
+  }
+  .debt-print-head{
+    display:flex!important;
+    align-items:flex-start!important;
+    justify-content:space-between!important;
+    gap:5mm!important;
+    padding-bottom:3mm!important;
+    border-bottom:1.2px solid #111827!important;
+  }
+  .debt-print-head>div{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:1mm!important;
+  }
+  .debt-print-head>div:first-child b{
+    font-size:13px!important;
+    letter-spacing:.02em!important;
+  }
+  .debt-print-head>div:first-child span{
+    font-size:8px!important;
+    color:#4b5563!important;
+  }
+  .debt-print-head>div:last-child{
+    align-items:flex-end!important;
+    text-align:right!important;
+  }
+  .debt-print-head>div:last-child strong{
+    font-size:12px!important;
+  }
+  .debt-print-head>div:last-child small{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;
+    font-size:8px!important;
+  }
+  .debt-print-draft-banner{
+    margin:3mm 0!important;
+    padding:2mm!important;
+    border:1px dashed #9a3412!important;
+    text-align:center!important;
+    color:#9a3412!important;
+    font-size:8px!important;
+    font-weight:800!important;
+  }
+  .debt-print-meta{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:2mm 4mm!important;
+    padding:3mm 0!important;
+  }
+  .debt-print-meta>div,
+  .debt-print-split>div,
+  .debt-print-debt-summary>div{
+    min-width:0!important;
+  }
+  .debt-print-meta span,
+  .debt-print-split span,
+  .debt-print-debt-summary span,
+  .debt-print-note span,
+  .debt-print-transfer span{
+    display:block!important;
+    margin-bottom:.6mm!important;
+    color:#6b7280!important;
+    font-size:6.8px!important;
+    text-transform:uppercase!important;
+    letter-spacing:.035em!important;
+  }
+  .debt-print-meta b,
+  .debt-print-split b,
+  .debt-print-debt-summary b,
+  .debt-print-note b,
+  .debt-print-transfer b{
+    display:block!important;
+    overflow-wrap:anywhere!important;
+    font-size:8.5px!important;
+  }
+  .debt-print-total{
+    display:flex!important;
+    align-items:flex-end!important;
+    justify-content:space-between!important;
+    gap:4mm!important;
+    margin:1mm 0 3mm!important;
+    padding:2.5mm 0!important;
+    border-top:1px solid #d1d5db!important;
+    border-bottom:1px solid #d1d5db!important;
+  }
+  .debt-print-total span{
+    font-size:8px!important;
+    font-weight:800!important;
+  }
+  .debt-print-total strong{
+    font-size:15px!important;
+    font-variant-numeric:tabular-nums!important;
+  }
+  .debt-print-split,
+  .debt-print-debt-summary{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:3mm!important;
+    margin-bottom:3mm!important;
+  }
+  .debt-print-split>div,
+  .debt-print-debt-summary>div{
+    padding:2mm!important;
+    border:1px solid #e5e7eb!important;
+    border-radius:2mm!important;
+  }
+  .debt-print-section-title{
+    margin:3mm 0 1.5mm!important;
+    font-size:8px!important;
+    font-weight:800!important;
+    text-transform:uppercase!important;
+  }
+  .debt-print-invoices{
+    border-top:1px solid #d1d5db!important;
+  }
+  .debt-print-invoice{
+    padding:2.5mm 0!important;
+    border-bottom:1px solid #d1d5db!important;
+    break-inside:avoid!important;
+  }
+  .debt-print-invoice-head{
+    display:flex!important;
+    align-items:flex-start!important;
+    justify-content:space-between!important;
+    gap:3mm!important;
+  }
+  .debt-print-invoice-head>span{
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:.5mm!important;
+  }
+  .debt-print-invoice-head b{
+    font-size:8.5px!important;
+  }
+  .debt-print-invoice-head small{
+    color:#6b7280!important;
+    font-size:6.5px!important;
+  }
+  .debt-print-invoice-head>strong{
+    flex:0 0 auto!important;
+    font-size:8.5px!important;
+  }
+  .debt-print-products{
+    margin-top:1.5mm!important;
+    padding-left:2mm!important;
+    border-left:1.2px solid #d1d5db!important;
+  }
+  .debt-print-products>div{
+    display:flex!important;
+    align-items:flex-start!important;
+    justify-content:space-between!important;
+    gap:3mm!important;
+    padding:1mm 0!important;
+  }
+  .debt-print-products>div>span:first-child{
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:.4mm!important;
+  }
+  .debt-print-products b{
+    font-size:7.2px!important;
+  }
+  .debt-print-products small{
+    color:#6b7280!important;
+    font-size:6px!important;
+  }
+  .debt-print-products>div>span:last-child{
+    flex:0 0 auto!important;
+    font-size:6.8px!important;
+    white-space:nowrap!important;
+  }
+  .debt-print-note{
+    margin-top:3mm!important;
+    padding:2mm!important;
+    border:1px solid #e5e7eb!important;
+    border-radius:2mm!important;
+  }
+  .debt-print-transfer{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 26mm!important;
+    align-items:center!important;
+    gap:3mm!important;
+    margin-top:3mm!important;
+    padding:2mm!important;
+    border:1px solid #d1d5db!important;
+    border-radius:2mm!important;
+    break-inside:avoid!important;
+  }
+  .debt-print-transfer img{
+    display:block!important;
+    width:26mm!important;
+    height:26mm!important;
+    object-fit:contain!important;
+  }
+  .debt-print-signatures{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:8mm!important;
+    margin-top:7mm!important;
+    text-align:center!important;
+    break-inside:avoid!important;
+  }
+  .debt-print-signatures>div{
+    min-height:19mm!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:1mm!important;
+  }
+  .debt-print-signatures b{
+    font-size:8px!important;
+  }
+  .debt-print-signatures span{
+    color:#6b7280!important;
+    font-size:6px!important;
+  }
+  .debt-print-receipt>footer{
+    margin-top:4mm!important;
+    padding-top:2mm!important;
+    border-top:1px dashed #9ca3af!important;
+    color:#6b7280!important;
+    font-size:6px!important;
+    line-height:1.35!important;
+    text-align:center!important;
+  }
+}
+
+@media(max-width:760px){
+  .debt-collect-footer-v2.split{
+    align-items:stretch!important;
+    flex-direction:column!important;
+  }
+  .debt-collect-actions-v2{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+  }
+  .debt-collect-actions-v2>.button{
+    width:100%!important;
+    min-width:0!important;
+  }
+}
