@@ -202,7 +202,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
         </div>
       </section>
 
-      {selected&&<aside className="debt-demo-panel">
+      {selected&&<aside className={'debt-demo-panel '+(collectMode?'collect-mode':'')}>
         <div className="sales-detail-panel-head">
           <div><span className="module-eyebrow">CÔNG NỢ KHÁCH HÀNG</span><h2>{selected.name}</h2><p>{phone(selected.phone)} · {selected.address||'—'}</p></div>
           <Link className="panel-close" href={href({customer:null,tab:null,mode:null})}>×</Link>
@@ -215,13 +215,13 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
           bankConfig={bankConfig}
         />}
 
-        <div className="panel-tabs">
+        {!collectMode&&<div className="panel-tabs">
           <Link className={tab==='summary'?'active':''} href={href({customer:selected.customer_id,tab:'summary',mode:null})}>Tổng quan</Link>
           <Link className={tab==='invoices'?'active':''} href={href({customer:selected.customer_id,tab:'invoices',mode:null})}>Hóa đơn nợ</Link>
           <Link className={tab==='receipts'?'active':''} href={href({customer:selected.customer_id,tab:'receipts',mode:null})}>Lịch sử thu</Link>
-        </div>
+        </div>}
 
-        <div className="debt-demo-panel-scroll">
+        {!collectMode&&<div className="debt-demo-panel-scroll">
           {tab==='summary'&&<>
             <div className="debt-customer-summary">
               <div className="warning"><span>Công nợ hiện tại</span><b>{formatMoney(selected.debt)}</b></div>
@@ -284,7 +284,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
                   </details>
                 })}
           </div>}
-        </div>
+        </div>}
       </aside>}
     </div>
   </div>
