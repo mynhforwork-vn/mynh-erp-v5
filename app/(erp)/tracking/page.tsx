@@ -343,6 +343,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
           receive:sp.receive,
           receiveDate:sp.receiveDate,
           hub:sp.hub,
+          order:sp.order,
+          orderTab:sp.orderTab,
         }}
       />
     </div>
@@ -408,6 +410,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
           {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
           {sp.status&&<input type="hidden" name="status" value={sp.status}/>}
           {sp.receive&&<input type="hidden" name="receive" value={sp.receive}/>}
+          {sp.order&&<input type="hidden" name="order" value={sp.order}/>}
+          {sp.orderTab&&<input type="hidden" name="orderTab" value={sp.orderTab}/>}
           <select name="hub" defaultValue={sp.hub??''} aria-label="HUB đích">
             <option value="">Tất cả HUB</option>
             {hubOptions.map(h=><option value={h} key={h}>{h}</option>)}
