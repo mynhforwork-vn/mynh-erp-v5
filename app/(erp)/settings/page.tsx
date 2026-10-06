@@ -5,19 +5,23 @@ import { ShippingCarrierSettings } from '@/components/shipping-carrier-settings'
 import { DataManagementSettings } from '@/components/data-management-settings'
 import { BankTransferSettings } from '@/components/bank-transfer-settings'
 import { SystemAccessSettings } from '@/components/system-access-settings'
+import { TrackingTelegramSettings } from '@/components/tracking-telegram-settings'
 
-type SP={section?:string,purged?:string,protected?:string}
+type SP={section?:string,purged?:string,protected?:string,telegram_test?:string,telegram_message?:string}
 
 export default async function SettingsPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
   const {supabase,user}=await requireUser()
   const role=String(user.app_metadata?.role??'viewer')
   const canEdit=['admin','operator'].includes(role)
+  const canEditTracking=role==='admin'
   const section=sp.section==='spx-hubs'
     ? 'spx-hubs'
-    : sp.section==='data-management'
-      ? 'data-management'
-      : sp.section==='payments'
+    : sp.section==='tracking-alerts'&&['admin','operator'].includes(role)
+      ? 'tracking-alerts'
+      : sp.section==='data-management'
+        ? 'data-management'
+        : sp.section==='payments'
         ? 'payments'
         : sp.section==='access'&&role==='admin'
           ? 'access'
@@ -33,6 +37,9 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     activeUsersResult,
     archivedUsersResult,
     bankTransferResult,
+    trackingProviderResult,
+    telegramSettingsResult,
+    telegramDestinationsResult,
   ]=await Promise.all([
     supabase.from('shipping_carrier_configs')
       .select('id,carrier_code,display_name,tracking_prefixes,supports_tracking,supports_destination_hub,priority,is_active,note')
@@ -60,6 +67,16 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       .select('config_key,bank_id,bank_name,account_no,account_name,qr_template,transfer_prefix,is_active')
       .eq('config_key','DEFAULT')
       .maybeSingle(),
+    supabase.from('tracking_provider_configs')
+      .select('carrier,enabled,endpoint_url,http_method,timeout_ms,auth_header_name,auth_secret_id')
+      .order('carrier',{ascending:true}),
+    supabase.from('telegram_alert_settings')
+      .select('enabled,default_chat_id,bot_token_secret_id,alert_types')
+      .eq('id','main')
+      .maybeSingle(),
+    supabase.from('telegram_alert_destinations')
+      .select('id,destination_hub,chat_id,alert_types,is_active')
+      .order('destination_hub',{ascending:true}),
   ])
 
   const assignments=(assignmentRows??[]) as any[]
@@ -94,7 +111,8 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
 
   const error=carrierError??hubError??shipperError??assignmentError
     ??activeOrdersResult.error??archivedOrdersResult.error??activeUsersResult.error??archivedUsersResult.error
-    ??bankTransferResult.error??systemUsersResult.error
+    ??bankTransferResult.error??trackingProviderResult.error??telegramSettingsResult.error??telegramDestinationsResult.error
+    ??systemUsersResult.error
 
   const activeOrders=activeOrdersResult.count??0
   const archivedOrders=archivedOrdersResult.count??0
@@ -117,6 +135,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     <nav className="settings-page-tabs-v3" aria-label="Nhóm cài đặt">
       <Link className={section==='shipping-carriers'?'active':''} href="/settings?section=shipping-carriers">Đơn vị vận chuyển</Link>
       <Link className={section==='spx-hubs'?'active':''} href="/settings?section=spx-hubs">SPX · Kho đích & Shipper</Link>
+      {['admin','operator'].includes(role)&&<Link className={section==='tracking-alerts'?'active':''} href="/settings?section=tracking-alerts">Tracking & Telegram</Link>}
       <Link className={section==='payments'?'active':''} href="/settings?section=payments">Thanh toán & QR</Link>
       <Link className={section==='data-management'?'active':''} href="/settings?section=data-management">Quản lý dữ liệu</Link>
       {role==='admin'&&<Link className={section==='access'?'active':''} href="/settings?section=access">Phân quyền & tài khoản</Link>}
@@ -131,8 +150,19 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
               shippers={(shipperRows??[]) as any[]}
               canEdit={canEdit}
             />
-          : section==='payments'
-            ? <BankTransferSettings config={(bankTransferResult.data??null) as any} canEdit={canEdit}/>
+          : section==='tracking-alerts'
+            ? <TrackingTelegramSettings
+                carriers={(carrierRows??[]) as any[]}
+                providers={(trackingProviderResult.data??[]) as any[]}
+                telegram={(telegramSettingsResult.data??null) as any}
+                destinations={(telegramDestinationsResult.data??[]) as any[]}
+                hubs={(hubRows??[]).filter((x:any)=>x.is_active).map((x:any)=>String(x.hub_code))}
+                canEdit={canEditTracking}
+                telegramTest={sp.telegram_test??null}
+                telegramMessage={sp.telegram_message??null}
+              />
+            : section==='payments'
+              ? <BankTransferSettings config={(bankTransferResult.data??null) as any} canEdit={canEdit}/>
             : section==='access'&&role==='admin'
               ? <SystemAccessSettings users={systemUsers as any[]} currentUserId={user.id}/>
               : <DataManagementSettings
