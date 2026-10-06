@@ -178,6 +178,8 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
         payment:sp.payment??null,
         state:sp.state??null,
         archive:archiveView?'archived':null,
+        sale:sp.sale??null,
+        tab:sp.tab??null,
       }}
     /></div>
 
@@ -185,6 +187,8 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
       <input type="hidden" name="range" value={range.key}/>
       {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
       {archiveView&&<input type="hidden" name="archive" value="archived"/>}
+      {sp.sale&&<input type="hidden" name="sale" value={sp.sale}/>}
+      {sp.tab&&<input type="hidden" name="tab" value={sp.tab}/>}
       <input className="search" name="q" defaultValue={sp.q??''} placeholder="Tìm mã HĐ / khách hàng / SĐT..."/>
       <select name="warehouse" defaultValue={sp.warehouse??''}>
         <option value="">Tất cả kho</option>
@@ -204,7 +208,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
         <option value="RETURNED">Đã hoàn toàn bộ</option>
       </select>
       <button className="button primary" type="submit">Lọc</button>
-      <Link className="button" href={archiveView?'/sales/history?archive=archived':'/sales/history'}>Đặt lại</Link>
+      <Link className="button" href={href({q:null,warehouse:null,payment:null,state:null})}>Đặt lại</Link>
       <div className="archive-view-toggle">
         <Link className={!archiveView?'active':''} href={href({archive:null,sale:null,tab:null})}>Đang dùng</Link>
         <Link className={archiveView?'active':''} href={href({archive:'archived',sale:null,tab:null})}>Đã lưu trữ</Link>
