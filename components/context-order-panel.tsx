@@ -42,7 +42,7 @@ export function ContextOrderPanel({
       <div className="context-stack-title">
         <span className="eyebrow">CHI TIẾT ĐƠN · TRONG USER</span>
         <h2>{order.shopee_order_id??String(order.id).slice(0,8)}</h2>
-        <small>{order.erp_users?.username??'User'} · Không rời màn Tài khoản</small>
+        <small>{order.erp_users?.username??'User'}</small>
       </div>
       <Link className="close" href={closeHref} aria-label="Đóng toàn bộ">×</Link>
     </div>
