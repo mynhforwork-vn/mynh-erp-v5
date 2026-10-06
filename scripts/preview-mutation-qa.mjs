@@ -249,8 +249,25 @@ const allocation=await first('/rest/v1/customer_payment_allocations?select=id,cu
 record('Debt payment allocation points to QA sale',String(allocation?.sale_id)===String(saleId)&&Number(allocation?.amount)===Number(f.mutation_sale_price))
 const paymentDebt=await first('/rest/v1/debt_ledger?select=id,debit,credit,reference_type,reference_id&customer_id=eq.'+encodeURIComponent(f.customer_id)+'&reference_type=eq.CUSTOMER_PAYMENT&reference_id=eq.'+encodeURIComponent(payment.id))
 record('Debt payment creates debt ledger credit',Number(paymentDebt?.credit)===Number(f.mutation_sale_price)&&Number(paymentDebt?.debit)===0)
-const financeTx=await first('/rest/v1/finance_transactions?select=id,tx_type,category,amount,reference_type,reference_id,status&reference_type=eq.CUSTOMER_PAYMENT&reference_id=eq.'+encodeURIComponent(payment.id))
-record('Debt payment creates posted finance transaction',financeTx?.tx_type==='INCOME'&&financeTx?.category==='CUSTOMER_DEBT_PAYMENT'&&Number(financeTx?.amount)===Number(f.mutation_sale_price)&&financeTx?.status==='POSTED')
+const financeRows=await admin('/rest/v1/finance_transactions?select=id,tx_type,category,amount,reference_type,reference_id,status,finance_document_id,payment_method&reference_type=eq.CUSTOMER_PAYMENT&reference_id=eq.'+encodeURIComponent(payment.id))
+const financeTx=Array.isArray(financeRows)?financeRows[0]??null:null
+record('Debt payment creates exactly one canonical finance transaction',
+  Array.isArray(financeRows)&&financeRows.length===1&&
+  financeTx?.tx_type==='INCOME'&&financeTx?.category==='DEBT_COLLECTION'&&
+  Number(financeTx?.amount)===Number(f.mutation_sale_price)&&financeTx?.status==='POSTED'&&
+  Boolean(financeTx?.finance_document_id)&&financeTx?.payment_method==='CASH',
+  {count:Array.isArray(financeRows)?financeRows.length:0,category:financeTx?.category??null}
+)
+const financeDocument=financeTx?.finance_document_id
+  ? await first('/rest/v1/finance_documents?select=id,document_type,document_status,total_amount,cash_amount,transfer_amount,payment_method,source_type,source_id&id=eq.'+encodeURIComponent(financeTx.finance_document_id))
+  : null
+record('Debt payment creates canonical finance document',
+  financeDocument?.document_type==='INCOME'&&financeDocument?.document_status==='POSTED'&&
+  Number(financeDocument?.total_amount)===Number(f.mutation_sale_price)&&
+  Number(financeDocument?.cash_amount)===Number(f.mutation_sale_price)&&
+  Number(financeDocument?.transfer_amount)===0&&financeDocument?.payment_method==='CASH'&&
+  financeDocument?.source_type==='CUSTOMER_PAYMENT'&&String(financeDocument?.source_id)===String(payment.id)
+)
 const customerDebt=await first('/rest/v1/customer_debt_balances?select=customer_id,balance&customer_id=eq.'+encodeURIComponent(f.customer_id))
 record('Customer debt balance returns to zero',!customerDebt||Number(customerDebt.balance)===0,{balance:Number(customerDebt?.balance??0)})
 const balanceAfterPayment=await first('/rest/v1/inventory_balances?select=quantity&warehouse_id=eq.'+encodeURIComponent(f.warehouse_id)+'&product_variant_id=eq.'+encodeURIComponent(variantId))
