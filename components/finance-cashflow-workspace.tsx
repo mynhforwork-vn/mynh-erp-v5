@@ -287,6 +287,18 @@ export function FinanceCashflowWorkspace({
     }
     return map
   },[shipperPayments])
+  const activeCustomerPayment=activeReference?.type==='CUSTOMER_PAYMENT'
+    ? customerPaymentMap.get(activeReference.id)??null
+    : null
+  const activeShipperPayment=activeReference?.type==='SHIPPER_PAYMENT'
+    ? shipperPaymentMap.get(activeReference.id)??null
+    : null
+  const activeReferencedSale=activeReference?.type==='SALE'
+    ? referencedSaleMap.get(activeReference.id)??null
+    : null
+  const activeReferencedOrder=activeReference?.type==='ORDER'
+    ? referencedOrderMap.get(activeReference.id)??null
+    : null
 
   const activeTransactions=transactions.filter(t=>t.status!=='VOID')
   const periodTransactions=activeTransactions.filter(t=>periodMatch(t.transaction_at,period,customFrom,customTo))
