@@ -69,7 +69,7 @@ export function ContextSalePanel({
             .reduce((sum:number,returned:any)=>sum+Number(returned.quantity??0),0),
         }))}
       />
-      <Link className="button small" href={openModuleHref}>Mở module ↗</Link>
+      <Link className="button small" href={openModuleHref}>Mở module Lịch sử bán ↗</Link>
     </div>
 
     <div className="panel-tabs context-sale-tabs">
