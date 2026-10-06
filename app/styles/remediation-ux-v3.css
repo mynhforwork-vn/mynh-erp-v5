@@ -2579,3 +2579,151 @@
     text-align:center!important;
   }
 }
+
+
+/* =====================================================================
+   CONTEXT STACK PILOT — User > Order > Tracking
+   ===================================================================== */
+.context-order-panel{
+  display:flex!important;
+  flex-direction:column!important;
+  min-width:0!important;
+}
+.context-stack-head{
+  display:grid!important;
+  grid-template-columns:28px minmax(0,1fr) 28px!important;
+  align-items:center!important;
+  gap:7px!important;
+}
+.context-stack-back{
+  width:28px!important;
+  height:28px!important;
+  display:grid!important;
+  place-items:center!important;
+  border:1px solid #d3dee7!important;
+  border-radius:6px!important;
+  background:#f8fafc!important;
+  color:#35546e!important;
+  font-size:15px!important;
+  line-height:1!important;
+  text-decoration:none!important;
+}
+.context-stack-back:hover{
+  background:#eef4f8!important;
+  border-color:#aebfcd!important;
+}
+.context-stack-title{
+  min-width:0!important;
+}
+.context-stack-title h2{
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.context-stack-title small{
+  display:block!important;
+  margin-top:2px!important;
+  overflow:hidden!important;
+  color:#7b8a98!important;
+  font-size:7px!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.context-stack-breadcrumb{
+  flex:0 0 auto!important;
+  min-width:0!important;
+  height:28px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:5px!important;
+  padding:0 10px!important;
+  overflow:hidden!important;
+  border-bottom:1px solid #e5ebf0!important;
+  background:#f8fafc!important;
+  color:#768796!important;
+  font-size:7.5px!important;
+}
+.context-stack-breadcrumb span,
+.context-stack-breadcrumb b,
+.context-stack-breadcrumb strong{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.context-stack-breadcrumb b{color:#38546b!important}
+.context-stack-breadcrumb strong{color:#245e88!important}
+.context-stack-breadcrumb i{
+  flex:0 0 auto!important;
+  color:#9caab6!important;
+  font-style:normal!important;
+}
+.context-order-tabs{
+  flex:0 0 auto!important;
+}
+.context-order-scroll{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+}
+.context-order-items{
+  min-width:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  border:1px solid #e1e8ed!important;
+  border-radius:6px!important;
+  overflow:hidden!important;
+}
+.context-order-items>div{
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto auto!important;
+  align-items:center!important;
+  gap:7px!important;
+  padding:7px 8px!important;
+  border-bottom:1px solid #edf1f4!important;
+  background:#fff!important;
+}
+.context-order-items>div:last-child{border-bottom:0!important}
+.context-order-items>div>span:first-child{
+  min-width:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:2px!important;
+}
+.context-order-items b{
+  overflow:hidden!important;
+  color:#2a4359!important;
+  font-size:8.5px!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.context-order-items small{
+  overflow:hidden!important;
+  color:#7e8d9a!important;
+  font-size:6.8px!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.context-order-items>div>span:nth-child(2){
+  color:#607487!important;
+  font-size:7.5px!important;
+  font-weight:750!important;
+  white-space:nowrap!important;
+}
+.context-order-items>div>strong{
+  color:#243d54!important;
+  font-size:8.5px!important;
+  white-space:nowrap!important;
+}
+.context-order-module-link{
+  display:flex!important;
+  justify-content:flex-end!important;
+  margin-top:10px!important;
+}
+.context-shipment-list{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:7px!important;
+}
