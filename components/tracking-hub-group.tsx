@@ -71,6 +71,7 @@ export function TrackingHubGroup({
   const tip=Math.max(0,actualValue-selectedCod)
   const transferValid=Boolean(selected.length&&actualValue>=selectedCod)
   const allSelected=eligible.length>0&&selected.length===eligible.length
+  const receiveTitleId='receive-title-'+hub.replace(/[^A-Za-z0-9_-]+/g,'-')
 
   useEffect(()=>{
     setActualTransferred(selectedCod>0?String(selectedCod):'')
@@ -231,11 +232,11 @@ export function TrackingHubGroup({
         role="presentation"
         onMouseDown={e=>{if(e.target===e.currentTarget)setReceiveModalOpen(false)}}
       >
-        <div className="receive-confirm-modal" role="dialog" aria-modal="true" aria-labelledby={'receive-title-'+hub}>
+        <div className="receive-confirm-modal" role="dialog" aria-modal="true" aria-labelledby={receiveTitleId}>
           <div className="receive-confirm-head">
             <div>
               <span className="module-eyebrow">XÁC NHẬN NHẬN HÀNG</span>
-              <h3 id={'receive-title-'+hub}>{hub}</h3>
+              <h3 id={receiveTitleId}>{hub}</h3>
               <p>{selected.length} đơn · COD {formatMoney(selectedCod)}</p>
             </div>
             <button type="button" className="close" onClick={()=>setReceiveModalOpen(false)} aria-label="Đóng">×</button>
