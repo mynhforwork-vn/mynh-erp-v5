@@ -2727,3 +2727,91 @@
   flex-direction:column!important;
   gap:7px!important;
 }
+
+
+/* Context stack pilot visual polish */
+.context-order-panel{
+  height:calc(100vh - 188px)!important;
+  min-height:0!important;
+  max-height:calc(100vh - 188px)!important;
+  align-self:start!important;
+}
+.context-stack-head{
+  min-height:58px!important;
+  padding:9px 10px 8px!important;
+  align-items:start!important;
+  border-bottom:0!important;
+}
+.context-stack-back,
+.context-order-panel>.panel-head>.close{
+  margin-top:1px!important;
+  flex:0 0 auto!important;
+}
+.context-stack-title{
+  align-self:center!important;
+}
+.context-stack-title .eyebrow{
+  display:block!important;
+  margin-bottom:2px!important;
+  font-size:7.5px!important;
+  line-height:1.2!important;
+}
+.context-stack-title h2{
+  margin:0!important;
+  font-size:14px!important;
+  line-height:1.25!important;
+}
+.context-stack-title small{
+  margin-top:3px!important;
+  font-size:7.6px!important;
+  line-height:1.2!important;
+}
+.context-stack-breadcrumb{
+  height:26px!important;
+  padding:0 11px!important;
+  gap:4px!important;
+  border-top:1px solid #edf1f4!important;
+  background:#fbfcfd!important;
+  font-size:7.2px!important;
+}
+.context-order-tabs{
+  height:33px!important;
+  padding:0 11px!important;
+  gap:16px!important;
+  background:#fff!important;
+}
+.context-order-tabs a{
+  height:33px!important;
+  display:flex!important;
+  align-items:center!important;
+  border:0!important;
+  border-bottom:2px solid transparent!important;
+  border-radius:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+.context-order-tabs a.active{
+  color:#245e88!important;
+  border-bottom-color:#245e88!important;
+  box-shadow:none!important;
+}
+.context-order-tabs a:focus-visible{
+  outline:1px solid #a9bfd1!important;
+  outline-offset:-3px!important;
+}
+.context-order-scroll{
+  padding:10px 11px 14px!important;
+  scrollbar-gutter:stable!important;
+}
+@media(max-width:1440px) and (min-width:901px){
+  .context-order-panel{
+    height:calc(100vh - 176px)!important;
+    max-height:calc(100vh - 176px)!important;
+  }
+}
+@media(max-width:900px){
+  .context-order-panel{
+    height:auto!important;
+    max-height:none!important;
+  }
+}
