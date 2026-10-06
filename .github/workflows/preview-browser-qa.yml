@@ -30,20 +30,45 @@ jobs:
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
+
+      - name: Check Browser QA prerequisites
+        id: browser_qa_prereq
+        shell: bash
+        run: |
+          if [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "### Browser QA" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Status: READY" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Browser QA BLOCKED: repository secret SUPABASE_SERVICE_ROLE_KEY is not configured."
+            echo "### Browser QA" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Status: BLOCKED" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Reason: missing repository secret SUPABASE_SERVICE_ROLE_KEY" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Cloudflare build/smoke and static QA remain separate checks." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Create temporary QA auth session
+        if: steps.browser_qa_prereq.outputs.ready == 'true'
         run: node scripts/preview-auth-setup.mjs
+
       - name: Install Playwright
+        if: steps.browser_qa_prereq.outputs.ready == 'true'
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
+
       - name: Run Preview browser QA
+        if: steps.browser_qa_prereq.outputs.ready == 'true'
         run: node scripts/preview-browser-qa.mjs
+
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.browser_qa_prereq.outputs.ready == 'true'
         with:
           name: preview-browser-qa-${{ github.sha }}
           path: qa-browser-artifacts/
           retention-days: 7
+
       - name: Cleanup temporary QA auth user
-        if: always()
+        if: always() && steps.browser_qa_prereq.outputs.ready == 'true'
         run: node scripts/preview-auth-cleanup.mjs
