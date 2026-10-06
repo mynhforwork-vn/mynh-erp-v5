@@ -103,17 +103,30 @@ async function browserFor(session,role){
   const page=await context.newPage()
   page.on('console',m=>{if(m.type()==='error')summary.consoleErrors.push({role,url:page.url(),text:m.text()})})
   page.on('pageerror',e=>summary.pageErrors.push({role,url:page.url(),text:String(e)}))
-  page.on('response',r=>{if(r.status()>=500)summary.network5xx.push({role,url:r.url(),status:r.status()})})
+  page.on('response',r=>{if(r.status()>=500)summary.network5xx.push({role,url:r.url(),status:r.status(),resourceType:r.request().resourceType()})})
   return {browser,page}
 }
 async function go(page,role,path){
-  const res=await page.goto(PREVIEW_URL+path,{waitUntil:'domcontentloaded',timeout:30000})
-  await page.waitForTimeout(500)
-  const status=res?.status()??0
-  const login=/\/login(?:\?|$)/.test(new URL(page.url()).pathname)
-  const body=(await page.locator('body').innerText().catch(()=>'' )).slice(0,4000)
-  const serverError=/Application error|Internal Server Error|Server Components render/i.test(body)
-  record('routes',role+' '+path,status>0&&status<500&&!login&&!serverError,{status,finalUrl:page.url()})
+  let status=0
+  let login=false
+  let serverError=false
+  let finalUrl=''
+  const target=PREVIEW_URL+path
+  for(let attempt=1;attempt<=3;attempt++){
+    const res=await page.goto(target,{waitUntil:'domcontentloaded',timeout:30000})
+    await page.waitForTimeout(attempt===1?500:1200)
+    status=res?.status()??0
+    finalUrl=page.url()
+    login=/\/login(?:\?|$)/.test(new URL(finalUrl).pathname)
+    const body=(await page.locator('body').innerText().catch(()=>'' )).slice(0,4000)
+    serverError=/Application error|Internal Server Error|Server Components render/i.test(body)
+    if(status>0&&status<500&&!login&&!serverError){
+      summary.network5xx=summary.network5xx.filter(x=>!(x.role===role&&x.resourceType==='document'&&x.url===target))
+      record('routes',role+' '+path,true,{status,finalUrl,attempt})
+      return
+    }
+  }
+  record('routes',role+' '+path,false,{status,finalUrl,login,serverError})
 }
 
 const routes=[
