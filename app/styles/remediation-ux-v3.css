@@ -2938,6 +2938,80 @@
 }
 
 
+/* Warehouse history contextual drill-down */
+.whx-history-page.with-context-panel{
+  position:relative!important;
+  padding-right:calc(var(--mynh-slidebar-width) + 8px)!important;
+}
+.whx-history-page.with-context-panel>.detail-panel,
+.whx-history-page.with-context-panel>.context-sale-panel{
+  position:fixed!important;
+  z-index:710!important;
+  top:168px!important;
+  right:16px!important;
+  bottom:16px!important;
+  width:var(--mynh-slidebar-width)!important;
+  min-width:0!important;
+  max-width:var(--mynh-slidebar-width)!important;
+  height:auto!important;
+  max-height:calc(100vh - 184px)!important;
+  overflow:hidden!important;
+  border:1px solid #cedae4!important;
+  border-radius:8px!important;
+  background:#fff!important;
+  box-shadow:0 18px 45px rgba(21,42,63,.16)!important;
+}
+.whx-history-reference-panel{
+  display:flex!important;
+  flex-direction:column!important;
+}
+.whx-history-reference-scroll{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  padding:10px 11px 14px!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  scrollbar-gutter:stable!important;
+}
+.whx-history-reference-actions{
+  justify-content:flex-end!important;
+  margin-top:9px!important;
+}
+.whx-reference-link{
+  color:inherit!important;
+  text-decoration:none!important;
+  cursor:pointer!important;
+}
+.whx-reference-link:hover b,
+.whx-reference-link:hover span{
+  color:#245e88!important;
+}
+.whx-history-page .whx-table tbody tr.selected>td{
+  background:#f2f7fb!important;
+}
+@media(max-width:1440px) and (min-width:901px){
+  .whx-history-page.with-context-panel>.detail-panel,
+  .whx-history-page.with-context-panel>.context-sale-panel{
+    right:10px!important;
+    width:var(--mynh-slidebar-width-compact)!important;
+    max-width:var(--mynh-slidebar-width-compact)!important;
+  }
+}
+@media(max-width:900px){
+  .whx-history-page.with-context-panel{
+    padding-right:0!important;
+  }
+  .whx-history-page.with-context-panel>.detail-panel,
+  .whx-history-page.with-context-panel>.context-sale-panel{
+    position:static!important;
+    width:auto!important;
+    max-width:none!important;
+    height:auto!important;
+    max-height:none!important;
+    margin-top:8px!important;
+  }
+}
+
 /* =====================================================================
    FINANCE CONTEXT REFERENCE STACK
    ===================================================================== */
