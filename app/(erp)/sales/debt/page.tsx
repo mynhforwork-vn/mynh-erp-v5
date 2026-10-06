@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { formatMoney } from '@/lib/format'
 import { requireUser } from '@/lib/supabase/auth'
 import { DebtCollectForm } from '@/components/debt-collect-form'
+import { ContextSalePanel } from '@/components/context-sale-panel'
+import { fetchSaleContext } from '@/lib/sales/context'
 
 type SP={
   q?:string
@@ -9,6 +11,8 @@ type SP={
   customer?:string
   tab?:'summary'|'invoices'|'receipts'
   mode?:'collect'
+  sale?:string
+  saleTab?:'info'|'products'|'payment'|'history'
 }
 
 const DAY=24*60*60*1000
@@ -117,7 +121,12 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
 
   const selected=allRows.find(x=>x.customer_id===sp.customer)??null
   const tab=sp.tab??'summary'
-  const collectMode=sp.mode==='collect'&&Boolean(selected)
+  const saleContext=sp.sale?await fetchSaleContext(supabase,sp.sale):null
+  const contextSale=saleContext?.sale&&selected&&String(saleContext.sale.customers?.id??'')===selected.customer_id
+    ? saleContext.sale
+    : null
+  const saleTab=sp.saleTab==='products'||sp.saleTab==='payment'||sp.saleTab==='history'?sp.saleTab:'info'
+  const collectMode=sp.mode==='collect'&&Boolean(selected)&&!contextSale
   const totalDebt=allRows.reduce((sum,x)=>sum+x.debt,0)
   const openInvoices=allRows.reduce((sum,x)=>sum+x.invoices,0)
   const partialCustomers=allRows.filter(x=>x.rows.some(r=>r.paid>0&&r.debt>0)).length
@@ -135,6 +144,8 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
     if(sp.customer)p.set('customer',sp.customer)
     if(sp.tab)p.set('tab',sp.tab)
     if(sp.mode)p.set('mode',sp.mode)
+    if(sp.sale)p.set('sale',sp.sale)
+    if(sp.saleTab)p.set('saleTab',sp.saleTab)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v===''||v==='all')p.delete(k)
       else p.set(k,v)
@@ -202,7 +213,27 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
         </div>
       </section>
 
-      {selected&&<aside className={'debt-demo-panel '+(collectMode?'collect-mode':'')}>
+      {selected&&contextSale&&<ContextSalePanel
+        sale={contextSale}
+        activeTab={saleTab}
+        parentLabel="Công nợ"
+        canOperate={true}
+        receiptQR={saleContext?.receiptQR??''}
+        receiptQRAmount={saleContext?.receiptQRAmount??0}
+        receiptQRDescription={saleContext?.receiptQRDescription??''}
+        bankConfig={saleContext?.bankConfig??null}
+        backHref={saleTab!=='info'
+          ? href({customer:selected.customer_id,sale:contextSale.id,saleTab:'info',mode:null})
+          : href({customer:selected.customer_id,tab:sp.tab??'summary',sale:null,saleTab:null,mode:null})}
+        closeHref={href({customer:null,tab:null,mode:null,sale:null,saleTab:null})}
+        infoHref={href({customer:selected.customer_id,sale:contextSale.id,saleTab:'info',mode:null})}
+        productsHref={href({customer:selected.customer_id,sale:contextSale.id,saleTab:'products',mode:null})}
+        paymentHref={href({customer:selected.customer_id,sale:contextSale.id,saleTab:'payment',mode:null})}
+        historyHref={href({customer:selected.customer_id,sale:contextSale.id,saleTab:'history',mode:null})}
+        openModuleHref={'/sales/history?sale='+contextSale.id}
+      />}
+
+      {selected&&!contextSale&&<aside className={'debt-demo-panel '+(collectMode?'collect-mode':'')}>
         <div className="sales-detail-panel-head">
           <div><span className="module-eyebrow">CÔNG NỢ KHÁCH HÀNG</span><h2>{selected.name}</h2><p>{phone(selected.phone)} · {selected.address||'—'}</p></div>
           <Link className="panel-close" href={href({customer:null,tab:null,mode:null})}>×</Link>
@@ -232,17 +263,17 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
             {!collectMode&&<Link className="button primary debt-main-collect" href={href({customer:selected.customer_id,tab:'summary',mode:'collect'})}>Thu nợ · {formatMoney(selected.debt)}</Link>}
             <div className="debt-panel-section">
               <div className="debt-panel-section-head"><b>Hóa đơn đang nợ</b><span>{selected.invoices} hóa đơn</span></div>
-              {selected.rows.map(row=><div className="debt-invoice-mini" key={row.id}>
+              {selected.rows.map(row=><Link className="debt-invoice-mini context-link-row" key={row.id} href={href({customer:selected.customer_id,tab:'summary',mode:null,sale:row.id,saleTab:'info'})}>
                 <div><b>{row.code}</b><span>{fmtDate(row.date)} · {row.warehouse}</span></div>
                 <div><small>Đã thu {formatMoney(row.paid)}</small><b>{formatMoney(row.debt)}</b></div>
-              </div>)}
+              </Link>)}
             </div>
           </>}
 
           {tab==='invoices'&&<table className="table debt-invoice-table">
             <thead><tr><th>Mã HĐ</th><th>Ngày</th><th>Tổng</th><th>Đã thu</th><th>Còn nợ</th></tr></thead>
             <tbody>{selected.rows.map(row=><tr key={row.id}>
-              <td><Link href={'/sales/history?sale='+row.id}><b>{row.code}</b></Link></td><td>{fmtDate(row.date)}</td>
+              <td><Link href={href({customer:selected.customer_id,tab:'invoices',mode:null,sale:row.id,saleTab:'info'})}><b>{row.code}</b></Link></td><td>{fmtDate(row.date)}</td>
               <td className="money">{formatMoney(row.total)}</td><td className="money">{formatMoney(row.paid)}</td><td className="money warning-text">{formatMoney(row.debt)}</td>
             </tr>)}</tbody>
           </table>}
@@ -269,7 +300,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
                           return <div className="debt-receipt-invoice" key={allocation.id}>
                             <div className="debt-receipt-invoice-head">
                               <div><b>{sale?.invoice_code??'Hóa đơn'}</b><span>{fmtDate(sale?.sale_at)} · Phân bổ {formatMoney(Number(allocation.amount??0))}</span></div>
-                              <Link href={'/sales/history?sale='+String(allocation.sale_id)}>Mở HĐ</Link>
+                              <Link href={href({customer:selected.customer_id,tab:'receipts',mode:null,sale:String(allocation.sale_id),saleTab:'info'})}>Mở HĐ</Link>
                             </div>
                             <div className="debt-receipt-products">
                               {(sale?.sale_items??[]).map((item:any)=><div key={item.id}>
