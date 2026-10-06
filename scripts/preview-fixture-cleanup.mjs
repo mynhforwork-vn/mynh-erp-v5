@@ -72,8 +72,8 @@ const paymentIds=[...new Set([
 
 const returnIds=[]
 for(const saleId of saleIds){
-  const rows=await rows('/rest/v1/sale_returns?select=id&sale_id=eq.'+encodeURIComponent(saleId))
-  returnIds.push(...rows.map(x=>String(x.id)))
+  const returnRows=await rows('/rest/v1/sale_returns?select=id&sale_id=eq.'+encodeURIComponent(saleId))
+  returnIds.push(...returnRows.map(x=>String(x.id)))
 }
 const transferBatchIds=[]
 for(const variantId of variantIds){
