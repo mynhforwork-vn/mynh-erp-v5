@@ -127,7 +127,7 @@ await insert('destination_hub_configs',{
   id:fixtures.hub_config_id,
   hub_code:fixtures.shipper_hub,
   area:'QA',
-  region:'QA',
+  region:'Miền Bắc',
   province_keywords:[],
   district_keywords:[],
   address_keywords:[],
