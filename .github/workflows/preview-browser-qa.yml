@@ -10,6 +10,7 @@ on:
       - lib/**
       - supabase/migrations/**
       - scripts/preview-browser-qa.mjs
+      - scripts/preview-mutation-qa.mjs
       - scripts/preview-auth-setup.mjs
       - scripts/preview-auth-cleanup.mjs
       - scripts/preview-fixture-setup.mjs
@@ -24,7 +25,7 @@ concurrency:
 jobs:
   browser-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     env:
       PREVIEW_URL: https://remediation-76aed41c-mynh-erp-v5.mynh-forwork.workers.dev
       SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
@@ -104,6 +105,10 @@ jobs:
       - name: Run Preview browser QA
         if: steps.browser_qa_prereq.outputs.ready == 'true'
         run: node scripts/preview-browser-qa.mjs
+
+      - name: Run Preview mutation QA
+        if: steps.browser_qa_prereq.outputs.ready == 'true'
+        run: node scripts/preview-mutation-qa.mjs
 
       - uses: actions/upload-artifact@v4
         if: always() && steps.browser_qa_prereq.outputs.ready == 'true'
