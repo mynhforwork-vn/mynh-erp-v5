@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect,useMemo,useState } from 'react'
-import Link from 'next/link'
 import { formatDateTime,formatMoney } from '@/lib/format'
 
 type Row={
@@ -51,6 +50,7 @@ export function WarehouseInventoryWorkspace({
 }){
   const [activeKey,setActiveKey]=useState<string|null>(null)
   const [panelTab,setPanelTab]=useState<'overview'|'history'>('overview')
+  const [historyScope,setHistoryScope]=useState<'local'|'all'>('local')
   const active=rows.find(row=>(row.warehouse_id+'|'+row.product_variant_id)===activeKey)??null
 
   useEffect(()=>{
@@ -73,6 +73,14 @@ export function WarehouseInventoryWorkspace({
     ()=>active?rows.filter(row=>row.product_variant_id===active.product_variant_id):[],
     [active,rows]
   )
+  const allSkuTx=useMemo(()=>{
+    if(!active)return []
+    return transactions.filter(tx=>tx.product_variant_id===active.product_variant_id)
+  },[active,transactions])
+  const warehouseNameById=useMemo(
+    ()=>new Map(rows.map(row=>[row.warehouse_id,row.warehouse_code+' · '+row.warehouse_name])),
+    [rows]
+  )
   const movement=useMemo(()=>{
     let incoming=0,outgoing=0
     for(const tx of activeTx){
@@ -85,6 +93,7 @@ export function WarehouseInventoryWorkspace({
   function openRow(key:string){
     setActiveKey(key)
     setPanelTab('overview')
+    setHistoryScope('local')
   }
 
   return <div
@@ -160,19 +169,34 @@ export function WarehouseInventoryWorkspace({
         overflow:'hidden',
       }}
     >
-      <div className="whx-panel-head whx-panel-head-v2">
-        <div>
-          <span className="module-eyebrow">CHI TIẾT TỒN KHO</span>
-          <div className="whx-panel-title-row"><h2>{active.sku}</h2><span className={'status-pill '+(active.quantity===0?'red':active.quantity<=3?'orange':'green')}>{active.quantity===0?'Hết hàng':active.quantity<=3?'Tồn thấp':'Bình thường'}</span></div>
-          <p>{active.product_name} · {active.variant_name}</p>
-        </div>
-        <button className="close" type="button" onClick={()=>setActiveKey(null)} aria-label="Đóng">×</button>
-      </div>
+      {historyScope==='all'
+        ? <>
+            <div className="whx-panel-head whx-panel-head-v2 context-stack-head">
+              <button className="context-stack-back" type="button" onClick={()=>setHistoryScope('local')} aria-label="Quay lại">←</button>
+              <div className="context-stack-title">
+                <span className="module-eyebrow">LỊCH SỬ KHO · TRONG TỒN KHO</span>
+                <h2>{active.sku}</h2>
+                <small>{active.product_name} · {allSkuTx.length} giao dịch</small>
+              </div>
+              <button className="close" type="button" onClick={()=>setActiveKey(null)} aria-label="Đóng toàn bộ">×</button>
+            </div>
+            <div className="context-stack-breadcrumb"><span>Tồn kho</span><i>›</i><b>{active.sku}</b><i>›</i><strong>Lịch sử toàn SKU</strong></div>
+          </>
+        : <>
+            <div className="whx-panel-head whx-panel-head-v2">
+              <div>
+                <span className="module-eyebrow">CHI TIẾT TỒN KHO</span>
+                <div className="whx-panel-title-row"><h2>{active.sku}</h2><span className={'status-pill '+(active.quantity===0?'red':active.quantity<=3?'orange':'green')}>{active.quantity===0?'Hết hàng':active.quantity<=3?'Tồn thấp':'Bình thường'}</span></div>
+                <p>{active.product_name} · {active.variant_name}</p>
+              </div>
+              <button className="close" type="button" onClick={()=>setActiveKey(null)} aria-label="Đóng">×</button>
+            </div>
 
-      <div className="whx-panel-tabs">
-        <button className={panelTab==='overview'?'active':''} type="button" onClick={()=>setPanelTab('overview')}>Tổng quan</button>
-        <button className={panelTab==='history'?'active':''} type="button" onClick={()=>setPanelTab('history')}>Lịch sử <span>{activeTx.length}</span></button>
-      </div>
+            <div className="whx-panel-tabs">
+              <button className={panelTab==='overview'?'active':''} type="button" onClick={()=>{setPanelTab('overview');setHistoryScope('local')}}>Tổng quan</button>
+              <button className={panelTab==='history'?'active':''} type="button" onClick={()=>{setPanelTab('history');setHistoryScope('local')}}>Lịch sử <span>{activeTx.length}</span></button>
+            </div>
+          </>}
 
       <div
         className="whx-panel-scroll"
@@ -185,7 +209,7 @@ export function WarehouseInventoryWorkspace({
           overscrollBehavior:'contain',
         }}
       >
-        {panelTab==='overview'&&<>
+        {historyScope==='local'&&panelTab==='overview'&&<>
           <div className="whx-panel-kpis">
             <div className="primary"><span>Tồn hiện tại</span><b>{active.quantity}</b><small>{active.warehouse_code}</small></div>
             <div><span>Đang về</span><b>{active.incoming}</b><small>Chuyển kho</small></div>
@@ -224,10 +248,10 @@ export function WarehouseInventoryWorkspace({
           </section>
         </>}
 
-        {panelTab==='history'&&<>
+        {historyScope==='local'&&panelTab==='history'&&<>
           <div className="whx-panel-section-head whx-history-head">
             <div><b>Lịch sử nhập / xuất</b><span>{activeTx.length} giao dịch gần nhất</span></div>
-            <Link className="button small" href={'/warehouse/history?q='+encodeURIComponent(active.sku)}>Mở lịch sử kho</Link>
+            <button className="button small" type="button" onClick={()=>setHistoryScope('all')}>Toàn bộ lịch sử SKU</button>
           </div>
           <div className="whx-history-list-final">
             {!activeTx.length
@@ -240,6 +264,29 @@ export function WarehouseInventoryWorkspace({
                       <b>{txLabel(tx.tx_type,tx.reference_type)}</b>
                       <span>{formatDateTime(tx.created_at)}</span>
                       <small>{tx.reference_type??'Không có tham chiếu'}</small>
+                    </div>
+                    <strong className={'whx-history-qty-final '+(incoming?'in':'out')}>{incoming?'+':'-'}{tx.quantity}</strong>
+                  </div>
+                })}
+          </div>
+        </>}
+
+        {historyScope==='all'&&<>
+          <div className="whx-history-scope-summary">
+            <div><span>Tổng giao dịch</span><b>{allSkuTx.length}</b></div>
+            <div><span>Số kho phát sinh</span><b>{new Set(allSkuTx.map(tx=>tx.warehouse_id)).size}</b></div>
+          </div>
+          <div className="whx-history-list-final whx-history-all-final">
+            {!allSkuTx.length
+              ? <div className="empty compact">Chưa có lịch sử cho SKU này.</div>
+              : allSkuTx.slice(0,100).map(tx=>{
+                  const incoming=IN_TYPES.has(tx.tx_type)
+                  return <div key={tx.id} className="whx-history-row-final">
+                    <span className={'whx-history-dot-final '+(incoming?'in':'out')}/>
+                    <div className="whx-history-info-final">
+                      <b>{txLabel(tx.tx_type,tx.reference_type)}</b>
+                      <span>{formatDateTime(tx.created_at)} · {warehouseNameById.get(tx.warehouse_id)??'Kho'}</span>
+                      <small>{tx.reference_type??'Không có tham chiếu'}{tx.reference_id?' · '+tx.reference_id:''}</small>
                     </div>
                     <strong className={'whx-history-qty-final '+(incoming?'in':'out')}>{incoming?'+':'-'}{tx.quantity}</strong>
                   </div>
