@@ -195,13 +195,13 @@ if(await firstUserLink.count()){
   for(const tabName of ['Đơn hàng','Lịch sử','Thông tin']){
     const tab=page.locator('aside.account-detail-panel .panel-tabs').getByRole('link',{name:new RegExp('^'+tabName)}).first()
     if(await tab.count()){
-      await tab.click();await settle()
-      recordInteraction('User detail tab '+tabName,await page.locator('aside.account-detail-panel .panel-tabs a.active').filter({hasText:tabName}).count()>0)
+      const userTabNav=await followLink(tab,{waitSelector:'aside.account-detail-panel'})
+      recordInteraction('User detail tab '+tabName,await page.locator('aside.account-detail-panel .panel-tabs a.active').filter({hasText:tabName}).count()>0,{href:userTabNav.href})
     }
   }
   const ordersTab=page.locator('aside.account-detail-panel .panel-tabs').getByRole('link',{name:/^Đơn hàng/}).first()
   if(await ordersTab.count()){
-    await ordersTab.click();await settle()
+    await followLink(ordersTab,{waitSelector:'aside.account-detail-panel'})
     const nestedOrder=page.locator('aside.account-detail-panel a.user-order-card').first()
     if(await nestedOrder.count()){
       const nav=await followLink(nestedOrder,{waitSelector:'aside.context-order-panel'})
