@@ -20,7 +20,9 @@ function todayStartVN(){
 
 export default async function WarehouseInventoryPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
-  const {supabase}=await requireUser()
+  const {supabase,user}=await requireUser()
+  const role=String(user.app_metadata?.role??'viewer')
+  const canOperate=['admin','operator'].includes(role)
   const q=String(sp.q??'').trim().toLowerCase()
 
   const [
@@ -131,10 +133,10 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
         <p>Tồn thực tế theo SKU bán tại Kho nhận; bán hàng, kiểm kê và điều chỉnh đều ghi lịch sử.</p>
       </div>
       <div className="head-actions">
-        <WarehouseReceivingSettings
+        {canOperate&&<WarehouseReceivingSettings
           warehouses={(warehouses??[]) as any[]}
           defaultReceivingWarehouseId={(settings as any)?.default_receiving_warehouse_id??null}
-        />
+        />}
       </div>
     </header>
 
@@ -169,12 +171,12 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
         {(sp.q||sp.warehouse||sp.status)&&<Link className="button small" href="/warehouse/inventory">Xóa lọc</Link>}
       </form>
 
-      <WarehouseStockTools
+      {canOperate&&<WarehouseStockTools
         warehouses={(warehouses??[]) as any[]}
         balances={toolBalances}
         recentTransfers={(transfers??[]) as any[]}
         defaultReceivingWarehouseId={(settings as any)?.default_receiving_warehouse_id??null}
-      />
+      />}
     </div>
 
     <WarehouseInventoryWorkspace
