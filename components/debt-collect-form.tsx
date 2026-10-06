@@ -1,6 +1,6 @@
 'use client'
 
-import { useState,useTransition } from 'react'
+import { useEffect,useState,useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { registerCustomerDebtPayment } from '@/lib/actions/sales'
 import { buildTransferDescription,buildVietQRUrl,type BankTransferConfig } from '@/lib/vietqr'
@@ -154,7 +154,8 @@ export function DebtCollectForm({customer,balance,invoices,bankConfig}:Props){
   const [cash,setCash]=useState(balance)
   const [transfer,setTransfer]=useState(0)
   const [note,setNote]=useState('')
-  const [receiptCode]=useState(newReceiptCode)
+  const [receiptCode,setReceiptCode]=useState('')
+  useEffect(()=>{setReceiptCode(newReceiptCode())},[])
   const [allocations,setAllocations]=useState<Record<string,number>>(()=>allocateFifo(invoices,balance))
   const [error,setError]=useState('')
   const [success,setSuccess]=useState<any>(null)
@@ -204,6 +205,7 @@ export function DebtCollectForm({customer,balance,invoices,bankConfig}:Props){
   }
   function printReceipt(mode:PrintMode){
     setError('')
+    if(!receiptCode){setError('Đang tạo mã phiếu, vui lòng thử lại.');return}
     if(mode==='draft'&&!validateAllocation())return
     setPrintMode(mode)
     window.setTimeout(()=>{
@@ -222,6 +224,7 @@ export function DebtCollectForm({customer,balance,invoices,bankConfig}:Props){
   }
   function submit(){
     setError('')
+    if(!receiptCode){setError('Đang tạo mã phiếu, vui lòng thử lại.');return}
     if(!validateAllocation())return
     startTransition(async()=>{
       const result=await registerCustomerDebtPayment({
@@ -286,7 +289,7 @@ export function DebtCollectForm({customer,balance,invoices,bankConfig}:Props){
         <div>
           <span className="module-eyebrow">THU CÔNG NỢ</span>
           <b>{customer.name}</b>
-          <small>{customer.phone} · Phiếu {receiptCode}</small>
+          <small>{customer.phone} · Phiếu {receiptCode||'Đang tạo mã...'}</small>
         </div>
         <div className="debt-collect-balance-v2"><span>Còn nợ</span><strong>{money(balance)}</strong></div>
       </div>
