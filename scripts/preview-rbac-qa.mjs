@@ -144,6 +144,8 @@ function auditSourceGuards(){
     'deleteOrderPermanent','deleteOrdersBulkPermanent','purgeEligibleArchivedOrders','deleteERPUserPermanent',
     'updateSystemUserRole','sendSystemUserPasswordReset','resetERPSystemData','createSystemUserAccount',
     'setSystemUserTemporaryPassword','deleteSystemUserAccount',
+    'saveTrackingProviderConfig','saveTelegramAlertSettings','saveTelegramAlertDestination',
+    'deleteTelegramAlertDestination','testTelegramConnection',
   ])
   for(const path of files){
     const src=fs.readFileSync(path,'utf8')
@@ -189,6 +191,25 @@ for(const role of ['admin','operator','viewer']){
     const bankEditable=await bankInput.count()>0&&!(await bankInput.isDisabled())
     const bankSave=await page.locator('.bank-transfer-form').getByRole('button',{name:'Lưu cấu hình'}).count()>0
     record('ui',role+' payment settings edit state',role==='viewer'?(!bankEditable&&!bankSave):(bankEditable&&bankSave),{bankEditable,bankSave})
+
+    await go(page,role,'/settings?section=tracking-alerts')
+    const trackingTabVisible=await page.locator('.settings-page-tabs-v3').getByRole('link',{name:'Tracking & Telegram'}).count()>0
+    const trackingWorkspace=await page.locator('.tracking-telegram-settings').count()>0
+    const providerEndpoint=page.locator('.provider-settings-row input[name="endpoint_url"]').first()
+    const providerEditable=await providerEndpoint.count()>0&&!(await providerEndpoint.isDisabled())
+    const providerSave=await page.locator('.provider-settings-row').getByRole('button',{name:'Lưu'}).count()>0
+    const telegramToken=page.locator('.telegram-main-form input[name="bot_token"]').first()
+    const telegramEditable=await telegramToken.count()>0&&!(await telegramToken.isDisabled())
+    const telegramSave=await page.locator('.telegram-main-form').getByRole('button',{name:'Lưu Telegram'}).count()>0
+    if(role==='viewer'){
+      record('ui',role+' Tracking Telegram visibility',!trackingTabVisible&&!trackingWorkspace,{trackingTabVisible,trackingWorkspace})
+    }else{
+      record('ui',role+' Tracking Telegram visibility',trackingTabVisible&&trackingWorkspace,{trackingTabVisible,trackingWorkspace})
+      record('ui',role+' Tracking Telegram edit state',role==='admin'
+        ? providerEditable&&providerSave&&telegramEditable&&telegramSave
+        : !providerEditable&&!providerSave&&!telegramEditable&&!telegramSave,
+        {providerEditable,providerSave,telegramEditable,telegramSave})
+    }
 
     await go(page,role,'/settings?section=data-management')
     const permanentDelete=await page.getByText('Xóa dữ liệu lưu trữ',{exact:true}).count()>0
@@ -284,6 +305,41 @@ for(const role of ['admin','operator','viewer']){
     },
   })
   record('backend',role+' POS RPC role gate',role==='viewer'?expectDenied(posProbe,'Operator role required'):expectAllowedPastRole(posProbe,'Operator role required'),{status:posProbe.status,body:posProbe.text.slice(0,180)})
+
+  const providerProbe=await rest(session,'/rest/v1/rpc/save_tracking_provider_config_secure',{
+    method:'POST',
+    body:{
+      p_carrier:'RBAC',
+      p_enabled:true,
+      p_endpoint_url:'http://invalid-rbac.local',
+      p_http_method:'GET',
+      p_timeout_ms:8000,
+      p_auth_header_name:null,
+      p_auth_secret:null,
+      p_clear_secret:false,
+    },
+  })
+  const providerProbePass=role==='admin'
+    ? (!providerProbe.ok&&providerProbe.text.includes('HTTPS endpoint'))
+    : expectDenied(providerProbe,'Admin role required')
+  record('backend',role+' tracking provider admin RPC gate',providerProbePass,{status:providerProbe.status,body:providerProbe.text.slice(0,180)})
+
+  const runtimeProbe=await rest(session,'/rest/v1/rpc/get_telegram_alert_runtime_settings',{method:'POST',body:{}})
+  record('backend',role+' Telegram secret runtime RPC hidden',!runtimeProbe.ok,{status:runtimeProbe.status,body:runtimeProbe.text.slice(0,160)})
+
+  const destinationPayload={
+    destination_hub:f.shipper_hub,
+    chat_id:'0',
+    alert_types:['DELIVERED'],
+    is_active:false,
+  }
+  const destinationWrite=await rest(session,'/rest/v1/telegram_alert_destinations',{method:'POST',body:destinationPayload})
+  if(role==='admin'){
+    record('backend',role+' Telegram destination write RLS',destinationWrite.ok,{status:destinationWrite.status,body:destinationWrite.text.slice(0,160)})
+    await rest(session,'/rest/v1/telegram_alert_destinations?destination_hub=eq.'+encodeURIComponent(f.shipper_hub),{method:'DELETE'})
+  }else{
+    record('backend',role+' Telegram destination write RLS',!destinationWrite.ok,{status:destinationWrite.status,body:destinationWrite.text.slice(0,160)})
+  }
 
   const adminList=await rest(session,'/rest/v1/rpc/admin_list_system_users',{method:'POST',body:{}})
   record('backend',role+' admin_list_system_users',role==='admin'?adminList.ok:expectDenied(adminList,'Admin role required'),{status:adminList.status,body:adminList.text.slice(0,160)})
