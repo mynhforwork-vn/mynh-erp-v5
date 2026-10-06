@@ -138,7 +138,7 @@ Deno.serve(async(req)=>{
 
   for(const alert of active){
     const hub=String(alert.destination_hub??orderMap.get(alert.order_id)?.destination_hub??"").trim();
-    const override=destRows.find(x=>x.destination_hub===hub&&(!x.alert_types||x.alert_types.includes(alert.alert_type)));
+    const override=destRows.find(x=>x.destination_hub===hub&&(!x.alert_types||x.alert_types.length===0||x.alert_types.includes(alert.alert_type)));
     const chatId=String(override?.chat_id??runtime.default_chat_id??"").trim();
     if(!chatId){
       await db.from("alert_events").update({
