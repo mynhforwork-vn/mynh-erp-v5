@@ -507,8 +507,8 @@ if(await bill.count()&&await bill.isEnabled()){
 await go('/finance/shipper-payments')
 const customerMode=page.locator('.finance-mode-tabs').getByRole('link',{name:'Khách hàng'}).first()
 if(await customerMode.count()){
-  await customerMode.click();await settle()
-  recordInteraction('Settlement customer mode opens',page.url().includes('mode=customer'))
+  const customerModeNav=await followLink(customerMode)
+  recordInteraction('Settlement customer mode opens',page.url().includes('mode=customer'),{href:customerModeNav.href})
   const shipperMode=page.locator('.finance-mode-tabs').getByRole('link',{name:'Đơn nhập / Shipper'}).first()
   if(await shipperMode.count()){await shipperMode.click();await settle()}
 }
