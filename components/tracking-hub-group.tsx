@@ -31,6 +31,7 @@ export function TrackingHubGroup({
   assignedShippers=[],
   defaultReceivingWarehouseId,
   contextQuery='',
+  orderBasePath='/purchase/orders',
   defaultOpen,
 }:{
   hub:string
@@ -39,6 +40,7 @@ export function TrackingHubGroup({
   assignedShippers?:AssignedShipper[]
   defaultReceivingWarehouseId?:string|null
   contextQuery?:string
+  orderBasePath?:string
   defaultOpen?:boolean
 }){
   const eligible=rows.filter(r=>r.receive_status==='WAITING_RECEIVE'&&r.tracking_status==='DELIVERED')
@@ -112,8 +114,8 @@ export function TrackingHubGroup({
   function orderHref(id:string){
     const p=new URLSearchParams(contextQuery)
     p.set('order',id)
-    p.set('tab','tracking')
-    return '/purchase/orders?'+p.toString()
+    p.set('orderTab','info')
+    return orderBasePath+'?'+p.toString()
   }
 
   return <section className={'card tracking-hub-card tracking-hub-card-v2 '+(open?'open':'collapsed')}>
