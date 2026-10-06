@@ -5,6 +5,10 @@ on:
     branches:
       - fix/76aed41c-remediation
 
+concurrency:
+  group: cloudflare-remediation-preview
+  cancel-in-progress: true
+
 jobs:
   preview:
     runs-on: ubuntu-latest
