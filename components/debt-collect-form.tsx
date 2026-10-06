@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo,useState,useTransition } from 'react'
+import { useState,useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { registerCustomerDebtPayment } from '@/lib/actions/sales'
 import { buildTransferDescription,buildVietQRUrl,type BankTransferConfig } from '@/lib/vietqr'
@@ -39,6 +39,7 @@ function allocateFifo(invoices:Invoice[],amount:number){
 export function DebtCollectForm({customer,balance,invoices,bankConfig}:Props){
   const router=useRouter()
   const [pending,startTransition]=useTransition()
+  const [step,setStep]=useState<1|2>(1)
   const [method,setMethod]=useState<'CASH'|'TRANSFER'|'COMBINED'>('CASH')
   const [amount,setAmount]=useState(balance)
   const [cash,setCash]=useState(balance)
@@ -72,10 +73,21 @@ export function DebtCollectForm({customer,balance,invoices,bankConfig}:Props){
     if(next==='COMBINED'){const c=Math.floor(amount/2);setCash(c);setTransfer(amount-c)}
     setError('')
   }
+  function nextStep(){
+    setError('')
+    if(amount<=0){setError('Số tiền thu phải lớn hơn 0');return}
+    if(method==='COMBINED'&&Math.round((cash+transfer)*100)!==Math.round(amount*100)){
+      setError('Tiền mặt + Chuyển khoản phải bằng số tiền thu');return
+    }
+    setAllocations(allocateFifo(invoices,amount))
+    setStep(2)
+  }
   function submit(){
     setError('')
     if(amount<=0){setError('Số tiền thu phải lớn hơn 0');return}
-    if(Math.round(allocated*100)!==Math.round(amount*100)){setError('Tổng phân bổ phải bằng số tiền thu');return}
+    if(Math.round(allocated*100)!==Math.round(amount*100)){
+      setError('Tổng phân bổ phải bằng số tiền thu');return
+    }
     if(method==='COMBINED'&&Math.round((cash+transfer)*100)!==Math.round(amount*100)){
       setError('Tiền mặt + Chuyển khoản phải bằng số tiền thu');return
     }
@@ -96,96 +108,135 @@ export function DebtCollectForm({customer,balance,invoices,bankConfig}:Props){
     })
   }
 
-  return <div className="debt-collect-live">
-    <div className="debt-collect-head">
-      <div><span className="module-eyebrow">THU CÔNG NỢ</span><b>{receiptCode}</b><small>{customer.name} · {customer.phone}</small></div>
+  if(success)return <div className="debt-collect-v2 debt-collect-success-v2">
+    <div className="debt-collect-v2-head">
+      <div><span className="module-eyebrow">THU NỢ THÀNH CÔNG</span><b>{String(success.receipt_code??receiptCode)}</b><small>{customer.name} · {customer.phone}</small></div>
+      <strong>{money(Number(success.amount??amount))}</strong>
     </div>
-
-    {error&&<div className="error-box">{error}</div>}
-    {success&&<div className="debt-receipt-success">
-      <div className="debt-receipt-success-head">
-        <div><span className="module-eyebrow">PHIẾU THU NỢ</span><b>{String(success.receipt_code??receiptCode)}</b><small>{customer.name} · {customer.phone}</small></div>
-        <strong>{money(Number(success.amount??amount))}</strong>
-      </div>
-      <div className="debt-receipt-success-grid">
-        <div><span>Phương thức</span><b>{method==='CASH'?'Tiền mặt':method==='TRANSFER'?'Chuyển khoản':'Kết hợp'}</b></div>
-        <div><span>Đã phân bổ</span><b>{money(allocated)}</b></div>
-        <div><span>Công nợ trước thu</span><b>{money(balance)}</b></div>
-        <div><span>Còn lại dự kiến</span><b>{money(Math.max(0,balance-amount))}</b></div>
-      </div>
-      <div className="debt-receipt-success-lines">
-        {invoices.filter(row=>Number(allocations[row.id]??0)>0).map(row=><div className="debt-receipt-success-line" key={row.id}>
-          <div><b>{row.code}</b><span>Thu {money(Number(allocations[row.id]??0))}</span></div>
-          <div>{row.items.map(item=><span key={item.id}>{item.name} · {item.sku} · {item.quantity}×</span>)}</div>
-        </div>)}
-      </div>
-      <button className="button small" type="button" onClick={()=>window.print()}>In phiếu thu</button>
-    </div>}
-
-    <div className="debt-collect-amount">
-      <span>Số tiền thu</span>
-      <input type="number" min={1} max={balance} value={amount} onChange={e=>changeAmount(Number(e.target.value))}/>
-      <small>Công nợ hiện tại {money(balance)}</small>
-      <div className="debt-quick-amounts">
-        <button type="button" onClick={()=>changeAmount(balance)}>Thu toàn bộ</button>
-        <button type="button" onClick={()=>changeAmount(Math.round(balance/2))}>50%</button>
-        <button type="button" onClick={()=>changeAmount(Math.min(balance,100000))}>100.000đ</button>
-      </div>
+    <div className="debt-success-grid-v2">
+      <div><span>Phương thức</span><b>{method==='CASH'?'Tiền mặt':method==='TRANSFER'?'Chuyển khoản':'Kết hợp'}</b></div>
+      <div><span>Đã phân bổ</span><b>{money(allocated)}</b></div>
+      <div><span>Công nợ trước thu</span><b>{money(balance)}</b></div>
+      <div><span>Còn lại</span><b>{money(Math.max(0,balance-amount))}</b></div>
     </div>
-
-    <div className="debt-collect-methods">
-      <button type="button" className={method==='CASH'?'active':''} onClick={()=>changeMethod('CASH')}>Tiền mặt</button>
-      <button type="button" className={method==='TRANSFER'?'active':''} onClick={()=>changeMethod('TRANSFER')}>Chuyển khoản</button>
-      <button type="button" className={method==='COMBINED'?'active':''} onClick={()=>changeMethod('COMBINED')}>Kết hợp</button>
+    <div className="debt-success-invoices-v2">
+      {invoices.filter(row=>Number(allocations[row.id]??0)>0).map(row=><div key={row.id}>
+        <span><b>{row.code}</b><small>{row.items.length} sản phẩm</small></span>
+        <strong>{money(Number(allocations[row.id]??0))}</strong>
+      </div>)}
     </div>
+    <div className="debt-collect-footer-v2">
+      <button className="button" type="button" onClick={()=>window.print()}>In phiếu thu</button>
+    </div>
+  </div>
 
-    {method==='TRANSFER'&&<div className="debt-collect-transfer">
-      {qr?<img src={qr} alt="QR thu công nợ"/>:<div className="debt-qr-empty"><b>Chưa cấu hình QR</b><span>Cài đặt → Thanh toán & QR</span></div>}
+  return <div className="debt-collect-v2">
+    <div className="debt-collect-v2-head">
       <div>
-        <div><span>Số tiền</span><b className="amount">{money(amount)}</b></div>
-        <div><span>Ngân hàng</span><b>{bankConfig?.bank_name??'—'}</b></div>
-        <div><span>Số tài khoản</span><b>{bankConfig?.account_no??'—'}</b></div>
-        <div><span>Nội dung CK</span><b>{receiptCode}</b></div>
+        <span className="module-eyebrow">THU CÔNG NỢ</span>
+        <b>{customer.name}</b>
+        <small>{customer.phone} · Phiếu {receiptCode}</small>
       </div>
-    </div>}
+      <div className="debt-collect-balance-v2"><span>Còn nợ</span><strong>{money(balance)}</strong></div>
+    </div>
 
-    {method==='COMBINED'&&<div className="debt-combined-live">
-      <label>Tiền mặt<input type="number" min={0} value={cash} onChange={e=>setCash(Math.max(0,Number(e.target.value)||0))}/></label>
-      <label>Chuyển khoản<input type="number" min={0} value={transfer} onChange={e=>setTransfer(Math.max(0,Number(e.target.value)||0))}/></label>
-      {transfer>0&&<div className="debt-combined-qr">{qr?<img src={qr} alt="QR phần chuyển khoản"/>:<div className="debt-qr-empty">Chưa cấu hình QR</div>}<span>{money(transfer)} · {receiptCode}</span></div>}
-      <div className={(Math.round((cash+transfer)*100)===Math.round(amount*100))?'valid':'invalid'}>
-        <span>Tổng nhận</span><b>{money(cash+transfer)}</b>
-      </div>
-    </div>}
+    <div className="debt-stepper-v2">
+      <button type="button" className={step===1?'active':'done'} onClick={()=>setStep(1)}><span>1</span><b>Thanh toán</b></button>
+      <i/>
+      <button type="button" className={step===2?'active':''} onClick={nextStep}><span>2</span><b>Phân bổ hóa đơn</b></button>
+    </div>
 
-    <div className="debt-allocation debt-allocation-edit">
-      <span>Phân bổ vào hóa đơn</span>
-      {invoices.length?invoices.map(row=><div className="debt-allocation-invoice" key={row.id}>
-        <label>
-          <div><b>{row.code}</b><small>{row.time} · {row.warehouse} · còn {money(row.debt)}</small></div>
-          <input type="number" min={0} max={row.debt} value={allocations[row.id]??0} onChange={e=>{
-            const value=Math.max(0,Math.min(row.debt,Number(e.target.value)||0))
-            setAllocations(prev=>({...prev,[row.id]:value}))
-          }}/>
-        </label>
-        <div className="debt-allocation-products">
-          {row.items.map(item=><div key={item.id}>
-            <span><b>{item.name}</b><small>{item.sku} · {item.variant}</small></span>
-            <strong>{item.quantity} × {money(item.sale_price)}</strong>
-          </div>)}
+    {error&&<div className="error-box compact">{error}</div>}
+
+    {step===1&&<div className="debt-step-body-v2">
+      <section className="debt-amount-card-v2">
+        <div className="debt-field-title-v2"><span>Số tiền thu</span><small>Tối đa {money(balance)}</small></div>
+        <div className="debt-amount-input-v2">
+          <input type="number" min={1} max={balance} value={amount} onChange={e=>changeAmount(Number(e.target.value))}/>
+          <span>đ</span>
         </div>
-      </div>):<div className="empty compact">Không còn hóa đơn nợ.</div>}
-      <div className={(Math.round(allocated*100)===Math.round(amount*100))?'allocation-ok':'allocation-bad'}>
-        <span>Đã phân bổ</span><b>{money(allocated)}</b><small>Chênh lệch {money(amount-allocated)}</small>
+        <div className="debt-quick-v2">
+          <button type="button" onClick={()=>changeAmount(balance)}>Toàn bộ</button>
+          <button type="button" onClick={()=>changeAmount(Math.round(balance/2))}>50%</button>
+          <button type="button" onClick={()=>changeAmount(Math.min(balance,100000))}>100.000đ</button>
+        </div>
+      </section>
+
+      <section className="debt-method-card-v2">
+        <div className="debt-field-title-v2"><span>Phương thức thanh toán</span></div>
+        <div className="debt-methods-v2">
+          <button type="button" className={method==='CASH'?'active':''} onClick={()=>changeMethod('CASH')}><b>Tiền mặt</b><small>Thu trực tiếp</small></button>
+          <button type="button" className={method==='TRANSFER'?'active':''} onClick={()=>changeMethod('TRANSFER')}><b>Chuyển khoản</b><small>VietQR</small></button>
+          <button type="button" className={method==='COMBINED'?'active':''} onClick={()=>changeMethod('COMBINED')}><b>Kết hợp</b><small>Tiền mặt + CK</small></button>
+        </div>
+      </section>
+
+      {method==='TRANSFER'&&<section className="debt-transfer-v2">
+        <div className="debt-transfer-qr-v2">
+          {qr?<img src={qr} alt="QR thu công nợ"/>:<div className="debt-qr-empty"><b>Chưa cấu hình QR</b><span>Cài đặt → Thanh toán & QR</span></div>}
+        </div>
+        <div className="debt-transfer-info-v2">
+          <div><span>Số tiền</span><b>{money(amount)}</b></div>
+          <div><span>Ngân hàng</span><b>{bankConfig?.bank_name??'—'}</b></div>
+          <div><span>Số tài khoản</span><b>{bankConfig?.account_no??'—'}</b></div>
+          <div><span>Nội dung CK</span><b>{receiptCode}</b></div>
+        </div>
+      </section>}
+
+      {method==='COMBINED'&&<section className="debt-combined-v2">
+        <label><span>Tiền mặt</span><input type="number" min={0} value={cash} onChange={e=>setCash(Math.max(0,Number(e.target.value)||0))}/></label>
+        <label><span>Chuyển khoản</span><input type="number" min={0} value={transfer} onChange={e=>setTransfer(Math.max(0,Number(e.target.value)||0))}/></label>
+        <div className={(Math.round((cash+transfer)*100)===Math.round(amount*100))?'ok':'bad'}><span>Tổng nhận</span><b>{money(cash+transfer)}</b></div>
+      </section>}
+
+      <label className="debt-note-v2"><span>Ghi chú</span><input value={note} onChange={e=>setNote(e.target.value)} placeholder="Không bắt buộc"/></label>
+
+      <div className="debt-collect-footer-v2">
+        <button className="button primary" type="button" onClick={nextStep}>Tiếp tục phân bổ hóa đơn →</button>
       </div>
-      <button className="button small" type="button" onClick={()=>setAllocations(allocateFifo(invoices,amount))}>Tự phân bổ nợ cũ</button>
-    </div>
+    </div>}
 
-    <label className="debt-note-live">Ghi chú<input value={note} onChange={e=>setNote(e.target.value)} placeholder="Ghi chú phiếu thu..."/></label>
+    {step===2&&<div className="debt-step-body-v2">
+      <div className="debt-allocation-summary-v2">
+        <div><span>Số tiền thu</span><b>{money(amount)}</b></div>
+        <div><span>Đã phân bổ</span><b>{money(allocated)}</b></div>
+        <div className={Math.round(allocated*100)===Math.round(amount*100)?'ok':'bad'}><span>Chênh lệch</span><b>{money(amount-allocated)}</b></div>
+      </div>
 
-    <div className="debt-collect-actions">
-      <button className="button" type="button" onClick={()=>window.print()}>In phiếu dự kiến</button>
-      <button className="button primary" type="button" onClick={submit} disabled={pending||balance<=0}>{pending?'Đang ghi nhận...':'Xác nhận thu '+money(amount)}</button>
-    </div>
+      <div className="debt-allocation-toolbar-v2">
+        <div><b>Phân bổ vào hóa đơn</b><span>Ưu tiên nợ cũ trước</span></div>
+        <button className="button small" type="button" onClick={()=>setAllocations(allocateFifo(invoices,amount))}>Tự phân bổ</button>
+      </div>
+
+      <div className="debt-invoice-allocation-list-v2">
+        {invoices.length?invoices.map(row=>{
+          const value=Number(allocations[row.id]??0)
+          return <div className={'debt-invoice-allocation-v2 '+(value>0?'selected':'')} key={row.id}>
+            <div className="debt-invoice-allocation-main-v2">
+              <div className="debt-invoice-id-v2"><b>{row.code}</b><span>{row.time} · {row.warehouse}</span></div>
+              <div className="debt-invoice-debt-v2"><span>Còn nợ</span><b>{money(row.debt)}</b></div>
+              <label><span>Thu vào HĐ</span><input type="number" min={0} max={row.debt} value={value} onChange={e=>{
+                const next=Math.max(0,Math.min(row.debt,Number(e.target.value)||0))
+                setAllocations(prev=>({...prev,[row.id]:next}))
+              }}/></label>
+            </div>
+            <details className="debt-invoice-products-v2">
+              <summary>{row.items.length} sản phẩm · Xem chi tiết</summary>
+              <div>{row.items.map(item=><div key={item.id}>
+                <span><b>{item.name}</b><small>{item.sku} · {item.variant}</small></span>
+                <strong>{item.quantity} × {money(item.sale_price)}</strong>
+              </div>)}</div>
+            </details>
+          </div>
+        }):<div className="empty compact">Không còn hóa đơn nợ.</div>}
+      </div>
+
+      <div className="debt-collect-footer-v2 split">
+        <button className="button" type="button" onClick={()=>setStep(1)}>← Quay lại</button>
+        <button className="button primary" type="button" onClick={submit} disabled={pending||balance<=0||Math.round(allocated*100)!==Math.round(amount*100)}>
+          {pending?'Đang ghi nhận...':'Xác nhận thu '+money(amount)}
+        </button>
+      </div>
+    </div>}
   </div>
 }
