@@ -515,22 +515,23 @@ const customerMode=page.locator('.finance-mode-tabs').getByRole('link',{name:'Kh
 if(await customerMode.count()){
   const customerModeNav=await followLink(customerMode)
   recordInteraction('Settlement customer mode opens',page.url().includes('mode=customer'),{href:customerModeNav.href})
-  const shipperMode=page.locator('.finance-mode-tabs').getByRole('link',{name:'Đơn nhập / Shipper'}).first()
-  if(await shipperMode.count()){await shipperMode.click();await settle()}
 }
-const hubCard=page.locator('a.finance-hub-card').first()
+
+await go('/finance/shipper-payments?view=hub')
+const fixtureHub=String(session.fixtures?.shipper_hub??'')
+const hubCard=page.locator('a.finance-hub-card').filter({hasText:fixtureHub}).first()
 if(await hubCard.count()){
-  await hubCard.click();await settle()
-  recordInteraction('Shipper HUB panel opens',await page.locator('aside.finance-hub-live-panel').count()>0)
-  const linkedOrder=page.locator('aside.finance-hub-live-panel a.finance-hub-order-link').first()
+  const hubNav=await followLink(hubCard,{waitSelector:'aside.finance-hub-live-panel'})
+  recordInteraction('Shipper QA HUB panel opens',await page.locator('aside.finance-hub-live-panel').count()>0,{href:hubNav.href,hub:fixtureHub})
+  const linkedOrder=page.locator('aside.finance-hub-live-panel a.finance-hub-order-link').filter({hasText:'QA Shipper HUB'}).first()
   if(await linkedOrder.count()){
-    await linkedOrder.click();await settle()
-    recordInteraction('Shipper contextual Order opens',await page.locator('aside.context-order-panel').count()>0)
+    const orderNav=await followLink(linkedOrder,{waitSelector:'aside.context-order-panel'})
+    recordInteraction('Shipper contextual QA Order opens',await page.locator('aside.context-order-panel').count()>0,{href:orderNav.href})
     const back=page.locator('aside.context-order-panel').getByRole('link',{name:'Quay lại'}).first()
-    if(await back.count()){await back.click();await settle()}
-    recordInteraction('Shipper contextual Order Back returns HUB',await page.locator('aside.finance-hub-live-panel').count()>0)
-  }
-}else recordInteraction('Shipper HUB fixture available',true,{skipped:true,reason:'No HUB settlement rows'})
+    if(await back.count())await followLink(back,{waitSelector:'aside.finance-hub-live-panel'})
+    recordInteraction('Shipper contextual QA Order Back returns HUB',await page.locator('aside.finance-hub-live-panel').count()>0)
+  }else recordInteraction('Shipper contextual QA Order link available',false,{hub:fixtureHub})
+}else recordInteraction('Shipper QA HUB fixture available',false,{hub:fixtureHub||null})
 
 await go('/settings')
 const settingsSelectors={
