@@ -183,6 +183,11 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
     </section>
 
     <form className="entity-command-bar debt-demo-command" action="/sales/debt">
+      {sp.customer&&<input type="hidden" name="customer" value={sp.customer}/>}
+      {sp.tab&&<input type="hidden" name="tab" value={sp.tab}/>}
+      {sp.mode&&<input type="hidden" name="mode" value={sp.mode}/>}
+      {sp.sale&&<input type="hidden" name="sale" value={sp.sale}/>}
+      {sp.saleTab&&<input type="hidden" name="saleTab" value={sp.saleTab}/>}
       <input className="search" name="q" defaultValue={sp.q??''} placeholder="Tìm khách / SĐT / mã hóa đơn..."/>
       <select name="state" defaultValue={state}>
         <option value="all">Tất cả công nợ</option>
@@ -191,7 +196,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
         <option value="old">Nợ từ 7 ngày</option>
       </select>
       <button className="button primary small">Lọc</button>
-      {(q||state!=='all')&&<Link className="button small" href="/sales/debt">Đặt lại</Link>}
+      {(q||state!=='all')&&<Link className="button small" href={href({q:null,state:null})}>Đặt lại</Link>}
       <div className="entity-result-meta"><b>{rows.length}</b><span> khách còn nợ</span></div>
     </form>
 
