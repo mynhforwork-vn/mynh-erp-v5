@@ -24,6 +24,7 @@ const summary={
   consoleErrors:[],
   pageErrors:[],
   network5xx:[],
+  transientWarnings:[],
 }
 
 function recordInteraction(name,pass,detail={}){
@@ -640,6 +641,39 @@ for(const path of ['/purchase/orders','/purchase/tracking','/warehouse','/wareho
 }
 
 await browser.close()
+
+// Cloudflare Preview can occasionally return 503 for background Next.js RSC
+// prefetches while the same document route remains healthy. Treat those as
+// warnings only when the corresponding route itself completed successfully.
+const successfulPaths=new Set(
+  [...summary.desktop,...summary.mobile]
+    .filter(r=>r.authenticated&&r.status>0&&r.status<500&&!r.navigationError&&!r.hasServerError)
+    .map(r=>String(r.path).split('?')[0])
+)
+const actionable5xx=[]
+for(const entry of summary.network5xx){
+  let url=null
+  try{url=new URL(entry.url)}catch{}
+  const transient=Boolean(
+    url&&entry.status===503&&url.searchParams.has('_rsc')&&successfulPaths.has(url.pathname)
+  )
+  if(transient)summary.transientWarnings.push({...entry,type:'RSC_PREFETCH_503'})
+  else actionable5xx.push(entry)
+}
+summary.network5xx=actionable5xx
+
+let transientConsoleBudget=summary.transientWarnings.length
+summary.consoleErrors=summary.consoleErrors.filter(entry=>{
+  if(
+    transientConsoleBudget>0&&
+    /Failed to load resource: the server responded with a status of 503/i.test(String(entry.text??''))
+  ){
+    transientConsoleBudget--
+    summary.transientWarnings.push({...entry,type:'RSC_PREFETCH_CONSOLE_503'})
+    return false
+  }
+  return true
+})
 
 summary.failures=[]
 if(!summary.public.login.hasBrand||summary.public.login.emailInputs!==1||summary.public.login.passwordInputs!==1)summary.failures.push('Login UI')
