@@ -77,6 +77,7 @@ Deno.serve(async(req)=>{
   try{body=await req.json()}catch{}
 
   const runtime=await loadRuntime();
+  if(mode==="AUTO"&&!runtime?.enabled)return json({ok:true,enabled:false,claimed:0,results:[]});
   if(!runtime?.bot_token)return json({error:"Telegram Bot Token chưa được cấu hình"},409);
 
   if(mode==="MANUAL"&&body.test){
@@ -90,7 +91,6 @@ Deno.serve(async(req)=>{
     }
   }
 
-  if(!runtime.enabled)return json({ok:true,enabled:false,claimed:0,results:[]});
   const enabledTypes=new Set((runtime.alert_types??[]).map(String));
   const limit=Math.min(Math.max(Number(body.limit??50),1),100);
 
