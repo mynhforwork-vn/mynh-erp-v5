@@ -3227,3 +3227,92 @@
     max-height:none!important;
   }
 }
+
+
+/* =====================================================================
+   FINAL SLIDEBAR NORMALIZATION — Intake + Sales History
+   ===================================================================== */
+.warehouse-intake-layout.with-panel{
+  grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+}
+.warehouse-intake-panel{
+  width:var(--mynh-slidebar-width)!important;
+  min-width:0!important;
+  max-width:var(--mynh-slidebar-width)!important;
+  height:100%!important;
+  min-height:0!important;
+  max-height:100%!important;
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+  align-self:stretch!important;
+}
+.warehouse-intake-panel>.whx-panel-head,
+.warehouse-intake-panel>.whx-panel-tabs{
+  flex:0 0 auto!important;
+}
+.warehouse-intake-panel>.whx-panel-scroll{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain!important;
+  scrollbar-gutter:stable!important;
+}
+
+.sales-history-screen.with-panel .sales-history-workspace{
+  grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+}
+.sales-history-panel{
+  width:var(--mynh-slidebar-width)!important;
+  min-width:0!important;
+  max-width:var(--mynh-slidebar-width)!important;
+  height:calc(100vh - 188px)!important;
+  min-height:0!important;
+  max-height:calc(100vh - 188px)!important;
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+  align-self:start!important;
+}
+.sales-history-panel>.sales-history-panel-head,
+.sales-history-panel>.sales-history-actions,
+.sales-history-panel>.panel-tabs{
+  flex:0 0 auto!important;
+}
+.sales-history-panel>.sales-history-panel-scroll{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  scrollbar-gutter:stable!important;
+}
+
+@media(max-width:1440px) and (min-width:901px){
+  .warehouse-intake-layout.with-panel,
+  .sales-history-screen.with-panel .sales-history-workspace{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+  }
+  .warehouse-intake-panel,
+  .sales-history-panel{
+    width:var(--mynh-slidebar-width)!important;
+    max-width:var(--mynh-slidebar-width)!important;
+  }
+  .sales-history-panel{
+    height:calc(100vh - 176px)!important;
+    max-height:calc(100vh - 176px)!important;
+  }
+}
+@media(max-width:900px){
+  .warehouse-intake-layout.with-panel,
+  .sales-history-screen.with-panel .sales-history-workspace{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  .warehouse-intake-panel,
+  .sales-history-panel{
+    width:auto!important;
+    max-width:none!important;
+    height:auto!important;
+    max-height:none!important;
+  }
+}
