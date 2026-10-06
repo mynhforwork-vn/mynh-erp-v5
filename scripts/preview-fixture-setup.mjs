@@ -46,6 +46,12 @@ const fixtures={
   warehouse_id:String(wh.json[0].id),
   warehouse_code:String(wh.json[0].code??''),
   customer_name:'QA Browser Customer '+suffix,
+  warehouse_order_code:'QA-WH-'+suffix,
+  hub_order_code:'QA-HUB-'+suffix,
+  sale_sku:'QA-MUT-'+suffix.toUpperCase(),
+  mutation_product_name:'QA Mutation Product '+suffix,
+  mutation_sale_price:50000,
+  mutation_stock_quantity:3,
   shipper_hub:'QA HUB '+suffix,
   marker:'QA_BROWSER_FIXTURE:'+suffix,
 }
@@ -63,7 +69,7 @@ await insert('customers',{
 
 await insert('orders',{
   id:fixtures.warehouse_order_id,
-  shopee_order_id:'QA-WH-'+suffix,
+  shopee_order_id:fixtures.warehouse_order_code,
   recipient_name:'QA Warehouse',
   recipient_phone:'0900000001',
   recipient_address:'QA Browser Fixture',
@@ -81,7 +87,7 @@ await insert('order_items',{
   sku:'QA-WH-'+suffix,
   product_name:'QA Warehouse Intake Fixture',
   variant:'Chưa map',
-  quantity:1,
+  quantity:fixtures.mutation_stock_quantity,
   original_price:12345,
   final_price:12345,
   inventory_multiplier:1,
@@ -102,7 +108,7 @@ await insert('receive_batch_details',{
 
 await insert('orders',{
   id:fixtures.hub_order_id,
-  shopee_order_id:'QA-HUB-'+suffix,
+  shopee_order_id:fixtures.hub_order_code,
   recipient_name:'QA Shipper HUB',
   recipient_phone:'0900000002',
   recipient_address:'QA Browser Fixture',
