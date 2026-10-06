@@ -148,7 +148,7 @@ export function FinanceReferencePanel({
                 .reduce((sum:number,returned:any)=>sum+Number(returned.quantity??0),0),
             }))}
           />
-          <Link className="button small" href={'/sales/history?sale='+sale.id}>Mở module ↗</Link>
+          <Link className="button small" href={'/sales/history?sale='+sale.id}>Mở module Lịch sử bán ↗</Link>
         </div>
         <div className="panel-tabs finance-reference-tabs">
           <button className={saleTab==='info'?'active':''} type="button" onClick={()=>setSaleTab('info')}>Thông tin</button>
