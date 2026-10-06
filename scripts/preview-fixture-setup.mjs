@@ -45,6 +45,7 @@ const fixtures={
   hub_order_id:crypto.randomUUID(),
   hub_item_id:crypto.randomUUID(),
   hub_shipment_id:crypto.randomUUID(),
+  hub_config_id:crypto.randomUUID(),
   warehouse_id:String(wh.json[0].id),
   warehouse_code:String(wh.json[0].code??''),
   transfer_warehouse_id:String(wh.json[1].id),
@@ -120,6 +121,18 @@ await insert('receive_batch_details',{
   receive_batch_id:fixtures.receive_batch_id,
   order_id:fixtures.warehouse_order_id,
   cod_snapshot:12345,
+})
+
+await insert('destination_hub_configs',{
+  id:fixtures.hub_config_id,
+  hub_code:fixtures.shipper_hub,
+  area:'QA',
+  region:'QA',
+  province_keywords:[],
+  district_keywords:[],
+  address_keywords:[],
+  priority:999,
+  is_active:true,
 })
 
 await insert('orders',{
