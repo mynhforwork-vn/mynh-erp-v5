@@ -110,6 +110,18 @@ export function BankTransferSettings({
         </label>
 
         <label>
+          <span>Tiền tố nội dung CK</span>
+          <input
+            name="transfer_prefix"
+            value={String(form.transfer_prefix??'MYNH')}
+            onChange={e=>setForm(v=>({...v,transfer_prefix:e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12)}))}
+            placeholder="MYNH"
+            disabled={!canEdit}
+          />
+          <small>Tối đa 12 ký tự, tự ghép với mã hóa đơn/phiếu thu.</small>
+        </label>
+
+        <label>
           <span>Mẫu QR</span>
           <select
             name="qr_template"
@@ -143,21 +155,22 @@ export function BankTransferSettings({
         </div>
       </form>
 
-      <div className="bank-transfer-preview">
+      <div className="bank-transfer-preview bank-transfer-preview-compact">
         <div className="bank-transfer-preview-head">
           <span className="module-eyebrow">XEM TRƯỚC</span>
           <b>QR chuyển khoản</b>
           <small>Ví dụ 123.000đ</small>
         </div>
-        {preview
-          ? <img src={preview} alt="VietQR xem trước"/>
-          : <div className="empty compact">Nhập Bank ID và số tài khoản để xem QR.</div>}
-        <div className="bank-transfer-preview-meta">
-          <div><span>Ngân hàng</span><b>{form.bank_name||'—'}</b></div>
-          <div><span>Số tài khoản</span><b>{form.account_no||'—'}</b></div>
-          <div><span>Tên tài khoản</span><b>{form.account_name||'—'}</b></div>
-          <div><span>Số tiền</span><b>123.000đ</b></div>
-          <div><span>Nội dung</span><b>{buildTransferDescription(null,'POS-261001-000123')}</b></div>
+        <div className="bank-transfer-preview-body">
+          {preview
+            ? <img src={preview} alt="VietQR xem trước"/>
+            : <div className="empty compact bank-preview-empty">Nhập Bank ID và số tài khoản để xem QR.</div>}
+          <div className="bank-transfer-info-stack">
+            <div><span>Ngân hàng</span><b>{form.bank_name||'—'}{form.bank_id?' · '+form.bank_id:''}</b></div>
+            <div><span>Số tài khoản</span><b className="mono">{form.account_no||'—'}</b></div>
+            <div><span>Tên tài khoản</span><b>{form.account_name||'—'}</b></div>
+            <div><span>Nội dung CK</span><b className="mono">{buildTransferDescription(null,'POS-261001-000123')}</b></div>
+          </div>
         </div>
       </div>
     </div>

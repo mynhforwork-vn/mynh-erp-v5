@@ -124,95 +124,23 @@ export async function mapWarehouseOrderItem(formData:FormData){
 }
 
 export async function receiveOrdersIntoWarehouse(formData:FormData){
-  const {supabase,user}=await actor()
+  const {supabase}=await actor()
 
   const orderIds=[...new Set(formData.getAll('order_ids').map(text).filter(Boolean))]
   const note=text(formData.get('note'))||null
 
   if(!orderIds.length)throw new Error('Chưa chọn đơn cần nhập kho')
+  if(orderIds.length>200)throw new Error('Tối đa 200 đơn mỗi lần nhập kho')
 
-  const {data:receiptRows,error:receiptError}=await supabase
-    .from('receive_batch_details')
-    .select('order_id,receive_batches(warehouse_id)')
-    .in('order_id',orderIds)
-  if(receiptError)throw new Error(receiptError.message)
-
-  const receiptWarehouseIds=[...new Set((receiptRows??[])
-    .map((row:any)=>String(row.receive_batches?.warehouse_id??''))
-    .filter(Boolean))]
-  if((receiptRows??[]).length!==orderIds.length||receiptWarehouseIds.length!==1){
-    throw new Error('Các đơn nhập kho phải thuộc cùng một Kho nhận đã xác nhận')
-  }
-  const warehouseId=receiptWarehouseIds[0]
-
-  const {data:orders,error:ordersError}=await supabase
-    .from('orders')
-    .select('id,receive_status,warehouse_status,order_items(id,product_variant_id,quantity,inventory_multiplier)')
-    .in('id',orderIds)
-    .is('archived_at',null)
-  if(ordersError)throw new Error(ordersError.message)
-
-  const validOrders=(orders??[]) as any[]
-  if(validOrders.length!==orderIds.length){
-    throw new Error('Có đơn không còn tồn tại hoặc đã lưu trữ')
-  }
-
-  const transactions:any[]=[]
-  for(const order of validOrders){
-    if(order.receive_status!=='RECEIVED'){
-      throw new Error('Có đơn chưa được xác nhận nhận hàng')
-    }
-    if(order.warehouse_status!=='READY_TO_TRANSFER'){
-      throw new Error('Có đơn không còn ở trạng thái chờ nhập kho')
-    }
-
-    const items=(order.order_items??[]) as any[]
-    if(!items.length||items.some(item=>!item.product_variant_id)){
-      throw new Error('Có đơn chưa mapping đầy đủ SKU bán')
-    }
-
-    for(const item of items){
-      const purchaseQty=Number(item.quantity??0)
-      const multiplier=Number(item.inventory_multiplier??1)
-      const stockQty=purchaseQty*multiplier
-      if(!Number.isInteger(stockQty)||stockQty<=0){
-        throw new Error('Số lượng nhập kho sau quy đổi không hợp lệ')
-      }
-      transactions.push({
-        warehouse_id:warehouseId,
-        product_variant_id:item.product_variant_id,
-        tx_type:'IN',
-        quantity:stockQty,
-        reference_type:'PURCHASE_RECEIPT',
-        reference_id:order.id,
-        created_by:user.id,
-      })
-    }
-  }
-
-  const {error:txError}=await supabase
-    .from('inventory_transactions')
-    .insert(transactions)
-  if(txError)throw new Error(txError.message)
-
-  const {error:orderError}=await supabase
-    .from('orders')
-    .update({warehouse_status:'WAREHOUSE_RECEIVED'})
-    .in('id',orderIds)
-  if(orderError)throw new Error(orderError.message)
-
-  await supabase.from('audit_logs').insert(orderIds.map(orderId=>({
-    actor_user_id:user.id,
-    module:'WAREHOUSE',
-    action:'RECEIVE_INTO_STOCK',
-    entity_type:'ORDER',
-    entity_id:orderId,
-    new_value:{warehouse_id:warehouseId,note},
-    source:'USER',
-  })))
+  const {error}=await supabase.rpc('receive_orders_into_warehouse',{
+    p_order_ids:orderIds,
+    p_note:note,
+  })
+  if(error)throw new Error(error.message)
 
   revalidateWarehouse()
 }
+
 
 export async function skipWarehouseOrder(formData:FormData){
   const {supabase,user}=await actor()

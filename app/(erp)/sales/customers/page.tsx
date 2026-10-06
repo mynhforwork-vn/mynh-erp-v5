@@ -1,14 +1,20 @@
 import Link from 'next/link'
 import { formatMoney } from '@/lib/format'
 import { requireUser } from '@/lib/supabase/auth'
-import { createSalesCustomer } from '@/lib/actions/sales'
+import { archiveSalesCustomerForm,createSalesCustomer,restoreSalesCustomerForm,updateSalesCustomerForm } from '@/lib/actions/sales'
+import { ContextSalePanel } from '@/components/context-sale-panel'
+import { DebtCollectForm } from '@/components/debt-collect-form'
+import { fetchSaleContext } from '@/lib/sales/context'
 
 type SP={
   q?:string
   state?:'all'|'debt'|'repeat'|'new'
   customer?:string
   tab?:'info'|'purchases'|'debt'|'history'
-  mode?:'new'
+  mode?:'new'|'edit'|'collect'
+  archive?:'archived'
+  sale?:string
+  saleTab?:'info'|'products'|'payment'|'history'
 }
 
 function fmtDate(value?:string|null,withTime=true){
@@ -40,15 +46,25 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
   const sp=await searchParams
   const state=sp.state??'all'
   const q=String(sp.q??'').trim().toLowerCase()
-  const {supabase}=await requireUser()
+  const {supabase,user}=await requireUser()
+  const role=String(user.app_metadata?.role??'viewer')
+  const canOperate=['admin','operator'].includes(role)
+  const archiveView=sp.archive==='archived'
+  let customerQuery=supabase.from('customers')
+    .select('id,name,phone,address,note,created_at,updated_at,archived_at,archived_by')
+    .order('created_at',{ascending:false})
+  customerQuery=archiveView
+    ? customerQuery.not('archived_at','is',null)
+    : customerQuery.is('archived_at',null)
 
-  const [customersRes,salesRes,debtRes,paymentsRes,warehousesRes,itemsRes]=await Promise.all([
-    supabase.from('customers').select('id,name,phone,address,note,created_at,updated_at').order('created_at',{ascending:false}),
-    supabase.from('sales').select('id,customer_id,warehouse_id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,sale_status,note').not('customer_id','is',null).order('sale_at',{ascending:false}),
+  const [customersRes,salesRes,debtRes,paymentsRes,warehousesRes,itemsRes,bankResult]=await Promise.all([
+    customerQuery,
+    supabase.from('sales').select('id,customer_id,warehouse_id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,sale_status,note,sale_items(id,quantity,sale_price,product_variants(id,variant_name,products(sku,name)))').not('customer_id','is',null).order('sale_at',{ascending:false}),
     supabase.from('customer_debt_balances').select('customer_id,balance'),
     supabase.from('customer_payments').select('id,customer_id,amount,paid_at,note,receipt_code,payment_method,cash_amount,transfer_amount').order('paid_at',{ascending:false}),
     supabase.from('warehouses').select('id,code,name,address'),
     supabase.from('sale_items').select('sale_id,quantity'),
+    supabase.from('bank_transfer_configs').select('config_key,bank_id,bank_name,account_no,account_name,qr_template,transfer_prefix,is_active').eq('config_key','DEFAULT').maybeSingle(),
   ])
 
   const customers=(customersRes.data??[]) as any[]
@@ -81,7 +97,8 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
     const sorted=[...rows].sort((a,b)=>new Date(b.sale_at).getTime()-new Date(a.sale_at).getTime())
     return {
       id:String(customer.id),name:String(customer.name??''),phone:String(customer.phone??''),
-      address:String(customer.address??''),note:String(customer.note??''),orders:rows.length,total,debt,
+      address:String(customer.address??''),note:String(customer.note??''),archived_at:customer.archived_at??null,
+      orders:rows.length,total,debt,
       last:sorted[0]?.sale_at??null,first:sorted[sorted.length-1]?.sale_at??customer.created_at,
       status:rows.length>=2?'repeat':'new',
     }
@@ -95,6 +112,11 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
 
   const selected=allRows.find(x=>x.id===sp.customer)??null
   const tab=sp.tab??'info'
+  const saleContext=sp.sale?await fetchSaleContext(supabase,sp.sale):null
+  const contextSale=saleContext?.sale&&selected&&String(saleContext.sale.customers?.id??'')===selected.id
+    ? saleContext.sale
+    : null
+  const saleTab=sp.saleTab==='products'||sp.saleTab==='payment'||sp.saleTab==='history'?sp.saleTab:'info'
   const purchases=selected
     ? (salesByCustomer.get(selected.id)??[]).map(row=>{
         const wh=warehouseMap.get(String(row.warehouse_id))
@@ -104,10 +126,20 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
           total:Number(row.total_amount??0),paid:Number(row.paid_amount??0),
           debt:Number(row.debt_amount??Math.max(0,Number(row.total_amount??0)-Number(row.paid_amount??0))),
           status:String(row.payment_status??'UNPAID'),
+          itemRows:(row.sale_items??[]).map((item:any)=>({
+            id:String(item.id),
+            sku:String(item.product_variants?.products?.sku??'—'),
+            name:String(item.product_variants?.products?.name??'Sản phẩm'),
+            variant:String(item.product_variants?.variant_name??'Mặc định'),
+            quantity:Number(item.quantity??0),
+            sale_price:Number(item.sale_price??0),
+          })),
         }
       })
     : []
   const selectedPayments=selected?(paymentsByCustomer.get(selected.id)??[]):[]
+  const bankConfig=(bankResult.data??null) as any
+  const collectMode=sp.mode==='collect'&&Boolean(selected)&&!contextSale
 
   const totalDebt=allRows.reduce((sum,x)=>sum+x.debt,0)
   const totalRevenue=allRows.reduce((sum,x)=>sum+x.total,0)
@@ -119,6 +151,9 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
     if(sp.customer)p.set('customer',sp.customer)
     if(sp.tab)p.set('tab',sp.tab)
     if(sp.mode)p.set('mode',sp.mode)
+    if(sp.archive)p.set('archive',sp.archive)
+    if(sp.sale)p.set('sale',sp.sale)
+    if(sp.saleTab)p.set('saleTab',sp.saleTab)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v===''||v==='all')p.delete(k)
       else p.set(k,v)
@@ -136,7 +171,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
       </div>
       <div className="head-actions">
         <Link className="button" href="/sales/debt">Công nợ</Link>
-        <Link className="button primary" href={href({mode:'new',customer:null,tab:null})}>+ Thêm khách</Link>
+        {!archiveView&&<Link className="button primary" href={href({mode:'new',customer:null,tab:null})}>+ Thêm khách</Link>}
       </div>
     </header>
 
@@ -173,8 +208,17 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
         <option value="new">Khách mới</option>
         <option value="debt">Còn công nợ</option>
       </select>
+      {archiveView&&<input type="hidden" name="archive" value="archived"/>}
+      {sp.customer&&<input type="hidden" name="customer" value={sp.customer}/>}
+      {sp.tab&&<input type="hidden" name="tab" value={sp.tab}/>}
+      {sp.sale&&<input type="hidden" name="sale" value={sp.sale}/>}
+      {sp.saleTab&&<input type="hidden" name="saleTab" value={sp.saleTab}/>}
       <button className="button primary small">Lọc</button>
-      {(q||state!=='all')&&<Link className="button small" href="/sales/customers">Đặt lại</Link>}
+      {(q||state!=='all')&&<Link className="button small" href={archiveView?'/sales/customers?archive=archived':'/sales/customers'}>Đặt lại</Link>}
+      <div className="archive-view-toggle">
+        <Link className={!archiveView?'active':''} href={href({archive:null,customer:null,mode:null,tab:null})}>Đang dùng</Link>
+        <Link className={archiveView?'active':''} href={href({archive:'archived',customer:null,mode:null,tab:null})}>Đã lưu trữ</Link>
+      </div>
       <div className="entity-result-meta"><b>{rows.length}</b><span> khách hàng</span></div>
     </form>
 
@@ -203,7 +247,48 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
         </div>
       </section>
 
-      {selected&&<aside className="customer-demo-panel">
+      {selected&&collectMode&&<aside className="customer-demo-panel customer-collect-context">
+        <div className="sales-detail-panel-head context-stack-head">
+          <Link className="context-stack-back" href={href({customer:selected.id,tab:'debt',mode:null,sale:null,saleTab:null})} aria-label="Quay lại">←</Link>
+          <div className="context-stack-title">
+            <span className="module-eyebrow">THU NỢ · TRONG KHÁCH HÀNG</span>
+            <h2>{selected.name}</h2>
+            <small>{phone(selected.phone)}</small>
+          </div>
+          <Link className="panel-close" href={href({customer:null,tab:null,mode:null,sale:null,saleTab:null})} aria-label="Đóng toàn bộ">×</Link>
+        </div>
+        <div className="context-stack-breadcrumb"><span>Khách hàng</span><i>›</i><b>Công nợ</b><i>›</i><strong>Thu nợ</strong></div>
+        <DebtCollectForm
+          customer={{id:selected.id,name:selected.name,phone:phone(selected.phone)}}
+          balance={selected.debt}
+          invoices={purchases.filter(row=>row.debt>0).map(row=>({
+            id:row.id,code:row.code,time:fmtDate(row.time),total:row.total,paid:row.paid,debt:row.debt,warehouse:row.warehouse,items:row.itemRows,
+          }))}
+          bankConfig={bankConfig}
+        />
+      </aside>}
+
+      {selected&&contextSale&&<ContextSalePanel
+        sale={contextSale}
+        activeTab={saleTab}
+        parentLabel="Khách hàng"
+        canOperate={canOperate}
+        receiptQR={saleContext?.receiptQR??''}
+        receiptQRAmount={saleContext?.receiptQRAmount??0}
+        receiptQRDescription={saleContext?.receiptQRDescription??''}
+        bankConfig={saleContext?.bankConfig??null}
+        backHref={saleTab!=='info'
+          ? href({customer:selected.id,sale:contextSale.id,saleTab:'info',mode:null})
+          : href({customer:selected.id,tab:sp.tab??'purchases',sale:null,saleTab:null,mode:null})}
+        closeHref={href({customer:null,tab:null,sale:null,saleTab:null,mode:null})}
+        infoHref={href({customer:selected.id,sale:contextSale.id,saleTab:'info',mode:null})}
+        productsHref={href({customer:selected.id,sale:contextSale.id,saleTab:'products',mode:null})}
+        paymentHref={href({customer:selected.id,sale:contextSale.id,saleTab:'payment',mode:null})}
+        historyHref={href({customer:selected.id,sale:contextSale.id,saleTab:'history',mode:null})}
+        openModuleHref={'/sales/history?sale='+contextSale.id}
+      />}
+
+      {selected&&!contextSale&&!collectMode&&<aside className="customer-demo-panel">
         <div className="sales-detail-panel-head">
           <div>
             <span className="module-eyebrow">KHÁCH HÀNG</span>
@@ -222,25 +307,56 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
 
         <div className="customer-demo-panel-scroll">
           {tab==='info'&&<>
-            <div className="sales-detail-grid">
-              <div><span>Họ tên</span><b>{selected.name}</b></div>
-              <div><span>SĐT</span><b>{phone(selected.phone)}</b></div>
-              <div className="full"><span>Địa chỉ</span><b>{selected.address||'—'}</b></div>
-              <div><span>Khách từ</span><b>{fmtDate(selected.first,false)}</b></div>
-              <div><span>Mua gần nhất</span><b>{fmtDate(selected.last)}</b></div>
-            </div>
-            <div className="customer-demo-summary">
-              <div><span>Số hóa đơn</span><b>{selected.orders}</b></div>
-              <div><span>Tổng mua</span><b>{formatMoney(selected.total)}</b></div>
-              <div className={selected.debt>0?'warning':''}><span>Còn nợ</span><b>{formatMoney(selected.debt)}</b></div>
-            </div>
-            <div className="customer-demo-note"><span>Ghi chú</span><b>{selected.note||'Chưa có ghi chú.'}</b></div>
+            {sp.mode==='edit'
+              ? <form action={updateSalesCustomerForm} className="panel-form customer-edit-form">
+                  <input type="hidden" name="customer_id" value={selected.id}/>
+                  <label>Họ tên *<input name="name" required defaultValue={selected.name}/></label>
+                  <label>SĐT<input name="phone" defaultValue={selected.phone}/></label>
+                  <label>Địa chỉ<input name="address" defaultValue={selected.address}/></label>
+                  <label>Ghi chú<textarea name="note" rows={3} defaultValue={selected.note}/></label>
+                  <div className="form-actions">
+                    <Link className="button" href={href({customer:selected.id,tab:'info',mode:null})}>Hủy</Link>
+                    <button className="button primary" type="submit">Lưu thay đổi</button>
+                  </div>
+                </form>
+              : <>
+                  <div className="sales-detail-grid">
+                    <div><span>Họ tên</span><b>{selected.name}</b></div>
+                    <div><span>SĐT</span><b>{phone(selected.phone)}</b></div>
+                    <div className="full"><span>Địa chỉ</span><b>{selected.address||'—'}</b></div>
+                    <div><span>Khách từ</span><b>{fmtDate(selected.first,false)}</b></div>
+                    <div><span>Mua gần nhất</span><b>{fmtDate(selected.last)}</b></div>
+                    {selected.archived_at&&<div><span>Lưu trữ lúc</span><b>{fmtDate(selected.archived_at)}</b></div>}
+                  </div>
+                  <div className="customer-demo-summary">
+                    <div><span>Số hóa đơn</span><b>{selected.orders}</b></div>
+                    <div><span>Tổng mua</span><b>{formatMoney(selected.total)}</b></div>
+                    <div className={selected.debt>0?'warning':''}><span>Còn nợ</span><b>{formatMoney(selected.debt)}</b></div>
+                  </div>
+                  <div className="customer-demo-note"><span>Ghi chú</span><b>{selected.note||'Chưa có ghi chú.'}</b></div>
+                  {canOperate&&<div className={'record-lifecycle-zone '+(selected.archived_at?'archived':'')}>
+                    {!selected.archived_at
+                      ? <>
+                          <div className="panel-action-row"><Link className="button primary" href={href({customer:selected.id,tab:'info',mode:'edit'})}>Sửa khách hàng</Link></div>
+                          <form action={archiveSalesCustomerForm} className="record-lifecycle-action">
+                            <input type="hidden" name="customer_id" value={selected.id}/>
+                            <div><b>Lưu trữ khách hàng</b><span>{selected.debt>0?'Cần thu hết công nợ trước khi lưu trữ.':'Giữ toàn bộ lịch sử mua và thanh toán.'}</span></div>
+                            <button className="button archive-button" type="submit" disabled={selected.debt>0}>Lưu trữ</button>
+                          </form>
+                        </>
+                      : <form action={restoreSalesCustomerForm} className="record-lifecycle-action">
+                          <input type="hidden" name="customer_id" value={selected.id}/>
+                          <div><b>Khách hàng đang lưu trữ</b><span>Khôi phục để sử dụng lại tại POS.</span></div>
+                          <button className="button primary" type="submit">Khôi phục</button>
+                        </form>}
+                  </div>}
+                </>}
           </>}
 
           {tab==='purchases'&&<div className="customer-demo-purchases">
             {!purchases.length
               ? <div className="empty compact">Khách hàng chưa có hóa đơn.</div>
-              : purchases.map(row=><Link className="customer-purchase-row" key={row.id} href={'/sales/history?sale='+row.id}>
+              : purchases.map(row=><Link className="customer-purchase-row" key={row.id} href={href({customer:selected.id,tab:'purchases',sale:row.id,saleTab:'info',mode:null})}>
                   <div><b>{row.code}</b><span>{fmtDate(row.time)} · {row.warehouse} · {row.items} SP</span></div>
                   <div><strong>{formatMoney(row.total)}</strong><span className={'status-pill '+pill(row.status)}>{paymentLabel(row.status)}</span></div>
                 </Link>)}
@@ -251,11 +367,11 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
             {selected.debt<=0
               ? <div className="empty compact">Khách hàng không còn công nợ.</div>
               : <>
-                  {purchases.filter(x=>x.debt>0).map(row=><div className="customer-debt-invoice" key={row.id}>
+                  {purchases.filter(x=>x.debt>0).map(row=><Link className="customer-debt-invoice context-link-row" key={row.id} href={href({customer:selected.id,tab:'debt',sale:row.id,saleTab:'info',mode:null})}>
                     <div><b>{row.code}</b><span>{fmtDate(row.time)}</span></div>
                     <div><span>Đã thu {formatMoney(row.paid)}</span><b>{formatMoney(row.debt)} còn nợ</b></div>
-                  </div>)}
-                  <Link className="button primary customer-collect-button" href={'/sales/debt?customer='+selected.id+'&mode=collect'}>Thu nợ</Link>
+                  </Link>)}
+                  <Link className="button primary customer-collect-button" href={href({customer:selected.id,tab:'debt',mode:'collect',sale:null,saleTab:null})}>Thu nợ</Link>
                 </>}
           </div>}
 

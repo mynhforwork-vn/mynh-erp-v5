@@ -4,6 +4,7 @@ import { DestinationHubSettings } from '@/components/destination-hub-config-pane
 import { ShippingCarrierSettings } from '@/components/shipping-carrier-settings'
 import { DataManagementSettings } from '@/components/data-management-settings'
 import { BankTransferSettings } from '@/components/bank-transfer-settings'
+import { SystemAccessSettings } from '@/components/system-access-settings'
 
 type SP={section?:string,purged?:string,protected?:string}
 
@@ -18,7 +19,9 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       ? 'data-management'
       : sp.section==='payments'
         ? 'payments'
-        : 'shipping-carriers'
+        : sp.section==='access'&&role==='admin'
+          ? 'access'
+          : 'shipping-carriers'
 
   const [
     {data:carrierRows,error:carrierError},
@@ -67,9 +70,31 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       .map((a:any)=>a.shipper_id),
   }))
 
+  const systemUsersResult=role==='admin'
+    ? await supabase.rpc('admin_list_system_users')
+    : {data:[],error:null}
+
+  const systemUsers=role==='admin'
+    ? (() => {
+        const rows=[...((systemUsersResult.data??[]) as any[])]
+        if(!rows.some((row:any)=>row.user_id===user.id)){
+          rows.unshift({
+            user_id:user.id,
+            email:user.email??null,
+            role:String(user.app_metadata?.role??'admin'),
+            created_at:user.created_at,
+            last_sign_in_at:user.last_sign_in_at??null,
+            email_confirmed_at:user.email_confirmed_at??null,
+            is_anonymous:Boolean((user as any).is_anonymous),
+          })
+        }
+        return rows
+      })()
+    : []
+
   const error=carrierError??hubError??shipperError??assignmentError
     ??activeOrdersResult.error??archivedOrdersResult.error??activeUsersResult.error??archivedUsersResult.error
-    ??bankTransferResult.error
+    ??bankTransferResult.error??systemUsersResult.error
 
   const activeOrders=activeOrdersResult.count??0
   const archivedOrders=archivedOrdersResult.count??0
@@ -83,7 +108,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       <div>
         <span className="module-eyebrow">HỆ THỐNG</span>
         <h1>Cài đặt hệ thống</h1>
-        <p>ĐVVC dùng chung và cấu hình vận hành riêng cho SPX.</p>
+        <p>Cấu hình vận hành, thanh toán, dữ liệu và quyền truy cập MYNH ERP.</p>
       </div>
     </header>
 
@@ -94,9 +119,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       <Link className={section==='spx-hubs'?'active':''} href="/settings?section=spx-hubs">SPX · Kho đích & Shipper</Link>
       <Link className={section==='payments'?'active':''} href="/settings?section=payments">Thanh toán & QR</Link>
       <Link className={section==='data-management'?'active':''} href="/settings?section=data-management">Quản lý dữ liệu</Link>
-      <span className="disabled">Tài khoản & phân quyền</span>
-      <span className="disabled">Tích hợp</span>
-      <span className="disabled">Thông báo</span>
+      {role==='admin'&&<Link className={section==='access'?'active':''} href="/settings?section=access">Phân quyền & tài khoản</Link>}
     </nav>
 
     <section className="settings-workspace-v3">
@@ -106,10 +129,13 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
           ? <DestinationHubSettings
               configs={configs}
               shippers={(shipperRows??[]) as any[]}
+              canEdit={canEdit}
             />
           : section==='payments'
             ? <BankTransferSettings config={(bankTransferResult.data??null) as any} canEdit={canEdit}/>
-            : <DataManagementSettings
+            : section==='access'&&role==='admin'
+              ? <SystemAccessSettings users={systemUsers as any[]} currentUserId={user.id}/>
+              : <DataManagementSettings
                 activeOrders={activeOrders}
                 archivedOrders={archivedOrders}
                 activeUsers={activeUsers}

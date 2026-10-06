@@ -36,7 +36,7 @@ async function actor(){
   return {supabase,user,role}
 }
 function requireAdmin(role:string){
-  if(role!=='admin')throw new Error('Chỉ Admin được xóa vĩnh viễn dữ liệu')
+  if(role!=='admin')throw new Error('Chỉ Admin được thực hiện thao tác này')
 }
 
 export async function createERPUser(formData:FormData){
@@ -1576,4 +1576,224 @@ export async function replaceShipment(formData:FormData){
 
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,settings:null,tab:isExpress?'info':'tracking'}))
+}
+
+
+export async function bulkImportERPUsers(rows:Array<{
+  username:string
+  phone?:string|null
+  email?:string|null
+  status?:string|null
+  mobile?:boolean
+  web?:boolean
+  note?:string|null
+  spc_f?:string|null
+  spc_st?:string|null
+}>){
+  try{
+    const {supabase}=await actor()
+    if(!Array.isArray(rows)||!rows.length)return {ok:false as const,error:'Không có dữ liệu để import'}
+    if(rows.length>200)return {ok:false as const,error:'Tối đa 200 User mỗi lần import'}
+
+    const normalized=rows.map(row=>({
+      username:String(row.username??'').trim(),
+      phone:String(row.phone??'').trim()||null,
+      email:String(row.email??'').trim()||null,
+      status:String(row.status??'').trim()||'Active',
+      mobile:Boolean(row.mobile),
+      web:Boolean(row.web),
+      note:String(row.note??'').trim()||null,
+      spc_f:String(row.spc_f??'').trim()||null,
+      spc_st:String(row.spc_st??'').trim()||null,
+    }))
+
+    if(normalized.some(row=>!row.username))return {ok:false as const,error:'Có dòng thiếu Username'}
+
+    const {data,error}=await supabase.rpc('bulk_create_erp_users',{p_rows:normalized})
+    if(error){
+      const raw=String(error.message??'')
+      const friendly=
+        raw.includes('trùng trong dữ liệu')?raw:
+        raw.includes('đã tồn tại')?raw:
+        raw.includes('Trạng thái')?raw:
+        raw.includes('200 User')?raw:
+        'Không thể import User'
+      return {ok:false as const,error:friendly,detail:raw}
+    }
+
+    revalidatePath('/purchase/accounts')
+    revalidatePath('/users')
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể import User')}
+  }
+}
+
+
+export async function deleteERPUserPermanent(formData:FormData){
+  const {supabase,role}=await actor()
+  requireAdmin(role)
+  const returnQuery=text(formData.get('return_query'))
+  const userId=text(formData.get('user_id'))
+  const confirmText=text(formData.get('confirm_text'))
+  if(!userId)throw new Error('Thiếu User cần xóa')
+
+  const {data:row,error:readError}=await supabase
+    .from('erp_users')
+    .select('id,username,archived_at,order_count')
+    .eq('id',userId)
+    .maybeSingle()
+  if(readError)throw new Error(readError.message)
+  if(!row)throw new Error('User không tồn tại')
+  if(!row.archived_at)throw new Error('Cần lưu trữ User trước khi xóa vĩnh viễn')
+  if(confirmText!==row.username)throw new Error('Username xác nhận chưa đúng')
+  if(Number(row.order_count??0)>0)throw new Error('User có đơn hàng liên kết; chỉ được lưu trữ')
+
+  const {error}=await supabase.rpc('delete_erp_user_permanent',{p_user_id:userId})
+  if(error)throw new Error(error.message)
+
+  revalidatePath('/purchase/accounts')
+  revalidatePath('/users')
+  redirect(returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'}))
+}
+
+
+export async function updateSystemUserRole(input:{user_id:string,role:'admin'|'operator'|'viewer'}){
+  try{
+    const {supabase,role}=await actor()
+    requireAdmin(role)
+    const userId=String(input?.user_id??'').trim()
+    const nextRole=String(input?.role??'viewer').trim().toLowerCase()
+    if(!userId)return {ok:false as const,error:'Thiếu tài khoản hệ thống'}
+    if(!['admin','operator','viewer'].includes(nextRole))return {ok:false as const,error:'Vai trò không hợp lệ'}
+
+    const {data,error}=await supabase.rpc('admin_set_system_user_role',{
+      p_user_id:userId,
+      p_role:nextRole,
+    })
+    if(error)return {ok:false as const,error:error.message}
+    revalidatePath('/settings')
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể cập nhật phân quyền')}
+  }
+}
+
+export async function sendSystemUserPasswordReset(input:{email:string}){
+  try{
+    const {supabase,role}=await actor()
+    requireAdmin(role)
+    const email=String(input?.email??'').trim().toLowerCase()
+    if(!email)return {ok:false as const,error:'Tài khoản chưa có email'}
+    const {error}=await supabase.auth.resetPasswordForEmail(email)
+    if(error)return {ok:false as const,error:error.message}
+    return {ok:true as const}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể gửi yêu cầu cấp lại mật khẩu')}
+  }
+}
+
+export async function resetERPSystemData(input:{scope:'DATA'|'ALL',confirm:string}){
+  try{
+    const {supabase,role}=await actor()
+    requireAdmin(role)
+    const scope=input.scope
+    const confirm=String(input.confirm??'').trim()
+    const {data,error}=await supabase.rpc('admin_reset_erp_data',{
+      p_scope:scope,
+      p_confirm:confirm,
+    })
+    if(error)return {ok:false as const,error:error.message}
+    revalidatePath('/')
+    revalidatePath('/purchase')
+    revalidatePath('/purchase/accounts')
+    revalidatePath('/purchase/orders')
+    revalidatePath('/purchase/tracking')
+    revalidatePath('/warehouse')
+    revalidatePath('/warehouse/inventory')
+    revalidatePath('/warehouse/history')
+    revalidatePath('/sales')
+    revalidatePath('/sales/pos')
+    revalidatePath('/sales/history')
+    revalidatePath('/sales/customers')
+    revalidatePath('/sales/debt')
+    revalidatePath('/finance')
+    revalidatePath('/settings')
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể reset dữ liệu hệ thống')}
+  }
+}
+
+
+export async function createSystemUserAccount(input:{
+  email:string
+  password:string
+  role:'admin'|'operator'|'viewer'
+}){
+  try{
+    const {supabase,role}=await actor()
+    requireAdmin(role)
+    const email=String(input?.email??'').trim().toLowerCase()
+    const password=String(input?.password??'')
+    const nextRole=String(input?.role??'viewer').trim().toLowerCase()
+    if(!email||!email.includes('@'))return {ok:false as const,error:'Email không hợp lệ'}
+    if(password.length<10)return {ok:false as const,error:'Mật khẩu tạm cần ít nhất 10 ký tự'}
+    if(!['admin','operator','viewer'].includes(nextRole))return {ok:false as const,error:'Vai trò không hợp lệ'}
+
+    const {data,error}=await supabase.functions.invoke('admin-system-users',{
+      body:{action:'create',email,password,role:nextRole},
+    })
+    if(error)return {ok:false as const,error:String((data as any)?.error??error.message??'Không thể tạo tài khoản')}
+    if((data as any)?.error)return {ok:false as const,error:String((data as any).error)}
+
+    revalidatePath('/settings')
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể tạo tài khoản hệ thống')}
+  }
+}
+
+export async function setSystemUserTemporaryPassword(input:{
+  user_id:string
+  password:string
+}){
+  try{
+    const {supabase,role}=await actor()
+    requireAdmin(role)
+    const userId=String(input?.user_id??'').trim()
+    const password=String(input?.password??'')
+    if(!userId)return {ok:false as const,error:'Thiếu tài khoản hệ thống'}
+    if(password.length<10)return {ok:false as const,error:'Mật khẩu mới cần ít nhất 10 ký tự'}
+
+    const {data,error}=await supabase.functions.invoke('admin-system-users',{
+      body:{action:'set_password',user_id:userId,password},
+    })
+    if(error)return {ok:false as const,error:String((data as any)?.error??error.message??'Không thể cấp lại mật khẩu')}
+    if((data as any)?.error)return {ok:false as const,error:String((data as any).error)}
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể cấp lại mật khẩu')}
+  }
+}
+
+
+export async function deleteSystemUserAccount(input:{user_id:string}){
+  try{
+    const {supabase,role}=await actor()
+    requireAdmin(role)
+    const userId=String(input?.user_id??'').trim()
+    if(!userId)return {ok:false as const,error:'Thiếu tài khoản hệ thống'}
+
+    const {data,error}=await supabase.functions.invoke('admin-system-users',{
+      body:{action:'delete',user_id:userId},
+    })
+    if(error)return {ok:false as const,error:String((data as any)?.error??error.message??'Không thể xóa tài khoản')}
+    if((data as any)?.error)return {ok:false as const,error:String((data as any).error)}
+
+    revalidatePath('/settings')
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể xóa tài khoản hệ thống')}
+  }
 }

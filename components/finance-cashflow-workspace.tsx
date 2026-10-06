@@ -2,8 +2,10 @@
 
 import { useEffect,useMemo,useState,useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { cancelFinanceDocument,saveFinanceCategory,saveFinanceDocument,type FinanceTxType } from '@/lib/actions/finance'
 import { formatDateTime,formatMoney } from '@/lib/format'
+import { FinanceReferencePanel } from '@/components/finance-reference-panel'
 
 type Category={
   id:string
@@ -59,6 +61,41 @@ type Transaction={
   voided_at?:string|null
   void_reason?:string|null
 }
+type CustomerPaymentRef={
+  id:string
+  customer_id:string
+  amount:number|string
+  paid_at:string
+  note?:string|null
+  receipt_code?:string|null
+  payment_method?:string|null
+  cash_amount?:number|string|null
+  transfer_amount?:number|string|null
+  customers?:{id:string,name?:string|null,phone?:string|null,address?:string|null}|null
+}
+type CustomerPaymentAllocationRef={
+  id:string
+  customer_payment_id:string
+  sale_id:string
+  amount:number|string
+  created_at?:string|null
+}
+type ShipperPaymentRef={
+  id:string
+  destination_hub?:string|null
+  shipper_id?:string|null
+  shipper_name?:string|null
+  total_cod:number|string
+  actual_transferred:number|string
+  tip:number|string
+  transferred_at:string
+  note?:string|null
+  destination_shippers?:{name?:string|null,phone?:string|null}|null
+  warehouses?:{code?:string|null,name?:string|null}|null
+  shipper_payment_details?:any[]
+}
+type FinanceReference={type:'CUSTOMER_PAYMENT'|'SHIPPER_PAYMENT'|'SALE'|'ORDER',id:string}
+
 type DraftLine={key:string,category_id:string,description:string,amount:number}
 type PanelMode='NONE'|'CREATE'|'DETAIL'|'CATEGORIES'|'BILL'
 type DocumentTab='INFO'|'MONEY'
@@ -126,11 +163,15 @@ function sourceLabel(source?:string|null,reference?:string|null){
 }
 
 export function FinanceCashflowWorkspace({
-  categories,documents,transactions,canEdit,loadError,
+  categories,documents,transactions,customerPayments,customerPaymentAllocations,shipperPayments,referencedSales,canEdit,loadError,
 }:{
   categories:Category[]
   documents:Document[]
   transactions:Transaction[]
+  customerPayments:CustomerPaymentRef[]
+  customerPaymentAllocations:CustomerPaymentAllocationRef[]
+  shipperPayments:ShipperPaymentRef[]
+  referencedSales:any[]
   canEdit:boolean
   loadError?:string|null
 }){
@@ -188,6 +229,8 @@ export function FinanceCashflowWorkspace({
   const [billType,setBillType]=useState<FinanceTxType>('EXPENSE')
   const [billCategory,setBillCategory]=useState('')
   const [billError,setBillError]=useState('')
+  const [printDocument,setPrintDocument]=useState<Document|null>(null)
+  const [referenceStack,setReferenceStack]=useState<FinanceReference[]>([])
 
   useEffect(()=>{
     try{
@@ -203,18 +246,60 @@ export function FinanceCashflowWorkspace({
     try{localStorage.setItem(COLUMN_PREF_KEY,JSON.stringify({order:columnOrder,hidden:hiddenColumns}))}catch{}
   },[columnOrder,hiddenColumns])
   useEffect(()=>{
-    const onKey=(event:KeyboardEvent)=>{if(event.key==='Escape'){setPanel('NONE');setColumnMenu(false)}}
+    const onKey=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'){
+        if(referenceStack.length)setReferenceStack(prev=>prev.slice(0,-1))
+        else setPanel('NONE')
+        setColumnMenu(false)
+      }
+    }
     const onPointer=(event:MouseEvent)=>{if(!(event.target as HTMLElement).closest('.finance-column-manager-wrap'))setColumnMenu(false)}
     window.addEventListener('keydown',onKey)
     document.addEventListener('mousedown',onPointer)
     return ()=>{window.removeEventListener('keydown',onKey);document.removeEventListener('mousedown',onPointer)}
-  },[])
+  },[referenceStack.length])
 
   const categoryMap=useMemo(()=>new Map(categories.map(c=>[c.id,c])),[categories])
   const categoryCodeMap=useMemo(()=>new Map(categories.map(c=>[c.code,c])),[categories])
   const total=lines.reduce((sum,line)=>sum+Math.max(0,num(line.amount)),0)
   const detail=documents.find(d=>d.id===detailId)??null
   const legacy=transactions.find(t=>t.id===legacyId)??null
+  const activeReference=referenceStack.length?referenceStack[referenceStack.length-1]:null
+  const customerPaymentMap=useMemo(()=>new Map(customerPayments.map(row=>[String(row.id),row])),[customerPayments])
+  const shipperPaymentMap=useMemo(()=>new Map(shipperPayments.map(row=>[String(row.id),row])),[shipperPayments])
+  const referencedSaleMap=useMemo(()=>new Map(referencedSales.map(row=>[String(row.id),row])),[referencedSales])
+  const allocationsByPayment=useMemo(()=>{
+    const map=new Map<string,CustomerPaymentAllocationRef[]>()
+    for(const row of customerPaymentAllocations){
+      const key=String(row.customer_payment_id)
+      const list=map.get(key)??[]
+      list.push(row)
+      map.set(key,list)
+    }
+    return map
+  },[customerPaymentAllocations])
+  const referencedOrderMap=useMemo(()=>{
+    const map=new Map<string,any>()
+    for(const payment of shipperPayments){
+      for(const detail of payment.shipper_payment_details??[]){
+        const order=detail.orders??null
+        if(order?.id)map.set(String(order.id),{...order,cod_snapshot:detail.cod_snapshot,payment_id:payment.id})
+      }
+    }
+    return map
+  },[shipperPayments])
+  const activeCustomerPayment=activeReference?.type==='CUSTOMER_PAYMENT'
+    ? customerPaymentMap.get(activeReference.id)??null
+    : null
+  const activeShipperPayment=activeReference?.type==='SHIPPER_PAYMENT'
+    ? shipperPaymentMap.get(activeReference.id)??null
+    : null
+  const activeReferencedSale=activeReference?.type==='SALE'
+    ? referencedSaleMap.get(activeReference.id)??null
+    : null
+  const activeReferencedOrder=activeReference?.type==='ORDER'
+    ? referencedOrderMap.get(activeReference.id)??null
+    : null
 
   const activeTransactions=transactions.filter(t=>t.status!=='VOID')
   const periodTransactions=activeTransactions.filter(t=>periodMatch(t.transaction_at,period,customFrom,customTo))
@@ -337,6 +422,23 @@ export function FinanceCashflowWorkspace({
   function resetColumns(){setColumnOrder(DEFAULT_COLUMNS);setHiddenColumns([])}
   function clearFilters(){setSearch('');setFilterType('ALL');setFilterSource('ALL');setFilterMethod('ALL');setFilterStatus('ALL');setFilterCategory('ALL');setPage(1)}
 
+  function printFinanceDocument(doc:Document){
+    setPrintDocument(doc)
+    window.setTimeout(()=>{
+      const body=document.body
+      body.classList.add('print-finance-document')
+      const cleanup=()=>{
+        body.classList.remove('print-finance-document')
+        setPrintDocument(null)
+      }
+      window.addEventListener('afterprint',cleanup,{once:true})
+      window.print()
+      window.setTimeout(()=>{
+        if(body.classList.contains('print-finance-document'))cleanup()
+      },1500)
+    },60)
+  }
+
   function openBill(){
     setBillTab('READ');setBillReading(false);setBillFileName('');setBillPreview('');setBillRawText('');setBillAmount(0)
     setBillOccurredAt(localInput());setBillCounterparty('');setBillContent('');setBillBank('');setBillType('EXPENSE');setBillCategory('');setBillError('');setPanel('BILL')
@@ -430,6 +532,7 @@ export function FinanceCashflowWorkspace({
   function openRow(kind:'DOCUMENT'|'LEGACY',id:string){
     setError('')
     setMessage('')
+    setReferenceStack([])
     setDetailTab('INFO')
     if(kind==='DOCUMENT'){
       setDetailId(id)
@@ -439,6 +542,30 @@ export function FinanceCashflowWorkspace({
       setDetailId(null)
     }
     setPanel('DETAIL')
+  }
+
+  function closePanel(){
+    setReferenceStack([])
+    setPanel('NONE')
+  }
+
+  function pushReference(type:FinanceReference['type'],id?:string|null){
+    const value=String(id??'').trim()
+    if(!value)return
+    setReferenceStack(prev=>[...prev,{type,id:value}])
+  }
+
+  function openCurrentReference(){
+    const source=detail?.source_type??legacy?.reference_type??''
+    const id=detail?.source_id??legacy?.reference_id??null
+    if(source==='CUSTOMER_PAYMENT')pushReference('CUSTOMER_PAYMENT',id)
+    else if(source==='SHIPPER_SETTLEMENT'||source==='SHIPPER_PAYMENT')pushReference('SHIPPER_PAYMENT',id)
+    else if(source==='SALE')pushReference('SALE',id)
+  }
+
+  function currentReferenceSupported(){
+    const source=detail?.source_type??legacy?.reference_type??''
+    return ['CUSTOMER_PAYMENT','SHIPPER_SETTLEMENT','SHIPPER_PAYMENT','SALE'].includes(source)
   }
 
   function updateLine(lineKey:string,patch:Partial<DraftLine>){
@@ -542,7 +669,7 @@ export function FinanceCashflowWorkspace({
     })
   }
 
-  return <div className={'finance-screen finance-live-workspace '+(panel!=='NONE'?'has-slidebar':'')}>
+  return <div className="finance-screen finance-live-workspace">
     <header className="page-head finance-page-head">
       <div>
         <span className="module-eyebrow">TÀI CHÍNH</span>
@@ -586,6 +713,7 @@ export function FinanceCashflowWorkspace({
       </button>
     </section>
 
+    <div className={'finance-ledger-layout '+(panel!=='NONE'?'with-panel':'')}>
     <section className="finance-ledger">
       <div className="finance-toolbar finance-toolbar-complete">
         <input className="search" value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}} placeholder="Tìm mã phiếu / nội dung / đối tượng..."/>
@@ -635,7 +763,7 @@ export function FinanceCashflowWorkspace({
 
     {panel!=='NONE'&&<aside className="detail-panel floating finance-panel">
       {panel==='CREATE'&&<>
-        <div className="panel-head"><div><span className="eyebrow">{documentType==='INCOME'?'PHIẾU THU':'PHIẾU CHI'}</span><h2>{editingId?'Sửa phiếu nháp':documentType==='INCOME'?'Tạo Phiếu thu':'Tạo Phiếu chi'}</h2></div><button className="close" type="button" onClick={()=>setPanel('NONE')}>×</button></div>
+        <div className="panel-head"><div><span className="eyebrow">{documentType==='INCOME'?'PHIẾU THU':'PHIẾU CHI'}</span><h2>{editingId?'Sửa phiếu nháp':documentType==='INCOME'?'Tạo Phiếu thu':'Tạo Phiếu chi'}</h2></div><button className="close" type="button" onClick={closePanel}>×</button></div>
         <div className="panel-tabs"><button className={documentTab==='INFO'?'active':''} onClick={()=>setDocumentTab('INFO')}>Thông tin</button><button className={documentTab==='MONEY'?'active':''} onClick={()=>setDocumentTab('MONEY')}>Chi tiết tiền <span className="panel-tab-count">{lines.length}</span></button></div>
         <div className="panel-scroll finance-form">
           {error&&<div className="error-box">{error}</div>}
@@ -655,7 +783,7 @@ export function FinanceCashflowWorkspace({
         </div>
       </>}
 
-      {panel==='DETAIL'&&<>
+      {panel==='DETAIL'&&!activeReference&&<>
         <div className="panel-head">
           <div><span className="eyebrow">CHI TIẾT CHỨNG TỪ</span><h2>{detail?.document_code??(legacy?('TX-'+legacy.id.slice(0,8).toUpperCase()):'Giao dịch')}</h2></div>
           <button className="close" type="button" onClick={()=>setPanel('NONE')}>×</button>
@@ -683,10 +811,30 @@ export function FinanceCashflowWorkspace({
             </div>
             {detail.note&&<div className="finance-note"><span>Ghi chú</span><b>{detail.note}</b></div>}
             {detail.document_status==='CANCELLED'&&<div className="notice warning"><span>Đã huỷ: {detail.cancellation_reason||'Không có lý do'}</span></div>}
+            <div className="panel-action-row finance-print-action">
+              <button className="button" type="button" onClick={()=>printFinanceDocument(detail)}>
+                {detail.document_status==='DRAFT'
+                  ? 'In phiếu tạm'
+                  : detail.document_status==='CANCELLED'
+                    ? 'In phiếu đã hủy'
+                    : detail.document_type==='INCOME'
+                      ? 'In lại phiếu thu'
+                      : 'In lại phiếu chi'}
+              </button>
+            </div>
             {canEdit&&detail.document_status==='DRAFT'&&<div className="panel-action-row"><button className="button primary" type="button" onClick={()=>editDraft(detail)}>Sửa phiếu nháp</button></div>}
             {canEdit&&detail.document_status!=='CANCELLED'&&<div className="panel-action-row"><button className="button finance-danger-button" type="button" onClick={()=>cancelDoc(detail)}>Huỷ phiếu</button></div>}
           </>}
-          {detail&&detailTab==='REF'&&<div className="detail-grid"><div><span>Nguồn</span><b>{sourceLabel(detail.source_type)}</b></div><div><span>Mã tham chiếu</span><b>{detail.source_id??'—'}</b></div><div className="full"><span>Liên kết nghiệp vụ</span><b>{detail.source_type==='SHIPPER_SETTLEMENT'?'Đối soát Shipper':detail.source_type==='CUSTOMER_PAYMENT'?'Thu công nợ khách hàng':detail.note?.startsWith('[BILL]')?'Bill ngân hàng':'Chứng từ thủ công'}</b></div></div>}
+          {detail&&detailTab==='REF'&&<>
+            <div className="detail-grid">
+              <div><span>Nguồn</span><b>{sourceLabel(detail.source_type)}</b></div>
+              <div><span>Mã tham chiếu</span><b>{detail.source_id??'—'}</b></div>
+              <div className="full"><span>Liên kết nghiệp vụ</span><b>{detail.source_type==='SHIPPER_SETTLEMENT'?'Đối soát Shipper':detail.source_type==='CUSTOMER_PAYMENT'?'Thu công nợ khách hàng':detail.note?.startsWith('[BILL]')?'Bill ngân hàng':'Chứng từ thủ công'}</b></div>
+            </div>
+            {currentReferenceSupported()&&<div className="panel-action-row finance-reference-open">
+              <button className="button primary" type="button" onClick={openCurrentReference}>Mở chi tiết tại đây →</button>
+            </div>}
+          </>}
           {detail&&detailTab==='HISTORY'&&<div className="finance-history-list"><div><b>Tạo chứng từ</b><span>{formatDateTime(detail.occurred_at)}</span></div>{detail.posted_at&&<div><b>Ghi nhận vào sổ</b><span>{formatDateTime(detail.posted_at)}</span></div>}{detail.cancelled_at&&<div><b>Huỷ chứng từ</b><span>{formatDateTime(detail.cancelled_at)} · {detail.cancellation_reason||'—'}</span></div>}{detail.document_status==='DRAFT'&&<div><b>Trạng thái hiện tại</b><span>Đang chờ xử lý</span></div>}</div>}
           {legacy&&<>
             <div className="detail-grid">
@@ -699,10 +847,27 @@ export function FinanceCashflowWorkspace({
               <div className="full"><span>Nguồn</span><b>{sourceLabel(null,legacy.reference_type)}</b></div>
             </div>
             {legacy.note&&<div className="finance-note"><span>Nội dung</span><b>{legacy.note}</b></div>}
+            {currentReferenceSupported()&&<div className="panel-action-row finance-reference-open">
+              <button className="button primary" type="button" onClick={openCurrentReference}>Mở chi tiết tại đây →</button>
+            </div>}
             <div className="panel-meta">Giao dịch hệ thống cũ được giữ nguyên và đã đưa vào Sổ Thu / Chi.</div>
           </>}
         </div>
       </>}
+
+      {panel==='DETAIL'&&activeReference&&<FinanceReferencePanel
+        reference={activeReference}
+        customerPayment={activeCustomerPayment}
+        allocations={activeCustomerPayment?(allocationsByPayment.get(String(activeCustomerPayment.id))??[]):[]}
+        shipperPayment={activeShipperPayment}
+        sale={activeReferencedSale}
+        order={activeReferencedOrder}
+        saleMap={referencedSaleMap}
+        canOperate={canEdit}
+        onBack={()=>setReferenceStack(prev=>prev.slice(0,-1))}
+        onClose={closePanel}
+        onPush={(type,id)=>pushReference(type,id)}
+      />}
 
       {panel==='BILL'&&<>
         <div className="panel-head"><div><span className="eyebrow">NGÂN HÀNG</span><h2>Đọc bill giao dịch</h2></div><button className="close" onClick={()=>setPanel('NONE')}>×</button></div>
@@ -769,5 +934,61 @@ export function FinanceCashflowWorkspace({
         </div>
       </>}
     </aside>}
+
+    {printDocument&&<section className="finance-document-print" aria-hidden="true">
+      <header className="finance-document-print-head">
+        <div><b>MYNH ERP</b><span>Sổ Thu / Chi</span></div>
+        <div>
+          <strong>{printDocument.document_type==='INCOME'?'PHIẾU THU':'PHIẾU CHI'}</strong>
+          <small>{printDocument.document_code}</small>
+        </div>
+      </header>
+
+      {printDocument.document_status==='DRAFT'&&<div className="finance-document-print-stamp draft">PHIẾU TẠM · CHƯA GHI NHẬN</div>}
+      {printDocument.document_status==='CANCELLED'&&<div className="finance-document-print-stamp cancelled">ĐÃ HỦY{printDocument.cancellation_reason?' · '+printDocument.cancellation_reason:''}</div>}
+
+      <div className="finance-document-print-meta">
+        <div><span>Thời gian</span><b>{formatDateTime(printDocument.occurred_at)}</b></div>
+        <div><span>Phương thức</span><b>{paymentLabel(printDocument.payment_method)}</b></div>
+        <div className="full"><span>{printDocument.document_type==='INCOME'?'Người nộp':'Người nhận'}</span><b>{printDocument.counterparty_name||'—'}</b></div>
+        <div><span>Tiền mặt</span><b>{formatMoney(printDocument.cash_amount)}</b></div>
+        <div><span>Chuyển khoản</span><b>{formatMoney(printDocument.transfer_amount)}</b></div>
+      </div>
+
+      <div className="finance-document-print-total">
+        <span>TỔNG {printDocument.document_type==='INCOME'?'THU':'CHI'}</span>
+        <strong>{formatMoney(printDocument.total_amount)}</strong>
+      </div>
+
+      <div className="finance-document-print-title">Chi tiết hạng mục</div>
+      <div className="finance-document-print-lines">
+        {(printDocument.finance_document_lines??[])
+          .slice()
+          .sort((a,b)=>num(a.line_order)-num(b.line_order))
+          .map((line,index)=><div key={line.id??line.description??index}>
+            <span>
+              <b>{line.finance_categories?.name??categoryMap.get(line.category_id)?.name??'Hạng mục'}</b>
+              <small>{line.description||'—'}</small>
+            </span>
+            <strong>{formatMoney(line.amount)}</strong>
+          </div>)}
+      </div>
+
+      {printDocument.note&&<div className="finance-document-print-note"><span>Ghi chú</span><b>{printDocument.note}</b></div>}
+
+      <div className="finance-document-print-signatures">
+        <div><b>{printDocument.document_type==='INCOME'?'Người nộp tiền':'Người nhận tiền'}</b><span>Ký / ghi rõ họ tên</span></div>
+        <div><b>Người lập phiếu</b><span>Ký / ghi rõ họ tên</span></div>
+      </div>
+
+      <footer>
+        {printDocument.document_status==='POSTED'
+          ? 'Chứng từ đã ghi nhận trên MYNH ERP.'
+          : printDocument.document_status==='DRAFT'
+            ? 'Phiếu tạm chưa ghi nhận vào sổ.'
+            : 'Chứng từ đã hủy; bản in chỉ dùng để đối chiếu.'}
+      </footer>
+    </section>}
+    </div>
   </div>
 }

@@ -56,11 +56,13 @@ function HubEditor({
   shippers,
   tab,
   isNew=false,
+  canEdit,
 }:{
   row?:HubConfig
   shippers:Shipper[]
   tab:HubTab
   isNew?:boolean
+  canEdit:boolean
 }){
   const selected=new Set(row?.shipper_ids??[])
   const wards=uniqueRoutingValues(row?.district_keywords)
@@ -68,6 +70,7 @@ function HubEditor({
 
   return <div className="destination-hub-detail-body">
     <form action={saveDestinationHubConfig} className="destination-hub-edit-form">
+      <fieldset className="destination-readonly-fieldset" disabled={!canEdit}>
       {!isNew&&row&&<input type="hidden" name="config_id" value={row.id}/>}
 
       <div className={'destination-tab-panel '+(tab==='info'?'active':'')}>
@@ -185,12 +188,13 @@ function HubEditor({
       </div>
 
       <div className="destination-detail-footer">
-        <span>{isNew?'Tạo HUB mới và lưu cấu hình':'Các thay đổi chỉ áp dụng sau khi bấm Lưu'}</span>
-        <button className="button primary" type="submit">{isNew?'Tạo HUB':'Lưu thay đổi'}</button>
+        <span>{canEdit?(isNew?'Tạo HUB mới và lưu cấu hình':'Các thay đổi chỉ áp dụng sau khi bấm Lưu'):'Chế độ chỉ xem · Viewer không có quyền chỉnh sửa'}</span>
+        {canEdit&&<button className="button primary" type="submit">{isNew?'Tạo HUB':'Lưu thay đổi'}</button>}
       </div>
+      </fieldset>
     </form>
 
-    {!isNew&&row&&
+    {canEdit&&!isNew&&row&&
       <div className="destination-danger-zone">
         <div>
           <b>Xoá HUB</b>
@@ -212,10 +216,12 @@ function ShipperManager({
   configs,
   shippers,
   onBack,
+  canEdit,
 }:{
   configs:HubConfig[]
   shippers:Shipper[]
   onBack:()=>void
+  canEdit:boolean
 }){
   return <div className="destination-shipper-manager">
     <div className="destination-detail-head">
@@ -241,6 +247,7 @@ function ShipperManager({
         {shippers.map(shipper=>{
           const assignedHubs=configs.filter(h=>(h.shipper_ids??[]).includes(shipper.id))
           return <form action={saveDestinationShipper} className="destination-shipper-manager-row" key={shipper.id}>
+            <fieldset className="destination-readonly-fieldset" disabled={!canEdit}>
             <input type="hidden" name="shipper_id" value={shipper.id}/>
             <label className="destination-shipper-name-field">
               <span className="destination-shipper-avatar">{shipper.name.slice(0,1).toUpperCase()}</span>
@@ -258,12 +265,13 @@ function ShipperManager({
               <input type="checkbox" name="is_active" defaultChecked={Boolean(shipper.is_active)}/>
               <span>{shipper.is_active?'Hoạt động':'Tạm dừng'}</span>
             </label>
-            <button className="button" type="submit">Lưu</button>
+            {canEdit&&<button className="button" type="submit">Lưu</button>}
+            </fieldset>
           </form>
         })}
       </div>
 
-      <form action={saveDestinationShipper} className="destination-shipper-manager-row destination-shipper-new-row">
+      {canEdit&&<form action={saveDestinationShipper} className="destination-shipper-manager-row destination-shipper-new-row">
         <label className="destination-shipper-name-field">
           <span className="destination-shipper-avatar">+</span>
           <input name="name" placeholder="Tên Shipper mới" required/>
@@ -276,7 +284,7 @@ function ShipperManager({
           <span>Hoạt động</span>
         </label>
         <button className="button primary" type="submit">+ Thêm</button>
-      </form>
+      </form>}
     </div>
   </div>
 }
@@ -284,9 +292,11 @@ function ShipperManager({
 export function DestinationHubSettings({
   configs,
   shippers,
+  canEdit,
 }:{
   configs:HubConfig[]
   shippers:Shipper[]
+  canEdit:boolean
 }){
   const [mode,setMode]=useState<ManagerMode>('hubs')
   const [selectedId,setSelectedId]=useState<string>(configs[0]?.id??'__new__')
@@ -345,13 +355,13 @@ export function DestinationHubSettings({
                 <b>HUB kho đích SPX</b>
                 <span>Chọn HUB để chỉnh sửa</span>
               </div>
-              <button
+              {canEdit&&<button
                 type="button"
                 className="button primary"
                 onClick={()=>{setSelectedId('__new__');setTab('info')}}
               >
                 + Thêm HUB
-              </button>
+              </button>}
             </div>
 
             <div className="destination-hub-rail-list">
@@ -413,10 +423,11 @@ export function DestinationHubSettings({
               shippers={shippers}
               tab={tab}
               isNew={isNew}
+              canEdit={canEdit}
             />
           </section>
         </div>
-      : <ShipperManager configs={configs} shippers={shippers} onBack={()=>setMode('hubs')}/>}
+      : <ShipperManager configs={configs} shippers={shippers} onBack={()=>setMode('hubs')} canEdit={canEdit}/>} 
   </div>
 }
 
@@ -424,10 +435,12 @@ export function DestinationHubConfigModal({
   configs,
   shippers,
   closeHref,
+  canEdit,
 }:{
   configs:HubConfig[]
   shippers:Shipper[]
   closeHref:string
+  canEdit:boolean
 }){
   return <div className="settings-modal-backdrop" role="presentation">
     <section className="settings-modal destination-hub-modal destination-hub-modal-v3" role="dialog" aria-modal="true" aria-label="Cấu hình kho đích SPX">
@@ -438,12 +451,12 @@ export function DestinationHubConfigModal({
           <p>Cấu hình riêng cho SPX: HUB → nhiều Phường/Xã → nhiều Shipper.</p>
         </div>
         <div className="settings-modal-actions">
-          <Link className="button" href="/settings?section=spx-hubs">Cài đặt hệ thống</Link>
+          <Link className="button" href="/settings?section=spx-hubs">Mở module Cài đặt ↗</Link>
           <Link className="close" href={closeHref}>×</Link>
         </div>
       </div>
       <div className="settings-modal-scroll destination-modal-workspace">
-        <DestinationHubSettings configs={configs} shippers={shippers}/>
+        <DestinationHubSettings configs={configs} shippers={shippers} canEdit={canEdit}/>
       </div>
     </section>
   </div>

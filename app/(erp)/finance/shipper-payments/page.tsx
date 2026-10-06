@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime,formatMoney } from '@/lib/format'
 import { financePeriodLabel,financePeriodStart,normalizeFinancePeriod,withinFinancePeriod } from '@/lib/finance-period'
+import { ContextOrderPanel } from '@/components/context-order-panel'
 
 type SP={
   mode?:'shipper'|'customer'
@@ -10,6 +11,8 @@ type SP={
   q?:string
   state?:'all'|'paid'|'waiting'
   period?:string
+  order?:string
+  orderTab?:'info'|'tracking'|'history'
 }
 const num=(v:any)=>Number.isFinite(Number(v))?Number(v):0
 
@@ -111,6 +114,8 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
     if(sp.q)p.set('q',sp.q)
     if(state!=='all')p.set('state',state)
     if(selectedHub)p.set('hub',selectedHub)
+    if(sp.order)p.set('order',sp.order)
+    if(sp.orderTab)p.set('orderTab',sp.orderTab)
     for(const [key,value] of Object.entries(extra)){
       if(value===null||value===undefined||value===''||value==='all')p.delete(key)
       else p.set(key,value)
@@ -124,7 +129,36 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
     return '/purchase/tracking?'+p.toString()
   }
 
-  return <div className={'finance-screen finance-settlement-live '+(selected?'has-slidebar':'')}>
+  let contextOrder:any=null
+  let contextItems:any[]=[]
+  let contextVouchers:any[]=[]
+  let contextTrackingEvents:any[]=[]
+  let contextAuditRows:any[]=[]
+  if(sp.order){
+    const [orderResult,itemResult,voucherResult]=await Promise.all([
+      supabase.from('orders')
+        .select('id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,archived_by,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)')
+        .eq('id',sp.order)
+        .maybeSingle(),
+      supabase.from('order_items').select('*').eq('order_id',sp.order).order('created_at'),
+      supabase.from('order_vouchers').select('*').eq('order_id',sp.order).order('created_at'),
+    ])
+    contextOrder=orderResult.data
+    contextItems=(itemResult.data??[]) as any[]
+    contextVouchers=(voucherResult.data??[]) as any[]
+    const shipmentIds=(contextOrder?.shipments??[]).map((x:any)=>x.id)
+    const [eventResult,auditResult]=await Promise.all([
+      shipmentIds.length
+        ? supabase.from('tracking_events').select('*').in('shipment_id',shipmentIds).order('event_time',{ascending:false}).limit(100)
+        : Promise.resolve({data:[],error:null} as any),
+      supabase.from('audit_logs').select('*').eq('entity_id',sp.order).order('created_at',{ascending:false}).limit(100),
+    ])
+    contextTrackingEvents=(eventResult.data??[]) as any[]
+    contextAuditRows=(auditResult.data??[]) as any[]
+  }
+  const contextOrderTab=sp.orderTab==='tracking'||sp.orderTab==='history'?sp.orderTab:'info'
+
+  return <div className={'finance-screen finance-settlement-live '+((selected||contextOrder)?'has-slidebar':'')}>
     <div className="finance-settlement-main">
       <header className="page-head finance-page-head">
         <div><span className="module-eyebrow">TÀI CHÍNH</span><h1>Đối soát & Thanh toán</h1><p>Shipper theo đợt thanh toán; HUB dùng để truy vết nguồn giao và đơn chờ nhận.</p></div>
@@ -143,7 +177,7 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
           <Link className={mode==='customer'?'active':''} href={href({mode:'customer',hub:null,view:null})}>Khách hàng</Link>
         </div>
         <div className="finance-period-tabs compact">
-          {([['all','Toàn thời gian'],['today','Hôm nay'],['7d','7 ngày'],['month','Tháng này']] as const).map(([key,label])=><Link key={key} href={href({period:key,hub:null})} className={period===key?'active':''}>{label}</Link>)}
+          {([['all','Toàn thời gian'],['today','Hôm nay'],['7d','7 ngày'],['month','Tháng này']] as const).map(([key,label])=><Link key={key} href={href({period:key})} className={period===key?'active':''}>{label}</Link>)}
         </div>
       </div>
 
@@ -151,6 +185,9 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
         <input type="hidden" name="mode" value={mode}/>
         {mode==='shipper'&&<input type="hidden" name="view" value={view}/>}
         {period!=='all'&&<input type="hidden" name="period" value={period}/>}
+        {selectedHub&&<input type="hidden" name="hub" value={selectedHub}/>}
+        {sp.order&&<input type="hidden" name="order" value={sp.order}/>}
+        {sp.orderTab&&<input type="hidden" name="orderTab" value={sp.orderTab}/>}
         <input className="search" name="q" defaultValue={sp.q??''} placeholder={mode==='shipper'?'Tìm Shipper / HUB / mã đơn...':'Tìm khách hàng / SĐT...'}/>
         <select name="state" defaultValue={state}>
           <option value="all">Trạng thái</option>
@@ -158,7 +195,7 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
           <option value="paid">{mode==='shipper'?'Đã đối soát':'Đã hết nợ'}</option>
         </select>
         <button className="button small">Lọc</button>
-        {(sp.q||state!=='all')&&<Link className="button small" href={href({q:null,state:null,hub:null})}>Xoá lọc</Link>}
+        {(sp.q||state!=='all')&&<Link className="button small" href={href({q:null,state:null})}>Xoá lọc</Link>}
       </form>
 
       {mode==='shipper'?<>
@@ -217,7 +254,25 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
       </>}
     </div>
 
-    {selected&&mode==='shipper'&&<aside className="detail-panel finance-panel finance-hub-live-panel">
+    {contextOrder&&mode==='shipper'&&<ContextOrderPanel
+      order={contextOrder}
+      items={contextItems}
+      vouchers={contextVouchers}
+      trackingEvents={contextTrackingEvents}
+      auditRows={contextAuditRows}
+      activeTab={contextOrderTab}
+      parentLabel="Đối soát Shipper"
+      backHref={contextOrderTab!=='info'
+        ? href({order:contextOrder.id,orderTab:'info'})
+        : href({order:null,orderTab:null})}
+      closeHref={href({hub:null,order:null,orderTab:null})}
+      infoHref={href({order:contextOrder.id,orderTab:'info'})}
+      trackingHref={href({order:contextOrder.id,orderTab:'tracking'})}
+      historyHref={href({order:contextOrder.id,orderTab:'history'})}
+      openModuleHref={'/purchase/orders?range=all&order='+contextOrder.id}
+    />}
+
+    {selected&&mode==='shipper'&&!contextOrder&&<aside className="detail-panel finance-panel finance-hub-live-panel">
       <div className="panel-head"><div><span className="eyebrow">ĐỐI SOÁT HUB</span><h2>{selected.hub}</h2></div><Link className="close" href={href({hub:null})}>×</Link></div>
       <div className="panel-tabs"><span className="active">Tổng quan & thao tác</span></div>
       <div className="panel-scroll finance-hub-panel">
@@ -234,7 +289,7 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
           <div className="finance-hub-section-head"><div><b>Đơn chờ nhận / thanh toán</b><span>{selected.waiting.length} đơn · {formatMoney(selected.waiting.reduce((sum,x)=>sum+num(x.cod),0))}</span></div><Link className="button primary small" href={trackingHref(selected.hub)}>Mở xử lý HUB →</Link></div>
           <div className="finance-hub-orders">{selected.waiting.map(order=>{
             const shipment=Array.isArray(order.shipments)?order.shipments[0]:order.shipments
-            return <div key={order.id}><span><b>{order.shopee_order_id??order.id.slice(0,8)}</b><small>{shipment?.tracking_number??'Chưa có MVD'} · {order.recipient_name??'—'}</small></span><span><b>{formatMoney(order.cod)}</b><small>{shipment?.current_tracking_status??'WAITING_RECEIVE'}</small></span></div>
+            return <Link className="finance-hub-order-link" href={href({order:order.id,orderTab:'info'})} key={order.id}><span><b>{order.shopee_order_id??order.id.slice(0,8)}</b><small>{shipment?.tracking_number??'Chưa có MVD'} · {order.recipient_name??'—'}</small></span><span><b>{formatMoney(order.cod)}</b><small>{shipment?.current_tracking_status??'WAITING_RECEIVE'}</small></span></Link>
           })}</div>
         </section>}
 
@@ -246,7 +301,7 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
             <div className="finance-hub-orders">{(batch.shipper_payment_details??[]).map((detail:any)=>{
               const order=detail.orders??{}
               const shipment=Array.isArray(order.shipments)?order.shipments[0]:order.shipments
-              return <div key={detail.order_id}><span><b>{order.shopee_order_id??detail.order_id.slice(0,8)}</b><small>{shipment?.tracking_number??'—'} · {order.recipient_name??'—'}</small></span><span><b>{formatMoney(detail.cod_snapshot)}</b><small>Đã nhận</small></span></div>
+              return <Link className="finance-hub-order-link" href={href({order:String(detail.order_id),orderTab:'info'})} key={detail.order_id}><span><b>{order.shopee_order_id??detail.order_id.slice(0,8)}</b><small>{shipment?.tracking_number??'—'} · {order.recipient_name??'—'}</small></span><span><b>{formatMoney(detail.cod_snapshot)}</b><small>Đã nhận</small></span></Link>
             })}</div>
           </section>
         })}</div>

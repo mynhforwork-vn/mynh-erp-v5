@@ -31,6 +31,7 @@ export function TrackingHubGroup({
   assignedShippers=[],
   defaultReceivingWarehouseId,
   contextQuery='',
+  orderBasePath='/purchase/orders',
   defaultOpen,
 }:{
   hub:string
@@ -39,6 +40,7 @@ export function TrackingHubGroup({
   assignedShippers?:AssignedShipper[]
   defaultReceivingWarehouseId?:string|null
   contextQuery?:string
+  orderBasePath?:string
   defaultOpen?:boolean
 }){
   const eligible=rows.filter(r=>r.receive_status==='WAITING_RECEIVE'&&r.tracking_status==='DELIVERED')
@@ -69,6 +71,7 @@ export function TrackingHubGroup({
   const tip=Math.max(0,actualValue-selectedCod)
   const transferValid=Boolean(selected.length&&actualValue>=selectedCod)
   const allSelected=eligible.length>0&&selected.length===eligible.length
+  const receiveTitleId='receive-title-'+hub.replace(/[^A-Za-z0-9_-]+/g,'-')
 
   useEffect(()=>{
     setActualTransferred(selectedCod>0?String(selectedCod):'')
@@ -112,8 +115,8 @@ export function TrackingHubGroup({
   function orderHref(id:string){
     const p=new URLSearchParams(contextQuery)
     p.set('order',id)
-    p.set('tab','tracking')
-    return '/purchase/orders?'+p.toString()
+    p.set('orderTab','info')
+    return orderBasePath+'?'+p.toString()
   }
 
   return <section className={'card tracking-hub-card tracking-hub-card-v2 '+(open?'open':'collapsed')}>
@@ -229,11 +232,11 @@ export function TrackingHubGroup({
         role="presentation"
         onMouseDown={e=>{if(e.target===e.currentTarget)setReceiveModalOpen(false)}}
       >
-        <div className="receive-confirm-modal" role="dialog" aria-modal="true" aria-labelledby={'receive-title-'+hub}>
+        <div className="receive-confirm-modal" role="dialog" aria-modal="true" aria-labelledby={receiveTitleId}>
           <div className="receive-confirm-head">
             <div>
               <span className="module-eyebrow">XÁC NHẬN NHẬN HÀNG</span>
-              <h3 id={'receive-title-'+hub}>{hub}</h3>
+              <h3 id={receiveTitleId}>{hub}</h3>
               <p>{selected.length} đơn · COD {formatMoney(selectedCod)}</p>
             </div>
             <button type="button" className="close" onClick={()=>setReceiveModalOpen(false)} aria-label="Đóng">×</button>

@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { formatMoney } from '@/lib/format'
 import { requireUser } from '@/lib/supabase/auth'
 import { DebtCollectForm } from '@/components/debt-collect-form'
+import { ContextSalePanel } from '@/components/context-sale-panel'
+import { fetchSaleContext } from '@/lib/sales/context'
 
 type SP={
   q?:string
@@ -9,6 +11,8 @@ type SP={
   customer?:string
   tab?:'summary'|'invoices'|'receipts'
   mode?:'collect'
+  sale?:string
+  saleTab?:'info'|'products'|'payment'|'history'
 }
 
 const DAY=24*60*60*1000
@@ -42,12 +46,14 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
   const sp=await searchParams
   const state=sp.state??'all'
   const q=String(sp.q??'').trim().toLowerCase()
-  const {supabase}=await requireUser()
+  const {supabase,user}=await requireUser()
+  const role=String(user.app_metadata?.role??'viewer')
+  const canOperate=['admin','operator'].includes(role)
 
   const [customersRes,debtRes,salesRes,paymentsRes,allocRes,warehouseRes,bankResult]=await Promise.all([
     supabase.from('customers').select('id,name,phone,address,note'),
     supabase.from('customer_debt_balances').select('customer_id,balance'),
-    supabase.from('sales').select('id,customer_id,warehouse_id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,sale_status').not('customer_id','is',null).order('sale_at',{ascending:true}),
+    supabase.from('sales').select('id,customer_id,warehouse_id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,sale_status,sale_items(id,quantity,sale_price,product_variants(id,variant_name,products(sku,name)))').not('customer_id','is',null).order('sale_at',{ascending:true}),
     supabase.from('customer_payments').select('id,customer_id,amount,paid_at,note,receipt_code,payment_method,cash_amount,transfer_amount').order('paid_at',{ascending:false}),
     supabase.from('customer_payment_allocations').select('id,customer_payment_id,sale_id,amount,created_at'),
     supabase.from('warehouses').select('id,code,name,address'),
@@ -61,6 +67,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
   const whMap=new Map((warehouseRes.data??[]).map((x:any)=>[String(x.id),x]))
   const debtMap=new Map((debtRes.data??[]).map((x:any)=>[String(x.customer_id),Number(x.balance??0)]))
   const customerMap=new Map(customers.map((x:any)=>[String(x.id),x]))
+  const saleMap=new Map(sales.map((x:any)=>[String(x.id),x]))
   const paymentByCustomer=new Map<string,any[]>()
   for(const payment of payments){
     const key=String(payment.customer_id)
@@ -93,6 +100,14 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
             id:String(row.id),code:String(row.invoice_code??'—'),date:row.sale_at,warehouse:String(wh?.code??'—'),
             total:Number(row.total_amount??0),paid:Number(row.paid_amount??0),
             debt:Number(row.debt_amount??Math.max(0,Number(row.total_amount??0)-Number(row.paid_amount??0))),
+            items:(row.sale_items??[]).map((item:any)=>({
+              id:String(item.id),
+              sku:String(item.product_variants?.products?.sku??'—'),
+              name:String(item.product_variants?.products?.name??'Sản phẩm'),
+              variant:String(item.product_variants?.variant_name??'Mặc định'),
+              quantity:Number(item.quantity??0),
+              sale_price:Number(item.sale_price??0),
+            })),
           }
         }),
         receipts,
@@ -108,7 +123,12 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
 
   const selected=allRows.find(x=>x.customer_id===sp.customer)??null
   const tab=sp.tab??'summary'
-  const collectMode=sp.mode==='collect'&&Boolean(selected)
+  const saleContext=sp.sale?await fetchSaleContext(supabase,sp.sale):null
+  const contextSale=saleContext?.sale&&selected&&String(saleContext.sale.customers?.id??'')===selected.customer_id
+    ? saleContext.sale
+    : null
+  const saleTab=sp.saleTab==='products'||sp.saleTab==='payment'||sp.saleTab==='history'?sp.saleTab:'info'
+  const collectMode=sp.mode==='collect'&&Boolean(selected)&&!contextSale
   const totalDebt=allRows.reduce((sum,x)=>sum+x.debt,0)
   const openInvoices=allRows.reduce((sum,x)=>sum+x.invoices,0)
   const partialCustomers=allRows.filter(x=>x.rows.some(r=>r.paid>0&&r.debt>0)).length
@@ -126,6 +146,8 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
     if(sp.customer)p.set('customer',sp.customer)
     if(sp.tab)p.set('tab',sp.tab)
     if(sp.mode)p.set('mode',sp.mode)
+    if(sp.sale)p.set('sale',sp.sale)
+    if(sp.saleTab)p.set('saleTab',sp.saleTab)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v===''||v==='all')p.delete(k)
       else p.set(k,v)
@@ -161,6 +183,11 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
     </section>
 
     <form className="entity-command-bar debt-demo-command" action="/sales/debt">
+      {sp.customer&&<input type="hidden" name="customer" value={sp.customer}/>}
+      {sp.tab&&<input type="hidden" name="tab" value={sp.tab}/>}
+      {sp.mode&&<input type="hidden" name="mode" value={sp.mode}/>}
+      {sp.sale&&<input type="hidden" name="sale" value={sp.sale}/>}
+      {sp.saleTab&&<input type="hidden" name="saleTab" value={sp.saleTab}/>}
       <input className="search" name="q" defaultValue={sp.q??''} placeholder="Tìm khách / SĐT / mã hóa đơn..."/>
       <select name="state" defaultValue={state}>
         <option value="all">Tất cả công nợ</option>
@@ -169,7 +196,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
         <option value="old">Nợ từ 7 ngày</option>
       </select>
       <button className="button primary small">Lọc</button>
-      {(q||state!=='all')&&<Link className="button small" href="/sales/debt">Đặt lại</Link>}
+      {(q||state!=='all')&&<Link className="button small" href={href({q:null,state:null})}>Đặt lại</Link>}
       <div className="entity-result-meta"><b>{rows.length}</b><span> khách còn nợ</span></div>
     </form>
 
@@ -193,7 +220,27 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
         </div>
       </section>
 
-      {selected&&<aside className="debt-demo-panel">
+      {selected&&contextSale&&<ContextSalePanel
+        sale={contextSale}
+        activeTab={saleTab}
+        parentLabel="Công nợ"
+        canOperate={canOperate}
+        receiptQR={saleContext?.receiptQR??''}
+        receiptQRAmount={saleContext?.receiptQRAmount??0}
+        receiptQRDescription={saleContext?.receiptQRDescription??''}
+        bankConfig={saleContext?.bankConfig??null}
+        backHref={saleTab!=='info'
+          ? href({customer:selected.customer_id,sale:contextSale.id,saleTab:'info',mode:null})
+          : href({customer:selected.customer_id,tab:sp.tab??'summary',sale:null,saleTab:null,mode:null})}
+        closeHref={href({customer:null,tab:null,mode:null,sale:null,saleTab:null})}
+        infoHref={href({customer:selected.customer_id,sale:contextSale.id,saleTab:'info',mode:null})}
+        productsHref={href({customer:selected.customer_id,sale:contextSale.id,saleTab:'products',mode:null})}
+        paymentHref={href({customer:selected.customer_id,sale:contextSale.id,saleTab:'payment',mode:null})}
+        historyHref={href({customer:selected.customer_id,sale:contextSale.id,saleTab:'history',mode:null})}
+        openModuleHref={'/sales/history?sale='+contextSale.id}
+      />}
+
+      {selected&&!contextSale&&<aside className={'debt-demo-panel '+(collectMode?'collect-mode':'')}>
         <div className="sales-detail-panel-head">
           <div><span className="module-eyebrow">CÔNG NỢ KHÁCH HÀNG</span><h2>{selected.name}</h2><p>{phone(selected.phone)} · {selected.address||'—'}</p></div>
           <Link className="panel-close" href={href({customer:null,tab:null,mode:null})}>×</Link>
@@ -202,17 +249,17 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
         {collectMode&&<DebtCollectForm
           customer={{id:selected.customer_id,name:selected.name,phone:phone(selected.phone)}}
           balance={selected.debt}
-          invoices={selected.rows.map(row=>({id:row.id,code:row.code,time:fmtDate(row.date),total:row.total,paid:row.paid,debt:row.debt,warehouse:row.warehouse}))}
+          invoices={selected.rows.map(row=>({id:row.id,code:row.code,time:fmtDate(row.date),total:row.total,paid:row.paid,debt:row.debt,warehouse:row.warehouse,items:row.items}))}
           bankConfig={bankConfig}
         />}
 
-        <div className="panel-tabs">
+        {!collectMode&&<div className="panel-tabs">
           <Link className={tab==='summary'?'active':''} href={href({customer:selected.customer_id,tab:'summary',mode:null})}>Tổng quan</Link>
           <Link className={tab==='invoices'?'active':''} href={href({customer:selected.customer_id,tab:'invoices',mode:null})}>Hóa đơn nợ</Link>
           <Link className={tab==='receipts'?'active':''} href={href({customer:selected.customer_id,tab:'receipts',mode:null})}>Lịch sử thu</Link>
-        </div>
+        </div>}
 
-        <div className="debt-demo-panel-scroll">
+        {!collectMode&&<div className="debt-demo-panel-scroll">
           {tab==='summary'&&<>
             <div className="debt-customer-summary">
               <div className="warning"><span>Công nợ hiện tại</span><b>{formatMoney(selected.debt)}</b></div>
@@ -223,17 +270,17 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
             {!collectMode&&<Link className="button primary debt-main-collect" href={href({customer:selected.customer_id,tab:'summary',mode:'collect'})}>Thu nợ · {formatMoney(selected.debt)}</Link>}
             <div className="debt-panel-section">
               <div className="debt-panel-section-head"><b>Hóa đơn đang nợ</b><span>{selected.invoices} hóa đơn</span></div>
-              {selected.rows.map(row=><div className="debt-invoice-mini" key={row.id}>
+              {selected.rows.map(row=><Link className="debt-invoice-mini context-link-row" key={row.id} href={href({customer:selected.customer_id,tab:'summary',mode:null,sale:row.id,saleTab:'info'})}>
                 <div><b>{row.code}</b><span>{fmtDate(row.date)} · {row.warehouse}</span></div>
                 <div><small>Đã thu {formatMoney(row.paid)}</small><b>{formatMoney(row.debt)}</b></div>
-              </div>)}
+              </Link>)}
             </div>
           </>}
 
           {tab==='invoices'&&<table className="table debt-invoice-table">
             <thead><tr><th>Mã HĐ</th><th>Ngày</th><th>Tổng</th><th>Đã thu</th><th>Còn nợ</th></tr></thead>
             <tbody>{selected.rows.map(row=><tr key={row.id}>
-              <td><Link href={'/sales/history?sale='+row.id}><b>{row.code}</b></Link></td><td>{fmtDate(row.date)}</td>
+              <td><Link href={href({customer:selected.customer_id,tab:'invoices',mode:null,sale:row.id,saleTab:'info'})}><b>{row.code}</b></Link></td><td>{fmtDate(row.date)}</td>
               <td className="money">{formatMoney(row.total)}</td><td className="money">{formatMoney(row.paid)}</td><td className="money warning-text">{formatMoney(row.debt)}</td>
             </tr>)}</tbody>
           </table>}
@@ -243,13 +290,39 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
               ? <div className="empty compact">Chưa có phiếu thu nợ.</div>
               : selected.receipts.map((row:any)=>{
                   const allocated=allocByPayment.get(String(row.id))??[]
-                  return <div className="debt-receipt-row" key={row.id}>
-                    <div><b>{row.receipt_code??'PTN'}</b><span>{fmtDate(row.paid_at)} · {row.payment_method}</span><small>{allocated.length} phân bổ · {row.note||'Không ghi chú'}</small></div>
-                    <strong>{formatMoney(Number(row.amount??0))}</strong>
-                  </div>
+                  return <details className="debt-receipt-card" key={row.id}>
+                    <summary>
+                      <div><b>{row.receipt_code??'PTN'}</b><span>{fmtDate(row.paid_at)} · {row.payment_method}</span><small>{allocated.length} hóa đơn được phân bổ · {row.note||'Không ghi chú'}</small></div>
+                      <strong>{formatMoney(Number(row.amount??0))}</strong>
+                    </summary>
+                    <div className="debt-receipt-detail">
+                      <div className="debt-receipt-money-grid">
+                        <div><span>Tiền mặt</span><b>{formatMoney(Number(row.cash_amount??0))}</b></div>
+                        <div><span>Chuyển khoản</span><b>{formatMoney(Number(row.transfer_amount??0))}</b></div>
+                        <div><span>Tổng thu</span><b>{formatMoney(Number(row.amount??0))}</b></div>
+                      </div>
+                      <div className="debt-receipt-invoices">
+                        {allocated.map((allocation:any)=>{
+                          const sale=saleMap.get(String(allocation.sale_id)) as any
+                          return <div className="debt-receipt-invoice" key={allocation.id}>
+                            <div className="debt-receipt-invoice-head">
+                              <div><b>{sale?.invoice_code??'Hóa đơn'}</b><span>{fmtDate(sale?.sale_at)} · Phân bổ {formatMoney(Number(allocation.amount??0))}</span></div>
+                              <Link href={href({customer:selected.customer_id,tab:'receipts',mode:null,sale:String(allocation.sale_id),saleTab:'info'})}>Mở HĐ</Link>
+                            </div>
+                            <div className="debt-receipt-products">
+                              {(sale?.sale_items??[]).map((item:any)=><div key={item.id}>
+                                <span><b>{item.product_variants?.products?.name??'Sản phẩm'}</b><small>{item.product_variants?.products?.sku??'—'} · {item.product_variants?.variant_name??'Mặc định'}</small></span>
+                                <strong>{Number(item.quantity??0)} × {formatMoney(Number(item.sale_price??0))}</strong>
+                              </div>)}
+                            </div>
+                          </div>
+                        })}
+                      </div>
+                    </div>
+                  </details>
                 })}
           </div>}
-        </div>
+        </div>}
       </aside>}
     </div>
   </div>

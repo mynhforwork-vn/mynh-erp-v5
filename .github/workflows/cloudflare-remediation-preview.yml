@@ -1,0 +1,86 @@
+name: Cloudflare Remediation Preview
+
+on:
+  push:
+    branches:
+      - fix/76aed41c-remediation
+
+concurrency:
+  group: cloudflare-remediation-preview
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify Cloudflare credentials are connected
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || (echo "::error::Missing CLOUDFLARE_API_TOKEN repository secret" && exit 1)
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "::error::Missing CLOUDFLARE_ACCOUNT_ID repository secret" && exit 1)
+      - run: npm install --no-audit --no-fund
+      - name: Static QA
+        run: node scripts/remediation-static-qa.mjs
+      - name: Build OpenNext Worker
+        run: npx opennextjs-cloudflare build
+      - name: Publish isolated Cloudflare Preview
+        id: cfpreview
+        shell: bash
+        run: |
+          npx wrangler preview             --name remediation-76aed41c             --worker-name mynh-erp-v5             --message "P6 QA $GITHUB_SHA"             --json | tee cloudflare-preview.json
+          node - <<'NODE'
+          const fs=require('fs')
+          const raw=fs.readFileSync('cloudflare-preview.json','utf8')
+          let data
+          try{data=JSON.parse(raw)}catch{
+            const start=raw.indexOf('{'),end=raw.lastIndexOf('}')
+            if(start<0||end<start)throw new Error('Wrangler did not return JSON')
+            data=JSON.parse(raw.slice(start,end+1))
+          }
+          const urls=[]
+          const visit=x=>{
+            if(!x)return
+            if(typeof x==='string'&&/^https:\/\//.test(x))urls.push(x)
+            else if(Array.isArray(x))x.forEach(visit)
+            else if(typeof x==='object')Object.values(x).forEach(visit)
+          }
+          visit(data)
+          const url=urls.find(x=>x.includes('workers.dev'))||urls[0]
+          if(!url)throw new Error('Preview URL not found in Wrangler output')
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `url=${url}\n`)
+          console.log(`Preview URL: ${url}`)
+          NODE
+      - name: Smoke Preview
+        shell: bash
+        env:
+          PREVIEW_URL: ${{ steps.cfpreview.outputs.url }}
+        run: |
+          echo "Smoke $PREVIEW_URL"
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 "$PREVIEW_URL/api/health" | tee health.json
+          grep -q '"ok":true' health.json
+          code=$(curl -sS -o login.html -w '%{http_code}' "$PREVIEW_URL/login")
+          test "$code" = "200"
+          grep -q 'MYNH ERP' login.html
+      - name: Preview summary
+        shell: bash
+        env:
+          PREVIEW_URL: ${{ steps.cfpreview.outputs.url }}
+        run: |
+          {
+            echo "## Cloudflare Remediation Preview"
+            echo ""
+            echo "- Commit: `$GITHUB_SHA`"
+            echo "- Preview: $PREVIEW_URL"
+            echo "- Static QA: PASS"
+            echo "- OpenNext Cloudflare build: PASS"
+            echo "- /api/health: PASS"
+            echo "- /login: PASS"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -17458,3 +17458,102 @@ a{text-decoration:none}
     min-height:620px;
   }
 }
+
+
+/* Mobile viewport integrity — override the legacy 960px compact-desktop floor. */
+@media(max-width:900px){
+  html,body{width:100%;max-width:100%;min-width:0!important;overflow-x:hidden}
+  .shell{
+    width:100%;
+    max-width:100vw;
+    min-width:0;
+    grid-template-columns:58px minmax(0,1fr)!important;
+  }
+  .sidebar{min-width:0;padding-left:6px!important;padding-right:6px!important}
+  .main{
+    width:100%;
+    max-width:100%;
+    min-width:0!important;
+    padding:10px 8px 18px!important;
+    overflow-x:hidden;
+  }
+  .table-card,
+  .customer-demo-table-wrap,
+  .debt-demo-table-wrap,
+  .sales-history-table-wrap,
+  .whx-stock-main{
+    max-width:100%;
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+  }
+}
+
+
+/* Mobile composition pass — stack page commands and warehouse overview cleanly. */
+@media(max-width:900px){
+  .page-head{
+    flex-direction:column!important;
+    align-items:stretch!important;
+    gap:8px!important;
+    margin-bottom:8px!important;
+  }
+  .page-head>div:first-child{width:100%;min-width:0}
+  .page-head h1{
+    font-size:18px!important;
+    line-height:1.12!important;
+    white-space:normal!important;
+  }
+  .page-head p{
+    max-width:none!important;
+    margin-top:3px!important;
+    font-size:10px!important;
+    line-height:1.35!important;
+  }
+  .head-actions{
+    width:100%;
+    max-width:100%;
+    display:flex!important;
+    flex-wrap:wrap!important;
+    align-items:center!important;
+    gap:5px!important;
+  }
+  .head-actions .button{
+    min-width:0!important;
+    height:29px!important;
+    padding:0 8px!important;
+    font-size:9px!important;
+  }
+
+  .whx-page-head{align-items:stretch!important}
+  .whx-overview-grid{
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:8px!important;
+  }
+  .whx-side-stack{
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:8px!important;
+  }
+  .whx-overview-grid>.whx-surface:first-child{
+    min-width:0;
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+  }
+  .whx-work-head,
+  .whx-work-row{
+    min-width:620px;
+  }
+  .whx-kpi-grid.seven{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    overflow:visible!important;
+  }
+  .whx-kpi-grid>a,
+  .whx-kpi-grid>div{
+    min-width:0!important;
+  }
+  .whx-flow{
+    max-width:100%;
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+  }
+  .whx-flow>div{min-width:112px}
+}

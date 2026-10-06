@@ -50,58 +50,18 @@ function localDay(iso:string){
   return ymd(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate())
 }
 
-const DEMO_SALES=[
-  {id:'demo-001',code:'POS-261001-0001',sale_at:'2026-10-01T02:10:00Z',warehouse:'HN',customer:'Khách lẻ',total:493000,paid:493000,debt:0,status:'PAID'},
-  {id:'demo-002',code:'POS-261001-0002',sale_at:'2026-10-01T03:20:00Z',warehouse:'BG',customer:'Nguyễn Văn An',total:685000,paid:500000,debt:185000,status:'PARTIAL'},
-  {id:'demo-003',code:'POS-261001-0003',sale_at:'2026-10-01T04:05:00Z',warehouse:'HN',customer:'Khách lẻ',total:152000,paid:152000,debt:0,status:'PAID'},
-  {id:'demo-004',code:'POS-260930-0018',sale_at:'2026-09-30T13:18:00Z',warehouse:'HN',customer:'Trần Thị Mai',total:826000,paid:826000,debt:0,status:'PAID'},
-  {id:'demo-005',code:'POS-260930-0017',sale_at:'2026-09-30T11:44:00Z',warehouse:'BG',customer:'Khách lẻ',total:278000,paid:278000,debt:0,status:'PAID'},
-  {id:'demo-006',code:'POS-260930-0016',sale_at:'2026-09-30T08:20:00Z',warehouse:'HN',customer:'Lê Văn C',total:1163000,paid:900000,debt:263000,status:'PARTIAL'},
-  {id:'demo-007',code:'POS-260929-0014',sale_at:'2026-09-29T12:35:00Z',warehouse:'BG',customer:'Khách lẻ',total:341000,paid:341000,debt:0,status:'PAID'},
-  {id:'demo-008',code:'POS-260929-0013',sale_at:'2026-09-29T05:12:00Z',warehouse:'HN',customer:'Phạm Thị Lan',total:622000,paid:0,debt:622000,status:'UNPAID'},
-]
-
-const DEMO_ITEMS=[
-  {sale_id:'demo-001',warehouse:'HN',sku:'OMO-3KG-D',name:'OMO Matic 3kg',variant:'Túi 3kg',qty:1,revenue:289000},
-  {sale_id:'demo-001',warehouse:'HN',sku:'DOVE-640',name:'Dove 640g',variant:'Chai',qty:1,revenue:195000},
-  {sale_id:'demo-001',warehouse:'HN',sku:'MI-HAOHAO',name:'Mì Hảo Hảo',variant:'Gói',qty:2,revenue:9000},
-  {sale_id:'demo-002',warehouse:'BG',sku:'ENS-850',name:'Ensure Gold 850g',variant:'Lon',qty:1,revenue:535000},
-  {sale_id:'demo-002',warehouse:'BG',sku:'COKE-15',name:'Coca Cola 1.5L',variant:'Chai',qty:5,revenue:80000},
-  {sale_id:'demo-002',warehouse:'BG',sku:'AQUA-500',name:'Nước suối 500ml',variant:'Chai',qty:10,revenue:70000},
-  {sale_id:'demo-003',warehouse:'HN',sku:'SUN-750',name:'Nước rửa chén Sunlight',variant:'750g',qty:2,revenue:64000},
-  {sale_id:'demo-003',warehouse:'HN',sku:'MENTOS',name:'Kẹo Mentos',variant:'Thỏi',qty:4,revenue:48000},
-  {sale_id:'demo-003',warehouse:'HN',sku:'AQUA-500',name:'Nước suối 500ml',variant:'Chai',qty:6,revenue:40000},
-  {sale_id:'demo-004',warehouse:'HN',sku:'OMO-3KG-D',name:'OMO Matic 3kg',variant:'Túi 3kg',qty:2,revenue:578000},
-  {sale_id:'demo-004',warehouse:'HN',sku:'DOVE-640',name:'Dove 640g',variant:'Chai',qty:1,revenue:195000},
-  {sale_id:'demo-004',warehouse:'HN',sku:'COKE-15',name:'Coca Cola 1.5L',variant:'Chai',qty:3,revenue:53000},
-  {sale_id:'demo-005',warehouse:'BG',sku:'MI-HAOHAO',name:'Mì Hảo Hảo',variant:'Gói',qty:20,revenue:90000},
-  {sale_id:'demo-005',warehouse:'BG',sku:'AQUA-500',name:'Nước suối 500ml',variant:'Chai',qty:12,revenue:72000},
-  {sale_id:'demo-005',warehouse:'BG',sku:'SUN-750',name:'Nước rửa chén Sunlight',variant:'750g',qty:2,revenue:64000},
-  {sale_id:'demo-005',warehouse:'BG',sku:'MENTOS',name:'Kẹo Mentos',variant:'Thỏi',qty:4,revenue:52000},
-  {sale_id:'demo-006',warehouse:'HN',sku:'ENS-850',name:'Ensure Gold 850g',variant:'Lon',qty:2,revenue:1070000},
-  {sale_id:'demo-006',warehouse:'HN',sku:'AQUA-500',name:'Nước suối 500ml',variant:'Chai',qty:15,revenue:93000},
-  {sale_id:'demo-007',warehouse:'BG',sku:'DOVE-640',name:'Dove 640g',variant:'Chai',qty:1,revenue:195000},
-  {sale_id:'demo-007',warehouse:'BG',sku:'MI-HAOHAO',name:'Mì Hảo Hảo',variant:'Gói',qty:12,revenue:54000},
-  {sale_id:'demo-007',warehouse:'BG',sku:'MENTOS',name:'Kẹo Mentos',variant:'Thỏi',qty:8,revenue:92000},
-  {sale_id:'demo-008',warehouse:'HN',sku:'OMO-3KG-D',name:'OMO Matic 3kg',variant:'Túi 3kg',qty:1,revenue:289000},
-  {sale_id:'demo-008',warehouse:'HN',sku:'DOVE-640',name:'Dove 640g',variant:'Chai',qty:1,revenue:195000},
-  {sale_id:'demo-008',warehouse:'HN',sku:'SUN-750',name:'Nước rửa chén Sunlight',variant:'750g',qty:4,revenue:128000},
-  {sale_id:'demo-008',warehouse:'HN',sku:'MENTOS',name:'Kẹo Mentos',variant:'Thỏi',qty:1,revenue:10000},
-]
-
 export default async function SalesDashboard({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
   const range=resolveRange(sp)
   const {supabase}=await requireUser()
 
-  const [{data:salesData,error:salesError},{count:allSalesCount},{data:warehouses},{data:balances}]=await Promise.all([
+  const [{data:salesData,error:salesError},{data:warehouses},{data:balances}]=await Promise.all([
     supabase.from('sales')
       .select('id,customer_id,sale_at,total_amount,paid_amount,debt_amount,payment_status,sale_status,created_by,customers(name,phone)')
       .gte('sale_at',range.start)
       .lte('sale_at',range.end)
       .order('sale_at',{ascending:false})
       .limit(3000),
-    supabase.from('sales').select('*',{count:'exact',head:true}),
     supabase.from('warehouses').select('id,code,name,address').eq('is_active',true).order('code'),
     supabase.from('inventory_balances')
       .select('warehouse_id,warehouse_code,product_variant_id,sku,product_name,variant_name,quantity')
@@ -112,19 +72,30 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
   const realSales=(salesData??[]) as any[]
   const saleIds=realSales.map(x=>x.id)
   let realItems:any[]=[]
+  const returnedBySaleItem=new Map<string,number>()
   if(saleIds.length){
-    const {data}=await supabase.from('sale_items')
-      .select('sale_id,warehouse_id,product_variant_id,quantity,sale_price,warehouses(code,address),product_variants(variant_name,products(sku,name))')
-      .in('sale_id',saleIds)
-      .limit(10000)
-    realItems=(data??[]) as any[]
+    const [{data:itemData},{data:returnData}]=await Promise.all([
+      supabase.from('sale_items')
+        .select('id,sale_id,warehouse_id,product_variant_id,quantity,sale_price,warehouses(code,address),product_variants(variant_name,products(sku,name))')
+        .in('sale_id',saleIds)
+        .limit(10000),
+      supabase.from('sale_returns')
+        .select('sale_id,sale_return_items(sale_item_id,quantity)')
+        .in('sale_id',saleIds)
+        .limit(10000),
+    ])
+    realItems=(itemData??[]) as any[]
+    for(const entry of (returnData??[]) as any[]){
+      for(const returned of (entry.sale_return_items??[]) as any[]){
+        const key=String(returned.sale_item_id)
+        returnedBySaleItem.set(key,(returnedBySaleItem.get(key)??0)+Number(returned.quantity??0))
+      }
+    }
   }
 
-  const hasRealSales=(allSalesCount??0)>0
   const warehouseFilter=String(sp.warehouse??'ALL').toUpperCase()
 
-  const sales=hasRealSales
-    ? realSales.map((s:any)=>{
+  const sales=realSales.map((s:any)=>{
         const first=realItems.find((i:any)=>i.sale_id===s.id)
         const wh=first?.warehouses
         return {
@@ -140,25 +111,20 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
           saleStatus:String(s.sale_status??'COMPLETED'),
         }
       })
-    : DEMO_SALES
 
-  const items=hasRealSales
-    ? realItems.map((i:any)=>({
+  const items=realItems.map((i:any)=>({
         sale_id:String(i.sale_id),
         warehouse:String(i.warehouses?.code??'—'),
         sku:String(i.product_variants?.products?.sku??'—'),
         name:String(i.product_variants?.products?.name??'Sản phẩm'),
         variant:String(i.product_variants?.variant_name??''),
-        qty:Number(i.quantity??0),
-        revenue:Number(i.quantity??0)*Number(i.sale_price??0),
+        qty:Math.max(0,Number(i.quantity??0)-Number(returnedBySaleItem.get(String(i.id))??0)),
+        revenue:Math.max(0,Number(i.quantity??0)-Number(returnedBySaleItem.get(String(i.id))??0))*Number(i.sale_price??0),
       }))
-    : DEMO_ITEMS
 
   const visibleSales=sales.filter(s=>{
     if(warehouseFilter!=='ALL'&&s.warehouse!==warehouseFilter)return false
-    if(hasRealSales)return true
-    const day=localDay(s.sale_at)
-    return day>=range.from&&day<=range.to
+    return true
   })
   const visibleIds=new Set(visibleSales.map(s=>s.id))
   const visibleItems=items.filter(i=>visibleIds.has(i.sale_id)&&(warehouseFilter==='ALL'||i.warehouse===warehouseFilter))
@@ -266,7 +232,6 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
           </Link>
         )}
       </div>
-      {!hasRealSales&&<span className="sales-demo-badge">DỮ LIỆU DEMO · Chưa có giao dịch POS thật</span>}
     </div>
 
     {salesError&&<div className="error-box">Không thể tải dữ liệu bán hàng: {salesError.message}</div>}

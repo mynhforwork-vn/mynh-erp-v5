@@ -1,0 +1,141 @@
+# Final production-readiness regression trigger 2026-10-07
+name: Preview Browser QA
+
+on:
+  push:
+    branches:
+      - fix/76aed41c-remediation
+    paths:
+      - app/**
+      - components/**
+      - lib/**
+      - supabase/migrations/**
+      - scripts/preview-browser-qa.mjs
+      - scripts/preview-mutation-qa.mjs
+      - scripts/preview-mutation-qa-v2.mjs
+      - scripts/preview-rbac-qa.mjs
+      - scripts/preview-auth-setup.mjs
+      - scripts/preview-auth-cleanup.mjs
+      - scripts/preview-fixture-setup.mjs
+      - scripts/preview-fixture-cleanup.mjs
+      - .github/workflows/preview-browser-qa.yml
+  workflow_dispatch:
+
+concurrency:
+  group: preview-browser-qa
+  cancel-in-progress: true
+
+jobs:
+  browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PREVIEW_URL: https://remediation-76aed41c-mynh-erp-v5.mynh-forwork.workers.dev
+      SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+      SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+
+      - name: Wait for matching Cloudflare Preview
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node - <<'NODE'
+          const repo=process.env.GITHUB_REPOSITORY
+          const sha=process.env.GITHUB_SHA
+          const token=process.env.GH_TOKEN
+          const workflow='cloudflare-remediation-preview.yml'
+          const headers={
+            Accept:'application/vnd.github+json',
+            Authorization:'Bearer '+token,
+            'X-GitHub-Api-Version':'2022-11-28',
+          }
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms))
+          for(let attempt=1;attempt<=60;attempt++){
+            const url='https://api.github.com/repos/'+repo+'/actions/workflows/'+workflow+'/runs?head_sha='+sha+'&per_page=10'
+            const res=await fetch(url,{headers})
+            if(!res.ok)throw new Error('Cannot read Cloudflare Preview workflow runs: '+res.status)
+            const data=await res.json()
+            const runs=(data.workflow_runs??[]).filter(x=>x.head_sha===sha)
+            const passed=runs.find(x=>x.status==='completed'&&x.conclusion==='success')
+            if(passed){
+              console.log('Matching Cloudflare Preview PASS run='+passed.id+' sha='+sha)
+              process.exit(0)
+            }
+            const active=runs.some(x=>x.status==='queued'||x.status==='in_progress'||x.status==='waiting'||x.status==='requested')
+            if(runs.length>0&&!active&&runs.every(x=>x.status==='completed')){
+              throw new Error('No successful Cloudflare Preview for '+sha+' conclusions='+runs.map(x=>x.conclusion).join(','))
+            }
+            console.log('Waiting for matching Cloudflare Preview '+attempt+'/60 runs='+runs.length)
+            await sleep(10000)
+          }
+          throw new Error('Timed out waiting for matching Cloudflare Preview for '+sha)
+          NODE
+
+      - name: Check Browser QA prerequisites
+        id: browser_qa_prereq
+        shell: bash
+        run: |
+          if [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "### Browser QA" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Status: READY" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Browser QA BLOCKED: repository secret SUPABASE_SERVICE_ROLE_KEY is not configured."
+            echo "### Browser QA" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Status: BLOCKED" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Reason: missing repository secret SUPABASE_SERVICE_ROLE_KEY" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Cloudflare build/smoke and static QA remain separate checks." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Create temporary QA auth session
+        if: steps.browser_qa_prereq.outputs.ready == 'true'
+        run: node scripts/preview-auth-setup.mjs
+
+      - name: Create isolated QA fixtures
+        if: steps.browser_qa_prereq.outputs.ready == 'true'
+        run: node scripts/preview-fixture-setup.mjs
+
+      - name: Install Playwright
+        if: steps.browser_qa_prereq.outputs.ready == 'true'
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Run Preview browser QA
+        if: steps.browser_qa_prereq.outputs.ready == 'true'
+        run: node scripts/preview-browser-qa.mjs
+
+      - name: Run Preview mutation QA
+        if: steps.browser_qa_prereq.outputs.ready == 'true'
+        run: node scripts/preview-mutation-qa.mjs
+
+      - name: Run Preview mutation QA round two
+        if: steps.browser_qa_prereq.outputs.ready == 'true'
+        run: node scripts/preview-mutation-qa-v2.mjs
+
+      - name: Run Preview RBAC permission QA
+        if: steps.browser_qa_prereq.outputs.ready == 'true'
+        run: node scripts/preview-rbac-qa.mjs
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.browser_qa_prereq.outputs.ready == 'true'
+        with:
+          name: preview-browser-qa-${{ github.sha }}
+          path: qa-browser-artifacts/
+          retention-days: 7
+
+      - name: Cleanup isolated QA fixtures
+        if: always() && steps.browser_qa_prereq.outputs.ready == 'true'
+        run: node scripts/preview-fixture-cleanup.mjs
+
+      - name: Cleanup temporary QA auth user
+        if: always() && steps.browser_qa_prereq.outputs.ready == 'true'
+        run: node scripts/preview-auth-cleanup.mjs

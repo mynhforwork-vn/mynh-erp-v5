@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime, formatMoney, sourceLabel, statusLabel } from '@/lib/format'
 import { TrackingHubGroup } from '@/components/tracking-hub-group'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
+import { ContextOrderPanel } from '@/components/context-order-panel'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
 type SP={
@@ -15,6 +16,8 @@ type SP={
   range?:RangeKey
   from?:string
   to?:string
+  order?:string
+  orderTab?:'info'|'tracking'|'history'
 }
 
 const HOUR=60*60*1000
@@ -220,6 +223,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     if(sp.receive)p.set('receive',sp.receive)
     if(sp.receiveDate)p.set('receiveDate',sp.receiveDate)
     if(sp.hub)p.set('hub',sp.hub)
+    if(sp.order)p.set('order',sp.order)
+    if(sp.orderTab)p.set('orderTab',sp.orderTab)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v==='')p.delete(k)
       else p.set(k,v)
@@ -248,6 +253,9 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     contextParams.set('to',range.to)
   }
   if(sp.hub)contextParams.set('hub',sp.hub)
+  if(sp.status)contextParams.set('status',sp.status)
+  if(sp.receive)contextParams.set('receive',sp.receive)
+  if(sp.receiveDate)contextParams.set('receiveDate',sp.receiveDate)
   const contextQuery=contextParams.toString()
 
   const shipperMap=new Map((destinationShippers??[]).map((s:any)=>[String(s.id),s]))
@@ -278,7 +286,36 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     return bw-aw||b[1].length-a[1].length
   })
 
-  return <div className="tracking-screen tracking-screen-v2">
+  let contextOrder:any=null
+  let contextItems:any[]=[]
+  let contextVouchers:any[]=[]
+  let contextTrackingEvents:any[]=[]
+  let contextAuditRows:any[]=[]
+  if(sp.order){
+    const [orderResult,itemResult,voucherResult]=await Promise.all([
+      supabase.from('orders')
+        .select('id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,archived_by,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)')
+        .eq('id',sp.order)
+        .maybeSingle(),
+      supabase.from('order_items').select('*').eq('order_id',sp.order).order('created_at'),
+      supabase.from('order_vouchers').select('*').eq('order_id',sp.order).order('created_at'),
+    ])
+    contextOrder=orderResult.data
+    contextItems=(itemResult.data??[]) as any[]
+    contextVouchers=(voucherResult.data??[]) as any[]
+    const shipmentIds=(contextOrder?.shipments??[]).map((x:any)=>x.id)
+    const [eventResult,auditResult]=await Promise.all([
+      shipmentIds.length
+        ? supabase.from('tracking_events').select('*').in('shipment_id',shipmentIds).order('event_time',{ascending:false}).limit(100)
+        : Promise.resolve({data:[],error:null} as any),
+      supabase.from('audit_logs').select('*').eq('entity_id',sp.order).order('created_at',{ascending:false}).limit(100),
+    ])
+    contextTrackingEvents=(eventResult.data??[]) as any[]
+    contextAuditRows=(auditResult.data??[]) as any[]
+  }
+  const contextOrderTab=sp.orderTab==='tracking'||sp.orderTab==='history'?sp.orderTab:'info'
+
+  return <div className={'tracking-screen tracking-screen-v2 '+(contextOrder?'with-context-order-panel':'')}>
     <header className="page-head tracking-page-head-v2">
       <div>
         <span className="module-eyebrow">MUA HÀNG</span>
@@ -306,6 +343,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
           receive:sp.receive,
           receiveDate:sp.receiveDate,
           hub:sp.hub,
+          order:sp.order,
+          orderTab:sp.orderTab,
         }}
       />
     </div>
@@ -371,6 +410,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
           {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
           {sp.status&&<input type="hidden" name="status" value={sp.status}/>}
           {sp.receive&&<input type="hidden" name="receive" value={sp.receive}/>}
+          {sp.order&&<input type="hidden" name="order" value={sp.order}/>}
+          {sp.orderTab&&<input type="hidden" name="orderTab" value={sp.orderTab}/>}
           <select name="hub" defaultValue={sp.hub??''} aria-label="HUB đích">
             <option value="">Tất cả HUB</option>
             {hubOptions.map(h=><option value={h} key={h}>{h}</option>)}
@@ -399,10 +440,29 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
               assignedShippers={(hubShipperMap.get(hub)??[]) as any[]}
               defaultReceivingWarehouseId={(warehouseSettings as any)?.default_receiving_warehouse_id??null}
               contextQuery={contextQuery}
+              orderBasePath="/purchase/tracking"
               defaultOpen={Boolean(sp.status||sp.receive||sp.hub)||groupUrgent}
             />
           })}
     </div>
+
+    {contextOrder&&<ContextOrderPanel
+      order={contextOrder}
+      items={contextItems}
+      vouchers={contextVouchers}
+      trackingEvents={contextTrackingEvents}
+      auditRows={contextAuditRows}
+      activeTab={contextOrderTab}
+      parentLabel="Cảnh báo vận chuyển"
+      backHref={contextOrderTab!=='info'
+        ? trackingHref({order:contextOrder.id,orderTab:'info'})
+        : trackingHref({order:null,orderTab:null})}
+      closeHref={trackingHref({order:null,orderTab:null})}
+      infoHref={trackingHref({order:contextOrder.id,orderTab:'info'})}
+      trackingHref={trackingHref({order:contextOrder.id,orderTab:'tracking'})}
+      historyHref={trackingHref({order:contextOrder.id,orderTab:'history'})}
+      openModuleHref={'/purchase/orders?range=all&order='+contextOrder.id}
+    />}
 
     <details className="tracking-secondary-drawer">
       <summary>

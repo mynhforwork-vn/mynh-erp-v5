@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/supabase/auth'
 
 type POSItemInput={
@@ -141,6 +142,7 @@ export async function createPOSCustomer(input:{name:string,phone?:string,address
         .from('customers')
         .select('id,name,phone,address')
         .eq('phone',phone)
+        .is('archived_at',null)
         .maybeSingle()
       if(existingError)return {ok:false as const,error:'Không thể tìm khách hàng'}
       if(existing)return {ok:true as const,data:existing}
@@ -342,3 +344,163 @@ export async function assignProductSalesCategory(input:{product_id:string,catego
   }
 }
 
+
+
+export async function cancelPOSSale(input:{sale_id:string,reason?:string|null}){
+  try{
+    const {supabase}=await actor()
+    const sale_id=String(input?.sale_id??'').trim()
+    const reason=String(input?.reason??'').trim()||null
+    if(!sale_id)return {ok:false as const,error:'Thiếu hóa đơn cần huỷ'}
+
+    const {data,error}=await supabase.rpc('cancel_pos_sale',{
+      p_sale_id:sale_id,
+      p_reason:reason,
+    })
+    if(error){
+      const raw=String(error.message??'')
+      const friendly=
+        raw.includes('không tìm thấy')||raw.includes('Không tìm thấy')?'Không tìm thấy hóa đơn':
+        raw.includes('Chỉ có thể huỷ')?'Hóa đơn không còn ở trạng thái cho phép huỷ':
+        raw.includes('đã có nghiệp vụ')?'Hóa đơn đã được huỷ/hoàn trước đó':
+        raw.includes('Operator role required')?'Bạn không có quyền huỷ hóa đơn':
+        'Không thể huỷ hóa đơn'
+      return {ok:false as const,error:friendly,detail:raw}
+    }
+
+    for(const path of [
+      '/sales','/sales/history','/sales/customers','/sales/debt',
+      '/warehouse','/warehouse/inventory','/warehouse/history',
+      '/finance','/finance/cashflow',
+    ])revalidatePath(path)
+
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể huỷ hóa đơn')}
+  }
+}
+
+
+export async function returnPOSSale(input:{
+  sale_id:string
+  items:{sale_item_id:string,quantity:number}[]
+  reason?:string|null
+}){
+  try{
+    const {supabase}=await actor()
+    const sale_id=String(input?.sale_id??'').trim()
+    const reason=String(input?.reason??'').trim()||null
+    const items=(input?.items??[])
+      .map(item=>({
+        sale_item_id:String(item.sale_item_id??'').trim(),
+        quantity:Math.trunc(Number(item.quantity??0)),
+      }))
+      .filter(item=>item.sale_item_id&&item.quantity>0)
+
+    if(!sale_id)return {ok:false as const,error:'Thiếu hóa đơn cần hoàn'}
+    if(!items.length)return {ok:false as const,error:'Chưa chọn sản phẩm hoàn'}
+    if(items.length>200)return {ok:false as const,error:'Tối đa 200 dòng hoàn hàng mỗi lần'}
+
+    const {data,error}=await supabase.rpc('return_pos_sale',{
+      p_sale_id:sale_id,
+      p_items:items,
+      p_reason:reason,
+    })
+    if(error){
+      const raw=String(error.message??'')
+      const friendly=
+        raw.includes('không tìm thấy')||raw.includes('Không tìm thấy')?'Không tìm thấy hóa đơn':
+        raw.includes('không còn ở trạng thái')?'Hóa đơn không còn ở trạng thái cho phép hoàn hàng':
+        raw.includes('Số lượng hoàn')?'Số lượng hoàn vượt quá số lượng còn có thể trả':
+        raw.includes('Chưa chọn sản phẩm')?'Chưa chọn sản phẩm hoàn':
+        raw.includes('Operator role required')?'Bạn không có quyền hoàn hàng':
+        'Không thể hoàn hàng'
+      return {ok:false as const,error:friendly,detail:raw}
+    }
+
+    for(const path of [
+      '/sales','/sales/history','/sales/customers','/sales/debt',
+      '/warehouse','/warehouse/inventory','/warehouse/history',
+      '/finance','/finance/cashflow',
+    ])revalidatePath(path)
+
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể hoàn hàng')}
+  }
+}
+
+
+export async function updateSalesCustomerForm(formData:FormData):Promise<void>{
+  const {supabase}=await actor()
+  const customerId=String(formData.get('customer_id')??'').trim()
+  const name=String(formData.get('name')??'').trim()
+  const phone=String(formData.get('phone')??'').trim()||null
+  const address=String(formData.get('address')??'').trim()||null
+  const note=String(formData.get('note')??'').trim()||null
+  if(!customerId)throw new Error('Thiếu khách hàng')
+  if(!name)throw new Error('Tên khách hàng là bắt buộc')
+
+  const {error}=await supabase.rpc('update_sales_customer',{
+    p_customer_id:customerId,p_name:name,p_phone:phone,p_address:address,p_note:note,
+  })
+  if(error)throw new Error(error.message)
+
+  revalidatePath('/sales/customers')
+  revalidatePath('/sales/pos')
+  revalidatePath('/sales/debt')
+  redirect('/sales/customers?customer='+encodeURIComponent(customerId)+'&tab=info')
+}
+
+export async function archiveSalesCustomerForm(formData:FormData):Promise<void>{
+  const {supabase}=await actor()
+  const customerId=String(formData.get('customer_id')??'').trim()
+  if(!customerId)throw new Error('Thiếu khách hàng')
+  const {error}=await supabase.rpc('archive_sales_customer',{p_customer_id:customerId})
+  if(error)throw new Error(error.message)
+  revalidatePath('/sales/customers')
+  revalidatePath('/sales/pos')
+  redirect('/sales/customers?archive=archived&customer='+encodeURIComponent(customerId)+'&tab=info')
+}
+
+export async function restoreSalesCustomerForm(formData:FormData):Promise<void>{
+  const {supabase}=await actor()
+  const customerId=String(formData.get('customer_id')??'').trim()
+  if(!customerId)throw new Error('Thiếu khách hàng')
+  const {error}=await supabase.rpc('restore_sales_customer',{p_customer_id:customerId})
+  if(error)throw new Error(error.message)
+  revalidatePath('/sales/customers')
+  revalidatePath('/sales/pos')
+  redirect('/sales/customers?customer='+encodeURIComponent(customerId)+'&tab=info')
+}
+
+
+export async function archivePOSSalesBulk(ids:string[]){
+  try{
+    const {supabase}=await actor()
+    const saleIds=[...new Set((ids??[]).map(x=>String(x).trim()).filter(Boolean))]
+    if(!saleIds.length)return {ok:false as const,error:'Chưa chọn hóa đơn'}
+    if(saleIds.length>200)return {ok:false as const,error:'Tối đa 200 hóa đơn mỗi lần'}
+    const {data,error}=await supabase.rpc('archive_pos_sales',{p_sale_ids:saleIds})
+    if(error)return {ok:false as const,error:error.message}
+    revalidatePath('/sales/history')
+    return {ok:true as const,count:Number(data??0)}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể lưu trữ hóa đơn')}
+  }
+}
+
+export async function restorePOSSalesBulk(ids:string[]){
+  try{
+    const {supabase}=await actor()
+    const saleIds=[...new Set((ids??[]).map(x=>String(x).trim()).filter(Boolean))]
+    if(!saleIds.length)return {ok:false as const,error:'Chưa chọn hóa đơn'}
+    if(saleIds.length>200)return {ok:false as const,error:'Tối đa 200 hóa đơn mỗi lần'}
+    const {data,error}=await supabase.rpc('restore_pos_sales',{p_sale_ids:saleIds})
+    if(error)return {ok:false as const,error:error.message}
+    revalidatePath('/sales/history')
+    return {ok:true as const,count:Number(data??0)}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể khôi phục hóa đơn')}
+  }
+}

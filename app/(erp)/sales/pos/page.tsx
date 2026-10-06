@@ -17,6 +17,7 @@ export default async function POSPage(){
       .limit(3000),
     supabase.from('customers')
       .select('id,name,phone,address')
+      .is('archived_at',null)
       .order('updated_at',{ascending:false})
       .limit(1000),
     supabase.from('bank_transfer_configs')

@@ -2,8 +2,15 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime } from '@/lib/format'
 import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
+import { ContextOrderPanel } from '@/components/context-order-panel'
+import { ContextSalePanel } from '@/components/context-sale-panel'
+import { fetchSaleContext } from '@/lib/sales/context'
 
-type SP={type?:string,warehouse?:string,q?:string,ref?:string}
+type SP={
+  type?:string,warehouse?:string,q?:string,ref?:string,
+  tx?:string,sale?:string,saleTab?:'info'|'products'|'payment'|'history',
+  order?:string,orderTab?:'info'|'tracking'|'history'
+}
 
 const IN_TYPES=new Set(['IN','TRANSFER_IN','RETURN','ADJUSTMENT_IN'])
 const OUT_TYPES=new Set(['OUT','TRANSFER_OUT','SALE','ADJUSTMENT_OUT'])
@@ -23,11 +30,14 @@ function txLabel(type:string,referenceType?:string|null){
 
 export default async function WarehouseHistoryPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
-  const {supabase}=await requireUser()
+  const {supabase,user}=await requireUser()
+  const role=String(user.app_metadata?.role??'viewer')
+  const canOperate=['admin','operator'].includes(role)
   const q=String(sp.q??'').trim().toLowerCase()
+  const txSelect='id,warehouse_id,product_variant_id,tx_type,quantity,reference_type,reference_id,created_at,warehouses(id,code,name,address),product_variants(id,variant_name,products(id,sku,name))'
 
   let query=supabase.from('inventory_transactions')
-    .select('id,warehouse_id,product_variant_id,tx_type,quantity,reference_type,reference_id,created_at,warehouses(id,code,name),product_variants(id,variant_name,products(id,sku,name))')
+    .select(txSelect)
     .order('created_at',{ascending:false})
     .limit(1000)
 
@@ -53,6 +63,63 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
   ])
 
   const all=(rows??[]) as any[]
+
+  let selectedTx=sp.tx?all.find(row=>String(row.id)===String(sp.tx)):null
+  if(sp.tx&&!selectedTx){
+    const {data:selectedTxData}=await supabase.from('inventory_transactions')
+      .select(txSelect)
+      .eq('id',sp.tx)
+      .maybeSingle()
+    selectedTx=selectedTxData??null
+  }
+
+  const saleId=selectedTx&&sp.sale&&selectedTx.reference_type==='SALE'&&String(selectedTx.reference_id)===String(sp.sale)
+    ? sp.sale
+    : null
+  const saleContext=saleId?await fetchSaleContext(supabase,saleId):null
+  const contextSale=saleContext?.sale??null
+  const contextSaleTab=sp.saleTab==='products'||sp.saleTab==='payment'||sp.saleTab==='history'?sp.saleTab:'info'
+
+  const orderId=selectedTx&&sp.order&&selectedTx.reference_type==='PURCHASE_RECEIPT'&&String(selectedTx.reference_id)===String(sp.order)
+    ? sp.order
+    : null
+  let contextOrder:any=null
+  let contextOrderItems:any[]=[]
+  let contextOrderVouchers:any[]=[]
+  let contextTrackingEvents:any[]=[]
+  let contextOrderAudit:any[]=[]
+  if(orderId){
+    const [orderResult,itemResult,voucherResult]=await Promise.all([
+      supabase.from('orders')
+        .select('id,shopee_order_id,erp_user_id,order_date,area,shipping_service,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,last_track_at,next_track_at,replaced_at)')
+        .eq('id',orderId)
+        .maybeSingle(),
+      supabase.from('order_items').select('*').eq('order_id',orderId).order('created_at'),
+      supabase.from('order_vouchers').select('*').eq('order_id',orderId).order('created_at'),
+    ])
+    contextOrder=orderResult.data
+    contextOrderItems=(itemResult.data??[]) as any[]
+    contextOrderVouchers=(voucherResult.data??[]) as any[]
+    const shipmentIds=(contextOrder?.shipments??[]).map((item:any)=>item.id)
+    if(sp.orderTab==='tracking'&&shipmentIds.length){
+      const eventResult=await supabase.from('tracking_events')
+        .select('id,shipment_id,normalized_status,raw_status,raw_description,raw_location,event_time')
+        .in('shipment_id',shipmentIds)
+        .order('event_time',{ascending:false})
+        .limit(100)
+      contextTrackingEvents=(eventResult.data??[]) as any[]
+    }
+    if(sp.orderTab==='history'){
+      const auditResult=await supabase.from('audit_logs')
+        .select('id,module,action,source,created_at')
+        .eq('entity_id',orderId)
+        .order('created_at',{ascending:false})
+        .limit(100)
+      contextOrderAudit=(auditResult.data??[]) as any[]
+    }
+  }
+  const contextOrderTab=sp.orderTab==='tracking'||sp.orderTab==='history'?sp.orderTab:'info'
+
   const data=all.filter(row=>{
     if(!q)return true
     const hay=[
@@ -76,27 +143,35 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
   ).length
   const stocktakeCount=data.filter(row=>String(row.reference_type??'').startsWith('STOCKTAKE')).length
 
-  function href(next:{type?:string|null,ref?:string|null}={}){
+  function href(next:Record<string,string|null|undefined>={}){
     const params=new URLSearchParams()
-    const type=Object.prototype.hasOwnProperty.call(next,'type')?next.type:sp.type
-    const ref=Object.prototype.hasOwnProperty.call(next,'ref')?next.ref:sp.ref
-    if(type)params.set('type',type)
-    if(ref)params.set('ref',ref)
-    if(sp.warehouse)params.set('warehouse',sp.warehouse)
-    if(sp.q)params.set('q',sp.q)
+    const current:Record<string,string|undefined>={
+      type:sp.type,ref:sp.ref,warehouse:sp.warehouse,q:sp.q,
+      tx:sp.tx,sale:sp.sale,saleTab:sp.saleTab,
+      order:sp.order,orderTab:sp.orderTab,
+    }
+    for(const [key,value] of Object.entries(current))if(value)params.set(key,value)
+    for(const [key,value] of Object.entries(next)){
+      if(value===null||value===undefined||value==='')params.delete(key)
+      else params.set(key,value)
+    }
     const qs=params.toString()
     return '/warehouse/history'+(qs?'?'+qs:'')
   }
 
   function clearFilterHref(){
-    const params=new URLSearchParams()
-    if(sp.type)params.set('type',sp.type)
-    if(sp.ref)params.set('ref',sp.ref)
-    const qs=params.toString()
-    return '/warehouse/history'+(qs?'?'+qs:'')
+    return href({q:null,warehouse:null})
   }
 
-  return <div className="whx-page">
+  function openTransactionHref(row:any){
+    return href({
+      tx:String(row.id),
+      sale:null,saleTab:null,
+      order:null,orderTab:null,
+    })
+  }
+
+  return <div className={'whx-page whx-history-page '+(selectedTx?'with-context-panel':'')}>
     <header className="page-head whx-page-head">
       <div>
         <span className="module-eyebrow">VẬN HÀNH KHO</span>
@@ -136,6 +211,11 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
       <form action="/warehouse/history">
         {sp.type&&<input type="hidden" name="type" value={sp.type}/>}
         {sp.ref&&<input type="hidden" name="ref" value={sp.ref}/>}
+        {sp.tx&&<input type="hidden" name="tx" value={sp.tx}/>}
+        {sp.sale&&<input type="hidden" name="sale" value={sp.sale}/>}
+        {sp.saleTab&&<input type="hidden" name="saleTab" value={sp.saleTab}/>}
+        {sp.order&&<input type="hidden" name="order" value={sp.order}/>}
+        {sp.orderTab&&<input type="hidden" name="orderTab" value={sp.orderTab}/>}
         <input name="q" defaultValue={sp.q??''} placeholder="Tìm SKU / sản phẩm / chứng từ"/>
         <select name="warehouse" defaultValue={sp.warehouse??''}>
           <option value="">Tất cả kho</option>
@@ -174,7 +254,7 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
               : data.map(row=>{
                   const incoming=IN_TYPES.has(String(row.tx_type))
                   const stocktake=String(row.reference_type??'').startsWith('STOCKTAKE')
-                  return <tr key={row.id}>
+                  return <tr key={row.id} className={selectedTx?.id===row.id?'selected':''}>
                     <td>{formatDateTime(row.created_at)}</td>
                     <td><b>{row.warehouses?.code??'—'}</b></td>
                     <td><b className="whx-link-text">{row.product_variants?.products?.sku??'—'}</b></td>
@@ -185,10 +265,10 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
                     </span></td>
                     <td className={'whx-tx-qty '+(incoming?'in':'out')}>{incoming?'+':'-'}{row.quantity}</td>
                     <td>
-                      <div className="whx-reference">
+                      <Link className="whx-reference whx-reference-link" href={openTransactionHref(row)}>
                         <b>{row.reference_type??'—'}</b>
-                        <span>{row.reference_id?String(row.reference_id).slice(0,8):'Không mã'}</span>
-                      </div>
+                        <span>{row.reference_id?String(row.reference_id).slice(0,8):'Không mã'} · Xem →</span>
+                      </Link>
                     </td>
                   </tr>
                 })}
@@ -196,5 +276,103 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
         </table>
       </div>
     </div>
+
+    {selectedTx&&contextSale&&<ContextSalePanel
+      sale={contextSale}
+      activeTab={contextSaleTab}
+      receiptQR={saleContext?.receiptQR??''}
+      receiptQRAmount={saleContext?.receiptQRAmount??0}
+      receiptQRDescription={saleContext?.receiptQRDescription??''}
+      bankConfig={saleContext?.bankConfig??null}
+      canOperate={canOperate}
+      parentLabel="Lịch sử kho"
+      backHref={contextSaleTab!=='info'
+        ? href({tx:selectedTx.id,sale:contextSale.id,saleTab:'info'})
+        : href({tx:selectedTx.id,sale:null,saleTab:null})}
+      closeHref={href({tx:null,sale:null,saleTab:null,order:null,orderTab:null})}
+      infoHref={href({tx:selectedTx.id,sale:contextSale.id,saleTab:'info',order:null,orderTab:null})}
+      productsHref={href({tx:selectedTx.id,sale:contextSale.id,saleTab:'products',order:null,orderTab:null})}
+      paymentHref={href({tx:selectedTx.id,sale:contextSale.id,saleTab:'payment',order:null,orderTab:null})}
+      historyHref={href({tx:selectedTx.id,sale:contextSale.id,saleTab:'history',order:null,orderTab:null})}
+      openModuleHref={'/sales/history?sale='+contextSale.id}
+    />}
+
+    {selectedTx&&contextOrder&&<ContextOrderPanel
+      order={contextOrder}
+      items={contextOrderItems}
+      vouchers={contextOrderVouchers}
+      trackingEvents={contextTrackingEvents}
+      auditRows={contextOrderAudit}
+      activeTab={contextOrderTab}
+      parentLabel="Lịch sử kho"
+      backHref={contextOrderTab!=='info'
+        ? href({tx:selectedTx.id,order:contextOrder.id,orderTab:'info'})
+        : href({tx:selectedTx.id,order:null,orderTab:null})}
+      closeHref={href({tx:null,sale:null,saleTab:null,order:null,orderTab:null})}
+      infoHref={href({tx:selectedTx.id,order:contextOrder.id,orderTab:'info',sale:null,saleTab:null})}
+      trackingHref={href({tx:selectedTx.id,order:contextOrder.id,orderTab:'tracking',sale:null,saleTab:null})}
+      historyHref={href({tx:selectedTx.id,order:contextOrder.id,orderTab:'history',sale:null,saleTab:null})}
+      openModuleHref={'/purchase/orders?range=all&order='+contextOrder.id}
+    />}
+
+    {selectedTx&&!contextSale&&!contextOrder&&<aside className="detail-panel whx-history-reference-panel">
+      <div className="panel-head context-stack-head">
+        <Link className="context-stack-back" href={href({tx:null,sale:null,saleTab:null,order:null,orderTab:null})} aria-label="Quay lại">←</Link>
+        <div className="context-stack-title">
+          <span className="eyebrow">LỊCH SỬ KHO · GIAO DỊCH</span>
+          <h2>{txLabel(String(selectedTx.tx_type),selectedTx.reference_type)}</h2>
+          <small>{selectedTx.warehouses?.code??'Kho'} · {formatDateTime(selectedTx.created_at)}</small>
+        </div>
+        <Link className="close" href={href({tx:null,sale:null,saleTab:null,order:null,orderTab:null})} aria-label="Đóng toàn bộ">×</Link>
+      </div>
+
+      <div className="context-stack-breadcrumb">
+        <span>Lịch sử kho</span><i>›</i><b>{selectedTx.product_variants?.products?.sku??'Giao dịch'}</b>
+      </div>
+
+      <div className="panel-scroll whx-history-reference-scroll">
+        <div className="detail-grid compact-detail-grid">
+          <div><span>Thời gian</span><b>{formatDateTime(selectedTx.created_at)}</b></div>
+          <div><span>Kho</span><b>{selectedTx.warehouses?.code??'—'}</b></div>
+          <div><span>Nghiệp vụ</span><b>{txLabel(String(selectedTx.tx_type),selectedTx.reference_type)}</b></div>
+          <div><span>Số lượng</span><b>{IN_TYPES.has(String(selectedTx.tx_type))?'+':'-'}{selectedTx.quantity}</b></div>
+          <div><span>SKU</span><b>{selectedTx.product_variants?.products?.sku??'—'}</b></div>
+          <div><span>Phân loại</span><b>{selectedTx.product_variants?.variant_name??'—'}</b></div>
+          <div className="full"><span>Sản phẩm</span><b>{selectedTx.product_variants?.products?.name??'—'}</b></div>
+          <div><span>Loại chứng từ</span><b>{selectedTx.reference_type??'—'}</b></div>
+          <div><span>Mã tham chiếu</span><b>{selectedTx.reference_id?String(selectedTx.reference_id).slice(0,12):'—'}</b></div>
+        </div>
+
+        {selectedTx.reference_type==='SALE'&&selectedTx.reference_id&&
+          <div className="panel-action-row whx-history-reference-actions">
+            <Link className="button primary" href={href({
+              tx:selectedTx.id,
+              sale:String(selectedTx.reference_id),
+              saleTab:'info',
+              order:null,orderTab:null,
+            })}>Xem hóa đơn POS →</Link>
+          </div>
+        }
+
+        {selectedTx.reference_type==='PURCHASE_RECEIPT'&&selectedTx.reference_id&&
+          <div className="panel-action-row whx-history-reference-actions">
+            <Link className="button primary" href={href({
+              tx:selectedTx.id,
+              order:String(selectedTx.reference_id),
+              orderTab:'info',
+              sale:null,saleTab:null,
+            })}>Xem đơn nhập →</Link>
+          </div>
+        }
+
+        {String(selectedTx.reference_type??'').startsWith('STOCKTAKE')&&
+          <div className="panel-note-row"><span>Luồng liên kết</span><b>Kiểm kê kho · không rời màn hình lịch sử</b></div>
+        }
+        {String(selectedTx.reference_type??'').startsWith('MANUAL_ADJUSTMENT')&&
+          <div className="panel-note-row"><span>Ghi chú điều chỉnh</span><b>{String(selectedTx.reference_type).replace('MANUAL_ADJUSTMENT:','').trim()||'—'}</b></div>
+        }
+      </div>
+    </aside>}
+
   </div>
 }
