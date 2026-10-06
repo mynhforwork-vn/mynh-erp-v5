@@ -53,7 +53,12 @@ export function FinanceReferencePanel({
 
   return <>
     <div className="panel-head context-stack-head">
-      <button className="context-stack-back" type="button" onClick={onBack} aria-label="Quay lại">←</button>
+      <button
+        className="context-stack-back"
+        type="button"
+        onClick={()=>reference.type==='SALE'&&saleTab!=='info'?setSaleTab('info'):onBack()}
+        aria-label="Quay lại"
+      >←</button>
       <div className="context-stack-title">
         <span className="eyebrow">THAM CHIẾU · TRONG THU / CHI</span>
         <h2>{title}</h2>
