@@ -74,6 +74,38 @@ for(const [file,needle] of required){
   if(!src.includes(needle))issues.push(`${file}: missing remediation marker ${needle}`)
 }
 
+/* Contextual slidebar contract: linked details stay in the current workspace.
+   Explicit "Mở module" actions are the only intentional cross-module escape hatch. */
+const contextualRequired=[
+  ['components/context-order-panel.tsx','parentLabel'],
+  ['components/context-order-panel.tsx','Mở module Đơn ↗'],
+  ['components/context-sale-panel.tsx','context-stack-back'],
+  ['app/(erp)/sales/customers/page.tsx','ContextSalePanel'],
+  ['app/(erp)/sales/customers/page.tsx','customer-collect-context'],
+  ['app/(erp)/sales/debt/page.tsx','ContextSalePanel'],
+  ['components/warehouse-inventory-workspace.tsx',"historyScope"],
+  ['app/(erp)/tracking/page.tsx','orderBasePath="/purchase/tracking"'],
+  ['app/(erp)/tracking/page.tsx','parentLabel="Cảnh báo vận chuyển"'],
+  ['components/finance-reference-panel.tsx','THAM CHIẾU · TRONG THU / CHI'],
+  ['app/(erp)/finance/shipper-payments/page.tsx','parentLabel="Đối soát Shipper"'],
+  ['app/styles/remediation-ux-v3.css','FINAL SLIDEBAR NORMALIZATION — Intake + Sales History'],
+  ['app/styles/remediation-ux-v3.css','Finance panel vertical geometry: match the ledger row'],
+]
+for(const [file,needle] of contextualRequired){
+  const src=fs.existsSync(file)?fs.readFileSync(file,'utf8'):''
+  if(!src.includes(needle))issues.push(`${file}: contextual slidebar contract missing ${needle}`)
+}
+
+const contextualForbidden=[
+  ['app/(erp)/sales/customers/page.tsx',"/sales/history?sale='+row.id"],
+  ['app/(erp)/sales/debt/page.tsx',"/sales/history?sale='+row.id"],
+  ['components/warehouse-inventory-workspace.tsx',"/warehouse/history?q="],
+]
+for(const [file,needle] of contextualForbidden){
+  const src=fs.existsSync(file)?fs.readFileSync(file,'utf8'):''
+  if(src.includes(needle))issues.push(`${file}: legacy cross-module drilldown remains: ${needle}`)
+}
+
 const result={
   scannedFiles:files.length,
   routeCount:routes.length,
