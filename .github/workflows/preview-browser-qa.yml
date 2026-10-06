@@ -5,11 +5,13 @@ on:
   push:
     branches:
       - fix/76aed41c-remediation
+      - feat/tracking-telegram-production
     paths:
       - app/**
       - components/**
       - lib/**
       - supabase/migrations/**
+      - supabase/functions/**
       - scripts/preview-browser-qa.mjs
       - scripts/preview-mutation-qa.mjs
       - scripts/preview-mutation-qa-v2.mjs
