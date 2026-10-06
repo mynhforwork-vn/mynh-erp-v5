@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/76aed41c-remediation
+      - feat/tracking-telegram-production
   workflow_dispatch:
 
 jobs:
