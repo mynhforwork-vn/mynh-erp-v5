@@ -4,12 +4,14 @@ import { archiveERPUser, createERPUser, deleteERPUserPermanent, restoreERPUser, 
 import { PurchaseAccountTable } from '@/components/purchase-account-table'
 import { VoucherTags } from '@/components/voucher-tags'
 import { UserBulkImport } from '@/components/user-bulk-import'
+import { ContextOrderPanel } from '@/components/context-order-panel'
 import Link from 'next/link'
 
 type SP={
   mode?:string,user?:string,tab?:string,q?:string,state?:string,platform?:string,
   device?:string,session?:string,voucher?:string,orders?:string,browser?:string,sort?:string,
-  range?:string,from?:string,to?:string,archive?:string
+  range?:string,from?:string,to?:string,archive?:string,
+  order?:string,orderTab?:string
 }
 
 function hasST(row:any){return Boolean(row?.spc_st_secret_id||row?.spc_st_encrypted)}
@@ -192,6 +194,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       sort:sort!=='newest'?sort:undefined,platform:platform!=='SHOPEE'?platform:undefined,
       range:sp.range,from:sp.range==='custom'?sp.from:undefined,to:sp.range==='custom'?sp.to:undefined,
       user:sp.user,mode:sp.mode,tab:sp.tab,archive:sp.archive,
+      order:sp.order,orderTab:sp.orderTab,
     }
     for(const [k,v] of Object.entries(current))if(v)p.set(k,v)
     for(const [k,v] of Object.entries(overrides)){
@@ -218,6 +221,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   if(sp.mode)detailParams.set('mode',sp.mode)
   if(sp.tab)detailParams.set('tab',sp.tab)
   if(sp.archive)detailParams.set('archive',sp.archive)
+  if(sp.order)detailParams.set('order',sp.order)
+  if(sp.orderTab)detailParams.set('orderTab',sp.orderTab)
   const detailQuery=detailParams.toString()
 
   function contextHref(path:string,extra:Record<string,string|null|undefined>={}){
@@ -246,14 +251,13 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     return filterHref({state:nextState&&nextState!=='all'?nextState:null})
   }
 
-  function selectedOrderHref(order:any,username:string){
-    return contextHref('/purchase/orders',{
-      q:username,
+  function selectedOrderHref(order:any){
+    return detailHref({
+      user:sp.user,
+      tab:'orders',
       order:order.id,
-      range:'all',
-      from:null,
-      to:null,
-      archive:order.archived_at?'archived':null,
+      orderTab:'info',
+      mode:null,
     })
   }
 
@@ -273,6 +277,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
   let history:any[]=[]
   let userOrders:any[]=[]
+  let contextOrder:any=null
+  let contextOrderItems:any[]=[]
+  let contextOrderVouchers:any[]=[]
+  let contextTrackingEvents:any[]=[]
+  let contextOrderAudit:any[]=[]
   if(selected&&sp.tab==='history'){
     const h=await supabase.from('audit_logs').select('id,action,old_value,new_value,source,created_at').eq('module','USERS').eq('entity_id',selected.id).order('created_at',{ascending:false}).limit(100)
     history=(h.data??[]) as any[]
@@ -282,6 +291,37 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       'id,shopee_order_id,order_date,area,destination_hub,cod,receive_status,warehouse_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,source,archived_at,order_items(sku,product_name,variant,quantity,original_price,final_price),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active)'
     ).eq('erp_user_id',selected.id).order('order_date',{ascending:false}).limit(100)
     userOrders=(o.data??[]) as any[]
+  }
+
+  if(selected&&sp.order){
+    const [od,it,vo]=await Promise.all([
+      supabase.from('orders').select(
+        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,last_track_at,next_track_at,replaced_at)'
+      ).eq('id',sp.order).eq('erp_user_id',selected.id).maybeSingle(),
+      supabase.from('order_items').select('*').eq('order_id',sp.order).order('created_at'),
+      supabase.from('order_vouchers').select('*').eq('order_id',sp.order).order('created_at'),
+    ])
+    contextOrder=od.data
+    contextOrderItems=(it.data??[]) as any[]
+    contextOrderVouchers=(vo.data??[]) as any[]
+
+    const shipmentIds=(contextOrder?.shipments??[]).map((x:any)=>x.id)
+    if(sp.orderTab==='tracking'&&shipmentIds.length){
+      const ev=await supabase.from('tracking_events')
+        .select('id,shipment_id,normalized_status,raw_status,raw_description,raw_location,event_time')
+        .in('shipment_id',shipmentIds)
+        .order('event_time',{ascending:false})
+        .limit(100)
+      contextTrackingEvents=(ev.data??[]) as any[]
+    }
+    if(sp.orderTab==='history'){
+      const au=await supabase.from('audit_logs')
+        .select('id,module,action,source,created_at')
+        .eq('entity_id',sp.order)
+        .order('created_at',{ascending:false})
+        .limit(100)
+      contextOrderAudit=(au.data??[]) as any[]
+    }
   }
 
   const selectedDevices=selected?.all_devices??[]
@@ -371,6 +411,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       {sp.mode&&<input type="hidden" name="mode" value={sp.mode}/>}
       {sp.tab&&<input type="hidden" name="tab" value={sp.tab}/>}
       {sp.archive&&<input type="hidden" name="archive" value={sp.archive}/>}
+      {sp.order&&<input type="hidden" name="order" value={sp.order}/>}
+      {sp.orderTab&&<input type="hidden" name="orderTab" value={sp.orderTab}/>}
       <button className="button primary small">Lọc</button>
       {filtersActive&&<Link className="button small filter-clear" href={filterHref({
         q:null,state:null,device:null,session:null,voucher:null,orders:null,browser:null,sort:null,platform:null,
@@ -429,7 +471,30 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         </aside>
       }
 
-      {selected&&!isEdit&&
+      {selected&&!isEdit&&contextOrder&&
+        <ContextOrderPanel
+          order={contextOrder}
+          items={contextOrderItems}
+          vouchers={contextOrderVouchers}
+          trackingEvents={contextTrackingEvents}
+          auditRows={contextOrderAudit}
+          activeTab={sp.orderTab==='tracking'?'tracking':sp.orderTab==='history'?'history':'info'}
+          backHref={sp.orderTab==='tracking'||sp.orderTab==='history'
+            ? detailHref({user:selected.id,tab:'orders',order:contextOrder.id,orderTab:'info'})
+            : detailHref({user:selected.id,tab:'orders',order:null,orderTab:null})}
+          closeHref={filterHref({user:null,mode:null,tab:null,order:null,orderTab:null})}
+          infoHref={detailHref({user:selected.id,tab:'orders',order:contextOrder.id,orderTab:'info'})}
+          trackingHref={detailHref({user:selected.id,tab:'orders',order:contextOrder.id,orderTab:'tracking'})}
+          historyHref={detailHref({user:selected.id,tab:'orders',order:contextOrder.id,orderTab:'history'})}
+          openModuleHref={contextHref('/purchase/orders',{
+            order:contextOrder.id,
+            range:'all',
+            archive:contextOrder.archived_at?'archived':null,
+          })}
+        />
+      }
+
+      {selected&&!isEdit&&!contextOrder&&
         <aside className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT USER</span><h2>{selected.username}</h2></div>
@@ -514,7 +579,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                   : userOrders.map((o:any)=>{
                       const s=activeShipment(o)
                       const voucherText=(o.order_vouchers??[]).map(voucherLabel).filter(Boolean).join(' · ')
-                      return <Link className="user-order-card detailed" href={selectedOrderHref(o,selected.username)} key={o.id}>
+                      return <Link className="user-order-card detailed" href={selectedOrderHref(o)} key={o.id}>
                         <div className="user-order-card-top">
                           <div><b>{o.shopee_order_id??o.id.slice(0,8)}</b><span>{formatDateTime(o.order_date)} · {o.area??'Chưa rõ khu vực'}</span></div>
                           <strong>{formatMoney(o.cod)}</strong>
