@@ -36,6 +36,8 @@ if(!wh.ok||!Array.isArray(wh.json)||!wh.json[0]?.id)throw new Error('No active w
 const suffix=Date.now().toString(36)+'-'+crypto.randomBytes(3).toString('hex')
 const fixtures={
   customer_id:crypto.randomUUID(),
+  product_id:crypto.randomUUID(),
+  variant_id:crypto.randomUUID(),
   warehouse_order_id:crypto.randomUUID(),
   warehouse_item_id:crypto.randomUUID(),
   receive_batch_id:crypto.randomUUID(),
@@ -65,6 +67,20 @@ await insert('customers',{
   phone:'0900000000',
   address:'QA Browser Fixture',
   note:fixtures.marker,
+})
+
+await insert('products',{
+  id:fixtures.product_id,
+  sku:'QA-MUT-'+suffix,
+  name:'QA Mutation Product '+suffix,
+  note:fixtures.marker,
+})
+await insert('product_variants',{
+  id:fixtures.variant_id,
+  product_id:fixtures.product_id,
+  variant_name:'Mặc định',
+  sale_price:25000,
+  barcode:'QAMUT'+Date.now(),
 })
 
 await insert('orders',{
