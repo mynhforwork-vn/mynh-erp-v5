@@ -428,7 +428,7 @@ if(await firstCustomer.count()){
     'Thông tin':'.customer-demo-summary',
   }
   for(const tabName of ['Lịch sử mua','Công nợ','Lịch sử','Thông tin']){
-    const tab=page.locator('aside.customer-demo-panel .panel-tabs').getByRole('link',{name:tabName}).first()
+    const tab=page.locator('aside.customer-demo-panel .panel-tabs').getByRole('link',{name:tabName,exact:true}).first()
     if(await tab.count()){
       const tabNav=await followLink(tab,{waitSelector:'aside.customer-demo-panel'})
       const selector=customerTabSelectors[tabName]
@@ -527,7 +527,7 @@ if(await hubCard.count()){
 
 await go('/settings')
 const settingsSelectors={
-  'Đơn vị vận chuyển':'.shipping-carrier-settings',
+  'Đơn vị vận chuyển':'.carrier-settings',
   'SPX · Kho đích & Shipper':'.destination-master-detail',
   'Thanh toán & QR':'.bank-transfer-settings',
   'Quản lý dữ liệu':'.data-management-settings',
