@@ -25,6 +25,14 @@ const summary={
   network5xx:[],
 }
 
+function recordInteraction(name,pass,detail={}){
+  summary.interactions.push({name,pass:Boolean(pass),...detail})
+}
+
+async function settle(ms=350){
+  await page.waitForTimeout(ms)
+}
+
 const browser=await chromium.launch({headless:true})
 
 // Public / unauthenticated checks.
@@ -152,6 +160,315 @@ if(await page.getByRole('button',{name:'Import TSV'}).count()){
   }
   const closedByOutside=await page.locator('[role=dialog]').count()===0
   summary.interactions.push({name:'User Import TSV modal closes by outside click',pass:reopened&&closedByOutside})
+}
+
+// Expanded non-mutating interaction coverage across the ERP.
+await go('/purchase/accounts')
+const addAccountLink=page.getByRole('link',{name:/Thêm tài khoản/}).first()
+if(await addAccountLink.count()){
+  await addAccountLink.click(); await settle()
+  recordInteraction('User create panel opens',page.url().includes('mode=create')&&await page.locator('aside.account-detail-panel').count()>0)
+  const close=page.locator('aside.account-detail-panel a.close').first()
+  if(await close.count()){await close.click();await settle()}
+  recordInteraction('User create panel closes',!page.url().includes('mode=create'))
+}
+
+await go('/purchase/accounts')
+const firstUserLink=page.locator('.account-table-card a.table-link').first()
+if(await firstUserLink.count()){
+  await firstUserLink.click(); await settle()
+  recordInteraction('User detail panel opens',await page.locator('aside.account-detail-panel').count()>0)
+  for(const tabName of ['Đơn hàng','Lịch sử','Thông tin']){
+    const tab=page.locator('aside.account-detail-panel .panel-tabs').getByRole('link',{name:new RegExp('^'+tabName)}).first()
+    if(await tab.count()){
+      await tab.click();await settle()
+      recordInteraction('User detail tab '+tabName,await page.locator('aside.account-detail-panel .panel-tabs a.active').filter({hasText:tabName}).count()>0)
+    }
+  }
+  const ordersTab=page.locator('aside.account-detail-panel .panel-tabs').getByRole('link',{name:/^Đơn hàng/}).first()
+  if(await ordersTab.count()){
+    await ordersTab.click();await settle()
+    const nestedOrder=page.locator('aside.account-detail-panel a.user-order-card').first()
+    if(await nestedOrder.count()){
+      await nestedOrder.click();await settle()
+      recordInteraction('User to contextual Order opens',await page.locator('aside.context-order-panel').count()>0)
+      const hist=page.locator('aside.context-order-panel .context-order-tabs').getByRole('link',{name:'Lịch sử'}).first()
+      if(await hist.count()){
+        await hist.click();await settle()
+        recordInteraction('User contextual Order history tab',await page.locator('aside.context-order-panel .context-order-tabs a.active').filter({hasText:'Lịch sử'}).count()>0)
+        const back=page.locator('aside.context-order-panel').getByRole('link',{name:'Quay lại'}).first()
+        if(await back.count()){await back.click();await settle()}
+        recordInteraction('User contextual Order Back is stepwise',await page.locator('aside.context-order-panel').count()>0&&await page.locator('aside.context-order-panel .context-order-tabs a.active').filter({hasText:'Thông tin'}).count()>0)
+      }
+    }
+  }
+}else recordInteraction('User detail fixture available',true,{skipped:true,reason:'No user rows'})
+
+await go('/purchase/orders')
+const createOrderLink=page.getByRole('link',{name:/Tạo đơn nhập/}).first()
+if(await createOrderLink.count()){
+  await createOrderLink.click();await settle()
+  recordInteraction('Order create panel opens',page.url().includes('mode=create')&&await page.locator('aside.order-panel').count()>0)
+  const close=page.locator('aside.order-panel a.close').first()
+  if(await close.count()){await close.click();await settle()}
+  recordInteraction('Order create panel closes',!page.url().includes('mode=create'))
+}
+await go('/purchase/orders')
+const hubSettings=page.getByRole('link',{name:/Kho đích SPX/}).first()
+if(await hubSettings.count()){
+  await hubSettings.click();await settle()
+  recordInteraction('Destination HUB settings modal opens',await page.getByRole('dialog',{name:'Cấu hình kho đích SPX'}).count()>0)
+  const close=page.getByRole('dialog',{name:'Cấu hình kho đích SPX'}).locator('a.close').first()
+  if(await close.count()){await close.click();await settle()}
+  recordInteraction('Destination HUB settings modal closes',await page.getByRole('dialog',{name:'Cấu hình kho đích SPX'}).count()===0)
+}
+await go('/purchase/orders')
+const firstOrderLink=page.locator('.order-table-card a.table-link').first()
+if(await firstOrderLink.count()){
+  await firstOrderLink.click();await settle()
+  recordInteraction('Order detail panel opens',await page.locator('aside.detail-panel').count()>0&&page.url().includes('order='))
+  for(const tabName of ['Tracking','Nhập kho','Lịch sử','Thông tin']){
+    const tab=page.locator('aside.detail-panel .panel-tabs').getByRole('link',{name:tabName}).first()
+    if(await tab.count()){
+      await tab.click();await settle()
+      recordInteraction('Order detail tab '+tabName,await page.locator('aside.detail-panel .panel-tabs a.active').filter({hasText:tabName}).count()>0)
+    }
+  }
+}else recordInteraction('Order detail fixture available',true,{skipped:true,reason:'No order rows'})
+
+await go('/purchase/tracking')
+const trackingOrderLink=page.locator('a[href*="order="]').filter({hasNotText:'Mở trong module Đơn'}).first()
+if(await trackingOrderLink.count()){
+  await trackingOrderLink.click();await settle()
+  recordInteraction('Tracking contextual Order opens',await page.locator('aside.context-order-panel').count()>0)
+  const historyTab=page.locator('aside.context-order-panel .context-order-tabs').getByRole('link',{name:'Lịch sử'}).first()
+  if(await historyTab.count()){
+    await historyTab.click();await settle()
+    const back=page.locator('aside.context-order-panel').getByRole('link',{name:'Quay lại'}).first()
+    if(await back.count()){await back.click();await settle()}
+    recordInteraction('Tracking contextual Order Back is stepwise',await page.locator('aside.context-order-panel').count()>0&&await page.locator('aside.context-order-panel .context-order-tabs a.active').filter({hasText:'Thông tin'}).count()>0)
+  }
+}else recordInteraction('Tracking contextual fixture available',true,{skipped:true,reason:'No linked order in current tracking rows'})
+
+await go('/warehouse')
+const intakeRow=page.locator('.warehouse-split-table tbody tr, .warehouse-ready-table tbody tr').filter({has:page.locator('.table-link')}).first()
+if(await intakeRow.count()){
+  await intakeRow.click();await settle()
+  recordInteraction('Warehouse intake detail panel opens',await page.locator('aside.warehouse-intake-panel').count()>0)
+  for(const tabName of ['Thông tin','Lịch sử','Sản phẩm']){
+    const tab=page.locator('aside.warehouse-intake-panel .whx-panel-tabs').getByRole('button',{name:new RegExp('^'+tabName)}).first()
+    if(await tab.count()){
+      await tab.click();await settle(150)
+      recordInteraction('Warehouse intake tab '+tabName,await tab.evaluate(el=>el.classList.contains('active')))
+    }
+  }
+  const close=page.locator('aside.warehouse-intake-panel').getByRole('button',{name:'Đóng'}).first()
+  if(await close.count()){await close.click();await settle(150)}
+  recordInteraction('Warehouse intake detail panel closes',await page.locator('aside.warehouse-intake-panel').count()===0)
+}else recordInteraction('Warehouse intake fixture available',true,{skipped:true,reason:'No received orders waiting for intake'})
+
+await go('/warehouse/inventory')
+const stockRow=page.locator('.whx-stock-main .whx-table tbody tr').filter({has:page.locator('.whx-link-text')}).first()
+if(await stockRow.count()){
+  await stockRow.click();await settle(150)
+  recordInteraction('Inventory SKU detail panel opens',await page.locator('aside.whx-detail-panel').count()>0)
+  const history=page.locator('aside.whx-detail-panel .whx-panel-tabs').getByRole('button',{name:/^Lịch sử/}).first()
+  if(await history.count()){
+    await history.click();await settle(150)
+    recordInteraction('Inventory SKU history tab opens',await history.evaluate(el=>el.classList.contains('active')))
+    const all=page.getByRole('button',{name:'Toàn bộ lịch sử SKU'}).first()
+    if(await all.count()){
+      await all.click();await settle(150)
+      recordInteraction('Inventory all-SKU history stack opens',await page.locator('.context-stack-breadcrumb').filter({hasText:'Lịch sử toàn SKU'}).count()>0)
+      const back=page.locator('aside.whx-detail-panel').getByRole('button',{name:'Quay lại'}).first()
+      if(await back.count()){await back.click();await settle(150)}
+      recordInteraction('Inventory history Back returns one level',await page.locator('aside.whx-detail-panel .whx-panel-tabs').count()>0)
+    }
+  }
+}else recordInteraction('Inventory fixture available',true,{skipped:true,reason:'No inventory rows'})
+
+await go('/warehouse/history')
+const txLink=page.locator('.whx-table a.whx-reference-link').first()
+if(await txLink.count()){
+  await txLink.click();await settle()
+  recordInteraction('Warehouse history transaction panel opens',await page.locator('aside.whx-history-reference-panel').count()>0)
+  const nested=page.locator('aside.whx-history-reference-panel .whx-history-reference-actions a.button.primary').first()
+  if(await nested.count()){
+    await nested.click();await settle()
+    recordInteraction('Warehouse history nested reference stays contextual',await page.locator('aside.context-order-panel, aside.sales-context-panel, aside.context-sale-panel').count()>0||page.url().includes('sale=')||page.url().includes('order='))
+    const back=page.getByRole('link',{name:'Quay lại'}).first()
+    if(await back.count()){await back.click();await settle()}
+    recordInteraction('Warehouse history nested Back returns transaction',await page.locator('aside.whx-history-reference-panel').count()>0)
+  }
+}else recordInteraction('Warehouse history fixture available',true,{skipped:true,reason:'No transactions'})
+
+await go('/sales/pos')
+const posCustomer=page.getByRole('button',{name:/Tạo khách|Gắn khách/}).first()
+if(await posCustomer.count()){
+  await posCustomer.click();await settle(120)
+  recordInteraction('POS customer popover opens',await page.locator('.pos-customer-popover').count()>0)
+  const close=page.locator('.pos-customer-popover .pos-popover-head button').first()
+  if(await close.count()){await close.click();await settle(100)}
+  recordInteraction('POS customer popover closes',await page.locator('.pos-customer-popover').count()===0)
+}
+const held=page.getByRole('button',{name:/Đơn tạm/}).first()
+if(await held.count()){
+  await held.click();await settle(100)
+  recordInteraction('POS held-order popover opens',await page.locator('.pos-held-popover').count()>0)
+  const close=page.locator('.pos-held-popover .pos-popover-head button').first()
+  if(await close.count()){await close.click();await settle(100)}
+}
+const catSettings=page.getByRole('button',{name:/Phân loại/}).first()
+if(await catSettings.count()){
+  await catSettings.click();await settle(100)
+  recordInteraction('POS category settings opens',await page.locator('.pos-category-settings').count()>0)
+  const close=page.locator('.pos-category-settings .pos-popover-head button').first()
+  if(await close.count()){await close.click();await settle(100)}
+}
+const sellable=page.locator('button.pos-product-tile-final:not(:disabled)').first()
+if(await sellable.count()){
+  await sellable.click();await settle(100)
+  recordInteraction('POS product adds to cart',await page.locator('.pos-cart-line').count()>0)
+  const extras=page.getByRole('button',{name:/Tùy chỉnh hóa đơn/}).first()
+  if(await extras.count()){
+    await extras.click();await settle(100)
+    recordInteraction('POS invoice extras toggle',await page.locator('.pos-invoice-extras').count()>0)
+  }
+  const cash=page.locator('.pos-cart-actions').getByRole('button',{name:'Tiền mặt'}).first()
+  if(await cash.count()){
+    await cash.click();await settle(120)
+    recordInteraction('POS checkout opens',await page.locator('.pos-checkout').count()>0)
+    for(const modeName of ['Chuyển khoản','Ghi nợ','Kết hợp','Tiền mặt']){
+      const mode=page.locator('.pos-pay-methods').getByRole('button',{name:modeName}).first()
+      if(await mode.count()){
+        await mode.click();await settle(80)
+        recordInteraction('POS payment mode '+modeName,await mode.evaluate(el=>el.classList.contains('active')))
+      }
+    }
+    const back=page.locator('.pos-checkout-head button').first()
+    if(await back.count()){await back.click();await settle(100)}
+    recordInteraction('POS checkout Back returns cart',await page.locator('.pos-cart-actions').count()>0)
+  }
+  const clear=page.getByRole('button',{name:'Xóa giỏ'}).first()
+  if(await clear.count()){await clear.click();await settle(100)}
+}else recordInteraction('POS sellable inventory fixture available',true,{skipped:true,reason:'No sellable inventory'})
+
+await go('/sales/customers')
+const newCustomer=page.getByRole('link',{name:/Thêm khách/}).first()
+if(await newCustomer.count()){
+  await newCustomer.click();await settle()
+  recordInteraction('Customer create panel opens',page.url().includes('mode=new'))
+  const close=page.locator('a.panel-close').first()
+  if(await close.count()){await close.click();await settle()}
+}
+await go('/sales/customers')
+const firstCustomer=page.locator('.customer-demo-table a.table-link').first()
+if(await firstCustomer.count()){
+  await firstCustomer.click();await settle()
+  recordInteraction('Customer detail panel opens',await page.locator('aside.customer-demo-panel').count()>0)
+  for(const tabName of ['Lịch sử mua','Công nợ','Lịch sử','Thông tin']){
+    const tab=page.locator('aside.customer-demo-panel .panel-tabs').getByRole('link',{name:tabName}).first()
+    if(await tab.count()){
+      await tab.click();await settle()
+      recordInteraction('Customer detail tab '+tabName,await page.locator('aside.customer-demo-panel .panel-tabs a.active').filter({hasText:tabName}).count()>0)
+    }
+  }
+  const debtTab=page.locator('aside.customer-demo-panel .panel-tabs').getByRole('link',{name:'Công nợ'}).first()
+  if(await debtTab.count()){
+    await debtTab.click();await settle()
+    const collect=page.getByRole('link',{name:'Thu nợ'}).first()
+    if(await collect.count()){
+      await collect.click();await settle()
+      recordInteraction('Customer debt collection stays contextual',await page.locator('aside.customer-collect-context').count()>0)
+      const back=page.locator('aside.customer-collect-context').getByRole('link',{name:'Quay lại'}).first()
+      if(await back.count()){await back.click();await settle()}
+      recordInteraction('Customer collection Back returns debt tab',await page.locator('aside.customer-demo-panel .panel-tabs a.active').filter({hasText:'Công nợ'}).count()>0)
+    }
+  }
+}else recordInteraction('Customer fixture available',true,{skipped:true,reason:'No customers'})
+
+await go('/sales/debt')
+const debtCustomer=page.locator('.debt-demo-table a.table-link').first()
+if(await debtCustomer.count()){
+  await debtCustomer.click();await settle()
+  recordInteraction('Debt customer panel opens',await page.locator('.debt-demo-panel, aside').filter({hasText:'CÔNG NỢ KHÁCH HÀNG'}).count()>0||page.url().includes('customer='))
+  for(const tabName of ['Hóa đơn nợ','Lịch sử thu','Tổng quan']){
+    const tab=page.locator('.panel-tabs').getByRole('link',{name:tabName}).first()
+    if(await tab.count()){
+      await tab.click();await settle()
+      recordInteraction('Debt tab '+tabName,await page.locator('.panel-tabs a.active').filter({hasText:tabName}).count()>0)
+    }
+  }
+  const collect=page.getByRole('link',{name:/^Thu nợ/}).first()
+  if(await collect.count()){
+    await collect.click();await settle()
+    recordInteraction('Debt collection panel opens',page.url().includes('mode=collect'))
+    const back=page.getByRole('link',{name:'Quay lại'}).first()
+    if(await back.count()){await back.click();await settle()}
+  }
+}else recordInteraction('Debt fixture available',true,{skipped:true,reason:'No debt customers'})
+
+await go('/finance/cashflow')
+for(const label of ['+ Phiếu thu','+ Phiếu chi']){
+  const button=page.getByRole('button',{name:label}).first()
+  if(await button.count()&&await button.isEnabled()){
+    await button.click();await settle(100)
+    recordInteraction('Finance '+label+' panel opens',await page.locator('aside.finance-panel').count()>0)
+    const moneyTab=page.locator('aside.finance-panel .panel-tabs').getByRole('button',{name:/Chi tiết tiền/}).first()
+    if(await moneyTab.count()){
+      await moneyTab.click();await settle(80)
+      recordInteraction('Finance '+label+' money tab',await moneyTab.evaluate(el=>el.classList.contains('active')))
+    }
+    const close=page.locator('aside.finance-panel button.close').first()
+    if(await close.count()){await close.click();await settle(100)}
+  }
+}
+const categories=page.getByRole('button',{name:'Hạng mục'}).first()
+if(await categories.count()){
+  await categories.click();await settle(100)
+  recordInteraction('Finance categories panel opens',await page.locator('aside.finance-panel .finance-categories-panel').count()>0)
+  for(const name of ['Chi','Thu']){
+    const tab=page.locator('aside.finance-panel .panel-tabs').getByRole('button',{name}).first()
+    if(await tab.count()){await tab.click();await settle(60);recordInteraction('Finance category tab '+name,await tab.evaluate(el=>el.classList.contains('active')))}
+  }
+  const close=page.locator('aside.finance-panel button.close').first();if(await close.count()){await close.click();await settle(80)}
+}
+const bill=page.getByRole('button',{name:'Đọc bill ngân hàng'}).first()
+if(await bill.count()&&await bill.isEnabled()){
+  await bill.click();await settle(100)
+  recordInteraction('Finance bank bill panel opens',await page.locator('aside.finance-panel .finance-bill-panel').count()>0)
+  const close=page.locator('aside.finance-panel button.close').first();if(await close.count()){await close.click();await settle(80)}
+}
+
+await go('/finance/shipper-payments')
+const customerMode=page.locator('.finance-mode-tabs').getByRole('link',{name:'Khách hàng'}).first()
+if(await customerMode.count()){
+  await customerMode.click();await settle()
+  recordInteraction('Settlement customer mode opens',page.url().includes('mode=customer'))
+  const shipperMode=page.locator('.finance-mode-tabs').getByRole('link',{name:'Đơn nhập / Shipper'}).first()
+  if(await shipperMode.count()){await shipperMode.click();await settle()}
+}
+const hubCard=page.locator('a.finance-hub-card').first()
+if(await hubCard.count()){
+  await hubCard.click();await settle()
+  recordInteraction('Shipper HUB panel opens',await page.locator('aside.finance-hub-live-panel').count()>0)
+  const linkedOrder=page.locator('aside.finance-hub-live-panel a.finance-hub-order-link').first()
+  if(await linkedOrder.count()){
+    await linkedOrder.click();await settle()
+    recordInteraction('Shipper contextual Order opens',await page.locator('aside.context-order-panel').count()>0)
+    const back=page.locator('aside.context-order-panel').getByRole('link',{name:'Quay lại'}).first()
+    if(await back.count()){await back.click();await settle()}
+    recordInteraction('Shipper contextual Order Back returns HUB',await page.locator('aside.finance-hub-live-panel').count()>0)
+  }
+}else recordInteraction('Shipper HUB fixture available',true,{skipped:true,reason:'No HUB settlement rows'})
+
+await go('/settings')
+for(const name of ['Đơn vị vận chuyển','SPX · Kho đích & Shipper','Thanh toán & QR','Quản lý dữ liệu']){
+  const tab=page.locator('.settings-page-tabs-v3').getByRole('link',{name}).first()
+  if(await tab.count()){
+    await tab.click();await settle()
+    recordInteraction('Settings tab '+name,await page.locator('.settings-page-tabs-v3 a.active').filter({hasText:name}).count()>0)
+  }
 }
 
 await go('/sales/history')
