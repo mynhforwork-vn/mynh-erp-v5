@@ -147,7 +147,7 @@ export function TrackingTelegramSettings({
           <input name="chat_id" placeholder={telegram?.default_chat_id??'-100...'}/>
         </label>
         <button className="button" type="submit">Gửi tin nhắn thử</button>
-      </form>
+      </form>}
     </section>
 
     <section className="settings-block">
