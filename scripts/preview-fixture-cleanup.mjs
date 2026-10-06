@@ -69,6 +69,11 @@ const paymentIds=[...new Set([
   ...payments.map(x=>String(x.id)),
   ...(f.mutation_customer_payment_id?[String(f.mutation_customer_payment_id)]:[]),
 ])]
+const financeDocumentIds=[]
+for(const paymentId of paymentIds){
+  const docs=await rows('/rest/v1/finance_documents?select=id&source_type=eq.CUSTOMER_PAYMENT&source_id=eq.'+encodeURIComponent(paymentId))
+  financeDocumentIds.push(...docs.map(x=>String(x.id)))
+}
 
 // Remove child rows first. Each QA customer/SKU is unique to this workflow run.
 for(const paymentId of paymentIds)await del('customer_payment_allocations','customer_payment_id',paymentId)
@@ -77,6 +82,9 @@ for(const saleId of saleIds)await del('customer_payment_allocations','sale_id',s
 await del('debt_ledger','customer_id',f.customer_id)
 for(const paymentId of paymentIds)await del('finance_transactions','reference_id',paymentId)
 for(const saleId of saleIds)await del('finance_transactions','reference_id',saleId)
+for(const documentId of financeDocumentIds)await del('finance_transactions','finance_document_id',documentId)
+for(const documentId of financeDocumentIds)await del('finance_document_lines','document_id',documentId)
+for(const documentId of financeDocumentIds)await del('finance_documents','id',documentId)
 
 for(const paymentId of paymentIds)await del('audit_logs','entity_id',paymentId)
 for(const saleId of saleIds)await del('audit_logs','entity_id',saleId)
@@ -110,7 +118,15 @@ const leftovers={
   sales:await count('/rest/v1/sales?select=id&customer_id=eq.'+encodeURIComponent(f.customer_id)),
   payments:await count('/rest/v1/customer_payments?select=id&customer_id=eq.'+encodeURIComponent(f.customer_id)),
   debt_ledger:await count('/rest/v1/debt_ledger?select=id&customer_id=eq.'+encodeURIComponent(f.customer_id)),
+  finance_documents:0,
+  finance_document_lines:0,
   product: f.sale_sku?await count('/rest/v1/products?select=id&sku=eq.'+encodeURIComponent(f.sale_sku)):0,
+}
+for(const paymentId of paymentIds){
+  leftovers.finance_documents+=await count('/rest/v1/finance_documents?select=id&source_type=eq.CUSTOMER_PAYMENT&source_id=eq.'+encodeURIComponent(paymentId))
+}
+for(const documentId of financeDocumentIds){
+  leftovers.finance_document_lines+=await count('/rest/v1/finance_document_lines?select=id&document_id=eq.'+encodeURIComponent(documentId))
 }
 let inventory=0
 for(const variantId of variantIds)inventory+=await count('/rest/v1/inventory_transactions?select=id&product_variant_id=eq.'+encodeURIComponent(variantId))
