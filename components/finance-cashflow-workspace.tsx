@@ -542,7 +542,7 @@ export function FinanceCashflowWorkspace({
     })
   }
 
-  return <div className={'finance-screen finance-live-workspace '+(panel!=='NONE'?'has-slidebar':'')}>
+  return <div className="finance-screen finance-live-workspace">
     <header className="page-head finance-page-head">
       <div>
         <span className="module-eyebrow">TÀI CHÍNH</span>
@@ -586,6 +586,7 @@ export function FinanceCashflowWorkspace({
       </button>
     </section>
 
+    <div className={'finance-ledger-layout '+(panel!=='NONE'?'with-panel':'')}>
     <section className="finance-ledger">
       <div className="finance-toolbar finance-toolbar-complete">
         <input className="search" value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}} placeholder="Tìm mã phiếu / nội dung / đối tượng..."/>
@@ -769,5 +770,6 @@ export function FinanceCashflowWorkspace({
         </div>
       </>}
     </aside>}
+    </div>
   </div>
 }
