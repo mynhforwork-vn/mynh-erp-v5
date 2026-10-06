@@ -20,6 +20,7 @@ const summary={mutations:[],consoleErrors:[],pageErrors:[],network5xx:[],failure
 function record(name,pass,detail={}){
   const row={name,pass:Boolean(pass),...detail}
   summary.mutations.push(row)
+  console.log('QA_MUTATION_CHECK '+JSON.stringify(row))
   if(!row.pass)summary.failures.push('Mutation: '+name)
 }
 function persist(extra){
@@ -215,8 +216,24 @@ const allocationRow=page.locator('.debt-invoice-allocation-v2').filter({hasText:
 record('Debt collection allocates to QA sale',await allocationRow.count()>0)
 const confirm=page.getByRole('button',{name:/Xác nhận thu/}).first()
 await confirm.click()
-await page.locator('.debt-collect-success-v2').waitFor({state:'visible',timeout:10000})
-record('Debt collection shows success state',true)
+let debtSuccess=false
+let debtError=''
+for(let attempt=0;attempt<50;attempt++){
+  debtSuccess=await page.locator('.debt-collect-success-v2').count()>0
+  if(debtSuccess)break
+  const errorBox=page.locator('.debt-collect-v2 .error-box').first()
+  if(await errorBox.count()){
+    debtError=(await errorBox.innerText()).trim()
+    if(debtError)break
+  }
+  await page.waitForTimeout(200)
+}
+record('Debt collection shows success state',debtSuccess,{error:debtError||null})
+if(!debtSuccess){
+  await page.screenshot({path:outDir+'/mutation-debt-error.png',fullPage:true})
+  const body=(await page.locator('body').innerText()).slice(-5000)
+  throw new Error('Debt collection failed in UI: '+(debtError||body))
+}
 
 const payment=await waitFor(async()=>{
   const rows=await admin('/rest/v1/customer_payments?select=id,amount,receipt_code,payment_method,cash_amount,transfer_amount&customer_id=eq.'+encodeURIComponent(f.customer_id)+'&order=created_at.desc&limit=1')
