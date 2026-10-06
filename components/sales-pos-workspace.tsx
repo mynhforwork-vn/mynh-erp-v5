@@ -630,25 +630,19 @@ export function SalesPOSWorkspace({
                 ? <div className="empty">Không tìm thấy sản phẩm phù hợp trong kho này.</div>
                 : filteredProducts.map(product=><button
                     type="button"
-                    className="pos-product-card"
+                    className="pos-product-tile-final"
                     key={product.warehouse_id+product.variant_id}
                     onClick={()=>addProduct(product)}
                     disabled={!canSell||product.quantity<=0}
                   >
-                    <div className="pos-product-card-head">
-                      <div className="pos-product-card-main">
-                        <b title={product.name}>{product.name}</b>
-                        <span title={product.variant}>{product.variant}</span>
-                      </div>
-                      <div className="pos-product-card-code">
-                        <span>SKU</span>
-                        <b title={product.sku}>{product.sku}</b>
-                        {product.barcode&&<small>{product.barcode}</small>}
-                      </div>
+                    <div className="pos-final-top">
+                      <span className="pos-final-name" title={product.name}>{product.name}</span>
+                      <span className="pos-final-variant" title={product.variant}>{product.variant}</span>
                     </div>
-                    <div className="pos-product-card-stats">
-                      <div><span>Giá bán</span><b>{money(product.sale_price)}</b></div>
-                      <div className={product.quantity<=5?'low':''}><span>Tồn kho</span><b>{product.quantity}</b><small>{product.warehouse_code}</small></div>
+                    <div className="pos-final-bottom">
+                      <span className="pos-final-sku" title={product.sku}>{product.sku}</span>
+                      <strong>{money(product.sale_price)}</strong>
+                      <span className={'pos-final-stock '+(product.quantity<=5?'low':'')}>Tồn {product.quantity} · {product.warehouse_code}</span>
                     </div>
                   </button>)}
             </div>
