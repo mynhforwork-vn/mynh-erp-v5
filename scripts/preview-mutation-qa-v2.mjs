@@ -76,13 +76,22 @@ page.on('response',r=>{if(r.status()>=500)summary.network5xx.push({url:r.url(),s
 
 async function go(path){
   let lastStatus=0
-  for(let attempt=1;attempt<=3;attempt++){
-    const res=await page.goto(PREVIEW_URL+path,{waitUntil:'domcontentloaded',timeout:30000})
-    lastStatus=res?.status()??0
-    await page.waitForTimeout(attempt===1?800:1200)
-    if(lastStatus<500)return
+  let lastError=''
+  const delays=[800,1500,2500,4000]
+  for(let attempt=1;attempt<=5;attempt++){
+    try{
+      const res=await page.goto(PREVIEW_URL+path,{waitUntil:'domcontentloaded',timeout:30000})
+      lastStatus=res?.status()??0
+      lastError=''
+      await page.waitForTimeout(attempt===1?800:1000)
+      if(lastStatus>0&&lastStatus<500)return
+    }catch(error){
+      lastStatus=0
+      lastError=error instanceof Error?error.message:String(error)
+    }
+    if(attempt<5)await page.waitForTimeout(delays[attempt-1])
   }
-  throw new Error('Navigation failed '+path+' status='+lastStatus)
+  throw new Error('Navigation failed '+path+' status='+lastStatus+(lastError?' error='+lastError:''))
 }
 async function balance(warehouseId){
   const row=await first('/rest/v1/inventory_balances?select=quantity&warehouse_id=eq.'+encodeURIComponent(warehouseId)+'&product_variant_id=eq.'+encodeURIComponent(f.mutation_variant_id))
