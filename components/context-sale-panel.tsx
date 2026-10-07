@@ -193,5 +193,5 @@ export function ContextSalePanel({
       {sale.note&&<div className="receipt-note"><span>Ghi chú</span><b>{sale.note}</b></div>}
       <p>Cảm ơn quý khách!</p>
     </div>
-  </aside>
+  </SystemSlidebar>
 }
