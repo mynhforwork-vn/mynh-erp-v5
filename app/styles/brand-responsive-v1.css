@@ -4085,3 +4085,104 @@ body{
   }
 }
 
+@media(max-width:900px){
+  /* Finance customer settlement and report tables become app cards. */
+  .brand-shell-v1 .mobile-finance-customer-list,
+  .brand-shell-v1 .mobile-finance-report-days{
+    padding:7px!important;
+  }
+  .brand-shell-v1 .mobile-finance-customer-list + .compact-table-wrap,
+  .brand-shell-v1 .mobile-finance-report-days + .compact-table-wrap{
+    display:none!important;
+  }
+  .brand-shell-v1 .mobile-finance-customer-card,
+  .brand-shell-v1 .mobile-finance-day-card{
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:7px!important;
+    padding:9px!important;
+    border:1px solid #DCE4EB!important;
+    border-radius:9px!important;
+    background:#fff!important;
+  }
+  .brand-shell-v1 .mobile-finance-customer-head,
+  .brand-shell-v1 .mobile-finance-day-head{
+    min-width:0!important;
+    display:flex!important;
+    align-items:flex-start!important;
+    justify-content:space-between!important;
+    gap:8px!important;
+  }
+  .brand-shell-v1 .mobile-finance-customer-head>div{
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:2px!important;
+  }
+  .brand-shell-v1 .mobile-finance-customer-head b,
+  .brand-shell-v1 .mobile-finance-day-head>b{
+    overflow:hidden!important;
+    color:var(--mynh-ink-900)!important;
+    font-size:11px!important;
+    font-weight:780!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+  .brand-shell-v1 .mobile-finance-customer-head div>span{
+    color:#7E8D9C!important;
+    font-size:8px!important;
+  }
+  .brand-shell-v1 .mobile-finance-customer-metrics,
+  .brand-shell-v1 .mobile-finance-day-grid{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:5px!important;
+  }
+  .brand-shell-v1 .mobile-finance-customer-metrics>div,
+  .brand-shell-v1 .mobile-finance-day-grid>div{
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:2px!important;
+    padding:6px 7px!important;
+    border-radius:7px!important;
+    background:#F7F9FB!important;
+  }
+  .brand-shell-v1 .mobile-finance-customer-metrics span,
+  .brand-shell-v1 .mobile-finance-day-grid span{
+    color:#8794A2!important;
+    font-size:7.7px!important;
+  }
+  .brand-shell-v1 .mobile-finance-customer-metrics b,
+  .brand-shell-v1 .mobile-finance-day-grid b{
+    overflow:hidden!important;
+    font-size:9.5px!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+  .brand-shell-v1 .mobile-finance-customer-last{
+    min-height:28px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:7px!important;
+    padding-top:6px!important;
+    border-top:1px solid #EDF1F4!important;
+  }
+  .brand-shell-v1 .mobile-finance-customer-last span{
+    color:#8794A2!important;
+    font-size:8px!important;
+  }
+  .brand-shell-v1 .mobile-finance-customer-last b{
+    font-size:9px!important;
+  }
+  .brand-shell-v1 .mobile-finance-day-head strong{
+    flex:0 0 auto!important;
+    font-size:11px!important;
+    font-weight:800!important;
+  }
+  .brand-shell-v1 .income{color:var(--mynh-success)!important}
+  .brand-shell-v1 .expense{color:var(--mynh-danger)!important}
+}
+
