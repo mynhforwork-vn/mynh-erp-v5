@@ -563,7 +563,7 @@ if(await appAlertTrigger.count()){
 }
 const settingsSelectors={
   'Cấu hình vận chuyển':'.shipping-settings-v6',
-  'Tracking':'.tracking-settings-v6',
+  'Tracking':'.tracking-settings-v7',
   'Thông báo':'.notification-settings-v6',
   'Thanh toán':'.bank-transfer-settings-v6',
   'Quản lý dữ liệu':'.data-management-settings',
@@ -582,8 +582,8 @@ for(const name of ['Đơn vị vận chuyển','Kho đích','Shipper']){
   recordInteraction('Shipping subtab '+name,await sub.count()>0)
 }
 await go('/settings?section=tracking')
-for(const name of ['Chu kỳ & trạng thái','Provider','Mapping']){
-  const sub=page.locator('.tracking-settings-v6 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
+for(const name of ['Chu kỳ & trạng thái','Mapping trạng thái']){
+  const sub=page.locator('.tracking-settings-v7 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
   recordInteraction('Tracking subtab '+name,await sub.count()>0)
 }
 await go('/settings?section=notifications')
