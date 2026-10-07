@@ -200,7 +200,9 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
       <div><span>Kiểm kê</span><b>{stocktakeCount}</b><small>Giao dịch chênh lệch kiểm kê</small></div>
     </section>
 
-    <div className="whx-toolbar whx-history-toolbar">
+    <div className={'whx-history-workspace '+(selectedTx?'with-panel':'')}>
+      <section className="whx-history-main">
+      <div className="whx-toolbar whx-history-toolbar">
       <div className="whx-history-tabs">
         <Link className={!sp.type&&!sp.ref?'active':''} href={href({type:null,ref:null})}>Tất cả</Link>
         <Link className={sp.type==='IN'?'active':''} href={href({type:'IN',ref:null})}>Nhập kho</Link>
