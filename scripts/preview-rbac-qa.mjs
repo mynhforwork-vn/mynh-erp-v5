@@ -194,8 +194,18 @@ for(const role of ['admin','operator','viewer']){
 
     await go(page,role,'/settings?section=access')
     const accessVisible=await page.getByRole('link',{name:'Tài khoản & quyền'}).count()>0
-    const accessWorkspace=await page.getByText('QUẢN TRỊ HỆ THỐNG').count()>0
+    const accessWorkspace=await page.locator('.admin-access-settings-v10').count()>0
     record('ui',role+' settings access visibility',role==='admin'?(accessVisible&&accessWorkspace):(!accessVisible&&!accessWorkspace),{accessVisible,accessWorkspace})
+    if(role==='admin'){
+      const accessHasSystemReset=await page.getByText('Xóa dữ liệu hệ thống',{exact:true}).count()>0
+      record('ui','Admin reset removed from Access',!accessHasSystemReset,{accessHasSystemReset})
+    }
+
+    await go(page,role,'/settings?section=data-management')
+    const dataWorkspace=await page.locator('.data-management-settings-v10').count()>0
+    const resetTab=page.locator('.data-management-settings-v10 .settings-subtabs-v6').getByRole('button',{name:/^Reset hệ thống/}).first()
+    const resetVisible=await resetTab.count()>0
+    record('ui',role+' data reset visibility',role==='admin'?(dataWorkspace&&resetVisible):(dataWorkspace&&!resetVisible),{dataWorkspace,resetVisible})
 
     await go(page,role,'/settings?section=shipping')
     const carrierInputs=page.locator('.carrier-config-row input:not([type="hidden"]), .carrier-config-row select')
@@ -204,9 +214,9 @@ for(const role of ['admin','operator','viewer']){
     record('ui',role+' carrier settings edit state',role==='viewer'?(!carrierEditable&&!carrierSave):(carrierEditable&&carrierSave),{carrierEditable,carrierSave})
 
     await go(page,role,'/settings?section=payments')
-    const bankInput=page.locator('.bank-transfer-form input[name="account_no"]').first()
+    const bankInput=page.locator('.payment-form-panel-v10 input[name="account_no"]').first()
     const bankEditable=await bankInput.count()>0&&!(await bankInput.isDisabled())
-    const bankSave=await page.locator('.bank-transfer-form').getByRole('button',{name:'Lưu cấu hình'}).count()>0
+    const bankSave=await page.locator('.payment-form-panel-v10').getByRole('button',{name:'Lưu cấu hình'}).count()>0
     record('ui',role+' payment settings edit state',role==='viewer'?(!bankEditable&&!bankSave):(bankEditable&&bankSave),{bankEditable,bankSave})
 
     await go(page,role,'/settings?section=tracking')
