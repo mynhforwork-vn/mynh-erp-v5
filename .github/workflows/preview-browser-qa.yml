@@ -12,6 +12,7 @@ on:
       - redesign/settings-v6
       - redesign/settings-v8
       - redesign/account-notifications-v1
+      - fix/order-text-recognition-v1
     paths:
       - app/**
       - components/**
