@@ -82,6 +82,7 @@ rec('Sidebar thu gọn đúng width',m&&m.sidebar.width>=66&&m.sidebar.width<=78
 rec('Sidebar thu gọn avatar + chuông cùng hàng',m&&Math.abs(m.avatar.top-m.bell.top)<=5&&m.account.width<=34&&m.bell.width<=34,m??{})
 rec('Sidebar thu gọn copy ẩn',m&&m.copyDisplay==='none',m??{})
 rec('Sidebar thu gọn footer gọn',m&&m.foot.height<=48&&m.foot.width<=78,m??{})
+rec('Sidebar thu gọn footer nằm trọn trong rail',m&&m.foot.left>=m.sidebar.left-1&&m.foot.right<=m.sidebar.right+1,m??{})
 rec('Sidebar thu gọn active menu còn nhìn thấy',m&&m.activeVisible,m??{})
 rec('Sidebar thu gọn không tràn ngang',m&&!m.bodyScrollX,m??{})
 await page.screenshot({path:'qa-desktop-slidebar-artifacts/sidebar-collapsed.png',fullPage:false})
