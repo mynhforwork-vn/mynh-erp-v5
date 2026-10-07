@@ -214,10 +214,17 @@ for(const role of ['admin','operator','viewer']){
     record('ui',role+' carrier settings edit state',role==='viewer'?(!carrierEditable&&!carrierSave):(carrierEditable&&carrierSave),{carrierEditable,carrierSave})
 
     await go(page,role,'/settings?section=payments')
-    const bankInput=page.locator('.payment-form-panel-v10 input[name="account_no"]').first()
+    const bankInput=page.locator('.payment-form-panel-v11 input[name="account_no"]').first()
     const bankEditable=await bankInput.count()>0&&!(await bankInput.isDisabled())
-    const bankSave=await page.locator('.payment-form-panel-v10').getByRole('button',{name:'Lưu cấu hình'}).count()>0
+    const bankSave=await page.locator('.payment-form-panel-v11').getByRole('button',{name:'Lưu cấu hình'}).count()>0
     record('ui',role+' payment settings edit state',role==='viewer'?(!bankEditable&&!bankSave):(bankEditable&&bankSave),{bankEditable,bankSave})
+
+    const templateTab=page.locator('.payment-settings-v12 .settings-subtabs-v6').getByRole('button',{name:/^Mẫu hóa đơn/}).first()
+    if(await templateTab.count())await templateTab.click()
+    const templateBrand=page.locator('.payment-template-form-v12 input').first()
+    const templateEditable=await templateBrand.count()>0&&!(await templateBrand.isDisabled())
+    const templateSave=await page.locator('.payment-template-form-v12').getByRole('button',{name:'Lưu mẫu'}).count()>0
+    record('ui',role+' print template edit state',role==='viewer'?(!templateEditable&&!templateSave):(templateEditable&&templateSave),{templateEditable,templateSave})
 
     await go(page,role,'/settings?section=tracking')
     const trackingTabVisible=await page.locator('.settings-page-tabs-v3').getByRole('link',{name:'Tracking',exact:true}).count()>0
