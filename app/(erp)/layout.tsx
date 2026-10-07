@@ -5,6 +5,7 @@ import { roleLabel } from '@/lib/format'
 import { Nav } from '@/components/nav'
 import { LogoutButton } from '@/components/logout-button'
 import { DismissOpenDetails } from '@/components/dismiss-open-details'
+import { InAppAlertCenter } from '@/components/in-app-alert-center'
 
 export default async function ERPLayout({children}:{children:React.ReactNode}){
   const {user}=await requireUser()
@@ -21,7 +22,7 @@ export default async function ERPLayout({children}:{children:React.ReactNode}){
         <LogoutButton/>
       </div>
     </aside>
-    <main className="main">{children}</main>
+    <main className="main"><InAppAlertCenter/>{children}</main>
   </div>
   </>
 }

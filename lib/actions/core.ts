@@ -1913,18 +1913,47 @@ export async function testTrackingConnection(formData:FormData){
   redirect('/settings?'+params.toString())
 }
 
+export async function saveAlertRuleConfig(formData:FormData){
+  const {supabase,role}=await actor()
+  requireAdmin(role)
+  const alertType=text(formData.get('alert_type')).toUpperCase()
+  const batchRaw=Number(text(formData.get('batch_window_minutes'))||0)
+  if(!alertType)throw new Error('Thiếu loại cảnh báo')
+  const {error}=await supabase.rpc('save_alert_rule_secure',{
+    p_alert_type:alertType,
+    p_enabled:formData.get('enabled')==='on',
+    p_in_app_enabled:formData.get('in_app_enabled')==='on',
+    p_telegram_enabled:formData.get('telegram_enabled')==='on',
+    p_batch_window_minutes:Number.isFinite(batchRaw)?Math.round(batchRaw):0,
+  })
+  if(error)throw new Error(error.message)
+  revalidatePath('/settings')
+}
+
 export async function saveTelegramAlertSettings(formData:FormData){
   const {supabase,role}=await actor()
   requireAdmin(role)
-  const alertTypes=formData.getAll('alert_types').map(v=>text(v)).filter(Boolean)
-  const {error}=await supabase.rpc('save_telegram_alert_settings_secure',{
+  const retry=keywordList(formData.get('retry_minutes'))
+    .map(v=>Number(v))
+    .filter(v=>Number.isFinite(v))
+    .map(v=>Math.round(v))
+  const maxAttemptsRaw=Number(text(formData.get('max_attempts'))||5)
+  const alertTypes=['PICKUP_FAILED','ARRIVED_DESTINATION_HUB','OUT_FOR_DELIVERY','DELIVERED','DELIVERY_FAILED']
+
+  const settingsResult=await supabase.rpc('save_telegram_alert_settings_secure',{
     p_enabled:formData.get('enabled')==='on',
     p_default_chat_id:text(formData.get('default_chat_id'))||null,
     p_alert_types:alertTypes,
     p_bot_token:text(formData.get('bot_token'))||null,
     p_clear_token:formData.get('clear_token')==='on',
   })
-  if(error)throw new Error(error.message)
+  if(settingsResult.error)throw new Error(settingsResult.error.message)
+
+  const policyResult=await supabase.rpc('save_telegram_delivery_policy_secure',{
+    p_retry_minutes:retry.length?retry:[5,15,30,60],
+    p_max_attempts:Number.isFinite(maxAttemptsRaw)?Math.round(maxAttemptsRaw):5,
+  })
+  if(policyResult.error)throw new Error(policyResult.error.message)
   revalidatePath('/settings')
 }
 
