@@ -363,12 +363,20 @@ export function OrderEditorForm({
 
   function parseQuickProductLine(line:string){
     const item:Item=emptyItem()
-    const raw=line.trim()
+    const raw=line
+      .trim()
+      .replace(/^Dán\s+từ\s+Shopee\s*:\s*/i,'')
+      .replace(/^Shopee\s*:\s*/i,'')
+      .trim()
 
     // Shopee compact format:
     // Tên SP xSL Giá gốc₫Giá sau giảm₫ (Phân loại)
-    // Example: Dầu Đậu Nành Simply Nguyên chất chai 1 Lít x1 79.000₫78.921₫ (Đậu Nành 1 Lít)
-    const shopeeCompact=raw.match(/^(.*?)\s+[x×]\s*(\d+)\s+([\d.,]+)\s*₫(?:\s*([\d.,]+)\s*₫)?(?:\s*\(([^)]+)\))?\s*$/i)
+    // Example:
+    // Dán từ Shopee: Dầu Đậu Nành Simply Nguyên chất chai 1 Lít x1 79.000₫78.921₫ (Đậu Nành 1 Lít). Có thể...
+    //
+    // Intentionally NOT anchored at the end because copied Shopee text may
+    // append punctuation / helper copy after the variant.
+    const shopeeCompact=raw.match(/^(.*?)\s+[x×]\s*(\d+)\s+([\d.,]+)\s*₫(?:\s*([\d.,]+)\s*₫)?\s*(?:\(([^)]+)\))?/i)
     if(shopeeCompact){
       item.product_name=shopeeCompact[1].trim()
       item.quantity=Math.max(1,Number(shopeeCompact[2]))
@@ -466,6 +474,17 @@ export function OrderEditorForm({
 
   function recognizeQuickProducts(){
     const fullOrder=parseShopeeOrderText(quickProductText)
+
+    // Split compact pasted text by line AND by repeated "Dán từ Shopee:"
+    // markers. This handles multiple copied products even when the browser
+    // concatenates them into one textarea value.
+    const compactCandidates=quickProductText
+      .replace(/\r/g,'\n')
+      .replace(/(?:^|\s+)Dán\s+từ\s+Shopee\s*:\s*/gi,'\nDán từ Shopee: ')
+      .split(/\n+/)
+      .map(line=>line.trim())
+      .filter(Boolean)
+
     const parsed:Item[]=fullOrder.products.length
       ? fullOrder.products.map(item=>({
           sku:'',
@@ -475,21 +494,26 @@ export function OrderEditorForm({
           original_price:item.original_price??'',
           final_price:item.final_price??'',
         }))
-      : quickProductText
-          .split(/\n+/)
-          .map(line=>line.trim())
-          .filter(Boolean)
+      : compactCandidates
           .map(parseQuickProductLine)
           .filter(item=>item.sku||item.product_name)
 
     if(!parsed.length){
-      setRecognitionMessage('Chưa nhận diện được sản phẩm từ nội dung đã dán.')
+      setRecognitionMessage('Chưa nhận diện được sản phẩm. Hỗ trợ: Tên SP xSL Giá gốc₫Giá sau giảm₫ (Phân loại).')
       return
     }
+
     const currentIsBlank=items.length===1&&!items[0].sku&&!items[0].product_name
     setItems(currentIsBlank?parsed:[...items,...parsed])
     setQuickProductText('')
-    setRecognitionMessage('Đã nhận diện '+parsed.length+' sản phẩm.')
+
+    const priced=parsed.filter(item=>moneyNumber(item.original_price)>0).length
+    const discounted=parsed.filter(item=>moneyNumber(item.final_price)>0).length
+    setRecognitionMessage(
+      'Đã tách '+parsed.length+' sản phẩm'+
+      (priced?' · '+priced+' giá gốc':'')+
+      (discounted?' · '+discounted+' giá sau giảm':'')
+    )
   }
 
   function recognizeOrderText(){
