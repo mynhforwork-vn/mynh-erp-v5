@@ -9,6 +9,7 @@ on:
       - feat/tracking-telegram-production
       - feat/tracking-settings-spx-v1
       - feat/alerts-v1
+      - redesign/settings-v6
     paths:
       - app/**
       - components/**
