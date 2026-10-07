@@ -173,7 +173,7 @@ for(const path of routes){
 // MYNH Brand System V1 checks.
 await go('/')
 recordInteraction('MYNH brand shell V1 is active',await page.locator('.brand-shell-v1').count()===1)
-recordInteraction('MYNH compact wordmark renders',await page.locator('.brand .brand-mark').first().innerText()==='MY')
+recordInteraction('MYNH compact wordmark renders',await page.locator('.brand .brand-mark .mynh-logo-mark').count()===1)
 const desktopBrandMetrics=await page.evaluate(()=>({
   innerWidth:window.innerWidth,
   scrollWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
