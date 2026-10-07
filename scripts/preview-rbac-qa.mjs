@@ -211,10 +211,10 @@ for(const role of ['admin','operator','viewer']){
 
     await go(page,role,'/settings?section=tracking')
     const trackingTabVisible=await page.locator('.settings-page-tabs-v3').getByRole('link',{name:'Tracking',exact:true}).count()>0
-    const trackingWorkspace=await page.locator('.tracking-settings').count()>0
-    const quietStart=page.locator('.tracking-settings input[name="quiet_start"]').first()
+    const trackingWorkspace=await page.locator('.tracking-settings-v7').count()>0
+    const quietStart=page.locator('.tracking-settings-v7 input[name="quiet_start"]').first()
     const trackingEditable=await quietStart.count()>0&&!(await quietStart.isDisabled())
-    const trackingSave=await page.locator('.tracking-settings-v6').getByRole('button',{name:'Lưu cấu hình'}).count()>0
+    const trackingSave=await page.locator('.tracking-settings-v7').getByRole('button',{name:'Lưu',exact:true}).count()>0
     if(role==='viewer'){
       record('ui',role+' Tracking visibility',!trackingTabVisible&&!trackingWorkspace,{trackingTabVisible,trackingWorkspace})
     }else if(role==='admin'){
