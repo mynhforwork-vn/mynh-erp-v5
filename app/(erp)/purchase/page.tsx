@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
+import { isShippingTrackingStatus } from '@/lib/tracking/status-groups'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
 type SP={range?:RangeKey,from?:string,to?:string}
@@ -157,7 +158,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   const received=standardRows.filter(o=>o.receive_status==='RECEIVED').length
   const shipping=standardRows.filter(o=>{
     const s=activeShipment(o)?.current_tracking_status
-    return ['READY_TO_SHIP','PICKED_UP','IN_TRANSIT'].includes(String(s))
+    return isShippingTrackingStatus(s)
   }).length
   const arrivedHub=standardRows.filter(o=>activeShipment(o)?.current_tracking_status==='ARRIVED_DESTINATION_HUB').length
   const failed=standardRows.filter(o=>activeShipment(o)?.current_tracking_status==='DELIVERY_FAILED').length
@@ -254,7 +255,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
         <span>Chưa có mã vận đơn</span><b>{missingTracking}</b><small>Không tính đơn Hỏa tốc</small>
       </Link>
       <Link href={orderHref({tracking:'shipping'})} className="command-kpi info">
-        <span>Đang vận chuyển</span><b>{shipping}</b><small>Đã lấy hàng / đang trung chuyển</small>
+        <span>Đang vận chuyển</span><b>{shipping}</b><small>Đã lấy hàng / trung chuyển / đang giao</small>
       </Link>
       <Link href={purchaseHref('/purchase/tracking',{status:'ARRIVED_DESTINATION_HUB'})} className="command-kpi info">
         <span>Đến kho đích</span><b>{arrivedHub}</b><small>Đã đến HUB đích</small>
