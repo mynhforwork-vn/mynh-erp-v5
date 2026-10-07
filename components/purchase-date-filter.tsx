@@ -55,6 +55,23 @@ export function PurchaseDateFilter({
       <button className="button primary" type="submit">Áp dụng</button>
     </form>
 
+    <details className="mobile-date-picker">
+      <summary><span>Chọn khoảng ngày</span><b>{label}</b><i>⌄</i></summary>
+      <form action={basePath}>
+        <input type="hidden" name="range" value="custom"/>
+        {preservedHidden.map(([key,value])=><input key={key} type="hidden" name={key} value={String(value)}/>)}
+        <label>
+          <span>Từ ngày</span>
+          <input aria-label="Từ ngày mobile" type="date" name="from" defaultValue={activeRange==='all'?'':from} required/>
+        </label>
+        <label>
+          <span>Đến ngày</span>
+          <input aria-label="Đến ngày mobile" type="date" name="to" defaultValue={activeRange==='all'?'':to} required/>
+        </label>
+        <button className="button primary" type="submit">Áp dụng</button>
+      </form>
+    </details>
+
     <div className="range-meta">
       <span>Khoảng đang xem</span>
       <b>{label}</b>
