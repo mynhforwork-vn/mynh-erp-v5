@@ -8,6 +8,7 @@ on:
       - feat/tracking-settings-spx-v1
       - feat/alerts-v1
       - redesign/settings-v6
+      - redesign/settings-v8
   workflow_dispatch:
 
 jobs:
