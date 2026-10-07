@@ -4,6 +4,7 @@ import { useEffect,useState,useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { registerCustomerDebtPayment } from '@/lib/actions/sales'
 import { buildTransferDescription,buildVietQRUrl,type BankTransferConfig } from '@/lib/vietqr'
+import { DEFAULT_DEBT_PRINT_CONFIG,normalizeDocumentPrintConfig,type DocumentPrintConfig } from '@/lib/print-config'
 
 type InvoiceItem={id:string,sku:string,name:string,variant:string,quantity:number,sale_price:number}
 type Invoice={id:string,code:string,time:string,total:number,paid:number,debt:number,warehouse:string,items:InvoiceItem[]}
@@ -12,6 +13,7 @@ type Props={
   balance:number
   invoices:Invoice[]
   bankConfig:BankTransferConfig|null
+  printConfig:DocumentPrintConfig|null
 }
 type PaymentMethod='CASH'|'TRANSFER'|'COMBINED'
 type PrintMode='draft'|'final'
@@ -59,6 +61,7 @@ function DebtReceiptPrint({
   invoices,
   note,
   qr,
+  printConfig,
 }:{
   mode:PrintMode
   customer:Props['customer']
@@ -72,13 +75,16 @@ function DebtReceiptPrint({
   invoices:Invoice[]
   note:string
   qr:string
+  printConfig:DocumentPrintConfig
 }){
   const selected=invoices.filter(row=>Number(allocations[row.id]??0)>0)
-  return <section className="debt-print-receipt" aria-hidden="true">
+  const paperClass='print-paper-'+printConfig.paper_size.toLowerCase().replace('_','-')
+  return <section className={'debt-print-receipt '+paperClass} aria-hidden="true">
     <header className="debt-print-head">
       <div>
-        <b>MYNH ERP</b>
-        <span>Phiếu thu công nợ khách hàng</span>
+        <b>{printConfig.brand_name}</b>
+        <span>{printConfig.title}</span>
+        {printConfig.header_note&&<small>{printConfig.header_note}</small>}
       </div>
       <div>
         <strong>{mode==='draft'?'PHIẾU THU TẠM':'PHIẾU THU'}</strong>
@@ -90,7 +96,7 @@ function DebtReceiptPrint({
 
     <div className="debt-print-meta">
       <div><span>Khách hàng</span><b>{customer.name}</b></div>
-      <div><span>SĐT</span><b>{customer.phone||'—'}</b></div>
+      {printConfig.show_customer_phone&&<div><span>SĐT</span><b>{customer.phone||'—'}</b></div>}
       <div><span>Thời gian in</span><b>{printDateTime()}</b></div>
       <div><span>Phương thức</span><b>{paymentLabel(method)}</b></div>
     </div>
@@ -110,25 +116,32 @@ function DebtReceiptPrint({
       <div><span>Công nợ còn lại</span><b>{money(Math.max(0,balance-amount))}</b></div>
     </div>
 
-    <div className="debt-print-section-title">Phân bổ hóa đơn</div>
-    <div className="debt-print-invoices">
-      {selected.map(row=><div className="debt-print-invoice" key={row.id}>
-        <div className="debt-print-invoice-head">
-          <span><b>{row.code}</b><small>{row.time} · {row.warehouse}</small></span>
-          <strong>{money(Number(allocations[row.id]??0))}</strong>
-        </div>
-        {row.items.length>0&&<div className="debt-print-products">
-          {row.items.map(item=><div key={item.id}>
-            <span><b>{item.name}</b><small>{item.sku} · {item.variant}</small></span>
-            <span>{item.quantity} × {money(item.sale_price)}</span>
-          </div>)}
-        </div>}
-      </div>)}
-    </div>
+    {printConfig.show_invoice_details&&<>
+      <div className="debt-print-section-title">Phân bổ hóa đơn</div>
+      <div className="debt-print-invoices">
+        {selected.map(row=><div className="debt-print-invoice" key={row.id}>
+          <div className="debt-print-invoice-head">
+            <span><b>{row.code}</b><small>{row.time}{printConfig.show_warehouse?' · '+row.warehouse:''}</small></span>
+            <strong>{money(Number(allocations[row.id]??0))}</strong>
+          </div>
+          {row.items.length>0&&<div className="debt-print-products">
+            {row.items.map(item=><div key={item.id}>
+              <span>
+                <b>{item.name}</b>
+                {(printConfig.show_sku||printConfig.show_variant)&&<small>
+                  {printConfig.show_sku?item.sku:''}{printConfig.show_sku&&printConfig.show_variant?' · ':''}{printConfig.show_variant?item.variant:''}
+                </small>}
+              </span>
+              <span>{item.quantity} × {money(item.sale_price)}</span>
+            </div>)}
+          </div>}
+        </div>)}
+      </div>
+    </>}
 
     {note&&<div className="debt-print-note"><span>Ghi chú</span><b>{note}</b></div>}
 
-    {transfer>0&&<div className="debt-print-transfer">
+    {printConfig.show_qr&&transfer>0&&<div className="debt-print-transfer">
       <div>
         <span>Nội dung chuyển khoản</span>
         <b>{receiptCode}</b>
@@ -136,16 +149,23 @@ function DebtReceiptPrint({
       {qr&&<img src={qr} alt="QR thu công nợ"/>}
     </div>}
 
-    <div className="debt-print-signatures">
+    {printConfig.show_signature&&<div className="debt-print-signatures">
       <div><b>Khách hàng</b><span>Ký / ghi rõ họ tên</span></div>
       <div><b>Người thu</b><span>Ký / ghi rõ họ tên</span></div>
-    </div>
+    </div>}
 
-    <footer>{mode==='draft'?'Phiếu tạm chưa làm thay đổi công nợ trên hệ thống.':'Phiếu được phát hành sau khi giao dịch đã ghi nhận trên MYNH ERP.'}</footer>
+    <footer>{mode==='draft'
+      ? 'Phiếu tạm chưa làm thay đổi công nợ trên hệ thống.'
+      : (printConfig.footer_text||'Phiếu được phát hành sau khi giao dịch đã ghi nhận trên MYNH ERP.')
+    }</footer>
   </section>
 }
 
-export function DebtCollectForm({customer,balance,invoices,bankConfig}:Props){
+export function DebtCollectForm({customer,balance,invoices,bankConfig,printConfig}:Props){
+  const debtPrint=normalizeDocumentPrintConfig(
+    printConfig?.is_active===false?null:printConfig,
+    DEFAULT_DEBT_PRINT_CONFIG,
+  )
   const router=useRouter()
   const [pending,startTransition]=useTransition()
   const [step,setStep]=useState<1|2>(1)
@@ -256,6 +276,7 @@ export function DebtCollectForm({customer,balance,invoices,bankConfig}:Props){
     invoices={invoices}
     note={note}
     qr={qr}
+    printConfig={debtPrint}
   />:null
 
   if(success)return <>
