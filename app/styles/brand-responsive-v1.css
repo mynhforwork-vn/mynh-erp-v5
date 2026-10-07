@@ -6678,22 +6678,40 @@ body{
     align-self:auto!important;
   }
 
-  /* All desktop operational pages occupy the usable viewport. */
+  /* Full-height mode is only for operational list/table pages.
+     Dashboards and analytical reports retain normal document scrolling. */
   .brand-shell-v1>.main{
+    box-sizing:border-box!important;
+  }
+  .brand-shell-v1>.main:has(> :is(
+    .order-screen,
+    .account-screen,
+    .tracking-screen-v2,
+    .warehouse-receive-screen,
+    .whx-inventory-page,
+    .whx-history-page,
+    .sales-history-screen,
+    .sales-customers-demo,
+    .sales-debt-demo,
+    .finance-live-workspace,
+    .finance-settlement-live
+  )){
     height:100vh!important;
     min-height:0!important;
     overflow:hidden!important;
-    box-sizing:border-box!important;
   }
   .brand-shell-v1>.main> :is(
     .order-screen,
     .account-screen,
     .tracking-screen-v2,
-    .whx-page,
+    .warehouse-receive-screen,
+    .whx-inventory-page,
+    .whx-history-page,
     .sales-history-screen,
     .sales-customers-demo,
     .sales-debt-demo,
-    .finance-screen
+    .finance-live-workspace,
+    .finance-settlement-live
   ){
     height:100%!important;
     min-height:0!important;
