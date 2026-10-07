@@ -70,7 +70,7 @@ jobs:
       - name: Smoke production
         shell: bash
         env:
-          PRODUCTION_URL: ${{ steps.deploy.outputs.url }}
+          PRODUCTION_URL: https://mynh-erp-v5.mynh-forwork.workers.dev
         run: |
           echo "Smoke $PRODUCTION_URL"
           curl --fail --silent --show-error --retry 5 --retry-delay 3 "$PRODUCTION_URL/api/health" | tee health.json
