@@ -9,6 +9,7 @@ on:
       - feat/alerts-v1
       - redesign/settings-v6
       - redesign/settings-v8
+      - redesign/account-notifications-v1
   workflow_dispatch:
 
 jobs:
