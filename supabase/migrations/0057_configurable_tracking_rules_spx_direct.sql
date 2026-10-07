@@ -104,6 +104,13 @@ on conflict(carrier,raw_code) do update set
   is_active=true,
   updated_at=now();
 
+alter table public.tracking_provider_configs
+  drop constraint if exists tracking_provider_configs_adapter_type_check;
+
+alter table public.tracking_provider_configs
+  add constraint tracking_provider_configs_adapter_type_check
+  check (adapter_type in ('NORMALIZED_JSON','SPX_PUBLIC'));
+
 alter table public.destination_hub_configs
   add column if not exists carrier_code text not null default 'SPX',
   add column if not exists tracking_location_aliases text[] not null default '{}';
