@@ -6979,83 +6979,190 @@ body{
 
 
 /* =====================================================================
-   MYNH ERP — Canonical System Slidebar V1
+   MYNH ERP — MAIN SLIDEBAR GEOMETRY RESTORE
+   Desktop slidebars are workspace columns, not popups.
+   Source of truth: main branch slidebar behavior.
    ===================================================================== */
 @media(min-width:901px){
-  body .brand-shell-v1 .system-slidebar-v1{
-    position:fixed!important;z-index:1200!important;
-    top:12px!important;right:12px!important;bottom:12px!important;left:auto!important;
-    width:420px!important;min-width:420px!important;max-width:420px!important;
-    height:auto!important;min-height:0!important;max-height:none!important;
-    display:flex!important;flex-direction:column!important;align-self:auto!important;
-    gap:0!important;margin:0!important;padding:0!important;overflow:hidden!important;
-    border:1px solid #c9d6e0!important;border-radius:8px!important;background:#fff!important;
-    box-shadow:0 20px 52px rgba(22,43,63,.18),0 2px 8px rgba(22,43,63,.08)!important;
-    color:#20364b!important;
+  :root{
+    --mynh-slidebar-width:420px;
+    --mynh-slidebar-width-compact:390px;
   }
-  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-head,.sales-history-panel-head,.sales-detail-panel-head,.whx-panel-head){
-    flex:0 0 auto!important;min-height:58px!important;
-    display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:9px!important;
-    margin:0!important;padding:8px 10px 8px 12px!important;border:0!important;border-bottom:1px solid #dde5ec!important;
-    border-radius:0!important;background:linear-gradient(180deg,#fbfcfe 0%,#f6f9fb 100%)!important;
+
+  /* Orders + Accounts: list and slidebar share the workspace. */
+  .brand-shell-v1 .order-screen .split-view.with-panel,
+  .brand-shell-v1 .account-screen .split-view.with-panel{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    gap:7px!important;
   }
-  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-head,.sales-history-panel-head,.sales-detail-panel-head,.whx-panel-head).context-stack-head{
-    grid-template-columns:32px minmax(0,1fr) 32px!important;padding-left:9px!important;padding-right:9px!important;
+  .brand-shell-v1 .order-workspace>.system-slidebar-v1,
+  .brand-shell-v1 .account-workspace>.system-slidebar-v1{
+    position:relative!important;
+    inset:auto!important;
+    z-index:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:none!important;
+    align-self:stretch!important;
+    margin:0!important;
+    box-shadow:0 2px 7px rgba(30,50,70,.045)!important;
   }
-  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-head,.sales-history-panel-head,.sales-detail-panel-head,.whx-panel-head)>div{min-width:0!important}
-  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-head,.sales-history-panel-head,.sales-detail-panel-head,.whx-panel-head) :is(.eyebrow,.module-eyebrow){
-    display:block!important;margin:0 0 2px!important;color:#12858a!important;font-size:7.5px!important;line-height:1.1!important;font-weight:780!important;letter-spacing:.08em!important;
+
+  /* Warehouse intake + inventory use the same right column. */
+  .brand-shell-v1 .warehouse-intake-layout.with-panel,
+  .brand-shell-v1 .whx-stock-layout.with-panel{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    gap:8px!important;
+    align-items:stretch!important;
   }
-  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-head,.sales-history-panel-head,.sales-detail-panel-head,.whx-panel-head) h2{
-    max-width:100%!important;margin:0!important;overflow:hidden!important;color:#1c3147!important;font-size:14px!important;line-height:1.12!important;font-weight:790!important;text-overflow:ellipsis!important;white-space:nowrap!important;
+  .brand-shell-v1 .warehouse-intake-layout.with-panel>.system-slidebar-v1,
+  .brand-shell-v1 .whx-stock-layout.with-panel>.system-slidebar-v1{
+    position:relative!important;
+    inset:auto!important;
+    z-index:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    align-self:stretch!important;
+    margin:0!important;
+    box-shadow:none!important;
   }
-  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-head,.sales-history-panel-head,.sales-detail-panel-head,.whx-panel-head) :is(p,small){
-    display:block!important;max-width:100%!important;margin:2px 0 0!important;overflow:hidden!important;color:#7d8c9a!important;font-size:7.8px!important;line-height:1.15!important;text-overflow:ellipsis!important;white-space:nowrap!important;
+
+  /* Sales history + Customer + Debt follow main's two-column workspace. */
+  .brand-shell-v1 .sales-history-screen.with-panel .sales-history-workspace,
+  .brand-shell-v1 .sales-live-customers.with-panel .customer-demo-workspace,
+  .brand-shell-v1 .sales-live-debt.with-panel .debt-demo-workspace,
+  .brand-shell-v1 .sales-live-debt.with-panel .debt-demo-workspace:has(.debt-demo-panel.collect-mode){
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    gap:8px!important;
   }
-  body .brand-shell-v1 .system-slidebar-v1 :is(.context-stack-back,.close,.panel-close){
-    width:30px!important;min-width:30px!important;height:30px!important;min-height:30px!important;display:grid!important;place-items:center!important;
-    margin:0!important;padding:0!important;border:1px solid #d5e0e8!important;border-radius:6px!important;background:#fff!important;box-shadow:none!important;color:#587086!important;font-size:16px!important;line-height:1!important;text-decoration:none!important;
+  .brand-shell-v1 .sales-history-workspace>.system-slidebar-v1,
+  .brand-shell-v1 .customer-demo-workspace>.system-slidebar-v1,
+  .brand-shell-v1 .debt-demo-workspace>.system-slidebar-v1{
+    position:relative!important;
+    inset:auto!important;
+    z-index:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:var(--mynh-slidebar-width)!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    align-self:stretch!important;
+    margin:0!important;
+    box-shadow:none!important;
   }
-  body .brand-shell-v1 .system-slidebar-v1>:is(.context-stack-breadcrumb){
-    flex:0 0 auto!important;min-height:26px!important;display:flex!important;align-items:center!important;gap:5px!important;
-    margin:0!important;padding:0 11px!important;overflow:hidden!important;border-bottom:1px solid #e6ebf0!important;background:#fafbfc!important;color:#81909e!important;font-size:7.5px!important;white-space:nowrap!important;
+
+  /* Finance: only ledger + panel split; page header/KPI remain full width. */
+  .brand-shell-v1 .finance-ledger-layout.with-panel{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    align-items:stretch!important;
+    gap:8px!important;
   }
-  body .brand-shell-v1 .system-slidebar-v1>:is(.context-sale-actions,.sales-history-actions){
-    flex:0 0 auto!important;min-height:38px!important;display:flex!important;align-items:center!important;gap:5px!important;
-    margin:0!important;padding:5px 9px!important;overflow-x:auto!important;border-bottom:1px solid #e4eaf0!important;background:#fbfcfd!important;
+  .brand-shell-v1 .finance-ledger-layout.with-panel>.system-slidebar-v1{
+    position:sticky!important;
+    inset:auto!important;
+    top:8px!important;
+    z-index:auto!important;
+    width:var(--mynh-slidebar-width)!important;
+    min-width:0!important;
+    max-width:var(--mynh-slidebar-width)!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:none!important;
+    align-self:stretch!important;
+    margin:0!important;
+    box-shadow:none!important;
   }
-  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-tabs,.sales-history-tabs,.whx-panel-tabs){
-    flex:0 0 36px!important;min-height:36px!important;height:36px!important;display:flex!important;align-items:stretch!important;gap:0!important;
-    margin:0!important;padding:0 10px!important;overflow-x:auto!important;overflow-y:hidden!important;border:0!important;border-bottom:1px solid #dde5ec!important;background:#fff!important;
+
+  /* Tracking contextual order: reserve a real right-side lane, as in main. */
+  .brand-shell-v1 .tracking-screen-v2.with-context-order-panel{
+    position:relative!important;
+    padding-right:calc(var(--mynh-slidebar-width) + 8px)!important;
   }
-  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-tabs,.sales-history-tabs,.whx-panel-tabs)>:is(a,button,span){
-    position:relative!important;min-width:max-content!important;min-height:35px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;
-    margin:0!important;padding:0 9px!important;border:0!important;border-radius:0!important;background:transparent!important;color:#6d7f90!important;font-size:8.5px!important;font-weight:680!important;text-decoration:none!important;
+  .brand-shell-v1 .tracking-screen-v2.with-context-order-panel>.system-slidebar-v1.context-order-panel{
+    position:absolute!important;
+    top:0!important;
+    right:0!important;
+    bottom:0!important;
+    left:auto!important;
+    z-index:12!important;
+    width:var(--mynh-slidebar-width)!important;
+    min-width:0!important;
+    max-width:var(--mynh-slidebar-width)!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    margin:0!important;
+    border-radius:6px!important;
+    box-shadow:0 3px 12px rgba(30,50,70,.08)!important;
   }
-  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-tabs,.sales-history-tabs,.whx-panel-tabs)>:is(a,button,span).active{color:#214f91!important}
-  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-tabs,.sales-history-tabs,.whx-panel-tabs)>:is(a,button,span).active:after{
-    content:""!important;position:absolute!important;right:7px!important;bottom:0!important;left:7px!important;height:2px!important;background:#2e69ae!important;
+
+  /* Warehouse history contextual drill-down keeps table space reserved. */
+  .brand-shell-v1 .whx-history-page.with-context-panel{
+    position:relative!important;
+    padding-right:calc(var(--mynh-slidebar-width) + 8px)!important;
   }
-  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-scroll,.sales-history-panel-scroll,.customer-demo-panel-scroll,.debt-demo-panel-scroll,.whx-panel-scroll){
-    flex:1 1 auto!important;min-width:0!important;min-height:0!important;width:100%!important;height:auto!important;max-height:none!important;
-    margin:0!important;padding:10px!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain!important;background:#fff!important;
+  .brand-shell-v1 .whx-history-page.with-context-panel>.system-slidebar-v1{
+    position:fixed!important;
+    z-index:710!important;
+    top:168px!important;
+    right:16px!important;
+    bottom:16px!important;
+    left:auto!important;
+    width:var(--mynh-slidebar-width)!important;
+    min-width:0!important;
+    max-width:var(--mynh-slidebar-width)!important;
+    height:auto!important;
+    max-height:calc(100vh - 184px)!important;
+    margin:0!important;
+    box-shadow:0 18px 45px rgba(21,42,63,.16)!important;
   }
-  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-form,.order-editor,.debt-collect-form){
-    flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;
+
+  /* Finance settlement follows its existing layout lane, not viewport popup. */
+  .brand-shell-v1 .finance-settlement-live>.system-slidebar-v1{
+    position:sticky!important;
+    top:8px!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    z-index:auto!important;
+    width:var(--mynh-slidebar-width)!important;
+    min-width:0!important;
+    max-width:var(--mynh-slidebar-width)!important;
+    height:calc(100vh - 16px)!important;
+    max-height:calc(100vh - 16px)!important;
+    align-self:start!important;
+    margin:0!important;
+    box-shadow:none!important;
   }
-  body .brand-shell-v1 .system-slidebar-v1 .panel-scroll>.form-actions:last-child,
-  body .brand-shell-v1 .system-slidebar-v1>.panel-form>.form-actions:last-child{
-    position:sticky!important;z-index:8!important;bottom:-10px!important;margin:12px -10px -10px!important;padding:8px 10px!important;border-top:1px solid #dfe6ec!important;background:#fff!important;
-  }
-  body .brand-shell-v1:has(.system-slidebar-v1) :is(.split-view.with-panel,.sales-history-workspace,.customer-demo-workspace,.debt-demo-workspace,.warehouse-intake-layout,.whx-intake-layout,.whx-stock-layout,.finance-ledger-layout){
-    grid-template-columns:minmax(0,1fr)!important;
+
+  /* Restore main visual treatment: embedded operational surface. */
+  .brand-shell-v1 .system-slidebar-v1{
+    overflow:hidden!important;
+    border:1px solid #CAD6E1!important;
+    border-radius:5px!important;
+    background:#FFFFFF!important;
   }
 }
-@media(max-width:900px){
-  body .brand-shell-v1 .system-slidebar-v1{
-    position:fixed!important;z-index:1500!important;top:calc(var(--mynh-mobile-top,56px) + env(safe-area-inset-top,0px))!important;
-    right:0!important;bottom:calc(var(--mynh-mobile-bottom,64px) + env(safe-area-inset-bottom,0px))!important;left:0!important;
-    width:100%!important;min-width:0!important;max-width:none!important;height:auto!important;min-height:0!important;
-    display:flex!important;flex-direction:column!important;overflow:hidden!important;border:0!important;border-radius:0!important;background:#fff!important;box-shadow:none!important;
+
+@media(max-width:1440px) and (min-width:901px){
+  :root{--mynh-slidebar-width:390px}
+  .brand-shell-v1 .order-screen .split-view.with-panel,
+  .brand-shell-v1 .account-screen .split-view.with-panel,
+  .brand-shell-v1 .warehouse-intake-layout.with-panel,
+  .brand-shell-v1 .whx-stock-layout.with-panel,
+  .brand-shell-v1 .sales-history-screen.with-panel .sales-history-workspace,
+  .brand-shell-v1 .sales-live-customers.with-panel .customer-demo-workspace,
+  .brand-shell-v1 .sales-live-debt.with-panel .debt-demo-workspace,
+  .brand-shell-v1 .finance-ledger-layout.with-panel{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
   }
 }
