@@ -5,7 +5,7 @@ export default async function POSPage(){
   const {supabase,user}=await requireUser()
   const role=String(user.app_metadata?.role??'viewer')
 
-  const [{data:warehouses,error:warehouseError},{data:balances,error:balanceError},{data:customers,error:customerError},bankTransferResult,categoriesResult]=await Promise.all([
+  const [{data:warehouses,error:warehouseError},{data:balances,error:balanceError},{data:customers,error:customerError},bankTransferResult,categoriesResult,printConfigResult]=await Promise.all([
     supabase.from('warehouses')
       .select('id,code,name,address')
       .eq('is_active',true)
@@ -28,6 +28,10 @@ export default async function POSPage(){
       .select('id,name,sort_order,is_active')
       .order('sort_order')
       .order('name'),
+    supabase.from('document_print_configs')
+      .select('document_key,brand_name,title,header_note,paper_size,footer_text,show_customer_phone,show_warehouse,show_sku,show_variant,show_qr,show_signature,show_invoice_details,is_active')
+      .eq('document_key','SALE_INVOICE')
+      .maybeSingle(),
   ])
 
   const variantIds=[...new Set((balances??[]).map((row:any)=>String(row.product_variant_id??'')).filter(Boolean))]
@@ -73,7 +77,7 @@ export default async function POSPage(){
     }
   })
 
-  const errors=[warehouseError,balanceError,customerError,bankTransferResult.error,categoriesResult.error].filter(Boolean).map((e:any)=>e.message)
+  const errors=[warehouseError,balanceError,customerError,bankTransferResult.error,categoriesResult.error,printConfigResult.error].filter(Boolean).map((e:any)=>e.message)
 
   return <SalesPOSWorkspace
     warehouses={(warehouses??[]) as any[]}
@@ -81,6 +85,7 @@ export default async function POSPage(){
     customers={(customers??[]) as any[]}
     categories={(categoriesResult.data??[]) as any[]}
     transferConfig={(bankTransferResult.data??null) as any}
+    printConfig={(printConfigResult.data??null) as any}
     canSell={['admin','operator'].includes(role)}
     loadError={errors.join(' · ')||null}
   />
