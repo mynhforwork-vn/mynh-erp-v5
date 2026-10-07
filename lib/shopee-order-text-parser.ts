@@ -22,6 +22,7 @@ export type ParsedShopeeOrderText={
   recipient_address?:string
   order_date_local?:string
   cod?:number
+  total_goods?:number
   products:ParsedShopeeOrderItem[]
   vouchers:ParsedShopeeVoucher[]
   detected_status?:string
@@ -44,7 +45,7 @@ function cleanLine(value:string){
 }
 
 function labelFromMarkdown(line:string){
-  const match=line.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
+  const match=line.match(/^\s*\[([^\]]+)\]\((https?:\/\/[^\s]+)\)\s*$/i)
   return match?{label:match[1].trim(),url:match[2].trim()}:null
 }
 
@@ -90,7 +91,7 @@ function productLink(line:string){
   const md=labelFromMarkdown(line)
   if(!md)return null
   if(!/^https?:\/\/shopee\.vn\//i.test(md.url))return null
-  if(!/(?:-|\/)i\.\d+\.\d+/i.test(md.url))return null
+  if(!/(?:^|[-/])i\.\d+\.\d+(?:[/?#]|$)/i.test(md.url))return null
   if(/^(image|svg|x\d+|phân loại hàng:|phan loai hang:)/i.test(md.label))return null
   return md
 }
@@ -162,6 +163,12 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
     if(timestamps.length)result.order_date_local=timestamps[0]
   }
 
+  const totalGoodsIndex=lines.findIndex(line=>/^Tổng tiền hàng$/i.test(line))
+  if(totalGoodsIndex>=0){
+    const n=nextMoney(lines,totalGoodsIndex)
+    if(n!==null)result.total_goods=n
+  }
+
   const codIndex=lines.findIndex(line=>/^Thành tiền$/i.test(line))
   if(codIndex>=0){
     const n=nextMoney(lines,codIndex)
@@ -171,38 +178,55 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
     }
   }
 
+  const seenProductKeys=new Set<string>()
   for(let i=0;i<lines.length;i++){
     const link=productLink(lines[i])
     if(!link)continue
 
+    const key=link.url.match(/i\.(\d+)\.(\d+)/i)?.slice(1).join(':')??link.url
+    if(seenProductKeys.has(key))continue
+
     let variant=''
     let quantity=1
-    let price:number|null=null
+    const prices:number[]=[]
 
-    for(let j=i+1;j<Math.min(lines.length,i+9);j++){
+    for(let j=i+1;j<Math.min(lines.length,i+12);j++){
       const line=lines[j]
-      const md=labelFromMarkdown(line)
-      const label=md?.label??line
+      if(j>i+1&&productLink(line))break
 
-      const variantMatch=label.match(/^Phân loại hàng:\s*(.+)$/i)
+      const md=labelFromMarkdown(line)
+      const label=(md?.label??line).trim()
+
+      const variantMatch=label.match(/^Phân loại hàng\s*:\s*(.+)$/i)
       if(variantMatch&&!variant)variant=variantMatch[1].trim()
 
-      const qtyMatch=label.match(/^x\s*(\d+)$/i)
+      const qtyMatch=label.match(/^[x×]\s*(\d+)$/i)
       if(qtyMatch)quantity=Math.max(1,Number(qtyMatch[1])||1)
 
-      if(price===null&&/^-?[\d.,]+\s*₫$/i.test(label)){
-        price=money(label)
+      if(/^-?[\d.,]+\s*₫$/i.test(label)){
+        const value=money(label)
+        if(value!==null)prices.push(value)
       }
-
-      if(j>i+1&&productLink(line))break
     }
+
+    // A Shopee order-detail block always has at least qty / variant / price near
+    // the product link. Requiring one of these prevents shop/navigation links
+    // from becoming products.
+    if(!variant&&!prices.length&&quantity===1)continue
+
+    seenProductKeys.add(key)
+    const originalPrice=prices.length?prices[0]:null
+    const finalPrice=prices.length>1?prices[prices.length-1]:null
 
     result.products.push({
       product_name:link.label,
       variant,
       quantity,
-      original_price:price,
-      final_price:price,
+      // One visible Shopee price is the line-item base price for our purchase
+      // record. Only populate "Giá sau giảm" when a second price is actually
+      // present in the pasted source.
+      original_price:originalPrice,
+      final_price:finalPrice,
     })
   }
   result.confidence.products=result.products.length
@@ -232,6 +256,7 @@ export function formatParsedOrderSummary(parsed:ParsedShopeeOrderText){
   if(parsed.tracking_number)parts.push('MVĐ')
   if(parsed.recipient_name||parsed.recipient_phone)parts.push('Người nhận')
   if(parsed.products.length)parts.push(parsed.products.length+' sản phẩm')
+  if(parsed.total_goods!==undefined)parts.push('Tổng tiền hàng')
   if(parsed.cod!==undefined)parts.push('Thành tiền')
   return parts.join(' · ')
 }
