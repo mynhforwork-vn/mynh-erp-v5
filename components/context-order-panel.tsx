@@ -16,6 +16,7 @@ type Props={
   historyHref:string
   openModuleHref:string
   parentLabel?:string
+  floating?:boolean
 }
 
 function activeShipment(order:any){
@@ -27,7 +28,7 @@ function voucherLabel(v:any){
 
 export function ContextOrderPanel({
   order,items,vouchers,trackingEvents,auditRows,activeTab,
-  backHref,closeHref,infoHref,trackingHref,historyHref,openModuleHref,parentLabel='User',
+  backHref,closeHref,infoHref,trackingHref,historyHref,openModuleHref,parentLabel='User',floating=false,
 }:Props){
   const shipment=activeShipment(order)
   const voucherText=(vouchers??[]).map(voucherLabel).filter(Boolean).join(' · ')
@@ -37,7 +38,7 @@ export function ContextOrderPanel({
   )
   const isExpress=order.shipping_service==='EXPRESS'
 
-  return <aside className="detail-panel context-order-panel mynh-slide-panel">
+  return <aside className={"detail-panel context-order-panel mynh-slide-panel"+(floating?" floating":"")}>
     <div className="panel-head context-stack-head">
       <Link className="context-stack-back" href={backHref} aria-label="Quay lại">←</Link>
       <div className="context-stack-title">
