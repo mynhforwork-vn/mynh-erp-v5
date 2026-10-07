@@ -94,7 +94,6 @@ await insert('sales',{
   total_amount:50000,
   subtotal:50000,
   paid_amount:0,
-  debt_amount:50000,
   payment_status:'UNPAID',
   sale_status:'COMPLETED',
   note:fixtures.marker,
