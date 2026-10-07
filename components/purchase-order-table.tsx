@@ -52,7 +52,11 @@ function productSummary(items:any[]){
 }
 function voucherSummary(vouchers:any[]){
   if(!vouchers?.length)return ''
-  return vouchers.map(v=>[v.voucher_tag,v.voucher_type].filter(Boolean).join(' · ')).filter(Boolean).join(' · ')
+  return [...new Set(
+    vouchers
+      .map(v=>String(v.voucher_tag??'').trim())
+      .filter(Boolean)
+  )].join(' · ')
 }
 function statusKey(row:Row){
   if(row.shipping_service==='EXPRESS')return ['EXPRESS',row.receive_status??''].join(' ')
