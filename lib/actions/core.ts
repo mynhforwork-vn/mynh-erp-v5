@@ -654,7 +654,7 @@ export async function restoreOrder(formData:FormData){
 }
 
 export async function deleteOrderPermanent(formData:FormData){
-  const {supabase,user,role}=await actor()
+  const {supabase,role}=await actor()
   requireAdmin(role)
   const returnQuery=text(formData.get('return_query'))
   const orderId=text(formData.get('order_id'))
@@ -851,7 +851,7 @@ export async function restoreOrdersBulk(formData:FormData){
 }
 
 export async function deleteOrdersBulkPermanent(formData:FormData){
-  const {supabase,user,role}=await actor()
+  const {supabase,role}=await actor()
   requireAdmin(role)
   const returnQuery=text(formData.get('return_query'))
   const orderIds=bulkOrderIds(formData)
