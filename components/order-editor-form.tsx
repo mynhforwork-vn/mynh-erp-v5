@@ -746,14 +746,14 @@ export function OrderEditorForm({
           </label>
           <div className="form-grid">
             <label>Loại Voucher
-              <select
+              <input
                 name="voucher_type"
                 value={v.voucher_type??''}
                 onChange={e=>updateVoucher(i,{voucher_type:e.target.value})}
-              >
-                <option value="">— Chọn loại —</option>
-                {voucherTypeOptions.map(option=><option key={option} value={option}>{option}</option>)}
-              </select>
+                list="voucher-type-options"
+                placeholder="Nhập hoặc chọn loại..."
+                autoComplete="off"
+              />
             </label>
             <label>Tag Voucher
               <input
@@ -768,6 +768,9 @@ export function OrderEditorForm({
           </div>
         </div>)}
       </div>
+      <datalist id="voucher-type-options">
+        {voucherTypeOptions.map(option=><option key={option} value={option}/>)}
+      </datalist>
       <datalist id="voucher-tag-options">
         {voucherTagOptions.map(option=><option key={option} value={option}/>)}
       </datalist>
