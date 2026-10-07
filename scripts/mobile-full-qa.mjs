@@ -334,8 +334,8 @@ await routeAudit('Lịch sử bán','/sales/history')
 check('Lịch sử bán','Có card hóa đơn mobile hoặc trạng thái rỗng',await page.locator('.mobile-sales-history-list .mobile-entity-card,.mobile-sales-history-list .mobile-empty-state').count()>0)
 const saleDetail=page.locator('.mobile-sales-history-list .mobile-card-open').first()
 if(await saleDetail.count()){
-  await saleDetail.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await settle()
-  check('Lịch sử bán','Mở chi tiết hóa đơn',await page.locator('aside.sales-history-panel,aside.sales-detail-panel').count()>0)
+  const nav=await followLink(saleDetail);await settle(300)
+  check('Lịch sử bán','Mở chi tiết hóa đơn',nav.status>0&&nav.status<500&&await page.locator('aside.sales-history-panel,aside.sales-detail-panel').count()>0,{status:nav.status,url:page.url()})
 }
 
 // 13. Khách hàng.
@@ -347,8 +347,8 @@ if(await openLinkByName('Khách hàng',/Thêm khách/ ,'.sales-live-create-card'
 await go('/sales/customers')
 const customerDetail=page.locator('.mobile-customer-list .mobile-card-open').first()
 if(await customerDetail.count()){
-  await customerDetail.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await settle()
-  check('Khách hàng','Mở chi tiết khách hàng',await page.locator('aside.customer-demo-panel').count()>0)
+  const nav=await followLink(customerDetail);await settle(300)
+  check('Khách hàng','Mở chi tiết khách hàng',nav.status>0&&nav.status<500&&await page.locator('aside.customer-demo-panel').count()>0,{status:nav.status,url:page.url()})
   if(await page.locator('aside.customer-demo-panel').count())await panelFits('Khách hàng','aside.customer-demo-panel')
 }
 
@@ -357,8 +357,8 @@ await routeAudit('Công nợ','/sales/debt')
 check('Công nợ','Có card công nợ mobile hoặc trạng thái rỗng',await page.locator('.mobile-debt-list .mobile-entity-card,.mobile-debt-list .mobile-empty-state').count()>0)
 const collect=page.locator('.mobile-debt-list').getByRole('link',{name:/Thu nợ/}).first()
 if(await collect.count()){
-  await collect.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await settle()
-  check('Công nợ','Mở flow Thu nợ',await page.locator('aside.debt-demo-panel.collect-mode,aside.customer-collect-context').count()>0)
+  const nav=await followLink(collect);await settle(300)
+  check('Công nợ','Mở flow Thu nợ',nav.status>0&&nav.status<500&&await page.locator('aside.debt-demo-panel.collect-mode,aside.customer-collect-context').count()>0,{status:nav.status,url:page.url()})
 }
 
 // 15. Tổng quan tài chính.
