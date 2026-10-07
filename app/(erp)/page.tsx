@@ -28,7 +28,7 @@ function currentWeekRange(y:number,m:number,d:number){
   return {from:shiftLocalDays(y,m,d,-daysFromMonday),to:shiftLocalDays(y,m,d,6-daysFromMonday)}
 }
 function resolveRange(sp:SP){
-  const key:RangeKey=sp.range??'month'
+  const key:RangeKey=sp.range??'all'
   const p=vnDateParts()
   const today=ymd(p.year,p.month,p.day)
   let from=today
@@ -139,7 +139,7 @@ export default async function SystemDashboard({searchParams}:{searchParams:Promi
   ].filter(Boolean).map((x:any)=>x.message)
 
   const allOrders=(ordersResult.data??[]) as any[]
-  const areaOptions=[...new Set(allOrders.map(o=>String(o.area??'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'))
+  const areaOptions=[...new Set([...allOrders.map(o=>String(o.area??'').trim()).filter(Boolean),...(areaFilter==='ALL'?[]:[areaFilter])])].sort((a,b)=>a.localeCompare(b,'vi'))
   const orders=allOrders.filter(o=>areaFilter==='ALL'||String(o.area??'')===areaFilter)
   const standardOrders=orders.filter(o=>o.shipping_service!=='EXPRESS')
   const sales=((salesResult.data??[]) as any[]).filter(s=>s.sale_status!=='CANCELLED')
@@ -216,23 +216,28 @@ export default async function SystemDashboard({searchParams}:{searchParams:Promi
   }
   const byHub=[...byHubMap.values()].sort((a,b)=>b.orders-a.orders||b.cod-a.cod).slice(0,8)
 
-  const saleMap=new Map(sales.map(s=>[String(s.id),s]))
-  const byWarehouseMap=new Map<string,{code:string,address:string,invoices:Set<string>,units:number,revenue:number,debt:number}>()
+  const itemsBySale=new Map<string,any[]>()
   for(const item of saleItems){
-    const code=String(item.warehouses?.code??'—')
-    const cur=byWarehouseMap.get(code)??{code,address:String(item.warehouses?.address??''),invoices:new Set<string>(),units:0,revenue:0,debt:0}
-    cur.invoices.add(String(item.sale_id))
-    cur.units+=num(item.quantity)
-    cur.revenue+=num(item.quantity)*num(item.sale_price)
-    byWarehouseMap.set(code,cur)
+    const key=String(item.sale_id)
+    const list=itemsBySale.get(key)??[]
+    list.push(item)
+    itemsBySale.set(key,list)
   }
-  for(const [code,cur] of byWarehouseMap){
-    cur.debt=[...cur.invoices].reduce((sum,id)=>sum+Math.max(0,num(saleMap.get(id)?.debt_amount)),0)
+  const byWarehouseMap=new Map<string,{code:string,address:string,invoices:number,units:number,revenue:number,debt:number}>()
+  for(const sale of sales){
+    const items=itemsBySale.get(String(sale.id))??[]
+    const first=items[0]
+    const code=String(first?.warehouses?.code??'—')
+    const cur=byWarehouseMap.get(code)??{code,address:String(first?.warehouses?.address??''),invoices:0,units:0,revenue:0,debt:0}
+    cur.invoices++
+    cur.units+=items.reduce((sum,item)=>sum+num(item.quantity),0)
+    cur.revenue+=num(sale.total_amount)
+    cur.debt+=Math.max(0,num(sale.debt_amount))
     byWarehouseMap.set(code,cur)
   }
   const byWarehouse=warehouses.map(w=>{
-    const cur=byWarehouseMap.get(String(w.code))??{code:String(w.code),address:String(w.address??''),invoices:new Set<string>(),units:0,revenue:0,debt:0}
-    return {...cur,invoiceCount:cur.invoices.size}
+    const cur=byWarehouseMap.get(String(w.code))??{code:String(w.code),address:String(w.address??''),invoices:0,units:0,revenue:0,debt:0}
+    return {...cur,invoiceCount:cur.invoices}
   })
 
   const inventoryByWarehouse=warehouses.map(w=>{
