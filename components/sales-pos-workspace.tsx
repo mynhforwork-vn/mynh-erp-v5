@@ -3,7 +3,7 @@
 import { useEffect,useMemo,useRef,useState,useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { assignProductSalesCategory,checkoutPOS,createPOSCustomer,createSalesProductCategory,reservePOSInvoiceCode,updateSalesProductCategory } from '@/lib/actions/sales'
+import { assignProductSalesCategory,checkoutPOS,createPOSCustomer,createSalesProductCategory,deleteSalesProductCategory,reservePOSInvoiceCode,updateSalesProductCategory } from '@/lib/actions/sales'
 import { buildTransferDescription,buildVietQRUrl,type BankTransferConfig } from '@/lib/vietqr'
 import { DEFAULT_SALE_PRINT_CONFIG,normalizeDocumentPrintConfig,type DocumentPrintConfig } from '@/lib/print-config'
 
@@ -101,6 +101,7 @@ export function SalesPOSWorkspace({
   const [cart,setCart]=useState<CartLine[]>([])
   const [customerId,setCustomerId]=useState('')
   const [customerRows,setCustomerRows]=useState<Customer[]>(customers)
+  const [customerQuery,setCustomerQuery]=useState('')
   const [held,setHeld]=useState<HeldOrder[]>([])
   const [heldOpen,setHeldOpen]=useState(false)
   const [createCustomerOpen,setCreateCustomerOpen]=useState(false)
@@ -185,6 +186,15 @@ export function SalesPOSWorkspace({
   const total=Math.max(0,subtotal-discountAmount+Math.max(0,otherFee))
   const cartQty=cart.reduce((sum,line)=>sum+line.cart_qty,0)
   const selectedCustomer=customerRows.find(c=>c.id===customerId)??null
+  const customerMatches=useMemo(()=>{
+    const q=customerQuery.trim().toLowerCase()
+    if(!q)return customerRows
+    return customerRows.filter(row=>
+      row.name.toLowerCase().includes(q)||
+      String(row.phone??'').toLowerCase().includes(q)||
+      String(row.address??'').toLowerCase().includes(q)
+    )
+  },[customerRows,customerQuery])
   const transferAmount=paymentMode==='transfer'
     ? total
     : paymentMode==='combined'
@@ -340,6 +350,19 @@ export function SalesPOSWorkspace({
       if(!result.ok){setCategoryError(result.error);return}
       setCategoryRows(prev=>prev.map(x=>x.id===category.id?{...x,is_active:!x.is_active}:x))
       if(categoryId===category.id&&category.is_active)setCategoryId('ALL')
+      router.refresh()
+    })
+  }
+
+  function deleteCategory(category:ProductCategory){
+    const productCount=products.filter(product=>product.category_id===category.id).length
+    if(!window.confirm(`Xóa danh mục "${category.name}"? ${productCount} sản phẩm trong danh mục sẽ chuyển về Chưa phân loại.`))return
+    setCategoryError('')
+    startTransition(async()=>{
+      const result=await deleteSalesProductCategory({id:category.id})
+      if(!result.ok){setCategoryError(result.error);return}
+      setCategoryRows(prev=>prev.filter(x=>x.id!==category.id))
+      if(categoryId===category.id)setCategoryId('ALL')
       router.refresh()
     })
   }
@@ -565,19 +588,36 @@ export function SalesPOSWorkspace({
     {loadError&&<div className="error-box">{loadError}</div>}
     {error&&<div className="error-box">{error}</div>}
 
-    {createCustomerOpen&&<div className="pos-popover pos-customer-popover">
+    {createCustomerOpen&&<div className="pos-popover pos-customer-popover pos-customer-picker-v2">
       <div className="pos-popover-head">
-        <b>Gắn / tạo khách hàng</b>
+        <div><b>Gắn khách hàng</b><span>Chọn khách có sẵn hoặc tạo nhanh khách mới</span></div>
         <button type="button" onClick={()=>setCreateCustomerOpen(false)}>×</button>
       </div>
-      <label>Khách hiện có
-        <select value={customerId} onChange={e=>setCustomerId(e.target.value)}>
-          <option value="">Khách lẻ</option>
-          {customerRows.map(c=><option key={c.id} value={c.id}>{c.name}{c.phone?' · '+c.phone:''}</option>)}
-        </select>
-      </label>
-      <form onSubmit={e=>{e.preventDefault();createCustomer(e.currentTarget)}}>
-        <b>Tạo nhanh khách mới</b>
+      <div className="pos-customer-current-v2">
+        <span>Đang gắn</span>
+        <b>{selectedCustomer?.name??'Khách lẻ'}</b>
+        <small>{selectedCustomer?.phone??'Không có SĐT'}</small>
+      </div>
+      <div className="pos-customer-search-v2">
+        <input value={customerQuery} onChange={e=>setCustomerQuery(e.target.value)} placeholder="Tìm tên, SĐT hoặc địa chỉ..."/>
+        <span>{customerMatches.length} khách</span>
+      </div>
+      <div className="pos-customer-list-v2">
+        <button type="button" className={!customerId?'active':''} onClick={()=>{setCustomerId('');setCreateCustomerOpen(false)}}>
+          <span><b>Khách lẻ</b><small>Không lưu công nợ theo khách</small></span><i>Chọn</i>
+        </button>
+        {customerMatches.slice(0,30).map(row=><button
+          type="button"
+          className={customerId===row.id?'active':''}
+          key={row.id}
+          onClick={()=>{setCustomerId(row.id);setCreateCustomerOpen(false)}}
+        >
+          <span><b>{row.name}</b><small>{[row.phone,row.address].filter(Boolean).join(' · ')||'Chưa có thông tin liên hệ'}</small></span>
+          <i>{customerId===row.id?'Đang chọn':'Gắn'}</i>
+        </button>)}
+      </div>
+      <form className="pos-customer-create-v2" onSubmit={e=>{e.preventDefault();createCustomer(e.currentTarget)}}>
+        <div><b>+ Tạo khách mới</b><span>Tạo xong sẽ tự động gắn vào hóa đơn hiện tại</span></div>
         <input name="name" placeholder="Tên khách hàng" required/>
         <input name="phone" placeholder="SĐT"/>
         <input name="address" placeholder="Địa chỉ"/>
@@ -636,14 +676,37 @@ export function SalesPOSWorkspace({
             {warehouseProducts.some(p=>!p.category_id)&&<button className={categoryId==='UNCATEGORIZED'?'active':''} type="button" onClick={()=>setCategoryId('UNCATEGORIZED')}><span>Chưa phân loại</span><b>{warehouseProducts.filter(p=>!p.category_id).length}</b></button>}
           </aside>
           <div className="pos-product-pane">
-            {categoryOpen&&<div className="pos-category-settings">
-              <div className="pos-popover-head"><div><b>Cài đặt phân loại</b><span>Lưu trực tiếp vào dữ liệu sản phẩm</span></div><button type="button" onClick={()=>setCategoryOpen(false)}>×</button></div>
+            {categoryOpen&&<div className="pos-category-settings pos-category-settings-v2">
+              <div className="pos-popover-head"><div><b>Phân loại sản phẩm</b><span>Tạo danh mục · ẩn/hiện · xóa · gắn sản phẩm</span></div><button type="button" onClick={()=>setCategoryOpen(false)}>×</button></div>
               {categoryError&&<div className="error-box compact">{categoryError}</div>}
-              <div className="pos-category-settings-list">
-                {categoryRows.map(category=><div key={category.id}><span><b>{category.name}</b><small>{category.is_active?'Đang hiển thị':'Đã ẩn'}</small></span><button className="button small" type="button" onClick={()=>toggleCategory(category)}>{category.is_active?'Ẩn':'Hiện'}</button></div>)}
-              </div>
-              <div className="pos-category-add"><input value={newCategory} onChange={e=>setNewCategory(e.target.value)} placeholder="Tên phân loại mới"/><button className="button small primary" type="button" onClick={createCategory} disabled={pending}>+ Thêm</button></div>
-              <div className="pos-category-product-list"><b>Gắn phân loại sản phẩm</b>{Array.from(new Map(warehouseProducts.map(p=>[p.product_id,p])).values()).map(product=><label key={product.product_id}><span>{product.name}<small>{product.sku}</small></span><select value={product.category_id??''} onChange={e=>assignCategory(product.product_id,e.target.value)}><option value="">Chưa phân loại</option>{categoryRows.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select></label>)}</div>
+              <section className="pos-category-manager-v2">
+                <div className="pos-category-section-head-v2"><div><b>Danh mục</b><span>{categoryRows.length} danh mục</span></div></div>
+                <div className="pos-category-settings-list">
+                  {categoryRows.map(category=>{
+                    const count=warehouseProducts.filter(p=>p.category_id===category.id).length
+                    return <div key={category.id}>
+                      <span><b>{category.name}</b><small>{count} sản phẩm · {category.is_active?'Đang hiển thị':'Đã ẩn'}</small></span>
+                      <div className="pos-category-row-actions-v2">
+                        <button className="button small" type="button" onClick={()=>toggleCategory(category)} disabled={pending}>{category.is_active?'Ẩn':'Hiện'}</button>
+                        <button className="button small danger" type="button" onClick={()=>deleteCategory(category)} disabled={pending}>Xóa</button>
+                      </div>
+                    </div>
+                  })}
+                </div>
+                <div className="pos-category-add"><input value={newCategory} onChange={e=>setNewCategory(e.target.value)} placeholder="Tên danh mục mới"/><button className="button small primary" type="button" onClick={createCategory} disabled={pending}>+ Thêm danh mục</button></div>
+              </section>
+              <section className="pos-category-assignment-v2">
+                <div className="pos-category-section-head-v2"><div><b>Gắn phân loại sản phẩm</b><span>{Array.from(new Set(warehouseProducts.map(p=>p.product_id))).length} sản phẩm tại kho</span></div></div>
+                <div className="pos-category-product-list">
+                  {Array.from(new Map(warehouseProducts.map(p=>[p.product_id,p])).values()).map(product=><label key={product.product_id}>
+                    <span><b>{product.name}</b><small>{product.sku} · {product.variant}</small></span>
+                    <select value={product.category_id??''} onChange={e=>assignCategory(product.product_id,e.target.value)}>
+                      <option value="">Chưa phân loại</option>
+                      {categoryRows.filter(category=>category.is_active).map(category=><option key={category.id} value={category.id}>{category.name}</option>)}
+                    </select>
+                  </label>)}
+                </div>
+              </section>
             </div>}
 
             <div className="pos-product-grid">
@@ -675,10 +738,13 @@ export function SalesPOSWorkspace({
         {!checkoutOpen
           ? <>
               <div className="pos-cart-head pos-cart-head-v2">
-                <div>
-                  <span className="module-eyebrow">HÓA ĐƠN HIỆN TẠI</span>
-                  <b>Giỏ hàng · {cartQty} SP</b>
-                  <small>{cart.length} SKU · {selectedCustomer?.name??'Khách lẻ'}</small>
+                <div className="pos-cart-title-v2">
+                  <span className="pos-cart-icon-v2" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 4h2l2.2 10h9.8l2-7H7"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg></span>
+                  <div>
+                    <span className="module-eyebrow">HÓA ĐƠN HIỆN TẠI</span>
+                    <b>{cartQty?cartQty+' sản phẩm':'Giỏ hàng'}</b>
+                    <small>{selectedCustomer?.name??'Khách lẻ'}{cart.length?' · '+cart.length+' SKU':''}</small>
+                  </div>
                 </div>
                 <div className="pos-cart-head-actions">
                   {cart.length>0&&<button type="button" className="pos-text-danger" onClick={()=>setCart([])}>Xóa giỏ</button>}
@@ -921,14 +987,5 @@ export function SalesPOSWorkspace({
       {salePrint.footer_text&&<p>{salePrint.footer_text}</p>}
     </div>}
 
-    <footer className="pos-shortcuts">
-      <span><kbd>F2</kbd> Thanh toán</span>
-      <span><kbd>F3</kbd> Giữ đơn</span>
-      <span><kbd>F4</kbd> Tìm / quét SP</span>
-      <span><kbd>F5</kbd> Gắn khách</span>
-      <span><kbd>F7</kbd> Giảm giá</span>
-      <span><kbd>F8</kbd> Xóa dòng cuối</span>
-      <span><kbd>Esc</kbd> Đóng</span>
-    </footer>
   </div>
 }
