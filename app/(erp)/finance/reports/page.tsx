@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatMoney } from '@/lib/format'
 import { displayVnDateKey,financePeriodLabel,financePeriodStart,normalizeFinancePeriod,withinFinancePeriod,vnDateKey } from '@/lib/finance-period'
+import { FinanceReportDayTable } from '@/components/finance-report-day-table'
 
 type SP={period?:string}
 const num=(v:any)=>Number.isFinite(Number(v))?Number(v):0
@@ -159,18 +160,7 @@ export default async function FinanceReportsPage({searchParams}:{searchParams:Pr
               </div>
             </article>)}
       </div>
-      <div className="compact-table-wrap">
-        <table className="table">
-          <thead><tr><th>Ngày</th><th>Doanh thu bán</th><th>Tiền vào</th><th>Tiền ra</th><th>Dòng tiền ròng</th></tr></thead>
-          <tbody>{!dayRows.length?<tr><td colSpan={5} className="empty">Chưa có dữ liệu trong kỳ.</td></tr>:dayRows.map(([key,row])=><tr key={key}>
-            <td className="strong">{displayVnDateKey(key)}</td>
-            <td className="money">{formatMoney(row.revenue)}</td>
-            <td className="money finance-money income">{formatMoney(row.income)}</td>
-            <td className="money finance-money expense">{formatMoney(row.expense)}</td>
-            <td className="money">{formatMoney(row.income-row.expense)}</td>
-          </tr>)}</tbody>
-        </table>
-      </div>
+      <FinanceReportDayTable rows={dayRows.map(([key,row])=>({key,...row}))}/>
     </section>
   </div>
 }
