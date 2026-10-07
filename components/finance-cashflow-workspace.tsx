@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect,useMemo,useState,useTransition } from 'react'
-import { SystemSlidebar } from '@/components/system-slidebar'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { cancelFinanceDocument,saveFinanceCategory,saveFinanceDocument,type FinanceTxType } from '@/lib/actions/finance'
@@ -795,7 +794,7 @@ export function FinanceCashflowWorkspace({
       <div className="finance-pagination"><span>Trang {safePage}/{maxPage}</span><div><button className="button small" disabled={safePage<=1} onClick={()=>setPage(safePage-1)}>‹</button><button className="button small" disabled={safePage>=maxPage} onClick={()=>setPage(safePage+1)}>›</button><select value={pageSize} onChange={e=>{setPageSize(Number(e.target.value));setPage(1)}}><option value={10}>10 dòng</option><option value={20}>20 dòng</option><option value={50}>50 dòng</option></select></div></div>
     </section>
 
-    {panel!=='NONE'&&<SystemSlidebar className="detail-panel finance-panel">
+    {panel!=='NONE'&&<aside className="detail-panel floating finance-panel">
       {panel==='CREATE'&&<>
         <div className="panel-head"><div><span className="eyebrow">{documentType==='INCOME'?'PHIẾU THU':'PHIẾU CHI'}</span><h2>{editingId?'Sửa phiếu nháp':documentType==='INCOME'?'Tạo Phiếu thu':'Tạo Phiếu chi'}</h2></div><button className="close" type="button" onClick={closePanel}>×</button></div>
         <div className="panel-tabs"><button className={documentTab==='INFO'?'active':''} onClick={()=>setDocumentTab('INFO')}>Thông tin</button><button className={documentTab==='MONEY'?'active':''} onClick={()=>setDocumentTab('MONEY')}>Chi tiết tiền <span className="panel-tab-count">{lines.length}</span></button></div>
@@ -967,7 +966,7 @@ export function FinanceCashflowWorkspace({
           </div>
         </div>
       </>}
-    </SystemSlidebar>}
+    </aside>}
 
     {printDocument&&<section className="finance-document-print" aria-hidden="true">
       <header className="finance-document-print-head">
