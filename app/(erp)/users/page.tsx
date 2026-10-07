@@ -125,20 +125,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     }
   })
 
-  const counts={
-    all:enriched.length,
-    active:enriched.filter(x=>x.status==='Active').length,
-    error:enriched.filter(x=>['M01','M02','M03','M04','Captcha','Auto Hủy'].includes(x.status)).length,
-    blocked:enriched.filter(x=>x.status==='Blocked').length,
-    unknown:enriched.filter(x=>x.status==='Không xác định').length,
-  }
-
-  let rows=enriched.filter((u:any)=>{
-    if(state==='active'&&u.status!=='Active')return false
-    if(state==='error'&&!['M01','M02','M03','M04','Captcha','Auto Hủy'].includes(u.status))return false
-    if(state==='blocked'&&u.status!=='Blocked')return false
-    if(state==='unknown'&&u.status!=='Không xác định')return false
-
+  function matchesAccountScope(u:any){
     const activeDevices=u.active_devices??[]
     const allDevices=u.all_devices??[]
     if(device==='active'&&!activeDevices.length)return false
@@ -150,7 +137,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
     if(browser!=='all'&&!activeDevices.some((d:any)=>deviceBrowserBucket(d.browser_name)===browser))return false
 
-    const st=hasST(u), sf=hasF(u)
+    const st=hasST(u),sf=hasF(u)
     if(session==='full'&&!(st&&sf))return false
     if(session==='st'&&!st)return false
     if(session==='f'&&!sf)return false
@@ -176,6 +163,23 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       const hay=[u.username,u.phone,u.email,u.note,...deviceSearch,...voucherLabels].filter(Boolean).join(' ').toLowerCase()
       if(!hay.includes(queryText))return false
     }
+    return true
+  }
+
+  const scopeRows=enriched.filter(matchesAccountScope)
+  const counts={
+    all:scopeRows.length,
+    active:scopeRows.filter(x=>x.status==='Active').length,
+    error:scopeRows.filter(x=>['M01','M02','M03','M04','Captcha','Auto Hủy'].includes(x.status)).length,
+    blocked:scopeRows.filter(x=>x.status==='Blocked').length,
+    unknown:scopeRows.filter(x=>x.status==='Không xác định').length,
+  }
+
+  let rows=scopeRows.filter((u:any)=>{
+    if(state==='active'&&u.status!=='Active')return false
+    if(state==='error'&&!['M01','M02','M03','M04','Captcha','Auto Hủy'].includes(u.status))return false
+    if(state==='blocked'&&u.status!=='Blocked')return false
+    if(state==='unknown'&&u.status!=='Không xác định')return false
     return true
   })
 
