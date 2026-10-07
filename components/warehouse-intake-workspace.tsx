@@ -319,7 +319,7 @@ export function WarehouseIntakeWorkspace({
           })}
     </section>
 
-    {active&&<aside className="whx-detail-panel warehouse-intake-panel">
+    {active&&<aside className="whx-detail-panel warehouse-intake-panel mynh-slide-panel">
       <div className="whx-panel-head">
         <div>
           <span className="module-eyebrow">{activeComplete?'CHỜ NHẬP KHO':'BÓC TÁCH SKU'}</span>
