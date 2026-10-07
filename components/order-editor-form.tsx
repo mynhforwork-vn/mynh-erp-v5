@@ -378,7 +378,8 @@ export function OrderEditorForm({
         item.original_price=firstPrice
         item.final_price=secondPrice
       }else{
-        item.final_price=firstPrice
+        item.original_price=firstPrice
+        item.final_price=''
       }
       item.variant=shopeeCompact[5]?.trim()??''
       return item
@@ -545,8 +546,19 @@ export function OrderEditorForm({
     }
 
     if(parsed.cod!==undefined)setCod(parsed.cod)
+
+    const parsedGoodsTotal=parsed.products.reduce(
+      (sum,item)=>sum+Number(item.original_price??item.final_price??0)*Math.max(1,Number(item.quantity??1)||1),
+      0
+    )
+    const goodsCheck=parsed.total_goods!==undefined
+      ? (parsedGoodsTotal===parsed.total_goods
+          ? ' · Giá gốc khớp '+formatVnd(parsed.total_goods)
+          : ' · CẢNH BÁO giá SP '+formatVnd(parsedGoodsTotal)+' ≠ Tổng tiền hàng '+formatVnd(parsed.total_goods))
+      : ''
     setRecognitionMessage(
       'Đã nhận diện: '+summary+
+      goodsCheck+
       (parsed.detected_status==='DELIVERED'?' · trạng thái Shopee: Giao thành công':'')
     )
   }
