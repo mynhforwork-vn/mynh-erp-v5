@@ -5,6 +5,7 @@ import { archiveSalesCustomerForm,createSalesCustomer,restoreSalesCustomerForm,u
 import { ContextSalePanel } from '@/components/context-sale-panel'
 import { DebtCollectForm } from '@/components/debt-collect-form'
 import { fetchSaleContext } from '@/lib/sales/context'
+import { SalesCustomerTable } from '@/components/sales-customer-table'
 
 type SP={
   q?:string
@@ -255,25 +256,11 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
                 </div>
               </article>)}
         </div>
-        <div className="customer-demo-table-wrap">
-          <table className="table customer-demo-table">
-            <thead><tr>
-              <th>Khách hàng</th><th>SĐT</th><th>Lần mua gần nhất</th><th>Số HĐ</th>
-              <th>Tổng mua</th><th>Còn nợ</th><th>Trạng thái</th>
-            </tr></thead>
-            <tbody>{rows.length?rows.map(row=><tr key={row.id} className={selected?.id===row.id?'selected':''}>
-              <td><Link className="table-link" href={href({customer:row.id,tab:'info',mode:null})}>{row.name}</Link><small>{row.address||'—'}</small></td>
-              <td>{phone(row.phone)}</td>
-              <td>{fmtDate(row.last)}</td>
-              <td>{row.orders}</td>
-              <td className="money">{formatMoney(row.total)}</td>
-              <td className={'money '+(row.debt>0?'warning-text':'')}>{formatMoney(row.debt)}</td>
-              <td>{row.debt>0
-                ? <span className="status-pill orange">Còn nợ</span>
-                : <span className="status-pill green">Bình thường</span>}</td>
-            </tr>):<tr><td colSpan={7}><div className="empty compact">Không có khách hàng phù hợp.</div></td></tr>}</tbody>
-          </table>
-        </div>
+        <SalesCustomerTable
+          rows={rows}
+          selectedId={selected?.id??null}
+          baseQuery={href({customer:null,tab:null,mode:null,sale:null,saleTab:null}).split('?')[1]??''}
+        />
       </section>
 
       {selected&&collectMode&&<aside className="customer-demo-panel customer-collect-context mynh-slide-panel">
