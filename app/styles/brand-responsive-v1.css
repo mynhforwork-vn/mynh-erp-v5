@@ -485,6 +485,87 @@ body{
   color:var(--mynh-teal-700)!important;
 }
 
+
+/* ---------- Sidebar account / alert controls ---------- */
+.brand-shell-v1 .sidebar-account-menu{min-width:0!important}
+.brand-shell-v1 .sidebar-account-trigger{
+  border-radius:5px!important;
+}
+.brand-shell-v1 .sidebar-alert-trigger{
+  border-radius:5px!important;
+}
+@media(max-width:900px){
+  .brand-shell-v1 .sidebar-account-menu{
+    flex:0 0 34px!important;
+    width:34px!important;
+  }
+  .brand-shell-v1 .sidebar-account-trigger{
+    width:34px!important;
+    height:34px!important;
+    min-height:34px!important;
+    padding:0!important;
+    display:grid!important;
+    place-items:center!important;
+    border:0!important;
+    background:rgba(255,255,255,.055)!important;
+  }
+  .brand-shell-v1 .sidebar-user-avatar{
+    width:26px!important;
+    height:26px!important;
+    min-width:26px!important;
+    display:grid!important;
+    place-items:center!important;
+    margin:0!important;
+    font-size:8px!important;
+  }
+  .brand-shell-v1 .sidebar-user-copy,
+  .brand-shell-v1 .sidebar-user-more{
+    display:none!important;
+  }
+  .brand-shell-v1 .sidebar-alert-trigger{
+    width:34px!important;
+    height:34px!important;
+    min-width:34px!important;
+    min-height:34px!important;
+    margin:0!important;
+    display:grid!important;
+    place-items:center!important;
+    border:0!important;
+    background:rgba(255,255,255,.055)!important;
+  }
+  .brand-shell-v1 .sidebar-alert-badge{
+    top:0!important;
+    right:0!important;
+    min-width:14px!important;
+    height:14px!important;
+    padding:0 3px!important;
+    font-size:6.5px!important;
+  }
+  .brand-shell-v1 .sidebar-account-popover{
+    position:fixed!important;
+    z-index:1100!important;
+    top:62px!important;
+    right:8px!important;
+    bottom:auto!important;
+    left:auto!important;
+    width:min(300px,calc(100vw - 16px))!important;
+    max-width:300px!important;
+  }
+  .brand-shell-v1 .app-alert-panel-v2{
+    position:fixed!important;
+    z-index:1100!important;
+    top:62px!important;
+    right:5px!important;
+    bottom:5px!important;
+    left:5px!important;
+    width:auto!important;
+    max-width:none!important;
+    height:auto!important;
+    max-height:none!important;
+    border-radius:7px!important;
+  }
+}
+
 /* ---------- Wide desktop ---------- */
 @media(min-width:1600px){
   .brand-shell-v1{
