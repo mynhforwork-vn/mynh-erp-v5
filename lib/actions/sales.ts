@@ -385,6 +385,31 @@ export async function updateSalesProductCategory(input:{id:string,name?:string,i
   }
 }
 
+export async function deleteSalesProductCategory(input:{id:string}){
+  try{
+    const {supabase}=await actor()
+    const id=String(input?.id??'').trim()
+    if(!id)return {ok:false as const,error:'Thiếu phân loại cần xóa'}
+
+    const {error:detachError}=await supabase
+      .from('products')
+      .update({sales_category_id:null})
+      .eq('sales_category_id',id)
+    if(detachError)return {ok:false as const,error:detachError.message}
+
+    const {error}=await supabase
+      .from('sales_product_categories')
+      .delete()
+      .eq('id',id)
+    if(error)return {ok:false as const,error:error.message}
+
+    revalidatePath('/sales/pos')
+    return {ok:true as const}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể xóa phân loại')}
+  }
+}
+
 export async function assignProductSalesCategory(input:{product_id:string,category_id:string|null}){
   try{
     const {supabase}=await actor()
