@@ -44,6 +44,73 @@ body{
   line-height:1.45!important;
 }
 
+
+/* ---------- Login brand ---------- */
+.login-wrap{
+  background:
+    radial-gradient(circle at 50% -10%,rgba(42,99,173,.14),transparent 34%),
+    linear-gradient(180deg,#F8FAFC 0%,var(--mynh-canvas) 100%)!important;
+}
+.login-card{
+  width:min(390px,calc(100vw - 28px))!important;
+  padding:25px!important;
+  border:1px solid var(--mynh-line)!important;
+  border-radius:8px!important;
+  background:#fff!important;
+  box-shadow:0 22px 56px rgba(19,34,53,.11)!important;
+}
+.login-card .brand-mark{
+  width:42px!important;
+  height:42px!important;
+  display:grid!important;
+  place-items:center!important;
+  margin:0 0 14px!important;
+  border:1px solid #C9DBEE!important;
+  border-radius:7px!important;
+  background:linear-gradient(135deg,#EFF6FD 0%,#E4F5F3 100%)!important;
+  color:var(--mynh-cobalt-700)!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  letter-spacing:-.04em!important;
+  box-shadow:inset 0 -2px 0 rgba(18,133,138,.15)!important;
+}
+.login-card h1{
+  color:var(--mynh-ink-950)!important;
+  font-size:21px!important;
+  font-weight:790!important;
+  letter-spacing:-.02em!important;
+}
+.login-card p{
+  color:var(--mynh-ink-500)!important;
+  font-size:10.5px!important;
+}
+.login-card label{
+  color:#586C80!important;
+  font-size:9.5px!important;
+  font-weight:700!important;
+}
+.login-card input{
+  min-height:36px!important;
+  border:1px solid var(--mynh-line-strong)!important;
+  border-radius:5px!important;
+  color:var(--mynh-ink-900)!important;
+  font-size:11px!important;
+}
+.login-card input:focus{
+  border-color:#7FA0C4!important;
+  box-shadow:0 0 0 2px rgba(42,99,173,.09)!important;
+  outline:none!important;
+}
+.login-card .button.primary{
+  min-height:36px!important;
+  border-radius:5px!important;
+  border-color:var(--mynh-cobalt-600)!important;
+  background:linear-gradient(90deg,var(--mynh-cobalt-600),#2A6FAE)!important;
+  color:#fff!important;
+  font-size:10.5px!important;
+  font-weight:750!important;
+}
+
 /* ---------- Shell / brand ---------- */
 .brand-shell-v1{
   grid-template-columns:218px minmax(0,1fr)!important;
