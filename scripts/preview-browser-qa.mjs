@@ -566,9 +566,9 @@ const settingsSelectors={
   'Tracking':'.tracking-settings-v7',
   'Thông báo':'.notification-settings-v6',
   'Thanh toán':'.bank-transfer-settings-v6',
-  'Quản lý dữ liệu':'.data-management-settings',
+  'Dữ liệu':'.data-management-settings-v8',
 }
-for(const name of ['Cấu hình vận chuyển','Tracking','Thông báo','Thanh toán','Quản lý dữ liệu']){
+for(const name of ['Cấu hình vận chuyển','Tracking','Thông báo','Thanh toán','Dữ liệu']){
   const tab=page.locator('.settings-page-tabs-v3').getByRole('link',{name,exact:true}).first()
   if(await tab.count()){
     const tabNav=await followLink(tab)
