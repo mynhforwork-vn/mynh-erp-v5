@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/supabase/auth'
 import { DebtCollectForm } from '@/components/debt-collect-form'
 import { ContextSalePanel } from '@/components/context-sale-panel'
 import { fetchSaleContext } from '@/lib/sales/context'
+import { SalesDebtTable } from '@/components/sales-debt-table'
 
 type SP={
   q?:string
@@ -235,20 +236,11 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
                 </div>
               </article>)}
         </div>
-        <div className="debt-demo-table-wrap">
-          <table className="table debt-demo-table">
-            <thead><tr><th>Khách hàng</th><th>SĐT</th><th>Số HĐ nợ</th><th>Công nợ</th><th>Nợ cũ nhất</th><th>Thu gần nhất</th><th>Xử lý</th></tr></thead>
-            <tbody>{rows.length?rows.map(row=><tr key={row.customer_id} className={selected?.customer_id===row.customer_id?'selected':''}>
-              <td><Link className="table-link" href={href({customer:row.customer_id,tab:'summary',mode:null})}>{row.name}</Link><small>{row.address||'—'}</small></td>
-              <td>{phone(row.phone)}</td>
-              <td>{row.invoices}</td>
-              <td className="money warning-text">{formatMoney(row.debt)}</td>
-              <td>{fmtDate(row.oldest,false)}<small>{row.age===0?'Hôm nay':row.age+' ngày'}</small></td>
-              <td>{fmtDate(row.lastPayment)}</td>
-              <td><Link className="button small primary" href={href({customer:row.customer_id,tab:'summary',mode:'collect'})}>Thu nợ</Link></td>
-            </tr>):<tr><td colSpan={7}><div className="empty compact">Không có công nợ phù hợp bộ lọc.</div></td></tr>}</tbody>
-          </table>
-        </div>
+        <SalesDebtTable
+          rows={rows}
+          selectedId={selected?.customer_id??null}
+          baseQuery={href({customer:null,tab:null,mode:null,sale:null,saleTab:null}).split('?')[1]??''}
+        />
       </section>
 
       {selected&&contextSale&&<ContextSalePanel
