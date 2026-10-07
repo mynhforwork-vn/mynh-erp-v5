@@ -63,7 +63,8 @@ const page=await context.newPage()
 
 async function go(path){
   let last=null
-  for(let attempt=1;attempt<=4;attempt++){
+  const delays=[500,800,1200,1800,2500]
+  for(let attempt=1;attempt<=6;attempt++){
     try{
       const res=await page.goto(PREVIEW_URL+path,{waitUntil:'domcontentloaded',timeout:30000})
       await page.waitForTimeout(650)
@@ -73,7 +74,7 @@ async function go(path){
     }catch(e){
       last={status:0,url:page.url(),body:'',error:String(e)}
     }
-    await page.waitForTimeout(500*attempt)
+    if(attempt<6)await page.waitForTimeout(delays[attempt-1]??2500)
   }
   return last??{status:0,url:page.url(),body:'',error:'unknown'}
 }
