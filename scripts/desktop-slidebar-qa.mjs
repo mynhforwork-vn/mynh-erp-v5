@@ -25,7 +25,7 @@ const {error}=await cookieClient.auth.setSession({
 })
 if(error)throw error
 
-const browser=await chromium.launch({headless:true})
+const browser=await chromium.launch({headless:true,...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{})})
 const context=await browser.newContext({viewport:{width:1440,height:900}})
 await context.addCookies([...cookieMap.values()].map(c=>({
   name:c.name,value:c.value,url:PREVIEW_URL,
