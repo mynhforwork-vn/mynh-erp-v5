@@ -169,7 +169,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
   const purged=sp.purged?Number(sp.purged):null
   const protectedCount=sp.protected?Number(sp.protected):null
 
-  return <div className="settings-screen settings-screen-v3 settings-screen-v6">
+  return <div className="settings-screen settings-screen-v3 settings-screen-v6 settings-screen-v8">
     <header className="page-head settings-page-head">
       <div>
         <span className="module-eyebrow">HỆ THỐNG</span>
@@ -180,7 +180,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
 
     {error&&<div className="error-box">Không thể tải cấu hình hệ thống: {error.message}</div>}
 
-    <nav className="settings-page-tabs-v3 settings-page-tabs-v6" aria-label="Nhóm cài đặt">
+    <nav className="settings-page-tabs-v3 settings-page-tabs-v6 settings-page-tabs-v8" aria-label="Nhóm cài đặt">
       <Link className={section==='shipping'?'active':''} href="/settings?section=shipping">Cấu hình vận chuyển</Link>
       {['admin','operator'].includes(role)&&<Link className={section==='tracking'?'active':''} href="/settings?section=tracking">Tracking</Link>}
       {['admin','operator'].includes(role)&&<Link className={section==='notifications'?'active':''} href="/settings?section=notifications">Thông báo</Link>}
@@ -189,7 +189,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       {role==='admin'&&<Link className={section==='access'?'active':''} href="/settings?section=access">Phân quyền & tài khoản</Link>}
     </nav>
 
-    <section className="settings-workspace-v3 settings-workspace-v6">
+    <section className="settings-workspace-v3 settings-workspace-v6 settings-workspace-v8">
       {section==='shipping'
         ? <ShippingSettings
             carriers={(carrierRows??[]) as any[]}
