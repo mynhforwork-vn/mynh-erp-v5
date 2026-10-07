@@ -7,7 +7,24 @@ function tagHash(value:string){
   return hash>>>0
 }
 
+const FIXED_VOUCHER_STYLES:Record<string,{borderColor:string;backgroundColor:string;color:string}>={
+  SHSP:{
+    borderColor:'#B9D1EA',
+    backgroundColor:'#EAF3FC',
+    color:'#245F96',
+  },
+  SHHD:{
+    borderColor:'#EBCB9A',
+    backgroundColor:'#FFF2DE',
+    color:'#9A5B00',
+  },
+}
+
 function voucherStyle(tag:string){
+  const key=tag.trim().toUpperCase()
+  const fixed=FIXED_VOUCHER_STYLES[key]
+  if(fixed)return fixed
+
   const hash=tagHash(tag)
   const hue=(hash%360000)/1000
   const saturation=58+((hash>>>9)%18)
