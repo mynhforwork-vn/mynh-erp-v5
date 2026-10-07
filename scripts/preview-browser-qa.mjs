@@ -659,8 +659,8 @@ if(await hubCard.count()){
 }else recordInteraction('Shipper QA HUB fixture available',false,{hub:fixtureHub||null})
 
 await go('/settings')
-recordInteraction('Sidebar notification bell',await page.locator('.sidebar-alert-trigger').count()>0)
-const appAlertTrigger=page.locator('.sidebar-alert-trigger').first()
+recordInteraction('Sidebar notification bell',await page.locator('.brand-shell-v1>.sidebar .sidebar-alert-trigger').count()>0)
+const appAlertTrigger=page.locator('.brand-shell-v1>.sidebar .sidebar-alert-trigger').first()
 if(await appAlertTrigger.count()){
   await appAlertTrigger.click()
   recordInteraction('Notification slidebar opens',await page.locator('.app-alert-panel-v2').count()>0)
@@ -668,7 +668,7 @@ if(await appAlertTrigger.count()){
   const alertBackdrop=page.locator('.app-alert-backdrop-v2').first()
   if(await alertBackdrop.count())await alertBackdrop.click()
 }
-const accountTrigger=page.locator('.sidebar-account-trigger').first()
+const accountTrigger=page.locator('.brand-shell-v1>.sidebar .sidebar-account-trigger').first()
 recordInteraction('Compact sidebar account trigger',await accountTrigger.count()>0)
 if(await accountTrigger.count()){
   await accountTrigger.click()
