@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SystemSlidebar } from '@/components/system-slidebar'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime } from '@/lib/format'
 import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
@@ -315,7 +316,7 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
       openModuleHref={'/purchase/orders?range=all&order='+contextOrder.id}
     />}
 
-    {selectedTx&&!contextSale&&!contextOrder&&<aside className="detail-panel whx-history-reference-panel mynh-slide-panel">
+    {selectedTx&&!contextSale&&!contextOrder&&<SystemSlidebar className="detail-panel whx-history-reference-panel">
       <div className="panel-head context-stack-head">
         <Link className="context-stack-back" href={href({tx:null,sale:null,saleTab:null,order:null,orderTab:null})} aria-label="Quay lại">←</Link>
         <div className="context-stack-title">
@@ -372,7 +373,7 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
           <div className="panel-note-row"><span>Ghi chú điều chỉnh</span><b>{String(selectedTx.reference_type).replace('MANUAL_ADJUSTMENT:','').trim()||'—'}</b></div>
         }
       </div>
-    </aside>}
+    </SystemSlidebar>}
 
   </div>
 }
