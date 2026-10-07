@@ -188,7 +188,22 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     }))
 
   const dateRows=(data??[]) as any[]
-  const rows=dateRows.filter((o:any)=>{
+
+  function matchesOrderScope(o:any){
+    if(sp.user&&String(o.erp_user_id)!==String(sp.user))return false
+    if(!queryText)return true
+    const s=activeShipment(o)
+    const hay=[
+      o.shopee_order_id,o.erp_users?.username,s?.tracking_number,s?.carrier,
+      o.recipient_name,o.recipient_phone,o.area,o.destination_hub,
+      ...(o.order_items??[]).flatMap((x:any)=>[x.product_name,x.variant]),
+      ...(o.order_vouchers??[]).flatMap((x:any)=>[x.voucher_code,x.voucher_name,x.voucher_tag,x.voucher_type]),
+    ].filter(Boolean).join(' ').toLowerCase()
+    return hay.includes(queryText)
+  }
+
+  const scopeRows=dateRows.filter(matchesOrderScope)
+  const rows=scopeRows.filter((o:any)=>{
     if(sp.receive&&o.receive_status!==sp.receive)return false
     const shipment=activeShipment(o)
     if(sp.tracking==='express'){
@@ -210,33 +225,25 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     }else if(sp.tracking&&shipment?.current_tracking_status!==sp.tracking){
       return false
     }
-    if(!queryText)return true
-    const s=activeShipment(o)
-    const hay=[
-      o.shopee_order_id,o.erp_users?.username,s?.tracking_number,s?.carrier,
-      o.recipient_name,o.recipient_phone,o.area,o.destination_hub,
-      ...(o.order_items??[]).flatMap((x:any)=>[x.product_name,x.variant]),
-      ...(o.order_vouchers??[]).flatMap((x:any)=>[x.voucher_code,x.voucher_name,x.voucher_tag,x.voucher_type]),
-    ].filter(Boolean).join(' ').toLowerCase()
-    return hay.includes(queryText)
+    return true
   })
 
-  const totalOrders=dateRows.length
-  const shipping=dateRows.filter((o:any)=>{
+  const totalOrders=scopeRows.length
+  const shipping=scopeRows.filter((o:any)=>{
     const s=activeShipment(o)?.current_tracking_status
     return isShippingTrackingStatus(s)
   }).length
-  const arrivedHub=dateRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='ARRIVED_DESTINATION_HUB').length
-  const delivered=dateRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='DELIVERED').length
-  const waiting=dateRows.filter((o:any)=>o.receive_status==='WAITING_RECEIVE').length
-  const missingTracking=dateRows.filter((o:any)=>!activeShipment(o)?.tracking_number).length
-  const cancelled=dateRows.filter((o:any)=>{
+  const arrivedHub=scopeRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='ARRIVED_DESTINATION_HUB').length
+  const delivered=scopeRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='DELIVERED').length
+  const waiting=scopeRows.filter((o:any)=>o.receive_status==='WAITING_RECEIVE').length
+  const missingTracking=scopeRows.filter((o:any)=>!activeShipment(o)?.tracking_number).length
+  const cancelled=scopeRows.filter((o:any)=>{
     const status=activeShipment(o)?.current_tracking_status
     const orderStatus=String(o.order_status??'').toUpperCase()
     return status==='CANCELLED'||orderStatus==='CANCELLED'||orderStatus==='CANCELED'
   }).length
 
-  const expressAttentionRows=dateRows.filter((o:any)=>{
+  const expressAttentionRows=scopeRows.filter((o:any)=>{
     const orderStatus=String(o.order_status??'').toUpperCase()
     return (
       o.shipping_service==='EXPRESS' &&
