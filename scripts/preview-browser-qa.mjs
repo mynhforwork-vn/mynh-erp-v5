@@ -190,6 +190,18 @@ recordInteraction(
   desktopBrandMetrics.sidebarWidth>=180&&desktopBrandMetrics.mainWidth>700,
   desktopBrandMetrics
 )
+const sidebarToggle=page.locator('.sidebar-collapse-toggle').first()
+recordInteraction('Desktop sidebar collapse control exists',await sidebarToggle.count()===1)
+if(await sidebarToggle.count()){
+  const before=await page.locator('.brand-shell-v1>.sidebar').evaluate(el=>el.getBoundingClientRect().width)
+  await sidebarToggle.click();await settle(180)
+  const collapsed=await page.locator('.brand-shell-v1>.sidebar').evaluate(el=>el.getBoundingClientRect().width)
+  const collapsedClass=await page.locator('.brand-shell-v1').evaluate(el=>el.classList.contains('desktop-sidebar-collapsed'))
+  recordInteraction('Desktop sidebar collapses to icon rail',collapsedClass&&collapsed<100&&collapsed<before-80,{before,collapsed})
+  await sidebarToggle.click();await settle(180)
+  const expanded=await page.locator('.brand-shell-v1>.sidebar').evaluate(el=>el.getBoundingClientRect().width)
+  recordInteraction('Desktop sidebar expands back',expanded>=180,{expanded})
+}
 
 // Non-mutating interaction tests.
 await go('/purchase/accounts')
@@ -380,6 +392,19 @@ const trackingOrderLink=page.locator('.tracking-hub-table a.table-link').first()
 if(await trackingOrderLink.count()){
   const trackingNav=await followLink(trackingOrderLink,{waitSelector:'aside.context-order-panel'})
   recordInteraction('Tracking contextual Order opens',await page.locator('aside.context-order-panel').count()>0,{href:trackingNav.href})
+  const trackingPanelMetrics=await page.locator('aside.context-order-panel').first().evaluate(el=>{
+    const r=el.getBoundingClientRect(),s=getComputedStyle(el)
+    return {position:s.position,left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,viewportW:innerWidth,viewportH:innerHeight}
+  }).catch(()=>null)
+  recordInteraction(
+    'Tracking contextual Order is right floating slidebar',
+    Boolean(trackingPanelMetrics)
+      &&trackingPanelMetrics.position==='fixed'
+      &&trackingPanelMetrics.right>=trackingPanelMetrics.viewportW-40
+      &&trackingPanelMetrics.left>trackingPanelMetrics.viewportW/2
+      &&trackingPanelMetrics.height>trackingPanelMetrics.viewportH*.75,
+    trackingPanelMetrics??{}
+  )
   const historyTab=page.locator('aside.context-order-panel .context-order-tabs').getByRole('link',{name:'Lịch sử'}).first()
   if(await historyTab.count()){
     await followLink(historyTab,{waitSelector:'aside.context-order-panel'})
@@ -443,10 +468,28 @@ if(await txLink.count()){
 }else recordInteraction('Warehouse history fixture available',true,{skipped:true,reason:'No transactions'})
 
 await go('/sales/pos')
-const posCustomer=page.getByRole('button',{name:/Tạo khách|Gắn khách/}).first()
+const posDesktopMetrics=await page.evaluate(()=>{
+  const cartBar=document.querySelector('.mobile-pos-cart-bar')
+  const tile=document.querySelector('.pos-product-tile-final')
+  const icon=document.querySelector('.pos-cart-icon-v2')
+  const shortcuts=document.querySelector('.pos-shortcuts')
+  return {
+    cartBarDisplay:cartBar?getComputedStyle(cartBar).display:'missing',
+    tileHeight:tile?tile.getBoundingClientRect().height:0,
+    cartIcon:Boolean(icon),
+    shortcuts:Boolean(shortcuts),
+  }
+})
+recordInteraction('POS desktop hides mobile cart summary row',posDesktopMetrics.cartBarDisplay==='none',posDesktopMetrics)
+recordInteraction('POS desktop product tiles are enlarged',posDesktopMetrics.tileHeight>=70,posDesktopMetrics)
+recordInteraction('POS invoice header uses cart icon',posDesktopMetrics.cartIcon,posDesktopMetrics)
+recordInteraction('POS shortcut footer removed',!posDesktopMetrics.shortcuts,posDesktopMetrics)
+const posCustomer=page.getByRole('button',{name:/Tạo khách|Gắn khách|Khách lẻ/}).first()
 if(await posCustomer.count()){
   await posCustomer.click();await settle(120)
   recordInteraction('POS customer popover opens',await page.locator('.pos-customer-popover').count()>0)
+  recordInteraction('POS customer picker has searchable customer list',
+    await page.locator('.pos-customer-search-v2 input').count()>0&&await page.locator('.pos-customer-list-v2').count()>0)
   const close=page.locator('.pos-customer-popover .pos-popover-head button').first()
   if(await close.count()){await close.click();await settle(100)}
   recordInteraction('POS customer popover closes',await page.locator('.pos-customer-popover').count()===0)
@@ -462,6 +505,8 @@ const catSettings=page.getByRole('button',{name:/Phân loại/}).first()
 if(await catSettings.count()){
   await catSettings.click();await settle(100)
   recordInteraction('POS category settings opens',await page.locator('.pos-category-settings').count()>0)
+  recordInteraction('POS category manager supports delete',await page.locator('.pos-category-settings .pos-category-row-actions-v2 .button.danger').count()>0)
+  recordInteraction('POS category assignment workspace visible',await page.locator('.pos-category-assignment-v2 .pos-category-product-list').count()>0)
   const close=page.locator('.pos-category-settings .pos-popover-head button').first()
   if(await close.count()){await close.click();await settle(100)}
 }
@@ -498,13 +543,11 @@ if(await sellable.count()){
       let debtActive=await debtMode.evaluate(el=>el.classList.contains('active'))
       if(!debtActive&&await page.locator('.pos-customer-popover').count()>0){
         recordInteraction('POS debt requires customer guard',true)
-        const customerSelect=page.locator('.pos-customer-popover select').first()
         const fixtureCustomerId=String(session.fixtures?.customer_id??'')
-        const hasFixture=fixtureCustomerId&&await customerSelect.locator('option[value="'+fixtureCustomerId+'"]').count()>0
-        if(hasFixture)await customerSelect.selectOption(fixtureCustomerId)
-        const selectedFixture=hasFixture&&await customerSelect.inputValue()===fixtureCustomerId
-        const customerClose=page.locator('.pos-customer-popover .pos-popover-head button').first()
-        if(await customerClose.count()){await customerClose.click();await settle(80)}
+        const fixtureCustomerButton=page.locator('.pos-customer-list-v2 button[data-customer-id="'+fixtureCustomerId+'"]').first()
+        const hasFixture=Boolean(fixtureCustomerId)&&await fixtureCustomerButton.count()>0
+        if(hasFixture){await fixtureCustomerButton.click();await settle(80)}
+        const selectedFixture=hasFixture&&await page.locator('.pos-customer-popover').count()===0
         if(selectedFixture){
           await debtMode.click();await settle(100)
           debtActive=await debtMode.evaluate(el=>el.classList.contains('active'))
