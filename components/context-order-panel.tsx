@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SystemSlidebar } from '@/components/system-slidebar'
 import { formatDateTime,formatMoney,formatPhone,sourceLabel,statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
 
@@ -38,7 +39,7 @@ export function ContextOrderPanel({
   )
   const isExpress=order.shipping_service==='EXPRESS'
 
-  return <aside className={"detail-panel context-order-panel mynh-slide-panel"+(floating?" floating":"")}>
+  return <SystemSlidebar className={"detail-panel context-order-panel"+(floating?" floating":"")}>
     <div className="panel-head context-stack-head">
       <Link className="context-stack-back" href={backHref} aria-label="Quay lại">←</Link>
       <div className="context-stack-title">
