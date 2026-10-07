@@ -5,6 +5,7 @@ import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-set
 import { ContextOrderPanel } from '@/components/context-order-panel'
 import { ContextSalePanel } from '@/components/context-sale-panel'
 import { fetchSaleContext } from '@/lib/sales/context'
+import { WarehouseHistoryTable } from '@/components/warehouse-history-table'
 
 type SP={
   type?:string,warehouse?:string,q?:string,ref?:string,
@@ -269,45 +270,11 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
             })}
       </div>
 
-      <div className="whx-table-scroll">
-        <table className="table whx-table">
-          <thead><tr>
-            <th>Thời gian</th>
-            <th>Kho</th>
-            <th>SKU bán</th>
-            <th>Sản phẩm</th>
-            <th>Phân loại</th>
-            <th>Nghiệp vụ</th>
-            <th>SL</th>
-            <th>Chứng từ</th>
-          </tr></thead>
-          <tbody>
-            {!data.length
-              ? <tr><td colSpan={8} className="empty">Chưa có giao dịch kho phù hợp.</td></tr>
-              : data.map(row=>{
-                  const incoming=IN_TYPES.has(String(row.tx_type))
-                  const stocktake=String(row.reference_type??'').startsWith('STOCKTAKE')
-                  return <tr key={row.id} className={selectedTx?.id===row.id?'selected':''}>
-                    <td>{formatDateTime(row.created_at)}</td>
-                    <td><b>{row.warehouses?.code??'—'}</b></td>
-                    <td><b className="whx-link-text">{row.product_variants?.products?.sku??'—'}</b></td>
-                    <td>{row.product_variants?.products?.name??'—'}</td>
-                    <td>{row.product_variants?.variant_name??'—'}</td>
-                    <td><span className={'whx-tx-type '+(stocktake?'stocktake':incoming?'in':'out')}>
-                      {txLabel(String(row.tx_type),row.reference_type)}
-                    </span></td>
-                    <td className={'whx-tx-qty '+(incoming?'in':'out')}>{incoming?'+':'-'}{row.quantity}</td>
-                    <td>
-                      <Link className="whx-reference whx-reference-link" href={openTransactionHref(row)}>
-                        <b>{row.reference_type??'—'}</b>
-                        <span>{row.reference_id?String(row.reference_id).slice(0,8):'Không mã'} · Xem →</span>
-                      </Link>
-                    </td>
-                  </tr>
-                })}
-          </tbody>
-        </table>
-      </div>
+      <WarehouseHistoryTable
+        rows={data}
+        selectedId={selectedTx?String(selectedTx.id):null}
+        baseQuery={href({tx:null,sale:null,saleTab:null,order:null,orderTab:null}).split('?')[1]??''}
+      />
     </div>
 
     {selectedTx&&contextSale&&<ContextSalePanel
