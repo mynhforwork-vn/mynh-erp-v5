@@ -18,6 +18,7 @@ type SP={
   to?:string
   order?:string
   orderTab?:'info'|'tracking'|'history'
+  due?:string
 }
 
 const HOUR=60*60*1000
@@ -197,9 +198,12 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
 
   const hubOptions=[...new Set(rangeRows.map((r:any)=>String(r.destination_hub??'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'))
   const hubRows=sp.hub?rangeRows.filter((r:any)=>r.destination_hub===sp.hub):rangeRows
-  const scopeRows=sp.receiveDate
-    ? hubRows.filter((r:any)=>localDate(r.last_status_change_at)===sp.receiveDate)
+  const dueRows=sp.due==='1'
+    ? hubRows.filter((r:any)=>r.tracking_enabled&&r.next_track_at&&new Date(r.next_track_at).getTime()<=Date.now())
     : hubRows
+  const scopeRows=sp.receiveDate
+    ? dueRows.filter((r:any)=>localDate(r.last_status_change_at)===sp.receiveDate)
+    : dueRows
 
   const atHub=scopeRows.filter((r:any)=>r.tracking_status==='ARRIVED_DESTINATION_HUB').length
   const outForDelivery=scopeRows.filter((r:any)=>r.tracking_status==='OUT_FOR_DELIVERY').length
@@ -227,6 +231,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     if(sp.hub)p.set('hub',sp.hub)
     if(sp.order)p.set('order',sp.order)
     if(sp.orderTab)p.set('orderTab',sp.orderTab)
+    if(sp.due)p.set('due',sp.due)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v==='')p.delete(k)
       else p.set(k,v)
@@ -258,6 +263,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
   if(sp.status)contextParams.set('status',sp.status)
   if(sp.receive)contextParams.set('receive',sp.receive)
   if(sp.receiveDate)contextParams.set('receiveDate',sp.receiveDate)
+  if(sp.due)contextParams.set('due',sp.due)
   const contextQuery=contextParams.toString()
 
   const shipperMap=new Map((destinationShippers??[]).map((s:any)=>[String(s.id),s]))
@@ -347,6 +353,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
           hub:sp.hub,
           order:sp.order,
           orderTab:sp.orderTab,
+          due:sp.due,
         }}
       />
     </div>
@@ -414,6 +421,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
           {sp.receive&&<input type="hidden" name="receive" value={sp.receive}/>}
           {sp.order&&<input type="hidden" name="order" value={sp.order}/>}
           {sp.orderTab&&<input type="hidden" name="orderTab" value={sp.orderTab}/>}
+          {sp.due&&<input type="hidden" name="due" value={sp.due}/>}
           <select name="hub" defaultValue={sp.hub??''} aria-label="HUB đích">
             <option value="">Tất cả HUB</option>
             {hubOptions.map(h=><option value={h} key={h}>{h}</option>)}
