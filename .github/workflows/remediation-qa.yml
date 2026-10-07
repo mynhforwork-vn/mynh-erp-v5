@@ -11,6 +11,7 @@ on:
       - redesign/settings-v8
       - redesign/account-notifications-v1
       - fix/order-text-recognition-v1
+      - fix/manual-tracking-response-v1
   workflow_dispatch:
 
 jobs:
