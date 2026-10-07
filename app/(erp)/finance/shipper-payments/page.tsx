@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { SystemSlidebar } from '@/components/system-slidebar'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime,formatMoney } from '@/lib/format'
 import { financePeriodLabel,financePeriodStart,normalizeFinancePeriod,withinFinancePeriod } from '@/lib/finance-period'
@@ -221,8 +220,6 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
           <div className="finance-kpi warning"><span>Chờ nhận / thanh toán</span><b>{waiting.length}</b><small>{formatMoney(waitingCod)}</small></div>
         </section>
 
-        <div className={'finance-settlement-workspace '+((selected||contextOrder)?'with-panel':'')}>
-          <div className="finance-settlement-content">
         {view==='batch'
           ? <section className="shipper-payment-batches finance-settlement-list">
               {!shipper.length?<div className="card empty">Chưa có đợt thanh toán Shipper trong {financePeriodLabel(period).toLowerCase()}.</div>:shipper.map(p=>{
@@ -253,6 +250,38 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
               })}
             </section>}
           </div>
+
+      </>:<>
+        <section className="finance-kpi-grid finance-settlement-kpis">
+          <div className="finance-kpi warning"><span>Phải thu khách hàng</span><b>{formatMoney(totalDebt)}</b><small>{customersInDebt} khách còn nợ</small></div>
+          <div className="finance-kpi"><span>Khách hàng</span><b>{customerScopeRows.length}</b><small>{customerScopeRows.reduce((sum,x)=>sum+x.openInvoices,0)} hóa đơn còn nợ</small></div>
+          <div className="finance-kpi"><span>Phiếu thu công nợ</span><b>{payments.length}</b><small>{financePeriodLabel(period)}</small></div>
+          <div className="finance-kpi"><span>Đã thu</span><b className="income">{formatMoney(collected)}</b><small>Đã phân bổ {formatMoney(allocated)}</small></div>
+        </section>
+        <section className="card finance-customer-settlement">
+          <div className="card-head"><div><h2>Công nợ theo khách hàng</h2><span>Thu tiền thực hiện tại module Công nợ; Finance tự nhận Phiếu thu.</span></div></div>
+          <div className="mobile-entity-list mobile-finance-customer-list">
+            {!customerRows.length
+              ? <div className="mobile-empty-state">Chưa có dữ liệu khách hàng phù hợp.</div>
+              : customerRows.map(row=><article className="mobile-finance-customer-card" key={'mobile-'+row.id}>
+                  <div className="mobile-finance-customer-head">
+                    <div><b>{row.name}</b><span>{row.phone||'Không SĐT'}</span></div>
+                    {row.debt>0?<span className="status-pill orange">Còn nợ</span>:<span className="status-pill green">Đã tất toán</span>}
+                  </div>
+                  <div className="mobile-finance-customer-metrics">
+                    <div><span>HĐ còn nợ</span><b>{row.openInvoices}</b></div>
+                    <div><span>Tổng mua</span><b>{formatMoney(row.totalSales)}</b></div>
+                    <div><span>Phải thu</span><b className="warning-text">{formatMoney(row.debt)}</b></div>
+                    <div><span>Đã thu kỳ này</span><b className="income">{formatMoney(row.paid)}</b></div>
+                  </div>
+                  <div className="mobile-finance-customer-last"><span>Thu gần nhất</span><b>{row.lastPayment?formatDateTime(row.lastPayment):'—'}</b></div>
+                </article>)}
+          </div>
+          <FinanceCustomerSettlementTable rows={customerRows}/>
+        </section>
+      </>}
+    </div>
+
     {contextOrder&&mode==='shipper'&&<ContextOrderPanel
       order={contextOrder}
       items={contextItems}
@@ -271,7 +300,7 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
       openModuleHref={'/purchase/orders?range=all&order='+contextOrder.id}
     />}
 
-    {selected&&mode==='shipper'&&!contextOrder&&<SystemSlidebar className="detail-panel finance-panel finance-hub-live-panel">
+    {selected&&mode==='shipper'&&!contextOrder&&<aside className="detail-panel finance-panel finance-hub-live-panel">
       <div className="panel-head"><div><span className="eyebrow">ĐỐI SOÁT HUB</span><h2>{selected.hub}</h2></div><Link className="close" href={href({hub:null})}>×</Link></div>
       <div className="panel-tabs"><span className="active">Tổng quan & thao tác</span></div>
       <div className="panel-scroll finance-hub-panel">
@@ -305,39 +334,7 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
           </section>
         })}</div>
       </div>
-    </SystemSlidebar>}
-        </div>
-      </>:<>
-        <section className="finance-kpi-grid finance-settlement-kpis">
-          <div className="finance-kpi warning"><span>Phải thu khách hàng</span><b>{formatMoney(totalDebt)}</b><small>{customersInDebt} khách còn nợ</small></div>
-          <div className="finance-kpi"><span>Khách hàng</span><b>{customerScopeRows.length}</b><small>{customerScopeRows.reduce((sum,x)=>sum+x.openInvoices,0)} hóa đơn còn nợ</small></div>
-          <div className="finance-kpi"><span>Phiếu thu công nợ</span><b>{payments.length}</b><small>{financePeriodLabel(period)}</small></div>
-          <div className="finance-kpi"><span>Đã thu</span><b className="income">{formatMoney(collected)}</b><small>Đã phân bổ {formatMoney(allocated)}</small></div>
-        </section>
-        <section className="card finance-customer-settlement">
-          <div className="card-head"><div><h2>Công nợ theo khách hàng</h2><span>Thu tiền thực hiện tại module Công nợ; Finance tự nhận Phiếu thu.</span></div></div>
-          <div className="mobile-entity-list mobile-finance-customer-list">
-            {!customerRows.length
-              ? <div className="mobile-empty-state">Chưa có dữ liệu khách hàng phù hợp.</div>
-              : customerRows.map(row=><article className="mobile-finance-customer-card" key={'mobile-'+row.id}>
-                  <div className="mobile-finance-customer-head">
-                    <div><b>{row.name}</b><span>{row.phone||'Không SĐT'}</span></div>
-                    {row.debt>0?<span className="status-pill orange">Còn nợ</span>:<span className="status-pill green">Đã tất toán</span>}
-                  </div>
-                  <div className="mobile-finance-customer-metrics">
-                    <div><span>HĐ còn nợ</span><b>{row.openInvoices}</b></div>
-                    <div><span>Tổng mua</span><b>{formatMoney(row.totalSales)}</b></div>
-                    <div><span>Phải thu</span><b className="warning-text">{formatMoney(row.debt)}</b></div>
-                    <div><span>Đã thu kỳ này</span><b className="income">{formatMoney(row.paid)}</b></div>
-                  </div>
-                  <div className="mobile-finance-customer-last"><span>Thu gần nhất</span><b>{row.lastPayment?formatDateTime(row.lastPayment):'—'}</b></div>
-                </article>)}
-          </div>
-          <FinanceCustomerSettlementTable rows={customerRows}/>
-        </section>
-      </>}
-    </div>
-
+    </aside>}
 
   </div>
 }
