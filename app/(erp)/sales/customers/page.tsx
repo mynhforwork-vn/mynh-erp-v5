@@ -57,7 +57,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
     ? customerQuery.not('archived_at','is',null)
     : customerQuery.is('archived_at',null)
 
-  const [customersRes,salesRes,debtRes,paymentsRes,warehousesRes,itemsRes,bankResult]=await Promise.all([
+  const [customersRes,salesRes,debtRes,paymentsRes,warehousesRes,itemsRes,bankResult,printConfigResult]=await Promise.all([
     customerQuery,
     supabase.from('sales').select('id,customer_id,warehouse_id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,sale_status,note,sale_items(id,quantity,sale_price,product_variants(id,variant_name,products(sku,name)))').not('customer_id','is',null).order('sale_at',{ascending:false}),
     supabase.from('customer_debt_balances').select('customer_id,balance'),
@@ -65,6 +65,10 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
     supabase.from('warehouses').select('id,code,name,address'),
     supabase.from('sale_items').select('sale_id,quantity'),
     supabase.from('bank_transfer_configs').select('config_key,bank_id,bank_name,account_no,account_name,qr_template,transfer_prefix,is_active').eq('config_key','DEFAULT').maybeSingle(),
+    supabase.from('document_print_configs')
+      .select('document_key,brand_name,title,header_note,paper_size,footer_text,show_customer_phone,show_warehouse,show_sku,show_variant,show_qr,show_signature,show_invoice_details,is_active')
+      .eq('document_key','DEBT_RECEIPT')
+      .maybeSingle(),
   ])
 
   const customers=(customersRes.data??[]) as any[]
@@ -265,6 +269,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
             id:row.id,code:row.code,time:fmtDate(row.time),total:row.total,paid:row.paid,debt:row.debt,warehouse:row.warehouse,items:row.itemRows,
           }))}
           bankConfig={bankConfig}
+          printConfig={(printConfigResult.data??null) as any}
         />
       </aside>}
 
