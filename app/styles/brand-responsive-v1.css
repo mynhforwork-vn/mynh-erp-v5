@@ -7166,3 +7166,174 @@ body{
     grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
   }
 }
+
+
+/* =====================================================================
+   MYNH ERP — Post-KPI Slidebar Height Contract V1
+   Desktop panels live only in the workspace below KPI.
+   ===================================================================== */
+@media(min-width:901px){
+  .brand-shell-v1 .system-slidebar-v1{
+    display:flex!important;
+    flex-direction:column!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+
+  /* Tracking: KPI/control stay full width; HUB list + panel share remaining height. */
+  .brand-shell-v1 .tracking-screen-v2.with-context-order-panel{
+    padding-right:0!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace{
+    flex:1 1 auto!important;
+    min-width:0!important;
+    min-height:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:8px!important;
+    align-items:stretch!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace>.tracking-hub-stack-v2{
+    min-width:0!important;
+    min-height:0!important;
+    overflow:auto!important;
+    padding-right:0!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace>.system-slidebar-v1{
+    position:relative!important;
+    inset:auto!important;
+    z-index:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    align-self:stretch!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+
+  /* Warehouse history: toolbar/table are left lane; panel starts at KPI bottom. */
+  .brand-shell-v1 .whx-history-page.with-context-panel{
+    padding-right:0!important;
+  }
+  .brand-shell-v1 .whx-history-workspace{
+    flex:1 1 auto!important;
+    min-width:0!important;
+    min-height:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:8px!important;
+    align-items:stretch!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .whx-history-workspace.with-panel{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+  }
+  .brand-shell-v1 .whx-history-main{
+    min-width:0!important;
+    min-height:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .whx-history-main>.whx-toolbar{
+    flex:0 0 auto!important;
+  }
+  .brand-shell-v1 .whx-history-main>.whx-table-card{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .whx-history-main>.whx-table-card>.whx-table-scroll{
+    min-height:0!important;
+    overflow:auto!important;
+  }
+  .brand-shell-v1 .whx-history-workspace>.system-slidebar-v1{
+    position:relative!important;
+    inset:auto!important;
+    z-index:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    align-self:stretch!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+
+  /* Finance settlement: KPI remains full width; content + panel begin below it. */
+  .brand-shell-v1 .finance-settlement-main{
+    min-height:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .finance-settlement-workspace{
+    flex:1 1 auto!important;
+    min-width:0!important;
+    min-height:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:8px!important;
+    align-items:stretch!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .finance-settlement-workspace.with-panel{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+  }
+  .brand-shell-v1 .finance-settlement-content{
+    min-width:0!important;
+    min-height:0!important;
+    overflow:auto!important;
+  }
+  .brand-shell-v1 .finance-settlement-workspace>.system-slidebar-v1{
+    position:relative!important;
+    inset:auto!important;
+    top:auto!important;
+    z-index:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    align-self:stretch!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+
+  /* Existing in-layout modules must also use only their post-KPI workspace height. */
+  .brand-shell-v1 :is(
+    .order-workspace,
+    .account-workspace,
+    .warehouse-intake-layout,
+    .whx-stock-layout,
+    .sales-history-workspace,
+    .customer-demo-workspace,
+    .debt-demo-workspace,
+    .finance-ledger-layout
+  )>.system-slidebar-v1{
+    top:auto!important;
+    bottom:auto!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    align-self:stretch!important;
+  }
+}
+
+@media(max-width:1440px) and (min-width:901px){
+  .brand-shell-v1 .tracking-content-workspace.with-panel,
+  .brand-shell-v1 .whx-history-workspace.with-panel,
+  .brand-shell-v1 .finance-settlement-workspace.with-panel{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+  }
+}
