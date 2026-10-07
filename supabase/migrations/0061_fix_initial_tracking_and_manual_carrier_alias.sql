@@ -79,8 +79,7 @@ revoke all on function public.schedule_initial_tracking()
 from public,anon,authenticated;
 grant execute on function public.schedule_initial_tracking() to service_role;
 
-drop trigger if exists trg_schedule_initial_tracking on public.shipments;
-create trigger trg_schedule_initial_tracking
+create or replace trigger trg_schedule_initial_tracking
 before insert or update of tracking_number,carrier,tracking_enabled,is_active,current_tracking_status
 on public.shipments
 for each row
