@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SystemSlidebar } from '@/components/system-slidebar'
 import { formatMoney } from '@/lib/format'
 import { requireUser } from '@/lib/supabase/auth'
 import { archiveSalesCustomerForm,createSalesCustomer,restoreSalesCustomerForm,updateSalesCustomerForm } from '@/lib/actions/sales'
@@ -263,7 +264,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
         />
       </section>
 
-      {selected&&collectMode&&<aside className="customer-demo-panel customer-collect-context mynh-slide-panel">
+      {selected&&collectMode&&<SystemSlidebar className="customer-demo-panel customer-collect-context">
         <div className="sales-detail-panel-head context-stack-head">
           <Link className="context-stack-back" href={href({customer:selected.id,tab:'debt',mode:null,sale:null,saleTab:null})} aria-label="Quay lại">←</Link>
           <div className="context-stack-title">
@@ -283,7 +284,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
           bankConfig={bankConfig}
           printConfig={(printConfigResult.data??null) as any}
         />
-      </aside>}
+      </SystemSlidebar>}
 
       {selected&&contextSale&&<ContextSalePanel
         sale={contextSale}
@@ -305,7 +306,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
         openModuleHref={'/sales/history?sale='+contextSale.id}
       />}
 
-      {selected&&!contextSale&&!collectMode&&<aside className="customer-demo-panel mynh-slide-panel">
+      {selected&&!contextSale&&!collectMode&&<SystemSlidebar className="customer-demo-panel">
         <div className="sales-detail-panel-head">
           <div>
             <span className="module-eyebrow">KHÁCH HÀNG</span>
@@ -398,7 +399,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
             {selectedPayments.slice().reverse().map((row:any)=><div key={'pay-'+row.id}><i></i><span>{fmtDate(row.paid_at)}</span><b>Thu công nợ</b><small>{row.receipt_code??'PTN'} · {formatMoney(Number(row.amount??0))} · {row.payment_method}</small></div>)}
           </div>}
         </div>
-      </aside>}
+      </SystemSlidebar>}
     </div>
   </div>
 }
