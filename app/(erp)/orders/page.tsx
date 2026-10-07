@@ -449,7 +449,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       </section>
 
       {createMode&&!destinationSettingsMode&&
-        <aside className="detail-panel order-panel">
+        <aside className="detail-panel order-panel mynh-slide-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Tạo đơn mới</h2></div>
             <Link className="close" href={listHref({mode:null})}>×</Link>
@@ -470,7 +470,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       }
 
       {detail&&editMode&&!destinationSettingsMode&&
-        <aside className="detail-panel order-panel">
+        <aside className="detail-panel order-panel mynh-slide-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Sửa {detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
             <Link className="close" href={listHref({order:detail.id,mode:null})}>×</Link>
@@ -512,7 +512,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       }
 
       {detail&&!editMode&&!destinationSettingsMode&&
-        <aside className="detail-panel">
+        <aside className="detail-panel mynh-slide-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT ĐƠN</span><h2>{detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
             <Link className="close" href={listHref({order:null,tab:null,mode:null})}>×</Link>
