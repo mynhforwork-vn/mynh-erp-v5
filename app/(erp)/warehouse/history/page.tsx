@@ -279,6 +279,7 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
         baseQuery={href({tx:null,sale:null,saleTab:null,order:null,orderTab:null}).split('?')[1]??''}
       />
     </div>
+      </section>
 
     {selectedTx&&contextSale&&<ContextSalePanel
       sale={contextSale}
