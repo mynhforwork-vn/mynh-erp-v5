@@ -18,7 +18,7 @@ export default function LoginPage() {
 
   return <div className="login-wrap">
     <form className="login-card" onSubmit={submit}>
-      <div className="brand-mark">M</div>
+      <div className="brand-mark">MY</div>
       <h1>MYNH ERP</h1>
       <p className="muted">Hệ thống vận hành Shopee</p>
       <label>Thư điện tử<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="email" /></label>
