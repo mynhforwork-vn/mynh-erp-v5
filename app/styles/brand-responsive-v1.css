@@ -1040,3 +1040,345 @@ body{
     left:4px!important;
   }
 }
+
+/* =====================================================================
+   MYNH Brand refinement + universal slide panel contract
+   ===================================================================== */
+
+/* Professional geometric MYNH mark */
+.brand-shell-v1 .brand .brand-mark,
+.login-card .brand-mark{
+  padding:0!important;
+  overflow:visible!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.mynh-logo-mark{
+  width:100%!important;
+  height:100%!important;
+  display:block!important;
+}
+.mynh-logo-base{
+  fill:#F5FAFE;
+  stroke:#B8CEE1;
+  stroke-width:1;
+}
+.mynh-logo-m{fill:#214F91}
+.mynh-logo-accent{fill:#12858A}
+.brand-shell-v1 .brand .brand-mark:hover .mynh-logo-base{fill:#FFFFFF}
+.login-card .mynh-logo-mark{
+  filter:drop-shadow(0 4px 10px rgba(33,79,145,.10));
+}
+
+/* One width + one rhythm for every operational slide panel. */
+:root{
+  --mynh-panel-width:400px;
+  --mynh-panel-head-height:58px;
+  --mynh-panel-tabs-height:34px;
+  --mynh-panel-gap:8px;
+}
+
+.brand-shell-v1 .mynh-slide-panel{
+  box-sizing:border-box!important;
+  width:var(--mynh-panel-width)!important;
+  min-width:0!important;
+  max-width:var(--mynh-panel-width)!important;
+  min-height:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+  border:1px solid var(--mynh-line-strong)!important;
+  border-radius:7px!important;
+  background:#fff!important;
+  box-shadow:0 2px 8px rgba(18,38,57,.055)!important;
+}
+
+/* Parent workspaces must reserve exactly the same panel width. */
+.brand-shell-v1 .order-screen .split-view.with-panel,
+.brand-shell-v1 .account-screen .split-view.with-panel,
+.brand-shell-v1 .sales-history-screen.with-panel .sales-history-workspace,
+.brand-shell-v1 .sales-customers-demo.with-panel .customer-demo-workspace,
+.brand-shell-v1 .sales-debt-demo.with-panel .debt-demo-workspace,
+.brand-shell-v1 .warehouse-intake-layout.with-panel,
+.brand-shell-v1 .whx-intake-layout.with-panel,
+.brand-shell-v1 .whx-stock-layout.with-panel{
+  grid-template-columns:minmax(0,1fr) var(--mynh-panel-width)!important;
+  gap:var(--mynh-panel-gap)!important;
+}
+
+/* Embedded panels fill only their workspace height; floating panels use viewport. */
+.brand-shell-v1 .mynh-slide-panel:not(.floating){
+  position:relative!important;
+  top:auto!important;
+  align-self:stretch!important;
+  height:100%!important;
+  max-height:none!important;
+}
+.brand-shell-v1 .mynh-slide-panel.floating{
+  position:fixed!important;
+  top:16px!important;
+  right:18px!important;
+  bottom:16px!important;
+  left:auto!important;
+  height:auto!important;
+  max-height:none!important;
+  z-index:700!important;
+  box-shadow:var(--mynh-shadow-panel)!important;
+}
+
+/* Shared header contract across Orders / User / Sales / Debt / Finance / Warehouse. */
+.brand-shell-v1 .mynh-slide-panel>.panel-head,
+.brand-shell-v1 .mynh-slide-panel>.sales-history-panel-head,
+.brand-shell-v1 .mynh-slide-panel>.sales-detail-panel-head,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head-v2{
+  box-sizing:border-box!important;
+  flex:0 0 var(--mynh-panel-head-height)!important;
+  min-height:var(--mynh-panel-head-height)!important;
+  max-height:var(--mynh-panel-head-height)!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  padding:9px 11px!important;
+  overflow:hidden!important;
+  border-bottom:1px solid var(--mynh-line)!important;
+  background:linear-gradient(180deg,#FFFFFF 0%,#F9FBFC 100%)!important;
+}
+.brand-shell-v1 .mynh-slide-panel>.panel-head>div,
+.brand-shell-v1 .mynh-slide-panel>.sales-history-panel-head>div,
+.brand-shell-v1 .mynh-slide-panel>.sales-detail-panel-head>div,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head>div,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head-v2>div{
+  min-width:0!important;
+}
+.brand-shell-v1 .mynh-slide-panel>.panel-head h2,
+.brand-shell-v1 .mynh-slide-panel>.sales-history-panel-head h2,
+.brand-shell-v1 .mynh-slide-panel>.sales-detail-panel-head h2,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head h2,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head-v2 h2{
+  max-width:300px!important;
+  overflow:hidden!important;
+  margin:1px 0 0!important;
+  color:var(--mynh-ink-900)!important;
+  font-size:14px!important;
+  line-height:1.2!important;
+  font-weight:780!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.brand-shell-v1 .mynh-slide-panel>.panel-head p,
+.brand-shell-v1 .mynh-slide-panel>.sales-history-panel-head p,
+.brand-shell-v1 .mynh-slide-panel>.sales-detail-panel-head p,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head p,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head-v2 p,
+.brand-shell-v1 .mynh-slide-panel .context-stack-title small{
+  max-width:300px!important;
+  overflow:hidden!important;
+  margin:2px 0 0!important;
+  color:var(--mynh-ink-500)!important;
+  font-size:8px!important;
+  line-height:1.2!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.brand-shell-v1 .mynh-slide-panel .eyebrow,
+.brand-shell-v1 .mynh-slide-panel .module-eyebrow{
+  color:var(--mynh-teal-700)!important;
+  font-size:7.5px!important;
+  font-weight:820!important;
+  letter-spacing:.085em!important;
+}
+
+/* Shared tabs — exact same height and horizontal behavior. */
+.brand-shell-v1 .mynh-slide-panel>.panel-tabs,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-tabs{
+  box-sizing:border-box!important;
+  flex:0 0 var(--mynh-panel-tabs-height)!important;
+  min-height:var(--mynh-panel-tabs-height)!important;
+  height:var(--mynh-panel-tabs-height)!important;
+  display:flex!important;
+  align-items:stretch!important;
+  gap:15px!important;
+  padding:0 11px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  scrollbar-width:none!important;
+  border-top:0!important;
+  border-bottom:1px solid var(--mynh-line)!important;
+  background:#fff!important;
+}
+.brand-shell-v1 .mynh-slide-panel>.panel-tabs::-webkit-scrollbar,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-tabs::-webkit-scrollbar{display:none!important}
+.brand-shell-v1 .mynh-slide-panel>.panel-tabs a,
+.brand-shell-v1 .mynh-slide-panel>.panel-tabs button,
+.brand-shell-v1 .mynh-slide-panel>.panel-tabs span,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-tabs button{
+  flex:0 0 auto!important;
+  height:var(--mynh-panel-tabs-height)!important;
+  display:flex!important;
+  align-items:center!important;
+  padding:0!important;
+  border:0!important;
+  border-bottom:2px solid transparent!important;
+  background:transparent!important;
+  color:#748496!important;
+  font-size:8.8px!important;
+  line-height:1!important;
+  font-weight:700!important;
+  white-space:nowrap!important;
+}
+.brand-shell-v1 .mynh-slide-panel>.panel-tabs .active,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-tabs .active{
+  border-bottom-color:var(--mynh-cobalt-600)!important;
+  color:var(--mynh-cobalt-700)!important;
+}
+
+/* Shared scroll body. */
+.brand-shell-v1 .mynh-slide-panel>.panel-scroll,
+.brand-shell-v1 .mynh-slide-panel>.sales-history-panel-scroll,
+.brand-shell-v1 .mynh-slide-panel>.customer-demo-panel-scroll,
+.brand-shell-v1 .mynh-slide-panel>.debt-demo-panel-scroll,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-scroll,
+.brand-shell-v1 .mynh-slide-panel>form.panel-scroll{
+  flex:1 1 auto!important;
+  min-width:0!important;
+  min-height:0!important;
+  max-width:100%!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain!important;
+  padding:10px 11px 16px!important;
+  scrollbar-gutter:stable!important;
+  scrollbar-width:thin!important;
+  scrollbar-color:#BAC6D1 #F4F7F9!important;
+}
+
+/* Sales actions/collection flows stay inside the same panel shell. */
+.brand-shell-v1 .mynh-slide-panel>.sales-history-actions{
+  flex:0 0 auto!important;
+  min-height:36px!important;
+  padding:5px 10px!important;
+  border-bottom:1px solid #EEF2F5!important;
+  background:#FBFCFD!important;
+}
+.brand-shell-v1 .mynh-slide-panel.customer-collect-context .debt-collect-form,
+.brand-shell-v1 .mynh-slide-panel.collect-mode .debt-collect-form{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow:auto!important;
+}
+
+/* Close/back controls are identical. */
+.brand-shell-v1 .mynh-slide-panel .close,
+.brand-shell-v1 .mynh-slide-panel .panel-close,
+.brand-shell-v1 .mynh-slide-panel .context-stack-back{
+  flex:0 0 28px!important;
+  width:28px!important;
+  height:28px!important;
+  min-width:28px!important;
+  min-height:28px!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  border:1px solid var(--mynh-line)!important;
+  border-radius:5px!important;
+  background:#fff!important;
+  color:#617387!important;
+  font-size:15px!important;
+  line-height:1!important;
+}
+.brand-shell-v1 .mynh-slide-panel .context-stack-back{
+  color:var(--mynh-cobalt-700)!important;
+}
+
+/* Notification drawer follows the same desktop width. */
+.brand-shell-v1 .app-alert-panel-v2{
+  width:var(--mynh-panel-width)!important;
+  max-width:var(--mynh-panel-width)!important;
+}
+
+/* 1440×900 target */
+@media(max-width:1440px) and (min-width:1181px){
+  :root{--mynh-panel-width:392px}
+}
+
+/* Compact desktop */
+@media(max-width:1180px) and (min-width:901px){
+  :root{--mynh-panel-width:370px}
+  .brand-shell-v1 .mynh-slide-panel>.panel-head h2,
+  .brand-shell-v1 .mynh-slide-panel>.sales-history-panel-head h2,
+  .brand-shell-v1 .mynh-slide-panel>.sales-detail-panel-head h2,
+  .brand-shell-v1 .mynh-slide-panel>.whx-panel-head h2,
+  .brand-shell-v1 .mynh-slide-panel>.whx-panel-head-v2 h2{
+    max-width:270px!important;
+  }
+}
+
+/* Mobile: every slide panel becomes the same full-screen drawer. */
+@media(max-width:900px){
+  .brand-shell-v1 .order-screen .split-view.with-panel,
+  .brand-shell-v1 .account-screen .split-view.with-panel,
+  .brand-shell-v1 .sales-history-screen.with-panel .sales-history-workspace,
+  .brand-shell-v1 .sales-customers-demo.with-panel .customer-demo-workspace,
+  .brand-shell-v1 .sales-debt-demo.with-panel .debt-demo-workspace,
+  .brand-shell-v1 .warehouse-intake-layout.with-panel,
+  .brand-shell-v1 .whx-intake-layout.with-panel,
+  .brand-shell-v1 .whx-stock-layout.with-panel{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+
+  .brand-shell-v1 .mynh-slide-panel,
+  .brand-shell-v1 .mynh-slide-panel:not(.floating),
+  .brand-shell-v1 .mynh-slide-panel.floating{
+    position:fixed!important;
+    z-index:1000!important;
+    top:66px!important;
+    right:7px!important;
+    bottom:7px!important;
+    left:7px!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:auto!important;
+    max-height:none!important;
+    align-self:auto!important;
+    border-radius:7px!important;
+    box-shadow:0 16px 42px rgba(15,32,49,.24)!important;
+  }
+  .brand-shell-v1 .mynh-slide-panel>.panel-head,
+  .brand-shell-v1 .mynh-slide-panel>.sales-history-panel-head,
+  .brand-shell-v1 .mynh-slide-panel>.sales-detail-panel-head,
+  .brand-shell-v1 .mynh-slide-panel>.whx-panel-head,
+  .brand-shell-v1 .mynh-slide-panel>.whx-panel-head-v2{
+    flex-basis:56px!important;
+    min-height:56px!important;
+    max-height:56px!important;
+    padding:8px 9px!important;
+  }
+  .brand-shell-v1 .mynh-slide-panel>.panel-head h2,
+  .brand-shell-v1 .mynh-slide-panel>.sales-history-panel-head h2,
+  .brand-shell-v1 .mynh-slide-panel>.sales-detail-panel-head h2,
+  .brand-shell-v1 .mynh-slide-panel>.whx-panel-head h2,
+  .brand-shell-v1 .mynh-slide-panel>.whx-panel-head-v2 h2{
+    max-width:calc(100vw - 120px)!important;
+    font-size:13px!important;
+  }
+  .brand-shell-v1 .app-alert-panel-v2{
+    width:auto!important;
+    max-width:none!important;
+  }
+}
+
+@media(max-width:520px){
+  .brand-shell-v1 .mynh-slide-panel,
+  .brand-shell-v1 .mynh-slide-panel:not(.floating),
+  .brand-shell-v1 .mynh-slide-panel.floating{
+    top:62px!important;
+    right:4px!important;
+    bottom:4px!important;
+    left:4px!important;
+  }
+}
+
