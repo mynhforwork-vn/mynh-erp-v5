@@ -49,11 +49,10 @@ async function readSlidebarContract(selector){
 }
 function slidebarPass(m){
   return Boolean(m)
-    &&m.position==='fixed'
-    &&m.width>=410&&m.width<=430
-    &&m.top<=20
-    &&m.bottom>=m.viewportH-20
-    &&m.right>=m.viewportW-24
+    &&m.position!=='fixed'
+    &&m.width>=380&&m.width<=430
+    &&m.left>=0
+    &&m.right<=m.viewportW+2
 }
 
 const browser=await chromium.launch({headless:true})
@@ -475,7 +474,7 @@ if(await trackingOrderLink.count()){
   const trackingNav=await followLink(trackingOrderLink,{waitSelector:'aside.context-order-panel'})
   recordInteraction('Tracking contextual Order opens',await page.locator('aside.context-order-panel').count()>0,{href:trackingNav.href})
   const trackingPanelMetrics=await readSlidebarContract('aside.context-order-panel')
-  recordInteraction('Tracking contextual Order uses system slidebar contract',slidebarPass(trackingPanelMetrics),trackingPanelMetrics??{})
+  recordInteraction('Tracking contextual Order uses main in-layout slidebar contract',slidebarPass(trackingPanelMetrics),trackingPanelMetrics??{})
   const historyTab=page.locator('aside.context-order-panel .context-order-tabs').getByRole('link',{name:'Lịch sử'}).first()
   if(await historyTab.count()){
     await followLink(historyTab,{waitSelector:'aside.context-order-panel'})
@@ -491,7 +490,7 @@ if(await intakeRow.count()){
   await intakeRow.click();await settle()
   recordInteraction('Warehouse intake detail panel opens',await page.locator('aside.warehouse-intake-panel').count()>0)
   const intakePanelMetrics=await readSlidebarContract('aside.warehouse-intake-panel')
-  recordInteraction('Warehouse intake uses system slidebar contract',slidebarPass(intakePanelMetrics),intakePanelMetrics??{})
+  recordInteraction('Warehouse intake uses main in-layout slidebar contract',slidebarPass(intakePanelMetrics),intakePanelMetrics??{})
   for(const tabName of ['Thông tin','Lịch sử','Sản phẩm']){
     const tab=page.locator('aside.warehouse-intake-panel .whx-panel-tabs').getByRole('button',{name:new RegExp('^'+tabName)}).first()
     if(await tab.count()){
@@ -510,7 +509,7 @@ if(await stockRow.count()){
   await stockRow.click();await settle(150)
   recordInteraction('Inventory SKU detail panel opens',await page.locator('aside.whx-detail-panel').count()>0)
   const inventoryPanelMetrics=await readSlidebarContract('aside.whx-detail-panel')
-  recordInteraction('Inventory SKU uses system slidebar contract',slidebarPass(inventoryPanelMetrics),inventoryPanelMetrics??{})
+  recordInteraction('Inventory SKU uses main in-layout slidebar contract',slidebarPass(inventoryPanelMetrics),inventoryPanelMetrics??{})
   const history=page.locator('aside.whx-detail-panel .whx-panel-tabs').getByRole('button',{name:/^Lịch sử/}).first()
   if(await history.count()){
     await history.click();await settle(150)
@@ -728,7 +727,7 @@ for(const label of ['+ Phiếu thu','+ Phiếu chi']){
     await button.click();await settle(100)
     recordInteraction('Finance '+label+' panel opens',await page.locator('aside.finance-panel').count()>0)
     const financePanelMetrics=await readSlidebarContract('aside.finance-panel')
-    recordInteraction('Finance '+label+' uses system slidebar contract',slidebarPass(financePanelMetrics),financePanelMetrics??{})
+    recordInteraction('Finance '+label+' uses main in-layout slidebar contract',slidebarPass(financePanelMetrics),financePanelMetrics??{})
     const moneyTab=page.locator('aside.finance-panel .panel-tabs').getByRole('button',{name:/Chi tiết tiền/}).first()
     if(await moneyTab.count()){
       await moneyTab.click();await settle(80)
