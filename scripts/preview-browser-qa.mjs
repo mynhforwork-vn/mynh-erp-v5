@@ -553,13 +553,24 @@ if(await hubCard.count()){
 }else recordInteraction('Shipper QA HUB fixture available',false,{hub:fixtureHub||null})
 
 await go('/settings')
-recordInteraction('Global In-app alert bell',await page.locator('.app-alert-trigger').count()>0)
-const appAlertTrigger=page.locator('.app-alert-trigger').first()
+recordInteraction('Sidebar notification bell',await page.locator('.sidebar-alert-trigger').count()>0)
+const appAlertTrigger=page.locator('.sidebar-alert-trigger').first()
 if(await appAlertTrigger.count()){
   await appAlertTrigger.click()
-  recordInteraction('Global In-app alert panel opens',await page.locator('.app-alert-panel').count()>0)
-  const alertBackdrop=page.locator('.app-alert-backdrop').first()
+  recordInteraction('Notification slidebar opens',await page.locator('.app-alert-panel-v2').count()>0)
+  recordInteraction('Notification unread/all filters visible',await page.locator('.app-alert-tabs-v2').count()>0)
+  const alertBackdrop=page.locator('.app-alert-backdrop-v2').first()
   if(await alertBackdrop.count())await alertBackdrop.click()
+}
+const accountTrigger=page.locator('.sidebar-account-trigger').first()
+recordInteraction('Compact sidebar account trigger',await accountTrigger.count()>0)
+if(await accountTrigger.count()){
+  await accountTrigger.click()
+  recordInteraction('Sidebar account menu opens',await page.locator('.sidebar-account-popover').count()>0)
+  recordInteraction('Sidebar account menu has password action',await page.locator('.sidebar-account-popover').getByRole('link',{name:'Đổi mật khẩu'}).count()>0)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(150)
+  recordInteraction('Sidebar account menu closes by Esc',await page.locator('.sidebar-account-popover').count()===0)
 }
 const settingsSelectors={
   'Cấu hình vận chuyển':'.shipping-settings-v6',
