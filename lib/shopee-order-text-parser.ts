@@ -90,7 +90,7 @@ function productLink(line:string){
   const md=labelFromMarkdown(line)
   if(!md)return null
   if(!/^https?:\/\/shopee\.vn\//i.test(md.url))return null
-  if(!/\.i\.\d+\.\d+/i.test(md.url))return null
+  if(!/(?:-|\/)i\.\d+\.\d+/i.test(md.url))return null
   if(/^(image|svg|x\d+|phân loại hàng:|phan loai hang:)/i.test(md.label))return null
   return md
 }
