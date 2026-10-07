@@ -7537,3 +7537,59 @@ body{
     max-width:390px!important;
   }
 }
+
+
+/* =====================================================================
+   MYNH ERP — Full Height Operational Data Surfaces V1
+   Fill the remaining desktop workspace without stretching fake data rows.
+   ===================================================================== */
+@media(min-width:901px){
+  .brand-shell-v1 .tracking-content-workspace>.tracking-hub-stack-v2{
+    height:100%!important;
+    min-height:0!important;
+    box-sizing:border-box!important;
+    overflow:auto!important;
+    border:1px solid #D8E1E8!important;
+    border-radius:5px!important;
+    background:#FFFFFF!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace>.tracking-hub-stack-v2>.tracking-hub-card-v2{
+    border-right:0!important;
+    border-left:0!important;
+    border-radius:0!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace>.tracking-hub-stack-v2>.tracking-hub-card-v2:first-child{
+    border-top:0!important;
+  }
+
+  .brand-shell-v1 .warehouse-intake-layout>.whx-intake-main{
+    height:100%!important;
+    min-height:0!important;
+    box-sizing:border-box!important;
+    overflow:auto!important;
+    border:1px solid #D8E1E8!important;
+    border-radius:5px!important;
+    background:#FFFFFF!important;
+  }
+  .brand-shell-v1 .warehouse-intake-layout>.whx-intake-main>.warehouse-receive-card{
+    border-right:0!important;
+    border-left:0!important;
+    border-radius:0!important;
+  }
+  .brand-shell-v1 .warehouse-intake-layout>.whx-intake-main>.warehouse-receive-card:first-child{
+    border-top:0!important;
+  }
+
+  .brand-shell-v1 .whx-history-main,
+  .brand-shell-v1 .sales-history-list,
+  .brand-shell-v1 .customer-demo-list,
+  .brand-shell-v1 .debt-demo-list,
+  .brand-shell-v1 .finance-ledger{
+    height:100%!important;
+    min-height:0!important;
+  }
+
+  .brand-shell-v1 .finance-settlement-main{
+    min-height:0!important;
+  }
+}
