@@ -32,13 +32,15 @@ export function ShippingSettings({
   configs,
   shippers,
   canEdit,
+  initialTab='carriers',
 }:{
   carriers:ShippingCarrierConfig[]
   configs:HubConfig[]
   shippers:Shipper[]
   canEdit:boolean
+  initialTab?:Tab
 }){
-  const [tab,setTab]=useState<Tab>('carriers')
+  const [tab,setTab]=useState<Tab>(initialTab)
 
   return <div className="settings-module-shell shipping-settings-v6">
     <div className="destination-detail-tabs settings-subtabs-v6">
