@@ -84,6 +84,36 @@ async function checkPanel(name,selector,file){
   if(m&&file)await shot(file)
 }
 
+// 0. Tài khoản mua hàng
+await go('/purchase/accounts')
+const accountLink=page.locator('.account-table-card a.table-link').first()
+if(await accountLink.count()){
+  await accountLink.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await page.waitForTimeout(500)
+  const m=await metric('aside.account-detail-panel')
+  push('Tài khoản mua hàng — slidebar dọc bên phải',vertical(m),m??{})
+  await shot('00-account')
+}else push('Tài khoản mua hàng — có dữ liệu mở slidebar',false,{}, {reason:'No account row'})
+
+// 0b. Đơn nhập hàng
+await go('/purchase/orders')
+const orderLink=page.locator('.order-table-card a.table-link').first()
+if(await orderLink.count()){
+  await orderLink.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await page.waitForTimeout(500)
+  const m=await metric('aside.detail-panel')
+  push('Đơn nhập hàng — slidebar dọc bên phải',vertical(m),m??{})
+  await shot('00b-order')
+}else push('Đơn nhập hàng — có dữ liệu mở slidebar',false,{}, {reason:'No order row'})
+
+// 0c. Cảnh báo vận chuyển
+await go('/purchase/tracking')
+const trackingLink=page.locator('.tracking-hub-table a.table-link').first()
+if(await trackingLink.count()){
+  await trackingLink.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await page.waitForTimeout(500)
+  const m=await metric('aside.context-order-panel')
+  push('Cảnh báo vận chuyển — slidebar dọc bên phải',vertical(m),m??{})
+  await shot('00c-tracking')
+}else push('Cảnh báo vận chuyển — có dữ liệu mở slidebar',false,{}, {reason:'No tracking row'})
+
 // 1. Nhập kho
 await go('/warehouse/receive')
 let intake=page.locator('.warehouse-split-table tbody tr').filter({hasText:'QA Warehouse Intake Fixture'}).first()
@@ -191,6 +221,46 @@ const debtLink=page.locator('.debt-demo-table a.table-link').first()
 if(await openLink(debtLink,'aside.debt-demo-panel')){
   await checkPanel('Công nợ — chi tiết slidebar dọc bên phải','aside.debt-demo-panel','13-debt')
 }else push('Công nợ — có dữ liệu mở chi tiết',true,{}, {skipped:true,reason:'No debt row'})
+
+// 5. Lịch sử kho
+await go('/warehouse/history')
+const historyLink=page.locator('.whx-reference-link').first()
+if(await historyLink.count()){
+  await historyLink.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await page.waitForTimeout(500)
+  const m=await metric('aside.whx-history-reference-panel')
+  push('Lịch sử kho — slidebar dọc bên phải',vertical(m),m??{})
+  await shot('05-warehouse-history')
+}else push('Lịch sử kho — có dữ liệu mở slidebar',true,{}, {skipped:true,reason:'No warehouse history row'})
+
+// 6. Lịch sử bán
+await go('/sales/history')
+const saleLink=page.locator('.sales-history-table a.table-link').first()
+if(await saleLink.count()){
+  await saleLink.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await page.waitForTimeout(500)
+  const m=await metric('aside.sales-history-panel')
+  push('Lịch sử bán — slidebar dọc bên phải',vertical(m),m??{})
+  await shot('06-sales-history')
+}else push('Lịch sử bán — có dữ liệu mở slidebar',true,{}, {skipped:true,reason:'No sale row'})
+
+// 7. Khách hàng
+await go('/sales/customers')
+const customerLink=page.locator('.customer-demo-table a.table-link').first()
+if(await customerLink.count()){
+  await customerLink.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await page.waitForTimeout(500)
+  const m=await metric('aside.customer-demo-panel')
+  push('Khách hàng — slidebar dọc bên phải',vertical(m),m??{})
+  await shot('07-customers')
+}else push('Khách hàng — có dữ liệu mở slidebar',true,{}, {skipped:true,reason:'No customer row'})
+
+// 8. Công nợ
+await go('/sales/debt')
+const debtLink=page.locator('.debt-demo-table a.table-link').first()
+if(await debtLink.count()){
+  await debtLink.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await page.waitForTimeout(500)
+  const m=await metric('aside.debt-demo-panel')
+  push('Công nợ — slidebar dọc bên phải',vertical(m),m??{})
+  await shot('08-debt')
+}else push('Công nợ — có dữ liệu mở slidebar',true,{}, {skipped:true,reason:'No debt row'})
 
 const pass=results.every(x=>x.pass)
 const summary={preview:PREVIEW_URL,viewport:{width:1440,height:900},pass,results}
