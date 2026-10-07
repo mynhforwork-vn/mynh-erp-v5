@@ -4,7 +4,6 @@ import { useMemo,useState } from 'react'
 import Link from 'next/link'
 import {
   saveCarrierStatusMapping,
-  saveTrackingProviderConfig,
   saveTrackingRule,
   saveTrackingRuntimeSettings,
   testTrackingConnection,
@@ -25,11 +24,6 @@ type Rule={
   terminal:boolean
   sort_order:number
   is_active:boolean
-}
-type Carrier={carrier_code:string;display_name:string;supports_tracking?:boolean|null;is_active?:boolean|null}
-type Provider={
-  carrier:string;enabled:boolean;adapter_type:string;endpoint_url:string;http_method:string;timeout_ms:number;
-  auth_header_name?:string|null;auth_secret_id?:string|null;
 }
 type Mapping={
   id:string;carrier:string;raw_code:string;raw_name?:string|null;canonical_status:string;
@@ -61,8 +55,6 @@ function timeValue(value:string|undefined,fallback:string){
 export function TrackingSettings({
   runtime,
   rules,
-  carriers,
-  providers,
   mappings,
   unknownRaw,
   canEdit,
@@ -71,8 +63,6 @@ export function TrackingSettings({
 }:{
   runtime:RuntimeSettings|null
   rules:Rule[]
-  carriers:Carrier[]
-  providers:Provider[]
   mappings:Mapping[]
   unknownRaw:UnknownRaw[]
   canEdit:boolean
@@ -82,14 +72,9 @@ export function TrackingSettings({
   const [tab,setTab]=useState<Tab>('operation')
   const [editingMapping,setEditingMapping]=useState<string|null>(null)
 
-  const providerMap=useMemo(()=>new Map(providers.map(x=>[String(x.carrier).toUpperCase(),x])),[providers])
   const canonicalOptions=rules.filter(x=>x.is_active)
   const canonicalMap=useMemo(()=>new Map(rules.map(x=>[x.status_code,x])),[rules])
   const sortedRules=[...rules].sort((a,b)=>a.sort_order-b.sort_order)
-  const trackingCarriers=carriers.filter(x=>x.is_active&&x.supports_tracking)
-  const spxCarrier=trackingCarriers.find(x=>x.carrier_code.toUpperCase()==='SPX')
-  const spxProvider=providerMap.get('SPX')
-  const advancedCarriers=trackingCarriers.filter(x=>x.carrier_code.toUpperCase()!=='SPX')
   const autoStatusCount=sortedRules.filter(x=>!x.terminal&&x.auto_tracking).length
 
   return <div className="tracking-settings tracking-settings-v9">
@@ -141,72 +126,28 @@ export function TrackingSettings({
         </form>
       </section>
 
-      <section className="tracking-source-panel-v7">
-        <div className="tracking-source-main-v7">
-          <div className="tracking-source-id-v7">
-            <span className="carrier-code-badge spx">SPX</span>
-            <div>
-              <b>Nguồn Tracking</b>
-              <span>{spxCarrier?.display_name||'SPX Express'} · SPX Direct</span>
-            </div>
+      <section className="tracking-internal-panel-v10">
+        <div className="tracking-internal-copy-v10">
+          <div>
+            <h3>Tracking nội bộ</h3>
+            <p>MYNH ERP tự xử lý lịch quét, chuẩn hóa trạng thái và lưu hành trình. Không cần chọn nguồn Tracking tại màn vận hành.</p>
           </div>
-          <div className="tracking-source-meta-v7">
-            <span className={'tracking-source-state-v7 '+(spxProvider?.enabled?'on':'')}>
-              {spxProvider?.enabled?'Đã kết nối':'Đang tắt'}
-            </span>
-            <span>GET</span>
-            <span>Timeout 10 giây</span>
-            <span>Không cần API key</span>
-          </div>
+          <span className="tracking-internal-state-v10">Đã kết nối hệ thống</span>
         </div>
 
-        {canEdit&&<form action={testTrackingConnection} className="tracking-source-test-v7">
+        {canEdit&&<form action={testTrackingConnection} className="tracking-internal-test-v10">
           <input type="hidden" name="carrier" value="SPX"/>
-          <input name="tracking_number" placeholder="Nhập MVD SPX để kiểm tra..." required/>
-          <button className="button" type="submit">Test MVD</button>
+          <label className="settings-field">
+            <span>Kiểm tra đồng bộ bằng MVD</span>
+            <input name="tracking_number" placeholder="Nhập MVD SPX..." required/>
+          </label>
+          <button className="button" type="submit">Kiểm tra Tracking</button>
         </form>}
-
-        {canEdit&&advancedCarriers.length>0&&<details className="tracking-advanced-provider-v7">
-          <summary>Nguồn Tracking nâng cao ({advancedCarriers.length})</summary>
-          <div className="provider-settings-list">
-            {advancedCarriers.map(carrier=>{
-              const code=carrier.carrier_code.toUpperCase()
-              const row=providerMap.get(code)
-              return <form action={saveTrackingProviderConfig} className="provider-settings-row provider-settings-row-v7" key={code}>
-                <input type="hidden" name="carrier" value={code}/>
-                <input type="hidden" name="adapter_type" value={row?.adapter_type??'NORMALIZED_JSON'}/>
-                <div className="provider-name">
-                  <b>{code} · {carrier.display_name}</b>
-                  <span>Normalized JSON</span>
-                </div>
-                <label className="settings-field wide">
-                  <span>Endpoint HTTPS</span>
-                  <input name="endpoint_url" type="url" defaultValue={row?.endpoint_url??''} placeholder="https://provider.example/track"/>
-                </label>
-                <label className="settings-field compact">
-                  <span>Method</span>
-                  <select name="http_method" defaultValue={row?.http_method??'GET'}>
-                    <option value="GET">GET</option><option value="POST">POST</option>
-                  </select>
-                </label>
-                <label className="settings-field compact">
-                  <span>Timeout</span>
-                  <input name="timeout_ms" type="number" min="1000" max="30000" step="500" defaultValue={row?.timeout_ms??8000}/>
-                </label>
-                <label className="settings-check">
-                  <input type="checkbox" name="enabled" defaultChecked={Boolean(row?.enabled)}/>
-                  <span>Bật</span>
-                </label>
-                <button className="button small" type="submit">Lưu</button>
-              </form>
-            })}
-          </div>
-        </details>}
       </section>
 
       <div className="tracking-operation-note-v9">
-        <b>Luồng hiện tại:</b>
-        <span>SPX Direct → chuẩn hóa trạng thái → cập nhật shipment → tạo Alert nếu transition thay đổi.</span>
+        <b>Luồng nội bộ:</b>
+        <span>Cron → Tracking Engine → chuẩn hóa trạng thái → cập nhật shipment → tạo Alert khi trạng thái thay đổi.</span>
       </div>
     </div>}
 
