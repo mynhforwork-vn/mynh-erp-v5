@@ -189,8 +189,10 @@ for(const role of ['admin','operator','viewer']){
     for(const path of routes)await go(page,role,path)
 
     await go(page,role,'/settings')
-    const inAppAlertBell=await page.locator('.app-alert-trigger').count()>0
+    const inAppAlertBell=await page.locator('.sidebar-alert-trigger').count()>0
     record('ui',role+' In-app alert bell visibility',inAppAlertBell,{inAppAlertBell})
+    const accountMenu=await page.locator('.sidebar-account-trigger').count()>0
+    record('ui',role+' compact account menu visibility',accountMenu,{accountMenu})
 
     await go(page,role,'/settings?section=access')
     const accessVisible=await page.getByRole('link',{name:'Tài khoản & quyền'}).count()>0

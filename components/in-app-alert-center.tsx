@@ -16,11 +16,22 @@ type AlertGroup={
   created_at:string
   is_read:boolean
 }
+type Filter='unread'|'all'
 
 function BellIcon(){
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M12 3a6 6 0 0 0-6 6v4l-2 3h16l-2-3V9a6 6 0 0 0-6-6Z"/>
     <path d="M10 20h4"/>
+  </svg>
+}
+function CloseIcon(){
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+    <path d="m6 6 12 12M18 6 6 18"/>
+  </svg>
+}
+function CheckIcon(){
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m5 12 4 4L19 6"/>
   </svg>
 }
 
@@ -35,7 +46,7 @@ function when(value:string){
   try{
     return new Intl.DateTimeFormat('vi-VN',{
       timeZone:'Asia/Ho_Chi_Minh',
-      day:'2-digit',month:'2-digit',year:'numeric',
+      day:'2-digit',month:'2-digit',
       hour:'2-digit',minute:'2-digit',
     }).format(new Date(value))
   }catch{return value}
@@ -44,6 +55,7 @@ function when(value:string){
 export function InAppAlertCenter(){
   const router=useRouter()
   const [open,setOpen]=useState(false)
+  const [filter,setFilter]=useState<Filter>('unread')
   const [alerts,setAlerts]=useState<AlertGroup[]>([])
   const [loading,setLoading]=useState(true)
   const timer=useRef<ReturnType<typeof setInterval>|null>(null)
@@ -73,6 +85,10 @@ export function InAppAlertCenter(){
   },[open])
 
   const unread=useMemo(()=>alerts.filter(x=>!x.is_read).length,[alerts])
+  const visible=useMemo(
+    ()=>filter==='unread'?alerts.filter(x=>!x.is_read):alerts,
+    [alerts,filter],
+  )
 
   async function mark(ids:string[]){
     if(!ids.length)return
@@ -109,59 +125,78 @@ export function InAppAlertCenter(){
   return <>
     <button
       type="button"
-      className={'app-alert-trigger'+(unread?' has-unread':'')}
+      className={'sidebar-alert-trigger'+(unread?' has-unread':'')}
       aria-label={'Thông báo'+(unread?' · '+unread+' chưa đọc':'')}
       onClick={()=>setOpen(true)}
     >
       <BellIcon/>
-      {unread>0&&<span className="app-alert-badge">{unread>99?'99+':unread}</span>}
+      {unread>0&&<span className="sidebar-alert-badge">{unread>99?'99+':unread}</span>}
     </button>
 
     {open&&<>
-      <button className="app-alert-backdrop" aria-label="Đóng thông báo" onClick={()=>setOpen(false)}/>
-      <aside className="app-alert-panel" aria-label="Thông báo trong ứng dụng">
-        <header className="app-alert-panel-head">
-          <div>
-            <span>THÔNG BÁO</span>
-            <h2>Cảnh báo vận chuyển</h2>
+      <button className="app-alert-backdrop app-alert-backdrop-v2" aria-label="Đóng thông báo" onClick={()=>setOpen(false)}/>
+      <aside className="app-alert-panel app-alert-panel-v2" aria-label="Thông báo trong ứng dụng">
+        <header className="app-alert-panel-head-v2">
+          <div className="app-alert-panel-title-v2">
+            <span className="app-alert-panel-icon-v2"><BellIcon/></span>
+            <div>
+              <h2>Thông báo</h2>
+              <p>Cảnh báo vận chuyển từ MYNH ERP</p>
+            </div>
           </div>
-          <div className="app-alert-panel-actions">
-            {unread>0&&<button type="button" onClick={markAll}>Đọc tất cả</button>}
-            <button type="button" className="app-alert-close" onClick={()=>setOpen(false)}>×</button>
+          <div className="app-alert-panel-actions-v2">
+            {unread>0&&<button type="button" className="app-alert-mark-all-v2" onClick={markAll}>
+              <CheckIcon/><span>Đọc tất cả</span>
+            </button>}
+            <button type="button" className="app-alert-close-v2" onClick={()=>setOpen(false)} aria-label="Đóng"><CloseIcon/></button>
           </div>
         </header>
 
-        <div className="app-alert-list">
+        <div className="app-alert-tabs-v2">
+          <button type="button" className={filter==='unread'?'active':''} onClick={()=>setFilter('unread')}>
+            Chưa đọc <span>{unread}</span>
+          </button>
+          <button type="button" className={filter==='all'?'active':''} onClick={()=>setFilter('all')}>
+            Tất cả <span>{alerts.length}</span>
+          </button>
+        </div>
+
+        <div className="app-alert-list app-alert-list-v2">
           {loading
-            ? <div className="app-alert-empty">Đang tải thông báo…</div>
-            : !alerts.length
-              ? <div className="app-alert-empty">Chưa có cảnh báo vận chuyển.</div>
-              : alerts.map((row,index)=><button
+            ? <div className="app-alert-empty app-alert-empty-v2">Đang tải thông báo…</div>
+            : !visible.length
+              ? <div className="app-alert-empty app-alert-empty-v2">
+                  <span className="app-alert-empty-icon-v2"><CheckIcon/></span>
+                  <b>{filter==='unread'?'Không có thông báo chưa đọc':'Chưa có thông báo'}</b>
+                  <small>{filter==='unread'?'Bạn đã xử lý hết cảnh báo hiện tại.':'Cảnh báo vận chuyển mới sẽ xuất hiện tại đây.'}</small>
+                </div>
+              : visible.map((row,index)=><button
                   type="button"
                   onClick={()=>openAlert(row)}
-                  className={'app-alert-row '+tone(row.alert_type)+(row.is_read?' read':' unread')}
+                  className={'app-alert-row app-alert-row-v2 '+tone(row.alert_type)+(row.is_read?' read':' unread')}
                   key={row.alert_type+'-'+row.created_at+'-'+index}
                 >
-                  <i className="app-alert-dot"/>
-                  <div className="app-alert-row-main">
-                    <div className="app-alert-row-title">
+                  <span className={'app-alert-type-mark-v2 '+tone(row.alert_type)}/>
+                  <div className="app-alert-row-main-v2">
+                    <div className="app-alert-row-title-v2">
                       <b>{row.label}</b>
-                      {Number(row.alert_count)>1&&<span>{row.alert_count} đơn</span>}
-                    </div>
-                    <div className="app-alert-row-orders">
-                      {(row.order_codes??[]).slice(0,3).filter(Boolean).join(' · ')||'Đơn hàng'}
-                      {Number(row.alert_count)>3&&' · +'+(Number(row.alert_count)-3)}
-                    </div>
-                    <div className="app-alert-row-meta">
-                      <span>{row.destination_hub||'Chưa xác định HUB'}</span>
                       <time>{when(row.created_at)}</time>
+                    </div>
+                    <div className="app-alert-row-order-v2">
+                      {(row.order_codes??[]).slice(0,2).filter(Boolean).join(' · ')||'Đơn hàng'}
+                      {Number(row.alert_count)>2&&' · +'+(Number(row.alert_count)-2)}
+                    </div>
+                    <div className="app-alert-row-meta-v2">
+                      <span>{row.destination_hub||'Chưa xác định HUB'}</span>
+                      {Number(row.alert_count)>1&&<em>{row.alert_count} đơn</em>}
                     </div>
                     {row.reason_summary&&<small>{row.reason_summary}</small>}
                   </div>
+                  {!row.is_read&&<span className="app-alert-unread-dot-v2"/>}
                 </button>)}
         </div>
 
-        <footer className="app-alert-panel-foot">
+        <footer className="app-alert-panel-foot-v2">
           <button type="button" onClick={()=>{
             setOpen(false)
             router.push('/purchase/tracking')
