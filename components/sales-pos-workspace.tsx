@@ -610,6 +610,7 @@ export function SalesPOSWorkspace({
           type="button"
           className={customerId===row.id?'active':''}
           key={row.id}
+          data-customer-id={row.id}
           onClick={()=>{setCustomerId(row.id);setCreateCustomerOpen(false)}}
         >
           <span><b>{row.name}</b><small>{[row.phone,row.address].filter(Boolean).join(' · ')||'Chưa có thông tin liên hệ'}</small></span>
