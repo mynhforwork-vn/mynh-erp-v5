@@ -54,6 +54,29 @@ function slidebarPass(m){
     &&m.left>=0
     &&m.right<=m.viewportW+2
 }
+async function readPostKpiContract(panelSelector,kpiSelector,workspaceSelector){
+  return page.evaluate(({panelSelector,kpiSelector,workspaceSelector})=>{
+    const panel=document.querySelector(panelSelector)
+    const kpi=document.querySelector(kpiSelector)
+    const workspace=document.querySelector(workspaceSelector)
+    if(!panel||!kpi||!workspace)return null
+    const pr=panel.getBoundingClientRect(),kr=kpi.getBoundingClientRect(),wr=workspace.getBoundingClientRect()
+    return {
+      panelTop:pr.top,panelBottom:pr.bottom,panelHeight:pr.height,
+      kpiBottom:kr.bottom,workspaceTop:wr.top,workspaceBottom:wr.bottom,workspaceHeight:wr.height,
+      position:getComputedStyle(panel).position,
+    }
+  },{panelSelector,kpiSelector,workspaceSelector}).catch(()=>null)
+}
+function postKpiPass(m){
+  return Boolean(m)
+    &&m.position!=='fixed'
+    &&m.panelTop>=m.kpiBottom-2
+    &&Math.abs(m.panelTop-m.workspaceTop)<=4
+    &&m.panelBottom<=m.workspaceBottom+4
+    &&m.panelHeight<=m.workspaceHeight+4
+    &&m.panelHeight>=120
+}
 
 const browser=await chromium.launch({headless:true})
 
@@ -475,6 +498,8 @@ if(await trackingOrderLink.count()){
   recordInteraction('Tracking contextual Order opens',await page.locator('aside.context-order-panel').count()>0,{href:trackingNav.href})
   const trackingPanelMetrics=await readSlidebarContract('aside.context-order-panel')
   recordInteraction('Tracking contextual Order uses main in-layout slidebar contract',slidebarPass(trackingPanelMetrics),trackingPanelMetrics??{})
+  const trackingPostKpi=await readPostKpiContract('aside.context-order-panel','.tracking-status-strip-v2','.tracking-content-workspace')
+  recordInteraction('Tracking slidebar stays below KPI',postKpiPass(trackingPostKpi),trackingPostKpi??{})
   const historyTab=page.locator('aside.context-order-panel .context-order-tabs').getByRole('link',{name:'Lịch sử'}).first()
   if(await historyTab.count()){
     await followLink(historyTab,{waitSelector:'aside.context-order-panel'})
@@ -491,6 +516,8 @@ if(await intakeRow.count()){
   recordInteraction('Warehouse intake detail panel opens',await page.locator('aside.warehouse-intake-panel').count()>0)
   const intakePanelMetrics=await readSlidebarContract('aside.warehouse-intake-panel')
   recordInteraction('Warehouse intake uses main in-layout slidebar contract',slidebarPass(intakePanelMetrics),intakePanelMetrics??{})
+  const intakePostKpi=await readPostKpiContract('aside.warehouse-intake-panel','.tracking-status-strip-v2','.warehouse-intake-layout')
+  recordInteraction('Warehouse intake slidebar stays below KPI',postKpiPass(intakePostKpi),intakePostKpi??{})
   for(const tabName of ['Thông tin','Lịch sử','Sản phẩm']){
     const tab=page.locator('aside.warehouse-intake-panel .whx-panel-tabs').getByRole('button',{name:new RegExp('^'+tabName)}).first()
     if(await tab.count()){
@@ -510,6 +537,8 @@ if(await stockRow.count()){
   recordInteraction('Inventory SKU detail panel opens',await page.locator('aside.whx-detail-panel').count()>0)
   const inventoryPanelMetrics=await readSlidebarContract('aside.whx-detail-panel')
   recordInteraction('Inventory SKU uses main in-layout slidebar contract',slidebarPass(inventoryPanelMetrics),inventoryPanelMetrics??{})
+  const inventoryPostKpi=await readPostKpiContract('aside.whx-detail-panel','.whx-kpi-grid','.whx-stock-layout')
+  recordInteraction('Inventory slidebar stays below KPI',postKpiPass(inventoryPostKpi),inventoryPostKpi??{})
   const history=page.locator('aside.whx-detail-panel .whx-panel-tabs').getByRole('button',{name:/^Lịch sử/}).first()
   if(await history.count()){
     await history.click();await settle(150)
@@ -728,6 +757,8 @@ for(const label of ['+ Phiếu thu','+ Phiếu chi']){
     recordInteraction('Finance '+label+' panel opens',await page.locator('aside.finance-panel').count()>0)
     const financePanelMetrics=await readSlidebarContract('aside.finance-panel')
     recordInteraction('Finance '+label+' uses main in-layout slidebar contract',slidebarPass(financePanelMetrics),financePanelMetrics??{})
+    const financePostKpi=await readPostKpiContract('aside.finance-panel','.finance-kpi-grid','.finance-ledger-layout')
+    recordInteraction('Finance '+label+' slidebar stays below KPI',postKpiPass(financePostKpi),financePostKpi??{})
     const moneyTab=page.locator('aside.finance-panel .panel-tabs').getByRole('button',{name:/Chi tiết tiền/}).first()
     if(await moneyTab.count()){
       await moneyTab.click();await settle(80)
