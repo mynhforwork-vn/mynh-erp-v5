@@ -539,11 +539,11 @@ const settingsSelectors={
   'Đơn vị vận chuyển':'.carrier-settings',
   'SPX · Kho đích & Shipper':'.destination-master-detail',
   'Tracking':'.tracking-settings',
-  'Telegram':'.tracking-telegram-settings',
+  'Alerts':'.tracking-telegram-settings',
   'Thanh toán & QR':'.bank-transfer-settings',
   'Quản lý dữ liệu':'.data-management-settings',
 }
-for(const name of ['Đơn vị vận chuyển','SPX · Kho đích & Shipper','Tracking','Telegram','Thanh toán & QR','Quản lý dữ liệu']){
+for(const name of ['Đơn vị vận chuyển','SPX · Kho đích & Shipper','Tracking','Alerts','Thanh toán & QR','Quản lý dữ liệu']){
   const tab=page.locator('.settings-page-tabs-v3').getByRole('link',{name}).first()
   if(await tab.count()){
     const tabNav=await followLink(tab)
