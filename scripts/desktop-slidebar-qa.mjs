@@ -65,6 +65,24 @@ function vertical(m){
     &&m.position!=='fixed'
 }
 async function shot(name){await page.screenshot({path:outDir+'/'+name+'.png',fullPage:false})}
+async function openLink(locator,waitSelector){
+  if(!await locator.count())return false
+  const href=await locator.first().getAttribute('href')
+  if(href){
+    const target=href.startsWith('http')?href:PREVIEW_URL+href
+    await page.goto(target,{waitUntil:'domcontentloaded',timeout:30000})
+  }else{
+    await locator.first().click()
+  }
+  if(waitSelector)await page.locator(waitSelector).first().waitFor({state:'visible',timeout:10000}).catch(()=>{})
+  await page.waitForTimeout(350)
+  return true
+}
+async function checkPanel(name,selector,file){
+  const m=await metric(selector)
+  push(name,vertical(m),m??{})
+  if(m&&file)await shot(file)
+}
 
 // 1. Nhập kho
 await go('/warehouse/receive')
@@ -112,6 +130,67 @@ if(await hub.count()){
   push('Đối soát — slidebar dọc bên phải',vertical(m),m??{}, {hub:fixtureHub||null})
   await shot('04-settlement')
 }else push('Đối soát — có HUB mở slidebar',false,{}, {reason:'No HUB card'})
+
+
+
+/* 5. Tài khoản mua hàng — detail + create */
+await go('/purchase/accounts')
+let userLink=page.locator('.account-table-card a.table-link').first()
+if(await openLink(userLink,'aside.account-detail-panel')){
+  await checkPanel('Tài khoản — chi tiết slidebar dọc bên phải','aside.account-detail-panel','05-account-detail')
+}else push('Tài khoản — có dữ liệu mở chi tiết',true,{}, {skipped:true,reason:'No account row'})
+await go('/purchase/accounts')
+const addAccount=page.getByRole('link',{name:/Thêm tài khoản/}).first()
+if(await openLink(addAccount,'aside.account-detail-panel')){
+  await checkPanel('Tài khoản — tạo mới slidebar dọc bên phải','aside.account-detail-panel','06-account-create')
+}else push('Tài khoản — có nút Thêm tài khoản',false)
+
+/* 6. Đơn nhập — detail + create */
+await go('/purchase/orders')
+let orderLink=page.locator('.order-table-card a.table-link').first()
+if(await openLink(orderLink,'aside.detail-panel')){
+  await checkPanel('Đơn nhập — chi tiết slidebar dọc bên phải','aside.detail-panel','07-order-detail')
+}else push('Đơn nhập — có dữ liệu mở chi tiết',true,{}, {skipped:true,reason:'No order row'})
+await go('/purchase/orders')
+const createOrder=page.getByRole('link',{name:/Tạo đơn nhập/}).first()
+if(await openLink(createOrder,'aside.order-panel')){
+  await checkPanel('Đơn nhập — tạo mới slidebar dọc bên phải','aside.order-panel','08-order-create')
+}else push('Đơn nhập — có nút Tạo đơn nhập',false)
+
+/* 7. Cảnh báo vận chuyển — contextual order */
+await go('/purchase/tracking')
+const trackingLink=page.locator('.tracking-hub-table a.table-link').first()
+if(await openLink(trackingLink,'aside.context-order-panel')){
+  await checkPanel('Cảnh báo vận chuyển — chi tiết đơn slidebar dọc bên phải','aside.context-order-panel','09-tracking-order')
+}else push('Cảnh báo vận chuyển — có đơn mở chi tiết',true,{}, {skipped:true,reason:'No tracking order row'})
+
+/* 8. Lịch sử kho */
+await go('/warehouse/history')
+const tx=page.locator('.whx-table a.whx-reference-link').first()
+if(await openLink(tx,'aside.whx-history-reference-panel')){
+  await checkPanel('Lịch sử kho — chứng từ slidebar dọc bên phải','aside.whx-history-reference-panel','10-warehouse-history')
+}else push('Lịch sử kho — có chứng từ mở chi tiết',true,{}, {skipped:true,reason:'No warehouse transaction'})
+
+/* 9. Lịch sử bán */
+await go('/sales/history')
+const saleLink=page.locator('.sales-history-table .table-link').first()
+if(await openLink(saleLink,'.sales-history-panel')){
+  await checkPanel('Lịch sử bán — hóa đơn slidebar dọc bên phải','.sales-history-panel','11-sales-history')
+}else push('Lịch sử bán — có hóa đơn mở chi tiết',true,{}, {skipped:true,reason:'No sales invoice'})
+
+/* 10. Khách hàng */
+await go('/sales/customers')
+const customerLink=page.locator('.customer-demo-table a.table-link').first()
+if(await openLink(customerLink,'aside.customer-demo-panel')){
+  await checkPanel('Khách hàng — chi tiết slidebar dọc bên phải','aside.customer-demo-panel','12-customer')
+}else push('Khách hàng — có dữ liệu mở chi tiết',true,{}, {skipped:true,reason:'No customer row'})
+
+/* 11. Công nợ */
+await go('/sales/debt')
+const debtLink=page.locator('.debt-demo-table a.table-link').first()
+if(await openLink(debtLink,'aside.debt-demo-panel')){
+  await checkPanel('Công nợ — chi tiết slidebar dọc bên phải','aside.debt-demo-panel','13-debt')
+}else push('Công nợ — có dữ liệu mở chi tiết',true,{}, {skipped:true,reason:'No debt row'})
 
 const pass=results.every(x=>x.pass)
 const summary={preview:PREVIEW_URL,viewport:{width:1440,height:900},pass,results}
