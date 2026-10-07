@@ -242,6 +242,26 @@ const createOrderLink=page.getByRole('link',{name:/Tạo đơn nhập/}).first()
 if(await createOrderLink.count()){
   const createNav=await followLink(createOrderLink,{waitSelector:'aside.order-panel'})
   recordInteraction('Order create panel opens',await page.locator('aside.order-panel').count()>0,{href:createNav.href})
+
+  const recognizer=page.locator('aside.order-panel .order-text-recognizer textarea').first()
+  if(await recognizer.count()){
+    await recognizer.fill("MÃ ĐƠN HÀNG. 261005SYU2NQGJ|Giao hàng thành công\nSPX Express\nSPXVN06582596012A\nMinh Châu\n(+84) 996 552 843\nMinh Châu Hair - Ngõ 200 Hồng Mai, Phường Bạch Mai, Thành phố Hà Nội\n16:53 05-10-2026\nĐơn hàng đã được đặt\n[Bánh cá Bim bim Marine Boy vị tảo biển Nori gói 50g](https://shopee.vn/Banh-ca-i.137608378.43315670410)\n[Phân loại hàng: Vị Tảo Biển ( Gói)](https://shopee.vn/Banh-ca-i.137608378.43315670410)\n[x1](https://shopee.vn/Banh-ca-i.137608378.43315670410)\n[16.100₫](https://shopee.vn/Banh-ca-i.137608378.43315670410)\n[Dầu Ăn Simply Đậu Nành/Gạo Lứt/Hạt Cải Chai 1 Lít](https://shopee.vn/Dau-an-i.137608378.2675142705)\n[Phân loại hàng: Đậu nành 1 L](https://shopee.vn/Dau-an-i.137608378.2675142705)\n[x1](https://shopee.vn/Dau-an-i.137608378.2675142705)\n[84.700₫](https://shopee.vn/Dau-an-i.137608378.2675142705)\nVoucher từ Shopee\n-100.000₫\nThành tiền\n800₫")
+    await page.locator('aside.order-panel .order-text-recognizer').getByRole('button',{name:'Nhận diện đơn'}).click()
+    await page.waitForTimeout(150)
+    const orderValue=await page.locator('aside.order-panel input[name="shopee_order_id"]').inputValue()
+    const trackingValue=await page.locator('aside.order-panel input[name="tracking_number"]').inputValue()
+    const phoneValue=await page.locator('aside.order-panel input[name="recipient_phone"]').inputValue()
+    const codValue=await page.locator('aside.order-panel input[name="cod"]').inputValue()
+    const itemNames=await page.locator('aside.order-panel input[name="item_product_name"]').allInputValues()
+    recordInteraction('Shopee text recognizer extracts order',orderValue==='261005SYU2NQGJ',{orderValue})
+    recordInteraction('Shopee text recognizer extracts tracking',trackingValue==='SPXVN06582596012A',{trackingValue})
+    recordInteraction('Shopee text recognizer normalizes recipient phone',phoneValue==='0996552843',{phoneValue})
+    recordInteraction('Shopee text recognizer extracts COD',codValue==='800',{codValue})
+    recordInteraction('Shopee text recognizer extracts products',itemNames.length===2&&itemNames[0].includes('Bánh cá')&&itemNames[1].includes('Dầu Ăn'),{itemNames})
+  }else{
+    recordInteraction('Shopee text recognizer available',false)
+  }
+
   const close=page.locator('aside.order-panel a.close').first()
   if(await close.count())await followLink(close)
   recordInteraction('Order create panel closes',await page.locator('aside.order-panel').count()===0&&!page.url().includes('mode=create'))
