@@ -28,9 +28,13 @@ function DotsIcon(){
   </svg>
 }
 
+function localName(email:string){
+  const base=email.split('@')[0]?.trim()||'Người dùng'
+  return base.replace(/[._-]+/g,' ')
+}
 function initials(email:string){
-  const base=email.split('@')[0]?.trim()||'U'
-  const parts=base.split(/[._\-\s]+/).filter(Boolean)
+  const base=localName(email)
+  const parts=base.split(/\s+/).filter(Boolean)
   if(parts.length>=2)return (parts[0][0]+parts[1][0]).toUpperCase()
   return base.slice(0,2).toUpperCase()
 }
@@ -70,7 +74,7 @@ export function SidebarAccountMenu({email,role}:{email:string;role:string}){
     >
       <span className="sidebar-user-avatar" aria-hidden="true">{initials(email)}</span>
       <span className="sidebar-user-copy">
-        <b title={email}>{email}</b>
+        <b title={email}>{localName(email)}</b>
         <small>{role}</small>
       </span>
       <span className="sidebar-user-more"><DotsIcon/></span>
