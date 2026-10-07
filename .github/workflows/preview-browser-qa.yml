@@ -124,13 +124,13 @@ jobs:
           npm install --no-save playwright
           npx playwright install --with-deps chromium
 
-      - name: Run full mobile tab/function QA
-        if: steps.browser_qa_prereq.outputs.ready == 'true'
-        run: node scripts/mobile-full-qa.mjs
-
       - name: Run Preview browser QA
-        if: always() && steps.browser_qa_prereq.outputs.ready == 'true'
+        if: steps.browser_qa_prereq.outputs.ready == 'true'
         run: node scripts/preview-browser-qa.mjs
+
+      - name: Run full mobile tab/function QA
+        if: always() && steps.browser_qa_prereq.outputs.ready == 'true'
+        run: node scripts/mobile-full-qa.mjs
 
       - name: Run Preview mutation QA
         if: steps.browser_qa_prereq.outputs.ready == 'true'
