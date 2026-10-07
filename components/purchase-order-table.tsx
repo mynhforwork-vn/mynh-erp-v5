@@ -492,8 +492,8 @@ export function PurchaseOrderTable({
       </div>}
     </div>}
 
-    <div className="order-column-manager" ref={columnManagerRef}>
-      <button className="icon-button" type="button" onClick={()=>setOpen(v=>!v)} title="Cột & thứ tự" aria-expanded={open}>
+    <div className="order-column-manager managed-column-wrap" ref={columnManagerRef}>
+      <button className="icon-button managed-column-button" type="button" onClick={()=>setOpen(v=>!v)} title="Cột & thứ tự" aria-expanded={open}>
         <ColumnIcon/>
       </button>
       {open&&<div className="column-manager-menu">
