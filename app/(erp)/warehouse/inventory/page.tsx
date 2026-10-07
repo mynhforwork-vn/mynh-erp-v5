@@ -163,7 +163,7 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
 
     <section className="whx-kpi-grid seven">
       <Link href={inventoryHref(null)} className={!sp.status?'active':''}><span>Tổng SKU</span><b>{skuCount}</b><small>SKU trong phạm vi đang lọc</small></Link>
-      <Link href={inventoryHref(null)} className={'success '+(!sp.status?'active':'')}><span>Tổng SL tồn</span><b>{totalUnits}</b><small>Đơn vị hàng trong phạm vi</small></Link>
+      <Link href={inventoryHref(null)} className="success"><span>Tổng SL tồn</span><b>{totalUnits}</b><small>Đơn vị hàng trong phạm vi</small></Link>
       <Link href={inventoryHref('normal')} className={sp.status==='normal'?'active':''}><span>Bình thường</span><b>{normalCount}</b><small>Tồn trên ngưỡng cảnh báo</small></Link>
       <Link href={inventoryHref('low')} className={(lowCount?'warning ':'')+(sp.status==='low'?'active':'')}><span>Tồn thấp</span><b>{lowCount}</b><small>Từ 1 đến 3 đơn vị</small></Link>
       <Link href={inventoryHref('out')} className={(outCount?'danger ':'')+(sp.status==='out'?'active':'')}><span>Hết hàng</span><b>{outCount}</b><small>Tồn bằng 0</small></Link>
