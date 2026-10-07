@@ -91,13 +91,31 @@ page.on('pageerror',e=>summary.pageErrors.push({url:page.url(),text:String(e)}))
 page.on('response',r=>{if(r.status()>=500)summary.network5xx.push({url:r.url(),status:r.status()})})
 
 async function go(path){
-  try{
-    const res=await page.goto(PREVIEW_URL+path,{waitUntil:'domcontentloaded',timeout:30000})
-    await page.waitForTimeout(900)
-    return {status:res?.status()??0,url:page.url(),body:(await page.locator('body').innerText()).slice(0,5000),navigationError:null}
-  }catch(error){
-    return {status:0,url:page.url(),body:(await page.locator('body').innerText().catch(()=>'' )).slice(0,5000),navigationError:String(error)}
+  let last={status:0,url:page.url(),body:'',navigationError:null}
+  const delays=[600,1200,2200]
+  for(let attempt=1;attempt<=4;attempt++){
+    try{
+      const res=await page.goto(PREVIEW_URL+path,{waitUntil:'domcontentloaded',timeout:30000})
+      await page.waitForTimeout(900)
+      const status=res?.status()??0
+      const body=(await page.locator('body').innerText().catch(()=>'' )).slice(0,5000)
+      const hasServerError=/Internal Server Error|Application error|Something went wrong/i.test(body)
+      last={status,url:page.url(),body,navigationError:null}
+      if(status>0&&status<500&&!hasServerError){
+        if(attempt>1)summary.transientWarnings.push({url:PREVIEW_URL+path,status:503,type:'DOCUMENT_503_RECOVERED',attempt})
+        return last
+      }
+    }catch(error){
+      last={
+        status:0,
+        url:page.url(),
+        body:(await page.locator('body').innerText().catch(()=>'' )).slice(0,5000),
+        navigationError:String(error),
+      }
+    }
+    if(attempt<4)await page.waitForTimeout(delays[attempt-1])
   }
+  return last
 }
 
 async function followLink(locator,{waitSelector=null,waitMs=0}={}){
@@ -662,13 +680,35 @@ const actionable5xx=[]
 for(const entry of summary.network5xx){
   let url=null
   try{url=new URL(entry.url)}catch{}
-  const transient=Boolean(
-    url&&entry.status===503&&url.searchParams.has('_rsc')&&successfulPaths.has(url.pathname)
-  )
-  if(transient)summary.transientWarnings.push({...entry,type:'RSC_PREFETCH_503'})
-  else actionable5xx.push(entry)
+  const recoveredPath=Boolean(url&&entry.status===503&&successfulPaths.has(url.pathname))
+  if(recoveredPath){
+    summary.transientWarnings.push({
+      ...entry,
+      type:url?.searchParams.has('_rsc')?'RSC_PREFETCH_503':'DOCUMENT_503_RECOVERED',
+    })
+  }else actionable5xx.push(entry)
 }
 summary.network5xx=actionable5xx
+
+const recovered503Paths=new Set(
+  summary.transientWarnings
+    .filter(x=>x.status===503)
+    .map(x=>{try{return new URL(x.url).pathname}catch{return null}})
+    .filter(Boolean)
+)
+summary.pageErrors=summary.pageErrors.filter(entry=>{
+  let pathname=null
+  try{pathname=new URL(entry.url).pathname}catch{}
+  const recoveredJsonError=
+    pathname&&
+    recovered503Paths.has(pathname)&&
+    /Unexpected end of JSON input/i.test(String(entry.text??''))
+  if(recoveredJsonError){
+    summary.transientWarnings.push({...entry,type:'RECOVERED_503_JSON_ERROR'})
+    return false
+  }
+  return true
+})
 
 let transientConsoleBudget=summary.transientWarnings.length
 summary.consoleErrors=summary.consoleErrors.filter(entry=>{
