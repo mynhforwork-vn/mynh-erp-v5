@@ -2,6 +2,7 @@
 
 import { useEffect,useMemo,useState } from 'react'
 import { formatDateTime,formatMoney } from '@/lib/format'
+import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
 
 type Row={
   warehouse_id:string
@@ -27,6 +28,12 @@ type Tx={
 }
 
 const IN_TYPES=new Set(['IN','TRANSFER_IN','RETURN','ADJUSTMENT_IN'])
+type ColKey='sku'|'product'|'variant'|'warehouse'|'stock'|'incoming'|'available'|'price'|'status'
+const ALL_COLUMNS:ColKey[]=['sku','product','variant','warehouse','stock','incoming','available','price','status']
+const COLUMN_LABELS:Record<ColKey,string>={
+  sku:'SKU bán',product:'Sản phẩm',variant:'Phân loại',warehouse:'Kho',stock:'Tồn',
+  incoming:'Đang về',available:'Khả dụng',price:'Giá bán',status:'Trạng thái',
+}
 
 function txLabel(type:string,referenceType?:string|null){
   if(String(referenceType??'').startsWith('STOCKTAKE'))return 'Kiểm kê'
@@ -51,6 +58,27 @@ export function WarehouseInventoryWorkspace({
   const [activeKey,setActiveKey]=useState<string|null>(null)
   const [panelTab,setPanelTab]=useState<'overview'|'history'>('overview')
   const [historyScope,setHistoryScope]=useState<'local'|'all'>('local')
+  const columns=useManagedColumns<ColKey>('mynh-inventory-columns-v2',ALL_COLUMNS,['sku'])
+  const sort=useManagedSort<ColKey>('mynh-inventory-sort-v2','sku','asc')
+  const sortedRows=useMemo(()=>{
+    const next=[...rows]
+    const value=(row:Row,key:ColKey)=>{
+      if(key==='sku')return row.sku
+      if(key==='product')return row.product_name
+      if(key==='variant')return row.variant_name
+      if(key==='warehouse')return row.warehouse_code
+      if(key==='stock'||key==='available')return Number(row.quantity??0)
+      if(key==='incoming')return Number(row.incoming??0)
+      if(key==='price')return Number(row.sale_price??0)
+      return row.quantity===0?'0':row.quantity<=3?'1':'2'
+    }
+    next.sort((a,b)=>{
+      const av=value(a,sort.key),bv=value(b,sort.key)
+      const cmp=typeof av==='number'&&typeof bv==='number'?av-bv:String(av).localeCompare(String(bv),'vi')
+      return sort.dir==='asc'?cmp:-cmp
+    })
+    return next
+  },[rows,sort.key,sort.dir])
   const active=rows.find(row=>(row.warehouse_id+'|'+row.product_variant_id)===activeKey)??null
 
   useEffect(()=>{
@@ -107,11 +135,15 @@ export function WarehouseInventoryWorkspace({
             <h2>Danh sách tồn kho</h2>
             <span>{rows.length} dòng phù hợp bộ lọc hiện tại</span>
           </div>
+          <div className="managed-table-inline-actions">
+            <span className="managed-table-meta">Click tiêu đề để sắp xếp</span>
+            <ManagedColumnsMenu labels={COLUMN_LABELS} manager={columns}/>
+          </div>
         </div>
         <div className="mobile-entity-list mobile-inventory-list">
           {!rows.length
             ? <div className="mobile-empty-state">Không có tồn kho phù hợp.</div>
-            : rows.map(row=>{
+            : sortedRows.map(row=>{
                 const key=row.warehouse_id+'|'+row.product_variant_id
                 return <button
                   type="button"
@@ -138,47 +170,30 @@ export function WarehouseInventoryWorkspace({
         </div>
         <div className="whx-table-scroll">
           <table className="table whx-table">
-            <thead><tr>
-              <th>SKU bán</th>
-              <th>Sản phẩm</th>
-              <th>Phân loại</th>
-              <th>Kho</th>
-              <th>Tồn</th>
-              <th>Đang về</th>
-              <th>Khả dụng</th>
-              <th>Giá bán</th>
-              <th>Trạng thái</th>
-            </tr></thead>
+            <thead><tr>{columns.visible.map(col=><th key={col}><SortableHeader column={col} label={COLUMN_LABELS[col]} sort={sort} onSort={sort.toggle}/></th>)}</tr></thead>
             <tbody>
-              {!rows.length
-                ? <tr><td colSpan={9} className="empty">Không có tồn kho phù hợp.</td></tr>
-                : rows.map(row=>{
+              {!sortedRows.length
+                ? <tr><td colSpan={columns.visible.length} className="empty">Không có tồn kho phù hợp.</td></tr>
+                : sortedRows.map(row=>{
                     const key=row.warehouse_id+'|'+row.product_variant_id
                     const available=row.quantity
-                    return <tr
-                      key={key}
-                      className={activeKey===key?'active-row':''}
-                      onClick={()=>openRow(key)}
-                    >
-                      <td><b className="whx-link-text">{row.sku}</b></td>
-                      <td>{row.product_name}</td>
-                      <td>{row.variant_name}</td>
-                      <td>
-                        <div className="whx-product-cell">
-                          <b>{row.warehouse_code}</b>
-                          <span>{row.warehouse_name}</span>
-                        </div>
-                      </td>
-                      <td className="whx-stock-number">{row.quantity}</td>
-                      <td>{row.incoming||'—'}</td>
-                      <td className="whx-stock-number">{available}</td>
-                      <td className="money">{formatMoney(row.sale_price)}</td>
-                      <td>{row.quantity===0
+                    const cell=(col:ColKey)=>{
+                      if(col==='sku')return <td key={col}><b className="whx-link-text">{row.sku}</b></td>
+                      if(col==='product')return <td key={col}>{row.product_name}</td>
+                      if(col==='variant')return <td key={col}>{row.variant_name}</td>
+                      if(col==='warehouse')return <td key={col}><div className="whx-product-cell"><b>{row.warehouse_code}</b><span>{row.warehouse_name}</span></div></td>
+                      if(col==='stock')return <td key={col} className="whx-stock-number">{row.quantity}</td>
+                      if(col==='incoming')return <td key={col}>{row.incoming||'—'}</td>
+                      if(col==='available')return <td key={col} className="whx-stock-number">{available}</td>
+                      if(col==='price')return <td key={col} className="money">{formatMoney(row.sale_price)}</td>
+                      return <td key={col}>{row.quantity===0
                         ? <span className="status-pill red">Hết hàng</span>
                         : row.quantity<=3
                           ? <span className="status-pill orange">Tồn thấp</span>
-                          : <span className="status-pill green">Bình thường</span>}
-                      </td>
+                          : <span className="status-pill green">Bình thường</span>}</td>
+                    }
+                    return <tr key={key} className={activeKey===key?'active-row':''} onClick={()=>openRow(key)}>
+                      {columns.visible.map(cell)}
                     </tr>
                   })}
             </tbody>
@@ -187,16 +202,7 @@ export function WarehouseInventoryWorkspace({
       </div>
     </section>
 
-    {active&&<aside
-      className="whx-detail-panel whx-detail-panel-v2 mynh-slide-panel"
-      style={{
-        minWidth:0,
-        height:'calc(100vh - 188px)',
-        maxHeight:'calc(100vh - 188px)',
-        alignSelf:'start',
-        overflow:'hidden',
-      }}
-    >
+    {active&&<aside className="whx-detail-panel whx-detail-panel-v2 mynh-slide-panel">
       {historyScope==='all'
         ? <>
             <div className="whx-panel-head whx-panel-head-v2 context-stack-head">
