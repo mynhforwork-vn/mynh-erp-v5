@@ -1,6 +1,7 @@
 {
   "name": "mynh-erp-v5",
   "main": ".open-next/worker.js",
+  "keep_vars": true,
   "compatibility_date": "2026-09-28",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {

@@ -42,11 +42,7 @@ jobs:
 
       - name: Deploy production Worker
         shell: bash
-        run: |
-          npx wrangler deploy \
-            --name mynh-erp-v5 \
-            --message "Production $GITHUB_SHA" \
-            --keep-vars
+        run: npx opennextjs-cloudflare deploy
 
       - name: Smoke production
         shell: bash
