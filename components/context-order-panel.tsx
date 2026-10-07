@@ -37,7 +37,7 @@ export function ContextOrderPanel({
   )
   const isExpress=order.shipping_service==='EXPRESS'
 
-  return <aside className="detail-panel context-order-panel">
+  return <aside className="detail-panel context-order-panel mynh-slide-panel">
     <div className="panel-head context-stack-head">
       <Link className="context-stack-back" href={backHref} aria-label="Quay lại">←</Link>
       <div className="context-stack-title">
