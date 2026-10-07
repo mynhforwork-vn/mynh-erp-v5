@@ -545,7 +545,7 @@ export function SalesPOSWorkspace({
               if(e.key==='Escape'){e.preventDefault();setSearch('')}
             }}
             aria-label="Tìm sản phẩm theo barcode, SKU hoặc tên"
-            placeholder="Quét barcode · nhập SKU · tìm tên sản phẩm"
+            placeholder="Quét barcode · SKU · tên sản phẩm"
           />
           {search&&<button className="pos-search-clear" type="button" onClick={()=>{setSearch('');searchRef.current?.focus()}} aria-label="Xóa từ khóa">×</button>}
           <kbd>F4</kbd>
