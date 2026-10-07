@@ -78,6 +78,17 @@ function postKpiPass(m){
     &&m.panelHeight>=120
 }
 
+function verticalRightPanelPass(m){
+  return Boolean(m)
+    &&m.position!=='fixed'
+    &&m.width>=380&&m.width<=430
+    &&m.height>=m.width+60
+    &&m.left>=m.viewportW*.55
+    &&m.right<=m.viewportW+2
+    &&m.top>=0
+    &&m.bottom<=m.viewportH+2
+}
+
 const browser=await chromium.launch({headless:true})
 
 // Public / unauthenticated checks.
@@ -516,8 +527,7 @@ if(await intakeRow.count()){
   recordInteraction('Warehouse intake detail panel opens',await page.locator('aside.warehouse-intake-panel').count()>0)
   const intakePanelMetrics=await readSlidebarContract('aside.warehouse-intake-panel')
   recordInteraction('Warehouse intake uses main in-layout slidebar contract',slidebarPass(intakePanelMetrics),intakePanelMetrics??{})
-  const intakePostKpi=await readPostKpiContract('aside.warehouse-intake-panel','.tracking-status-strip-v2','.warehouse-intake-layout')
-  recordInteraction('Warehouse intake slidebar stays below KPI',postKpiPass(intakePostKpi),intakePostKpi??{})
+  recordInteraction('Warehouse intake is vertical right slidebar',verticalRightPanelPass(intakePanelMetrics),intakePanelMetrics??{})
   for(const tabName of ['Thông tin','Lịch sử','Sản phẩm']){
     const tab=page.locator('aside.warehouse-intake-panel .whx-panel-tabs').getByRole('button',{name:new RegExp('^'+tabName)}).first()
     if(await tab.count()){
@@ -537,8 +547,7 @@ if(await stockRow.count()){
   recordInteraction('Inventory SKU detail panel opens',await page.locator('aside.whx-detail-panel').count()>0)
   const inventoryPanelMetrics=await readSlidebarContract('aside.whx-detail-panel')
   recordInteraction('Inventory SKU uses main in-layout slidebar contract',slidebarPass(inventoryPanelMetrics),inventoryPanelMetrics??{})
-  const inventoryPostKpi=await readPostKpiContract('aside.whx-detail-panel','.whx-kpi-grid','.whx-stock-layout')
-  recordInteraction('Inventory slidebar stays below KPI',postKpiPass(inventoryPostKpi),inventoryPostKpi??{})
+  recordInteraction('Inventory is vertical right slidebar',verticalRightPanelPass(inventoryPanelMetrics),inventoryPanelMetrics??{})
   const history=page.locator('aside.whx-detail-panel .whx-panel-tabs').getByRole('button',{name:/^Lịch sử/}).first()
   if(await history.count()){
     await history.click();await settle(150)
@@ -757,8 +766,7 @@ for(const label of ['+ Phiếu thu','+ Phiếu chi']){
     recordInteraction('Finance '+label+' panel opens',await page.locator('aside.finance-panel').count()>0)
     const financePanelMetrics=await readSlidebarContract('aside.finance-panel')
     recordInteraction('Finance '+label+' uses main in-layout slidebar contract',slidebarPass(financePanelMetrics),financePanelMetrics??{})
-    const financePostKpi=await readPostKpiContract('aside.finance-panel','.finance-kpi-grid','.finance-ledger-layout')
-    recordInteraction('Finance '+label+' slidebar stays below KPI',postKpiPass(financePostKpi),financePostKpi??{})
+    recordInteraction('Finance '+label+' is vertical right slidebar',verticalRightPanelPass(financePanelMetrics),financePanelMetrics??{})
     const moneyTab=page.locator('aside.finance-panel .panel-tabs').getByRole('button',{name:/Chi tiết tiền/}).first()
     if(await moneyTab.count()){
       await moneyTab.click();await settle(80)
@@ -786,6 +794,12 @@ if(await bill.count()&&await bill.isEnabled()){
 }
 
 await go('/finance/shipper-payments')
+const settlementHub=page.locator('.finance-hub-card').first()
+if(await settlementHub.count()){
+  await followLink(settlementHub,{waitSelector:'aside.finance-hub-live-panel'})
+  const settlementPanelMetrics=await readSlidebarContract('aside.finance-hub-live-panel')
+  recordInteraction('Settlement HUB is vertical right slidebar',verticalRightPanelPass(settlementPanelMetrics),settlementPanelMetrics??{})
+}
 const customerMode=page.locator('.finance-mode-tabs').getByRole('link',{name:'Khách hàng'}).first()
 if(await customerMode.count()){
   const customerModeNav=await followLink(customerMode)
