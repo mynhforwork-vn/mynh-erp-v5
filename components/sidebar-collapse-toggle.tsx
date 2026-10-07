@@ -21,6 +21,7 @@ export function SidebarCollapseToggle(){
     setCollapsed(next)
     window.localStorage.setItem(KEY,next?'1':'0')
     document.querySelector('.brand-shell-v1')?.classList.toggle('desktop-sidebar-collapsed',next)
+    window.setTimeout(()=>window.dispatchEvent(new Event('mynh-sidebar-resized')),220)
   }
 
   return <button
