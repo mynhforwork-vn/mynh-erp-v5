@@ -6,6 +6,7 @@ on:
     branches:
       - fix/76aed41c-remediation
       - feat/tracking-telegram-production
+      - feat/tracking-settings-spx-v1
     paths:
       - app/**
       - components/**
