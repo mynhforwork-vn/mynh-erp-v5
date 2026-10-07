@@ -1,15 +1,21 @@
 export function MynhLogoMark({title='MYNH ERP'}:{title?:string}){
   return <svg
     className="mynh-logo-mark"
-    viewBox="0 0 40 40"
+    viewBox="0 0 48 40"
     role="img"
     aria-label={title}
   >
-    <rect className="mynh-logo-base" x="1" y="1" width="38" height="38" rx="8"/>
     <path
-      className="mynh-logo-m"
-      d="M8 29V11.5h4.6L20 19l7.4-7.5H32V29h-5.3V19.6L20 26.3l-6.7-6.7V29H8Z"
+      className="mynh-logo-primary"
+      d="M5 31V9h5.4L18 18.1 25.6 9H31v22h-5.2V17.2L18 26.3l-7.8-9.1V31H5Z"
     />
-    <path className="mynh-logo-accent" d="M18.15 10.8h4.15l4.15 4.2-2.8 2.85L20 14.2l-3.65 3.65L13.55 15l4.6-4.2Z"/>
+    <path
+      className="mynh-logo-secondary"
+      d="M34 9h5v8.3l4-4.3v6.5l-4 4.2V31h-5V9Z"
+    />
+    <path
+      className="mynh-logo-accent"
+      d="M18 7.2 24.1 14 20.7 17.8 18 14.7l-2.7 3.1L11.9 14 18 7.2Z"
+    />
   </svg>
 }
