@@ -105,6 +105,7 @@ export function SalesPOSWorkspace({
   const [heldOpen,setHeldOpen]=useState(false)
   const [createCustomerOpen,setCreateCustomerOpen]=useState(false)
   const [checkoutOpen,setCheckoutOpen]=useState(false)
+  const [mobileCartOpen,setMobileCartOpen]=useState(false)
   const [paymentMode,setPaymentMode]=useState<'cash'|'transfer'|'debt'|'combined'>('cash')
   const [transferRef,setTransferRef]=useState('')
   const [invoiceExtrasOpen,setInvoiceExtrasOpen]=useState(false)
@@ -213,6 +214,7 @@ export function SalesPOSWorkspace({
     setCombinedCash(0)
     setCombinedTransfer(0)
     setCheckoutOpen(false)
+    setMobileCartOpen(false)
     setPaymentMode('cash')
     setTransferRef('')
     setInvoiceExtrasOpen(false)
@@ -381,6 +383,7 @@ export function SalesPOSWorkspace({
     setCombinedCash(0)
     setCombinedTransfer(0)
     setCheckoutOpen(true)
+    setMobileCartOpen(true)
   }
 
   function beginCheckout(){
@@ -601,6 +604,17 @@ export function SalesPOSWorkspace({
           })}
     </div>}
 
+    <button
+      className={'mobile-pos-cart-bar '+(cart.length?'has-items':'')}
+      type="button"
+      onClick={()=>setMobileCartOpen(true)}
+      disabled={!cart.length}
+    >
+      <span><b>{cartQty}</b><small>SP trong giỏ</small></span>
+      <strong>{money(total)}</strong>
+      <i>Giỏ hàng ›</i>
+    </button>
+
     <div className="pos-workspace">
       <section className="pos-products">
         <div className="pos-product-toolbar pos-product-toolbar-v2">
@@ -657,7 +671,7 @@ export function SalesPOSWorkspace({
         </div>
       </section>
 
-      <aside className="pos-cart">
+      <aside className={'pos-cart '+(mobileCartOpen||checkoutOpen?'mobile-open':'')}>
         {!checkoutOpen
           ? <>
               <div className="pos-cart-head pos-cart-head-v2">
@@ -666,7 +680,10 @@ export function SalesPOSWorkspace({
                   <b>Giỏ hàng · {cartQty} SP</b>
                   <small>{cart.length} SKU · {selectedCustomer?.name??'Khách lẻ'}</small>
                 </div>
-                {cart.length>0&&<button type="button" className="pos-text-danger" onClick={()=>setCart([])}>Xóa giỏ</button>}
+                <div className="pos-cart-head-actions">
+                  {cart.length>0&&<button type="button" className="pos-text-danger" onClick={()=>setCart([])}>Xóa giỏ</button>}
+                  <button type="button" className="mobile-cart-close" onClick={()=>setMobileCartOpen(false)} aria-label="Đóng giỏ">×</button>
+                </div>
               </div>
 
               <div className="pos-cart-lines">
