@@ -1,7 +1,9 @@
+'use client'
+
+import { useMemo,useState } from 'react'
 import Link from 'next/link'
 import {
   saveCarrierStatusMapping,
-  saveTrackingProviderConfig,
   saveTrackingRule,
   saveTrackingRuntimeSettings,
   testTrackingConnection,
@@ -23,11 +25,6 @@ type Rule={
   sort_order:number
   is_active:boolean
 }
-type Carrier={carrier_code:string;display_name:string;supports_tracking?:boolean|null;is_active?:boolean|null}
-type Provider={
-  carrier:string;enabled:boolean;adapter_type:string;endpoint_url:string;http_method:string;timeout_ms:number;
-  auth_header_name?:string|null;auth_secret_id?:string|null;
-}
 type Mapping={
   id:string;carrier:string;raw_code:string;raw_name?:string|null;canonical_status:string;
   note?:string|null;is_active:boolean;priority:number;
@@ -39,6 +36,7 @@ type UnknownRaw={
   description:string|null
   count:number
 }
+type Tab='operation'|'cycle'|'mapping'
 
 const PHASE_LABEL:Record<string,string>={
   PRE_SHIP:'Trước lấy hàng',
@@ -51,15 +49,12 @@ const PHASE_LABEL:Record<string,string>={
 }
 
 function timeValue(value:string|undefined,fallback:string){
-  const v=String(value??fallback)
-  return v.slice(0,5)
+  return String(value??fallback).slice(0,5)
 }
 
 export function TrackingSettings({
   runtime,
   rules,
-  carriers,
-  providers,
   mappings,
   unknownRaw,
   canEdit,
@@ -68,38 +63,52 @@ export function TrackingSettings({
 }:{
   runtime:RuntimeSettings|null
   rules:Rule[]
-  carriers:Carrier[]
-  providers:Provider[]
   mappings:Mapping[]
   unknownRaw:UnknownRaw[]
   canEdit:boolean
   trackingTest?:string|null
   trackingMessage?:string|null
 }){
-  const providerMap=new Map(providers.map(x=>[String(x.carrier).toUpperCase(),x]))
-  const canonicalOptions=rules.filter(x=>x.is_active)
+  const [tab,setTab]=useState<Tab>('operation')
+  const [editingMapping,setEditingMapping]=useState<string|null>(null)
 
-  return <div className="tracking-settings tracking-telegram-settings">
+  const canonicalOptions=rules.filter(x=>x.is_active)
+  const canonicalMap=useMemo(()=>new Map(rules.map(x=>[x.status_code,x])),[rules])
+  const sortedRules=[...rules].sort((a,b)=>a.sort_order-b.sort_order)
+  const autoStatusCount=sortedRules.filter(x=>!x.terminal&&x.auto_tracking).length
+
+  return <div className="tracking-settings tracking-settings-v9">
     {trackingTest==='ok'&&<div className="settings-result success">Tracking test thành công: {trackingMessage}</div>}
     {trackingTest==='fail'&&<div className="settings-result error">Tracking test thất bại: {trackingMessage||'Không xác định'}</div>}
 
-    <section className="settings-block">
-      <div className="settings-block-head">
-        <div>
-          <span className="module-eyebrow">TRACKING ENGINE</span>
-          <h3>Quy tắc vận hành chung</h3>
-          <p>Cron chỉ claim đơn đến hạn. Manual Sync vẫn hoạt động độc lập với giờ nghỉ.</p>
-        </div>
-        <span className={'settings-mini-status '+(runtime?.auto_tracking_enabled!==false?'on':'')}>
-          {runtime?.auto_tracking_enabled!==false?'Auto Tracking bật':'Auto Tracking tắt'}
-        </span>
-      </div>
+    <div className="destination-detail-tabs settings-subtabs-v6 tracking-subtabs-v9">
+      <button type="button" className={tab==='operation'?'active':''} onClick={()=>setTab('operation')}>
+        Vận hành Tracking
+      </button>
+      <button type="button" className={tab==='cycle'?'active':''} onClick={()=>setTab('cycle')}>
+        Chu kỳ trạng thái <span>{sortedRules.length}</span>
+      </button>
+      <button type="button" className={tab==='mapping'?'active':''} onClick={()=>setTab('mapping')}>
+        Mapping SPX <span>{mappings.length}</span>
+      </button>
+    </div>
 
-      <form action={saveTrackingRuntimeSettings} className="telegram-main-form">
-        <div className="telegram-config-grid">
+    {tab==='operation'&&<div className="settings-subtab-body-v6 tracking-operation-body-v9">
+      <section className="tracking-runtime-panel-v7">
+        <div className="tracking-runtime-head-v7">
+          <div>
+            <h3>Quy tắc vận hành</h3>
+            <p>Điều khiển Auto Tracking, giờ nghỉ và lịch retry khi provider lỗi.</p>
+          </div>
+          <span className={'tracking-engine-state-v7 '+(runtime?.auto_tracking_enabled!==false?'on':'')}>
+            {runtime?.auto_tracking_enabled!==false?'Đang tự động':'Đang tắt'}
+          </span>
+        </div>
+
+        <form action={saveTrackingRuntimeSettings} className="tracking-runtime-grid-v7">
           <label className="settings-check">
             <input type="checkbox" name="auto_tracking_enabled" defaultChecked={runtime?.auto_tracking_enabled!==false} disabled={!canEdit}/>
-            <span>Bật Auto Tracking</span>
+            <span>Auto Tracking</span>
           </label>
           <label className="settings-field compact">
             <span>Giờ nghỉ từ</span>
@@ -110,181 +119,181 @@ export function TrackingSettings({
             <input name="quiet_end" type="time" defaultValue={timeValue(runtime?.quiet_end,'06:00')} disabled={!canEdit}/>
           </label>
           <label className="settings-field">
-            <span>Retry khi provider lỗi (phút)</span>
-            <input name="retry_minutes" defaultValue={(runtime?.retry_minutes??[10,30,60]).join(', ')} placeholder="10, 30, 60" disabled={!canEdit}/>
+            <span>Retry khi lỗi</span>
+            <input name="retry_minutes" defaultValue={(runtime?.retry_minutes??[10,30,60]).join(', ')} disabled={!canEdit}/>
           </label>
-        </div>
-        {canEdit&&<div className="settings-actions"><button className="button primary" type="submit">Lưu quy tắc chung</button></div>}
-      </form>
-    </section>
+          {canEdit&&<button className="button primary" type="submit">Lưu</button>}
+        </form>
+      </section>
 
-    <section className="settings-block">
-      <div className="settings-block-head">
-        <div>
-          <span className="module-eyebrow">CHU KỲ THEO TRẠNG THÁI</span>
-          <h3>Thời gian Tracking từng trạng thái</h3>
-          <p>Mỗi trạng thái active có chu kỳ riêng. Trạng thái kết thúc bị khóa STOP.</p>
-        </div>
-        <span className="settings-mini-status">{rules.filter(x=>!x.terminal&&x.auto_tracking).length} trạng thái đang tự động</span>
-      </div>
-
-      <div className="provider-settings-list">
-        {rules.sort((a,b)=>a.sort_order-b.sort_order).map(rule=><form action={saveTrackingRule} className="provider-settings-row" key={rule.status_code}>
-          <input type="hidden" name="status_code" value={rule.status_code}/>
-          <div className="provider-name">
-            <b>{rule.label}</b>
-            <span>{PHASE_LABEL[rule.phase]??rule.phase} · {rule.status_code}</span>
+      <section className="tracking-internal-panel-v10">
+        <div className="tracking-internal-copy-v10">
+          <div>
+            <h3>Tracking nội bộ</h3>
+            <p>MYNH ERP tự xử lý lịch quét, chuẩn hóa trạng thái và lưu hành trình. Không cần chọn nguồn Tracking tại màn vận hành.</p>
           </div>
-          {rule.terminal
-            ? <div className="settings-field wide"><span>Auto Tracking</span><b>DỪNG · không cho chỉnh</b></div>
-            : <>
-                <label className="settings-field compact">
-                  <span>Chu kỳ</span>
-                  <input name="interval_minutes" type="number" min="15" max="1440" step="5" defaultValue={rule.interval_minutes??120} disabled={!canEdit}/>
-                </label>
-                <div className="settings-field compact"><span>Đơn vị</span><b>phút</b></div>
-                <label className="settings-check">
-                  <input type="checkbox" name="auto_tracking" defaultChecked={rule.auto_tracking} disabled={!canEdit}/>
-                  <span>Auto</span>
-                </label>
-              </>}
-          {canEdit&&!rule.terminal&&<div className="provider-row-actions"><button className="button small primary" type="submit">Lưu</button></div>}
-        </form>)}
-      </div>
-    </section>
-
-    <section className="settings-block">
-      <div className="settings-block-head">
-        <div>
-          <span className="module-eyebrow">TRACKING PROVIDER</span>
-          <h3>Kết nối nguồn hành trình</h3>
-          <p>SPX dùng adapter trực tiếp của MYNH ERP. ĐVVC khác có thể dùng endpoint JSON chuẩn hóa.</p>
+          <span className="tracking-internal-state-v10">Đã kết nối hệ thống</span>
         </div>
-        <span className="settings-mini-status">{providers.filter(x=>x.enabled).length} provider đang bật</span>
-      </div>
 
-      <div className="provider-settings-list">
-        {carriers.filter(x=>x.is_active&&x.supports_tracking).map(carrier=>{
-          const code=carrier.carrier_code.toUpperCase()
-          const row=providerMap.get(code)
-          const isSpx=code==='SPX'
-          return <form action={saveTrackingProviderConfig} className="provider-settings-row" key={code}>
-            <input type="hidden" name="carrier" value={code}/>
-            <input type="hidden" name="adapter_type" value={isSpx?'SPX_PUBLIC':(row?.adapter_type??'NORMALIZED_JSON')}/>
-            <div className="provider-name">
-              <b>{code}</b>
-              <span>{carrier.display_name}</span>
+        {canEdit&&<form action={testTrackingConnection} className="tracking-internal-test-v10">
+          <input type="hidden" name="carrier" value="SPX"/>
+          <label className="settings-field">
+            <span>Kiểm tra đồng bộ bằng MVD</span>
+            <input name="tracking_number" placeholder="Nhập MVD SPX..." required/>
+          </label>
+          <button className="button" type="submit">Kiểm tra Tracking</button>
+        </form>}
+      </section>
+
+      <div className="tracking-operation-note-v9">
+        <b>Luồng nội bộ:</b>
+        <span>Cron → Tracking Engine → chuẩn hóa trạng thái → cập nhật shipment → tạo Alert khi trạng thái thay đổi.</span>
+      </div>
+    </div>}
+
+    {tab==='cycle'&&<div className="settings-subtab-body-v6 tracking-cycle-body-v9">
+      <section className="tracking-state-panel-v7 tracking-full-panel-v9">
+        <div className="tracking-table-title-v7">
+          <div>
+            <h3>Chu kỳ trạng thái</h3>
+            <p>Toàn bộ {sortedRules.length} trạng thái Tracking. Header cố định; cuộn trong bảng, không kéo cả trang.</p>
+          </div>
+          <span>{autoStatusCount} trạng thái Auto</span>
+        </div>
+
+        <div className="tracking-table-scroll-v7 tracking-table-scroll-full-v9">
+          <div className="tracking-rule-table-v7">
+            <div className="tracking-rule-head-v7">
+              <span>Trạng thái MYNH ERP</span>
+              <span>Giai đoạn</span>
+              <span>Auto</span>
+              <span>Chu kỳ</span>
+              <span>Hành vi</span>
+              <span></span>
             </div>
-            {isSpx
-              ? <div className="settings-field wide">
-                  <span>Nguồn</span>
-                  <b>SPX Direct · public tracking</b>
-                  <input type="hidden" name="endpoint_url" value="https://spx.vn/shipment/order/open/order/get_order_info"/>
-                  <input type="hidden" name="http_method" value="GET"/>
-                  <input type="hidden" name="timeout_ms" value="10000"/>
-                </div>
-              : <>
-                  <label className="settings-field wide">
-                    <span>Normalized endpoint HTTPS</span>
-                    <input name="endpoint_url" type="url" defaultValue={row?.endpoint_url??''} placeholder="https://provider.example/track" disabled={!canEdit}/>
-                  </label>
-                  <label className="settings-field compact">
-                    <span>Method</span>
-                    <select name="http_method" defaultValue={row?.http_method??'GET'} disabled={!canEdit}>
-                      <option value="GET">GET</option><option value="POST">POST</option>
-                    </select>
-                  </label>
-                  <label className="settings-field compact">
-                    <span>Timeout</span>
-                    <input name="timeout_ms" type="number" min="1000" max="30000" step="500" defaultValue={row?.timeout_ms??8000} disabled={!canEdit}/>
-                  </label>
-                  <label className="settings-field">
-                    <span>Auth header</span>
-                    <input name="auth_header_name" defaultValue={row?.auth_header_name??''} placeholder="Authorization" disabled={!canEdit}/>
-                  </label>
-                  <label className="settings-field">
-                    <span>Credential</span>
-                    <input name="auth_secret" type="password" placeholder={row?.auth_secret_id?'Đã lưu · nhập để thay':'Bearer / API key'} disabled={!canEdit}/>
-                  </label>
-                </>}
-            <label className="settings-check">
-              <input type="checkbox" name="enabled" defaultChecked={Boolean(row?.enabled)} disabled={!canEdit}/>
-              <span>Bật</span>
-            </label>
-            {canEdit&&<div className="provider-row-actions">
-              {row?.auth_secret_id&&!isSpx&&<label className="settings-check subtle"><input type="checkbox" name="clear_secret"/><span>Xóa credential</span></label>}
-              <button className="button small primary" type="submit">Lưu</button>
-            </div>}
-          </form>
-        })}
-      </div>
 
-      {canEdit&&<form action={testTrackingConnection} className="telegram-test-form">
-        <label className="settings-field">
-          <span>Test mã vận đơn</span>
-          <input name="tracking_number" placeholder="SPXVN..." required/>
-        </label>
-        <label className="settings-field compact">
-          <span>ĐVVC</span>
-          <select name="carrier" defaultValue="SPX">
-            {carriers.filter(x=>x.is_active&&x.supports_tracking).map(x=><option value={x.carrier_code} key={x.carrier_code}>{x.carrier_code}</option>)}
-          </select>
-        </label>
-        <button className="button" type="submit">Kiểm tra kết nối</button>
-      </form>}
-
-      <div className="settings-inline-note">
-        <b>Kho đích không suy luận từ chữ “Last Mile”.</b> SPX chỉ được chuẩn hóa thành <code>ARRIVED_DESTINATION_HUB</code> khi location khớp HUB hoặc alias đang bật trong <Link href="/settings?section=spx-hubs">SPX · Kho đích</Link>.
-      </div>
-    </section>
-
-    <section className="settings-block">
-      <div className="settings-block-head">
-        <div>
-          <span className="module-eyebrow">RAW STATUS MAPPING</span>
-          <h3>Mapping trạng thái SPX</h3>
-          <p>Raw code mới không làm hỏng Tracking: hệ thống lưu event và đưa về UNKNOWN cho tới khi được map.</p>
-        </div>
-        <span className="settings-mini-status">{mappings.length} mapping · {unknownRaw.length} raw chưa nhận diện</span>
-      </div>
-
-      <div className="provider-settings-list">
-        {unknownRaw.map(row=><form action={saveCarrierStatusMapping} className="provider-settings-row" key={row.carrier+'-'+row.raw_code}>
-          <input type="hidden" name="carrier" value={row.carrier}/>
-          <input type="hidden" name="raw_code" value={row.raw_code}/>
-          <input type="hidden" name="raw_name" value={row.raw_name??''}/>
-          <div className="provider-name">
-            <b>{row.raw_code||'(không mã)'}</b>
-            <span>{row.raw_name||row.description||'Raw status mới'} · {row.count} event</span>
+            {sortedRules.map(rule=><form action={saveTrackingRule} className="tracking-rule-row-v7" key={rule.status_code}>
+              <input type="hidden" name="status_code" value={rule.status_code}/>
+              <div className="tracking-state-name-v7">
+                <b>{rule.label}</b>
+                <code>{rule.status_code}</code>
+              </div>
+              <span className="tracking-phase-v7">{PHASE_LABEL[rule.phase]??rule.phase}</span>
+              {rule.terminal
+                ? <span className="tracking-stop-v7">STOP</span>
+                : <label className="tracking-toggle-v7">
+                    <input type="checkbox" name="auto_tracking" defaultChecked={rule.auto_tracking} disabled={!canEdit}/>
+                    <span>{rule.auto_tracking?'Bật':'Tắt'}</span>
+                  </label>}
+              {rule.terminal
+                ? <span className="tracking-muted-v7">—</span>
+                : <label className="tracking-cycle-input-v7">
+                    <input name="interval_minutes" type="number" min="15" max="1440" step="5" defaultValue={rule.interval_minutes??120} disabled={!canEdit}/>
+                    <span>phút</span>
+                  </label>}
+              <span className={'tracking-behavior-v7 '+(rule.terminal?'terminal':'')}>
+                {rule.terminal?'Kết thúc':'Tiếp tục theo dõi'}
+              </span>
+              {canEdit&&!rule.terminal?<button className="button small" type="submit">Lưu</button>:<span/>}
+            </form>)}
           </div>
-          <label className="settings-field wide">
-            <span>Map thành</span>
+        </div>
+      </section>
+    </div>}
+
+    {tab==='mapping'&&<div className="settings-subtab-body-v6 tracking-mapping-body-v9">
+      {unknownRaw.length>0&&<section className="tracking-unknown-panel-v7">
+        <div className="tracking-table-title-v7">
+          <div>
+            <h3>Raw status chưa nhận diện</h3>
+            <p>Chỉ xuất hiện khi SPX trả về mã mới chưa có mapping.</p>
+          </div>
+          <span>{unknownRaw.length} cần xử lý</span>
+        </div>
+        <div className="tracking-unknown-list-v7">
+          {unknownRaw.map(row=><form action={saveCarrierStatusMapping} className="tracking-unknown-row-v7" key={row.carrier+'-'+row.raw_code}>
+            <input type="hidden" name="carrier" value={row.carrier}/>
+            <input type="hidden" name="raw_code" value={row.raw_code}/>
+            <input type="hidden" name="raw_name" value={row.raw_name??''}/>
+            <div className="tracking-state-name-v7">
+              <b>{row.carrier} · {row.raw_code}</b>
+              <span>{row.raw_name||row.description||'Raw status mới'} · {row.count} event</span>
+            </div>
             <select name="canonical_status" defaultValue="UNKNOWN" disabled={!canEdit}>
               {canonicalOptions.map(x=><option value={x.status_code} key={x.status_code}>{x.label} · {x.status_code}</option>)}
             </select>
-          </label>
-          <input type="hidden" name="is_active" value="on"/>
-          {canEdit&&<button className="button small primary" type="submit">Lưu mapping</button>}
-        </form>)}
-        {!unknownRaw.length&&<div className="settings-inline-note">Chưa có raw status mới cần xử lý.</div>}
-      </div>
-
-      <details>
-        <summary className="button small">Xem {mappings.length} mapping hiện có</summary>
-        <div className="provider-settings-list">
-          {mappings.map(row=><form action={saveCarrierStatusMapping} className="provider-settings-row" key={row.id}>
-            <input type="hidden" name="carrier" value={row.carrier}/>
-            <input type="hidden" name="raw_code" value={row.raw_code}/>
-            <div className="provider-name"><b>{row.carrier} · {row.raw_code}</b><span>{row.raw_name||'—'}</span></div>
-            <input name="raw_name" defaultValue={row.raw_name??''} disabled={!canEdit}/>
-            <select name="canonical_status" defaultValue={row.canonical_status} disabled={!canEdit}>
-              {canonicalOptions.map(x=><option value={x.status_code} key={x.status_code}>{x.label}</option>)}
-            </select>
-            <label className="settings-check"><input type="checkbox" name="is_active" defaultChecked={row.is_active} disabled={!canEdit}/><span>Bật</span></label>
-            {canEdit&&<button className="button small" type="submit">Lưu</button>}
+            <input type="hidden" name="is_active" value="on"/>
+            {canEdit&&<button className="button small primary" type="submit">Tạo mapping</button>}
           </form>)}
         </div>
-      </details>
-    </section>
+      </section>}
+
+      <section className="tracking-mapping-panel-v7 tracking-full-panel-v9">
+        <div className="tracking-table-title-v7">
+          <div>
+            <h3>Mapping SPX → MYNH ERP</h3>
+            <p>Đọc trước, chỉ dòng bấm Sửa mới chuyển sang form chỉnh sửa.</p>
+          </div>
+          <span>{mappings.length} mapping</span>
+        </div>
+
+        <div className="tracking-mapping-scroll-v7 tracking-mapping-scroll-full-v9">
+          <div className="tracking-mapping-table-v7">
+            <div className="tracking-mapping-head-v7">
+              <span>Raw code</span>
+              <span>Trạng thái SPX</span>
+              <span>Trạng thái MYNH ERP</span>
+              <span>Trạng thái</span>
+              <span></span>
+            </div>
+
+            {mappings.map(row=>{
+              const canonical=canonicalMap.get(row.canonical_status)
+              const editing=editingMapping===row.id
+
+              if(editing){
+                return <form action={saveCarrierStatusMapping} className="tracking-mapping-row-v7 editing" key={row.id}>
+                  <input type="hidden" name="carrier" value={row.carrier}/>
+                  <input type="hidden" name="raw_code" value={row.raw_code}/>
+                  <div className="tracking-raw-code-v7"><b>{row.carrier} · {row.raw_code}</b><small>{row.note||'—'}</small></div>
+                  <input className="tracking-inline-input-v7" name="raw_name" defaultValue={row.raw_name??''}/>
+                  <select className="tracking-inline-select-v7" name="canonical_status" defaultValue={row.canonical_status}>
+                    {canonicalOptions.map(x=><option value={x.status_code} key={x.status_code}>{x.label} · {x.status_code}</option>)}
+                  </select>
+                  <label className="tracking-toggle-v7">
+                    <input type="checkbox" name="is_active" defaultChecked={row.is_active}/>
+                    <span>{row.is_active?'Bật':'Tắt'}</span>
+                  </label>
+                  <div className="tracking-mapping-actions-v7">
+                    <button className="button small primary" type="submit">Lưu</button>
+                    <button className="button small" type="button" onClick={()=>setEditingMapping(null)}>Huỷ</button>
+                  </div>
+                </form>
+              }
+
+              return <div className="tracking-mapping-row-v7" key={row.id}>
+                <div className="tracking-raw-code-v7">
+                  <b>{row.carrier} · {row.raw_code}</b>
+                  <small>{row.note||'—'}</small>
+                </div>
+                <div className="tracking-raw-name-v7">{row.raw_name||'—'}</div>
+                <div className="tracking-canonical-v7">
+                  <b>{canonical?.label||row.canonical_status}</b>
+                  <code>{row.canonical_status}</code>
+                </div>
+                <span className={'tracking-active-chip-v7 '+(row.is_active?'on':'')}>{row.is_active?'Đang bật':'Tạm tắt'}</span>
+                <div className="tracking-mapping-actions-v7">
+                  {canEdit&&<button className="button small" type="button" onClick={()=>setEditingMapping(row.id)}>Sửa</button>}
+                </div>
+              </div>
+            })}
+          </div>
+        </div>
+      </section>
+
+      <div className="settings-inline-note tracking-mapping-note-v7">
+        <b>Nguyên tắc:</b> Raw code SPX được chuẩn hóa về một trạng thái MYNH ERP. Riêng <code>F599</code> chỉ là “Đến kho đích” khi location khớp HUB/alias trong <Link href="/settings?section=shipping&shipping_tab=hubs">Cấu hình vận chuyển → Kho đích</Link>.
+      </div>
+    </div>}
   </div>
 }

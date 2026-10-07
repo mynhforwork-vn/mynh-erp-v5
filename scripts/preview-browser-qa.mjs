@@ -562,20 +562,55 @@ if(await appAlertTrigger.count()){
   if(await alertBackdrop.count())await alertBackdrop.click()
 }
 const settingsSelectors={
-  'Đơn vị vận chuyển':'.carrier-settings',
-  'SPX · Kho đích & Shipper':'.destination-master-detail',
-  'Tracking':'.tracking-settings',
-  'Alerts':'.tracking-telegram-settings',
-  'Thanh toán & QR':'.bank-transfer-settings',
-  'Quản lý dữ liệu':'.data-management-settings',
+  'Cấu hình vận chuyển':'.shipping-settings-v6',
+  'Tracking':'.tracking-settings-v9',
+  'Thông báo':'.notification-settings-v9',
+  'Thanh toán':'.payment-settings-v12',
+  'Dữ liệu':'.data-management-settings-v10',
 }
-for(const name of ['Đơn vị vận chuyển','SPX · Kho đích & Shipper','Tracking','Alerts','Thanh toán & QR','Quản lý dữ liệu']){
-  const tab=page.locator('.settings-page-tabs-v3').getByRole('link',{name}).first()
+for(const name of ['Cấu hình vận chuyển','Tracking','Thông báo','Thanh toán','Dữ liệu']){
+  const tab=page.locator('.settings-page-tabs-v3').getByRole('link',{name,exact:true}).first()
   if(await tab.count()){
     const tabNav=await followLink(tab)
     const selector=settingsSelectors[name]
     recordInteraction('Settings tab '+name,await page.locator(selector).count()>0,{href:tabNav.href})
   }
+}
+await go('/settings?section=shipping')
+for(const name of ['Đơn vị vận chuyển','Kho đích','Shipper']){
+  const sub=page.locator('.shipping-settings-v6 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
+  recordInteraction('Shipping subtab '+name,await sub.count()>0)
+}
+await go('/settings?section=tracking')
+for(const name of ['Vận hành Tracking','Chu kỳ trạng thái','Mapping SPX']){
+  const sub=page.locator('.tracking-settings-v9 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
+  recordInteraction('Tracking subtab '+name,await sub.count()>0)
+}
+await go('/settings?section=notifications')
+for(const name of ['Quy tắc thông báo','Kết nối Telegram','Nhóm theo HUB']){
+  const sub=page.locator('.notification-settings-v9 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
+  recordInteraction('Notification subtab '+name,await sub.count()>0)
+}
+await go('/settings?section=payments')
+for(const name of ['Cấu hình thanh toán','Mẫu hóa đơn / phiếu thu']){
+  const sub=page.locator('.payment-settings-v12 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
+  recordInteraction('Payment subtab '+name,await sub.count()>0)
+}
+const templateTab=page.locator('.payment-settings-v12 .settings-subtabs-v6').getByRole('button',{name:/^Mẫu hóa đơn/}).first()
+if(await templateTab.count()){
+  await templateTab.click()
+  recordInteraction('Payment template editor visible',await page.locator('.payment-template-form-v12').count()>0)
+  recordInteraction('Payment template live preview visible',await page.locator('.payment-document-preview-v11').count()>0)
+}
+await go('/settings?section=data-management')
+for(const name of ['Tổng quan dữ liệu','Lưu trữ & dọn dẹp','Reset hệ thống']){
+  const sub=page.locator('.data-management-settings-v10 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
+  recordInteraction('Data subtab '+name,await sub.count()>0)
+}
+await go('/settings?section=access')
+for(const name of ['Tài khoản','Vai trò & quyền']){
+  const sub=page.locator('.admin-access-settings-v10 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
+  recordInteraction('Access subtab '+name,await sub.count()>0)
 }
 
 await go('/sales/history')

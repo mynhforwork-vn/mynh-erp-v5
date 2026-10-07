@@ -1,14 +1,13 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
-import { DestinationHubSettings } from '@/components/destination-hub-config-panel'
-import { ShippingCarrierSettings } from '@/components/shipping-carrier-settings'
+import { ShippingSettings } from '@/components/shipping-settings'
 import { DataManagementSettings } from '@/components/data-management-settings'
 import { BankTransferSettings } from '@/components/bank-transfer-settings'
 import { SystemAccessSettings } from '@/components/system-access-settings'
 import { TrackingTelegramSettings } from '@/components/tracking-telegram-settings'
 import { TrackingSettings } from '@/components/tracking-settings'
 
-type SP={section?:string,purged?:string,protected?:string,telegram_test?:string,telegram_message?:string,tracking_test?:string,tracking_message?:string}
+type SP={section?:string,shipping_tab?:'carriers'|'hubs'|'shippers',purged?:string,protected?:string,telegram_test?:string,telegram_message?:string,tracking_test?:string,tracking_message?:string}
 
 export default async function SettingsPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
@@ -16,19 +15,20 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
   const role=String(user.app_metadata?.role??'viewer')
   const canEdit=['admin','operator'].includes(role)
   const canEditTracking=role==='admin'
-  const section=sp.section==='spx-hubs'
-    ? 'spx-hubs'
+  const section=(sp.section==='shipping'||sp.section==='shipping-carriers'||sp.section==='spx-hubs')
+    ? 'shipping'
     : sp.section==='tracking'&&['admin','operator'].includes(role)
       ? 'tracking'
-      : sp.section==='tracking-alerts'&&['admin','operator'].includes(role)
-        ? 'tracking-alerts'
+      : (sp.section==='notifications'||sp.section==='tracking-alerts')&&['admin','operator'].includes(role)
+        ? 'notifications'
       : sp.section==='data-management'
         ? 'data-management'
         : sp.section==='payments'
         ? 'payments'
         : sp.section==='access'&&role==='admin'
           ? 'access'
-          : 'shipping-carriers'
+          : 'shipping'
+  const shippingInitialTab=sp.section==='spx-hubs'?'hubs':(sp.shipping_tab??'carriers')
 
   const [
     {data:carrierRows,error:carrierError},
@@ -40,7 +40,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     activeUsersResult,
     archivedUsersResult,
     bankTransferResult,
-    trackingProviderResult,
+    printConfigsResult,
     trackingRuntimeResult,
     trackingRulesResult,
     trackingMappingsResult,
@@ -75,9 +75,9 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       .select('config_key,bank_id,bank_name,account_no,account_name,qr_template,transfer_prefix,is_active')
       .eq('config_key','DEFAULT')
       .maybeSingle(),
-    supabase.from('tracking_provider_configs')
-      .select('carrier,enabled,adapter_type,endpoint_url,http_method,timeout_ms,auth_header_name,auth_secret_id')
-      .order('carrier',{ascending:true}),
+    supabase.from('document_print_configs')
+      .select('document_key,brand_name,title,header_note,paper_size,footer_text,show_customer_phone,show_warehouse,show_sku,show_variant,show_qr,show_signature,show_invoice_details,is_active')
+      .order('document_key',{ascending:true}),
     supabase.from('tracking_runtime_settings')
       .select('auto_tracking_enabled,quiet_start,quiet_end,retry_minutes')
       .eq('id','main')
@@ -140,7 +140,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
 
   const error=carrierError??hubError??shipperError??assignmentError
     ??activeOrdersResult.error??archivedOrdersResult.error??activeUsersResult.error??archivedUsersResult.error
-    ??bankTransferResult.error??trackingProviderResult.error??trackingRuntimeResult.error??trackingRulesResult.error??trackingMappingsResult.error??unknownTrackingEventsResult.error??alertRulesResult.error??telegramSettingsResult.error??telegramDestinationsResult.error
+    ??bankTransferResult.error??printConfigsResult.error??trackingRuntimeResult.error??trackingRulesResult.error??trackingMappingsResult.error??unknownTrackingEventsResult.error??alertRulesResult.error??telegramSettingsResult.error??telegramDestinationsResult.error
     ??systemUsersResult.error
 
   const unknownMap=new Map<string,{carrier:string;raw_code:string;raw_name:string|null;description:string|null;count:number}>()
@@ -169,7 +169,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
   const purged=sp.purged?Number(sp.purged):null
   const protectedCount=sp.protected?Number(sp.protected):null
 
-  return <div className="settings-screen settings-screen-v3">
+  return <div className="settings-screen settings-screen-v3 settings-screen-v6 settings-screen-v8">
     <header className="page-head settings-page-head">
       <div>
         <span className="module-eyebrow">HỆ THỐNG</span>
@@ -180,38 +180,35 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
 
     {error&&<div className="error-box">Không thể tải cấu hình hệ thống: {error.message}</div>}
 
-    <nav className="settings-page-tabs-v3" aria-label="Nhóm cài đặt">
-      <Link className={section==='shipping-carriers'?'active':''} href="/settings?section=shipping-carriers">Đơn vị vận chuyển</Link>
-      <Link className={section==='spx-hubs'?'active':''} href="/settings?section=spx-hubs">SPX · Kho đích & Shipper</Link>
+    <nav className="settings-page-tabs-v3 settings-page-tabs-v6 settings-page-tabs-v8" aria-label="Nhóm cài đặt">
+      <Link className={section==='shipping'?'active':''} href="/settings?section=shipping">Cấu hình vận chuyển</Link>
       {['admin','operator'].includes(role)&&<Link className={section==='tracking'?'active':''} href="/settings?section=tracking">Tracking</Link>}
-      {['admin','operator'].includes(role)&&<Link className={section==='tracking-alerts'?'active':''} href="/settings?section=tracking-alerts">Alerts</Link>}
-      <Link className={section==='payments'?'active':''} href="/settings?section=payments">Thanh toán & QR</Link>
-      <Link className={section==='data-management'?'active':''} href="/settings?section=data-management">Quản lý dữ liệu</Link>
-      {role==='admin'&&<Link className={section==='access'?'active':''} href="/settings?section=access">Phân quyền & tài khoản</Link>}
+      {['admin','operator'].includes(role)&&<Link className={section==='notifications'?'active':''} href="/settings?section=notifications">Thông báo</Link>}
+      <Link className={section==='payments'?'active':''} href="/settings?section=payments">Thanh toán</Link>
+      <Link className={section==='data-management'?'active':''} href="/settings?section=data-management">Dữ liệu</Link>
+      {role==='admin'&&<Link className={section==='access'?'active':''} href="/settings?section=access">Tài khoản & quyền</Link>}
     </nav>
 
-    <section className="settings-workspace-v3">
-      {section==='shipping-carriers'
-        ? <ShippingCarrierSettings carriers={(carrierRows??[]) as any[]} canEdit={canEdit}/>
-        : section==='spx-hubs'
-          ? <DestinationHubSettings
-              configs={configs}
-              shippers={(shipperRows??[]) as any[]}
-              canEdit={canEdit}
-            />
-          : section==='tracking'
+    <section className="settings-workspace-v3 settings-workspace-v6 settings-workspace-v8">
+      {section==='shipping'
+        ? <ShippingSettings
+            carriers={(carrierRows??[]) as any[]}
+            configs={configs}
+            shippers={(shipperRows??[]) as any[]}
+            canEdit={canEdit}
+            initialTab={shippingInitialTab}
+          />
+        : section==='tracking'
             ? <TrackingSettings
                 runtime={(trackingRuntimeResult.data??null) as any}
                 rules={(trackingRulesResult.data??[]) as any[]}
-                carriers={(carrierRows??[]) as any[]}
-                providers={(trackingProviderResult.data??[]) as any[]}
                 mappings={(trackingMappingsResult.data??[]) as any[]}
                 unknownRaw={unknownRaw}
                 canEdit={canEditTracking}
                 trackingTest={sp.tracking_test??null}
                 trackingMessage={sp.tracking_message??null}
               />
-          : section==='tracking-alerts'
+          : section==='notifications'
             ? <TrackingTelegramSettings
                 telegram={(telegramSettingsResult.data??null) as any}
                 rules={(alertRulesResult.data??[]) as any[]}
@@ -222,7 +219,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
                 telegramMessage={sp.telegram_message??null}
               />
             : section==='payments'
-              ? <BankTransferSettings config={(bankTransferResult.data??null) as any} canEdit={canEdit}/>
+              ? <BankTransferSettings config={(bankTransferResult.data??null) as any} printConfigs={(printConfigsResult.data??[]) as any[]} canEdit={canEdit}/>
             : section==='access'&&role==='admin'
               ? <SystemAccessSettings users={systemUsers as any[]} currentUserId={user.id}/>
               : <DataManagementSettings

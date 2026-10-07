@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { assignProductSalesCategory,checkoutPOS,createPOSCustomer,createSalesProductCategory,reservePOSInvoiceCode,updateSalesProductCategory } from '@/lib/actions/sales'
 import { buildTransferDescription,buildVietQRUrl,type BankTransferConfig } from '@/lib/vietqr'
+import { DEFAULT_SALE_PRINT_CONFIG,normalizeDocumentPrintConfig,type DocumentPrintConfig } from '@/lib/print-config'
 
 type Warehouse={id:string,code:string,name:string,address?:string|null}
 type Product={
@@ -74,6 +75,7 @@ export function SalesPOSWorkspace({
   customers,
   categories,
   transferConfig,
+  printConfig,
   canSell,
   loadError,
 }:{
@@ -82,10 +84,15 @@ export function SalesPOSWorkspace({
   customers:Customer[]
   categories:ProductCategory[]
   transferConfig:BankTransferConfig|null
+  printConfig:DocumentPrintConfig|null
   canSell:boolean
   loadError?:string|null
 }){
   const router=useRouter()
+  const salePrint=normalizeDocumentPrintConfig(
+    printConfig?.is_active===false?null:printConfig,
+    DEFAULT_SALE_PRINT_CONFIG,
+  )
   const searchRef=useRef<HTMLInputElement|null>(null)
   const discountRef=useRef<HTMLInputElement|null>(null)
   const [pending,startTransition]=useTransition()
@@ -831,36 +838,37 @@ export function SalesPOSWorkspace({
       </div>
     </div>}
 
-    {printTarget&&<div className="pos-inline-receipt-print">
+    {printTarget&&<div className={'pos-inline-receipt-print print-paper-'+salePrint.paper_size.toLowerCase().replace('_','-')}>
       <div className="receipt-brand">
-        <b>MYNH ERP</b>
-        <span>PHIẾU BÁN HÀNG</span>
+        <b>{salePrint.brand_name}</b>
+        <span>{salePrint.title}</span>
+        {salePrint.header_note&&<small>{salePrint.header_note}</small>}
         <small>{printTarget==='prepay'?'CHỜ THANH TOÁN':receipt?.payment_status==='UNPAID'?'GHI NỢ':'ĐÃ THANH TOÁN'}</small>
       </div>
 
       <div className="receipt-meta">
         <div><span>Mã phiếu</span><b>{printTarget==='prepay'?transferRef:receipt?.invoice_code}</b></div>
-        <div><span>Kho bán</span><b>{printTarget==='prepay'
+        {salePrint.show_warehouse&&<div><span>Kho bán</span><b>{printTarget==='prepay'
           ? (warehouse?.code+' · '+(warehouse?.address??warehouse?.name??''))
-          : (receipt?.print_warehouse?.code+' · '+(receipt?.print_warehouse?.address??receipt?.print_warehouse?.name??''))}</b></div>
+          : (receipt?.print_warehouse?.code+' · '+(receipt?.print_warehouse?.address??receipt?.print_warehouse?.name??''))}</b></div>}
         <div><span>Khách hàng</span><b>{printTarget==='prepay'
           ? (selectedCustomer?.name??'Khách lẻ')
           : (receipt?.print_customer?.name??'Khách lẻ')}</b></div>
-        {(printTarget==='prepay'?selectedCustomer?.phone:receipt?.print_customer?.phone)&&<div>
+        {salePrint.show_customer_phone&&(printTarget==='prepay'?selectedCustomer?.phone:receipt?.print_customer?.phone)&&<div>
           <span>SĐT</span><b>{printTarget==='prepay'?selectedCustomer?.phone:receipt?.print_customer?.phone}</b>
         </div>}
       </div>
 
-      <table>
+      {salePrint.show_invoice_details&&<table>
         <thead><tr><th>#</th><th>Sản phẩm</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
         <tbody>{(printTarget==='prepay'?cart:(receipt?.print_items??[])).map((item,index)=><tr key={item.variant_id}>
           <td>{index+1}</td>
-          <td><b>{item.name}</b><small>{item.sku} · {item.variant}</small></td>
+          <td><b>{item.name}</b>{(salePrint.show_sku||salePrint.show_variant)&&<small>{salePrint.show_sku?item.sku:''}{salePrint.show_sku&&salePrint.show_variant?' · ':''}{salePrint.show_variant?item.variant:''}</small>}</td>
           <td>{item.cart_qty}</td>
           <td>{money(item.unit_price)}</td>
           <td>{money(item.cart_qty*item.unit_price)}</td>
         </tr>)}</tbody>
-      </table>
+      </table>}
 
       <div className="receipt-totals">
         <div><span>Tiền hàng</span><b>{money(printTarget==='prepay'?subtotal:Number(receipt?.subtotal??0))}</b></div>
@@ -875,7 +883,7 @@ export function SalesPOSWorkspace({
         {printTarget==='final'&&Number(receipt?.debt_amount??0)>0&&<div><span>Còn nợ</span><b>{money(Number(receipt?.debt_amount??0))}</b></div>}
       </div>
 
-      {((printTarget==='prepay'&&transferQR)||(printTarget==='final'&&receipt?.print_payment_mode==='transfer'&&receipt?.print_transfer_qr))&&<div className="receipt-qr">
+      {salePrint.show_qr&&((printTarget==='prepay'&&transferQR)||(printTarget==='final'&&receipt?.print_payment_mode==='transfer'&&receipt?.print_transfer_qr))&&<div className="receipt-qr">
         <div>
           <b>{printTarget==='prepay'?'QUÉT QR ĐỂ THANH TOÁN':'THANH TOÁN CHUYỂN KHOẢN'}</b>
           <span>{transferConfig?.bank_name} · {transferConfig?.account_no}</span>
@@ -893,7 +901,7 @@ export function SalesPOSWorkspace({
       {(printTarget==='prepay'?note:receipt?.print_note)&&<div className="receipt-note">
         <span>Ghi chú</span><b>{printTarget==='prepay'?note:receipt?.print_note}</b>
       </div>}
-      <p>Cảm ơn quý khách!</p>
+      {salePrint.footer_text&&<p>{salePrint.footer_text}</p>}
     </div>}
 
     <footer className="pos-shortcuts">

@@ -231,7 +231,7 @@ function ShipperManager({
 }:{
   configs:HubConfig[]
   shippers:Shipper[]
-  onBack:()=>void
+  onBack?:()=>void
   canEdit:boolean
 }){
   return <div className="destination-shipper-manager">
@@ -241,7 +241,7 @@ function ShipperManager({
         <h3>Shipper phụ trách SPX</h3>
         <p>Shipper có thể được gán cho nhiều HUB. Việc gán HUB thực hiện tại tab Shipper của từng HUB.</p>
       </div>
-      <button type="button" className="button" onClick={onBack}>← Quay lại HUB</button>
+      {onBack&&<button type="button" className="button" onClick={onBack}>← Quay lại HUB</button>}
     </div>
 
     <div className="destination-shipper-manager-table">
@@ -304,10 +304,12 @@ export function DestinationHubSettings({
   configs,
   shippers,
   canEdit,
+  showShipperManager=true,
 }:{
   configs:HubConfig[]
   shippers:Shipper[]
   canEdit:boolean
+  showShipperManager?:boolean
 }){
   const [mode,setMode]=useState<ManagerMode>('hubs')
   const [selectedId,setSelectedId]=useState<string>(configs[0]?.id??'__new__')
@@ -333,8 +335,8 @@ export function DestinationHubSettings({
   }
 
   return <div className="destination-master-detail">
-    <div className="destination-manager-toolbar">
-      <div className="destination-manager-switch">
+    <div className={'destination-manager-toolbar '+(!showShipperManager?'hub-only':'')}>
+      {showShipperManager&&<div className="destination-manager-switch">
         <button
           type="button"
           className={mode==='hubs'?'active':''}
@@ -351,14 +353,14 @@ export function DestinationHubSettings({
           Shipper SPX
           <small>{activeShipperCount} hoạt động</small>
         </button>
-      </div>
+      </div>}
       <div className="destination-manager-health">
         <span><i className="green"/>{activeHubCount} HUB bật</span>
         <span><i className="blue"/>{activeShipperCount} Shipper</span>
       </div>
     </div>
 
-    {mode==='hubs'
+    {(!showShipperManager||mode==='hubs')
       ? <div className="destination-master-grid">
           <aside className="destination-hub-rail">
             <div className="destination-hub-rail-head">
@@ -439,6 +441,20 @@ export function DestinationHubSettings({
           </section>
         </div>
       : <ShipperManager configs={configs} shippers={shippers} onBack={()=>setMode('hubs')} canEdit={canEdit}/>} 
+  </div>
+}
+
+export function DestinationShipperSettings({
+  configs,
+  shippers,
+  canEdit,
+}:{
+  configs:HubConfig[]
+  shippers:Shipper[]
+  canEdit:boolean
+}){
+  return <div className="destination-master-detail">
+    <ShipperManager configs={configs} shippers={shippers} canEdit={canEdit}/>
   </div>
 }
 

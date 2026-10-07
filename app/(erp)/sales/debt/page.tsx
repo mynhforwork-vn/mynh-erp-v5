@@ -50,7 +50,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
   const role=String(user.app_metadata?.role??'viewer')
   const canOperate=['admin','operator'].includes(role)
 
-  const [customersRes,debtRes,salesRes,paymentsRes,allocRes,warehouseRes,bankResult]=await Promise.all([
+  const [customersRes,debtRes,salesRes,paymentsRes,allocRes,warehouseRes,bankResult,printConfigResult]=await Promise.all([
     supabase.from('customers').select('id,name,phone,address,note'),
     supabase.from('customer_debt_balances').select('customer_id,balance'),
     supabase.from('sales').select('id,customer_id,warehouse_id,invoice_code,sale_at,total_amount,paid_amount,debt_amount,payment_status,sale_status,sale_items(id,quantity,sale_price,product_variants(id,variant_name,products(sku,name)))').not('customer_id','is',null).order('sale_at',{ascending:true}),
@@ -58,6 +58,10 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
     supabase.from('customer_payment_allocations').select('id,customer_payment_id,sale_id,amount,created_at'),
     supabase.from('warehouses').select('id,code,name,address'),
     supabase.from('bank_transfer_configs').select('config_key,bank_id,bank_name,account_no,account_name,qr_template,transfer_prefix,is_active').eq('config_key','DEFAULT').maybeSingle(),
+    supabase.from('document_print_configs')
+      .select('document_key,brand_name,title,header_note,paper_size,footer_text,show_customer_phone,show_warehouse,show_sku,show_variant,show_qr,show_signature,show_invoice_details,is_active')
+      .eq('document_key','DEBT_RECEIPT')
+      .maybeSingle(),
   ])
 
   const customers=(customersRes.data??[]) as any[]
@@ -251,6 +255,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
           balance={selected.debt}
           invoices={selected.rows.map(row=>({id:row.id,code:row.code,time:fmtDate(row.date),total:row.total,paid:row.paid,debt:row.debt,warehouse:row.warehouse,items:row.items}))}
           bankConfig={bankConfig}
+          printConfig={(printConfigResult.data??null) as any}
         />}
 
         {!collectMode&&<div className="panel-tabs">

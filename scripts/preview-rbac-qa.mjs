@@ -193,28 +193,45 @@ for(const role of ['admin','operator','viewer']){
     record('ui',role+' In-app alert bell visibility',inAppAlertBell,{inAppAlertBell})
 
     await go(page,role,'/settings?section=access')
-    const accessVisible=await page.getByRole('link',{name:'Phân quyền & tài khoản'}).count()>0
-    const accessWorkspace=await page.getByText('QUẢN TRỊ HỆ THỐNG').count()>0
+    const accessVisible=await page.getByRole('link',{name:'Tài khoản & quyền'}).count()>0
+    const accessWorkspace=await page.locator('.admin-access-settings-v10').count()>0
     record('ui',role+' settings access visibility',role==='admin'?(accessVisible&&accessWorkspace):(!accessVisible&&!accessWorkspace),{accessVisible,accessWorkspace})
+    if(role==='admin'){
+      const accessHasSystemReset=await page.getByText('Xóa dữ liệu hệ thống',{exact:true}).count()>0
+      record('ui','Admin reset removed from Access',!accessHasSystemReset,{accessHasSystemReset})
+    }
 
-    await go(page,role,'/settings?section=shipping-carriers')
+    await go(page,role,'/settings?section=data-management')
+    const dataWorkspace=await page.locator('.data-management-settings-v10').count()>0
+    const resetTab=page.locator('.data-management-settings-v10 .settings-subtabs-v6').getByRole('button',{name:/^Reset hệ thống/}).first()
+    const resetVisible=await resetTab.count()>0
+    record('ui',role+' data reset visibility',role==='admin'?(dataWorkspace&&resetVisible):(dataWorkspace&&!resetVisible),{dataWorkspace,resetVisible})
+
+    await go(page,role,'/settings?section=shipping')
     const carrierInputs=page.locator('.carrier-config-row input:not([type="hidden"]), .carrier-config-row select')
     const carrierEditable=await carrierInputs.count()>0&&!(await carrierInputs.first().isDisabled())
     const carrierSave=await page.locator('.carrier-config-row').getByRole('button',{name:/Lưu|Thêm ĐVVC/}).count()>0
     record('ui',role+' carrier settings edit state',role==='viewer'?(!carrierEditable&&!carrierSave):(carrierEditable&&carrierSave),{carrierEditable,carrierSave})
 
     await go(page,role,'/settings?section=payments')
-    const bankInput=page.locator('.bank-transfer-form input[name="account_no"]').first()
+    const bankInput=page.locator('.payment-form-panel-v11 input[name="account_no"]').first()
     const bankEditable=await bankInput.count()>0&&!(await bankInput.isDisabled())
-    const bankSave=await page.locator('.bank-transfer-form').getByRole('button',{name:'Lưu cấu hình'}).count()>0
+    const bankSave=await page.locator('.payment-form-panel-v11').getByRole('button',{name:'Lưu cấu hình'}).count()>0
     record('ui',role+' payment settings edit state',role==='viewer'?(!bankEditable&&!bankSave):(bankEditable&&bankSave),{bankEditable,bankSave})
+
+    const templateTab=page.locator('.payment-settings-v12 .settings-subtabs-v6').getByRole('button',{name:/^Mẫu hóa đơn/}).first()
+    if(await templateTab.count())await templateTab.click()
+    const templateBrand=page.locator('.payment-template-form-v12 input').first()
+    const templateEditable=await templateBrand.count()>0&&!(await templateBrand.isDisabled())
+    const templateSave=await page.locator('.payment-template-form-v12').getByRole('button',{name:'Lưu mẫu'}).count()>0
+    record('ui',role+' print template edit state',role==='viewer'?(!templateEditable&&!templateSave):(templateEditable&&templateSave),{templateEditable,templateSave})
 
     await go(page,role,'/settings?section=tracking')
     const trackingTabVisible=await page.locator('.settings-page-tabs-v3').getByRole('link',{name:'Tracking',exact:true}).count()>0
-    const trackingWorkspace=await page.locator('.tracking-settings').count()>0
-    const quietStart=page.locator('.tracking-settings input[name="quiet_start"]').first()
+    const trackingWorkspace=await page.locator('.tracking-settings-v9').count()>0
+    const quietStart=page.locator('.tracking-settings-v9 input[name="quiet_start"]').first()
     const trackingEditable=await quietStart.count()>0&&!(await quietStart.isDisabled())
-    const trackingSave=await page.locator('.tracking-settings').getByRole('button',{name:'Lưu quy tắc chung'}).count()>0
+    const trackingSave=await page.locator('.tracking-settings-v9').getByRole('button',{name:'Lưu',exact:true}).count()>0
     if(role==='viewer'){
       record('ui',role+' Tracking visibility',!trackingTabVisible&&!trackingWorkspace,{trackingTabVisible,trackingWorkspace})
     }else if(role==='admin'){
@@ -225,27 +242,31 @@ for(const role of ['admin','operator','viewer']){
       record('ui',role+' Tracking read-only state',!trackingEditable&&!trackingSave,{trackingEditable,trackingSave})
     }
 
-    await go(page,role,'/settings?section=tracking-alerts')
-    const telegramTabVisible=await page.locator('.settings-page-tabs-v3').getByRole('link',{name:'Alerts',exact:true}).count()>0
+    await go(page,role,'/settings?section=notifications')
+    const telegramTabVisible=await page.locator('.settings-page-tabs-v3').getByRole('link',{name:'Thông báo',exact:true}).count()>0
     const telegramWorkspace=await page.locator('.tracking-telegram-settings').count()>0
-    const telegramToken=page.locator('.telegram-main-form input[name="bot_token"]').first()
+    const telegramSubtab=page.locator('.notification-settings-v9 .settings-subtabs-v6').getByRole('button',{name:/^Kết nối Telegram/}).first()
+    if(await telegramSubtab.count())await telegramSubtab.click()
+    const telegramToken=page.locator('.telegram-settings-grid-v9 input[name="bot_token"]').first()
     const telegramEditable=await telegramToken.count()>0&&!(await telegramToken.isDisabled())
-    const telegramSave=await page.locator('.telegram-main-form').getByRole('button',{name:'Lưu Telegram'}).count()>0
+    const telegramSave=await page.locator('.telegram-settings-grid-v9').getByRole('button',{name:'Lưu Telegram'}).count()>0
     if(role==='viewer'){
-      record('ui',role+' Alerts visibility',!telegramTabVisible&&!telegramWorkspace,{telegramTabVisible,telegramWorkspace})
+      record('ui',role+' Notification visibility',!telegramTabVisible&&!telegramWorkspace,{telegramTabVisible,telegramWorkspace})
     }else if(role==='admin'){
       record('ui',role+' Alerts visibility',telegramTabVisible&&telegramWorkspace,{telegramTabVisible,telegramWorkspace})
-      record('ui',role+' Alerts edit state',telegramEditable&&telegramSave,{telegramEditable,telegramSave})
+      record('ui',role+' Notification edit state',telegramEditable&&telegramSave,{telegramEditable,telegramSave})
     }else{
       record('ui',role+' Alerts visibility',telegramTabVisible&&telegramWorkspace,{telegramTabVisible,telegramWorkspace})
-      record('ui',role+' Alerts read-only state',!telegramEditable&&!telegramSave,{telegramEditable,telegramSave})
+      record('ui',role+' Notification read-only state',!telegramEditable&&!telegramSave,{telegramEditable,telegramSave})
     }
 
     await go(page,role,'/settings?section=data-management')
     const permanentDelete=await page.getByText('Xóa dữ liệu lưu trữ',{exact:true}).count()>0
     record('ui',role+' permanent purge visibility',role==='admin'?permanentDelete:!permanentDelete,{permanentDelete})
 
-    await go(page,role,'/settings?section=spx-hubs')
+    await go(page,role,'/settings?section=shipping&shipping_tab=hubs')
+    const hubSubtab=page.locator('.shipping-settings-v6 .settings-subtabs-v6').getByRole('button',{name:/^Kho đích/}).first()
+    if(await hubSubtab.count())await hubSubtab.click()
     const hubAdd=page.getByRole('button',{name:/Thêm HUB/}).first()
     const hubEditable=await hubAdd.count()>0&&!await hubAdd.isDisabled()
     record('ui',role+' HUB settings edit state',role==='viewer'?!hubEditable:hubEditable,{hubEditable})
