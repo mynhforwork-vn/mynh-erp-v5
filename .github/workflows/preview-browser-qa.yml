@@ -23,6 +23,7 @@ on:
       - supabase/migrations/**
       - supabase/functions/**
       - scripts/preview-browser-qa.mjs
+      - scripts/mobile-full-qa.mjs
       - scripts/preview-mutation-qa.mjs
       - scripts/preview-mutation-qa-v2.mjs
       - scripts/preview-rbac-qa.mjs
@@ -125,6 +126,10 @@ jobs:
         if: steps.browser_qa_prereq.outputs.ready == 'true'
         run: node scripts/preview-browser-qa.mjs
 
+      - name: Run full mobile tab/function QA
+        if: steps.browser_qa_prereq.outputs.ready == 'true'
+        run: node scripts/mobile-full-qa.mjs
+
       - name: Run Preview mutation QA
         if: steps.browser_qa_prereq.outputs.ready == 'true'
         run: node scripts/preview-mutation-qa.mjs
@@ -141,7 +146,9 @@ jobs:
         if: always() && steps.browser_qa_prereq.outputs.ready == 'true'
         with:
           name: preview-browser-qa-${{ github.sha }}
-          path: qa-browser-artifacts/
+          path: |
+            qa-browser-artifacts/
+            qa-mobile-full-artifacts/
           retention-days: 7
 
       - name: Cleanup isolated QA fixtures
