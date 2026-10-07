@@ -1,6 +1,7 @@
 'use client'
 import { FormEvent, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { MynhLogoMark } from '@/components/mynh-logo-mark'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -18,7 +19,7 @@ export default function LoginPage() {
 
   return <div className="login-wrap">
     <form className="login-card" onSubmit={submit}>
-      <div className="brand-mark">MY</div>
+      <div className="brand-mark"><MynhLogoMark/></div>
       <h1>MYNH ERP</h1>
       <p className="muted">Hệ thống vận hành Shopee</p>
       <label>Thư điện tử<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="email" /></label>
