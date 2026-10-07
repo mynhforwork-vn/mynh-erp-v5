@@ -301,15 +301,6 @@ export function FinanceCashflowWorkspace({
     ? referencedOrderMap.get(activeReference.id)??null
     : null
 
-  const activeTransactions=transactions.filter(t=>t.status!=='VOID')
-  const periodTransactions=activeTransactions.filter(t=>periodMatch(t.transaction_at,period,customFrom,customTo))
-  const periodDocuments=documents.filter(d=>periodMatch(d.occurred_at,period,customFrom,customTo))
-  const totalIncome=periodTransactions.filter(t=>t.tx_type==='INCOME').reduce((sum,t)=>sum+num(t.amount),0)
-  const totalExpense=periodTransactions.filter(t=>t.tx_type==='EXPENSE').reduce((sum,t)=>sum+num(t.amount),0)
-  const incomeDocuments=periodDocuments.filter(d=>d.document_type==='INCOME'&&d.document_status!=='CANCELLED').length
-  const expenseDocuments=periodDocuments.filter(d=>d.document_type==='EXPENSE'&&d.document_status!=='CANCELLED').length
-  const pendingDocuments=periodDocuments.filter(d=>d.document_status==='DRAFT').length
-
   const rows=useMemo(()=>{
     const docRows=documents.map(doc=>{
       const docLines=doc.finance_document_lines??[]
@@ -357,6 +348,23 @@ export function FinanceCashflowWorkspace({
       })
     return [...docRows,...legacyRows].sort((a,b)=>new Date(b.time).getTime()-new Date(a.time).getTime())
   },[documents,transactions,categoryMap,categoryCodeMap])
+
+  const kpiScopeRows=useMemo(()=>rows.filter(row=>{
+    const q=search.trim().toLowerCase()
+    if(!periodMatch(row.time,period,customFrom,customTo))return false
+    if(filterSource!=='ALL'&&row.source!==filterSource)return false
+    if(filterMethod!=='ALL'&&row.method!==filterMethod)return false
+    if(filterCategory!=='ALL'&&!row.categoryIds.includes(filterCategory))return false
+    if(q&&![row.code,row.category,row.content,row.counterparty,row.source].join(' ').toLowerCase().includes(q))return false
+    return true
+  }),[rows,search,period,customFrom,customTo,filterSource,filterMethod,filterCategory])
+
+  const postedScopeRows=kpiScopeRows.filter(row=>row.status==='POSTED')
+  const totalIncome=postedScopeRows.filter(row=>row.type==='INCOME').reduce((sum,row)=>sum+num(row.amount),0)
+  const totalExpense=postedScopeRows.filter(row=>row.type==='EXPENSE').reduce((sum,row)=>sum+num(row.amount),0)
+  const incomeDocuments=kpiScopeRows.filter(row=>row.kind==='DOCUMENT'&&row.type==='INCOME'&&row.status!=='CANCELLED').length
+  const expenseDocuments=kpiScopeRows.filter(row=>row.kind==='DOCUMENT'&&row.type==='EXPENSE'&&row.status!=='CANCELLED').length
+  const pendingDocuments=kpiScopeRows.filter(row=>row.kind==='DOCUMENT'&&row.status==='DRAFT').length
 
   const filteredRows=useMemo(()=>{
     const filtered=rows.filter(row=>{
