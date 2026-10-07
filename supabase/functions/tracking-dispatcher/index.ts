@@ -340,7 +340,8 @@ Deno.serve(async(req)=>{
   let body:{limit?:number;shipment_id?:string;test_tracking_number?:string;carrier?:string}={};
   try{body=await req.json()}catch{}
 
-  if(mode==="MANUAL"&&body.test_tracking_number){
+  // Non-mutating provider probe for authenticated Admin/Operator or trusted cron callers.
+  if(body.test_tracking_number){
     const carrier=String(body.carrier??"SPX").trim()||"SPX";
     try{
       const config=await loadProvider(carrier);
