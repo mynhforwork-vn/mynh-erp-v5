@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect,useMemo,useState } from 'react'
+import { SystemSlidebar } from '@/components/system-slidebar'
 import { formatDateTime,formatMoney } from '@/lib/format'
 import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
 
@@ -202,7 +203,7 @@ export function WarehouseInventoryWorkspace({
       </div>
     </section>
 
-    {active&&<aside className="whx-detail-panel whx-detail-panel-v2 mynh-slide-panel">
+    {active&&<SystemSlidebar className="whx-detail-panel whx-detail-panel-v2">
       {historyScope==='all'
         ? <>
             <div className="whx-panel-head whx-panel-head-v2 context-stack-head">
@@ -328,6 +329,6 @@ export function WarehouseInventoryWorkspace({
           </div>
         </>}
       </div>
-    </aside>}
+    </SystemSlidebar>}
   </div>
 }
