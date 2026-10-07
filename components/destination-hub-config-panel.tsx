@@ -23,6 +23,8 @@ type HubConfig={
   province_keywords?:string[]|null
   district_keywords?:string[]|null
   address_keywords?:string[]|null
+  carrier_code?:string|null
+  tracking_location_aliases?:string[]|null
   shipper_ids?:string[]
   priority?:number|null
   is_active?:boolean|null
@@ -72,6 +74,7 @@ function HubEditor({
     <form action={saveDestinationHubConfig} className="destination-hub-edit-form">
       <fieldset className="destination-readonly-fieldset" disabled={!canEdit}>
       {!isNew&&row&&<input type="hidden" name="config_id" value={row.id}/>}
+      <input type="hidden" name="carrier_code" value="SPX"/>
 
       <div className={'destination-tab-panel '+(tab==='info'?'active':'')}>
         <div className="destination-field-grid">
@@ -105,12 +108,20 @@ function HubEditor({
             <span>Ưu tiên nhận diện</span>
             <input name="priority" type="number" min="0" defaultValue={row?.priority??100}/>
           </label>
+          <label>
+            <span>Location SPX nhận diện kho đích</span>
+            <input
+              name="tracking_location_aliases"
+              defaultValue={(row?.tracking_location_aliases??[]).join(', ')}
+              placeholder="VD: 17-BGG Bac Giang 3 Hub"
+            />
+          </label>
         </div>
 
         <div className="destination-info-note">
           <div>
-            <b>Nguyên tắc định tuyến</b>
-            <span>HUB là cấp quản lý chính. Phường/Xã và Shipper là hai danh sách con độc lập của HUB.</span>
+            <b>Nguyên tắc nhận diện kho đích</b>
+            <span>Tracking chỉ coi là “Đến kho đích” khi location SPX khớp chính xác Mã HUB hoặc một alias đã khai báo ở trên. Phường/Xã chỉ dùng định tuyến nghiệp vụ, không tự biến một kho SPX thành kho đích.</span>
           </div>
           <label className="destination-switch">
             <input type="checkbox" name="is_active" defaultChecked={row?.is_active??true}/>

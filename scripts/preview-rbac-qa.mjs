@@ -111,22 +111,35 @@ async function go(page,role,path){
   let login=false
   let serverError=false
   let finalUrl=''
+  let navigationError=''
   const target=PREVIEW_URL+path
-  for(let attempt=1;attempt<=3;attempt++){
-    const res=await page.goto(target,{waitUntil:'domcontentloaded',timeout:30000})
-    await page.waitForTimeout(attempt===1?500:1200)
-    status=res?.status()??0
-    finalUrl=page.url()
-    login=/\/login(?:\?|$)/.test(new URL(finalUrl).pathname)
-    const body=(await page.locator('body').innerText().catch(()=>'' )).slice(0,4000)
-    serverError=/Application error|Internal Server Error|Server Components render/i.test(body)
-    if(status>0&&status<500&&!login&&!serverError){
-      summary.network5xx=summary.network5xx.filter(x=>!(x.role===role&&x.resourceType==='document'&&x.url===target))
-      record('routes',role+' '+path,true,{status,finalUrl,attempt})
-      return
+  const retryDelay=[500,1500,3000,5000,7000]
+
+  for(let attempt=1;attempt<=5;attempt++){
+    try{
+      const res=await page.goto(target,{waitUntil:'domcontentloaded',timeout:30000})
+      await page.waitForTimeout(attempt===1?500:1000)
+      status=res?.status()??0
+      finalUrl=page.url()
+      login=/\/login(?:\?|$)/.test(new URL(finalUrl).pathname)
+      const body=(await page.locator('body').innerText().catch(()=>'' )).slice(0,4000)
+      serverError=/Application error|Internal Server Error|Server Components render/i.test(body)
+      navigationError=''
+
+      if(status>0&&status<500&&!login&&!serverError){
+        summary.network5xx=summary.network5xx.filter(x=>!(x.role===role&&x.resourceType==='document'&&x.url===target))
+        record('routes',role+' '+path,true,{status,finalUrl,attempt})
+        return
+      }
+    }catch(error){
+      navigationError=error instanceof Error?error.message:String(error)
+      finalUrl=page.url()
     }
+
+    if(attempt<5)await page.waitForTimeout(retryDelay[attempt-1])
   }
-  record('routes',role+' '+path,false,{status,finalUrl,login,serverError})
+
+  record('routes',role+' '+path,false,{status,finalUrl,login,serverError,navigationError})
 }
 
 const routes=[
@@ -144,8 +157,8 @@ function auditSourceGuards(){
     'deleteOrderPermanent','deleteOrdersBulkPermanent','purgeEligibleArchivedOrders','deleteERPUserPermanent',
     'updateSystemUserRole','sendSystemUserPasswordReset','resetERPSystemData','createSystemUserAccount',
     'setSystemUserTemporaryPassword','deleteSystemUserAccount',
-    'saveTrackingProviderConfig','saveTelegramAlertSettings','saveTelegramAlertDestination',
-    'deleteTelegramAlertDestination','testTelegramConnection',
+    'saveTrackingProviderConfig','saveTrackingRuntimeSettings','saveTrackingRule','saveCarrierStatusMapping','testTrackingConnection',
+    'saveTelegramAlertSettings','saveTelegramAlertDestination','deleteTelegramAlertDestination','testTelegramConnection',
   ])
   for(const path of files){
     const src=fs.readFileSync(path,'utf8')
@@ -192,23 +205,36 @@ for(const role of ['admin','operator','viewer']){
     const bankSave=await page.locator('.bank-transfer-form').getByRole('button',{name:'Lưu cấu hình'}).count()>0
     record('ui',role+' payment settings edit state',role==='viewer'?(!bankEditable&&!bankSave):(bankEditable&&bankSave),{bankEditable,bankSave})
 
+    await go(page,role,'/settings?section=tracking')
+    const trackingTabVisible=await page.locator('.settings-page-tabs-v3').getByRole('link',{name:'Tracking',exact:true}).count()>0
+    const trackingWorkspace=await page.locator('.tracking-settings').count()>0
+    const quietStart=page.locator('.tracking-settings input[name="quiet_start"]').first()
+    const trackingEditable=await quietStart.count()>0&&!(await quietStart.isDisabled())
+    const trackingSave=await page.locator('.tracking-settings').getByRole('button',{name:'Lưu quy tắc chung'}).count()>0
+    if(role==='viewer'){
+      record('ui',role+' Tracking visibility',!trackingTabVisible&&!trackingWorkspace,{trackingTabVisible,trackingWorkspace})
+    }else if(role==='admin'){
+      record('ui',role+' Tracking visibility',trackingTabVisible&&trackingWorkspace,{trackingTabVisible,trackingWorkspace})
+      record('ui',role+' Tracking edit state',trackingEditable&&trackingSave,{trackingEditable,trackingSave})
+    }else{
+      record('ui',role+' Tracking visibility',trackingTabVisible&&trackingWorkspace,{trackingTabVisible,trackingWorkspace})
+      record('ui',role+' Tracking read-only state',!trackingEditable&&!trackingSave,{trackingEditable,trackingSave})
+    }
+
     await go(page,role,'/settings?section=tracking-alerts')
-    const trackingTabVisible=await page.locator('.settings-page-tabs-v3').getByRole('link',{name:'Tracking & Telegram'}).count()>0
-    const trackingWorkspace=await page.locator('.tracking-telegram-settings').count()>0
-    const providerEndpoint=page.locator('.provider-settings-row input[name="endpoint_url"]').first()
-    const providerEditable=await providerEndpoint.count()>0&&!(await providerEndpoint.isDisabled())
-    const providerSave=await page.locator('.provider-settings-row').getByRole('button',{name:'Lưu'}).count()>0
+    const telegramTabVisible=await page.locator('.settings-page-tabs-v3').getByRole('link',{name:'Telegram',exact:true}).count()>0
+    const telegramWorkspace=await page.locator('.tracking-telegram-settings').count()>0
     const telegramToken=page.locator('.telegram-main-form input[name="bot_token"]').first()
     const telegramEditable=await telegramToken.count()>0&&!(await telegramToken.isDisabled())
     const telegramSave=await page.locator('.telegram-main-form').getByRole('button',{name:'Lưu Telegram'}).count()>0
     if(role==='viewer'){
-      record('ui',role+' Tracking Telegram visibility',!trackingTabVisible&&!trackingWorkspace,{trackingTabVisible,trackingWorkspace})
+      record('ui',role+' Telegram visibility',!telegramTabVisible&&!telegramWorkspace,{telegramTabVisible,telegramWorkspace})
+    }else if(role==='admin'){
+      record('ui',role+' Telegram visibility',telegramTabVisible&&telegramWorkspace,{telegramTabVisible,telegramWorkspace})
+      record('ui',role+' Telegram edit state',telegramEditable&&telegramSave,{telegramEditable,telegramSave})
     }else{
-      record('ui',role+' Tracking Telegram visibility',trackingTabVisible&&trackingWorkspace,{trackingTabVisible,trackingWorkspace})
-      record('ui',role+' Tracking Telegram edit state',role==='admin'
-        ? providerEditable&&providerSave&&telegramEditable&&telegramSave
-        : !providerEditable&&!providerSave&&!telegramEditable&&!telegramSave,
-        {providerEditable,providerSave,telegramEditable,telegramSave})
+      record('ui',role+' Telegram visibility',telegramTabVisible&&telegramWorkspace,{telegramTabVisible,telegramWorkspace})
+      record('ui',role+' Telegram read-only state',!telegramEditable&&!telegramSave,{telegramEditable,telegramSave})
     }
 
     await go(page,role,'/settings?section=data-management')

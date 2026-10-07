@@ -2,7 +2,6 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/supabase/auth'
-import { nextTrackAt } from '@/lib/tracking/schedule'
 
 function text(v:FormDataEntryValue|null){return String(v??'').trim()}
 
@@ -37,6 +36,20 @@ async function actor(){
 }
 function requireAdmin(role:string){
   if(role!=='admin')throw new Error('Chỉ Admin được thực hiện thao tác này')
+}
+
+async function trackingScheduleFromDb(supabase:any,status:string){
+  const from=new Date().toISOString()
+  const [{data:interval,error:intervalError},{data:next,error:nextError}]=await Promise.all([
+    supabase.rpc('tracking_interval_minutes',{p_status:status}),
+    supabase.rpc('next_tracking_at',{p_from:from,p_status:status}),
+  ])
+  if(intervalError)throw new Error(intervalError.message)
+  if(nextError)throw new Error(nextError.message)
+  return {
+    interval:interval===null?null:Number(interval),
+    nextAt:next?String(next):null,
+  }
 }
 
 export async function createERPUser(formData:FormData){
@@ -331,7 +344,7 @@ async function resolveCarrierName(supabase:any,trackingNumber:string,explicitCar
 
   const {data,error}=await supabase
     .from('shipping_carrier_configs')
-    .select('display_name,tracking_prefixes')
+    .select('carrier_code,display_name,tracking_prefixes')
     .eq('is_active',true)
     .eq('supports_tracking',true)
     .order('priority',{ascending:true})
@@ -343,7 +356,7 @@ async function resolveCarrierName(supabase:any,trackingNumber:string,explicitCar
       return Boolean(p)&&v.startsWith(p)
     })
   )
-  return matched?.display_name??null
+  return matched?.carrier_code??null
 }
 
 async function carrierUsesDestinationHub(supabase:any,carrierName:string|null){
@@ -581,7 +594,7 @@ export async function restoreOrder(formData:FormData){
 
   const {data:row,error:readError}=await supabase
     .from('orders')
-    .select('id,shopee_order_id,shipping_service,archived_at,archived_by,shipments(id,tracking_number,current_tracking_status,is_active)')
+    .select('id,shopee_order_id,shipping_service,archived_at,archived_by,shipments(id,tracking_number,current_tracking_status,tracking_interval_minutes,is_active)')
     .eq('id',orderId)
     .maybeSingle()
   if(readError)throw new Error(readError.message)
@@ -603,11 +616,11 @@ export async function restoreOrder(formData:FormData){
     !['DELIVERED','CANCELLED','RETURNED'].includes(status)
   )
   if(active?.id){
-    const next=shouldTrack?nextTrackAt(new Date(),status as any):null
+    const schedule=shouldTrack?await trackingScheduleFromDb(supabase,status):{interval:null,nextAt:null}
     const {error:shipmentError}=await supabase.from('shipments').update({
-      tracking_enabled:shouldTrack,
-      tracking_interval_minutes:status==='OUT_FOR_DELIVERY'?60:120,
-      next_track_at:next?.toISOString()??null,
+      tracking_enabled:shouldTrack&&schedule.interval!==null,
+      tracking_interval_minutes:schedule.interval??active.tracking_interval_minutes??120,
+      next_track_at:schedule.nextAt,
     }).eq('id',active.id)
     if(shipmentError){
       await supabase.from('orders').update({
@@ -802,7 +815,7 @@ export async function restoreOrdersBulk(formData:FormData){
 
   const {data:rows,error:readError}=await supabase
     .from('orders')
-    .select('id,shopee_order_id,shipping_service,archived_at,archived_by,shipments(id,tracking_number,current_tracking_status,is_active)')
+    .select('id,shopee_order_id,shipping_service,archived_at,archived_by,shipments(id,tracking_number,current_tracking_status,tracking_interval_minutes,is_active)')
     .in('id',orderIds)
   if(readError)throw new Error(readError.message)
   if((rows??[]).length!==orderIds.length)throw new Error('Có đơn không tồn tại hoặc không có quyền truy cập')
@@ -826,11 +839,11 @@ export async function restoreOrdersBulk(formData:FormData){
         status &&
         !['DELIVERED','CANCELLED','RETURNED'].includes(status)
       )
-      const next=shouldTrack?nextTrackAt(new Date(),status as any):null
+      const schedule=shouldTrack?await trackingScheduleFromDb(supabase,status):{interval:null,nextAt:null}
       const {error:shipmentError}=await supabase.from('shipments').update({
-        tracking_enabled:shouldTrack,
-        tracking_interval_minutes:status==='OUT_FOR_DELIVERY'?60:120,
-        next_track_at:next?.toISOString()??null,
+        tracking_enabled:shouldTrack&&schedule.interval!==null,
+        tracking_interval_minutes:schedule.interval??active.tracking_interval_minutes??120,
+        next_track_at:schedule.nextAt,
       }).eq('id',active.id)
       if(shipmentError)throw shipmentError
     }
@@ -1016,6 +1029,8 @@ export async function saveDestinationHubConfig(formData:FormData){
     province_keywords:keywordList(formData.get('province_keywords')),
     district_keywords:keywordList(formData.get('ward_keywords')??formData.get('district_keywords')),
     address_keywords:keywordList(formData.get('address_keywords')),
+    carrier_code:text(formData.get('carrier_code')).toUpperCase()||'SPX',
+    tracking_location_aliases:keywordList(formData.get('tracking_location_aliases')),
     priority:Number.isFinite(priorityRaw)?Math.max(0,Math.round(priorityRaw)):100,
     is_active:formData.get('is_active')==='on',
     updated_at:new Date().toISOString(),
@@ -1065,7 +1080,7 @@ export async function deleteDestinationHubConfig(formData:FormData){
 
   const {data:hub,error:hubError}=await supabase
     .from('destination_hub_configs')
-    .select('id,hub_code,area,region,province_keywords,district_keywords,address_keywords,priority,is_active')
+    .select('id,hub_code,area,region,province_keywords,district_keywords,address_keywords,carrier_code,tracking_location_aliases,priority,is_active')
     .eq('id',id)
     .maybeSingle()
   if(hubError)throw new Error(hubError.message)
@@ -1470,7 +1485,7 @@ export async function quickAddTrackingNumber(formData:FormData){
     throw new Error('Đơn này đã có mã vận đơn. Hãy dùng chức năng cập nhật MVĐ trong chi tiết đơn.')
   }
 
-  const next=isExpress?null:nextTrackAt(new Date(),'READY_TO_SHIP')
+  const schedule=isExpress?{interval:null,nextAt:null}:await trackingScheduleFromDb(supabase,'READY_TO_SHIP')
   const trackingStatus=isExpress?'UNKNOWN':'READY_TO_SHIP'
   if(active?.id){
     const {error}=await supabase.from('shipments').update({
@@ -1478,8 +1493,8 @@ export async function quickAddTrackingNumber(formData:FormData){
       carrier,
       current_tracking_status:trackingStatus,
       tracking_enabled:!isExpress,
-      tracking_interval_minutes:120,
-      next_track_at:next?.toISOString()??null,
+      tracking_interval_minutes:schedule.interval??120,
+      next_track_at:schedule.nextAt,
       locked_until:null,
     }).eq('id',active.id)
     if(error)throw new Error(error.message)
@@ -1490,8 +1505,8 @@ export async function quickAddTrackingNumber(formData:FormData){
       carrier,
       current_tracking_status:trackingStatus,
       tracking_enabled:!isExpress,
-      tracking_interval_minutes:120,
-      next_track_at:next?.toISOString()??null,
+      tracking_interval_minutes:schedule.interval??120,
+      next_track_at:schedule.nextAt,
       is_active:true,
     })
     if(error)throw new Error(error.message)
@@ -1549,13 +1564,13 @@ export async function replaceShipment(formData:FormData){
     if(error)throw new Error(error.message)
   }
 
-  const next=isExpress?null:nextTrackAt(new Date(),'READY_TO_SHIP')
+  const schedule=isExpress?{interval:null,nextAt:null}:await trackingScheduleFromDb(supabase,'READY_TO_SHIP')
   const {error:newError}=await supabase.from('shipments').insert({
     order_id:orderId,tracking_number:trackingNumber,carrier,
     current_tracking_status:isExpress?'UNKNOWN':'READY_TO_SHIP',
-    tracking_enabled:!isExpress,
-    tracking_interval_minutes:120,
-    next_track_at:next?.toISOString()??null,
+    tracking_enabled:!isExpress&&schedule.interval!==null,
+    tracking_interval_minutes:schedule.interval??120,
+    next_track_at:schedule.nextAt,
     is_active:true
   })
   if(newError){
@@ -1803,13 +1818,15 @@ export async function saveTrackingProviderConfig(formData:FormData){
   const {supabase,role}=await actor()
   requireAdmin(role)
   const carrier=text(formData.get('carrier')).toUpperCase()
+  const adapterType=text(formData.get('adapter_type')).toUpperCase()||'NORMALIZED_JSON'
   const endpoint=text(formData.get('endpoint_url'))
   const method=text(formData.get('http_method')).toUpperCase()||'GET'
   const timeoutRaw=Number(text(formData.get('timeout_ms'))||8000)
   if(!carrier)throw new Error('Thiếu ĐVVC cần cấu hình Tracking Provider')
-  const {error}=await supabase.rpc('save_tracking_provider_config_secure',{
+  const {error}=await supabase.rpc('save_tracking_provider_config_secure_v2',{
     p_carrier:carrier,
     p_enabled:formData.get('enabled')==='on',
+    p_adapter_type:adapterType,
     p_endpoint_url:endpoint,
     p_http_method:method,
     p_timeout_ms:Number.isFinite(timeoutRaw)?Math.round(timeoutRaw):8000,
@@ -1819,6 +1836,81 @@ export async function saveTrackingProviderConfig(formData:FormData){
   })
   if(error)throw new Error(error.message)
   revalidatePath('/settings')
+}
+
+export async function saveTrackingRuntimeSettings(formData:FormData){
+  const {supabase,role}=await actor()
+  requireAdmin(role)
+  const retry=keywordList(formData.get('retry_minutes'))
+    .map(v=>Number(v))
+    .filter(v=>Number.isFinite(v))
+    .map(v=>Math.round(v))
+  const {error}=await supabase.rpc('save_tracking_runtime_settings_secure',{
+    p_enabled:formData.get('auto_tracking_enabled')==='on',
+    p_quiet_start:text(formData.get('quiet_start'))||'02:00',
+    p_quiet_end:text(formData.get('quiet_end'))||'06:00',
+    p_retry_minutes:retry.length?retry:[10,30,60],
+  })
+  if(error)throw new Error(error.message)
+  revalidatePath('/settings')
+}
+
+export async function saveTrackingRule(formData:FormData){
+  const {supabase,role}=await actor()
+  requireAdmin(role)
+  const status=text(formData.get('status_code')).toUpperCase()
+  const interval=Number(text(formData.get('interval_minutes')))
+  if(!status)throw new Error('Thiếu trạng thái Tracking')
+  const {error}=await supabase.rpc('save_tracking_rule_secure',{
+    p_status_code:status,
+    p_interval_minutes:Number.isFinite(interval)?Math.round(interval):null,
+    p_auto_tracking:formData.get('auto_tracking')==='on',
+  })
+  if(error)throw new Error(error.message)
+  revalidatePath('/settings')
+}
+
+export async function saveCarrierStatusMapping(formData:FormData){
+  const {supabase,role}=await actor()
+  requireAdmin(role)
+  const carrier=text(formData.get('carrier')).toUpperCase()
+  const rawCode=text(formData.get('raw_code')).toUpperCase()
+  const canonical=text(formData.get('canonical_status')).toUpperCase()
+  if(!carrier||!rawCode||!canonical)throw new Error('Thiếu Carrier, raw code hoặc trạng thái chuẩn')
+  const {error}=await supabase.rpc('save_carrier_status_mapping_secure',{
+    p_carrier:carrier,
+    p_raw_code:rawCode,
+    p_raw_name:text(formData.get('raw_name'))||null,
+    p_canonical_status:canonical,
+    p_is_active:formData.get('is_active')==='on',
+  })
+  if(error)throw new Error(error.message)
+  revalidatePath('/settings')
+}
+
+export async function testTrackingConnection(formData:FormData){
+  const {supabase,role}=await actor()
+  requireAdmin(role)
+  const trackingNumber=text(formData.get('tracking_number'))
+  const carrier=text(formData.get('carrier')).toUpperCase()||'SPX'
+  if(!trackingNumber)throw new Error('Nhập mã vận đơn để test Tracking')
+  const {data,error}=await supabase.functions.invoke('tracking-dispatcher',{
+    body:{test_tracking_number:trackingNumber,carrier},
+  })
+  const params=new URLSearchParams({section:'tracking'})
+  if(error||data?.ok!==true){
+    params.set('tracking_test','fail')
+    params.set('tracking_message',String(error?.message??data?.error??'Không kết nối được Tracking').slice(0,180))
+  }else{
+    params.set('tracking_test','ok')
+    params.set('tracking_message',[
+      String(data.latest_status??'UNKNOWN'),
+      data.latest_raw_code?String(data.latest_raw_code):'',
+      data.destination_hub?String(data.destination_hub):'',
+      `${Number(data.event_count??0)} events`,
+    ].filter(Boolean).join(' · ').slice(0,180))
+  }
+  redirect('/settings?'+params.toString())
 }
 
 export async function saveTelegramAlertSettings(formData:FormData){
