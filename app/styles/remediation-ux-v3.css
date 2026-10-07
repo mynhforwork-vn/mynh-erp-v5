@@ -7793,3 +7793,208 @@
     max-height:none!important;
   }
 }
+
+
+/* =====================================================================
+   SETTINGS V12 — editable invoice / debt receipt templates
+   ===================================================================== */
+.payment-settings-v12{
+  min-width:0!important;
+  width:100%!important;
+  height:calc(100dvh - 205px)!important;
+  min-height:520px!important;
+  display:flex!important;
+  flex-direction:column!important;
+}
+.payment-settings-v12>.settings-subtabs-v6{flex:0 0 auto!important}
+.payment-body-v12{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow:hidden!important;
+}
+.payment-template-body-v12{
+  display:flex!important;
+  flex-direction:column!important;
+}
+.payment-template-editor-v12{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  display:grid!important;
+  grid-template-columns:370px minmax(0,1fr)!important;
+  gap:8px!important;
+  margin-top:7px!important;
+}
+.payment-template-form-v12{
+  min-width:0!important;
+  min-height:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+  border:1px solid #bdceda!important;
+  border-radius:5px!important;
+  background:#fff!important;
+}
+.payment-template-form-head-v12{
+  flex:0 0 auto!important;
+  min-height:49px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  padding:8px 10px!important;
+  border-bottom:1px solid #c6d5df!important;
+  background:#f3f7f9!important;
+}
+.payment-template-form-head-v12 h3{
+  margin:0!important;
+  color:#102f45!important;
+  font-size:12px!important;
+  font-weight:850!important;
+}
+.payment-template-form-head-v12 p{
+  margin:2px 0 0!important;
+  color:#536b7e!important;
+  font-size:9px!important;
+}
+.payment-template-form-scroll-v12{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow:auto!important;
+  scrollbar-gutter:stable!important;
+}
+.payment-template-fields-v12{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:8px!important;
+  padding:10px!important;
+}
+.payment-template-fields-v12 label{
+  min-width:0!important;
+  display:grid!important;
+  gap:4px!important;
+}
+.payment-template-fields-v12 label.full{
+  grid-column:1/-1!important;
+}
+.payment-template-fields-v12 label>span{
+  color:#314f65!important;
+  font-size:9px!important;
+  font-weight:760!important;
+}
+.payment-template-fields-v12 textarea{
+  min-height:66px!important;
+  resize:vertical!important;
+}
+.payment-template-toggle-head-v12{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:8px!important;
+  padding:8px 10px 6px!important;
+  border-top:1px solid #dce6ed!important;
+  background:#f8fafb!important;
+}
+.payment-template-toggle-head-v12 b{
+  color:#17364d!important;
+  font-size:10px!important;
+}
+.payment-template-toggle-head-v12 span{
+  color:#5a7184!important;
+  font-size:8.5px!important;
+}
+.payment-template-toggles-v12{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:0!important;
+  padding:0 10px 10px!important;
+}
+.payment-template-toggles-v12 label{
+  min-height:34px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:7px!important;
+  border-bottom:1px solid #e6edf2!important;
+  color:#29465c!important;
+  font-size:9px!important;
+}
+.payment-template-actions-v12{
+  flex:0 0 auto!important;
+  min-height:48px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:7px!important;
+  padding:8px 10px!important;
+  border-top:1px solid #c6d5df!important;
+  background:#f8fafb!important;
+}
+.payment-template-actions-v12>span{
+  margin-right:auto!important;
+  color:#526b7e!important;
+  font-size:8.5px!important;
+}
+.payment-template-actions-v12 .success{color:#176448!important}
+.payment-template-actions-v12 .error{color:#a03b45!important}
+.payment-document-preview-wrap-v12{
+  height:100%!important;
+}
+.payment-document-preview-v11.paper-a5{
+  width:min(570px,100%)!important;
+}
+.payment-document-preview-v11.paper-receipt-80{
+  width:min(360px,100%)!important;
+  padding:18px 16px!important;
+}
+.payment-document-preview-v11.paper-receipt-80 .payment-doc-meta-v11{
+  grid-template-columns:1fr!important;
+}
+.payment-document-preview-v11.paper-receipt-80 .payment-doc-meta-v11>div{
+  border-right:0!important;
+  border-bottom:1px solid #e1e8ed!important;
+}
+.payment-document-preview-v11.paper-receipt-80 .payment-doc-qr-v11{
+  grid-template-columns:1fr!important;
+}
+.payment-document-preview-v11.paper-receipt-80 .payment-doc-qr-v11 img{
+  justify-self:center!important;
+}
+.payment-document-preview-v11.paper-receipt-80 .payment-doc-signatures-v11{
+  gap:14px!important;
+  margin-left:0!important;
+  margin-right:0!important;
+}
+.payment-template-form-scroll-v12,
+.payment-document-preview-wrap-v12{
+  scrollbar-width:thin!important;
+  scrollbar-color:#879eaf #e8eef3!important;
+}
+.payment-template-form-scroll-v12::-webkit-scrollbar,
+.payment-document-preview-wrap-v12::-webkit-scrollbar{
+  width:9px!important;
+  height:9px!important;
+}
+.payment-template-form-scroll-v12::-webkit-scrollbar-track,
+.payment-document-preview-wrap-v12::-webkit-scrollbar-track{background:#e8eef3!important}
+.payment-template-form-scroll-v12::-webkit-scrollbar-thumb,
+.payment-document-preview-wrap-v12::-webkit-scrollbar-thumb{
+  border:2px solid #e8eef3!important;
+  border-radius:8px!important;
+  background:#879eaf!important;
+}
+@media(max-width:1050px){
+  .payment-template-editor-v12{
+    grid-template-columns:330px minmax(0,1fr)!important;
+  }
+}
+@media(max-width:820px){
+  .payment-settings-v12{
+    height:auto!important;
+    min-height:0!important;
+  }
+  .payment-body-v12{overflow:visible!important}
+  .payment-template-editor-v12{
+    grid-template-columns:1fr!important;
+  }
+  .payment-template-form-v12{min-height:540px!important}
+  .payment-document-preview-wrap-v12{min-height:600px!important}
+}
