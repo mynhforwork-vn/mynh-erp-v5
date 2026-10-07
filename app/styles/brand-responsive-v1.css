@@ -7506,3 +7506,34 @@ body{
     grid-template-columns:minmax(0,1fr) 390px!important;
   }
 }
+
+
+/* =====================================================================
+   MYNH ERP — Desktop Slidebar Exact Width Lock V1
+   Border-box width is identical across operational right panels.
+   ===================================================================== */
+@media(min-width:901px){
+  .brand-shell-v1 .warehouse-intake-layout.with-panel>.warehouse-intake-panel,
+  .brand-shell-v1 .whx-stock-layout.with-panel>.whx-detail-panel-v2,
+  .brand-shell-v1 .finance-ledger-layout.with-panel>.finance-panel,
+  .brand-shell-v1 .finance-settlement-live.has-slidebar>aside.finance-hub-live-panel,
+  .brand-shell-v1 .finance-settlement-live.has-slidebar>aside.context-order-panel{
+    box-sizing:border-box!important;
+    width:var(--mynh-slidebar-width)!important;
+    min-width:var(--mynh-slidebar-width)!important;
+    max-width:var(--mynh-slidebar-width)!important;
+    justify-self:end!important;
+  }
+}
+@media(max-width:1440px) and (min-width:901px){
+  :root{--mynh-slidebar-width:390px}
+  .brand-shell-v1 .warehouse-intake-layout.with-panel>.warehouse-intake-panel,
+  .brand-shell-v1 .whx-stock-layout.with-panel>.whx-detail-panel-v2,
+  .brand-shell-v1 .finance-ledger-layout.with-panel>.finance-panel,
+  .brand-shell-v1 .finance-settlement-live.has-slidebar>aside.finance-hub-live-panel,
+  .brand-shell-v1 .finance-settlement-live.has-slidebar>aside.context-order-panel{
+    width:390px!important;
+    min-width:390px!important;
+    max-width:390px!important;
+  }
+}
