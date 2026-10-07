@@ -1059,16 +1059,32 @@ body{
   height:100%!important;
   display:block!important;
 }
-.mynh-logo-base{
-  fill:#F5FAFE;
-  stroke:#B8CEE1;
-  stroke-width:1;
-}
-.mynh-logo-m{fill:#214F91}
-.mynh-logo-accent{fill:#12858A}
-.brand-shell-v1 .brand .brand-mark:hover .mynh-logo-base{fill:#FFFFFF}
+.mynh-logo-primary{fill:#F4F8FC}
+.mynh-logo-secondary{fill:#9DB4C8}
+.mynh-logo-accent{fill:#45C2BC}
+.login-card .mynh-logo-primary{fill:#214F91}
+.login-card .mynh-logo-secondary{fill:#6F8CA6}
+.login-card .mynh-logo-accent{fill:#12858A}
 .login-card .mynh-logo-mark{
-  filter:drop-shadow(0 4px 10px rgba(33,79,145,.10));
+  filter:drop-shadow(0 5px 12px rgba(33,79,145,.10));
+}
+
+/* Refined logo proportions */
+.brand-shell-v1 .brand .brand-mark{
+  width:38px!important;
+  height:32px!important;
+  flex:0 0 38px!important;
+}
+.login-card .brand-mark{
+  width:56px!important;
+  height:46px!important;
+  margin-bottom:13px!important;
+}
+.brand-shell-v1 .brand b{
+  letter-spacing:.015em!important;
+}
+.brand-shell-v1 .brand small{
+  letter-spacing:.105em!important;
 }
 
 /* One width + one rhythm for every operational slide panel. */
@@ -1102,7 +1118,8 @@ body{
 .brand-shell-v1 .sales-debt-demo.with-panel .debt-demo-workspace,
 .brand-shell-v1 .warehouse-intake-layout.with-panel,
 .brand-shell-v1 .whx-intake-layout.with-panel,
-.brand-shell-v1 .whx-stock-layout.with-panel{
+.brand-shell-v1 .whx-stock-layout.with-panel,
+.brand-shell-v1 .finance-ledger-layout.with-panel{
   grid-template-columns:minmax(0,1fr) var(--mynh-panel-width)!important;
   gap:var(--mynh-panel-gap)!important;
 }
@@ -1123,6 +1140,32 @@ body{
   max-height:none!important;
   z-index:700!important;
   box-shadow:var(--mynh-shadow-panel)!important;
+}
+
+/* Thu / Chi is an embedded split-view panel, never a detached floating card. */
+.brand-shell-v1 .finance-ledger-layout.with-panel{
+  display:grid!important;
+  align-items:stretch!important;
+}
+.brand-shell-v1 .finance-ledger-layout.with-panel>.finance-ledger{
+  min-width:0!important;
+  width:100%!important;
+}
+.brand-shell-v1 .finance-ledger-layout.with-panel>.finance-panel.mynh-slide-panel{
+  position:sticky!important;
+  top:0!important;
+  right:auto!important;
+  bottom:auto!important;
+  left:auto!important;
+  align-self:stretch!important;
+  width:var(--mynh-panel-width)!important;
+  max-width:var(--mynh-panel-width)!important;
+  height:100%!important;
+  max-height:none!important;
+  box-shadow:none!important;
+}
+.brand-shell-v1 .finance-ledger-layout.with-panel>.finance-panel.mynh-slide-panel>.panel-scroll{
+  max-height:none!important;
 }
 
 /* Shared header contract across Orders / User / Sales / Debt / Finance / Warehouse. */
@@ -1323,7 +1366,8 @@ body{
   .brand-shell-v1 .sales-debt-demo.with-panel .debt-demo-workspace,
   .brand-shell-v1 .warehouse-intake-layout.with-panel,
   .brand-shell-v1 .whx-intake-layout.with-panel,
-  .brand-shell-v1 .whx-stock-layout.with-panel{
+  .brand-shell-v1 .whx-stock-layout.with-panel,
+  .brand-shell-v1 .finance-ledger-layout.with-panel{
     grid-template-columns:minmax(0,1fr)!important;
   }
 
