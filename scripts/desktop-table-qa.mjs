@@ -33,9 +33,14 @@ const page=await context.newPage()
 const results=[]
 
 async function go(path){
-  const res=await page.goto(PREVIEW_URL+path,{waitUntil:'domcontentloaded',timeout:30000})
-  await page.waitForTimeout(700)
-  if((res?.status()??0)>=500)throw new Error(path+' returned '+res.status())
+  let lastStatus=0
+  for(let attempt=1;attempt<=3;attempt++){
+    const res=await page.goto(PREVIEW_URL+path,{waitUntil:'domcontentloaded',timeout:30000}).catch(()=>null)
+    lastStatus=res?.status()??0
+    await page.waitForTimeout(attempt===1?700:1400)
+    if(lastStatus<500&&lastStatus!==0)return
+  }
+  throw new Error(path+' returned '+lastStatus+' after 3 attempts')
 }
 async function metrics(selector){
   return page.locator(selector).first().evaluate(el=>{
