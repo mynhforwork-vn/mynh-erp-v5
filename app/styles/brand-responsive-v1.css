@@ -3930,7 +3930,10 @@ body{
     overflow:hidden!important;
   }
   .brand-shell-v1 .settings-subtabs-v6{
+    flex:none!important;
     width:100%!important;
+    height:auto!important;
+    min-height:0!important;
     display:grid!important;
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
     gap:3px!important;
@@ -4084,7 +4087,7 @@ body{
   }
   .brand-shell-v1 .settings-page-tabs-v8,
   .brand-shell-v1 .settings-subtabs-v6{
-    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
   }
 }
 
