@@ -6512,3 +6512,289 @@ body{
     display:none!important;
   }
 }
+
+
+/* =====================================================================
+   MYNH ERP — Desktop Structural Contract V3
+   Manual sidebar state + one floating slidebar + full-height data workspaces.
+   ===================================================================== */
+@media(min-width:901px){
+  :root{
+    --mynh-desktop-sidebar:224px;
+    --mynh-desktop-sidebar-collapsed:72px;
+    --mynh-panel-width:420px;
+    --mynh-panel-top:12px;
+    --mynh-panel-bottom:12px;
+  }
+
+  /* Manual sidebar state is the only desktop source of truth. */
+  .brand-shell-v1:not(.desktop-sidebar-collapsed){
+    grid-template-columns:var(--mynh-desktop-sidebar) minmax(0,1fr)!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed{
+    grid-template-columns:var(--mynh-desktop-sidebar-collapsed) minmax(0,1fr)!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed)>.sidebar{
+    padding:13px 10px 11px!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .brand{
+    justify-content:flex-start!important;
+    padding:4px 7px 12px!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .brand>span:last-child,
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .nav-section-label,
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .nav a>span:last-child,
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-user-copy,
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-user-more{
+    display:initial!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .nav a{
+    width:auto!important;
+    height:34px!important;
+    margin:0!important;
+    justify-content:flex-start!important;
+    padding:0 8px!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .nav-icon{
+    width:21px!important;
+    height:21px!important;
+    flex-basis:21px!important;
+  }
+
+  .brand-shell-v1.desktop-sidebar-collapsed>.sidebar{
+    padding:12px 7px 10px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .brand{
+    flex:0 0 52px!important;
+    min-height:52px!important;
+    justify-content:center!important;
+    margin:0 0 7px!important;
+    padding:3px 0 10px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .brand .brand-mark{
+    width:36px!important;
+    height:36px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav{
+    width:100%!important;
+    padding:0!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav-group{
+    margin:0 0 5px!important;
+    padding:0!important;
+    border:0!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav-group-items{
+    align-items:center!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav a{
+    width:44px!important;
+    min-width:44px!important;
+    height:40px!important;
+    min-height:40px!important;
+    margin:0 auto!important;
+    padding:0!important;
+    justify-content:center!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav-icon{
+    width:28px!important;
+    height:28px!important;
+    flex:0 0 28px!important;
+    margin:0!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-foot-v2{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:40px!important;
+    justify-content:center!important;
+    gap:6px!important;
+    padding:8px 0 0!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-menu,
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-trigger,
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-alert-trigger{
+    width:40px!important;
+    min-width:40px!important;
+  }
+
+  /* One true slidebar contract: overlay, never resize the workspace behind it. */
+  .brand-shell-v1 .mynh-slide-panel,
+  .brand-shell-v1 .mynh-slide-panel:not(.floating),
+  .brand-shell-v1 .mynh-slide-panel.floating{
+    position:fixed!important;
+    z-index:980!important;
+    top:var(--mynh-panel-top)!important;
+    right:12px!important;
+    bottom:var(--mynh-panel-bottom)!important;
+    left:auto!important;
+    width:var(--mynh-panel-width)!important;
+    min-width:var(--mynh-panel-width)!important;
+    max-width:var(--mynh-panel-width)!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    align-self:auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+    border:1px solid #CBD7E1!important;
+    border-radius:8px!important;
+    background:#fff!important;
+    box-shadow:0 18px 48px rgba(19,38,57,.18)!important;
+  }
+
+  /* Opening a slidebar must never shrink the list/table. */
+  .brand-shell-v1 :is(
+    .order-screen .split-view.with-panel,
+    .account-screen .split-view.with-panel,
+    .sales-history-screen.with-panel .sales-history-workspace,
+    .sales-customers-demo.with-panel .customer-demo-workspace,
+    .sales-debt-demo.with-panel .debt-demo-workspace,
+    .warehouse-intake-layout.with-panel,
+    .whx-intake-layout.with-panel,
+    .whx-stock-layout.with-panel,
+    .finance-ledger-layout.with-panel
+  ){
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:0!important;
+  }
+  .brand-shell-v1 .finance-ledger-layout.with-panel>.finance-panel.mynh-slide-panel{
+    position:fixed!important;
+    top:var(--mynh-panel-top)!important;
+    right:12px!important;
+    bottom:var(--mynh-panel-bottom)!important;
+    width:var(--mynh-panel-width)!important;
+    height:auto!important;
+    max-height:none!important;
+    box-shadow:0 18px 48px rgba(19,38,57,.18)!important;
+  }
+
+  /* Remove module-specific panel height hacks. */
+  .brand-shell-v1 .whx-detail-panel-v2.mynh-slide-panel,
+  .brand-shell-v1 .warehouse-intake-panel.mynh-slide-panel,
+  .brand-shell-v1 .finance-hub-live-panel.mynh-slide-panel{
+    height:auto!important;
+    max-height:none!important;
+    align-self:auto!important;
+  }
+
+  /* All desktop operational pages occupy the usable viewport. */
+  .brand-shell-v1>.main{
+    height:100vh!important;
+    min-height:0!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+  }
+  .brand-shell-v1>.main> :is(
+    .order-screen,
+    .account-screen,
+    .tracking-screen-v2,
+    .whx-page,
+    .sales-history-screen,
+    .sales-customers-demo,
+    .sales-debt-demo,
+    .finance-screen
+  ){
+    height:100%!important;
+    min-height:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+
+  /* Main table/workspace area consumes all remaining vertical space. */
+  .brand-shell-v1 :is(
+    .order-workspace,
+    .account-workspace,
+    .tracking-hub-stack-v2,
+    .warehouse-intake-layout,
+    .whx-intake-layout,
+    .whx-stock-layout,
+    .sales-history-workspace,
+    .customer-demo-workspace,
+    .debt-demo-workspace,
+    .finance-ledger-layout,
+    .finance-settlement-main
+  ){
+    flex:1 1 auto!important;
+    min-height:0!important;
+  }
+
+  .brand-shell-v1 :is(
+    .order-list-pane,
+    .account-list-pane,
+    .whx-stock-main,
+    .sales-history-list,
+    .customer-demo-list,
+    .debt-demo-list,
+    .finance-ledger
+  ){
+    min-height:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+
+  .brand-shell-v1 :is(
+    .order-table-shell,
+    .account-table-shell,
+    .whx-table-card,
+    .sales-history-table-wrap,
+    .customer-demo-table-wrap,
+    .debt-demo-table-wrap,
+    .finance-table-card,
+    .compact-table-wrap
+  ){
+    min-height:0!important;
+  }
+
+  .brand-shell-v1 :is(
+    .order-table-shell,
+    .account-table-shell
+  ){
+    flex:1 1 auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+
+  .brand-shell-v1 :is(
+    .order-table-card,
+    .account-table-card,
+    .whx-table-card,
+    .sales-history-table-wrap,
+    .customer-demo-table-wrap,
+    .debt-demo-table-wrap,
+    .finance-table-card
+  ){
+    flex:1 1 auto!important;
+    min-height:0!important;
+    overflow:auto!important;
+    overscroll-behavior:contain!important;
+  }
+
+  .brand-shell-v1 .tracking-hub-stack-v2{
+    overflow:auto!important;
+    padding-bottom:8px!important;
+  }
+  .brand-shell-v1 .warehouse-intake-layout{
+    overflow:auto!important;
+  }
+
+  /* Table headers remain visible while the data region scrolls. */
+  .brand-shell-v1 :is(
+    .order-table-card,
+    .account-table-card,
+    .tracking-hub-table-wrap-v2,
+    .whx-table-scroll,
+    .sales-history-table-wrap,
+    .customer-demo-table-wrap,
+    .debt-demo-table-wrap,
+    .finance-table-card,
+    .compact-table-wrap
+  ) .table thead th{
+    position:sticky!important;
+    z-index:6!important;
+    top:0!important;
+    background:#F6F9FB!important;
+    box-shadow:0 1px 0 #DCE4EB!important;
+  }
+}
