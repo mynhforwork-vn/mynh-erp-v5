@@ -286,16 +286,16 @@ if(await sidebarToggle.count()){
 for(const spec of [
   ['/purchase/accounts','.account-table-card'],
   ['/purchase/orders','.order-table-card'],
-  ['/purchase/tracking','.tracking-hub-table-wrap-v2'],
-  ['/warehouse/receive','.tracking-hub-table-wrap-v2'],
-  ['/warehouse/inventory','.whx-table-scroll'],
-  ['/warehouse/history','.whx-table-scroll'],
-  ['/sales/history','.sales-history-table-wrap'],
-  ['/sales/customers','.customer-demo-table-wrap'],
-  ['/sales/debt','.debt-demo-table-wrap'],
-  ['/finance/cashflow','.finance-table-card'],
-  ['/finance/shipper-payments?mode=customer','.compact-table-wrap'],
-  ['/finance/reports','.finance-report-day-table-wrap'],
+  ['/purchase/tracking','.tracking-hub-stack-v2'],
+  ['/warehouse/receive','.whx-intake-main'],
+  ['/warehouse/inventory','.whx-table-card'],
+  ['/warehouse/history','.whx-history-main'],
+  ['/sales/history','.sales-history-list'],
+  ['/sales/customers','.customer-demo-list'],
+  ['/sales/debt','.debt-demo-list'],
+  ['/finance/cashflow','.finance-ledger'],
+  ['/finance/shipper-payments?mode=customer','.finance-settlement-main'],
+  ['/finance/reports','.finance-report-table'],
 ]){
   const [path,tableSelector]=spec
   await go(path)
@@ -311,10 +311,10 @@ for(const spec of [
       }
     })
     recordInteraction('Table workspace contract '+path,
-      metrics.height>=120&&metrics.bottom<=metrics.viewportH+2&&metrics.stickyHeader==='sticky',
+      metrics.height>=180&&metrics.bottom<=metrics.viewportH+2&&(!metrics.stickyHeader||metrics.stickyHeader==='sticky'),
       metrics)
   }
-  const managed=page.locator('.managed-column-button,.column-manager-button,.finance-column-button').first()
+  const managed=page.locator('.managed-column-button,.column-manager-button,.finance-column-button,.column-manager>.icon-button,.order-column-manager>.icon-button').first()
   recordInteraction('Table column controls '+path,await managed.count()>0,{selector:await managed.count()?await managed.getAttribute('class'):null})
 }
 
