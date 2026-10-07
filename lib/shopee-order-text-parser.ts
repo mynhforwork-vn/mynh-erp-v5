@@ -96,6 +96,33 @@ function productLink(line:string){
   return md
 }
 
+function visibleLabel(line:string){
+  return (labelFromMarkdown(line)?.label??line).trim()
+}
+
+function moneyValues(value:string){
+  const values:number[]=[]
+  for(const match of value.matchAll(/([\d][\d.,]*)\s*[₫đ]/gi)){
+    const parsed=money(match[1])
+    if(parsed!==null)values.push(parsed)
+  }
+  return values
+}
+
+function isProductNameCandidate(value:string){
+  const label=visibleLabel(value)
+  if(!label||label.length<3)return false
+  if(/^[x×]\s*\d+$/i.test(label))return false
+  if(/^Phân loại hàng\s*:/i.test(label))return false
+  if(moneyValues(label).length)return false
+  if(/^\d{1,2}:\d{2}\s+\d{1,2}[-\/]\d{1,2}[-\/]\d{4}$/i.test(label))return false
+  if(/^(?:chat|Xem Shop|Mua lại|Đánh giá|Xem thêm|Liên hệ Người bán|Địa chỉ nhận hàng|SPX Express)$/i.test(label))return false
+  if(/^(?:Tổng tiền hàng|Phí vận chuyển|Giảm giá phí vận chuyển|Voucher từ Shopee|Thành tiền|Phương thức Thanh toán|Thanh toán khi nhận hàng)$/i.test(label))return false
+  if(/^(?:Đã giao|Đang vận chuyển|Giao hàng thành công|Đơn hàng đã hoàn thành)$/i.test(label))return false
+  if(/^odp_accessibility_component_/i.test(label))return false
+  return true
+}
+
 export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
   const lines=input
     .split(/\r?\n/)
@@ -203,10 +230,8 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
       const qtyMatch=label.match(/^[x×]\s*(\d+)$/i)
       if(qtyMatch)quantity=Math.max(1,Number(qtyMatch[1])||1)
 
-      if(/^-?[\d.,]+\s*₫$/i.test(label)){
-        const value=money(label)
-        if(value!==null)prices.push(value)
-      }
+      const values=moneyValues(label)
+      if(values.length)prices.push(...values)
     }
 
     // A Shopee order-detail block always has at least qty / variant / price near
@@ -229,6 +254,81 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
       final_price:finalPrice,
     })
   }
+  // Browser "Copy all text" from Shopee order detail often strips the
+  // product hyperlinks entirely. In that plain-text shape the most reliable
+  // anchor is the xN quantity line:
+  //
+  // Product name
+  // Phân loại hàng: Variant
+  // x1
+  // 16.100₫
+  //
+  // Parse those blocks as well as the markdown-link shape above, then dedupe.
+  const productKeys=new Set(
+    result.products.map(item=>
+      [
+        item.product_name.trim().toLocaleLowerCase('vi'),
+        String(item.variant??'').trim().toLocaleLowerCase('vi'),
+        item.quantity,
+        item.original_price??'',
+        item.final_price??'',
+      ].join('|')
+    )
+  )
+
+  for(let i=0;i<lines.length;i++){
+    const qtyLabel=visibleLabel(lines[i])
+    const qtyMatch=qtyLabel.match(/^[x×]\s*(\d+)$/i)
+    if(!qtyMatch)continue
+
+    const quantity=Math.max(1,Number(qtyMatch[1])||1)
+    let nameIndex=i-1
+    let variant=''
+
+    const maybeVariant=visibleLabel(lines[nameIndex]??'')
+    const variantMatch=maybeVariant.match(/^Phân loại hàng\s*:\s*(.+)$/i)
+    if(variantMatch){
+      variant=variantMatch[1].trim()
+      nameIndex--
+    }
+
+    if(nameIndex<0||!isProductNameCandidate(lines[nameIndex]))continue
+    const productName=visibleLabel(lines[nameIndex])
+
+    const prices:number[]=[]
+    for(let j=i+1;j<Math.min(lines.length,i+5);j++){
+      const label=visibleLabel(lines[j])
+      const values=moneyValues(label)
+      if(values.length){
+        prices.push(...values)
+        continue
+      }
+      if(prices.length)break
+      if(/^[x×]\s*\d+$/i.test(label)||/^Phân loại hàng\s*:/i.test(label))break
+    }
+    if(!prices.length)continue
+
+    const originalPrice=prices[0]
+    const finalPrice=prices.length>1?prices[prices.length-1]:null
+    const key=[
+      productName.trim().toLocaleLowerCase('vi'),
+      variant.trim().toLocaleLowerCase('vi'),
+      quantity,
+      originalPrice,
+      finalPrice??'',
+    ].join('|')
+    if(productKeys.has(key))continue
+
+    productKeys.add(key)
+    result.products.push({
+      product_name:productName,
+      variant,
+      quantity,
+      original_price:originalPrice,
+      final_price:finalPrice,
+    })
+  }
+
   result.confidence.products=result.products.length
 
   const voucherLabels=[
