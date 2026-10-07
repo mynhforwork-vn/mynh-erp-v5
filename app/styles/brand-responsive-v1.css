@@ -7915,3 +7915,17 @@ body{
     width:238px!important;
   }
 }
+
+
+/* =====================================================================
+   MYNH ERP — Collapsed Sidebar Footer Centering V6
+   Keep the compact footer fully inside the 72px rail.
+   ===================================================================== */
+@media(min-width:901px){
+  .brand-shell-v1.desktop-sidebar-collapsed>.sidebar>.sidebar-foot-v2{
+    position:relative!important;
+    left:14px!important;
+    right:auto!important;
+    transform:none!important;
+  }
+}
