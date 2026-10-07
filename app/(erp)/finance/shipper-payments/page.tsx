@@ -249,8 +249,6 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
                 </Link>
               })}
             </section>}
-          </div>
-
       </>:<>
         <section className="finance-kpi-grid finance-settlement-kpis">
           <div className="finance-kpi warning"><span>Phải thu khách hàng</span><b>{formatMoney(totalDebt)}</b><small>{customersInDebt} khách còn nợ</small></div>
