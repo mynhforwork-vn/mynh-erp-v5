@@ -144,7 +144,7 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
     quantity:Number(row.quantity??0),
   }))
 
-  return <div className="whx-page">
+  return <div className="whx-page whx-inventory-page">
     <header className="page-head whx-page-head">
       <div>
         <span className="module-eyebrow">VẬN HÀNH KHO</span>
