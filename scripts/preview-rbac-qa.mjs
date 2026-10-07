@@ -193,7 +193,7 @@ for(const role of ['admin','operator','viewer']){
     record('ui',role+' In-app alert bell visibility',inAppAlertBell,{inAppAlertBell})
 
     await go(page,role,'/settings?section=access')
-    const accessVisible=await page.getByRole('link',{name:'Phân quyền & tài khoản'}).count()>0
+    const accessVisible=await page.getByRole('link',{name:'Tài khoản & quyền'}).count()>0
     const accessWorkspace=await page.getByText('QUẢN TRỊ HỆ THỐNG').count()>0
     record('ui',role+' settings access visibility',role==='admin'?(accessVisible&&accessWorkspace):(!accessVisible&&!accessWorkspace),{accessVisible,accessWorkspace})
 
