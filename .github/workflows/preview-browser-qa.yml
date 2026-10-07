@@ -1,4 +1,3 @@
-# System Dashboard V1 preview trigger 2026-10-07
 # Alerts overlay retest trigger 2026-10-07
 # Final production-readiness regression trigger 2026-10-07
 name: Preview Browser QA
@@ -14,7 +13,6 @@ on:
       - redesign/settings-v8
       - redesign/account-notifications-v1
       - fix/order-text-recognition-v1
-      - redesign/system-dashboard-v1
     paths:
       - app/**
       - components/**
