@@ -312,10 +312,25 @@ if(await createOrderLink.count()){
 }
 await go('/purchase/orders')
 const coloredVoucherTags=page.locator('.order-table-card .voucher-cell .voucher-tag:not(.neutral)')
+const voucherTagCount=await coloredVoucherTags.count()
+const voucherTagStyles=voucherTagCount
+  ? await coloredVoucherTags.evaluateAll(nodes=>nodes.map(node=>({
+      tag:node.getAttribute('data-voucher-tag'),
+      color:(node as HTMLElement).style.color,
+      background:(node as HTMLElement).style.backgroundColor,
+    })))
+  : []
 recordInteraction(
-  'Order table voucher tags use semantic colors',
-  await coloredVoucherTags.count()>0,
-  {classes:await coloredVoucherTags.first().getAttribute('class').catch(()=>null)}
+  'Order table voucher tags use generated colors',
+  voucherTagCount>0,
+  {voucherTagStyles}
+)
+const distinctVoucherTags=[...new Map(voucherTagStyles.filter(x=>x.tag).map(x=>[x.tag,x])).values()]
+recordInteraction(
+  'Different voucher tags have different colors',
+  distinctVoucherTags.length<2
+    || new Set(distinctVoucherTags.map(x=>x.color+'|'+x.background)).size===distinctVoucherTags.length,
+  {voucherTagStyles:distinctVoucherTags}
 )
 const hubSettings=page.getByRole('link',{name:/Kho đích SPX/}).first()
 if(await hubSettings.count()){
