@@ -336,7 +336,10 @@ if(await page.getByRole('button',{name:'Import TSV'}).count()){
   await page.getByRole('button',{name:'Import TSV'}).click()
   const reopened=await page.locator('[role=dialog]').count()>0
   if(reopened){
-    await page.locator('.sales-action-backdrop').click({position:{x:4,y:4}})
+    const backdrop=page.locator('.sales-action-backdrop').first()
+    const box=await backdrop.boundingBox()
+    if(box)await page.mouse.click(box.x+Math.max(8,box.width-12),box.y+8)
+    else await page.keyboard.press('Escape')
     await page.waitForTimeout(250)
   }
   const closedByOutside=await page.locator('[role=dialog]').count()===0
