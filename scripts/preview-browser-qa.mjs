@@ -295,7 +295,7 @@ for(const spec of [
   ['/sales/debt','.debt-demo-list'],
   ['/finance/cashflow','.finance-ledger'],
   ['/finance/shipper-payments?mode=customer','.finance-settlement-main'],
-  ['/finance/reports','.finance-report-table'],
+  ['/finance/reports','.finance-report-table-card'],
 ]){
   const [path,tableSelector]=spec
   await go(path)
