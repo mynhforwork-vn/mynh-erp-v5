@@ -3437,7 +3437,7 @@
 /* Global in-app alert center */
 .app-alert-trigger{
   position:fixed!important;
-  top:14px!important;
+  bottom:18px!important;
   right:18px!important;
   z-index:82!important;
   width:36px!important;
@@ -3648,7 +3648,7 @@
 .app-alert-panel-foot button{width:100%!important}
 
 @media(max-width:700px){
-  .app-alert-trigger{top:10px!important;right:10px!important;width:34px!important;height:34px!important}
+  .app-alert-trigger{bottom:10px!important;right:10px!important;width:34px!important;height:34px!important}
   .app-alert-panel{width:100vw!important}
   .app-alert-panel-head{padding:12px!important}
 }
