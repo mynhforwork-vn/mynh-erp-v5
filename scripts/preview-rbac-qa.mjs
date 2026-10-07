@@ -111,22 +111,35 @@ async function go(page,role,path){
   let login=false
   let serverError=false
   let finalUrl=''
+  let navigationError=''
   const target=PREVIEW_URL+path
-  for(let attempt=1;attempt<=3;attempt++){
-    const res=await page.goto(target,{waitUntil:'domcontentloaded',timeout:30000})
-    await page.waitForTimeout(attempt===1?500:1200)
-    status=res?.status()??0
-    finalUrl=page.url()
-    login=/\/login(?:\?|$)/.test(new URL(finalUrl).pathname)
-    const body=(await page.locator('body').innerText().catch(()=>'' )).slice(0,4000)
-    serverError=/Application error|Internal Server Error|Server Components render/i.test(body)
-    if(status>0&&status<500&&!login&&!serverError){
-      summary.network5xx=summary.network5xx.filter(x=>!(x.role===role&&x.resourceType==='document'&&x.url===target))
-      record('routes',role+' '+path,true,{status,finalUrl,attempt})
-      return
+  const retryDelay=[500,1500,3000,5000,7000]
+
+  for(let attempt=1;attempt<=5;attempt++){
+    try{
+      const res=await page.goto(target,{waitUntil:'domcontentloaded',timeout:30000})
+      await page.waitForTimeout(attempt===1?500:1000)
+      status=res?.status()??0
+      finalUrl=page.url()
+      login=/\/login(?:\?|$)/.test(new URL(finalUrl).pathname)
+      const body=(await page.locator('body').innerText().catch(()=>'' )).slice(0,4000)
+      serverError=/Application error|Internal Server Error|Server Components render/i.test(body)
+      navigationError=''
+
+      if(status>0&&status<500&&!login&&!serverError){
+        summary.network5xx=summary.network5xx.filter(x=>!(x.role===role&&x.resourceType==='document'&&x.url===target))
+        record('routes',role+' '+path,true,{status,finalUrl,attempt})
+        return
+      }
+    }catch(error){
+      navigationError=error instanceof Error?error.message:String(error)
+      finalUrl=page.url()
     }
+
+    if(attempt<5)await page.waitForTimeout(retryDelay[attempt-1])
   }
-  record('routes',role+' '+path,false,{status,finalUrl,login,serverError})
+
+  record('routes',role+' '+path,false,{status,finalUrl,login,serverError,navigationError})
 }
 
 const routes=[
