@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SystemSlidebar } from '@/components/system-slidebar'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime,formatMoney } from '@/lib/format'
 import { financePeriodLabel,financePeriodStart,normalizeFinancePeriod,withinFinancePeriod } from '@/lib/finance-period'
@@ -298,7 +299,7 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
       openModuleHref={'/purchase/orders?range=all&order='+contextOrder.id}
     />}
 
-    {selected&&mode==='shipper'&&!contextOrder&&<aside className="detail-panel finance-panel finance-hub-live-panel mynh-slide-panel">
+    {selected&&mode==='shipper'&&!contextOrder&&<SystemSlidebar className="detail-panel finance-panel finance-hub-live-panel">
       <div className="panel-head"><div><span className="eyebrow">ĐỐI SOÁT HUB</span><h2>{selected.hub}</h2></div><Link className="close" href={href({hub:null})}>×</Link></div>
       <div className="panel-tabs"><span className="active">Tổng quan & thao tác</span></div>
       <div className="panel-scroll finance-hub-panel">
@@ -332,6 +333,6 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
           </section>
         })}</div>
       </div>
-    </aside>}
+    </SystemSlidebar>}
   </div>
 }
