@@ -11,7 +11,6 @@ on:
       - redesign/settings-v8
       - redesign/account-notifications-v1
       - fix/order-text-recognition-v1
-      - fix/voucher-display-and-type-input-v1
 
 concurrency:
   group: cloudflare-remediation-preview
