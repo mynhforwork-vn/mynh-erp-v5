@@ -253,11 +253,20 @@ if(await createOrderLink.count()){
     const phoneValue=await page.locator('aside.order-panel input[name="recipient_phone"]').inputValue()
     const codValue=await page.locator('aside.order-panel input[name="cod"]').inputValue()
     const itemNames=await page.locator('aside.order-panel input[name="item_product_name"]').allInputValues()
+    const originalPrices=await page.locator('aside.order-panel input[name="item_original_price"]').allInputValues()
+    const finalPrices=await page.locator('aside.order-panel input[name="item_final_price"]').allInputValues()
+    const recognitionText=await page.locator('aside.order-panel .order-text-recognizer-actions span').innerText()
     recordInteraction('Shopee text recognizer extracts order',orderValue==='261005SYU2NQGJ',{orderValue})
     recordInteraction('Shopee text recognizer extracts tracking',trackingValue==='SPXVN06582596012A',{trackingValue})
     recordInteraction('Shopee text recognizer normalizes recipient phone',phoneValue==='0996552843',{phoneValue})
     recordInteraction('Shopee text recognizer extracts COD',codValue==='800',{codValue})
     recordInteraction('Shopee text recognizer extracts products',itemNames.length===2&&itemNames[0].includes('Bánh cá')&&itemNames[1].includes('Dầu Ăn'),{itemNames})
+    recordInteraction('Shopee text recognizer maps one visible price to original price',
+      originalPrices.length===2&&originalPrices[0]==='16100'&&originalPrices[1]==='84700'&&finalPrices.every(x=>x===''),
+      {originalPrices,finalPrices})
+    recordInteraction('Shopee text recognizer validates total goods',
+      recognitionText.includes('Giá gốc khớp')&&recognitionText.includes('100.800'),
+      {recognitionText})
   }else{
     recordInteraction('Shopee text recognizer available',false)
   }
