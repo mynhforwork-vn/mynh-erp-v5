@@ -162,7 +162,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   }).length
   const arrivedHub=standardRows.filter(o=>activeShipment(o)?.current_tracking_status==='ARRIVED_DESTINATION_HUB').length
   const failed=standardRows.filter(o=>activeShipment(o)?.current_tracking_status==='DELIVERY_FAILED').length
-  const missingTracking=standardRows.filter(o=>!activeShipment(o)?.tracking_number).length
+  const missingTracking=rows.filter(o=>!activeShipment(o)?.tracking_number).length
   const cancelled=rows.filter(o=>{
     const trackingStatus=activeShipment(o)?.current_tracking_status
     const orderStatus=String(o.order_status??'').toUpperCase()
@@ -252,7 +252,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
         <span>Tổng đơn</span><b>{totalOrders}</b><small>{accountCount??0} tài khoản mua hàng</small>
       </Link>
       <Link href={orderHref({tracking:'missing'})} className="command-kpi warning">
-        <span>Chưa có mã vận đơn</span><b>{missingTracking}</b><small>Không tính đơn Hỏa tốc</small>
+        <span>Chưa có mã vận đơn</span><b>{missingTracking}</b><small>Gồm cả đơn Hỏa tốc chưa có MVD</small>
       </Link>
       <Link href={orderHref({tracking:'shipping'})} className="command-kpi info">
         <span>Đang vận chuyển</span><b>{shipping}</b><small>Đã lấy hàng / trung chuyển / đang giao</small>
