@@ -1,3 +1,19 @@
+const VOUCHER_COLORS=['blue','teal','green','orange','purple','rose'] as const
+
+function voucherColor(tag:string){
+  const t=tag.trim().toLocaleLowerCase('vi')
+  if(t.includes('free')||t.includes('freeship')||t.includes('vận chuyển'))return 'blue'
+  if(t.includes('giảm')||t.includes('shopee')||t==='shsp')return 'orange'
+  if(t.includes('hoàn')||t.includes('xu')||t.includes('cashback'))return 'green'
+  if(t.includes('vip'))return 'purple'
+
+  let hash=0
+  for(const char of t){
+    hash=(hash*31+char.codePointAt(0)!)>>>0
+  }
+  return VOUCHER_COLORS[hash%VOUCHER_COLORS.length]
+}
+
 export function VoucherTags({
   value,
   compact=false,
@@ -19,15 +35,9 @@ export function VoucherTags({
   const hidden=Math.max(0,tags.length-visible.length)
 
   return <div className={'voucher-tags '+(compact?'compact':'')}>
-    {visible.map((tag,i)=>{
-      const t=tag.toLowerCase()
-      let cls='neutral'
-      if(t.includes('free')||t.includes('freeship')||t.includes('vận chuyển'))cls='blue'
-      else if(t.includes('giảm'))cls='orange'
-      else if(t.includes('hoàn')||t.includes('xu'))cls='green'
-      else if(t.includes('vip'))cls='purple'
-      return <span className={'voucher-tag '+cls} key={tag+'-'+i}>{tag}</span>
-    })}
+    {visible.map((tag,i)=>
+      <span className={'voucher-tag '+voucherColor(tag)} key={tag+'-'+i}>{tag}</span>
+    )}
     {hidden>0&&<span className="voucher-tag more">+{hidden}</span>}
   </div>
 }

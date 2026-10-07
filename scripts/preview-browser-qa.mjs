@@ -273,12 +273,31 @@ if(await createOrderLink.count()){
       await page.locator('aside.order-panel .quick-product-parser').count()===0
     )
 
+    const voucherTypeInput=page.locator('aside.order-panel input[name="voucher_type"]').first()
+    if(await voucherTypeInput.count()){
+      await voucherTypeInput.fill('Loại mới QA')
+      recordInteraction(
+        'Voucher type accepts a new free-text value',
+        await voucherTypeInput.inputValue()==='Loại mới QA'
+      )
+      recordInteraction(
+        'Voucher type keeps saved-value suggestions',
+        await page.locator('aside.order-panel datalist#voucher-type-options').count()===1
+      )
+    }else{
+      recordInteraction('Voucher type free-text input available',false)
+    }
+
     const voucherTagInput=page.locator('aside.order-panel input[name="voucher_tag"]').first()
     if(await voucherTagInput.count()){
       await voucherTagInput.fill('Tag mới QA')
       recordInteraction(
         'Voucher tag accepts a new free-text value',
         await voucherTagInput.inputValue()==='Tag mới QA'
+      )
+      recordInteraction(
+        'Voucher tag keeps saved-value suggestions',
+        await page.locator('aside.order-panel datalist#voucher-tag-options').count()===1
       )
     }else{
       recordInteraction('Voucher tag free-text input available',false)
@@ -292,6 +311,12 @@ if(await createOrderLink.count()){
   recordInteraction('Order create panel closes',await page.locator('aside.order-panel').count()===0&&!page.url().includes('mode=create'))
 }
 await go('/purchase/orders')
+const coloredVoucherTags=page.locator('.order-table-card .voucher-cell .voucher-tag:not(.neutral)')
+recordInteraction(
+  'Order table voucher tags use semantic colors',
+  await coloredVoucherTags.count()>0,
+  {classes:await coloredVoucherTags.first().getAttribute('class').catch(()=>null)}
+)
 const hubSettings=page.getByRole('link',{name:/Kho đích SPX/}).first()
 if(await hubSettings.count()){
   const hubNav=await followLink(hubSettings,{waitSelector:'[role="dialog"][aria-label="Cấu hình kho đích SPX"]'})
