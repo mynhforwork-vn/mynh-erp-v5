@@ -40,7 +40,7 @@ export function BankTransferSettings({
     })
   }
 
-  return <div className="bank-transfer-settings">
+  return <div className="bank-transfer-settings bank-transfer-settings-v6">
     <div className="carrier-settings-head">
       <div>
         <span className="module-eyebrow">THANH TOÁN</span>
@@ -58,8 +58,8 @@ export function BankTransferSettings({
       <span>POS tự lấy đúng số phải thu; QR sẽ thay đổi theo từng hóa đơn.</span>
     </div>
 
-    <div className="bank-transfer-settings-grid">
-      <form onSubmit={submit} className="bank-transfer-form">
+    <div className="bank-transfer-settings-grid bank-transfer-settings-grid-v6">
+      <form onSubmit={submit} className="bank-transfer-form bank-transfer-form-v6">
         <label>
           <span>Bank ID / BIN</span>
           <input
@@ -155,13 +155,13 @@ export function BankTransferSettings({
         </div>
       </form>
 
-      <div className="bank-transfer-preview bank-transfer-preview-compact">
+      <div className="bank-transfer-preview bank-transfer-preview-compact bank-transfer-preview-v6">
         <div className="bank-transfer-preview-head">
           <span className="module-eyebrow">XEM TRƯỚC</span>
           <b>QR chuyển khoản</b>
           <small>Ví dụ 123.000đ</small>
         </div>
-        <div className="bank-transfer-preview-body">
+        <div className="bank-transfer-preview-body bank-transfer-preview-body-v6">
           {preview
             ? <img src={preview} alt="VietQR xem trước"/>
             : <div className="empty compact bank-preview-empty">Nhập Bank ID và số tài khoản để xem QR.</div>}
