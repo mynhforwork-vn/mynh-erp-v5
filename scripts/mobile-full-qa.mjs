@@ -136,14 +136,26 @@ async function panelFits(module,selector){
   check(module,'Panel mobile không tràn viewport',m.left>=-1&&m.right<=m.viewportW+1&&m.top>=0&&m.bottom<=m.viewportH+1,m)
 }
 
+async function followLink(locator){
+  const href=await locator.getAttribute('href').catch(()=>null)
+  if(href){
+    const url=new URL(href,PREVIEW_URL)
+    const path=url.pathname+url.search+url.hash
+    return go(path)
+  }
+  await locator.click()
+  await page.waitForLoadState('domcontentloaded').catch(()=>{})
+  await settle(450)
+  return {status:200,url:page.url(),body:'',error:null}
+}
+
 async function openLinkByName(module,name,selector){
   const link=page.getByRole('link',{name}).first()
   if(!await link.count()){warn(module,'Không tìm thấy link '+String(name));return false}
-  await link.click()
-  await page.waitForLoadState('domcontentloaded').catch(()=>{})
-  await settle(350)
-  const ok=await page.locator(selector).count()>0
-  check(module,'Mở '+String(name),ok,{selector,url:page.url()})
+  const nav=await followLink(link)
+  await settle(300)
+  const ok=Boolean(nav.status>0&&nav.status<500)&&await page.locator(selector).count()>0
+  check(module,'Mở '+String(name),ok,{selector,url:page.url(),status:nav.status,error:nav.error})
   if(ok)await panelFits(module,selector)
   return ok
 }
@@ -197,8 +209,8 @@ if(await openLinkByName('Tài khoản mua hàng',/Thêm tài khoản/,'aside.acc
 await go('/purchase/accounts')
 const firstAccount=page.locator('.mobile-account-list .mobile-card-open').first()
 if(await firstAccount.count()){
-  await firstAccount.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await settle()
-  check('Tài khoản mua hàng','Mở chi tiết User từ card',await page.locator('aside.account-detail-panel').count()>0)
+  const nav=await followLink(firstAccount);await settle(300)
+  check('Tài khoản mua hàng','Mở chi tiết User từ card',nav.status>0&&nav.status<500&&await page.locator('aside.account-detail-panel').count()>0,{status:nav.status,url:page.url()})
   if(await page.locator('aside.account-detail-panel').count())await panelFits('Tài khoản mua hàng','aside.account-detail-panel')
   for(const tab of ['Thông tin','Đơn hàng','Lịch sử']){
     const a=page.locator('aside.account-detail-panel .panel-tabs').getByRole('link',{name:new RegExp(tab)}).first()
@@ -230,8 +242,8 @@ const orderCard=page.locator('.mobile-order-list .mobile-entity-card').first()
 if(await orderCard.count()){
   const detail=orderCard.locator('.mobile-card-open').first()
   if(await detail.count()){
-    await detail.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await settle()
-    check('Đơn nhập hàng','Mở chi tiết đơn từ card',await page.locator('aside.order-panel,aside.context-order-panel').count()>0)
+    const nav=await followLink(detail);await settle(300)
+    check('Đơn nhập hàng','Mở chi tiết đơn từ card',nav.status>0&&nav.status<500&&await page.locator('aside.order-panel,aside.context-order-panel').count()>0,{status:nav.status,url:page.url()})
     const panel='aside.order-panel,aside.context-order-panel'
     if(await page.locator(panel).count())await panelFits('Đơn nhập hàng',panel)
   }
@@ -244,8 +256,8 @@ check('Cảnh báo vận chuyển','Có lọc HUB',await page.locator('select[na
 check('Cảnh báo vận chuyển','Có lọc ngày trạng thái',await page.locator('input[name=receiveDate]').count()>0)
 const trackingOrderLink=page.locator('.tracking-hub-stack-v2 a[href*="order="]').first()
 if(await trackingOrderLink.count()){
-  await trackingOrderLink.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await settle()
-  check('Cảnh báo vận chuyển','Mở chi tiết đơn tại context',await page.locator('aside.context-order-panel').count()>0)
+  const nav=await followLink(trackingOrderLink);await settle(300)
+  check('Cảnh báo vận chuyển','Mở chi tiết đơn tại context',nav.status>0&&nav.status<500&&await page.locator('aside.context-order-panel').count()>0,{status:nav.status,url:page.url()})
   if(await page.locator('aside.context-order-panel').count())await panelFits('Cảnh báo vận chuyển','aside.context-order-panel')
 }
 
@@ -281,10 +293,10 @@ if(await invCard.count()){
 // 9. Lịch sử kho.
 await routeAudit('Lịch sử kho','/warehouse/history')
 check('Lịch sử kho','Có bộ lọc nghiệp vụ',await page.locator('.whx-history-tabs').count()>0)
-const ref=page.locator('.whx-table .whx-reference-link').first()
+const ref=page.locator('.mobile-warehouse-history-list .mobile-warehouse-history-card,.whx-table .whx-reference-link').first()
 if(await ref.count()){
-  await ref.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await settle()
-  check('Lịch sử kho','Mở chi tiết giao dịch',await page.locator('aside.whx-history-reference-panel').count()>0)
+  const nav=await followLink(ref);await settle(300)
+  check('Lịch sử kho','Mở chi tiết giao dịch',nav.status>0&&nav.status<500&&await page.locator('aside.whx-history-reference-panel').count()>0,{status:nav.status,url:page.url()})
   if(await page.locator('aside.whx-history-reference-panel').count())await panelFits('Lịch sử kho','aside.whx-history-reference-panel')
 }
 
@@ -376,7 +388,10 @@ if(await bill.count()&&await bill.isEnabled()){await bill.click();await settle()
 await routeAudit('Đối soát & Thanh toán','/finance/shipper-payments')
 check('Đối soát & Thanh toán','Có chuyển chế độ đối soát',await page.locator('.finance-mode-tabs').count()>0)
 const customerMode=page.locator('.finance-mode-tabs').getByRole('link',{name:/Khách hàng/}).first()
-if(await customerMode.count()){await customerMode.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await settle();check('Đối soát & Thanh toán','Chuyển chế độ Khách hàng',page.url().includes('mode=customer'))}
+if(await customerMode.count()){
+  const nav=await followLink(customerMode);await settle(300)
+  check('Đối soát & Thanh toán','Chuyển chế độ Khách hàng',nav.status>0&&nav.status<500&&page.url().includes('mode=customer'),{status:nav.status,url:page.url()})
+}
 
 // 18. Báo cáo tài chính.
 await routeAudit('Báo cáo tài chính','/finance/reports')
@@ -385,15 +400,19 @@ check('Báo cáo tài chính','Có KPI báo cáo',await page.locator('.finance-r
 
 // 19. Cài đặt.
 await routeAudit('Cài đặt hệ thống','/settings')
-const settingTabs=['Cấu hình vận chuyển','Tracking','Thông báo','Thanh toán','Dữ liệu','Tài khoản & quyền']
+const settingTabs=['Cấu hình vận chuyển','Tracking','Thông báo','Thanh toán','Dữ liệu']
 for(const tabName of settingTabs){
+  await go('/settings')
   const tab=page.getByRole('link',{name:tabName,exact:true}).first()
   check('Cài đặt hệ thống','Có tab '+tabName,await tab.count()>0)
   if(await tab.count()){
-    await tab.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await settle()
-    check('Cài đặt hệ thống','Mở tab '+tabName,!page.url().includes('/login')&&await page.locator('.settings-workspace-v8').count()>0,{url:page.url()})
+    const nav=await followLink(tab);await settle(300)
+    check('Cài đặt hệ thống','Mở tab '+tabName,nav.status>0&&nav.status<500&&!page.url().includes('/login')&&await page.locator('.settings-workspace-v8').count()>0,{status:nav.status,url:page.url()})
   }
 }
+await go('/settings')
+const adminAccessTab=page.getByRole('link',{name:'Tài khoản & quyền',exact:true}).first()
+check('Cài đặt hệ thống','Operator không thấy tab admin-only',await adminAccessTab.count()===0,{count:await adminAccessTab.count()})
 
 // 20. Tài khoản cá nhân.
 await routeAudit('Tài khoản','/account')
@@ -405,6 +424,8 @@ await browser.close()
 if(summary.failures.length){
   console.error('MOBILE_FULL_QA_FAIL')
   console.error(summary.failures.join('\n'))
+  const failedRows=summary.checks.filter(x=>!x.pass)
+  console.error('MOBILE_FULL_QA_DETAILS '+JSON.stringify(failedRows))
   process.exit(1)
 }
 console.log('MOBILE_FULL_QA_PASS checks='+summary.checks.length+' warnings='+summary.warnings.length)
