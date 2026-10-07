@@ -1719,9 +1719,11 @@ a{text-decoration:none}
   white-space:nowrap;
 }
 .voucher-tag.blue{border-color:#C9DAEC;background:#EEF5FC;color:#315D8A}
+.voucher-tag.teal{border-color:#BFE1DF;background:#EDF9F8;color:#216C69}
 .voucher-tag.orange{border-color:#ECD5AE;background:#FFF6E9;color:#A86408}
 .voucher-tag.green{border-color:#C9E3D2;background:#EEF8F1;color:#28724A}
 .voucher-tag.purple{border-color:#DCCFE9;background:#F7F1FC;color:#74518E}
+.voucher-tag.rose{border-color:#E8CBD4;background:#FCF1F4;color:#94506A}
 .voucher-tag.neutral{border-color:#E1E6EC;background:#F7F9FB;color:#778395}
 .user-table .voucher-cell{min-width:150px;max-width:220px}
 
