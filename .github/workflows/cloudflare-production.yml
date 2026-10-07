@@ -17,6 +17,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PRODUCTION_URL: https://mynh-erp-v5.mynh-forwork.workers.dev
     steps:
       - uses: actions/checkout@v4
 
@@ -40,37 +41,15 @@ jobs:
         run: npx opennextjs-cloudflare build
 
       - name: Deploy production Worker
-        id: deploy
         shell: bash
         run: |
-          npx wrangler deploy             --name mynh-erp-v5             --message "Production $GITHUB_SHA"             --json | tee cloudflare-production.json
-
-          node - <<'NODE'
-          const fs=require('fs')
-          const raw=fs.readFileSync('cloudflare-production.json','utf8')
-          let data
-          try{data=JSON.parse(raw)}catch{
-            const start=raw.indexOf('{'),end=raw.lastIndexOf('}')
-            if(start<0||end<start)throw new Error('Wrangler did not return JSON')
-            data=JSON.parse(raw.slice(start,end+1))
-          }
-          const urls=[]
-          const visit=x=>{
-            if(!x)return
-            if(typeof x==='string'&&/^https:\/\//.test(x))urls.push(x)
-            else if(Array.isArray(x))x.forEach(visit)
-            else if(typeof x==='object')Object.values(x).forEach(visit)
-          }
-          visit(data)
-          const url=urls.find(x=>x.includes('workers.dev'))||urls[0]||'https://mynh-erp-v5.mynh-forwork.workers.dev'
-          fs.appendFileSync(process.env.GITHUB_OUTPUT,`url=${url}\n`)
-          console.log(`Production URL: ${url}`)
-          NODE
+          npx wrangler deploy \
+            --name mynh-erp-v5 \
+            --message "Production $GITHUB_SHA" \
+            --keep-vars
 
       - name: Smoke production
         shell: bash
-        env:
-          PRODUCTION_URL: ${{ steps.deploy.outputs.url }}
         run: |
           echo "Smoke $PRODUCTION_URL"
           curl --fail --silent --show-error --retry 5 --retry-delay 3 "$PRODUCTION_URL/api/health" | tee health.json
@@ -81,8 +60,6 @@ jobs:
 
       - name: Production summary
         shell: bash
-        env:
-          PRODUCTION_URL: ${{ steps.deploy.outputs.url }}
         run: |
           {
             echo "## Cloudflare Production"
