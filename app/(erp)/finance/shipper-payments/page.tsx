@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime,formatMoney } from '@/lib/format'
 import { financePeriodLabel,financePeriodStart,normalizeFinancePeriod,withinFinancePeriod } from '@/lib/finance-period'
 import { ContextOrderPanel } from '@/components/context-order-panel'
+import { FinanceCustomerSettlementTable } from '@/components/finance-customer-settlement-table'
 
 type SP={
   mode?:'shipper'|'customer'
@@ -274,7 +275,7 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
                   <div className="mobile-finance-customer-last"><span>Thu gần nhất</span><b>{row.lastPayment?formatDateTime(row.lastPayment):'—'}</b></div>
                 </article>)}
           </div>
-          <div className="compact-table-wrap"><table className="table"><thead><tr><th>Khách hàng</th><th>SĐT</th><th>HĐ còn nợ</th><th>Tổng mua</th><th>Còn phải thu</th><th>Đã thu trong kỳ</th><th>Thu gần nhất</th></tr></thead><tbody>{!customerRows.length?<tr><td colSpan={7} className="empty">Chưa có dữ liệu khách hàng phù hợp.</td></tr>:customerRows.map(row=><tr key={row.id}><td className="strong">{row.name}</td><td>{row.phone||'—'}</td><td>{row.openInvoices}</td><td className="money">{formatMoney(row.totalSales)}</td><td className="money warning-text">{formatMoney(row.debt)}</td><td className="money finance-money income">{formatMoney(row.paid)}</td><td>{row.lastPayment?formatDateTime(row.lastPayment):'—'}</td></tr>)}</tbody></table></div>
+          <FinanceCustomerSettlementTable rows={customerRows}/>
         </section>
       </>}
     </div>
