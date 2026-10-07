@@ -7593,3 +7593,140 @@ body{
     min-height:0!important;
   }
 }
+
+
+/* =====================================================================
+   MYNH ERP — Desktop Full-Height Data Surface V2
+   Data surfaces fill the remaining viewport; headers stay sticky.
+   ===================================================================== */
+@media(min-width:901px){
+  /* Tracking + warehouse receive: open groups share all remaining height. */
+  .brand-shell-v1 .tracking-content-workspace>.tracking-hub-stack-v2,
+  .brand-shell-v1 .warehouse-intake-layout>.warehouse-receive-groups{
+    min-height:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:7px!important;
+    overflow:auto!important;
+  }
+
+  .brand-shell-v1 .tracking-hub-stack-v2>.tracking-hub-card-v2.open,
+  .brand-shell-v1 .warehouse-receive-groups>.warehouse-receive-card.open{
+    flex:1 1 0!important;
+    min-height:190px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+
+  .brand-shell-v1 .tracking-hub-stack-v2>.tracking-hub-card-v2.collapsed,
+  .brand-shell-v1 .warehouse-receive-groups>.warehouse-receive-card.collapsed{
+    flex:0 0 auto!important;
+  }
+
+  .brand-shell-v1 .tracking-hub-card-v2.open>.tracking-hub-head-v2,
+  .brand-shell-v1 .warehouse-receive-card.open>.tracking-hub-head-v2,
+  .brand-shell-v1 .tracking-hub-card-v2.open>.managed-table-toolbar,
+  .brand-shell-v1 .warehouse-receive-card.open>.managed-table-toolbar,
+  .brand-shell-v1 .warehouse-receive-card.open>.warehouse-intake-section-head,
+  .brand-shell-v1 .warehouse-receive-card.open>.warehouse-confirm-stock-bar{
+    flex:0 0 auto!important;
+  }
+
+  .brand-shell-v1 .tracking-hub-card-v2.open>.tracking-hub-table-wrap-v2{
+    flex:1 1 auto!important;
+    min-height:120px!important;
+    max-height:none!important;
+    overflow:auto!important;
+    background:#fff!important;
+  }
+
+  .brand-shell-v1 .warehouse-receive-card.open>.tracking-hub-table-wrap-v2{
+    flex:1 1 0!important;
+    min-height:120px!important;
+    max-height:none!important;
+    overflow:auto!important;
+    background:#fff!important;
+  }
+
+  /* Inventory / sales / customer / debt / finance tables fill their list pane. */
+  .brand-shell-v1 :is(
+    .whx-stock-main,
+    .sales-history-list,
+    .customer-demo-list,
+    .debt-demo-list,
+    .finance-ledger
+  ){
+    height:100%!important;
+    min-height:0!important;
+  }
+
+  .brand-shell-v1 :is(
+    .whx-table-card,
+    .sales-history-table-wrap,
+    .customer-demo-table-wrap,
+    .debt-demo-table-wrap,
+    .finance-table-card
+  ){
+    flex:1 1 auto!important;
+    min-height:160px!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow:auto!important;
+    background:#fff!important;
+  }
+
+  .brand-shell-v1 .whx-table-card>.whx-table-scroll{
+    height:100%!important;
+    min-height:160px!important;
+    max-height:none!important;
+    overflow:auto!important;
+  }
+
+  /* Finance customer settlement: the data card occupies remaining height. */
+  .brand-shell-v1 .finance-settlement-main:has(.finance-customer-settlement){
+    display:flex!important;
+    flex-direction:column!important;
+    min-height:0!important;
+  }
+  .brand-shell-v1 .finance-settlement-main>.finance-customer-settlement{
+    flex:1 1 auto!important;
+    min-height:220px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .finance-customer-settlement>.compact-table-wrap{
+    flex:1 1 auto!important;
+    min-height:160px!important;
+    overflow:auto!important;
+  }
+
+  /* Reports stay document-scrollable, but table surface is never a tiny strip. */
+  .brand-shell-v1 .finance-report-table-card{
+    min-height:260px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .finance-report-table-card>.finance-report-day-table-wrap,
+  .brand-shell-v1 .finance-report-table-card>.compact-table-wrap{
+    flex:1 1 auto!important;
+    min-height:190px!important;
+    overflow:auto!important;
+  }
+
+  /* Purchase legacy column buttons use the same common control appearance. */
+  .brand-shell-v1 :is(.column-manager,.order-column-manager).managed-column-wrap{
+    position:relative!important;
+    z-index:40!important;
+  }
+  .brand-shell-v1 :is(.column-manager,.order-column-manager)>.managed-column-button{
+    width:30px!important;
+    min-width:30px!important;
+    height:28px!important;
+    min-height:28px!important;
+    padding:0!important;
+    border-radius:5px!important;
+  }
+}
