@@ -591,6 +591,11 @@ for(const name of ['Quy tắc thông báo','Kết nối Telegram','Nhóm theo HU
   const sub=page.locator('.notification-settings-v9 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
   recordInteraction('Notification subtab '+name,await sub.count()>0)
 }
+await go('/settings?section=payments')
+for(const name of ['Cấu hình thanh toán','Mẫu hóa đơn / phiếu thu']){
+  const sub=page.locator('.payment-settings-v11 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
+  recordInteraction('Payment subtab '+name,await sub.count()>0)
+}
 await go('/settings?section=data-management')
 for(const name of ['Tổng quan dữ liệu','Lưu trữ & dọn dẹp','Reset hệ thống']){
   const sub=page.locator('.data-management-settings-v10 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
