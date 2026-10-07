@@ -38,7 +38,7 @@ export function ShippingCarrierSettings({
     <div className="carrier-settings-note">
       <b>SPX là luồng riêng có HUB kho đích.</b>
       <span>Cấu hình HUB / Phường-Xã / Shipper chỉ áp dụng cho SPX. Các ĐVVC khác không dùng bảng HUB SPX.</span>
-      <Link href="/settings?section=spx-hubs">Mở cấu hình SPX →</Link>
+      <Link href="/settings?section=shipping&shipping_tab=hubs">Mở cấu hình SPX →</Link>
     </div>
 
     <div className="carrier-config-table">
