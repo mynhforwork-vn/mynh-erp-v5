@@ -7998,3 +7998,56 @@
   .payment-template-form-v12{min-height:540px!important}
   .payment-document-preview-wrap-v12{min-height:600px!important}
 }
+
+
+/* =====================================================================
+   PRINT TEMPLATE V12 — configured paper sizes
+   ===================================================================== */
+@media print{
+  .pos-inline-receipt-print.print-paper-a4{
+    width:190mm!important;
+    max-width:190mm!important;
+    padding:10mm!important;
+  }
+  .pos-inline-receipt-print.print-paper-a5{
+    width:138mm!important;
+    max-width:138mm!important;
+    padding:8mm!important;
+  }
+  .pos-inline-receipt-print.print-paper-receipt-80{
+    width:80mm!important;
+    max-width:80mm!important;
+    padding:4mm!important;
+  }
+
+  body.print-debt-receipt .debt-print-receipt.print-paper-a4{
+    width:190mm!important;
+    max-width:190mm!important;
+    padding:10mm!important;
+  }
+  body.print-debt-receipt .debt-print-receipt.print-paper-a5{
+    width:138mm!important;
+    max-width:138mm!important;
+    padding:8mm!important;
+  }
+  body.print-debt-receipt .debt-print-receipt.print-paper-receipt-80{
+    width:80mm!important;
+    max-width:80mm!important;
+    padding:5mm!important;
+  }
+
+  body.print-debt-receipt .debt-print-receipt.print-paper-a4 .debt-print-head>div:first-child b,
+  body.print-debt-receipt .debt-print-receipt.print-paper-a5 .debt-print-head>div:first-child b{
+    font-size:17px!important;
+  }
+  body.print-debt-receipt .debt-print-receipt.print-paper-a4 .debt-print-head>div:first-child span,
+  body.print-debt-receipt .debt-print-receipt.print-paper-a5 .debt-print-head>div:first-child span{
+    font-size:10px!important;
+  }
+  body.print-debt-receipt .debt-print-receipt.print-paper-a4 .debt-print-meta b,
+  body.print-debt-receipt .debt-print-receipt.print-paper-a5 .debt-print-meta b,
+  body.print-debt-receipt .debt-print-receipt.print-paper-a4 .debt-print-invoice-head b,
+  body.print-debt-receipt .debt-print-receipt.print-paper-a5 .debt-print-invoice-head b{
+    font-size:10px!important;
+  }
+}
