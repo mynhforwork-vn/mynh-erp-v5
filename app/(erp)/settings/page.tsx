@@ -6,8 +6,9 @@ import { DataManagementSettings } from '@/components/data-management-settings'
 import { BankTransferSettings } from '@/components/bank-transfer-settings'
 import { SystemAccessSettings } from '@/components/system-access-settings'
 import { TrackingTelegramSettings } from '@/components/tracking-telegram-settings'
+import { TrackingSettings } from '@/components/tracking-settings'
 
-type SP={section?:string,purged?:string,protected?:string,telegram_test?:string,telegram_message?:string}
+type SP={section?:string,purged?:string,protected?:string,telegram_test?:string,telegram_message?:string,tracking_test?:string,tracking_message?:string}
 
 export default async function SettingsPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
@@ -17,8 +18,10 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
   const canEditTracking=role==='admin'
   const section=sp.section==='spx-hubs'
     ? 'spx-hubs'
-    : sp.section==='tracking-alerts'&&['admin','operator'].includes(role)
-      ? 'tracking-alerts'
+    : sp.section==='tracking'&&['admin','operator'].includes(role)
+      ? 'tracking'
+      : sp.section==='tracking-alerts'&&['admin','operator'].includes(role)
+        ? 'tracking-alerts'
       : sp.section==='data-management'
         ? 'data-management'
         : sp.section==='payments'
@@ -38,6 +41,10 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     archivedUsersResult,
     bankTransferResult,
     trackingProviderResult,
+    trackingRuntimeResult,
+    trackingRulesResult,
+    trackingMappingsResult,
+    unknownTrackingEventsResult,
     telegramSettingsResult,
     telegramDestinationsResult,
   ]=await Promise.all([
@@ -47,7 +54,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       .order('display_name',{ascending:true})
       .limit(200),
     supabase.from('destination_hub_configs')
-      .select('id,hub_code,area,region,province_keywords,district_keywords,address_keywords,priority,is_active')
+      .select('id,hub_code,area,region,province_keywords,district_keywords,address_keywords,carrier_code,tracking_location_aliases,priority,is_active')
       .order('priority',{ascending:true})
       .order('hub_code',{ascending:true})
       .limit(500),
@@ -68,8 +75,26 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       .eq('config_key','DEFAULT')
       .maybeSingle(),
     supabase.from('tracking_provider_configs')
-      .select('carrier,enabled,endpoint_url,http_method,timeout_ms,auth_header_name,auth_secret_id')
+      .select('carrier,enabled,adapter_type,endpoint_url,http_method,timeout_ms,auth_header_name,auth_secret_id')
       .order('carrier',{ascending:true}),
+    supabase.from('tracking_runtime_settings')
+      .select('auto_tracking_enabled,quiet_start,quiet_end,retry_minutes')
+      .eq('id','main')
+      .maybeSingle(),
+    supabase.from('tracking_rule_configs')
+      .select('status_code,label,phase,interval_minutes,auto_tracking,terminal,sort_order,is_active')
+      .order('sort_order',{ascending:true}),
+    supabase.from('carrier_status_mappings')
+      .select('id,carrier,raw_code,raw_name,canonical_status,note,is_active,priority')
+      .order('carrier',{ascending:true})
+      .order('priority',{ascending:true})
+      .order('raw_code',{ascending:true})
+      .limit(500),
+    supabase.from('tracking_events')
+      .select('raw_status_code,raw_status_name,raw_description,source,created_at')
+      .eq('normalized_status','UNKNOWN')
+      .order('created_at',{ascending:false})
+      .limit(500),
     supabase.from('telegram_alert_settings')
       .select('enabled,default_chat_id,bot_token_secret_id,alert_types')
       .eq('id','main')
@@ -111,8 +136,26 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
 
   const error=carrierError??hubError??shipperError??assignmentError
     ??activeOrdersResult.error??archivedOrdersResult.error??activeUsersResult.error??archivedUsersResult.error
-    ??bankTransferResult.error??trackingProviderResult.error??telegramSettingsResult.error??telegramDestinationsResult.error
+    ??bankTransferResult.error??trackingProviderResult.error??trackingRuntimeResult.error??trackingRulesResult.error??trackingMappingsResult.error??unknownTrackingEventsResult.error??telegramSettingsResult.error??telegramDestinationsResult.error
     ??systemUsersResult.error
+
+  const unknownMap=new Map<string,{carrier:string;raw_code:string;raw_name:string|null;description:string|null;count:number}>()
+  for(const row of (unknownTrackingEventsResult.data??[]) as any[]){
+    const rawCode=String(row.raw_status_code??'').trim()
+    if(!rawCode)continue
+    const carrier='SPX'
+    const key=carrier+'|'+rawCode
+    const current=unknownMap.get(key)
+    if(current)current.count+=1
+    else unknownMap.set(key,{
+      carrier,
+      raw_code:rawCode,
+      raw_name:row.raw_status_name?String(row.raw_status_name):null,
+      description:row.raw_description?String(row.raw_description):null,
+      count:1,
+    })
+  }
+  const unknownRaw=[...unknownMap.values()]
 
   const activeOrders=activeOrdersResult.count??0
   const archivedOrders=archivedOrdersResult.count??0
@@ -135,7 +178,8 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     <nav className="settings-page-tabs-v3" aria-label="Nhóm cài đặt">
       <Link className={section==='shipping-carriers'?'active':''} href="/settings?section=shipping-carriers">Đơn vị vận chuyển</Link>
       <Link className={section==='spx-hubs'?'active':''} href="/settings?section=spx-hubs">SPX · Kho đích & Shipper</Link>
-      {['admin','operator'].includes(role)&&<Link className={section==='tracking-alerts'?'active':''} href="/settings?section=tracking-alerts">Tracking & Telegram</Link>}
+      {['admin','operator'].includes(role)&&<Link className={section==='tracking'?'active':''} href="/settings?section=tracking">Tracking</Link>}
+      {['admin','operator'].includes(role)&&<Link className={section==='tracking-alerts'?'active':''} href="/settings?section=tracking-alerts">Telegram</Link>}
       <Link className={section==='payments'?'active':''} href="/settings?section=payments">Thanh toán & QR</Link>
       <Link className={section==='data-management'?'active':''} href="/settings?section=data-management">Quản lý dữ liệu</Link>
       {role==='admin'&&<Link className={section==='access'?'active':''} href="/settings?section=access">Phân quyền & tài khoản</Link>}
@@ -150,10 +194,20 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
               shippers={(shipperRows??[]) as any[]}
               canEdit={canEdit}
             />
-          : section==='tracking-alerts'
-            ? <TrackingTelegramSettings
+          : section==='tracking'
+            ? <TrackingSettings
+                runtime={(trackingRuntimeResult.data??null) as any}
+                rules={(trackingRulesResult.data??[]) as any[]}
                 carriers={(carrierRows??[]) as any[]}
                 providers={(trackingProviderResult.data??[]) as any[]}
+                mappings={(trackingMappingsResult.data??[]) as any[]}
+                unknownRaw={unknownRaw}
+                canEdit={canEditTracking}
+                trackingTest={sp.tracking_test??null}
+                trackingMessage={sp.tracking_message??null}
+              />
+          : section==='tracking-alerts'
+            ? <TrackingTelegramSettings
                 telegram={(telegramSettingsResult.data??null) as any}
                 destinations={(telegramDestinationsResult.data??[]) as any[]}
                 hubs={(hubRows??[]).filter((x:any)=>x.is_active).map((x:any)=>String(x.hub_code))}
