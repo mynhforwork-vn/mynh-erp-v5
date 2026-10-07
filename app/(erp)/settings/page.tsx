@@ -1,14 +1,13 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
-import { DestinationHubSettings } from '@/components/destination-hub-config-panel'
-import { ShippingCarrierSettings } from '@/components/shipping-carrier-settings'
+import { ShippingSettings } from '@/components/shipping-settings'
 import { DataManagementSettings } from '@/components/data-management-settings'
 import { BankTransferSettings } from '@/components/bank-transfer-settings'
 import { SystemAccessSettings } from '@/components/system-access-settings'
 import { TrackingTelegramSettings } from '@/components/tracking-telegram-settings'
 import { TrackingSettings } from '@/components/tracking-settings'
 
-type SP={section?:string,purged?:string,protected?:string,telegram_test?:string,telegram_message?:string,tracking_test?:string,tracking_message?:string}
+type SP={section?:string,shipping_tab?:'carriers'|'hubs'|'shippers',purged?:string,protected?:string,telegram_test?:string,telegram_message?:string,tracking_test?:string,tracking_message?:string}
 
 export default async function SettingsPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
@@ -16,19 +15,20 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
   const role=String(user.app_metadata?.role??'viewer')
   const canEdit=['admin','operator'].includes(role)
   const canEditTracking=role==='admin'
-  const section=sp.section==='spx-hubs'
-    ? 'spx-hubs'
+  const section=(sp.section==='shipping'||sp.section==='shipping-carriers'||sp.section==='spx-hubs')
+    ? 'shipping'
     : sp.section==='tracking'&&['admin','operator'].includes(role)
       ? 'tracking'
-      : sp.section==='tracking-alerts'&&['admin','operator'].includes(role)
-        ? 'tracking-alerts'
+      : (sp.section==='notifications'||sp.section==='tracking-alerts')&&['admin','operator'].includes(role)
+        ? 'notifications'
       : sp.section==='data-management'
         ? 'data-management'
         : sp.section==='payments'
         ? 'payments'
         : sp.section==='access'&&role==='admin'
           ? 'access'
-          : 'shipping-carriers'
+          : 'shipping'
+  const shippingInitialTab=sp.section==='spx-hubs'?'hubs':(sp.shipping_tab??'carriers')
 
   const [
     {data:carrierRows,error:carrierError},
@@ -181,25 +181,24 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     {error&&<div className="error-box">Không thể tải cấu hình hệ thống: {error.message}</div>}
 
     <nav className="settings-page-tabs-v3" aria-label="Nhóm cài đặt">
-      <Link className={section==='shipping-carriers'?'active':''} href="/settings?section=shipping-carriers">Đơn vị vận chuyển</Link>
-      <Link className={section==='spx-hubs'?'active':''} href="/settings?section=spx-hubs">SPX · Kho đích & Shipper</Link>
+      <Link className={section==='shipping'?'active':''} href="/settings?section=shipping">Cấu hình vận chuyển</Link>
       {['admin','operator'].includes(role)&&<Link className={section==='tracking'?'active':''} href="/settings?section=tracking">Tracking</Link>}
-      {['admin','operator'].includes(role)&&<Link className={section==='tracking-alerts'?'active':''} href="/settings?section=tracking-alerts">Alerts</Link>}
-      <Link className={section==='payments'?'active':''} href="/settings?section=payments">Thanh toán & QR</Link>
+      {['admin','operator'].includes(role)&&<Link className={section==='notifications'?'active':''} href="/settings?section=notifications">Thông báo</Link>}
+      <Link className={section==='payments'?'active':''} href="/settings?section=payments">Thanh toán</Link>
       <Link className={section==='data-management'?'active':''} href="/settings?section=data-management">Quản lý dữ liệu</Link>
       {role==='admin'&&<Link className={section==='access'?'active':''} href="/settings?section=access">Phân quyền & tài khoản</Link>}
     </nav>
 
     <section className="settings-workspace-v3">
-      {section==='shipping-carriers'
-        ? <ShippingCarrierSettings carriers={(carrierRows??[]) as any[]} canEdit={canEdit}/>
-        : section==='spx-hubs'
-          ? <DestinationHubSettings
-              configs={configs}
-              shippers={(shipperRows??[]) as any[]}
-              canEdit={canEdit}
-            />
-          : section==='tracking'
+      {section==='shipping'
+        ? <ShippingSettings
+            carriers={(carrierRows??[]) as any[]}
+            configs={configs}
+            shippers={(shipperRows??[]) as any[]}
+            canEdit={canEdit}
+            initialTab={shippingInitialTab}
+          />
+        : section==='tracking'
             ? <TrackingSettings
                 runtime={(trackingRuntimeResult.data??null) as any}
                 rules={(trackingRulesResult.data??[]) as any[]}
@@ -211,7 +210,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
                 trackingTest={sp.tracking_test??null}
                 trackingMessage={sp.tracking_message??null}
               />
-          : section==='tracking-alerts'
+          : section==='notifications'
             ? <TrackingTelegramSettings
                 telegram={(telegramSettingsResult.data??null) as any}
                 rules={(alertRulesResult.data??[]) as any[]}
