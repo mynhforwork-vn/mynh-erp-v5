@@ -312,8 +312,8 @@ export function PurchaseAccountTable({
           </form>}
     </div>}
 
-    <div className="column-manager" ref={columnManagerRef}>
-      <button className="icon-button" type="button" onClick={()=>setOpen(v=>!v)} aria-expanded={open} title="Cột & thứ tự">
+    <div className="column-manager managed-column-wrap" ref={columnManagerRef}>
+      <button className="icon-button managed-column-button" type="button" onClick={()=>setOpen(v=>!v)} aria-expanded={open} title="Cột & thứ tự">
         <ColumnIcon/>
       </button>
       {open&&<div className="column-manager-menu">
