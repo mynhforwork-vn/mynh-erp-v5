@@ -377,6 +377,7 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
         }
       </div>
     </SystemSlidebar>}
+    </div>
 
   </div>
 }
