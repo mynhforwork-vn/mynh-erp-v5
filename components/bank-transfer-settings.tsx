@@ -40,139 +40,143 @@ export function BankTransferSettings({
     })
   }
 
-  return <div className="bank-transfer-settings bank-transfer-settings-v6">
-    <div className="carrier-settings-head">
-      <div>
-        <span className="module-eyebrow">THANH TOÁN</span>
-        <h3>Chuyển khoản & VietQR</h3>
-        <p>Cấu hình tài khoản nhận tiền dùng chung cho POS và phiếu bán hàng.</p>
-      </div>
-      <div className="carrier-settings-summary">
-        <span><b>{form.is_active?'Bật':'Tắt'}</b> chuyển khoản</span>
-        <span><b>Auto</b> số tiền theo hóa đơn</span>
-      </div>
-    </div>
+  return <div className="bank-transfer-settings payment-settings-v10">
+    <div className="payment-workspace-v10">
+      <form onSubmit={submit} className="payment-form-panel-v10">
+        <div className="payment-panel-head-v10">
+          <div>
+            <h3>Tài khoản nhận tiền</h3>
+            <p>Dùng chung cho POS, phiếu bán hàng và phiếu thu nợ.</p>
+          </div>
+          <label className="payment-enable-v10">
+            <input
+              type="checkbox"
+              name="is_active"
+              checked={Boolean(form.is_active)}
+              onChange={e=>setForm(v=>({...v,is_active:e.target.checked}))}
+              disabled={!canEdit}
+            />
+            <span>{form.is_active?'Đang bật':'Đang tắt'}</span>
+          </label>
+        </div>
 
-    <div className="carrier-settings-note">
-      <b>Số tiền không cấu hình cố định.</b>
-      <span>POS tự lấy đúng số phải thu; QR sẽ thay đổi theo từng hóa đơn.</span>
-    </div>
+        <div className="payment-form-grid-v10">
+          <label>
+            <span>Ngân hàng</span>
+            <input
+              name="bank_name"
+              value={form.bank_name}
+              onChange={e=>setForm(v=>({...v,bank_name:e.target.value}))}
+              placeholder="VD: Vietcombank"
+              disabled={!canEdit}
+              required
+            />
+          </label>
 
-    <div className="bank-transfer-settings-grid bank-transfer-settings-grid-v6">
-      <form onSubmit={submit} className="bank-transfer-form bank-transfer-form-v6">
-        <label>
-          <span>Bank ID / BIN</span>
-          <input
-            name="bank_id"
-            value={form.bank_id}
-            onChange={e=>setForm(v=>({...v,bank_id:e.target.value}))}
-            placeholder="VD: 970436 hoặc VCB"
-            disabled={!canEdit}
-            required
-          />
-          <small>Dùng BIN hoặc mã ngân hàng VietQR.</small>
-        </label>
+          <label>
+            <span>Bank ID / BIN</span>
+            <input
+              name="bank_id"
+              value={form.bank_id}
+              onChange={e=>setForm(v=>({...v,bank_id:e.target.value}))}
+              placeholder="970436 hoặc VCB"
+              disabled={!canEdit}
+              required
+            />
+          </label>
 
-        <label>
-          <span>Tên ngân hàng</span>
-          <input
-            name="bank_name"
-            value={form.bank_name}
-            onChange={e=>setForm(v=>({...v,bank_name:e.target.value}))}
-            placeholder="VD: Vietcombank"
-            disabled={!canEdit}
-            required
-          />
-        </label>
+          <label>
+            <span>Số tài khoản</span>
+            <input
+              name="account_no"
+              value={form.account_no}
+              onChange={e=>setForm(v=>({...v,account_no:e.target.value}))}
+              placeholder="Số tài khoản nhận tiền"
+              disabled={!canEdit}
+              required
+            />
+          </label>
 
-        <label>
-          <span>Số tài khoản</span>
-          <input
-            name="account_no"
-            value={form.account_no}
-            onChange={e=>setForm(v=>({...v,account_no:e.target.value}))}
-            placeholder="Số tài khoản nhận tiền"
-            disabled={!canEdit}
-            required
-          />
-        </label>
+          <label>
+            <span>Tên tài khoản</span>
+            <input
+              name="account_name"
+              value={form.account_name}
+              onChange={e=>setForm(v=>({...v,account_name:e.target.value}))}
+              placeholder="Tên chủ tài khoản"
+              disabled={!canEdit}
+              required
+            />
+          </label>
+        </div>
 
-        <label>
-          <span>Tên tài khoản</span>
-          <input
-            name="account_name"
-            value={form.account_name}
-            onChange={e=>setForm(v=>({...v,account_name:e.target.value}))}
-            placeholder="Tên chủ tài khoản"
-            disabled={!canEdit}
-            required
-          />
-        </label>
+        <div className="payment-rule-head-v10">
+          <div>
+            <b>Quy tắc tạo QR</b>
+            <span>Số tiền lấy tự động theo hóa đơn; nội dung chuyển khoản tự ghép với mã chứng từ.</span>
+          </div>
+        </div>
 
-        <label>
-          <span>Tiền tố nội dung CK</span>
-          <input
-            name="transfer_prefix"
-            value={String(form.transfer_prefix??'MYNH')}
-            onChange={e=>setForm(v=>({...v,transfer_prefix:e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12)}))}
-            placeholder="MYNH"
-            disabled={!canEdit}
-          />
-          <small>Tối đa 12 ký tự, tự ghép với mã hóa đơn/phiếu thu.</small>
-        </label>
+        <div className="payment-form-grid-v10 payment-rule-grid-v10">
+          <label>
+            <span>Tiền tố nội dung CK</span>
+            <input
+              name="transfer_prefix"
+              value={String(form.transfer_prefix??'MYNH')}
+              onChange={e=>setForm(v=>({...v,transfer_prefix:e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,12)}))}
+              placeholder="MYNH"
+              disabled={!canEdit}
+            />
+            <small>Tối đa 12 ký tự.</small>
+          </label>
 
-        <label>
-          <span>Mẫu QR</span>
-          <select
-            name="qr_template"
-            value={String(form.qr_template??'compact2')}
-            onChange={e=>setForm(v=>({...v,qr_template:e.target.value}))}
-            disabled={!canEdit}
-          >
-            <option value="compact2">compact2 · đủ thông tin</option>
-            <option value="compact">compact · gọn</option>
-            <option value="qr_only">qr_only · chỉ QR</option>
-            <option value="print">print · in</option>
-          </select>
-        </label>
+          <label>
+            <span>Mẫu QR</span>
+            <select
+              name="qr_template"
+              value={String(form.qr_template??'compact2')}
+              onChange={e=>setForm(v=>({...v,qr_template:e.target.value}))}
+              disabled={!canEdit}
+            >
+              <option value="compact2">compact2 · đủ thông tin</option>
+              <option value="compact">compact · gọn</option>
+              <option value="qr_only">qr_only · chỉ QR</option>
+              <option value="print">print · in</option>
+            </select>
+          </label>
+        </div>
 
-        <label className="bank-transfer-toggle">
-          <input
-            type="checkbox"
-            name="is_active"
-            checked={Boolean(form.is_active)}
-            onChange={e=>setForm(v=>({...v,is_active:e.target.checked}))}
-            disabled={!canEdit}
-          />
-          <span>Bật thanh toán chuyển khoản tại POS</span>
-        </label>
-
-        <div className="bank-transfer-actions">
+        <div className="payment-form-actions-v10">
           {message&&<span className={message.startsWith('Đã lưu')?'success':'error'}>{message}</span>}
+          <span className="payment-auto-note-v10">POS tự gắn đúng số tiền và mã hóa đơn/phiếu thu.</span>
           {canEdit&&<button className="button primary" type="submit" disabled={pending}>
             {pending?'Đang lưu...':'Lưu cấu hình'}
           </button>}
         </div>
       </form>
 
-      <div className="bank-transfer-preview bank-transfer-preview-compact bank-transfer-preview-v6">
-        <div className="bank-transfer-preview-head">
-          <span className="module-eyebrow">XEM TRƯỚC</span>
-          <b>QR chuyển khoản</b>
-          <small>Ví dụ 123.000đ</small>
+      <aside className="payment-preview-panel-v10">
+        <div className="payment-panel-head-v10">
+          <div>
+            <h3>Xem trước VietQR</h3>
+            <p>Ví dụ giao dịch 123.000đ.</p>
+          </div>
+          <span className={'payment-state-v10 '+(form.is_active?'on':'')}>{form.is_active?'Sẵn sàng':'Đang tắt'}</span>
         </div>
-        <div className="bank-transfer-preview-body bank-transfer-preview-body-v6">
+
+        <div className="payment-preview-body-v10">
           {preview
             ? <img src={preview} alt="VietQR xem trước"/>
-            : <div className="empty compact bank-preview-empty">Nhập Bank ID và số tài khoản để xem QR.</div>}
-          <div className="bank-transfer-info-stack">
+            : <div className="payment-preview-empty-v10">Nhập Bank ID và số tài khoản để xem QR.</div>}
+
+          <div className="payment-preview-info-v10">
             <div><span>Ngân hàng</span><b>{form.bank_name||'—'}{form.bank_id?' · '+form.bank_id:''}</b></div>
             <div><span>Số tài khoản</span><b className="mono">{form.account_no||'—'}</b></div>
             <div><span>Tên tài khoản</span><b>{form.account_name||'—'}</b></div>
             <div><span>Nội dung CK</span><b className="mono">{buildTransferDescription(null,'POS-261001-000123')}</b></div>
           </div>
         </div>
-      </div>
+      </aside>
     </div>
   </div>
 }
