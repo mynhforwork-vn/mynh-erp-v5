@@ -197,20 +197,22 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
 
   const hubOptions=[...new Set(rangeRows.map((r:any)=>String(r.destination_hub??'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'))
   const hubRows=sp.hub?rangeRows.filter((r:any)=>r.destination_hub===sp.hub):rangeRows
+  const scopeRows=sp.receiveDate
+    ? hubRows.filter((r:any)=>localDate(r.last_status_change_at)===sp.receiveDate)
+    : hubRows
 
-  const atHub=hubRows.filter((r:any)=>r.tracking_status==='ARRIVED_DESTINATION_HUB').length
-  const outForDelivery=hubRows.filter((r:any)=>r.tracking_status==='OUT_FOR_DELIVERY').length
-  const delivered=hubRows.filter((r:any)=>r.tracking_status==='DELIVERED').length
-  const failed=hubRows.filter((r:any)=>r.tracking_status==='DELIVERY_FAILED').length
-  const waitingRows=hubRows.filter((r:any)=>r.receive_status==='WAITING_RECEIVE')
+  const atHub=scopeRows.filter((r:any)=>r.tracking_status==='ARRIVED_DESTINATION_HUB').length
+  const outForDelivery=scopeRows.filter((r:any)=>r.tracking_status==='OUT_FOR_DELIVERY').length
+  const delivered=scopeRows.filter((r:any)=>r.tracking_status==='DELIVERED').length
+  const failed=scopeRows.filter((r:any)=>r.tracking_status==='DELIVERY_FAILED').length
+  const waitingRows=scopeRows.filter((r:any)=>r.receive_status==='WAITING_RECEIVE')
   const waiting=waitingRows.length
   const waitingCod=waitingRows.reduce((sum:number,r:any)=>sum+Number(r.cod??0),0)
   const waitingHubCount=new Set(waitingRows.map((r:any)=>r.destination_hub).filter(Boolean)).size
 
-  let rows=[...hubRows]
+  let rows=[...scopeRows]
   if(sp.status)rows=rows.filter((r:any)=>r.tracking_status===sp.status)
   if(sp.receive)rows=rows.filter((r:any)=>r.receive_status===sp.receive)
-  if(sp.receiveDate)rows=rows.filter((r:any)=>localDate(r.last_status_change_at)===sp.receiveDate)
 
   function trackingHref(extra:Record<string,string|null|undefined>={}){
     const p=new URLSearchParams()
@@ -358,7 +360,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     <section className="tracking-command-center-v2">
       <div className="tracking-status-strip-v2">
         <Link
-          href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE',receiveDate:null})}
+          href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE'})}
           className={'tracking-status-metric warning '+(sp.receive==='WAITING_RECEIVE'?'active':'')}
         >
           <span>Chờ nhận</span>
@@ -366,25 +368,25 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
           <small>{formatMoney(waitingCod)} · {waitingHubCount} HUB</small>
         </Link>
         <Link
-          href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null,receiveDate:null})}
+          href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null})}
           className={'tracking-status-metric amber '+(sp.status==='ARRIVED_DESTINATION_HUB'?'active':'')}
         >
           <span>Đến HUB</span><b>{atHub}</b><small>Cần theo dõi</small>
         </Link>
         <Link
-          href={trackingHref({status:'OUT_FOR_DELIVERY',receive:null,receiveDate:null})}
+          href={trackingHref({status:'OUT_FOR_DELIVERY',receive:null})}
           className={'tracking-status-metric info '+(sp.status==='OUT_FOR_DELIVERY'?'active':'')}
         >
           <span>Đang giao</span><b>{outForDelivery}</b><small>Shipper đang xử lý</small>
         </Link>
         <Link
-          href={trackingHref({status:'DELIVERED',receive:null,receiveDate:null})}
+          href={trackingHref({status:'DELIVERED',receive:null})}
           className={'tracking-status-metric success '+(sp.status==='DELIVERED'&&!sp.receive?'active':'')}
         >
           <span>Giao TC</span><b>{delivered}</b><small>{waiting} chưa nhận</small>
         </Link>
         <Link
-          href={trackingHref({status:'DELIVERY_FAILED',receive:null,receiveDate:null})}
+          href={trackingHref({status:'DELIVERY_FAILED',receive:null})}
           className={'tracking-status-metric danger '+(sp.status==='DELIVERY_FAILED'?'active':'')}
         >
           <span>Giao lỗi</span><b>{failed}</b><small>Cần xử lý</small>
@@ -398,11 +400,11 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
         </div>
 
         <div className="tracking-filter-segments tracking-filter-segments-v2">
-          <Link className={!sp.status&&!sp.receive?'active':''} href={trackingHref({status:null,receive:null,receiveDate:null})}>Tất cả</Link>
-          <Link className={sp.receive==='WAITING_RECEIVE'?'active':''} href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE',receiveDate:null})}>Chờ nhận</Link>
-          <Link className={sp.status==='ARRIVED_DESTINATION_HUB'?'active':''} href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null,receiveDate:null})}>Đến HUB</Link>
-          <Link className={sp.status==='OUT_FOR_DELIVERY'?'active':''} href={trackingHref({status:'OUT_FOR_DELIVERY',receive:null,receiveDate:null})}>Đang giao</Link>
-          <Link className={sp.status==='DELIVERY_FAILED'?'active':''} href={trackingHref({status:'DELIVERY_FAILED',receive:null,receiveDate:null})}>Giao lỗi</Link>
+          <Link className={!sp.status&&!sp.receive?'active':''} href={trackingHref({status:null,receive:null})}>Tất cả</Link>
+          <Link className={sp.receive==='WAITING_RECEIVE'?'active':''} href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE'})}>Chờ nhận</Link>
+          <Link className={sp.status==='ARRIVED_DESTINATION_HUB'?'active':''} href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null})}>Đến HUB</Link>
+          <Link className={sp.status==='OUT_FOR_DELIVERY'?'active':''} href={trackingHref({status:'OUT_FOR_DELIVERY',receive:null})}>Đang giao</Link>
+          <Link className={sp.status==='DELIVERY_FAILED'?'active':''} href={trackingHref({status:'DELIVERY_FAILED',receive:null})}>Giao lỗi</Link>
         </div>
 
         <form action="/purchase/tracking" className="tracking-date-filter tracking-date-filter-v2">
