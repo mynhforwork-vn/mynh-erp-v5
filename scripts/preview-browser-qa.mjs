@@ -273,12 +273,31 @@ if(await createOrderLink.count()){
       await page.locator('aside.order-panel .quick-product-parser').count()===0
     )
 
+    const voucherTypeInput=page.locator('aside.order-panel input[name="voucher_type"]').first()
+    if(await voucherTypeInput.count()){
+      await voucherTypeInput.fill('Loại mới QA')
+      recordInteraction(
+        'Voucher type accepts a new free-text value',
+        await voucherTypeInput.inputValue()==='Loại mới QA'
+      )
+      recordInteraction(
+        'Voucher type keeps saved-value suggestions',
+        await page.locator('aside.order-panel datalist#voucher-type-options').count()===1
+      )
+    }else{
+      recordInteraction('Voucher type free-text input available',false)
+    }
+
     const voucherTagInput=page.locator('aside.order-panel input[name="voucher_tag"]').first()
     if(await voucherTagInput.count()){
       await voucherTagInput.fill('Tag mới QA')
       recordInteraction(
         'Voucher tag accepts a new free-text value',
         await voucherTagInput.inputValue()==='Tag mới QA'
+      )
+      recordInteraction(
+        'Voucher tag keeps saved-value suggestions',
+        await page.locator('aside.order-panel datalist#voucher-tag-options').count()===1
       )
     }else{
       recordInteraction('Voucher tag free-text input available',false)
