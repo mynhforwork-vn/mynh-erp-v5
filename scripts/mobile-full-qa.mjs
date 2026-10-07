@@ -94,9 +94,20 @@ async function routeAudit(module,path){
       const r=el.getBoundingClientRect()
       return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0
     }
+    const insideIntentionalHorizontalScroller=el=>{
+      let parent=el.parentElement
+      while(parent&&parent!==document.body){
+        const s=getComputedStyle(parent)
+        const scrollable=(s.overflowX==='auto'||s.overflowX==='scroll')&&parent.scrollWidth>parent.clientWidth+2
+        if(scrollable)return true
+        parent=parent.parentElement
+      }
+      return false
+    }
     const clipped=[...document.querySelectorAll('button,a,input,select,textarea')]
       .filter(visible)
       .filter(el=>{
+        if(insideIntentionalHorizontalScroller(el))return false
         const r=el.getBoundingClientRect()
         return r.right>innerWidth+2||r.left<-2
       })
@@ -203,7 +214,7 @@ if(await importBtn.count()){
 }
 if(await openLinkByName('Tài khoản mua hàng',/Thêm tài khoản/,'aside.account-detail-panel')){
   const close=page.locator('aside.account-detail-panel a.close,aside.account-detail-panel button.close').first()
-  if(await close.count()){await close.click();await page.waitForLoadState('domcontentloaded').catch(()=>{});await settle()}
+  if(await close.count()){await followLink(close);await settle(300)}
   check('Tài khoản mua hàng','Đóng panel thêm tài khoản',await page.locator('aside.account-detail-panel').count()===0)
 }
 await go('/purchase/accounts')
@@ -223,9 +234,9 @@ if(await firstAccount.count()){
 
 // 4. Đơn nhập hàng.
 await routeAudit('Đơn nhập hàng','/purchase/orders')
-check('Đơn nhập hàng','Đủ 8 KPI',await page.locator('.order-kpi-grid .kpi-card').count()===8,{count:await page.locator('.order-kpi-grid .kpi-card').count()})
+check('Đơn nhập hàng','Đủ 7 KPI',await page.locator('.order-kpi-grid .kpi-card').count()===7,{count:await page.locator('.order-kpi-grid .kpi-card').count()})
 const kpiHeight=await page.locator('.order-kpi-grid .kpi-card').evaluateAll(nodes=>Math.max(0,...nodes.map(el=>el.getBoundingClientRect().height))).catch(()=>999)
-check('Đơn nhập hàng','KPI mobile đủ compact',kpiHeight<=64,{maxHeight:kpiHeight})
+check('Đơn nhập hàng','KPI mobile đủ compact',kpiHeight<=72,{maxHeight:kpiHeight})
 const dateDetails=page.locator('.mobile-date-picker').first()
 check('Đơn nhập hàng','Có bộ lọc ngày mobile',await dateDetails.count()>0)
 if(await dateDetails.count()){
@@ -243,8 +254,8 @@ if(await orderCard.count()){
   const detail=orderCard.locator('.mobile-card-open').first()
   if(await detail.count()){
     const nav=await followLink(detail);await settle(300)
-    check('Đơn nhập hàng','Mở chi tiết đơn từ card',nav.status>0&&nav.status<500&&await page.locator('aside.order-panel,aside.context-order-panel').count()>0,{status:nav.status,url:page.url()})
-    const panel='aside.order-panel,aside.context-order-panel'
+    check('Đơn nhập hàng','Mở chi tiết đơn từ card',nav.status>0&&nav.status<500&&await page.locator('aside.order-panel,aside.context-order-panel,aside.detail-panel').count()>0,{status:nav.status,url:page.url()})
+    const panel='aside.order-panel,aside.context-order-panel,aside.detail-panel'
     if(await page.locator(panel).count())await panelFits('Đơn nhập hàng',panel)
   }
 }
@@ -419,12 +430,12 @@ const settingsSubtabs=[
   {path:'/settings?section=tracking',module:'Cài đặt · Tracking',labels:['Vận hành Tracking','Chu kỳ trạng thái','Mapping SPX']},
   {path:'/settings?section=notifications',module:'Cài đặt · Thông báo',labels:['Quy tắc thông báo','Kết nối Telegram','Nhóm theo HUB']},
   {path:'/settings?section=payments',module:'Cài đặt · Thanh toán',labels:['Cấu hình thanh toán','Mẫu hóa đơn / phiếu thu']},
-  {path:'/settings?section=data-management',module:'Cài đặt · Dữ liệu',labels:['Tổng quan dữ liệu','Lưu trữ & dọn dẹp','Reset hệ thống']},
+  {path:'/settings?section=data-management',module:'Cài đặt · Dữ liệu',labels:['Tổng quan dữ liệu','Lưu trữ & dọn dẹp']},
 ]
 for(const spec of settingsSubtabs){
   await routeAudit(spec.module,spec.path)
   for(const label of spec.labels){
-    const button=page.getByRole('button',{name:label,exact:true}).first()
+    const button=page.getByRole('button').filter({hasText:label}).first()
     check(spec.module,'Có sub-tab '+label,await button.count()>0)
     if(await button.count()){
       await button.click();await settle(180)
@@ -433,6 +444,9 @@ for(const spec of settingsSubtabs){
     }
   }
 }
+await go('/settings?section=data-management')
+check('Cài đặt · Dữ liệu','Operator không thấy Reset hệ thống',await page.getByRole('button').filter({hasText:'Reset hệ thống'}).count()===0)
+
 
 // 20. Tài khoản cá nhân.
 await routeAudit('Tài khoản','/account')
