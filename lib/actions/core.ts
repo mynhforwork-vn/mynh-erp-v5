@@ -1922,6 +1922,7 @@ export async function saveAlertRuleConfig(formData:FormData){
   const {error}=await supabase.rpc('save_alert_rule_secure',{
     p_alert_type:alertType,
     p_enabled:formData.get('enabled')==='on',
+    p_in_app_enabled:formData.get('in_app_enabled')==='on',
     p_telegram_enabled:formData.get('telegram_enabled')==='on',
     p_batch_window_minutes:Number.isFinite(batchRaw)?Math.round(batchRaw):0,
   })
@@ -1937,7 +1938,7 @@ export async function saveTelegramAlertSettings(formData:FormData){
     .filter(v=>Number.isFinite(v))
     .map(v=>Math.round(v))
   const maxAttemptsRaw=Number(text(formData.get('max_attempts'))||5)
-  const alertTypes=['ARRIVED_DESTINATION_HUB','OUT_FOR_DELIVERY','DELIVERED','DELIVERY_FAILED']
+  const alertTypes=['PICKUP_FAILED','ARRIVED_DESTINATION_HUB','OUT_FOR_DELIVERY','DELIVERED','DELIVERY_FAILED']
 
   const settingsResult=await supabase.rpc('save_telegram_alert_settings_secure',{
     p_enabled:formData.get('enabled')==='on',
