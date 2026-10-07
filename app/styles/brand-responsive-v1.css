@@ -4186,3 +4186,139 @@ body{
   .brand-shell-v1 .expense{color:var(--mynh-danger)!important}
 }
 
+@media(max-width:900px){
+  /* Settings data/access tables become vertical management cards. */
+  .brand-shell-v1 .data-overview-table-v10,
+  .brand-shell-v1 .access-user-table-v10,
+  .brand-shell-v1 .access-role-table-v10{
+    min-width:0!important;
+    width:100%!important;
+  }
+  .brand-shell-v1 .data-overview-head-v10,
+  .brand-shell-v1 .access-role-head-v10,
+  .brand-shell-v1 .access-user-table-v10 thead{
+    display:none!important;
+  }
+  .brand-shell-v1 .data-overview-row-v10{
+    min-width:0!important;
+    min-height:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:5px!important;
+    margin:6px!important;
+    padding:9px!important;
+    border:1px solid #DCE4EB!important;
+    border-radius:9px!important;
+    background:#fff!important;
+  }
+  .brand-shell-v1 .data-overview-row-v10>*{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow-wrap:anywhere!important;
+  }
+  .brand-shell-v1 .access-user-table-v10,
+  .brand-shell-v1 .access-user-table-v10 tbody,
+  .brand-shell-v1 .access-user-table-v10 tr,
+  .brand-shell-v1 .access-user-table-v10 td{
+    display:block!important;
+    width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+  }
+  .brand-shell-v1 .access-user-table-v10 tbody{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:6px!important;
+    padding:6px!important;
+  }
+  .brand-shell-v1 .access-user-table-v10 tr{
+    padding:9px!important;
+    border:1px solid #DCE4EB!important;
+    border-radius:9px!important;
+    background:#fff!important;
+  }
+  .brand-shell-v1 .access-user-table-v10 td{
+    min-height:38px!important;
+    display:grid!important;
+    grid-template-columns:94px minmax(0,1fr)!important;
+    align-items:center!important;
+    gap:8px!important;
+    padding:5px 0!important;
+    border:0!important;
+    border-top:1px solid #EEF2F5!important;
+  }
+  .brand-shell-v1 .access-user-table-v10 td:first-child{
+    min-height:44px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    justify-content:center!important;
+    gap:2px!important;
+    padding-top:0!important;
+    border-top:0!important;
+  }
+  .brand-shell-v1 .access-user-table-v10 td:nth-child(2):before{content:"Vai trò";color:#8794A2;font-size:8px;font-weight:700}
+  .brand-shell-v1 .access-user-table-v10 td:nth-child(3):before{content:"Đăng nhập";color:#8794A2;font-size:8px;font-weight:700}
+  .brand-shell-v1 .access-user-table-v10 td:nth-child(4):before{content:"Trạng thái";color:#8794A2;font-size:8px;font-weight:700}
+  .brand-shell-v1 .access-user-table-v10 td:nth-child(5):before{content:"Xử lý";color:#8794A2;font-size:8px;font-weight:700}
+  .brand-shell-v1 .access-user-table-v10 td select{
+    width:100%!important;
+    min-width:0!important;
+  }
+  .brand-shell-v1 .access-user-actions-v10{
+    min-width:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:5px!important;
+  }
+  .brand-shell-v1 .access-user-actions-v10 .button,
+  .brand-shell-v1 .access-user-actions-v10 button{
+    width:100%!important;
+    min-width:0!important;
+    min-height:36px!important;
+    justify-content:center!important;
+  }
+  .brand-shell-v1 .access-role-table-v10{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:6px!important;
+    padding:6px!important;
+  }
+  .brand-shell-v1 .access-role-row-v10{
+    min-width:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:5px!important;
+    padding:9px!important;
+    border:1px solid #DCE4EB!important;
+    border-radius:9px!important;
+    background:#fff!important;
+  }
+  .brand-shell-v1 .access-role-row-v10>*{
+    min-width:0!important;
+    overflow-wrap:anywhere!important;
+  }
+  .brand-shell-v1 .admin-reset-dialog,
+  .brand-shell-v1 .admin-password-dialog{
+    width:calc(100vw - 12px)!important;
+    max-width:none!important;
+    max-height:calc(100dvh - var(--mynh-mobile-top) - var(--mynh-mobile-bottom) - 18px)!important;
+    overflow-y:auto!important;
+    border-radius:10px!important;
+  }
+  .brand-shell-v1 .admin-password-field{
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:5px!important;
+  }
+  .brand-shell-v1 .form-actions{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:5px!important;
+  }
+  .brand-shell-v1 .form-actions .button{
+    width:100%!important;
+    min-width:0!important;
+  }
+}
+
