@@ -414,6 +414,26 @@ await go('/settings')
 const adminAccessTab=page.getByRole('link',{name:'Tài khoản & quyền',exact:true}).first()
 check('Cài đặt hệ thống','Operator không thấy tab admin-only',await adminAccessTab.count()===0,{count:await adminAccessTab.count()})
 
+const settingsSubtabs=[
+  {path:'/settings?section=shipping',module:'Cài đặt · Vận chuyển',labels:['Đơn vị vận chuyển','Kho đích','Shipper']},
+  {path:'/settings?section=tracking',module:'Cài đặt · Tracking',labels:['Vận hành Tracking','Chu kỳ trạng thái','Mapping SPX']},
+  {path:'/settings?section=notifications',module:'Cài đặt · Thông báo',labels:['Quy tắc thông báo','Kết nối Telegram','Nhóm theo HUB']},
+  {path:'/settings?section=payments',module:'Cài đặt · Thanh toán',labels:['Cấu hình thanh toán','Mẫu hóa đơn / phiếu thu']},
+  {path:'/settings?section=data-management',module:'Cài đặt · Dữ liệu',labels:['Tổng quan dữ liệu','Lưu trữ & dọn dẹp','Reset hệ thống']},
+]
+for(const spec of settingsSubtabs){
+  await routeAudit(spec.module,spec.path)
+  for(const label of spec.labels){
+    const button=page.getByRole('button',{name:label,exact:true}).first()
+    check(spec.module,'Có sub-tab '+label,await button.count()>0)
+    if(await button.count()){
+      await button.click();await settle(180)
+      const active=await button.evaluate(el=>el.classList.contains('active')).catch(()=>false)
+      check(spec.module,'Chuyển sub-tab '+label,active)
+    }
+  }
+}
+
 // 20. Tài khoản cá nhân.
 await routeAudit('Tài khoản','/account')
 check('Tài khoản','Trang tài khoản hiển thị',!page.url().includes('/login'))
