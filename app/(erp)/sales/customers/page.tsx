@@ -251,7 +251,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
         </div>
       </section>
 
-      {selected&&collectMode&&<aside className="customer-demo-panel customer-collect-context">
+      {selected&&collectMode&&<aside className="customer-demo-panel customer-collect-context mynh-slide-panel">
         <div className="sales-detail-panel-head context-stack-head">
           <Link className="context-stack-back" href={href({customer:selected.id,tab:'debt',mode:null,sale:null,saleTab:null})} aria-label="Quay lại">←</Link>
           <div className="context-stack-title">
@@ -293,7 +293,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
         openModuleHref={'/sales/history?sale='+contextSale.id}
       />}
 
-      {selected&&!contextSale&&!collectMode&&<aside className="customer-demo-panel">
+      {selected&&!contextSale&&!collectMode&&<aside className="customer-demo-panel mynh-slide-panel">
         <div className="sales-detail-panel-head">
           <div>
             <span className="module-eyebrow">KHÁCH HÀNG</span>
