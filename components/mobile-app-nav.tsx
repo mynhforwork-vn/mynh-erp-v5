@@ -36,14 +36,18 @@ const groups=[
   {label:'Mua hàng',items:[
     {href:'/purchase',label:'Tổng quan mua hàng',icon:'home' as const},
     {href:'/purchase/accounts',label:'Tài khoản mua hàng',icon:'account' as const},
+    {href:'/purchase/orders',label:'Đơn nhập hàng',icon:'orders' as const},
     {href:'/purchase/tracking',label:'Cảnh báo vận chuyển',icon:'tracking' as const},
   ]},
   {label:'Kho',items:[
+    {href:'/warehouse',label:'Tổng quan kho',icon:'home' as const},
     {href:'/warehouse/receive',label:'Nhập kho',icon:'warehouse' as const},
     {href:'/warehouse/inventory',label:'Tồn kho',icon:'inventory' as const},
     {href:'/warehouse/history',label:'Lịch sử kho',icon:'history' as const},
   ]},
   {label:'Bán hàng',items:[
+    {href:'/sales',label:'Tổng quan bán hàng',icon:'home' as const},
+    {href:'/sales/pos',label:'POS bán hàng',icon:'pos' as const},
     {href:'/sales/history',label:'Lịch sử bán',icon:'history' as const},
     {href:'/sales/customers',label:'Khách hàng',icon:'customer' as const},
     {href:'/sales/debt',label:'Công nợ',icon:'debt' as const},
