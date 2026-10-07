@@ -454,6 +454,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       auditRows={contextAuditRows}
       activeTab={contextOrderTab}
       parentLabel="Cảnh báo vận chuyển"
+      floating
       backHref={contextOrderTab!=='info'
         ? trackingHref({order:contextOrder.id,orderTab:'info'})
         : trackingHref({order:null,orderTab:null})}
