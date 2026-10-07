@@ -62,6 +62,7 @@ function money(value:unknown){
 }
 
 function title(type:string){
+  if(type==="PICKUP_FAILED")return "⚠️ LẤY HÀNG KHÔNG THÀNH CÔNG";
   if(type==="ARRIVED_DESTINATION_HUB")return "📦 ĐƠN ĐẾN KHO";
   if(type==="OUT_FOR_DELIVERY")return "🛵 ĐƠN ĐANG GIAO";
   if(type==="DELIVERED")return "✅ GIAO THÀNH CÔNG";
