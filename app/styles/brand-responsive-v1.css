@@ -6976,3 +6976,86 @@ body{
     font-style:normal!important;
   }
 }
+
+
+/* =====================================================================
+   MYNH ERP — Canonical System Slidebar V1
+   ===================================================================== */
+@media(min-width:901px){
+  body .brand-shell-v1 .system-slidebar-v1{
+    position:fixed!important;z-index:1200!important;
+    top:12px!important;right:12px!important;bottom:12px!important;left:auto!important;
+    width:420px!important;min-width:420px!important;max-width:420px!important;
+    height:auto!important;min-height:0!important;max-height:none!important;
+    display:flex!important;flex-direction:column!important;align-self:auto!important;
+    gap:0!important;margin:0!important;padding:0!important;overflow:hidden!important;
+    border:1px solid #c9d6e0!important;border-radius:8px!important;background:#fff!important;
+    box-shadow:0 20px 52px rgba(22,43,63,.18),0 2px 8px rgba(22,43,63,.08)!important;
+    color:#20364b!important;
+  }
+  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-head,.sales-history-panel-head,.sales-detail-panel-head,.whx-panel-head){
+    flex:0 0 auto!important;min-height:58px!important;
+    display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:9px!important;
+    margin:0!important;padding:8px 10px 8px 12px!important;border:0!important;border-bottom:1px solid #dde5ec!important;
+    border-radius:0!important;background:linear-gradient(180deg,#fbfcfe 0%,#f6f9fb 100%)!important;
+  }
+  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-head,.sales-history-panel-head,.sales-detail-panel-head,.whx-panel-head).context-stack-head{
+    grid-template-columns:32px minmax(0,1fr) 32px!important;padding-left:9px!important;padding-right:9px!important;
+  }
+  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-head,.sales-history-panel-head,.sales-detail-panel-head,.whx-panel-head)>div{min-width:0!important}
+  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-head,.sales-history-panel-head,.sales-detail-panel-head,.whx-panel-head) :is(.eyebrow,.module-eyebrow){
+    display:block!important;margin:0 0 2px!important;color:#12858a!important;font-size:7.5px!important;line-height:1.1!important;font-weight:780!important;letter-spacing:.08em!important;
+  }
+  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-head,.sales-history-panel-head,.sales-detail-panel-head,.whx-panel-head) h2{
+    max-width:100%!important;margin:0!important;overflow:hidden!important;color:#1c3147!important;font-size:14px!important;line-height:1.12!important;font-weight:790!important;text-overflow:ellipsis!important;white-space:nowrap!important;
+  }
+  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-head,.sales-history-panel-head,.sales-detail-panel-head,.whx-panel-head) :is(p,small){
+    display:block!important;max-width:100%!important;margin:2px 0 0!important;overflow:hidden!important;color:#7d8c9a!important;font-size:7.8px!important;line-height:1.15!important;text-overflow:ellipsis!important;white-space:nowrap!important;
+  }
+  body .brand-shell-v1 .system-slidebar-v1 :is(.context-stack-back,.close,.panel-close){
+    width:30px!important;min-width:30px!important;height:30px!important;min-height:30px!important;display:grid!important;place-items:center!important;
+    margin:0!important;padding:0!important;border:1px solid #d5e0e8!important;border-radius:6px!important;background:#fff!important;box-shadow:none!important;color:#587086!important;font-size:16px!important;line-height:1!important;text-decoration:none!important;
+  }
+  body .brand-shell-v1 .system-slidebar-v1>:is(.context-stack-breadcrumb){
+    flex:0 0 auto!important;min-height:26px!important;display:flex!important;align-items:center!important;gap:5px!important;
+    margin:0!important;padding:0 11px!important;overflow:hidden!important;border-bottom:1px solid #e6ebf0!important;background:#fafbfc!important;color:#81909e!important;font-size:7.5px!important;white-space:nowrap!important;
+  }
+  body .brand-shell-v1 .system-slidebar-v1>:is(.context-sale-actions,.sales-history-actions){
+    flex:0 0 auto!important;min-height:38px!important;display:flex!important;align-items:center!important;gap:5px!important;
+    margin:0!important;padding:5px 9px!important;overflow-x:auto!important;border-bottom:1px solid #e4eaf0!important;background:#fbfcfd!important;
+  }
+  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-tabs,.sales-history-tabs,.whx-panel-tabs){
+    flex:0 0 36px!important;min-height:36px!important;height:36px!important;display:flex!important;align-items:stretch!important;gap:0!important;
+    margin:0!important;padding:0 10px!important;overflow-x:auto!important;overflow-y:hidden!important;border:0!important;border-bottom:1px solid #dde5ec!important;background:#fff!important;
+  }
+  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-tabs,.sales-history-tabs,.whx-panel-tabs)>:is(a,button,span){
+    position:relative!important;min-width:max-content!important;min-height:35px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:4px!important;
+    margin:0!important;padding:0 9px!important;border:0!important;border-radius:0!important;background:transparent!important;color:#6d7f90!important;font-size:8.5px!important;font-weight:680!important;text-decoration:none!important;
+  }
+  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-tabs,.sales-history-tabs,.whx-panel-tabs)>:is(a,button,span).active{color:#214f91!important}
+  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-tabs,.sales-history-tabs,.whx-panel-tabs)>:is(a,button,span).active:after{
+    content:""!important;position:absolute!important;right:7px!important;bottom:0!important;left:7px!important;height:2px!important;background:#2e69ae!important;
+  }
+  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-scroll,.sales-history-panel-scroll,.customer-demo-panel-scroll,.debt-demo-panel-scroll,.whx-panel-scroll){
+    flex:1 1 auto!important;min-width:0!important;min-height:0!important;width:100%!important;height:auto!important;max-height:none!important;
+    margin:0!important;padding:10px!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain!important;background:#fff!important;
+  }
+  body .brand-shell-v1 .system-slidebar-v1>:is(.panel-form,.order-editor,.debt-collect-form){
+    flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;
+  }
+  body .brand-shell-v1 .system-slidebar-v1 .panel-scroll>.form-actions:last-child,
+  body .brand-shell-v1 .system-slidebar-v1>.panel-form>.form-actions:last-child{
+    position:sticky!important;z-index:8!important;bottom:-10px!important;margin:12px -10px -10px!important;padding:8px 10px!important;border-top:1px solid #dfe6ec!important;background:#fff!important;
+  }
+  body .brand-shell-v1:has(.system-slidebar-v1) :is(.split-view.with-panel,.sales-history-workspace,.customer-demo-workspace,.debt-demo-workspace,.warehouse-intake-layout,.whx-intake-layout,.whx-stock-layout,.finance-ledger-layout){
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+}
+@media(max-width:900px){
+  body .brand-shell-v1 .system-slidebar-v1{
+    position:fixed!important;z-index:1500!important;top:calc(var(--mynh-mobile-top,56px) + env(safe-area-inset-top,0px))!important;
+    right:0!important;bottom:calc(var(--mynh-mobile-bottom,64px) + env(safe-area-inset-bottom,0px))!important;left:0!important;
+    width:100%!important;min-width:0!important;max-width:none!important;height:auto!important;min-height:0!important;
+    display:flex!important;flex-direction:column!important;overflow:hidden!important;border:0!important;border-radius:0!important;background:#fff!important;box-shadow:none!important;
+  }
+}
