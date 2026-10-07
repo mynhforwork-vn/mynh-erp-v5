@@ -337,8 +337,8 @@ const voucherTagCount=await coloredVoucherTags.count()
 const voucherTagStyles=voucherTagCount
   ? await coloredVoucherTags.evaluateAll(nodes=>nodes.map(node=>({
       tag:node.getAttribute('data-voucher-tag'),
-      color:(node as HTMLElement).style.color,
-      background:(node as HTMLElement).style.backgroundColor,
+      color:node.style.color,
+      background:node.style.backgroundColor,
     })))
   : []
 recordInteraction(
