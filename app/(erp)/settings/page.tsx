@@ -45,6 +45,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     trackingRulesResult,
     trackingMappingsResult,
     unknownTrackingEventsResult,
+    alertRulesResult,
     telegramSettingsResult,
     telegramDestinationsResult,
   ]=await Promise.all([
@@ -95,8 +96,11 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       .eq('normalized_status','UNKNOWN')
       .order('created_at',{ascending:false})
       .limit(500),
+    supabase.from('alert_rule_configs')
+      .select('alert_type,label,enabled,telegram_enabled,batch_window_minutes,sort_order')
+      .order('sort_order',{ascending:true}),
     supabase.from('telegram_alert_settings')
-      .select('enabled,default_chat_id,bot_token_secret_id,alert_types')
+      .select('enabled,default_chat_id,bot_token_secret_id,retry_minutes,max_attempts,enabled_at')
       .eq('id','main')
       .maybeSingle(),
     supabase.from('telegram_alert_destinations')
@@ -136,7 +140,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
 
   const error=carrierError??hubError??shipperError??assignmentError
     ??activeOrdersResult.error??archivedOrdersResult.error??activeUsersResult.error??archivedUsersResult.error
-    ??bankTransferResult.error??trackingProviderResult.error??trackingRuntimeResult.error??trackingRulesResult.error??trackingMappingsResult.error??unknownTrackingEventsResult.error??telegramSettingsResult.error??telegramDestinationsResult.error
+    ??bankTransferResult.error??trackingProviderResult.error??trackingRuntimeResult.error??trackingRulesResult.error??trackingMappingsResult.error??unknownTrackingEventsResult.error??alertRulesResult.error??telegramSettingsResult.error??telegramDestinationsResult.error
     ??systemUsersResult.error
 
   const unknownMap=new Map<string,{carrier:string;raw_code:string;raw_name:string|null;description:string|null;count:number}>()
@@ -180,7 +184,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       <Link className={section==='shipping-carriers'?'active':''} href="/settings?section=shipping-carriers">Đơn vị vận chuyển</Link>
       <Link className={section==='spx-hubs'?'active':''} href="/settings?section=spx-hubs">SPX · Kho đích & Shipper</Link>
       {['admin','operator'].includes(role)&&<Link className={section==='tracking'?'active':''} href="/settings?section=tracking">Tracking</Link>}
-      {['admin','operator'].includes(role)&&<Link className={section==='tracking-alerts'?'active':''} href="/settings?section=tracking-alerts">Telegram</Link>}
+      {['admin','operator'].includes(role)&&<Link className={section==='tracking-alerts'?'active':''} href="/settings?section=tracking-alerts">Alerts</Link>}
       <Link className={section==='payments'?'active':''} href="/settings?section=payments">Thanh toán & QR</Link>
       <Link className={section==='data-management'?'active':''} href="/settings?section=data-management">Quản lý dữ liệu</Link>
       {role==='admin'&&<Link className={section==='access'?'active':''} href="/settings?section=access">Phân quyền & tài khoản</Link>}
@@ -210,6 +214,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
           : section==='tracking-alerts'
             ? <TrackingTelegramSettings
                 telegram={(telegramSettingsResult.data??null) as any}
+                rules={(alertRulesResult.data??[]) as any[]}
                 destinations={(telegramDestinationsResult.data??[]) as any[]}
                 hubs={(hubRows??[]).filter((x:any)=>x.is_active).map((x:any)=>String(x.hub_code))}
                 canEdit={canEditTracking}
