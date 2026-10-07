@@ -565,7 +565,7 @@ const settingsSelectors={
   'Cấu hình vận chuyển':'.shipping-settings-v6',
   'Tracking':'.tracking-settings-v9',
   'Thông báo':'.notification-settings-v9',
-  'Thanh toán':'.payment-settings-v10',
+  'Thanh toán':'.payment-settings-v12',
   'Dữ liệu':'.data-management-settings-v10',
 }
 for(const name of ['Cấu hình vận chuyển','Tracking','Thông báo','Thanh toán','Dữ liệu']){
@@ -593,8 +593,14 @@ for(const name of ['Quy tắc thông báo','Kết nối Telegram','Nhóm theo HU
 }
 await go('/settings?section=payments')
 for(const name of ['Cấu hình thanh toán','Mẫu hóa đơn / phiếu thu']){
-  const sub=page.locator('.payment-settings-v11 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
+  const sub=page.locator('.payment-settings-v12 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
   recordInteraction('Payment subtab '+name,await sub.count()>0)
+}
+const templateTab=page.locator('.payment-settings-v12 .settings-subtabs-v6').getByRole('button',{name:/^Mẫu hóa đơn/}).first()
+if(await templateTab.count()){
+  await templateTab.click()
+  recordInteraction('Payment template editor visible',await page.locator('.payment-template-form-v12').count()>0)
+  recordInteraction('Payment template live preview visible',await page.locator('.payment-document-preview-v11').count()>0)
 }
 await go('/settings?section=data-management')
 for(const name of ['Tổng quan dữ liệu','Lưu trữ & dọn dẹp','Reset hệ thống']){
