@@ -131,7 +131,7 @@ function OrderLifecycleCell({
           <span>
             {row.archived_at
               ? 'Đơn sẽ bị xóa khỏi hệ thống.'
-              : 'Không cần lưu trữ trước. Đơn có ràng buộc nghiệp vụ sẽ bị chặn.'}
+              : 'Không cần lưu trữ trước. Hệ thống sẽ hoàn tác nhận hàng, đối soát và nhập kho nếu an toàn.'}
           </span>
           <form action={deleteOrderPermanent}>
             <input type="hidden" name="order_id" value={row.id}/>
@@ -478,7 +478,7 @@ export function PurchaseOrderTable({
         {bulkDeleteOpen&&<form action={deleteOrdersBulkPermanent} className="order-bulk-delete-confirm">
           <input type="hidden" name="return_query" value={baseQuery}/>
           {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
-          <span>Nhập <b>XOA DON DA CHON</b> để xóa vĩnh viễn {selected.length} đơn. Đơn đã có nhận hàng / đối soát / chuyển kho sẽ bị chặn.</span>
+          <span>Nhập <b>XOA DON DA CHON</b> để xóa vĩnh viễn {selected.length} đơn. Hệ thống sẽ hoàn tác nhận hàng, đối soát và nhập kho; đơn đã chuyển kho hoặc làm tồn âm sẽ bị chặn.</span>
           <input name="confirm_text" placeholder="XOA DON DA CHON" autoComplete="off" required autoFocus/>
           <div>
             <button type="button" className="button small" onClick={()=>setBulkDeleteOpen(false)}>Hủy</button>
