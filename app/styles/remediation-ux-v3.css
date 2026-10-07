@@ -4134,3 +4134,387 @@
   .settings-section-head-v4 p{display:none!important}
   .settings-screen-v4 .settings-workspace-v4{padding:6px!important}
 }
+
+
+/* =====================================================================
+   SETTINGS V5 — Horizontal workspace demo
+   No KPI strip, no secondary left navigation.
+   ===================================================================== */
+.settings-screen-v5{
+  min-width:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:8px!important;
+  padding-bottom:18px!important;
+}
+.settings-page-head-v5{
+  min-width:0!important;
+  min-height:56px!important;
+  display:flex!important;
+  align-items:flex-end!important;
+  justify-content:space-between!important;
+  gap:16px!important;
+  padding:0 1px 2px!important;
+}
+.settings-page-head-v5>div{min-width:0!important}
+.settings-page-head-v5 h1{
+  margin:2px 0 2px!important;
+  color:#18334a!important;
+  font-size:20px!important;
+  line-height:1.1!important;
+  font-weight:820!important;
+  letter-spacing:-.015em!important;
+}
+.settings-page-head-v5 p{
+  margin:0!important;
+  color:#7a8b99!important;
+  font-size:9px!important;
+  line-height:1.3!important;
+}
+.settings-screen-v5 .settings-role-badge{
+  flex:none!important;
+  height:24px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  padding:0 8px!important;
+  border:1px solid #cfdae3!important;
+  border-radius:4px!important;
+  background:#f8fafc!important;
+  color:#49657d!important;
+  font-size:7.5px!important;
+  font-weight:820!important;
+  letter-spacing:.04em!important;
+  text-transform:uppercase!important;
+}
+
+.settings-screen-v5 .settings-page-tabs-v3.settings-tabs-v5{
+  min-width:0!important;
+  width:100%!important;
+  display:flex!important;
+  align-items:stretch!important;
+  gap:0!important;
+  padding:0!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  border:0!important;
+  border-bottom:1px solid #ccd8e2!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  scrollbar-width:thin!important;
+}
+.settings-screen-v5 .settings-tabs-v5 a{
+  position:relative!important;
+  flex:none!important;
+  min-height:34px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  padding:0 13px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#657a8d!important;
+  font-size:8.5px!important;
+  line-height:1!important;
+  font-weight:720!important;
+  text-decoration:none!important;
+  white-space:nowrap!important;
+  box-shadow:none!important;
+}
+.settings-screen-v5 .settings-tabs-v5 a:hover{
+  background:#f5f8fa!important;
+  color:#234b69!important;
+}
+.settings-screen-v5 .settings-tabs-v5 a.active{
+  background:transparent!important;
+  color:#174d71!important;
+  font-weight:830!important;
+}
+.settings-screen-v5 .settings-tabs-v5 a.active::after{
+  content:""!important;
+  position:absolute!important;
+  left:10px!important;
+  right:10px!important;
+  bottom:-1px!important;
+  height:2px!important;
+  background:#3279a6!important;
+}
+
+.settings-main-v5{
+  min-width:0!important;
+  width:100%!important;
+  display:flex!important;
+  flex-direction:column!important;
+  background:transparent!important;
+}
+.settings-section-head-v5{
+  min-width:0!important;
+  min-height:58px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:14px!important;
+  padding:9px 2px 8px!important;
+  border-bottom:1px solid #e1e8ed!important;
+}
+.settings-section-head-v5>div{min-width:0!important}
+.settings-section-head-v5 h2{
+  margin:0!important;
+  color:#213a50!important;
+  font-size:14px!important;
+  line-height:1.15!important;
+  font-weight:820!important;
+}
+.settings-section-head-v5 p{
+  margin:3px 0 0!important;
+  max-width:920px!important;
+  color:#83919d!important;
+  font-size:8.5px!important;
+  line-height:1.35!important;
+}
+.settings-screen-v5 .settings-readonly-badge{
+  flex:none!important;
+  height:23px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  padding:0 7px!important;
+  border:1px solid #d6dfe6!important;
+  border-radius:4px!important;
+  background:#f7f9fb!important;
+  color:#728596!important;
+  font-size:7px!important;
+  font-weight:800!important;
+  text-transform:uppercase!important;
+}
+.settings-workspace-v5{
+  min-width:0!important;
+  width:100%!important;
+  padding:8px 0 0!important;
+  background:transparent!important;
+  overflow-x:hidden!important;
+}
+.settings-workspace-v5>.carrier-settings,
+.settings-workspace-v5>.destination-master-detail,
+.settings-workspace-v5>.tracking-settings,
+.settings-workspace-v5>.tracking-telegram-settings,
+.settings-workspace-v5>.bank-transfer-settings,
+.settings-workspace-v5>.data-management-settings,
+.settings-workspace-v5>.admin-access-settings{
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  gap:7px!important;
+}
+
+/* Flatten existing settings components inside V5. */
+.settings-screen-v5 .settings-block{
+  min-width:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:1px solid #dce5ec!important;
+  border-radius:4px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.settings-screen-v5 .settings-block-head{
+  min-height:50px!important;
+  margin:0!important;
+  padding:8px 10px!important;
+  align-items:center!important;
+  border-bottom:1px solid #e8edf1!important;
+  background:#fbfcfd!important;
+}
+.settings-screen-v5 .settings-block-head h3{
+  margin:1px 0 2px!important;
+  color:#273f54!important;
+  font-size:11px!important;
+  line-height:1.15!important;
+}
+.settings-screen-v5 .settings-block-head p{
+  color:#8493a0!important;
+  font-size:7.8px!important;
+  line-height:1.3!important;
+}
+.settings-screen-v5 .settings-mini-status{
+  height:22px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  padding:0 7px!important;
+  border-radius:4px!important;
+  font-size:7px!important;
+}
+.settings-screen-v5 .provider-settings-list,
+.settings-screen-v5 .telegram-destinations{
+  gap:0!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+}
+.settings-screen-v5 .provider-settings-row,
+.settings-screen-v5 .telegram-destination-row{
+  min-width:0!important;
+  padding:6px 8px!important;
+  border-top:1px solid #edf1f4!important;
+}
+.settings-screen-v5 .provider-settings-row:first-child,
+.settings-screen-v5 .telegram-destination-row:first-child{border-top:0!important}
+.settings-screen-v5 .provider-name b{font-size:9.2px!important}
+.settings-screen-v5 .provider-name span{font-size:7.2px!important}
+.settings-screen-v5 .settings-field{gap:3px!important}
+.settings-screen-v5 .settings-field>span{
+  color:#7b8d9c!important;
+  font-size:6.8px!important;
+  letter-spacing:.04em!important;
+}
+.settings-screen-v5 .settings-field input,
+.settings-screen-v5 .settings-field select{
+  height:29px!important;
+  min-width:0!important;
+  border-color:#cfdae3!important;
+  border-radius:3px!important;
+  padding:0 7px!important;
+  color:#2b4358!important;
+  font-size:8.4px!important;
+}
+.settings-screen-v5 .settings-check{
+  min-height:28px!important;
+  gap:5px!important;
+  font-size:7.8px!important;
+}
+.settings-screen-v5 .settings-check input{width:13px!important;height:13px!important}
+.settings-screen-v5 .settings-inline-note{
+  margin:0!important;
+  padding:7px 9px!important;
+  border-top:1px solid #e7edf2!important;
+  border-radius:0!important;
+  background:#f8fafb!important;
+  color:#687d8f!important;
+  font-size:7.8px!important;
+}
+.settings-screen-v5 .settings-result{
+  border-radius:3px!important;
+  padding:7px 8px!important;
+  font-size:8px!important;
+}
+
+/* Alerts: one compact table instead of five mini-cards. */
+.settings-table-v5{
+  min-width:780px!important;
+  width:100%!important;
+  overflow:hidden!important;
+}
+.settings-table-head,
+.settings-table-row{
+  display:grid!important;
+  align-items:center!important;
+  column-gap:8px!important;
+}
+.alerts-rule-grid-v5{
+  grid-template-columns:minmax(230px,1fr) 88px 88px 96px 120px 58px!important;
+}
+.settings-table-head{
+  min-height:28px!important;
+  padding:0 9px!important;
+  border-bottom:1px solid #e1e8ee!important;
+  background:#f7f9fb!important;
+  color:#7c8d9c!important;
+  font-size:6.8px!important;
+  font-weight:820!important;
+  letter-spacing:.05em!important;
+  text-transform:uppercase!important;
+}
+.settings-table-row{
+  min-height:43px!important;
+  padding:5px 9px!important;
+  border-bottom:1px solid #edf1f4!important;
+  background:#fff!important;
+}
+.settings-table-row:last-child{border-bottom:0!important}
+.settings-table-row:hover{background:#fbfdfe!important}
+.settings-screen-v5 .compact-check span{display:none!important}
+.settings-screen-v5 .compact-check{
+  justify-content:center!important;
+}
+.inline-field-v5{
+  display:grid!important;
+  grid-template-columns:62px auto!important;
+  align-items:center!important;
+  gap:5px!important;
+}
+.inline-field-v5 input{width:62px!important}
+.inline-field-v5>span{
+  font-size:7.5px!important;
+  letter-spacing:0!important;
+  text-transform:none!important;
+}
+
+.telegram-main-form-v5{
+  gap:7px!important;
+  padding:9px!important;
+}
+.settings-actions-v5{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:12px!important;
+  padding-top:3px!important;
+}
+.settings-screen-v5 .telegram-test-form{
+  margin:0!important;
+  padding:8px 9px!important;
+  border-top:1px solid #e7edf2!important;
+  background:#fbfcfd!important;
+}
+
+/* Make existing component headers fit the single workspace hierarchy. */
+.settings-screen-v5 .carrier-settings-head,
+.settings-screen-v5 .admin-access-head{
+  padding:9px 10px!important;
+  border:1px solid #dce5ec!important;
+  border-radius:4px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.settings-screen-v5 .carrier-settings-head h3,
+.settings-screen-v5 .admin-access-head h3{font-size:11.5px!important}
+.settings-screen-v5 .carrier-settings-head p,
+.settings-screen-v5 .admin-access-head p{font-size:7.8px!important}
+.settings-screen-v5 .bank-transfer-form,
+.settings-screen-v5 .bank-transfer-preview-compact,
+.settings-screen-v5 .admin-role-matrix,
+.settings-screen-v5 .admin-user-table-card,
+.settings-screen-v5 .admin-danger-zone,
+.settings-screen-v5 .admin-create-user-card{
+  border-radius:4px!important;
+  box-shadow:none!important;
+}
+
+@media(max-width:980px){
+  .settings-screen-v5 .settings-tabs-v5 a{
+    min-height:32px!important;
+    padding:0 10px!important;
+    font-size:8px!important;
+  }
+  .settings-section-head-v5{min-height:52px!important}
+  .settings-section-head-v5 p{max-width:680px!important}
+}
+@media(max-width:700px){
+  .settings-page-head-v5{align-items:flex-start!important}
+  .settings-page-head-v5 p{display:none!important}
+  .settings-screen-v5 .settings-tabs-v5{
+    position:sticky!important;
+    top:0!important;
+    z-index:20!important;
+    background:#fff!important;
+  }
+  .settings-screen-v5 .settings-tabs-v5 a{
+    min-height:34px!important;
+    padding:0 9px!important;
+  }
+  .settings-section-head-v5{
+    min-height:48px!important;
+    align-items:flex-start!important;
+    padding:8px 1px!important;
+  }
+  .settings-section-head-v5 p{display:none!important}
+  .settings-workspace-v5{padding-top:6px!important}
+}
