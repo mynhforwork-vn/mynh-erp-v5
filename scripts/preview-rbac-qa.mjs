@@ -211,10 +211,10 @@ for(const role of ['admin','operator','viewer']){
 
     await go(page,role,'/settings?section=tracking')
     const trackingTabVisible=await page.locator('.settings-page-tabs-v3').getByRole('link',{name:'Tracking',exact:true}).count()>0
-    const trackingWorkspace=await page.locator('.tracking-settings-v7').count()>0
-    const quietStart=page.locator('.tracking-settings-v7 input[name="quiet_start"]').first()
+    const trackingWorkspace=await page.locator('.tracking-settings-v9').count()>0
+    const quietStart=page.locator('.tracking-settings-v9 input[name="quiet_start"]').first()
     const trackingEditable=await quietStart.count()>0&&!(await quietStart.isDisabled())
-    const trackingSave=await page.locator('.tracking-settings-v7').getByRole('button',{name:'Lưu',exact:true}).count()>0
+    const trackingSave=await page.locator('.tracking-settings-v9').getByRole('button',{name:'Lưu',exact:true}).count()>0
     if(role==='viewer'){
       record('ui',role+' Tracking visibility',!trackingTabVisible&&!trackingWorkspace,{trackingTabVisible,trackingWorkspace})
     }else if(role==='admin'){
@@ -228,11 +228,11 @@ for(const role of ['admin','operator','viewer']){
     await go(page,role,'/settings?section=notifications')
     const telegramTabVisible=await page.locator('.settings-page-tabs-v3').getByRole('link',{name:'Thông báo',exact:true}).count()>0
     const telegramWorkspace=await page.locator('.tracking-telegram-settings').count()>0
-    const telegramSubtab=page.locator('.notification-settings-v6 .settings-subtabs-v6').getByRole('button',{name:/^Telegram/}).first()
+    const telegramSubtab=page.locator('.notification-settings-v9 .settings-subtabs-v6').getByRole('button',{name:/^Kết nối Telegram/}).first()
     if(await telegramSubtab.count())await telegramSubtab.click()
-    const telegramToken=page.locator('.telegram-settings-grid-v6 input[name="bot_token"]').first()
+    const telegramToken=page.locator('.telegram-settings-grid-v9 input[name="bot_token"]').first()
     const telegramEditable=await telegramToken.count()>0&&!(await telegramToken.isDisabled())
-    const telegramSave=await page.locator('.telegram-settings-grid-v6').getByRole('button',{name:'Lưu Telegram'}).count()>0
+    const telegramSave=await page.locator('.telegram-settings-grid-v9').getByRole('button',{name:'Lưu Telegram'}).count()>0
     if(role==='viewer'){
       record('ui',role+' Notification visibility',!telegramTabVisible&&!telegramWorkspace,{telegramTabVisible,telegramWorkspace})
     }else if(role==='admin'){
