@@ -106,13 +106,13 @@ export default async function WarehousePage(){
     {error&&<div className="error-box">Không thể tải dữ liệu kho: {error.message}</div>}
 
     <section className="whx-kpi-grid seven">
-      <Link href="/warehouse/receive" className={waiting.length?'warning':''}>
-        <span>Chờ bóc tách</span><b>{waiting.length}</b><small>Đã nhận, chưa nhập tồn</small>
+      <Link href="/warehouse/receive?state=incomplete" className={missingOrders.length?'warning':''}>
+        <span>Chờ bóc tách</span><b>{missingOrders.length}</b><small>Đơn còn thiếu mapping SKU</small>
       </Link>
-      <Link href="/warehouse/receive" className={missingItems?'warning':''}>
+      <Link href="/warehouse/receive?state=missing" className={missingItems?'warning':''}>
         <span>Thiếu mapping</span><b>{missingItems}</b><small>Dòng SP chưa có SKU bán</small>
       </Link>
-      <Link href="/warehouse/receive" className="info">
+      <Link href="/warehouse/receive?state=ready" className="info">
         <span>Chờ nhập kho</span><b>{readyOrders.length}</b><small>Đã mapping đầy đủ</small>
       </Link>
       <Link href="/warehouse/inventory">
