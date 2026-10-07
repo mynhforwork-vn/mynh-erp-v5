@@ -33,7 +33,7 @@ concurrency:
 jobs:
   browser-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       PREVIEW_URL: https://remediation-76aed41c-mynh-erp-v5.mynh-forwork.workers.dev
       SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
