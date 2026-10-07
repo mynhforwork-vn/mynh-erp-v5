@@ -1,4 +1,5 @@
 import { requireUser } from '@/lib/supabase/auth'
+import { SystemSlidebar } from '@/components/system-slidebar'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
 import { archiveERPUser, createERPUser, deleteERPUserPermanent, restoreERPUser, updateERPUser } from '@/lib/actions/core'
 import { PurchaseAccountTable } from '@/components/purchase-account-table'
@@ -442,7 +443,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       </section>
 
       {canOperate&&sp.mode==='create'&&
-        <aside className="detail-panel account-detail-panel mynh-slide-panel">
+        <SystemSlidebar className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Thêm tài khoản</h2></div>
             <Link className="close" href={filterHref({mode:null,user:null,tab:null})}>×</Link>
@@ -473,7 +474,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             </section>
             <div className="form-actions"><Link className="button" href={filterHref({mode:null,user:null,tab:null})}>Hủy</Link><button className="button primary">Tạo tài khoản</button></div>
           </form>
-        </aside>
+        </SystemSlidebar>
       }
 
       {selected&&!isEdit&&contextOrder&&
@@ -500,7 +501,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       }
 
       {selected&&!isEdit&&!contextOrder&&
-        <aside className="detail-panel account-detail-panel mynh-slide-panel">
+        <SystemSlidebar className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT USER</span><h2>{selected.username}</h2></div>
             <Link className="close" href={filterHref({user:null,mode:null,tab:null})}>×</Link>
@@ -629,11 +630,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               </div>
             </>}
           </div>
-        </aside>
+        </SystemSlidebar>
       }
 
       {selected&&isEdit&&
-        <aside className="detail-panel account-detail-panel mynh-slide-panel">
+        <SystemSlidebar className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Sửa {selected.username}</h2></div>
             <Link className="close" href={detailHref({user:selected.id,mode:null})}>×</Link>
@@ -666,7 +667,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             </section>
             <div className="form-actions"><Link className="button" href={detailHref({user:selected.id,mode:null})}>Hủy</Link><button className="button primary">Lưu thay đổi</button></div>
           </form>
-        </aside>
+        </SystemSlidebar>
       }
     </div>
   </div>
