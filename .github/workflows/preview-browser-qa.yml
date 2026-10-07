@@ -1,4 +1,3 @@
-# Voucher UI preview trigger 2026-10-07
 # Alerts overlay retest trigger 2026-10-07
 # Final production-readiness regression trigger 2026-10-07
 name: Preview Browser QA
@@ -14,7 +13,6 @@ on:
       - redesign/settings-v8
       - redesign/account-notifications-v1
       - fix/order-text-recognition-v1
-      - fix/voucher-display-and-type-input-v1
     paths:
       - app/**
       - components/**
