@@ -242,6 +242,51 @@ const createOrderLink=page.getByRole('link',{name:/Tạo đơn nhập/}).first()
 if(await createOrderLink.count()){
   const createNav=await followLink(createOrderLink,{waitSelector:'aside.order-panel'})
   recordInteraction('Order create panel opens',await page.locator('aside.order-panel').count()>0,{href:createNav.href})
+
+  const recognizer=page.locator('aside.order-panel .order-text-recognizer textarea').first()
+  if(await recognizer.count()){
+    await recognizer.fill("MÃ ĐƠN HÀNG. 261005SYU2NQGJ\n|\nĐơn hàng đã hoàn thành\nNếu hàng nhận được có vấn đề, bạn có thể gửi yêu cầu Trả hàng/Hoàn tiền trước\n22-10-2026\n\nGiao nhanh đúng hẹn: nhận Voucher 15.000₫ nếu đơn hàng được giao đến bạn sau ngày 08-10-2026.\nXem thêm\n\nĐánh giá\nYêu cầu Trả hàng/Hoàn tiền\nodp_accessibility_component_41\nLiên hệ Người bán\nMua lại\nodp_accessibility_component_39\nodp_accessibility_component_40\nodp_accessibility_component_100\nĐịa chỉ nhận hàng\nSPX Express\nSPXVN06582596012A\nMinh Châu\n(+84) 996 552 843\nMinh Châu Hair - Ngõ 200 Hồng Mai, Phường Bạch Mai, Thành phố Hà Nội\nĐã giao\n14:19 07-10-2026\nĐã giao\n\nGiao hàng thành công\nXem hình ảnh giao hàng\n\nĐang vận chuyển\n13:52 07-10-2026\nĐang vận chuyển\n\nĐơn hàng sẽ sớm được giao, vui lòng chú ý điện thoại\n\n10:50 07-10-2026\nĐơn hàng đã đến trạm giao hàng tại khu vực của bạn và sẽ được giao trong vòng 12 giờ tiếp theo\n\n22:53 06-10-2026\nĐơn hàng đã đến trạm giao hàng tại khu vực của bạn tại Phường Thanh Lương, Quận Hai Bà Trưng và sẽ được giao trong vòng 12 giờ tiếp theo\n\n17:34 06-10-2026\nĐơn hàng đã đến kho Phường Phù Chẩn, Thành Phố Từ Sơn, Bắc Ninh\n\n16:46 06-10-2026\nĐơn hàng đã đến bưu cục\n\nXem thêm\nsieuthi_anhnga\nchat\nXem Shop\n\nBánh cá Bim bim Marine Boy vị tảo biển Nori gói 50g\nPhân loại hàng: Vị Tảo Biển ( Gói)\nx1\n16.100₫\n\nDầu Ăn Simply Đậu Nành/Gạo Lứt/Hạt Cải Chai 1 Lít\nPhân loại hàng: Đậu nành 1 L\nx1\n84.700₫\nTổng tiền hàng\n100.800₫\nPhí vận chuyển\n1.000₫\nGiảm giá phí vận chuyển\n-1.000₫\nVoucher từ Shopee\n-100.000₫\nThành tiền\n800₫\nVui lòng thanh toán 800₫ khi nhận hàng.\nPhương thức Thanh toán\nThanh toán khi nhận hàng")
+    await page.locator('aside.order-panel .order-text-recognizer').getByRole('button',{name:'Nhận diện đơn'}).click()
+    await page.waitForTimeout(150)
+    const orderValue=await page.locator('aside.order-panel input[name="shopee_order_id"]').inputValue()
+    const trackingValue=await page.locator('aside.order-panel input[name="tracking_number"]').inputValue()
+    const phoneValue=await page.locator('aside.order-panel input[name="recipient_phone"]').inputValue()
+    const codValue=await page.locator('aside.order-panel input[name="cod"]').inputValue()
+    const itemNames=await page.locator('aside.order-panel input[name="item_product_name"]').evaluateAll(els=>els.map(el=>el.value))
+    const originalPrices=await page.locator('aside.order-panel input[name="item_original_price"]').evaluateAll(els=>els.map(el=>el.value))
+    const finalPrices=await page.locator('aside.order-panel input[name="item_final_price"]').evaluateAll(els=>els.map(el=>el.value))
+    const recognitionText=await page.locator('aside.order-panel .order-text-recognizer-actions span').innerText()
+    recordInteraction('Shopee text recognizer extracts order',orderValue==='261005SYU2NQGJ',{orderValue})
+    recordInteraction('Shopee text recognizer extracts tracking',trackingValue==='SPXVN06582596012A',{trackingValue})
+    recordInteraction('Shopee text recognizer normalizes recipient phone',phoneValue==='0996552843',{phoneValue})
+    recordInteraction('Shopee text recognizer extracts COD',codValue==='800',{codValue})
+    recordInteraction('Shopee text recognizer extracts products',itemNames.length===2&&itemNames[0].includes('Bánh cá')&&itemNames[1].includes('Dầu Ăn'),{itemNames})
+    recordInteraction('Shopee text recognizer maps one visible price to original price',
+      originalPrices.length===2&&originalPrices[0]==='16100'&&originalPrices[1]==='84700'&&finalPrices.every(x=>x===''),
+      {originalPrices,finalPrices})
+    recordInteraction('Shopee text recognizer validates total goods',
+      recognitionText.includes('Giá gốc khớp')&&recognitionText.includes('100.800'),
+      {recognitionText})
+
+    recordInteraction(
+      'Product section has no separate recognizer',
+      await page.locator('aside.order-panel .quick-product-parser').count()===0
+    )
+
+    const voucherTagInput=page.locator('aside.order-panel input[name="voucher_tag"]').first()
+    if(await voucherTagInput.count()){
+      await voucherTagInput.fill('Tag mới QA')
+      recordInteraction(
+        'Voucher tag accepts a new free-text value',
+        await voucherTagInput.inputValue()==='Tag mới QA'
+      )
+    }else{
+      recordInteraction('Voucher tag free-text input available',false)
+    }
+  }else{
+    recordInteraction('Shopee text recognizer available',false)
+  }
+
   const close=page.locator('aside.order-panel a.close').first()
   if(await close.count())await followLink(close)
   recordInteraction('Order create panel closes',await page.locator('aside.order-panel').count()===0&&!page.url().includes('mode=create'))

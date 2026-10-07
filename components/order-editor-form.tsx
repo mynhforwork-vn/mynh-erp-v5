@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { createOrder, updateOrder } from '@/lib/actions/core'
+import { formatParsedOrderSummary, parseShopeeOrderText } from '@/lib/shopee-order-text-parser'
 
 type UserOption={
   id:string
@@ -110,13 +111,6 @@ function containsKeyword(haystack:string,keywords?:string[]|null){
   })
 }
 
-function parseNumberToken(value:string){
-  const raw=value.replace(/[^0-9]/g,'')
-  if(!raw)return ''
-  const n=Number(raw)
-  return Number.isFinite(n)?n:''
-}
-
 function moneyNumber(value:number|string|null|undefined){
   if(typeof value==='number')return Number.isFinite(value)?value:0
   const raw=String(value??'').replace(/[^0-9]/g,'')
@@ -163,6 +157,19 @@ export function OrderEditorForm({
   const [selectedUserId,setSelectedUserId]=useState(values.erp_user_id??'')
   const [userQuery,setUserQuery]=useState(initialUser?.username??'')
   const [userOpen,setUserOpen]=useState(false)
+  const [shopeeOrderId,setShopeeOrderId]=useState(String(values.shopee_order_id??''))
+  const [orderDateLocal,setOrderDateLocal]=useState(String(values.order_date_local??''))
+  const [paymentStatus,setPaymentStatus]=useState(String(values.payment_status??'UNPAID'))
+  const [recipientName,setRecipientName]=useState(String(values.recipient_name??''))
+  const [recipientPhone,setRecipientPhone]=useState(String(
+    values.recipient_phone??(mode==='create'?initialUser?.phone??'':'')
+  ))
+  const [recipientPhoneAuto,setRecipientPhoneAuto]=useState(Boolean(
+    mode==='create'&&!values.recipient_phone&&initialUser?.phone
+  ))
+  const [cod,setCod]=useState<number|string>(values.cod??0)
+  const [orderText,setOrderText]=useState('')
+  const [recognitionMessage,setRecognitionMessage]=useState('')
   const [items,setItems]=useState<Item[]>(initialItems.length?initialItems:[emptyItem()])
   const [vouchers,setVouchers]=useState<Voucher[]>(initialVouchers.length?initialVouchers:[emptyVoucher()])
   const [trackingNumber,setTrackingNumber]=useState(String(values.tracking_number??''))
@@ -176,7 +183,6 @@ export function OrderEditorForm({
   const [derivedRegion,setDerivedRegion]=useState(
     destinationHubs.find(h=>h.hub_code===values.destination_hub)?.region??''
   )
-  const [quickProductText,setQuickProductText]=useState('')
   const [expressShipperName,setExpressShipperName]=useState(String(values.express_shipper_name??''))
   const [expressShipperPhone,setExpressShipperPhone]=useState(String(values.express_shipper_phone??''))
   const [expressShipperNote,setExpressShipperNote]=useState(String(values.express_shipper_note??''))
@@ -190,12 +196,12 @@ export function OrderEditorForm({
     return map
   },[skuCatalog])
   const voucherTypeOptions=useMemo(
-    ()=>[...new Set([...voucherTypes,...initialVouchers.map(v=>String(v.voucher_type??'')).filter(Boolean)])],
-    [voucherTypes,initialVouchers]
+    ()=>[...new Set([...voucherTypes,...vouchers.map(v=>String(v.voucher_type??'')).filter(Boolean)])],
+    [voucherTypes,vouchers]
   )
   const voucherTagOptions=useMemo(
-    ()=>[...new Set([...voucherTags,...initialVouchers.map(v=>String(v.voucher_tag??'')).filter(Boolean)])],
-    [voucherTags,initialVouchers]
+    ()=>[...new Set([...voucherTags,...vouchers.map(v=>String(v.voucher_tag??'')).filter(Boolean)])],
+    [voucherTags,vouchers]
   )
   const sortedHubs=useMemo(
     ()=>[...destinationHubs].sort((a,b)=>Number(a.priority??100)-Number(b.priority??100)||a.hub_code.localeCompare(b.hub_code,'vi')),
@@ -228,6 +234,10 @@ export function OrderEditorForm({
     setSelectedUserId(user.id)
     setUserQuery(user.username)
     setUserOpen(false)
+    if(mode==='create'&&(recipientPhoneAuto||!recipientPhone.trim())){
+      setRecipientPhone(String(user.phone??''))
+      setRecipientPhoneAuto(Boolean(user.phone))
+    }
   }
 
   function onTrackingChange(value:string){
@@ -343,120 +353,75 @@ export function OrderEditorForm({
     }
   }
 
-  function parseQuickProductLine(line:string){
-    const item:Item=emptyItem()
-    const raw=line.trim()
-
-    // Shopee compact format:
-    // Tên SP xSL Giá gốc₫Giá sau giảm₫ (Phân loại)
-    // Example: Dầu Đậu Nành Simply Nguyên chất chai 1 Lít x1 79.000₫78.921₫ (Đậu Nành 1 Lít)
-    const shopeeCompact=raw.match(/^(.*?)\s+[x×]\s*(\d+)\s+([\d.,]+)\s*₫(?:\s*([\d.,]+)\s*₫)?(?:\s*\(([^)]+)\))?\s*$/i)
-    if(shopeeCompact){
-      item.product_name=shopeeCompact[1].trim()
-      item.quantity=Math.max(1,Number(shopeeCompact[2]))
-      const firstPrice=parseNumberToken(shopeeCompact[3])
-      const secondPrice=shopeeCompact[4]?parseNumberToken(shopeeCompact[4]):''
-      if(secondPrice!==''){
-        item.original_price=firstPrice
-        item.final_price=secondPrice
-      }else{
-        item.final_price=firstPrice
-      }
-      item.variant=shopeeCompact[5]?.trim()??''
-      return item
+  function recognizeOrderText(){
+    const parsed=parseShopeeOrderText(orderText)
+    const summary=formatParsedOrderSummary(parsed)
+    if(!summary){
+      setRecognitionMessage('Chưa nhận diện được dữ liệu đơn Shopee. Hãy dán nội dung trang Chi tiết đơn hàng.')
+      return
     }
 
-    const labeledSku=raw.match(/(?:^|\s)sku\s*[:=\-]?\s*([A-Za-z0-9._-]{2,60})/i)
-    const labeledQty=raw.match(/(?:^|\s)(?:sl|qty|số lượng|so luong)\s*[:=\-]?\s*(\d+)/i)
-    const labeledOriginal=raw.match(/(?:giá gốc|gia goc|original)\s*[:=\-]?\s*([\d.,]+)/i)
-    const labeledFinal=raw.match(/(?:giá sau giảm|gia sau giam|giá bán|gia ban|final|price)\s*[:=\-]?\s*([\d.,]+)/i)
-    const labeledName=raw.match(/(?:tên sản phẩm|ten san pham|tên sp|ten sp|sản phẩm|san pham)\s*[:=\-]?\s*(.+?)(?=\s+(?:phân loại|phan loai|variant|màu|mau|size|sl|qty|số lượng|so luong|giá gốc|gia goc|giá sau giảm|gia sau giam|giá bán|gia ban|final|price)\b|$)/i)
-    const labeledVariant=raw.match(/(?:phân loại|phan loai|variant|màu|mau|size)\s*[:=\-]?\s*(.+?)(?=\s+(?:sl|qty|số lượng|so luong|giá gốc|gia goc|giá sau giảm|gia sau giam|giá bán|gia ban|final|price)\b|$)/i)
+    if(parsed.shopee_order_id)setShopeeOrderId(parsed.shopee_order_id)
+    if(parsed.order_date_local)setOrderDateLocal(parsed.order_date_local)
 
-    if(labeledSku)item.sku=labeledSku[1].trim()
-    if(labeledQty)item.quantity=Math.max(1,Number(labeledQty[1]))
-    if(labeledOriginal)item.original_price=parseNumberToken(labeledOriginal[1])
-    if(labeledFinal)item.final_price=parseNumberToken(labeledFinal[1])
-    if(labeledName)item.product_name=labeledName[1].trim()
-    if(labeledVariant)item.variant=labeledVariant[1].trim()
-
-    const parts=raw.split(/\t|\||;/).map(x=>x.trim()).filter(Boolean)
-    const free:string[]=[]
-
-    for(const part of parts){
-      let m:RegExpMatchArray|null
-      if((m=part.match(/^\s*sku\s*[:\-=]?\s*(.+)$/i))){
-        if(!item.sku)item.sku=m[1].trim().split(/\s+/)[0]
-        continue
-      }
-      if((m=part.match(/^\s*(?:sl|qty|so luong|số lượng)\s*[:\-=]?\s*(\d+)/i))){
-        if(item.quantity==null)item.quantity=Math.max(1,Number(m[1]))
-        continue
-      }
-      if((m=part.match(/^\s*(?:phan loai|phân loại|variant|mau|màu|size)\s*[:\-=]?\s*(.+)$/i))){
-        if(!item.variant)item.variant=m[1].trim()
-        continue
-      }
-      if((m=part.match(/^\s*(?:ten sp|tên sp|ten san pham|tên sản phẩm|san pham|sản phẩm)\s*[:\-=]?\s*(.+)$/i))){
-        if(!item.product_name)item.product_name=m[1].trim()
-        continue
-      }
-      if((m=part.match(/^\s*(?:gia goc|giá gốc|original)\s*[:\-=]?\s*(.+)$/i))){
-        if(item.original_price==null)item.original_price=parseNumberToken(m[1])
-        continue
-      }
-      if((m=part.match(/^\s*(?:gia sau giam|giá sau giảm|gia ban|giá bán|final|price|gia|giá)\s*[:\-=]?\s*(.+)$/i))){
-        if(item.final_price==null)item.final_price=parseNumberToken(m[1])
-        continue
-      }
-      if(parts.length>1)free.push(part)
+    let detectedCarrier:CarrierConfig|null=null
+    if(parsed.tracking_number){
+      setTrackingNumber(parsed.tracking_number)
+      detectedCarrier=detectCarrierConfig(parsed.tracking_number,carrierConfigs)
+      setCarrier(detectedCarrier?.display_name??'')
+      setCarrierEdited(false)
+      setShippingService('STANDARD')
     }
 
-    if(!item.sku){
-      const known=free.find(x=>skuMap.has(x.trim().toUpperCase()))
-      if(known){
-        item.sku=known
-        free.splice(free.indexOf(known),1)
-      }else if(free[0]&&/^[A-Za-z0-9._-]{3,40}$/.test(free[0])){
-        item.sku=free.shift()
+    if(parsed.recipient_name)setRecipientName(parsed.recipient_name)
+    if(parsed.recipient_phone){
+      setRecipientPhone(parsed.recipient_phone)
+      setRecipientPhoneAuto(false)
+    }
+    if(parsed.recipient_address){
+      setRecipientAddress(parsed.recipient_address)
+      if(detectedCarrier?.supports_destination_hub){
+        resolveDestination(parsed.recipient_address)
       }
     }
 
-    const numeric=free.filter(x=>/^\s*[\d.,]+\s*$/.test(x))
-    const textParts=free.filter(x=>!/^\s*[\d.,]+\s*$/.test(x))
-    if(!item.product_name&&textParts.length)item.product_name=textParts.shift()
-    if(!item.variant&&textParts.length)item.variant=textParts.join(' · ')
-
-    if(item.quantity==null&&numeric.length&&Number(String(numeric[0]).replace(/\D/g,''))<=100){
-      item.quantity=Math.max(1,Number(String(numeric.shift()).replace(/\D/g,''))||1)
-    }
-    if(item.original_price==null&&numeric.length)item.original_price=parseNumberToken(numeric.shift()??'')
-    if(item.final_price==null&&numeric.length)item.final_price=parseNumberToken(numeric.shift()??'')
-
-    const matched=item.sku?skuMap.get(String(item.sku).trim().toUpperCase()):null
-    if(matched){
-      item.product_name=item.product_name||matched.product_name||''
-      item.variant=item.variant||matched.variant||''
-      item.original_price=item.original_price||matched.original_price||''
-      item.final_price=item.final_price||matched.final_price||''
+    if(parsed.products.length){
+      setItems(parsed.products.map(item=>({
+        sku:'',
+        product_name:item.product_name,
+        variant:item.variant??'',
+        quantity:item.quantity,
+        original_price:item.original_price??'',
+        final_price:item.final_price??'',
+      })))
     }
 
-    item.quantity=item.quantity??1
-    return item
-  }
+    if(parsed.vouchers.length){
+      setVouchers(parsed.vouchers.map(v=>({
+        voucher_code:v.voucher_code??'',
+        voucher_name:v.voucher_name??'',
+        voucher_type:v.voucher_type??'',
+        voucher_tag:v.voucher_tag??'',
+        voucher_account:v.voucher_account??'',
+      })))
+    }
 
-  function recognizeQuickProducts(){
-    const parsed=quickProductText
-      .split(/\n+/)
-      .map(line=>line.trim())
-      .filter(Boolean)
-      .map(parseQuickProductLine)
-      .filter(item=>item.sku||item.product_name)
+    if(parsed.cod!==undefined)setCod(parsed.cod)
 
-    if(!parsed.length)return
-    const currentIsBlank=items.length===1&&!items[0].sku&&!items[0].product_name
-    setItems(currentIsBlank?parsed:[...items,...parsed])
-    setQuickProductText('')
+    const parsedGoodsTotal=parsed.products.reduce(
+      (sum,item)=>sum+Number(item.original_price??item.final_price??0)*Math.max(1,Number(item.quantity??1)||1),
+      0
+    )
+    const goodsCheck=parsed.total_goods!==undefined
+      ? (parsedGoodsTotal===parsed.total_goods
+          ? ' · Giá gốc khớp '+formatVnd(parsed.total_goods)
+          : ' · CẢNH BÁO giá SP '+formatVnd(parsedGoodsTotal)+' ≠ Tổng tiền hàng '+formatVnd(parsed.total_goods))
+      : ''
+    setRecognitionMessage(
+      'Đã nhận diện: '+summary+
+      goodsCheck+
+      (parsed.detected_status==='DELIVERED'?' · trạng thái Shopee: Giao thành công':'')
+    )
   }
 
   return <form action={action} className="panel-form panel-scroll order-editor">
@@ -465,6 +430,25 @@ export function OrderEditorForm({
     <input type="hidden" name="shipping_service" value={shippingService}/>
     <input type="hidden" name="area" value={shippingService==='EXPRESS'?'':derivedArea}/>
     {mode==='edit'&&<input type="hidden" name="order_id" value={values.id}/>}
+
+    {mode==='create'&&<section className="form-section order-text-recognizer">
+      <div className="form-section-head">
+        <div>
+          <h3>Nhận diện từ nội dung Shopee</h3>
+          <small>Dán toàn bộ nội dung trang Chi tiết đơn hàng; hệ thống tự điền mã đơn, MVĐ, người nhận, sản phẩm, voucher và thành tiền.</small>
+        </div>
+      </div>
+      <textarea
+        rows={5}
+        value={orderText}
+        onChange={e=>{setOrderText(e.target.value);setRecognitionMessage('')}}
+        placeholder="Dán nội dung Chi tiết đơn hàng Shopee vào đây..."
+      />
+      <div className="order-text-recognizer-actions">
+        <span className={recognitionMessage.startsWith('Đã')?'success':''}>{recognitionMessage||'Không tự tạo đơn cho đến khi bạn kiểm tra và bấm Tạo đơn.'}</span>
+        <button type="button" className="button small primary" disabled={!orderText.trim()} onClick={recognizeOrderText}>Nhận diện đơn</button>
+      </div>
+    </section>}
 
     <section className="form-section">
       <h3>Thông tin đơn</h3>
@@ -497,16 +481,16 @@ export function OrderEditorForm({
       </div>
 
       <div className="form-grid">
-        <label>Mã đơn Shopee<input name="shopee_order_id" defaultValue={values.shopee_order_id??''}/></label>
+        <label>Mã đơn Shopee<input name="shopee_order_id" value={shopeeOrderId} onChange={e=>setShopeeOrderId(e.target.value.toUpperCase())}/></label>
         <label>Thời gian đặt
-          <input name="order_date" type="datetime-local" defaultValue={values.order_date_local??''} placeholder="Để trống = hiện tại"/>
+          <input name="order_date" type="datetime-local" value={orderDateLocal} onChange={e=>setOrderDateLocal(e.target.value)} placeholder="Để trống = hiện tại"/>
           <small className="field-help">Để trống sẽ tự lấy thời điểm tạo đơn.</small>
         </label>
       </div>
 
       <div className="form-grid">
         <label>Thanh toán
-          <select name="payment_status" defaultValue={values.payment_status??'UNPAID'}>
+          <select name="payment_status" value={paymentStatus} onChange={e=>setPaymentStatus(e.target.value)}>
             <option value="UNPAID">Chưa thanh toán</option>
             <option value="PENDING">Đang chờ</option>
             <option value="PARTIAL">Thanh toán một phần</option>
@@ -625,8 +609,16 @@ export function OrderEditorForm({
     <section className="form-section">
       <h3>Người nhận</h3>
       <div className="form-grid">
-        <label>Tên người nhận<input name="recipient_name" defaultValue={values.recipient_name??''}/></label>
-        <label>SĐT người nhận<input name="recipient_phone" defaultValue={values.recipient_phone??''}/></label>
+        <label>Tên người nhận<input name="recipient_name" value={recipientName} onChange={e=>setRecipientName(e.target.value)}/></label>
+        <label>SĐT người nhận
+          <input
+            name="recipient_phone"
+            value={recipientPhone}
+            onChange={e=>{setRecipientPhone(e.target.value);setRecipientPhoneAuto(false)}}
+            placeholder={selectedUser?.phone?'Tự điền từ tài khoản: '+selectedUser.phone:'Số điện thoại người nhận'}
+          />
+          {selectedUser?.phone&&recipientPhoneAuto&&<small className="field-help">Đã tự điền từ SĐT liên kết của Username; có thể sửa.</small>}
+        </label>
       </div>
       <label>Địa chỉ nhận
         <textarea
@@ -656,15 +648,6 @@ export function OrderEditorForm({
 
     <section className="form-section">
       <div className="form-section-head"><h3>Sản phẩm</h3><button type="button" className="mini-add" onClick={()=>setItems(v=>[...v,emptyItem()])}>+ Thêm dòng</button></div>
-      <div className="quick-product-parser">
-        <textarea
-          rows={2}
-          value={quickProductText}
-          onChange={e=>setQuickProductText(e.target.value)}
-          placeholder="Dán từ Shopee: Dầu Đậu Nành Simply Nguyên chất chai 1 Lít x1 79.000₫78.921₫ (Đậu Nành 1 Lít). Có thể dán nhiều dòng."
-        />
-        <button type="button" className="button small" disabled={!quickProductText.trim()} onClick={recognizeQuickProducts}>Nhận diện</button>
-      </div>
       <div className="repeat-stack">
         {items.map((item,i)=>{
           const matched=Boolean(item.sku&&skuMap.has(String(item.sku).trim().toUpperCase()))
@@ -750,13 +733,16 @@ export function OrderEditorForm({
             <b>Voucher {i+1}</b>
             {vouchers.length>1&&<button type="button" onClick={()=>setVouchers(x=>x.filter((_,n)=>n!==i))}>Xóa</button>}
           </div>
+          <input type="hidden" name="voucher_name" value={v.voucher_name??''}/>
+          <input type="hidden" name="voucher_account" value={v.voucher_account??''}/>
           <label>Mã voucher
             <input
               name="voucher_code"
               value={v.voucher_code??''}
               onChange={e=>updateVoucher(i,{voucher_code:e.target.value})}
-              placeholder="Nhập mã voucher"
+              placeholder={v.voucher_name||'Nhập mã voucher'}
             />
+            {v.voucher_name&&<small className="field-help">{v.voucher_name}</small>}
           </label>
           <div className="form-grid">
             <label>Loại Voucher
@@ -770,24 +756,27 @@ export function OrderEditorForm({
               </select>
             </label>
             <label>Tag Voucher
-              <select
+              <input
                 name="voucher_tag"
                 value={v.voucher_tag??''}
                 onChange={e=>updateVoucher(i,{voucher_tag:e.target.value})}
-              >
-                <option value="">— Chọn tag —</option>
-                {voucherTagOptions.map(option=><option key={option} value={option}>{option}</option>)}
-              </select>
+                list="voucher-tag-options"
+                placeholder="Nhập hoặc chọn tag..."
+                autoComplete="off"
+              />
             </label>
           </div>
         </div>)}
       </div>
+      <datalist id="voucher-tag-options">
+        {voucherTagOptions.map(option=><option key={option} value={option}/>)}
+      </datalist>
     </section>
 
     <section className="form-section order-cod-section">
       <h3>Giá trị đơn</h3>
       <label>COD
-        <input name="cod" inputMode="numeric" defaultValue={values.cod??0} placeholder="Nhập COD sau khi hoàn tất sản phẩm / voucher"/>
+        <input name="cod" inputMode="numeric" value={cod} onChange={e=>setCod(e.target.value)} placeholder="Nhập COD sau khi hoàn tất sản phẩm / voucher"/>
         <small className="field-help">Nhập cuối cùng sau khi đã kiểm tra sản phẩm và voucher.</small>
       </label>
     </section>

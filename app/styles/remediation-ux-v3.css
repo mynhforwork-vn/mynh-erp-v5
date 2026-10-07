@@ -8606,3 +8606,72 @@
     display:none!important;
   }
 }
+
+
+/* =====================================================================
+   ORDER CREATE V1 — full Shopee text recognition
+   ===================================================================== */
+.order-editor .order-text-recognizer{
+  border-color:#b8cbd9!important;
+  background:#f8fbfd!important;
+}
+.order-editor .order-text-recognizer .form-section-head{
+  align-items:flex-start!important;
+  margin-bottom:6px!important;
+}
+.order-editor .order-text-recognizer .form-section-head>div{
+  min-width:0!important;
+}
+.order-editor .order-text-recognizer .form-section-head h3{
+  margin:0!important;
+  color:#173c55!important;
+}
+.order-editor .order-text-recognizer .form-section-head small{
+  display:block!important;
+  margin-top:2px!important;
+  color:#60778a!important;
+  font-size:8.5px!important;
+  line-height:1.4!important;
+  font-weight:550!important;
+}
+.order-editor .order-text-recognizer>textarea{
+  width:100%!important;
+  min-height:104px!important;
+  max-height:220px!important;
+  resize:vertical!important;
+  padding:8px 9px!important;
+  border:1px solid #bfcfda!important;
+  border-radius:5px!important;
+  background:#fff!important;
+  color:#203a50!important;
+  font-size:9px!important;
+  line-height:1.45!important;
+  outline:none!important;
+}
+.order-editor .order-text-recognizer>textarea:focus{
+  border-color:#739bb6!important;
+  box-shadow:0 0 0 2px rgba(48,115,155,.08)!important;
+}
+.order-text-recognizer-actions{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:8px!important;
+  margin-top:6px!important;
+}
+.order-text-recognizer-actions>span{
+  min-width:0!important;
+  color:#647a8c!important;
+  font-size:8.3px!important;
+  line-height:1.35!important;
+}
+.order-text-recognizer-actions>span.success{
+  color:#1b6a4e!important;
+  font-weight:720!important;
+}
+.order-editor .linked-user-strip{
+  border-color:#cad7e0!important;
+}
+.order-editor .linked-user-strip b{
+  color:#173c55!important;
+}
