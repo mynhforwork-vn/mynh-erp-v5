@@ -12,9 +12,9 @@ export default async function ERPLayout({children}:{children:React.ReactNode}){
   const role=String(user.app_metadata?.role??'viewer')
   return <>
     <DismissOpenDetails/>
-    <div className="shell">
+    <div className="shell brand-shell-v1">
     <aside className="sidebar">
-      <Link href="/" className="brand"><span className="brand-mark small">M</span><span><b>MYNH ERP</b><small>HỆ THỐNG VẬN HÀNH</small></span></Link>
+      <Link href="/" className="brand"><span className="brand-mark small">MY</span><span><b>MYNH ERP</b><small>HỆ THỐNG VẬN HÀNH</small></span></Link>
       <Suspense fallback={null}><Nav/></Suspense>
       <div className="sidebar-foot sidebar-foot-v2">
         <SidebarAccountMenu email={user.email??'Người dùng MYNH ERP'} role={roleLabel(role)}/>
