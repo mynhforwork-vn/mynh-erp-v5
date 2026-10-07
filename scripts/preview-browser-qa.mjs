@@ -535,6 +535,14 @@ if(await hubCard.count()){
 }else recordInteraction('Shipper QA HUB fixture available',false,{hub:fixtureHub||null})
 
 await go('/settings')
+recordInteraction('Global In-app alert bell',await page.locator('.app-alert-trigger').count()>0)
+const appAlertTrigger=page.locator('.app-alert-trigger').first()
+if(await appAlertTrigger.count()){
+  await appAlertTrigger.click()
+  recordInteraction('Global In-app alert panel opens',await page.locator('.app-alert-panel').count()>0)
+  const alertBackdrop=page.locator('.app-alert-backdrop').first()
+  if(await alertBackdrop.count())await alertBackdrop.click()
+}
 const settingsSelectors={
   'Đơn vị vận chuyển':'.carrier-settings',
   'SPX · Kho đích & Shipper':'.destination-master-detail',
