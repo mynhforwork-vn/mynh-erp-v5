@@ -231,7 +231,7 @@ function ShipperManager({
 }:{
   configs:HubConfig[]
   shippers:Shipper[]
-  onBack:()=>void
+  onBack?:()=>void
   canEdit:boolean
 }){
   return <div className="destination-shipper-manager">
@@ -241,7 +241,7 @@ function ShipperManager({
         <h3>Shipper phụ trách SPX</h3>
         <p>Shipper có thể được gán cho nhiều HUB. Việc gán HUB thực hiện tại tab Shipper của từng HUB.</p>
       </div>
-      <button type="button" className="button" onClick={onBack}>← Quay lại HUB</button>
+      {onBack&&<button type="button" className="button" onClick={onBack}>← Quay lại HUB</button>}
     </div>
 
     <div className="destination-shipper-manager-table">
@@ -439,6 +439,20 @@ export function DestinationHubSettings({
           </section>
         </div>
       : <ShipperManager configs={configs} shippers={shippers} onBack={()=>setMode('hubs')} canEdit={canEdit}/>} 
+  </div>
+}
+
+export function DestinationShipperSettings({
+  configs,
+  shippers,
+  canEdit,
+}:{
+  configs:HubConfig[]
+  shippers:Shipper[]
+  canEdit:boolean
+}){
+  return <div className="destination-master-detail">
+    <ShipperManager configs={configs} shippers={shippers} canEdit={canEdit}/>
   </div>
 }
 
