@@ -1112,8 +1112,6 @@ body{
   position:relative!important;
   top:auto!important;
   align-self:stretch!important;
-  height:100%!important;
-  max-height:none!important;
 }
 .brand-shell-v1 .mynh-slide-panel.floating{
   position:fixed!important;
