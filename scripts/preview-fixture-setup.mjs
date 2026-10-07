@@ -46,6 +46,7 @@ const fixtures={
   hub_item_id:crypto.randomUUID(),
   hub_shipment_id:crypto.randomUUID(),
   hub_config_id:crypto.randomUUID(),
+  sale_id:crypto.randomUUID(),
   warehouse_id:String(wh.json[0].id),
   warehouse_code:String(wh.json[0].code??''),
   transfer_warehouse_id:String(wh.json[1].id),
@@ -54,6 +55,7 @@ const fixtures={
   erp_username:'qa_browser_'+suffix.replace(/[^a-z0-9]/gi,'_'),
   warehouse_order_code:'QA-WH-'+suffix,
   hub_order_code:'QA-HUB-'+suffix,
+  sale_invoice_code:'QA-SALE-'+suffix.toUpperCase(),
   sale_sku:'QA-MUT-'+suffix.toUpperCase(),
   mutation_product_name:'QA Mutation Product '+suffix,
   mutation_sale_price:50000,
@@ -82,6 +84,28 @@ await insert('erp_users',{
   mobile:false,
   web:true,
   platform:'SHOPEE',
+})
+
+await insert('sales',{
+  id:fixtures.sale_id,
+  customer_id:fixtures.customer_id,
+  warehouse_id:fixtures.warehouse_id,
+  invoice_code:fixtures.sale_invoice_code,
+  total_amount:50000,
+  subtotal:50000,
+  paid_amount:0,
+  debt_amount:50000,
+  payment_status:'UNPAID',
+  sale_status:'COMPLETED',
+  note:fixtures.marker,
+})
+await insert('debt_ledger',{
+  customer_id:fixtures.customer_id,
+  reference_type:'SALE',
+  reference_id:fixtures.sale_id,
+  debit:50000,
+  credit:0,
+  note:fixtures.marker,
 })
 
 await insert('orders',{
