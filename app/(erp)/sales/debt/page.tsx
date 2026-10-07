@@ -244,7 +244,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
         openModuleHref={'/sales/history?sale='+contextSale.id}
       />}
 
-      {selected&&!contextSale&&<aside className={'debt-demo-panel '+(collectMode?'collect-mode':'')}>
+      {selected&&!contextSale&&<aside className={'debt-demo-panel mynh-slide-panel '+(collectMode?'collect-mode':'')}>
         <div className="sales-detail-panel-head">
           <div><span className="module-eyebrow">CÔNG NỢ KHÁCH HÀNG</span><h2>{selected.name}</h2><p>{phone(selected.phone)} · {selected.address||'—'}</p></div>
           <Link className="panel-close" href={href({customer:null,tab:null,mode:null})}>×</Link>
