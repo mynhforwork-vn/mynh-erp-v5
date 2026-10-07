@@ -40,6 +40,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     activeUsersResult,
     archivedUsersResult,
     bankTransferResult,
+    printConfigsResult,
     trackingRuntimeResult,
     trackingRulesResult,
     trackingMappingsResult,
@@ -74,6 +75,9 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       .select('config_key,bank_id,bank_name,account_no,account_name,qr_template,transfer_prefix,is_active')
       .eq('config_key','DEFAULT')
       .maybeSingle(),
+    supabase.from('document_print_configs')
+      .select('document_key,brand_name,title,header_note,paper_size,footer_text,show_customer_phone,show_warehouse,show_sku,show_variant,show_qr,show_signature,show_invoice_details,is_active')
+      .order('document_key',{ascending:true}),
     supabase.from('tracking_runtime_settings')
       .select('auto_tracking_enabled,quiet_start,quiet_end,retry_minutes')
       .eq('id','main')
@@ -136,7 +140,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
 
   const error=carrierError??hubError??shipperError??assignmentError
     ??activeOrdersResult.error??archivedOrdersResult.error??activeUsersResult.error??archivedUsersResult.error
-    ??bankTransferResult.error??trackingRuntimeResult.error??trackingRulesResult.error??trackingMappingsResult.error??unknownTrackingEventsResult.error??alertRulesResult.error??telegramSettingsResult.error??telegramDestinationsResult.error
+    ??bankTransferResult.error??printConfigsResult.error??trackingRuntimeResult.error??trackingRulesResult.error??trackingMappingsResult.error??unknownTrackingEventsResult.error??alertRulesResult.error??telegramSettingsResult.error??telegramDestinationsResult.error
     ??systemUsersResult.error
 
   const unknownMap=new Map<string,{carrier:string;raw_code:string;raw_name:string|null;description:string|null;count:number}>()
@@ -215,7 +219,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
                 telegramMessage={sp.telegram_message??null}
               />
             : section==='payments'
-              ? <BankTransferSettings config={(bankTransferResult.data??null) as any} canEdit={canEdit}/>
+              ? <BankTransferSettings config={(bankTransferResult.data??null) as any} printConfigs={(printConfigsResult.data??[]) as any[]} canEdit={canEdit}/>
             : section==='access'&&role==='admin'
               ? <SystemAccessSettings users={systemUsers as any[]} currentUserId={user.id}/>
               : <DataManagementSettings
