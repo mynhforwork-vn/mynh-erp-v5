@@ -57,7 +57,7 @@ export function ShippingSettings({
 
     <div className="settings-subtab-body-v6">
       {tab==='carriers'&&<ShippingCarrierSettings carriers={carriers} canEdit={canEdit}/>}
-      {tab==='hubs'&&<DestinationHubSettings configs={configs} shippers={shippers} canEdit={canEdit}/>}
+      {tab==='hubs'&&<DestinationHubSettings configs={configs} shippers={shippers} canEdit={canEdit} showShipperManager={false}/>} 
       {tab==='shippers'&&<DestinationShipperSettings configs={configs} shippers={shippers} canEdit={canEdit}/>}
     </div>
   </div>
