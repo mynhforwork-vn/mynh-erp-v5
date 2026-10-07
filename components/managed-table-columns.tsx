@@ -39,6 +39,8 @@ export function useManagedColumns<K extends string>(storageKey:string,all:readon
     const sync=(event:Event)=>{
       const detail=(event as CustomEvent).detail
       if(!detail||detail.storageKey!==storageKey)return
+      const current=JSON.stringify({order,hidden})
+      if(detail.value===current)return
       try{
         const parsed=JSON.parse(detail.value)
         if(Array.isArray(parsed.order))setOrder(parsed.order)
@@ -47,7 +49,7 @@ export function useManagedColumns<K extends string>(storageKey:string,all:readon
     }
     window.addEventListener('mynh-managed-columns',sync)
     return ()=>window.removeEventListener('mynh-managed-columns',sync)
-  },[storageKey])
+  },[storageKey,order,hidden])
 
   useEffect(()=>{
     const close=(event:MouseEvent)=>{
