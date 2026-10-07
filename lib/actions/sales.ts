@@ -207,6 +207,62 @@ export async function saveBankTransferConfig(formData:FormData){
   }
 }
 
+export async function saveDocumentPrintConfig(formData:FormData){
+  try{
+    const {supabase}=await actor()
+
+    const document_key=String(formData.get('document_key')??'').trim().toUpperCase()
+    if(!['SALE_INVOICE','DEBT_RECEIPT'].includes(document_key)){
+      return {ok:false as const,error:'Loại chứng từ không hợp lệ'}
+    }
+
+    const brand_name=String(formData.get('brand_name')??'MYNH ERP').trim().slice(0,80)
+    const title=String(formData.get('title')??'').trim().slice(0,120)
+    const header_note=String(formData.get('header_note')??'').trim().slice(0,200)||null
+    const footer_text=String(formData.get('footer_text')??'').trim().slice(0,300)||null
+    const paperRaw=String(formData.get('paper_size')??'A4').trim().toUpperCase()
+    const paper_size=['A4','A5','RECEIPT_80'].includes(paperRaw)?paperRaw:'A4'
+
+    if(!brand_name)return {ok:false as const,error:'Tên thương hiệu không được để trống'}
+    if(!title)return {ok:false as const,error:'Tiêu đề chứng từ không được để trống'}
+
+    const payload={
+      document_key,
+      brand_name,
+      title,
+      header_note,
+      paper_size,
+      footer_text,
+      show_customer_phone:formData.get('show_customer_phone')==='on',
+      show_warehouse:formData.get('show_warehouse')==='on',
+      show_sku:formData.get('show_sku')==='on',
+      show_variant:formData.get('show_variant')==='on',
+      show_qr:formData.get('show_qr')==='on',
+      show_signature:formData.get('show_signature')==='on',
+      show_invoice_details:formData.get('show_invoice_details')==='on',
+      is_active:formData.get('is_active')==='on',
+      updated_at:new Date().toISOString(),
+    }
+
+    const {data,error}=await supabase
+      .from('document_print_configs')
+      .upsert(payload,{onConflict:'document_key'})
+      .select('document_key,brand_name,title,header_note,paper_size,footer_text,show_customer_phone,show_warehouse,show_sku,show_variant,show_qr,show_signature,show_invoice_details,is_active')
+      .single()
+
+    if(error)return {ok:false as const,error:error.message}
+
+    revalidatePath('/settings')
+    revalidatePath('/sales/pos')
+    revalidatePath('/sales/debt')
+    revalidatePath('/sales/history')
+    return {ok:true as const,data}
+  }catch(error:any){
+    return {ok:false as const,error:String(error?.message??'Không thể lưu cấu hình mẫu in')}
+  }
+}
+
+
 export async function createSalesCustomer(formData:FormData):Promise<void>{
   const name=String(formData.get('name')??'').trim()
   const phone=String(formData.get('phone')??'').trim()
