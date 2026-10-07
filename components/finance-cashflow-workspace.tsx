@@ -754,9 +754,34 @@ export function FinanceCashflowWorkspace({
           if(col==='expense')return <td key={col} className="money finance-money expense">{row.type==='EXPENSE'?formatMoney(row.amount):'—'}</td>
           return <td key={col}><span className={'finance-status '+String(row.status).toLowerCase()}>{statusLabel(row.status)}</span></td>
         }
-        return <div className="card table-card finance-table-card"><table className="table finance-table"><thead><tr>{visible.map(head)}</tr></thead><tbody>
-          {!pageRows.length?<tr><td className="empty" colSpan={visible.length}>Chưa có giao dịch phù hợp.</td></tr>:pageRows.map(row=><tr key={row.kind+'-'+row.id} onClick={()=>openRow(row.kind,row.id)}>{visible.map(col=>cell(row,col))}</tr>)}
-        </tbody></table></div>
+        return <>
+          <div className="mobile-entity-list mobile-finance-list">
+            {!pageRows.length
+              ? <div className="mobile-empty-state">Chưa có giao dịch phù hợp.</div>
+              : pageRows.map(row=><button
+                  type="button"
+                  className="mobile-finance-card"
+                  key={'mobile-'+row.kind+'-'+row.id}
+                  onClick={()=>openRow(row.kind,row.id)}
+                >
+                  <div className="mobile-finance-card-head">
+                    <div><b>{row.code}</b><span>{formatDateTime(row.time)} · {row.source}</span></div>
+                    <span className={'finance-type '+(row.type==='INCOME'?'income':'expense')}>{typeLabel(row.type)}</span>
+                  </div>
+                  <div className="mobile-finance-card-body">
+                    <div><span>Hạng mục</span><b>{row.category}</b></div>
+                    <div><span>Đối tượng</span><b>{row.counterparty}</b></div>
+                  </div>
+                  <div className="mobile-finance-card-foot">
+                    <span className={'finance-status '+String(row.status).toLowerCase()}>{statusLabel(row.status)}</span>
+                    <strong className={row.type==='INCOME'?'income':'expense'}>{row.type==='INCOME'?'+':'−'} {formatMoney(row.amount)}</strong>
+                  </div>
+                </button>)}
+          </div>
+          <div className="card table-card finance-table-card"><table className="table finance-table"><thead><tr>{visible.map(head)}</tr></thead><tbody>
+            {!pageRows.length?<tr><td className="empty" colSpan={visible.length}>Chưa có giao dịch phù hợp.</td></tr>:pageRows.map(row=><tr key={row.kind+'-'+row.id} onClick={()=>openRow(row.kind,row.id)}>{visible.map(col=>cell(row,col))}</tr>)}
+          </tbody></table></div>
+        </>
       })()}
       <div className="finance-pagination"><span>Trang {safePage}/{maxPage}</span><div><button className="button small" disabled={safePage<=1} onClick={()=>setPage(safePage-1)}>‹</button><button className="button small" disabled={safePage>=maxPage} onClick={()=>setPage(safePage+1)}>›</button><select value={pageSize} onChange={e=>{setPageSize(Number(e.target.value));setPage(1)}}><option value={10}>10 dòng</option><option value={20}>20 dòng</option><option value={50}>50 dòng</option></select></div></div>
     </section>
