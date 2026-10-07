@@ -158,7 +158,7 @@ function auditSourceGuards(){
     'updateSystemUserRole','sendSystemUserPasswordReset','resetERPSystemData','createSystemUserAccount',
     'setSystemUserTemporaryPassword','deleteSystemUserAccount',
     'saveTrackingProviderConfig','saveTrackingRuntimeSettings','saveTrackingRule','saveCarrierStatusMapping','testTrackingConnection',
-    'saveTelegramAlertSettings','saveTelegramAlertDestination','deleteTelegramAlertDestination','testTelegramConnection',
+    'saveAlertRuleConfig','saveTelegramAlertSettings','saveTelegramAlertDestination','deleteTelegramAlertDestination','testTelegramConnection',
   ])
   for(const path of files){
     const src=fs.readFileSync(path,'utf8')
@@ -222,19 +222,19 @@ for(const role of ['admin','operator','viewer']){
     }
 
     await go(page,role,'/settings?section=tracking-alerts')
-    const telegramTabVisible=await page.locator('.settings-page-tabs-v3').getByRole('link',{name:'Telegram',exact:true}).count()>0
+    const telegramTabVisible=await page.locator('.settings-page-tabs-v3').getByRole('link',{name:'Alerts',exact:true}).count()>0
     const telegramWorkspace=await page.locator('.tracking-telegram-settings').count()>0
     const telegramToken=page.locator('.telegram-main-form input[name="bot_token"]').first()
     const telegramEditable=await telegramToken.count()>0&&!(await telegramToken.isDisabled())
     const telegramSave=await page.locator('.telegram-main-form').getByRole('button',{name:'Lưu Telegram'}).count()>0
     if(role==='viewer'){
-      record('ui',role+' Telegram visibility',!telegramTabVisible&&!telegramWorkspace,{telegramTabVisible,telegramWorkspace})
+      record('ui',role+' Alerts visibility',!telegramTabVisible&&!telegramWorkspace,{telegramTabVisible,telegramWorkspace})
     }else if(role==='admin'){
-      record('ui',role+' Telegram visibility',telegramTabVisible&&telegramWorkspace,{telegramTabVisible,telegramWorkspace})
-      record('ui',role+' Telegram edit state',telegramEditable&&telegramSave,{telegramEditable,telegramSave})
+      record('ui',role+' Alerts visibility',telegramTabVisible&&telegramWorkspace,{telegramTabVisible,telegramWorkspace})
+      record('ui',role+' Alerts edit state',telegramEditable&&telegramSave,{telegramEditable,telegramSave})
     }else{
-      record('ui',role+' Telegram visibility',telegramTabVisible&&telegramWorkspace,{telegramTabVisible,telegramWorkspace})
-      record('ui',role+' Telegram read-only state',!telegramEditable&&!telegramSave,{telegramEditable,telegramSave})
+      record('ui',role+' Alerts visibility',telegramTabVisible&&telegramWorkspace,{telegramTabVisible,telegramWorkspace})
+      record('ui',role+' Alerts read-only state',!telegramEditable&&!telegramSave,{telegramEditable,telegramSave})
     }
 
     await go(page,role,'/settings?section=data-management')
