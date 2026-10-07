@@ -119,11 +119,13 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
     })
     .filter(row=>row.debt>0)
 
-  let rows=[...allRows]
+  const scopeRows=q
+    ? allRows.filter(x=>[x.name,x.phone,x.address,...x.rows.map(r=>r.code)].join(' ').toLowerCase().includes(q))
+    : allRows
+  let rows=[...scopeRows]
   if(state==='open')rows=rows.filter(x=>x.debt>0)
   if(state==='partial')rows=rows.filter(x=>x.rows.some(r=>r.paid>0&&r.debt>0))
   if(state==='old')rows=rows.filter(x=>x.age>=7)
-  if(q)rows=rows.filter(x=>[x.name,x.phone,x.address,...x.rows.map(r=>r.code)].join(' ').toLowerCase().includes(q))
 
   const selected=allRows.find(x=>x.customer_id===sp.customer)??null
   const tab=sp.tab??'summary'
@@ -133,14 +135,16 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
     : null
   const saleTab=sp.saleTab==='products'||sp.saleTab==='payment'||sp.saleTab==='history'?sp.saleTab:'info'
   const collectMode=sp.mode==='collect'&&Boolean(selected)&&!contextSale
-  const totalDebt=allRows.reduce((sum,x)=>sum+x.debt,0)
-  const openInvoices=allRows.reduce((sum,x)=>sum+x.invoices,0)
-  const partialCustomers=allRows.filter(x=>x.rows.some(r=>r.paid>0&&r.debt>0)).length
-  const oldCustomers=allRows.filter(x=>x.age>=7)
+  const totalDebt=scopeRows.reduce((sum,x)=>sum+x.debt,0)
+  const openInvoices=scopeRows.reduce((sum,x)=>sum+x.invoices,0)
+  const partialCustomers=scopeRows.filter(x=>x.rows.some(r=>r.paid>0&&r.debt>0)).length
+  const oldCustomers=scopeRows.filter(x=>x.age>=7)
+  const scopeCustomerIds=new Set(scopeRows.map(x=>x.customer_id))
+  const scopePayments=payments.filter(x=>scopeCustomerIds.has(String(x.customer_id)))
   const todayStart=startOfTodayVN()
   const monthStart=startOfMonthVN()
-  const collectedToday=payments.filter(x=>String(x.paid_at)>=todayStart).reduce((sum,x)=>sum+Number(x.amount??0),0)
-  const collectedMonth=payments.filter(x=>String(x.paid_at)>=monthStart).reduce((sum,x)=>sum+Number(x.amount??0),0)
+  const collectedToday=scopePayments.filter(x=>String(x.paid_at)>=todayStart).reduce((sum,x)=>sum+Number(x.amount??0),0)
+  const collectedMonth=scopePayments.filter(x=>String(x.paid_at)>=monthStart).reduce((sum,x)=>sum+Number(x.amount??0),0)
   const bankConfig=(bankResult.data??null) as any
 
   function href(extra:Record<string,string|null|undefined>={}){
@@ -172,7 +176,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
 
     <section className="entity-status-strip debt-demo-kpis">
       <Link className={'entity-status-metric warning '+(state==='all'?'active':'')} href={href({state:null,customer:null,tab:null,mode:null})}>
-        <span>Tổng công nợ</span><b className="money">{formatMoney(totalDebt)}</b><small>{allRows.length} khách còn nợ</small>
+        <span>Tổng công nợ</span><b className="money">{formatMoney(totalDebt)}</b><small>{scopeRows.length} khách còn nợ</small>
       </Link>
       <Link className={'entity-status-metric '+(state==='open'?'active':'')} href={href({state:'open',customer:null,tab:null,mode:null})}>
         <span>Hóa đơn còn nợ</span><b>{openInvoices}</b><small>Chưa thu đủ</small>
