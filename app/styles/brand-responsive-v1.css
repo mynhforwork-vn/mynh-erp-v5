@@ -7337,3 +7337,172 @@ body{
     grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
   }
 }
+
+
+/* =====================================================================
+   MYNH ERP — Desktop Right Slidebar Placement Lock V1
+   Main-style vertical panels must occupy column 2, row 1.
+   ===================================================================== */
+@media(min-width:901px){
+  /* Nhập kho */
+  .brand-shell-v1 .warehouse-intake-layout.with-panel{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    grid-template-rows:minmax(0,1fr)!important;
+    gap:8px!important;
+    align-items:stretch!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .warehouse-intake-layout.with-panel>.whx-intake-main{
+    grid-column:1!important;
+    grid-row:1!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:auto!important;
+  }
+  .brand-shell-v1 .warehouse-intake-layout.with-panel>.warehouse-intake-panel{
+    grid-column:2!important;
+    grid-row:1!important;
+    justify-self:stretch!important;
+    align-self:stretch!important;
+    position:relative!important;
+    inset:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    margin:0!important;
+  }
+
+  /* Tồn kho */
+  .brand-shell-v1 .whx-stock-layout.with-panel{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    grid-template-rows:minmax(0,1fr)!important;
+    gap:8px!important;
+    align-items:stretch!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .whx-stock-layout.with-panel>.whx-stock-main{
+    grid-column:1!important;
+    grid-row:1!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .whx-stock-layout.with-panel>.whx-detail-panel-v2{
+    grid-column:2!important;
+    grid-row:1!important;
+    justify-self:stretch!important;
+    align-self:stretch!important;
+    position:sticky!important;
+    top:0!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    margin:0!important;
+  }
+
+  /* Thu / Chi */
+  .brand-shell-v1 .finance-ledger-layout.with-panel{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    grid-template-rows:minmax(0,1fr)!important;
+    gap:8px!important;
+    align-items:stretch!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .finance-ledger-layout.with-panel>.finance-ledger{
+    grid-column:1!important;
+    grid-row:1!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .finance-ledger-layout.with-panel>.finance-panel{
+    grid-column:2!important;
+    grid-row:1!important;
+    justify-self:stretch!important;
+    align-self:stretch!important;
+    position:sticky!important;
+    top:0!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+
+  /* Đối soát & Thanh toán — main page itself is the two-column shell. */
+  .brand-shell-v1 .finance-settlement-live.has-slidebar{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    grid-template-rows:minmax(0,1fr)!important;
+    gap:8px!important;
+    align-items:stretch!important;
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .finance-settlement-live.has-slidebar>.finance-settlement-main{
+    grid-column:1!important;
+    grid-row:1!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:auto!important;
+  }
+  .brand-shell-v1 .finance-settlement-live.has-slidebar>aside.finance-hub-live-panel,
+  .brand-shell-v1 .finance-settlement-live.has-slidebar>aside.context-order-panel{
+    grid-column:2!important;
+    grid-row:1!important;
+    justify-self:stretch!important;
+    align-self:stretch!important;
+    position:sticky!important;
+    top:0!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+}
+
+@media(max-width:1440px) and (min-width:901px){
+  .brand-shell-v1 .warehouse-intake-layout.with-panel,
+  .brand-shell-v1 .whx-stock-layout.with-panel,
+  .brand-shell-v1 .finance-ledger-layout.with-panel,
+  .brand-shell-v1 .finance-settlement-live.has-slidebar{
+    grid-template-columns:minmax(0,1fr) 390px!important;
+  }
+}
