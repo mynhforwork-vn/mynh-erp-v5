@@ -268,21 +268,20 @@ if(await createOrderLink.count()){
       recognitionText.includes('Giá gốc khớp')&&recognitionText.includes('100.800'),
       {recognitionText})
 
-    const quick=page.locator('aside.order-panel .quick-product-parser textarea').first()
-    if(await quick.count()){
-      await quick.fill('Dán từ Shopee: Dầu Đậu Nành Simply Nguyên chất chai 1 Lít x1 79.000₫78.921₫ (Đậu Nành 1 Lít). Có thể dán nhiều dòng.')
-      await page.locator('aside.order-panel .quick-product-parser').getByRole('button',{name:'Nhận diện'}).click()
-      await page.waitForTimeout(100)
-      const namesAfterQuick=await page.locator('aside.order-panel input[name="item_product_name"]').evaluateAll(els=>els.map(el=>el.value))
-      const variantsAfterQuick=await page.locator('aside.order-panel input[name="item_variant"]').evaluateAll(els=>els.map(el=>el.value))
-      const originalAfterQuick=await page.locator('aside.order-panel input[name="item_original_price"]').evaluateAll(els=>els.map(el=>el.value))
-      const finalAfterQuick=await page.locator('aside.order-panel input[name="item_final_price"]').evaluateAll(els=>els.map(el=>el.value))
-      recordInteraction('Compact Shopee product parser splits exact UI sample',
-        namesAfterQuick.at(-1)==='Dầu Đậu Nành Simply Nguyên chất chai 1 Lít'
-        &&variantsAfterQuick.at(-1)==='Đậu Nành 1 Lít'
-        &&originalAfterQuick.at(-1)==='79000'
-        &&finalAfterQuick.at(-1)==='78921',
-        {name:namesAfterQuick.at(-1),variant:variantsAfterQuick.at(-1),original:originalAfterQuick.at(-1),final:finalAfterQuick.at(-1)})
+    recordInteraction(
+      'Product section has no separate recognizer',
+      await page.locator('aside.order-panel .quick-product-parser').count()===0
+    )
+
+    const voucherTagInput=page.locator('aside.order-panel input[name="voucher_tag"]').first()
+    if(await voucherTagInput.count()){
+      await voucherTagInput.fill('Tag mới QA')
+      recordInteraction(
+        'Voucher tag accepts a new free-text value',
+        await voucherTagInput.inputValue()==='Tag mới QA'
+      )
+    }else{
+      recordInteraction('Voucher tag free-text input available',false)
     }
   }else{
     recordInteraction('Shopee text recognizer available',false)
