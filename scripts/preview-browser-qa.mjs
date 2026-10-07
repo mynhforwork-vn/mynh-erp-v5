@@ -802,25 +802,35 @@ await page.setViewportSize({width:390,height:844})
 await go('/purchase/orders')
 const mobileBrandMetrics=await page.evaluate(()=>{
   const sidebar=document.querySelector('.brand-shell-v1>.sidebar')
-  const nav=document.querySelector('.brand-shell-v1 .nav')
-  const shell=document.querySelector('.brand-shell-v1')
-  const sideStyle=sidebar?getComputedStyle(sidebar):null
-  const navStyle=nav?getComputedStyle(nav):null
+  const appBar=document.querySelector('.mobile-app-bar')
+  const bottomNav=document.querySelector('.mobile-bottom-nav')
+  const cards=document.querySelectorAll('.mobile-order-list .mobile-entity-card')
+  const sidebarStyle=sidebar?getComputedStyle(sidebar):null
+  const appBarStyle=appBar?getComputedStyle(appBar):null
+  const bottomStyle=bottomNav?getComputedStyle(bottomNav):null
   return {
     innerWidth:window.innerWidth,
     scrollWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
-    shellWidth:shell?.getBoundingClientRect().width??0,
-    sidebarWidth:sidebar?.getBoundingClientRect().width??0,
-    sidebarHeight:sidebar?.getBoundingClientRect().height??0,
-    sidebarPosition:sideStyle?.position??'',
-    navOverflowX:navStyle?.overflowX??'',
+    sidebarDisplay:sidebarStyle?.display??'',
+    appBarDisplay:appBarStyle?.display??'',
+    appBarPosition:appBarStyle?.position??'',
+    bottomDisplay:bottomStyle?.display??'',
+    bottomPosition:bottomStyle?.position??'',
+    mobileOrderCards:cards.length,
   }
 })
 recordInteraction(
-  'MYNH mobile shell uses full-width top navigation',
-  mobileBrandMetrics.sidebarWidth<=mobileBrandMetrics.innerWidth+1
-  &&mobileBrandMetrics.sidebarHeight<=60
-  &&mobileBrandMetrics.sidebarPosition==='sticky',
+  'MYNH mobile app shell uses app bar + bottom navigation',
+  mobileBrandMetrics.sidebarDisplay==='none'
+  &&mobileBrandMetrics.appBarDisplay!=='none'
+  &&mobileBrandMetrics.appBarPosition==='fixed'
+  &&mobileBrandMetrics.bottomDisplay!=='none'
+  &&mobileBrandMetrics.bottomPosition==='fixed',
+  mobileBrandMetrics
+)
+recordInteraction(
+  'MYNH mobile orders use card view',
+  mobileBrandMetrics.mobileOrderCards>0,
   mobileBrandMetrics
 )
 recordInteraction(
