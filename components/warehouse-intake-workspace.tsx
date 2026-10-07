@@ -3,6 +3,7 @@
 import { useMemo,useState } from 'react'
 import { formatDateTime,formatMoney } from '@/lib/format'
 import { mapWarehouseOrderItem,receiveOrdersIntoWarehouse,skipWarehouseOrder } from '@/lib/actions/warehouse'
+import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
 
 type Variant={
   id:string
@@ -47,6 +48,17 @@ type AuditLog={
   created_at:string
   new_value?:Record<string,unknown>|null
 }
+type SplitCol='order'|'received'|'product'|'cod'|'missing'|'status'
+const SPLIT_COLUMNS:SplitCol[]=['order','received','product','cod','missing','status']
+const SPLIT_LABELS:Record<SplitCol,string>={
+  order:'Mã đơn',received:'Ngày nhận',product:'Sản phẩm',cod:'COD',missing:'SKU chưa map',status:'Trạng thái',
+}
+type ReadyCol='order'|'received'|'product'|'qty'|'cod'|'status'
+const READY_COLUMNS:ReadyCol[]=['order','received','product','qty','cod','status']
+const READY_LABELS:Record<ReadyCol,string>={
+  order:'Mã đơn',received:'Ngày nhận',product:'Sản phẩm',qty:'SL nhập',cod:'COD',status:'Trạng thái',
+}
+
 type Suggestion={
   variant_id:string
   sku?:string|null
@@ -113,6 +125,10 @@ export function WarehouseIntakeWorkspace({
   const [selected,setSelected]=useState<string[]>([])
   const [panelTab,setPanelTab]=useState<'products'|'info'|'history'>('products')
   const [editingItem,setEditingItem]=useState<string|null>(null)
+  const splitColumns=useManagedColumns<SplitCol>('mynh-warehouse-intake-split-columns-v2',SPLIT_COLUMNS,['order'])
+  const splitSort=useManagedSort<SplitCol>('mynh-warehouse-intake-split-sort-v2','received','asc')
+  const readyColumns=useManagedColumns<ReadyCol>('mynh-warehouse-intake-ready-columns-v2',READY_COLUMNS,['order'])
+  const readySort=useManagedSort<ReadyCol>('mynh-warehouse-intake-ready-sort-v2','received','asc')
 
   const active=rows.find(row=>row.id===activeId)??null
   const activeComplete=active?isComplete(active):false
@@ -157,6 +173,32 @@ export function WarehouseIntakeWorkspace({
             const open=openGroups.includes(group.id)
             const splitRows=group.rows.filter(row=>!isComplete(row))
             const readyRows=group.rows.filter(isComplete)
+            const splitSorted=[...splitRows].sort((a,b)=>{
+              const value=(row:Row,key:SplitCol)=>{
+                if(key==='order')return String(row.shopee_order_id??row.id)
+                if(key==='received')return new Date(receivedAt(row)??0).getTime()
+                if(key==='product')return String(row.order_items[0]?.product_name??'')
+                if(key==='cod')return Number(row.cod??0)
+                if(key==='missing')return row.order_items.filter(item=>!item.product_variant_id).length
+                return isComplete(row)?'ready':'missing'
+              }
+              const av=value(a,splitSort.key),bv=value(b,splitSort.key)
+              const cmp=typeof av==='number'&&typeof bv==='number'?av-bv:String(av).localeCompare(String(bv),'vi')
+              return splitSort.dir==='asc'?cmp:-cmp
+            })
+            const readySorted=[...readyRows].sort((a,b)=>{
+              const value=(row:Row,key:ReadyCol)=>{
+                if(key==='order')return String(row.shopee_order_id??row.id)
+                if(key==='received')return new Date(receivedAt(row)??0).getTime()
+                if(key==='product')return String(row.order_items[0]?.product_name??'')
+                if(key==='qty')return row.order_items.reduce((sum,item)=>sum+Number(item.quantity??0)*Number(item.inventory_multiplier??1),0)
+                if(key==='cod')return Number(row.cod??0)
+                return 'ready'
+              }
+              const av=value(a,readySort.key),bv=value(b,readySort.key)
+              const cmp=typeof av==='number'&&typeof bv==='number'?av-bv:String(av).localeCompare(String(bv),'vi')
+              return readySort.dir==='asc'?cmp:-cmp
+            })
             const totalCod=group.rows.reduce((sum,row)=>sum+Number(row.cod??0),0)
             const readyIds=readyRows.map(row=>row.id)
             const allReadySelected=readyIds.length>0&&selectedGroup===group.id&&readyIds.every(id=>selectedSet.has(id))
@@ -231,37 +273,28 @@ export function WarehouseIntakeWorkspace({
                       })}
                 </div>
 
+                <div className="managed-table-toolbar warehouse-intake-managed-toolbar">
+                  <span className="managed-table-meta">Bảng chờ bóc tách · áp dụng mọi kho nhận</span>
+                  <ManagedColumnsMenu labels={SPLIT_LABELS} manager={splitColumns}/>
+                </div>
                 <div className="tracking-hub-table-wrap tracking-hub-table-wrap-v2">
                   <table className="table tracking-hub-table tracking-hub-table-v2 warehouse-split-table">
-                    <thead><tr>
-                      <th>Mã đơn</th>
-                      <th>Ngày nhận</th>
-                      <th>Sản phẩm</th>
-                      <th>COD</th>
-                      <th>SKU chưa map</th>
-                      <th>Trạng thái</th>
-                    </tr></thead>
+                    <thead><tr>{splitColumns.visible.map(col=><th key={col}><SortableHeader column={col} label={SPLIT_LABELS[col]} sort={splitSort} onSort={splitSort.toggle}/></th>)}</tr></thead>
                     <tbody>
-                      {!splitRows.length
-                        ? <tr><td colSpan={6} className="empty compact">Không còn đơn cần bóc tách tại kho này.</td></tr>
-                        : splitRows.map(row=>{
+                      {!splitSorted.length
+                        ? <tr><td colSpan={splitColumns.visible.length} className="empty compact">Không còn đơn cần bóc tách tại kho này.</td></tr>
+                        : splitSorted.map(row=>{
                             const missing=row.order_items.filter(item=>!item.product_variant_id).length
-                            return <tr
-                              key={row.id}
-                              className={activeId===row.id?'active-row':''}
-                              onClick={()=>{setActiveId(row.id);setPanelTab('products');setEditingItem(null)}}
-                            >
-                              <td><b className="table-link">{row.shopee_order_id??row.id.slice(0,8)}</b></td>
-                              <td>{formatDateTime(receivedAt(row))}</td>
-                              <td>
-                                <div className="tracking-order-id">
-                                  <b>{row.order_items[0]?.product_name??'—'}</b>
-                                  <span>{row.order_items.length>1?('+'+(row.order_items.length-1)+' sản phẩm khác'):'1 sản phẩm'}</span>
-                                </div>
-                              </td>
-                              <td className="money">{formatMoney(row.cod)}</td>
-                              <td><b className="warehouse-missing-count">{missing}</b></td>
-                              <td><span className="status-pill orange">Cần bóc tách</span></td>
+                            const cell=(col:SplitCol)=>{
+                              if(col==='order')return <td key={col}><b className="table-link">{row.shopee_order_id??row.id.slice(0,8)}</b></td>
+                              if(col==='received')return <td key={col}>{formatDateTime(receivedAt(row))}</td>
+                              if(col==='product')return <td key={col}><div className="tracking-order-id"><b>{row.order_items[0]?.product_name??'—'}</b><span>{row.order_items.length>1?('+'+(row.order_items.length-1)+' sản phẩm khác'):'1 sản phẩm'}</span></div></td>
+                              if(col==='cod')return <td key={col} className="money">{formatMoney(row.cod)}</td>
+                              if(col==='missing')return <td key={col}><b className="warehouse-missing-count">{missing}</b></td>
+                              return <td key={col}><span className="status-pill orange">Cần bóc tách</span></td>
+                            }
+                            return <tr key={row.id} className={activeId===row.id?'active-row':''} onClick={()=>{setActiveId(row.id);setPanelTab('products');setEditingItem(null)}}>
+                              {splitColumns.visible.map(cell)}
                             </tr>
                           })}
                     </tbody>
@@ -314,52 +347,36 @@ export function WarehouseIntakeWorkspace({
                       })}
                 </div>
 
+                <div className="managed-table-toolbar warehouse-intake-managed-toolbar">
+                  <span className="managed-table-meta">Bảng chờ nhập kho · áp dụng mọi kho nhận</span>
+                  <ManagedColumnsMenu labels={READY_LABELS} manager={readyColumns}/>
+                </div>
                 <div className="tracking-hub-table-wrap tracking-hub-table-wrap-v2">
                   <table className="table tracking-hub-table tracking-hub-table-v2 warehouse-ready-table">
                     <thead><tr>
                       <th className="select-col">
-                        <input
-                          type="checkbox"
-                          checked={allReadySelected}
-                          onChange={()=>toggleAllReady(group.id,readyIds)}
-                          disabled={!readyRows.length}
-                          aria-label={'Chọn toàn bộ đơn chờ nhập '+group.code}
-                        />
+                        <input type="checkbox" checked={allReadySelected} onChange={()=>toggleAllReady(group.id,readyIds)} disabled={!readyRows.length} aria-label={'Chọn toàn bộ đơn chờ nhập '+group.code}/>
                       </th>
-                      <th>Mã đơn</th>
-                      <th>Ngày nhận</th>
-                      <th>Sản phẩm</th>
-                      <th>SL nhập</th>
-                      <th>COD</th>
-                      <th>Trạng thái</th>
+                      {readyColumns.visible.map(col=><th key={col}><SortableHeader column={col} label={READY_LABELS[col]} sort={readySort} onSort={readySort.toggle}/></th>)}
                     </tr></thead>
                     <tbody>
-                      {!readyRows.length
-                        ? <tr><td colSpan={7} className="empty compact">Chưa có đơn đã bóc tách chờ nhập kho.</td></tr>
-                        : readyRows.map(row=>{
-                            const stockQty=row.order_items.reduce(
-                              (sum,item)=>sum+Number(item.quantity??0)*Number(item.inventory_multiplier??1),
-                              0
-                            )
-                            return <tr
-                              key={row.id}
-                              className={activeId===row.id?'active-row':''}
-                              onClick={()=>{setActiveId(row.id);setPanelTab('products');setEditingItem(null)}}
-                            >
+                      {!readySorted.length
+                        ? <tr><td colSpan={readyColumns.visible.length+1} className="empty compact">Chưa có đơn đã bóc tách chờ nhập kho.</td></tr>
+                        : readySorted.map(row=>{
+                            const stockQty=row.order_items.reduce((sum,item)=>sum+Number(item.quantity??0)*Number(item.inventory_multiplier??1),0)
+                            const cell=(col:ReadyCol)=>{
+                              if(col==='order')return <td key={col}><b className="table-link">{row.shopee_order_id??row.id.slice(0,8)}</b></td>
+                              if(col==='received')return <td key={col}>{formatDateTime(receivedAt(row))}</td>
+                              if(col==='product')return <td key={col}>{row.order_items.length} dòng SP</td>
+                              if(col==='qty')return <td key={col} className="warehouse-stock-qty">{stockQty}</td>
+                              if(col==='cod')return <td key={col} className="money">{formatMoney(row.cod)}</td>
+                              return <td key={col}><span className="status-pill green">Chờ xác nhận nhập</span></td>
+                            }
+                            return <tr key={row.id} className={activeId===row.id?'active-row':''} onClick={()=>{setActiveId(row.id);setPanelTab('products');setEditingItem(null)}}>
                               <td className="select-col" onClick={event=>event.stopPropagation()}>
-                                <input
-                                  type="checkbox"
-                                  checked={selectedGroup===group.id&&selectedSet.has(row.id)}
-                                  onChange={()=>toggleReady(group.id,row.id)}
-                                  aria-label={'Chọn '+(row.shopee_order_id??row.id)}
-                                />
+                                <input type="checkbox" checked={selectedGroup===group.id&&selectedSet.has(row.id)} onChange={()=>toggleReady(group.id,row.id)} aria-label={'Chọn '+(row.shopee_order_id??row.id)}/>
                               </td>
-                              <td><b className="table-link">{row.shopee_order_id??row.id.slice(0,8)}</b></td>
-                              <td>{formatDateTime(receivedAt(row))}</td>
-                              <td>{row.order_items.length} dòng SP</td>
-                              <td className="warehouse-stock-qty">{stockQty}</td>
-                              <td className="money">{formatMoney(row.cod)}</td>
-                              <td><span className="status-pill green">Chờ xác nhận nhập</span></td>
+                              {readyColumns.visible.map(cell)}
                             </tr>
                           })}
                     </tbody>
