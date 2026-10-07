@@ -64,7 +64,7 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
     waiting=waiting.filter(x=>[x.destination_hub,x.shopee_order_id,x.recipient_name,x.recipient_phone].filter(Boolean).join(' ').toLowerCase().includes(q))
   }
 
-  const customerRows=customers.map(customer=>{
+  const customerScopeRows=customers.map(customer=>{
     const customerSales=sales.filter(s=>s.customer_id===customer.id)
     const customerPayments=payments.filter(p=>p.customer_id===customer.id)
     const debt=customerSales.reduce((sum,x)=>sum+Math.max(0,num(x.debt_amount)),0)
@@ -73,8 +73,10 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
     const lastPayment=customerPayments[0]?.paid_at??null
     return {...customer,debt,totalSales,paid,lastPayment,openInvoices:customerSales.filter(x=>num(x.debt_amount)>0).length}
   }).filter(row=>!q||[row.name,row.phone,row.address].filter(Boolean).join(' ').toLowerCase().includes(q))
-    .filter(row=>state==='waiting'?row.debt>0:state==='paid'?row.debt<=0:true)
     .sort((a,b)=>b.debt-a.debt||a.name.localeCompare(b.name,'vi'))
+  const customerRows=customerScopeRows
+    .filter(row=>state==='waiting'?row.debt>0:state==='paid'?row.debt<=0:true)
+
 
   const hubMap=new Map<string,{hub:string,payments:any[],waiting:any[]}>()
   for(const row of shipper){
@@ -101,10 +103,13 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
   const shipperOrderCount=shipper.reduce((sum,x)=>sum+(x.shipper_payment_details?.length??0),0)
   const waitingCod=waiting.reduce((sum,x)=>sum+num(x.cod),0)
 
-  const totalDebt=customerRows.reduce((sum,x)=>sum+x.debt,0)
-  const customersInDebt=customerRows.filter(x=>x.debt>0).length
-  const collected=payments.reduce((sum,x)=>sum+num(x.amount),0)
-  const allocated=allocations.filter(a=>payments.some(p=>p.id===a.customer_payment_id)).reduce((sum,x)=>sum+num(x.amount),0)
+  const totalDebt=customerScopeRows.reduce((sum,x)=>sum+x.debt,0)
+  const customersInDebt=customerScopeRows.filter(x=>x.debt>0).length
+  const customerScopeIds=new Set(customerScopeRows.map(x=>String(x.id)))
+  const scopedPayments=payments.filter(x=>customerScopeIds.has(String(x.customer_id)))
+  const scopedPaymentIds=new Set(scopedPayments.map(x=>String(x.id)))
+  const collected=scopedPayments.reduce((sum,x)=>sum+num(x.amount),0)
+  const allocated=allocations.filter(a=>scopedPaymentIds.has(String(a.customer_payment_id))).reduce((sum,x)=>sum+num(x.amount),0)
 
   function href(extra:Record<string,string|null|undefined>={}){
     const p=new URLSearchParams()
@@ -246,7 +251,7 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
       </>:<>
         <section className="finance-kpi-grid finance-settlement-kpis">
           <div className="finance-kpi warning"><span>Phải thu khách hàng</span><b>{formatMoney(totalDebt)}</b><small>{customersInDebt} khách còn nợ</small></div>
-          <div className="finance-kpi"><span>Khách hàng</span><b>{customerRows.length}</b><small>{customerRows.reduce((sum,x)=>sum+x.openInvoices,0)} hóa đơn còn nợ</small></div>
+          <div className="finance-kpi"><span>Khách hàng</span><b>{customerScopeRows.length}</b><small>{customerScopeRows.reduce((sum,x)=>sum+x.openInvoices,0)} hóa đơn còn nợ</small></div>
           <div className="finance-kpi"><span>Phiếu thu công nợ</span><b>{payments.length}</b><small>{financePeriodLabel(period)}</small></div>
           <div className="finance-kpi"><span>Đã thu</span><b className="income">{formatMoney(collected)}</b><small>Đã phân bổ {formatMoney(allocated)}</small></div>
         </section>
