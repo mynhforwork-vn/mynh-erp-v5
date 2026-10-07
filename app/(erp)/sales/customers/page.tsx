@@ -108,11 +108,13 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
     }
   })
 
-  let rows=[...allRows]
+  const scopeRows=q
+    ? allRows.filter(x=>[x.name,x.phone,x.address].join(' ').toLowerCase().includes(q))
+    : allRows
+  let rows=[...scopeRows]
   if(state==='debt')rows=rows.filter(x=>x.debt>0)
   if(state==='repeat')rows=rows.filter(x=>x.orders>=2)
   if(state==='new')rows=rows.filter(x=>x.orders<=1)
-  if(q)rows=rows.filter(x=>[x.name,x.phone,x.address].join(' ').toLowerCase().includes(q))
 
   const selected=allRows.find(x=>x.id===sp.customer)??null
   const tab=sp.tab??'info'
@@ -145,8 +147,8 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
   const bankConfig=(bankResult.data??null) as any
   const collectMode=sp.mode==='collect'&&Boolean(selected)&&!contextSale
 
-  const totalDebt=allRows.reduce((sum,x)=>sum+x.debt,0)
-  const totalRevenue=allRows.reduce((sum,x)=>sum+x.total,0)
+  const totalDebt=scopeRows.reduce((sum,x)=>sum+x.debt,0)
+  const totalRevenue=scopeRows.reduce((sum,x)=>sum+x.total,0)
 
   function href(extra:Record<string,string|null|undefined>={}){
     const p=new URLSearchParams()
@@ -181,16 +183,16 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
 
     <section className="entity-status-strip customer-demo-kpis">
       <Link className={'entity-status-metric '+(state==='all'?'active':'')} href={href({state:null,customer:null,tab:null})}>
-        <span>Tổng khách hàng</span><b>{allRows.length}</b><small>{formatMoney(totalRevenue)} tổng mua</small>
+        <span>Tổng khách hàng</span><b>{scopeRows.length}</b><small>{formatMoney(totalRevenue)} tổng mua</small>
       </Link>
       <Link className={'entity-status-metric success '+(state==='repeat'?'active':'')} href={href({state:'repeat',customer:null,tab:null})}>
-        <span>Khách quay lại</span><b>{allRows.filter(x=>x.orders>=2).length}</b><small>Từ 2 hóa đơn trở lên</small>
+        <span>Khách quay lại</span><b>{scopeRows.filter(x=>x.orders>=2).length}</b><small>Từ 2 hóa đơn trở lên</small>
       </Link>
       <Link className={'entity-status-metric info '+(state==='new'?'active':'')} href={href({state:'new',customer:null,tab:null})}>
-        <span>Khách mới</span><b>{allRows.filter(x=>x.orders<=1).length}</b><small>Tối đa 1 hóa đơn</small>
+        <span>Khách mới</span><b>{scopeRows.filter(x=>x.orders<=1).length}</b><small>Tối đa 1 hóa đơn</small>
       </Link>
       <Link className={'entity-status-metric warning '+(state==='debt'?'active':'')} href={href({state:'debt',customer:null,tab:null})}>
-        <span>Khách còn nợ</span><b>{allRows.filter(x=>x.debt>0).length}</b><small>{formatMoney(totalDebt)}</small>
+        <span>Khách còn nợ</span><b>{scopeRows.filter(x=>x.debt>0).length}</b><small>{formatMoney(totalDebt)}</small>
       </Link>
     </section>
 
