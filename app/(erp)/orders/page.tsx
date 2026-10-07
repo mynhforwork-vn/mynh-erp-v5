@@ -399,7 +399,6 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       <Link className={`kpi-card entity-status-metric success ${sp.tracking==='DELIVERED'&&!sp.receive?'active':''}`} href={listHref({receive:null,tracking:'DELIVERED'})}><span>Giao thành công</span><b>{delivered}</b><small>Đã giao thành công</small></Link>
       <Link className={`kpi-card entity-status-metric warning ${sp.receive==='WAITING_RECEIVE'?'active':''}`} href={listHref({receive:'WAITING_RECEIVE',tracking:null})}><span>Chờ xác nhận nhận hàng</span><b>{waiting}</b><small>Cần xác nhận vật lý</small></Link>
       <Link className={`kpi-card entity-status-metric danger ${sp.tracking==='cancelled'?'active':''}`} href={listHref({receive:null,tracking:'cancelled'})}><span>Bị huỷ</span><b>{cancelled}</b><small>Đơn / vận đơn đã huỷ</small></Link>
-      <Link className={`kpi-card entity-status-metric express ${sp.tracking==='express'?'active':''}`} href={listHref({receive:null,tracking:'express'})}><span>Hỏa tốc cần theo dõi</span><b>{expressAttention}</b><small>Đang giao {expressProcessing} · Lỗi {expressFailed} · Chờ nhận {expressWaitingReceive}</small></Link>
     </section>
 
     <div className={`split-view order-workspace ${panelOpen?'with-panel':''}`}>
