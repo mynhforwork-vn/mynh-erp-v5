@@ -7730,3 +7730,188 @@ body{
     border-radius:5px!important;
   }
 }
+
+
+/* =====================================================================
+   MYNH ERP — Desktop Sidebar Footer Contract V5
+   Expanded = one quiet row. Collapsed = avatar + bell on one rail row.
+   ===================================================================== */
+@media(min-width:901px){
+  .brand-shell-v1>.sidebar>.sidebar-foot-v2{
+    box-sizing:border-box!important;
+    flex:0 0 auto!important;
+    margin:7px 0 0!important;
+    border-top:1px solid #DDE5EC!important;
+    background:transparent!important;
+  }
+
+  /* Expanded sidebar footer */
+  .brand-shell-v1:not(.desktop-sidebar-collapsed)>.sidebar>.sidebar-foot-v2{
+    width:100%!important;
+    min-height:44px!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 32px!important;
+    align-items:center!important;
+    gap:4px!important;
+    padding:7px 0 0!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-account-menu{
+    width:100%!important;
+    min-width:0!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-account-trigger{
+    box-sizing:border-box!important;
+    width:100%!important;
+    min-width:0!important;
+    height:34px!important;
+    min-height:34px!important;
+    display:grid!important;
+    grid-template-columns:26px minmax(0,1fr) 16px!important;
+    align-items:center!important;
+    gap:6px!important;
+    padding:3px 4px!important;
+    border:0!important;
+    border-radius:6px!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-account-trigger:hover,
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-account-trigger.open{
+    background:#EAF1F6!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-user-avatar{
+    width:26px!important;
+    min-width:26px!important;
+    height:26px!important;
+    min-height:26px!important;
+    margin:0!important;
+    border:1px solid #DCE5EC!important;
+    border-radius:6px!important;
+    background:#F5F8FB!important;
+    box-shadow:none!important;
+    font-size:9px!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-user-copy{
+    min-width:0!important;
+    display:grid!important;
+    grid-template-rows:auto auto!important;
+    align-content:center!important;
+    gap:1px!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-user-copy b,
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-user-copy small{
+    display:block!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-user-more{
+    width:16px!important;
+    height:24px!important;
+    display:grid!important;
+    place-items:center!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-alert-trigger{
+    box-sizing:border-box!important;
+    width:32px!important;
+    min-width:32px!important;
+    height:32px!important;
+    min-height:32px!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:6px!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-alert-trigger:hover{
+    background:#EAF1F6!important;
+  }
+
+  /* Collapsed sidebar footer */
+  .brand-shell-v1.desktop-sidebar-collapsed>.sidebar>.sidebar-foot-v2{
+    box-sizing:border-box!important;
+    width:58px!important;
+    min-width:58px!important;
+    max-width:58px!important;
+    min-height:38px!important;
+    height:38px!important;
+    display:grid!important;
+    grid-template-columns:28px 28px!important;
+    grid-template-rows:28px!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:2px!important;
+    margin:7px auto 0!important;
+    padding:7px 0 3px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-menu{
+    box-sizing:border-box!important;
+    width:28px!important;
+    min-width:28px!important;
+    max-width:28px!important;
+    height:28px!important;
+    min-height:28px!important;
+    margin:0!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-trigger{
+    box-sizing:border-box!important;
+    width:28px!important;
+    min-width:28px!important;
+    max-width:28px!important;
+    height:28px!important;
+    min-height:28px!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    place-items:center!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:6px!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-user-avatar{
+    box-sizing:border-box!important;
+    width:24px!important;
+    min-width:24px!important;
+    height:24px!important;
+    min-height:24px!important;
+    margin:0!important;
+    transform:none!important;
+    border:1px solid #DCE5EC!important;
+    border-radius:6px!important;
+    background:#F5F8FB!important;
+    box-shadow:none!important;
+    font-size:8.5px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-user-copy,
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-user-more{
+    display:none!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-alert-trigger{
+    box-sizing:border-box!important;
+    width:28px!important;
+    min-width:28px!important;
+    max-width:28px!important;
+    height:28px!important;
+    min-height:28px!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:6px!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-trigger:hover,
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-alert-trigger:hover{
+    background:#E6EEF5!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-popover{
+    position:fixed!important;
+    left:78px!important;
+    right:auto!important;
+    bottom:12px!important;
+    width:238px!important;
+  }
+}
