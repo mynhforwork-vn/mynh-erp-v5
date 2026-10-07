@@ -170,6 +170,27 @@ for(const path of routes){
   fs.writeFileSync(`${outDir}/summary-partial.json`,JSON.stringify(summary,null,2))
 }
 
+// MYNH Brand System V1 checks.
+await go('/')
+recordInteraction('MYNH brand shell V1 is active',await page.locator('.brand-shell-v1').count()===1)
+recordInteraction('MYNH compact wordmark renders',await page.locator('.brand .brand-mark').first().innerText()==='MY')
+const desktopBrandMetrics=await page.evaluate(()=>({
+  innerWidth:window.innerWidth,
+  scrollWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
+  sidebarWidth:document.querySelector('.brand-shell-v1>.sidebar')?.getBoundingClientRect().width??0,
+  mainWidth:document.querySelector('.brand-shell-v1>.main')?.getBoundingClientRect().width??0,
+}))
+recordInteraction(
+  'MYNH desktop shell has no page overflow',
+  desktopBrandMetrics.scrollWidth<=desktopBrandMetrics.innerWidth+2,
+  desktopBrandMetrics
+)
+recordInteraction(
+  'MYNH desktop shell keeps operational workspace',
+  desktopBrandMetrics.sidebarWidth>=180&&desktopBrandMetrics.mainWidth>700,
+  desktopBrandMetrics
+)
+
 // Non-mutating interaction tests.
 await go('/purchase/accounts')
 if(await page.getByRole('button',{name:'Import TSV'}).count()){
@@ -778,6 +799,35 @@ summary.interactions.push({
 })
 
 await page.setViewportSize({width:390,height:844})
+await go('/purchase/orders')
+const mobileBrandMetrics=await page.evaluate(()=>{
+  const sidebar=document.querySelector('.brand-shell-v1>.sidebar')
+  const nav=document.querySelector('.brand-shell-v1 .nav')
+  const shell=document.querySelector('.brand-shell-v1')
+  const sideStyle=sidebar?getComputedStyle(sidebar):null
+  const navStyle=nav?getComputedStyle(nav):null
+  return {
+    innerWidth:window.innerWidth,
+    scrollWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
+    shellWidth:shell?.getBoundingClientRect().width??0,
+    sidebarWidth:sidebar?.getBoundingClientRect().width??0,
+    sidebarHeight:sidebar?.getBoundingClientRect().height??0,
+    sidebarPosition:sideStyle?.position??'',
+    navOverflowX:navStyle?.overflowX??'',
+  }
+})
+recordInteraction(
+  'MYNH mobile shell uses full-width top navigation',
+  mobileBrandMetrics.sidebarWidth<=mobileBrandMetrics.innerWidth+1
+  &&mobileBrandMetrics.sidebarHeight<=60
+  &&mobileBrandMetrics.sidebarPosition==='sticky',
+  mobileBrandMetrics
+)
+recordInteraction(
+  'MYNH mobile shell has no page overflow',
+  mobileBrandMetrics.scrollWidth<=mobileBrandMetrics.innerWidth+2,
+  mobileBrandMetrics
+)
 for(const path of ['/purchase/orders','/purchase/tracking','/warehouse','/warehouse/receive','/sales/pos','/sales/history','/sales/customers','/sales/debt']){
   const r=await go(path)
   const metrics=await page.evaluate(()=>({
