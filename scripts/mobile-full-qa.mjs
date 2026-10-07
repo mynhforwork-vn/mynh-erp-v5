@@ -181,9 +181,11 @@ if(await more.count()){
   const sheet=page.locator('.mobile-more-sheet')
   check('App shell','Menu Thêm mở',await sheet.count()>0)
   const labels=await sheet.locator('a').allTextContents().catch(()=>[])
-  for(const expected of ['Tài khoản mua hàng','Cảnh báo vận chuyển','Nhập kho','Tồn kho','Lịch sử kho','Lịch sử bán','Khách hàng','Công nợ','Thu / Chi','Đối soát','Báo cáo','Cài đặt']){
+  for(const expected of ['Tổng quan mua hàng','Tài khoản mua hàng','Đơn nhập hàng','Cảnh báo vận chuyển','Tổng quan kho','Nhập kho','Tồn kho','Lịch sử kho','Tổng quan bán hàng','POS bán hàng','Lịch sử bán','Khách hàng','Công nợ','Tổng quan tài chính','Thu / Chi','Đối soát','Báo cáo','Cài đặt']){
     check('App shell','Menu Thêm có '+expected,labels.some(x=>x.includes(expected)),{labels})
   }
+  const moreCols=await sheet.locator('.mobile-more-group>div').first().evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').filter(Boolean).length).catch(()=>0)
+  check('App shell','Menu Thêm dùng 2 cột trên mobile',moreCols===2,{columns:moreCols})
   await page.keyboard.press('Escape');await settle()
   check('App shell','Menu Thêm đóng bằng Esc',await page.locator('.mobile-more-sheet').count()===0)
 }
@@ -191,6 +193,12 @@ if(await more.count()){
 // 1. Tổng quan hệ thống.
 await routeAudit('Tổng quan hệ thống','/')
 check('Tổng quan hệ thống','Có nội dung dashboard',await page.locator('.card,.kpi-card,.system-kpi,.dashboard-ops-grid').count()>0)
+const dashboardKpiLayout=await page.locator('.main>.kpi-grid>.kpi-card').evaluateAll(nodes=>{
+  if(nodes.length<2)return {twoCols:false,maxHeight:0}
+  const a=nodes[0].getBoundingClientRect(),b=nodes[1].getBoundingClientRect()
+  return {twoCols:Math.abs(a.top-b.top)<=3&&b.left>a.left+20,maxHeight:Math.max(...nodes.map(el=>el.getBoundingClientRect().height))}
+}).catch(()=>({twoCols:false,maxHeight:999}))
+check('Tổng quan hệ thống','Dashboard KPI 2 cột compact',dashboardKpiLayout.twoCols&&dashboardKpiLayout.maxHeight<=100,dashboardKpiLayout)
 
 // 2. Tổng quan mua hàng.
 await routeAudit('Tổng quan mua hàng','/purchase')
@@ -275,6 +283,12 @@ if(await trackingOrderLink.count()){
 // 6. Tổng quan kho.
 await routeAudit('Tổng quan kho','/warehouse')
 check('Tổng quan kho','Có nội dung vận hành kho',await page.locator('.card,.kpi-card,.whx-kpi-grid,.tracking-status-strip-v2').count()>0)
+const whKpiLayout=await page.locator('.whx-kpi-grid>*').evaluateAll(nodes=>{
+  if(nodes.length<2)return {twoCols:false,maxHeight:0}
+  const a=nodes[0].getBoundingClientRect(),b=nodes[1].getBoundingClientRect()
+  return {twoCols:Math.abs(a.top-b.top)<=3&&b.left>a.left+20,maxHeight:Math.max(...nodes.map(el=>el.getBoundingClientRect().height))}
+}).catch(()=>({twoCols:false,maxHeight:999}))
+check('Tổng quan kho','KPI kho 2 cột compact',whKpiLayout.twoCols&&whKpiLayout.maxHeight<=82,whKpiLayout)
 
 // 7. Nhập kho.
 await routeAudit('Nhập kho','/warehouse/receive')
@@ -322,8 +336,21 @@ check('POS','Có tìm SKU/barcode',await page.locator('.pos-search-v2 input').co
 const productCards=page.locator('.pos-product-grid .pos-product-tile-final:not(:disabled)')
 check('POS','Có sản phẩm bán được',await productCards.count()>0,{count:await productCards.count()})
 if(await productCards.count()){
-  const w=await productCards.first().evaluate(el=>el.getBoundingClientRect().width)
-  check('POS','Thẻ sản phẩm full-width trên mobile',w>=300,{width:w})
+  const productVisual=await productCards.first().evaluate(el=>{
+    const tile=el.getBoundingClientRect()
+    const top=el.querySelector('.pos-final-top')?.getBoundingClientRect()
+    const bottom=el.querySelector('.pos-final-bottom')?.getBoundingClientRect()
+    const sku=el.querySelector('.pos-final-sku')?.getBoundingClientRect()
+    const price=el.querySelector('.pos-final-bottom>strong')?.getBoundingClientRect()
+    return {
+      width:tile.width,
+      height:tile.height,
+      stacked:Boolean(top&&bottom&&top.bottom<=bottom.top+2),
+      skuPriceSeparated:Boolean(sku&&price&&(price.left>=sku.right+3||price.top>=sku.bottom-1)),
+    }
+  })
+  check('POS','Thẻ sản phẩm full-width trên mobile',productVisual.width>=300,{width:productVisual.width})
+  check('POS','Thẻ sản phẩm không chồng chữ',productVisual.stacked&&productVisual.skuPriceSeparated&&productVisual.height<=120,productVisual)
   await productCards.first().click();await settle()
   check('POS','Thêm sản phẩm vào giỏ',await page.locator('.mobile-pos-cart-bar:not(:disabled)').count()>0)
   const cartBar=page.locator('.mobile-pos-cart-bar').first()
