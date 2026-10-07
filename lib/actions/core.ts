@@ -594,7 +594,7 @@ export async function restoreOrder(formData:FormData){
 
   const {data:row,error:readError}=await supabase
     .from('orders')
-    .select('id,shopee_order_id,shipping_service,archived_at,archived_by,shipments(id,tracking_number,current_tracking_status,is_active)')
+    .select('id,shopee_order_id,shipping_service,archived_at,archived_by,shipments(id,tracking_number,current_tracking_status,tracking_interval_minutes,is_active)')
     .eq('id',orderId)
     .maybeSingle()
   if(readError)throw new Error(readError.message)
@@ -815,7 +815,7 @@ export async function restoreOrdersBulk(formData:FormData){
 
   const {data:rows,error:readError}=await supabase
     .from('orders')
-    .select('id,shopee_order_id,shipping_service,archived_at,archived_by,shipments(id,tracking_number,current_tracking_status,is_active)')
+    .select('id,shopee_order_id,shipping_service,archived_at,archived_by,shipments(id,tracking_number,current_tracking_status,tracking_interval_minutes,is_active)')
     .in('id',orderIds)
   if(readError)throw new Error(readError.message)
   if((rows??[]).length!==orderIds.length)throw new Error('Có đơn không tồn tại hoặc không có quyền truy cập')
