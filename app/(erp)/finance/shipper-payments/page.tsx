@@ -272,7 +272,7 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
       openModuleHref={'/purchase/orders?range=all&order='+contextOrder.id}
     />}
 
-    {selected&&mode==='shipper'&&!contextOrder&&<aside className="detail-panel finance-panel finance-hub-live-panel">
+    {selected&&mode==='shipper'&&!contextOrder&&<aside className="detail-panel finance-panel finance-hub-live-panel mynh-slide-panel">
       <div className="panel-head"><div><span className="eyebrow">ĐỐI SOÁT HUB</span><h2>{selected.hub}</h2></div><Link className="close" href={href({hub:null})}>×</Link></div>
       <div className="panel-tabs"><span className="active">Tổng quan & thao tác</span></div>
       <div className="panel-scroll finance-hub-panel">
