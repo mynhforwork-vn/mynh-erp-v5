@@ -87,7 +87,7 @@ jobs:
           {
             echo "## Cloudflare Remediation Preview"
             echo ""
-            echo "- Commit: `$GITHUB_SHA`"
+            printf -- '- Commit: `%s`\n' "$GITHUB_SHA"
             echo "- Preview: $PREVIEW_URL"
             echo "- Static QA: PASS"
             echo "- OpenNext Cloudflare build: PASS"
