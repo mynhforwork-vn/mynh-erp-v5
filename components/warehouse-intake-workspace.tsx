@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo,useState } from 'react'
-import { SystemSlidebar } from '@/components/system-slidebar'
 import { formatDateTime,formatMoney } from '@/lib/format'
 import { mapWarehouseOrderItem,receiveOrdersIntoWarehouse,skipWarehouseOrder } from '@/lib/actions/warehouse'
 import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
@@ -402,7 +401,7 @@ export function WarehouseIntakeWorkspace({
           })}
     </section>
 
-    {active&&<SystemSlidebar className="whx-detail-panel warehouse-intake-panel">
+    {active&&<aside className="whx-detail-panel warehouse-intake-panel">
       <div className="whx-panel-head">
         <div>
           <span className="module-eyebrow">{activeComplete?'CHỜ NHẬP KHO':'BÓC TÁCH SKU'}</span>
@@ -548,6 +547,6 @@ export function WarehouseIntakeWorkspace({
               </div>)}
         </div>}
       </div>
-    </SystemSlidebar>}
+    </aside>}
   </div>
 }
