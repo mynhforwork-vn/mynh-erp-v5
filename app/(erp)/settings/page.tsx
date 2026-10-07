@@ -22,6 +22,8 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       ? 'tracking'
       : sp.section==='tracking-alerts'&&['admin','operator'].includes(role)
         ? 'tracking-alerts'
+      : sp.section==='telegram'&&['admin','operator'].includes(role)
+        ? 'telegram'
       : sp.section==='data-management'
         ? 'data-management'
         : sp.section==='payments'
@@ -169,169 +171,111 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
   const purged=sp.purged?Number(sp.purged):null
   const protectedCount=sp.protected?Number(sp.protected):null
 
-  const activeProviders=((trackingProviderResult.data??[]) as any[]).filter((x:any)=>x.enabled)
-  const activeHubs=((hubRows??[]) as any[]).filter((x:any)=>x.is_active)
-  const activeAlertRules=((alertRulesResult.data??[]) as any[]).filter((x:any)=>x.enabled)
-  const inAppAlertRules=activeAlertRules.filter((x:any)=>x.in_app_enabled)
-  const telegramAlertRules=activeAlertRules.filter((x:any)=>x.telegram_enabled)
-  const telegram=(telegramSettingsResult.data??null) as any
-  const trackingAuto=(trackingRuntimeResult.data as any)?.auto_tracking_enabled!==false
-  const trackingReady=trackingAuto&&activeProviders.length>0
-  const telegramHasChat=Boolean(String(telegram?.default_chat_id??'').trim())
-  const telegramHasToken=Boolean(telegram?.bot_token_secret_id)
-  const telegramReady=telegramHasChat&&telegramHasToken
-  const paymentReady=Boolean((bankTransferResult.data as any)?.is_active&&(bankTransferResult.data as any)?.bank_id&&(bankTransferResult.data as any)?.account_no)
   const roleLabel=role==='admin'?'Admin':role==='operator'?'Operator':'Viewer'
 
-  const sectionMeta:Record<string,{group:string;title:string;description:string}>={
-    'shipping-carriers':{group:'VẬN HÀNH',title:'Đơn vị vận chuyển',description:'Quản lý hãng vận chuyển, tiền tố mã vận đơn và khả năng Tracking/HUB.'},
-    'spx-hubs':{group:'VẬN HÀNH',title:'Kho đích & Shipper',description:'Cấu hình HUB đích, alias nhận diện và Shipper phụ trách theo khu vực.'},
-    tracking:{group:'TỰ ĐỘNG HÓA',title:'Tracking',description:'Chu kỳ quét, provider, mapping trạng thái và hành vi tự động của Tracking Engine.'},
-    'tracking-alerts':{group:'TỰ ĐỘNG HÓA',title:'Alerts',description:'Điều khiển cảnh báo In-app, Telegram, gom cảnh báo và routing theo HUB.'},
-    payments:{group:'BÁN HÀNG',title:'Thanh toán & QR',description:'Cấu hình tài khoản nhận tiền và VietQR dùng trong POS/phiếu thu.'},
-    'data-management':{group:'HỆ THỐNG',title:'Quản lý dữ liệu',description:'Lưu trữ, dọn dữ liệu và kiểm soát dữ liệu vận hành của ERP.'},
-    access:{group:'HỆ THỐNG',title:'Phân quyền & tài khoản',description:'Quản lý tài khoản hệ thống và quyền Admin / Operator / Viewer.'},
+  const sectionMeta:Record<string,{title:string;description:string}>={
+    'shipping-carriers':{title:'Vận chuyển',description:'Quản lý đơn vị vận chuyển, tiền tố mã vận đơn và khả năng Tracking/HUB.'},
+    'spx-hubs':{title:'Kho đích & Shipper',description:'Cấu hình HUB đích, alias nhận diện SPX và Shipper phụ trách theo khu vực.'},
+    tracking:{title:'Tracking',description:'Chu kỳ quét, provider, mapping trạng thái và hành vi tự động của Tracking Engine.'},
+    'tracking-alerts':{title:'Alerts',description:'Quy định trạng thái nào tạo cảnh báo, kênh In-app/Telegram và thời gian gom chống spam.'},
+    telegram:{title:'Telegram',description:'Cấu hình Bot, Chat ID, retry và routing nhóm Telegram theo HUB.'},
+    payments:{title:'Thanh toán & QR',description:'Cấu hình tài khoản nhận tiền và VietQR dùng trong POS/phiếu thu.'},
+    access:{title:'Tài khoản & quyền',description:'Quản lý tài khoản hệ thống và quyền Admin / Operator / Viewer.'},
+    'data-management':{title:'Dữ liệu',description:'Lưu trữ, dọn dữ liệu và kiểm soát dữ liệu vận hành của ERP.'},
   }
   const activeMeta=sectionMeta[section]??sectionMeta['shipping-carriers']
 
-  return <div className="settings-screen settings-screen-v3 settings-screen-v4">
-    <header className="settings-page-head-v4">
-      <div className="settings-page-title-v4">
-        <div>
-          <span className="module-eyebrow">HỆ THỐNG</span>
-          <h1>Cài đặt hệ thống</h1>
-          <p>Cấu hình vận hành, tự động hóa, thanh toán, dữ liệu và quyền truy cập MYNH ERP.</p>
-        </div>
-        <span className="settings-role-badge">{roleLabel}</span>
+  return <div className="settings-screen settings-screen-v3 settings-screen-v5">
+    <header className="settings-page-head-v5">
+      <div>
+        <span className="module-eyebrow">HỆ THỐNG</span>
+        <h1>Cài đặt hệ thống</h1>
+        <p>Cấu hình vận hành, tự động hóa, thanh toán, dữ liệu và quyền truy cập MYNH ERP.</p>
       </div>
-
-      <div className="settings-status-strip-v4" aria-label="Trạng thái hệ thống">
-        <div className={'settings-status-item '+(trackingReady?'ok':'warn')}>
-          <span>Tracking</span>
-          <b>{trackingReady?'Đang hoạt động':'Cần kiểm tra'}</b>
-          <small>{activeProviders.length} provider · Auto {trackingAuto?'ON':'OFF'}</small>
-        </div>
-        <div className={'settings-status-item '+(inAppAlertRules.length?'ok':'warn')}>
-          <span>In-app Alerts</span>
-          <b>{inAppAlertRules.length}/{activeAlertRules.length||5} loại bật</b>
-          <small>{activeAlertRules.length} Alert rule đang active</small>
-        </div>
-        <div className={'settings-status-item '+(telegram?.enabled&&telegramReady?'ok':telegramReady?'idle':'warn')}>
-          <span>Telegram</span>
-          <b>{telegram?.enabled?'Đang gửi':telegramReady?'Sẵn sàng bật':telegramHasChat?'Thiếu Bot Token':'Chưa cấu hình'}</b>
-          <small>{telegramAlertRules.length} loại dùng Telegram</small>
-        </div>
-        <div className={'settings-status-item '+(activeHubs.length?'ok':'warn')}>
-          <span>Kho đích</span>
-          <b>{activeHubs.length} HUB hoạt động</b>
-          <small>{(shipperRows??[]).filter((x:any)=>x.is_active).length} Shipper đang active</small>
-        </div>
-        <div className={'settings-status-item '+(paymentReady?'ok':'idle')}>
-          <span>Thanh toán</span>
-          <b>{paymentReady?'VietQR sẵn sàng':'Chưa hoàn tất'}</b>
-          <small>{(bankTransferResult.data as any)?.bank_name??'Chưa cấu hình ngân hàng'}</small>
-        </div>
-      </div>
+      <span className="settings-role-badge">{roleLabel}</span>
     </header>
 
     {error&&<div className="error-box">Không thể tải cấu hình hệ thống: {error.message}</div>}
 
-    <div className="settings-layout-v4">
-      <nav className="settings-page-tabs-v3 settings-nav-v4" aria-label="Nhóm cài đặt">
-        <div className="settings-nav-group-v4">
-          <span>VẬN HÀNH</span>
-          <Link className={section==='shipping-carriers'?'active':''} href="/settings?section=shipping-carriers">
-            <b>Đơn vị vận chuyển</b><small>Hãng vận chuyển & nhận diện MVD</small>
-          </Link>
-          <Link className={section==='spx-hubs'?'active':''} href="/settings?section=spx-hubs">
-            <b>SPX · Kho đích & Shipper</b><small>HUB, alias & Shipper phụ trách</small>
-          </Link>
+    <nav className="settings-page-tabs-v3 settings-tabs-v5" aria-label="Cài đặt hệ thống">
+      <Link className={section==='shipping-carriers'?'active':''} href="/settings?section=shipping-carriers">Vận chuyển</Link>
+      <Link className={section==='spx-hubs'?'active':''} href="/settings?section=spx-hubs">Kho đích & Shipper</Link>
+      {['admin','operator'].includes(role)&&<Link className={section==='tracking'?'active':''} href="/settings?section=tracking">Tracking</Link>}
+      {['admin','operator'].includes(role)&&<Link className={section==='tracking-alerts'?'active':''} href="/settings?section=tracking-alerts">Alerts</Link>}
+      {['admin','operator'].includes(role)&&<Link className={section==='telegram'?'active':''} href="/settings?section=telegram">Telegram</Link>}
+      <Link className={section==='payments'?'active':''} href="/settings?section=payments">Thanh toán & QR</Link>
+      {role==='admin'&&<Link className={section==='access'?'active':''} href="/settings?section=access">Tài khoản & quyền</Link>}
+      <Link className={section==='data-management'?'active':''} href="/settings?section=data-management">Dữ liệu</Link>
+    </nav>
+
+    <main className="settings-main-v5">
+      <header className="settings-section-head-v5">
+        <div>
+          <h2>{activeMeta.title}</h2>
+          <p>{activeMeta.description}</p>
         </div>
+        {!canEdit&&<span className="settings-readonly-badge">Chỉ xem</span>}
+      </header>
 
-        {['admin','operator'].includes(role)&&<div className="settings-nav-group-v4">
-          <span>TỰ ĐỘNG HÓA</span>
-          <Link className={section==='tracking'?'active':''} href="/settings?section=tracking">
-            <b>Tracking</b><small>Provider, chu kỳ & mapping trạng thái</small>
-          </Link>
-          <Link className={section==='tracking-alerts'?'active':''} href="/settings?section=tracking-alerts">
-            <b>Alerts</b><small>In-app, Telegram & routing</small>
-          </Link>
-        </div>}
-
-        <div className="settings-nav-group-v4">
-          <span>BÁN HÀNG</span>
-          <Link className={section==='payments'?'active':''} href="/settings?section=payments">
-            <b>Thanh toán & QR</b><small>Tài khoản nhận tiền & VietQR</small>
-          </Link>
-        </div>
-
-        <div className="settings-nav-group-v4">
-          <span>HỆ THỐNG</span>
-          <Link className={section==='data-management'?'active':''} href="/settings?section=data-management">
-            <b>Quản lý dữ liệu</b><small>Lưu trữ, dọn dữ liệu & reset</small>
-          </Link>
-          {role==='admin'&&<Link className={section==='access'?'active':''} href="/settings?section=access">
-            <b>Phân quyền & tài khoản</b><small>Admin, Operator & Viewer</small>
-          </Link>}
-        </div>
-      </nav>
-
-      <main className="settings-main-v4">
-        <header className="settings-section-head-v4">
-          <div>
-            <span>{activeMeta.group}</span>
-            <h2>{activeMeta.title}</h2>
-            <p>{activeMeta.description}</p>
-          </div>
-          {!canEdit&&<span className="settings-readonly-badge">Chỉ xem</span>}
-        </header>
-
-        <section className="settings-workspace-v3 settings-workspace-v4">
-      {section==='shipping-carriers'
-        ? <ShippingCarrierSettings carriers={(carrierRows??[]) as any[]} canEdit={canEdit}/>
-        : section==='spx-hubs'
-          ? <DestinationHubSettings
-              configs={configs}
-              shippers={(shipperRows??[]) as any[]}
-              canEdit={canEdit}
-            />
-          : section==='tracking'
-            ? <TrackingSettings
-                runtime={(trackingRuntimeResult.data??null) as any}
-                rules={(trackingRulesResult.data??[]) as any[]}
-                carriers={(carrierRows??[]) as any[]}
-                providers={(trackingProviderResult.data??[]) as any[]}
-                mappings={(trackingMappingsResult.data??[]) as any[]}
-                unknownRaw={unknownRaw}
-                canEdit={canEditTracking}
-                trackingTest={sp.tracking_test??null}
-                trackingMessage={sp.tracking_message??null}
+      <section className="settings-workspace-v3 settings-workspace-v5">
+        {section==='shipping-carriers'
+          ? <ShippingCarrierSettings carriers={(carrierRows??[]) as any[]} canEdit={canEdit}/>
+          : section==='spx-hubs'
+            ? <DestinationHubSettings
+                configs={configs}
+                shippers={(shipperRows??[]) as any[]}
+                canEdit={canEdit}
               />
-          : section==='tracking-alerts'
-            ? <TrackingTelegramSettings
-                telegram={(telegramSettingsResult.data??null) as any}
-                rules={(alertRulesResult.data??[]) as any[]}
-                destinations={(telegramDestinationsResult.data??[]) as any[]}
-                hubs={(hubRows??[]).filter((x:any)=>x.is_active).map((x:any)=>String(x.hub_code))}
-                canEdit={canEditTracking}
-                telegramTest={sp.telegram_test??null}
-                telegramMessage={sp.telegram_message??null}
-              />
+            : section==='tracking'
+              ? <TrackingSettings
+                  runtime={(trackingRuntimeResult.data??null) as any}
+                  rules={(trackingRulesResult.data??[]) as any[]}
+                  carriers={(carrierRows??[]) as any[]}
+                  providers={(trackingProviderResult.data??[]) as any[]}
+                  mappings={(trackingMappingsResult.data??[]) as any[]}
+                  unknownRaw={unknownRaw}
+                  canEdit={canEditTracking}
+                  trackingTest={sp.tracking_test??null}
+                  trackingMessage={sp.tracking_message??null}
+                />
+            : section==='tracking-alerts'
+              ? <TrackingTelegramSettings
+                  telegram={(telegramSettingsResult.data??null) as any}
+                  rules={(alertRulesResult.data??[]) as any[]}
+                  destinations={(telegramDestinationsResult.data??[]) as any[]}
+                  hubs={(hubRows??[]).filter((x:any)=>x.is_active).map((x:any)=>String(x.hub_code))}
+                  canEdit={canEditTracking}
+                  telegramTest={sp.telegram_test??null}
+                  telegramMessage={sp.telegram_message??null}
+                  view="alerts"
+                />
+            : section==='telegram'
+              ? <TrackingTelegramSettings
+                  telegram={(telegramSettingsResult.data??null) as any}
+                  rules={(alertRulesResult.data??[]) as any[]}
+                  destinations={(telegramDestinationsResult.data??[]) as any[]}
+                  hubs={(hubRows??[]).filter((x:any)=>x.is_active).map((x:any)=>String(x.hub_code))}
+                  canEdit={canEditTracking}
+                  telegramTest={sp.telegram_test??null}
+                  telegramMessage={sp.telegram_message??null}
+                  view="telegram"
+                />
             : section==='payments'
               ? <BankTransferSettings config={(bankTransferResult.data??null) as any} canEdit={canEdit}/>
             : section==='access'&&role==='admin'
               ? <SystemAccessSettings users={systemUsers as any[]} currentUserId={user.id}/>
               : <DataManagementSettings
-                activeOrders={activeOrders}
-                archivedOrders={archivedOrders}
-                activeUsers={activeUsers}
-                archivedUsers={archivedUsers}
-                canDelete={role==='admin'}
-                purged={Number.isFinite(purged as number)?purged:null}
-                protectedCount={Number.isFinite(protectedCount as number)?protectedCount:null}
-              />}
-        </section>
-      </main>
-    </div>
+                  activeOrders={activeOrders}
+                  archivedOrders={archivedOrders}
+                  activeUsers={activeUsers}
+                  archivedUsers={archivedUsers}
+                  canDelete={role==='admin'}
+                  purged={Number.isFinite(purged as number)?purged:null}
+                  protectedCount={Number.isFinite(protectedCount as number)?protectedCount:null}
+                />}
+      </section>
+    </main>
   </div>
+
+
 }
