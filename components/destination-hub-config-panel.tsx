@@ -304,10 +304,12 @@ export function DestinationHubSettings({
   configs,
   shippers,
   canEdit,
+  showShipperManager=true,
 }:{
   configs:HubConfig[]
   shippers:Shipper[]
   canEdit:boolean
+  showShipperManager?:boolean
 }){
   const [mode,setMode]=useState<ManagerMode>('hubs')
   const [selectedId,setSelectedId]=useState<string>(configs[0]?.id??'__new__')
@@ -333,8 +335,8 @@ export function DestinationHubSettings({
   }
 
   return <div className="destination-master-detail">
-    <div className="destination-manager-toolbar">
-      <div className="destination-manager-switch">
+    <div className={'destination-manager-toolbar '+(!showShipperManager?'hub-only':'')}>
+      {showShipperManager&&<div className="destination-manager-switch">
         <button
           type="button"
           className={mode==='hubs'?'active':''}
@@ -351,14 +353,14 @@ export function DestinationHubSettings({
           Shipper SPX
           <small>{activeShipperCount} hoạt động</small>
         </button>
-      </div>
+      </div>}
       <div className="destination-manager-health">
         <span><i className="green"/>{activeHubCount} HUB bật</span>
         <span><i className="blue"/>{activeShipperCount} Shipper</span>
       </div>
     </div>
 
-    {mode==='hubs'
+    {(!showShipperManager||mode==='hubs')
       ? <div className="destination-master-grid">
           <aside className="destination-hub-rail">
             <div className="destination-hub-rail-head">
