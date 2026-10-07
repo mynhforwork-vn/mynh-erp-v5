@@ -756,18 +756,21 @@ export function OrderEditorForm({
               </select>
             </label>
             <label>Tag Voucher
-              <select
+              <input
                 name="voucher_tag"
                 value={v.voucher_tag??''}
                 onChange={e=>updateVoucher(i,{voucher_tag:e.target.value})}
-              >
-                <option value="">— Chọn tag —</option>
-                {voucherTagOptions.map(option=><option key={option} value={option}>{option}</option>)}
-              </select>
+                list="voucher-tag-options"
+                placeholder="Nhập hoặc chọn tag..."
+                autoComplete="off"
+              />
             </label>
           </div>
         </div>)}
       </div>
+      <datalist id="voucher-tag-options">
+        {voucherTagOptions.map(option=><option key={option} value={option}/>)}
+      </datalist>
     </section>
 
     <section className="form-section order-cod-section">
