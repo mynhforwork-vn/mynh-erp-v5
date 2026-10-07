@@ -6443,3 +6443,72 @@ body{
     margin:0!important;
   }
 }
+
+
+/* =====================================================================
+   MYNH ERP — Desktop Sidebar Stability Fix V2
+   Sidebar stays pinned; only the navigation list scrolls.
+   ===================================================================== */
+@media(min-width:901px){
+  .brand-shell-v1>.sidebar{
+    position:sticky!important;
+    top:0!important;
+    z-index:950!important;
+    width:auto!important;
+    min-width:0!important;
+    height:100vh!important;
+    min-height:100vh!important;
+    max-height:100vh!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+  }
+
+  .brand-shell-v1>.sidebar>.brand{
+    flex:0 0 auto!important;
+    min-width:0!important;
+  }
+
+  .brand-shell-v1>.sidebar>.nav{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    width:100%!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain!important;
+    scrollbar-gutter:stable!important;
+    scrollbar-width:thin!important;
+    scrollbar-color:#C5D0D9 transparent!important;
+  }
+  .brand-shell-v1>.sidebar>.nav::-webkit-scrollbar{
+    width:4px!important;
+  }
+  .brand-shell-v1>.sidebar>.nav::-webkit-scrollbar-track{
+    background:transparent!important;
+  }
+  .brand-shell-v1>.sidebar>.nav::-webkit-scrollbar-thumb{
+    border-radius:999px!important;
+    background:#C5D0D9!important;
+  }
+
+  .brand-shell-v1>.sidebar>.sidebar-foot{
+    position:relative!important;
+    z-index:2!important;
+    flex:0 0 auto!important;
+    margin-top:7px!important;
+    background:linear-gradient(180deg,rgba(242,246,249,0),#F2F6F9 18%)!important;
+  }
+
+  .brand-shell-v1.desktop-sidebar-collapsed>.sidebar{
+    overflow:hidden!important;
+  }
+
+  .brand-shell-v1.desktop-sidebar-collapsed>.sidebar>.nav{
+    padding-right:0!important;
+    scrollbar-width:none!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed>.sidebar>.nav::-webkit-scrollbar{
+    display:none!important;
+  }
+}
