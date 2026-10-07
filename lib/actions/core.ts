@@ -672,38 +672,8 @@ export async function deleteOrderPermanent(formData:FormData){
   const expected=String(row.shopee_order_id??row.id.slice(0,8))
   if(confirmText!==expected)throw new Error('Mã đơn xác nhận không khớp')
 
-  const [receiveRefs,paymentRefs,transferRefs]=await Promise.all([
-    supabase.from('receive_batch_details').select('*',{count:'exact',head:true}).eq('order_id',orderId),
-    supabase.from('shipper_payment_details').select('*',{count:'exact',head:true}).eq('order_id',orderId),
-    supabase.from('transfer_items').select('*',{count:'exact',head:true}).eq('order_id',orderId),
-  ])
-  const refError=receiveRefs.error??paymentRefs.error??transferRefs.error
-  if(refError)throw new Error(refError.message)
-  if((receiveRefs.count??0)+(paymentRefs.count??0)+(transferRefs.count??0)>0){
-    throw new Error('Đơn đã phát sinh nhận hàng, đối soát hoặc chuyển kho nên không thể xóa vĩnh viễn. Hãy giữ ở trạng thái Lưu trữ.')
-  }
-
-  const {error}=await supabase.from('orders').delete().eq('id',orderId)
+  const {error}=await supabase.rpc('delete_orders_permanent_safe',{p_order_ids:[orderId]})
   if(error)throw new Error(error.message)
-
-  await supabase.from('audit_logs').insert({
-    actor_user_id:user.id,
-    module:'ORDERS',
-    action:'DELETE_ORDER_PERMANENT',
-    entity_type:'ORDER',
-    entity_id:orderId,
-    old_value:{
-      shopee_order_id:row.shopee_order_id,
-      erp_user_id:row.erp_user_id,
-      cod:row.cod,
-      order_status:row.order_status,
-      receive_status:row.receive_status,
-      warehouse_status:row.warehouse_status,
-      archived_at:row.archived_at,
-    },
-    new_value:{deleted:true},
-    source:'USER',
-  })
 
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase/tracking')
@@ -896,42 +866,8 @@ export async function deleteOrdersBulkPermanent(formData:FormData){
   if((rows??[]).length!==orderIds.length)throw new Error('Có đơn không tồn tại hoặc không có quyền truy cập')
   const returnArchive=(rows??[]).every((x:any)=>Boolean(x.archived_at))?'archived':null
 
-  const blockers=await orderDeleteBlockers(supabase,orderIds)
-  if(blockers.error)throw new Error(blockers.error.message)
-  if(blockers.blockedIds.size){
-    const blockedCodes=(rows??[])
-      .filter((x:any)=>blockers.blockedIds.has(String(x.id)))
-      .map((x:any)=>String(x.shopee_order_id??x.id).slice(0,24))
-      .slice(0,8)
-    throw new Error('Có '+blockers.blockedIds.size+' đơn đã phát sinh nhận hàng/đối soát/chuyển kho nên không thể xóa: '+blockedCodes.join(', '))
-  }
-
-  const {error}=await supabase.from('orders').delete().in('id',orderIds)
+  const {error}=await supabase.rpc('delete_orders_permanent_safe',{p_order_ids:orderIds})
   if(error)throw new Error(error.message)
-
-  const audits=(rows??[]).map((row:any)=>({
-    actor_user_id:user.id,
-    module:'ORDERS',
-    action:'DELETE_ORDER_PERMANENT',
-    entity_type:'ORDER',
-    entity_id:String(row.id),
-    old_value:{
-      shopee_order_id:row.shopee_order_id,
-      erp_user_id:row.erp_user_id,
-      cod:row.cod,
-      order_status:row.order_status,
-      receive_status:row.receive_status,
-      warehouse_status:row.warehouse_status,
-      archived_at:row.archived_at,
-      bulk:true,
-    },
-    new_value:{deleted:true,bulk:true},
-    source:'USER',
-  }))
-  if(audits.length){
-    const {error:auditError}=await supabase.from('audit_logs').insert(audits)
-    if(auditError)throw new Error(auditError.message)
-  }
 
   revalidateOrderLifecycle()
   redirect(returnHref('/purchase/orders',returnQuery,{order:null,mode:null,tab:null,archive:returnArchive}))
