@@ -563,8 +563,8 @@ if(await appAlertTrigger.count()){
 }
 const settingsSelectors={
   'Cấu hình vận chuyển':'.shipping-settings-v6',
-  'Tracking':'.tracking-settings-v7',
-  'Thông báo':'.notification-settings-v6',
+  'Tracking':'.tracking-settings-v9',
+  'Thông báo':'.notification-settings-v9',
   'Thanh toán':'.bank-transfer-settings-v6',
   'Dữ liệu':'.data-management-settings-v8',
 }
@@ -582,13 +582,13 @@ for(const name of ['Đơn vị vận chuyển','Kho đích','Shipper']){
   recordInteraction('Shipping subtab '+name,await sub.count()>0)
 }
 await go('/settings?section=tracking')
-for(const name of ['Chu kỳ & trạng thái','Mapping trạng thái']){
-  const sub=page.locator('.tracking-settings-v7 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
+for(const name of ['Vận hành Tracking','Chu kỳ trạng thái','Mapping SPX']){
+  const sub=page.locator('.tracking-settings-v9 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
   recordInteraction('Tracking subtab '+name,await sub.count()>0)
 }
 await go('/settings?section=notifications')
-for(const name of ['Quy tắc','Telegram','Routing HUB']){
-  const sub=page.locator('.notification-settings-v6 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
+for(const name of ['Quy tắc thông báo','Kết nối Telegram','Nhóm theo HUB']){
+  const sub=page.locator('.notification-settings-v9 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
   recordInteraction('Notification subtab '+name,await sub.count()>0)
 }
 
