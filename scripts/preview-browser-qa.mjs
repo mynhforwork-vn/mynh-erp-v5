@@ -170,6 +170,18 @@ for(const path of routes){
   fs.writeFileSync(`${outDir}/summary-partial.json`,JSON.stringify(summary,null,2))
 }
 
+// System dashboard V1 smoke checks.
+await go('/?range=all')
+recordInteraction('System Dashboard V1 renders',await page.locator('.system-dashboard-v1').count()===1)
+recordInteraction('System Dashboard keeps 8 executive KPIs',await page.locator('.system-kpi-strip .system-kpi').count()===8)
+recordInteraction('System Dashboard has operational attention strip',await page.locator('.system-attention-strip').count()===1)
+recordInteraction('System Dashboard shows purchase HUB board',await page.locator('.system-hub-card').count()===1)
+recordInteraction(
+  'System Dashboard exposes quarter and year filters',
+  await page.getByRole('link',{name:'Quý này',exact:true}).count()>0
+  &&await page.getByRole('link',{name:'Năm nay',exact:true}).count()>0
+)
+
 // Non-mutating interaction tests.
 await go('/purchase/accounts')
 if(await page.getByRole('button',{name:'Import TSV'}).count()){
