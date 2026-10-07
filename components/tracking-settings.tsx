@@ -79,7 +79,7 @@ export function TrackingSettings({
   const providerMap=new Map(providers.map(x=>[String(x.carrier).toUpperCase(),x]))
   const canonicalOptions=rules.filter(x=>x.is_active)
 
-  return <div className="tracking-telegram-settings">
+  return <div className="tracking-settings tracking-telegram-settings">
     {trackingTest==='ok'&&<div className="settings-result success">Tracking test thành công: {trackingMessage}</div>}
     {trackingTest==='fail'&&<div className="settings-result error">Tracking test thất bại: {trackingMessage||'Không xác định'}</div>}
 
