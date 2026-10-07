@@ -97,7 +97,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       .order('created_at',{ascending:false})
       .limit(500),
     supabase.from('alert_rule_configs')
-      .select('alert_type,label,enabled,telegram_enabled,batch_window_minutes,sort_order')
+      .select('alert_type,label,enabled,in_app_enabled,telegram_enabled,batch_window_minutes,sort_order')
       .order('sort_order',{ascending:true}),
     supabase.from('telegram_alert_settings')
       .select('enabled,default_chat_id,bot_token_secret_id,retry_minutes,max_attempts,enabled_at')
