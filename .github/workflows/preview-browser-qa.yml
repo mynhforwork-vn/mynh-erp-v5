@@ -15,6 +15,7 @@ on:
       - redesign/account-notifications-v1
       - fix/order-text-recognition-v1
       - redesign/brand-responsive-v1
+      - fix/desktop-polish-v1
       - fix/manual-tracking-response-v1
     paths:
       - app/**
@@ -43,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
-      PREVIEW_URL: https://remediation-76aed41c-mynh-erp-v5.mynh-forwork.workers.dev
+      PREVIEW_URL: https://desktop-polish-v1-mynh-erp-v5.mynh-forwork.workers.dev
       SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
       SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
