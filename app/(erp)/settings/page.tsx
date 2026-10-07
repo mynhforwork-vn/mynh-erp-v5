@@ -40,7 +40,6 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     activeUsersResult,
     archivedUsersResult,
     bankTransferResult,
-    trackingProviderResult,
     trackingRuntimeResult,
     trackingRulesResult,
     trackingMappingsResult,
@@ -75,9 +74,6 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       .select('config_key,bank_id,bank_name,account_no,account_name,qr_template,transfer_prefix,is_active')
       .eq('config_key','DEFAULT')
       .maybeSingle(),
-    supabase.from('tracking_provider_configs')
-      .select('carrier,enabled,adapter_type,endpoint_url,http_method,timeout_ms,auth_header_name,auth_secret_id')
-      .order('carrier',{ascending:true}),
     supabase.from('tracking_runtime_settings')
       .select('auto_tracking_enabled,quiet_start,quiet_end,retry_minutes')
       .eq('id','main')
@@ -140,7 +136,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
 
   const error=carrierError??hubError??shipperError??assignmentError
     ??activeOrdersResult.error??archivedOrdersResult.error??activeUsersResult.error??archivedUsersResult.error
-    ??bankTransferResult.error??trackingProviderResult.error??trackingRuntimeResult.error??trackingRulesResult.error??trackingMappingsResult.error??unknownTrackingEventsResult.error??alertRulesResult.error??telegramSettingsResult.error??telegramDestinationsResult.error
+    ??bankTransferResult.error??trackingRuntimeResult.error??trackingRulesResult.error??trackingMappingsResult.error??unknownTrackingEventsResult.error??alertRulesResult.error??telegramSettingsResult.error??telegramDestinationsResult.error
     ??systemUsersResult.error
 
   const unknownMap=new Map<string,{carrier:string;raw_code:string;raw_name:string|null;description:string|null;count:number}>()
@@ -202,8 +198,6 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
             ? <TrackingSettings
                 runtime={(trackingRuntimeResult.data??null) as any}
                 rules={(trackingRulesResult.data??[]) as any[]}
-                carriers={(carrierRows??[]) as any[]}
-                providers={(trackingProviderResult.data??[]) as any[]}
                 mappings={(trackingMappingsResult.data??[]) as any[]}
                 unknownRaw={unknownRaw}
                 canEdit={canEditTracking}
