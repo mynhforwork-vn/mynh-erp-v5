@@ -25,12 +25,14 @@ type AlertRule={
   alert_type:string
   label:string
   enabled:boolean
+  in_app_enabled:boolean
   telegram_enabled:boolean
   batch_window_minutes:number
   sort_order:number
 }
 
 const ALERTS=[
+  ['PICKUP_FAILED','Lấy hàng không thành công'],
   ['ARRIVED_DESTINATION_HUB','Đến kho đích'],
   ['OUT_FOR_DELIVERY','Đang giao'],
   ['DELIVERED','Giao thành công'],
@@ -98,6 +100,10 @@ export function TrackingTelegramSettings({
             <span>Bật Alert</span>
           </label>
           <label className="settings-check">
+            <input type="checkbox" name="in_app_enabled" defaultChecked={rule.in_app_enabled} disabled={!canEdit}/>
+            <span>In-app</span>
+          </label>
+          <label className="settings-check">
             <input type="checkbox" name="telegram_enabled" defaultChecked={rule.telegram_enabled} disabled={!canEdit}/>
             <span>Telegram</span>
           </label>
@@ -106,7 +112,7 @@ export function TrackingTelegramSettings({
       </div>
 
       <div className="settings-inline-note">
-        <b>Chống spam theo nhóm.</b> Cùng HUB + cùng loại cảnh báo sẽ chờ theo cửa sổ gom rồi gửi chung một message. Đặt 0 phút nếu muốn gửi ngay.
+        <b>Hai kênh độc lập.</b> In-app hiện trong chuông thông báo của ERP; Telegram gửi ra nhóm/chat đã cấu hình. Cửa sổ gom 0–60 phút dùng để chống spam theo HUB + loại cảnh báo; đặt 0 phút nếu muốn xử lý ngay.
       </div>
     </section>
 
