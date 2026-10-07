@@ -91,7 +91,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       .order('raw_code',{ascending:true})
       .limit(500),
     supabase.from('tracking_events')
-      .select('raw_status_code,raw_status_name,raw_description,source,created_at')
+      .select('raw_status_code,raw_status_name,raw_description,source,created_at,shipment:shipments(carrier)')
       .eq('normalized_status','UNKNOWN')
       .order('created_at',{ascending:false})
       .limit(500),
@@ -143,7 +143,8 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
   for(const row of (unknownTrackingEventsResult.data??[]) as any[]){
     const rawCode=String(row.raw_status_code??'').trim()
     if(!rawCode)continue
-    const carrier='SPX'
+    const joined=Array.isArray(row.shipment)?row.shipment[0]:row.shipment
+    const carrier=String(joined?.carrier??'UNKNOWN').trim().toUpperCase()||'UNKNOWN'
     const key=carrier+'|'+rawCode
     const current=unknownMap.get(key)
     if(current)current.count+=1
