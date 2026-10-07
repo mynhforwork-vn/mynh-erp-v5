@@ -47,6 +47,7 @@ export function TrackingTelegramSettings({
   canEdit,
   telegramTest,
   telegramMessage,
+  view='all',
 }:{
   telegram:TelegramSettings|null
   rules:AlertRule[]
@@ -55,32 +56,53 @@ export function TrackingTelegramSettings({
   canEdit:boolean
   telegramTest?:string|null
   telegramMessage?:string|null
+  view?:'all'|'alerts'|'telegram'
 }){
   const sortedRules=[...rules].sort((a,b)=>a.sort_order-b.sort_order)
+  const showAlerts=view!=='telegram'
+  const showTelegram=view!=='alerts'
 
   return <div className="tracking-telegram-settings">
-    {telegramTest==='ok'&&<div className="settings-result success">Telegram test: gửi thành công.</div>}
-    {telegramTest==='fail'&&<div className="settings-result error">Telegram test thất bại: {telegramMessage||'Không xác định'}</div>}
+    {showTelegram&&telegramTest==='ok'&&<div className="settings-result success">Telegram test: gửi thành công.</div>}
+    {showTelegram&&telegramTest==='fail'&&<div className="settings-result error">Telegram test thất bại: {telegramMessage||'Không xác định'}</div>}
 
-    <section className="settings-block">
+    {showAlerts&&<section className="settings-block settings-flat-block">
       <div className="settings-block-head">
         <div>
           <span className="module-eyebrow">ALERT RULES</span>
           <h3>Quy tắc cảnh báo vận chuyển</h3>
-          <p>Tracking chỉ tạo transition. Alerts quyết định transition nào được cảnh báo và gom bao lâu trước khi gửi.</p>
+          <p>Mỗi trạng thái có thể bật độc lập cho In-app và Telegram; thời gian gom dùng chung để chống spam.</p>
         </div>
-        <span className="settings-mini-status">{sortedRules.filter(x=>x.enabled).length} loại đang bật</span>
       </div>
 
-      <div className="provider-settings-list">
-        {sortedRules.map(rule=><form action={saveAlertRuleConfig} className="provider-settings-row" key={rule.alert_type}>
+      <div className="settings-table-v5">
+        <div className="settings-table-head alerts-rule-grid-v5">
+          <span>Cảnh báo</span>
+          <span>Bật Alert</span>
+          <span>In-app</span>
+          <span>Telegram</span>
+          <span>Gom</span>
+          <span></span>
+        </div>
+        {sortedRules.map(rule=><form action={saveAlertRuleConfig} className="settings-table-row alerts-rule-grid-v5" key={rule.alert_type}>
           <input type="hidden" name="alert_type" value={rule.alert_type}/>
           <div className="provider-name">
             <b>{rule.label}</b>
             <span>{rule.alert_type}</span>
           </div>
-          <label className="settings-field compact">
-            <span>Gom trong</span>
+          <label className="settings-check compact-check">
+            <input type="checkbox" name="enabled" defaultChecked={rule.enabled} disabled={!canEdit}/>
+            <span>Alert</span>
+          </label>
+          <label className="settings-check compact-check">
+            <input type="checkbox" name="in_app_enabled" defaultChecked={rule.in_app_enabled} disabled={!canEdit}/>
+            <span>In-app</span>
+          </label>
+          <label className="settings-check compact-check">
+            <input type="checkbox" name="telegram_enabled" defaultChecked={rule.telegram_enabled} disabled={!canEdit}/>
+            <span>Telegram</span>
+          </label>
+          <label className="settings-field inline-field-v5">
             <input
               type="number"
               name="batch_window_minutes"
@@ -90,43 +112,30 @@ export function TrackingTelegramSettings({
               defaultValue={rule.batch_window_minutes}
               disabled={!canEdit}
             />
+            <span>phút</span>
           </label>
-          <div className="settings-field compact">
-            <span>Đơn vị</span>
-            <b>phút</b>
-          </div>
-          <label className="settings-check">
-            <input type="checkbox" name="enabled" defaultChecked={rule.enabled} disabled={!canEdit}/>
-            <span>Bật Alert</span>
-          </label>
-          <label className="settings-check">
-            <input type="checkbox" name="in_app_enabled" defaultChecked={rule.in_app_enabled} disabled={!canEdit}/>
-            <span>In-app</span>
-          </label>
-          <label className="settings-check">
-            <input type="checkbox" name="telegram_enabled" defaultChecked={rule.telegram_enabled} disabled={!canEdit}/>
-            <span>Telegram</span>
-          </label>
-          {canEdit&&<div className="provider-row-actions"><button className="button small primary" type="submit">Lưu</button></div>}
+          {canEdit?<button className="button small" type="submit">Lưu</button>:<span/>}
         </form>)}
       </div>
 
       <div className="settings-inline-note">
-        <b>Hai kênh độc lập.</b> In-app hiện trong chuông thông báo của ERP; Telegram gửi ra nhóm/chat đã cấu hình. Cửa sổ gom 0–60 phút dùng để chống spam theo HUB + loại cảnh báo; đặt 0 phút nếu muốn xử lý ngay.
+        <b>Hai kênh độc lập.</b> Tắt Telegram không làm mất thông báo In-app. Đặt thời gian gom 0 phút nếu muốn xử lý ngay.
       </div>
-    </section>
+    </section>}
 
-    <section className="settings-block">
+    {showTelegram&&<section className="settings-block settings-flat-block">
       <div className="settings-block-head">
         <div>
-          <span className="module-eyebrow">TELEGRAM DELIVERY</span>
+          <span className="module-eyebrow">TELEGRAM</span>
           <h3>Bot & chính sách gửi</h3>
-          <p>Token lưu trong Supabase Vault. Khi Telegram tắt, hệ thống không gửi bù các cảnh báo cũ khi bật lại.</p>
+          <p>Bot Token lưu trong Supabase Vault. Chat ID mặc định dùng khi HUB chưa có routing riêng.</p>
         </div>
-        <span className={'settings-mini-status '+(telegram?.enabled?'on':'')}>{telegram?.enabled?'Đang bật':'Đang tắt'}</span>
+        <span className={'settings-mini-status '+(telegram?.enabled?'on':'')}>
+          {telegram?.enabled?'Đang gửi':telegram?.bot_token_secret_id?'Sẵn sàng bật':'Thiếu Bot Token'}
+        </span>
       </div>
 
-      <form action={saveTelegramAlertSettings} className="telegram-main-form">
+      <form action={saveTelegramAlertSettings} className="telegram-main-form telegram-main-form-v5">
         <div className="telegram-config-grid">
           <label className="settings-field">
             <span>Bot Token</span>
@@ -147,7 +156,7 @@ export function TrackingTelegramSettings({
             />
           </label>
           <label className="settings-field">
-            <span>Retry khi gửi lỗi (phút)</span>
+            <span>Retry khi gửi lỗi</span>
             <input
               name="retry_minutes"
               defaultValue={(telegram?.retry_minutes??[5,15,30,60]).join(', ')}
@@ -166,6 +175,9 @@ export function TrackingTelegramSettings({
               disabled={!canEdit}
             />
           </label>
+        </div>
+
+        <div className="settings-actions settings-actions-v5">
           <label className="settings-check">
             <input type="checkbox" name="enabled" defaultChecked={Boolean(telegram?.enabled)} disabled={!canEdit}/>
             <span>Bật gửi Telegram</span>
@@ -174,30 +186,27 @@ export function TrackingTelegramSettings({
             <input type="checkbox" name="clear_token"/>
             <span>Xóa Bot Token</span>
           </label>}
+          {canEdit&&<button className="button primary" type="submit">Lưu Telegram</button>}
         </div>
-
-        {canEdit&&<div className="settings-actions">
-          <button className="button primary" type="submit">Lưu Telegram</button>
-        </div>}
       </form>
 
       {canEdit&&<form action={testTelegramConnection} className="telegram-test-form">
         <label className="settings-field">
-          <span>Chat ID test (để trống dùng mặc định)</span>
+          <span>Chat ID test</span>
           <input name="chat_id" placeholder={telegram?.default_chat_id??'-100...'}/>
         </label>
-        <button className="button" type="submit">Gửi tin nhắn thử</button>
+        <button className="button" type="submit">Kiểm tra kết nối</button>
       </form>}
-    </section>
+    </section>}
 
-    <section className="settings-block">
+    {showTelegram&&<section className="settings-block settings-flat-block">
       <div className="settings-block-head">
         <div>
           <span className="module-eyebrow">ROUTING THEO HUB</span>
           <h3>Nhóm Telegram theo HUB</h3>
-          <p>Nếu HUB không có cấu hình riêng, hệ thống dùng Chat ID mặc định.</p>
+          <p>HUB không có route riêng sẽ dùng Chat ID mặc định.</p>
         </div>
-        <span className="settings-mini-status">{destinations.filter(x=>x.is_active).length} HUB có nhóm riêng</span>
+        <span className="settings-mini-status">{destinations.filter(x=>x.is_active).length} route riêng</span>
       </div>
 
       <div className="telegram-destinations">
@@ -241,7 +250,7 @@ export function TrackingTelegramSettings({
                   <option value="" disabled>Chọn HUB</option>
                   {hubs.map(h=><option key={h} value={h}>{h}</option>)}
                 </select>
-              : <input name="destination_hub" placeholder="Tạo HUB trước trong SPX · Kho đích" required/>}
+              : <input name="destination_hub" placeholder="Tạo HUB trước trong Kho đích & Shipper" required/>}
           </label>
           <label className="settings-field">
             <span>Chat ID</span>
@@ -257,9 +266,9 @@ export function TrackingTelegramSettings({
             <input type="checkbox" name="is_active" defaultChecked/>
             <span>Bật</span>
           </label>
-          <button className="button small primary" type="submit">+ Thêm nhóm HUB</button>
+          <button className="button small primary" type="submit">+ Thêm route</button>
         </form>}
       </div>
-    </section>
+    </section>}
   </div>
 }
