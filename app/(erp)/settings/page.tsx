@@ -185,8 +185,8 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       {['admin','operator'].includes(role)&&<Link className={section==='tracking'?'active':''} href="/settings?section=tracking">Tracking</Link>}
       {['admin','operator'].includes(role)&&<Link className={section==='notifications'?'active':''} href="/settings?section=notifications">Thông báo</Link>}
       <Link className={section==='payments'?'active':''} href="/settings?section=payments">Thanh toán</Link>
-      <Link className={section==='data-management'?'active':''} href="/settings?section=data-management">Quản lý dữ liệu</Link>
-      {role==='admin'&&<Link className={section==='access'?'active':''} href="/settings?section=access">Phân quyền & tài khoản</Link>}
+      <Link className={section==='data-management'?'active':''} href="/settings?section=data-management">Dữ liệu</Link>
+      {role==='admin'&&<Link className={section==='access'?'active':''} href="/settings?section=access">Tài khoản & quyền</Link>}
     </nav>
 
     <section className="settings-workspace-v3 settings-workspace-v6 settings-workspace-v8">
