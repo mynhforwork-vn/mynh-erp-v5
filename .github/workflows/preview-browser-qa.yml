@@ -129,7 +129,7 @@ jobs:
         run: node scripts/mobile-full-qa.mjs
 
       - name: Run Preview browser QA
-        if: steps.browser_qa_prereq.outputs.ready == 'true'
+        if: always() && steps.browser_qa_prereq.outputs.ready == 'true'
         run: node scripts/preview-browser-qa.mjs
 
       - name: Run Preview mutation QA
