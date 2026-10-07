@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SystemSlidebar } from '@/components/system-slidebar'
 import { formatDateTime,formatMoney,statusLabel } from '@/lib/format'
 import { PrintPageButton } from '@/components/print-page-button'
 import { SalesHistoryActions } from '@/components/sales-history-actions'
@@ -32,7 +33,7 @@ export function ContextSalePanel({
   sale,activeTab,backHref,closeHref,infoHref,productsHref,paymentHref,historyHref,
   openModuleHref,canOperate,receiptQR='',receiptQRAmount=0,receiptQRDescription='',bankConfig,parentLabel,
 }:Props){
-  return <aside className="sales-history-panel context-sale-panel mynh-slide-panel">
+  return <SystemSlidebar className="sales-history-panel context-sale-panel">
     <div className="sales-history-panel-head context-stack-head">
       <Link className="context-stack-back" href={backHref} aria-label="Quay lại">←</Link>
       <div className="context-stack-title">
