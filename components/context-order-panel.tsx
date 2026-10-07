@@ -155,5 +155,5 @@ export function ContextOrderPanel({
 
       <div className="panel-meta">Tạo đơn: {formatDateTime(order.created_at)}</div>
     </div>
-  </aside>
+  </SystemSlidebar>
 }
