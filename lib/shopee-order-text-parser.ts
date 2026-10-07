@@ -186,8 +186,8 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
     result.order_date_local=precedingTimestamp(lines,placedIndex)??undefined
   }
   if(!result.order_date_local){
-    const timestamps=lines.map(parseTimestamp).filter((x):x is string=>Boolean(x)).sort()
-    if(timestamps.length)result.order_date_local=timestamps[0]
+    const explicitOrderDate=joined.match(/(?:Thời gian đặt|Ngày đặt hàng)\s*[:\-]?\s*(\d{1,2}:\d{2}\s+\d{1,2}[-\/]\d{1,2}[-\/]\d{4})/i)
+    if(explicitOrderDate)result.order_date_local=parseTimestamp(explicitOrderDate[1])??undefined
   }
 
   const totalGoodsIndex=lines.findIndex(line=>/^Tổng tiền hàng$/i.test(line))
