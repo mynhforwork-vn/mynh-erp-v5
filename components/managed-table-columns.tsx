@@ -28,8 +28,26 @@ export function useManagedColumns<K extends string>(storageKey:string,all:readon
   },[storageKey])
 
   useEffect(()=>{
-    try{localStorage.setItem(storageKey,JSON.stringify({order,hidden}))}catch{}
+    try{
+      const value=JSON.stringify({order,hidden})
+      localStorage.setItem(storageKey,value)
+      window.dispatchEvent(new CustomEvent('mynh-managed-columns',{detail:{storageKey,value}}))
+    }catch{}
   },[storageKey,order,hidden])
+
+  useEffect(()=>{
+    const sync=(event:Event)=>{
+      const detail=(event as CustomEvent).detail
+      if(!detail||detail.storageKey!==storageKey)return
+      try{
+        const parsed=JSON.parse(detail.value)
+        if(Array.isArray(parsed.order))setOrder(parsed.order)
+        if(Array.isArray(parsed.hidden))setHidden(parsed.hidden)
+      }catch{}
+    }
+    window.addEventListener('mynh-managed-columns',sync)
+    return ()=>window.removeEventListener('mynh-managed-columns',sync)
+  },[storageKey])
 
   useEffect(()=>{
     const close=(event:MouseEvent)=>{
@@ -106,4 +124,44 @@ export function ManagedColumnsMenu<K extends string>({
       </div>
     </div>}
   </div>
+}
+
+
+export function useManagedSort<K extends string>(storageKey:string,defaultKey:K,defaultDir:'asc'|'desc'='asc'){
+  const [key,setKey]=useState<K>(defaultKey)
+  const [dir,setDir]=useState<'asc'|'desc'>(defaultDir)
+
+  useEffect(()=>{
+    try{
+      const raw=localStorage.getItem(storageKey)
+      if(!raw)return
+      const parsed=JSON.parse(raw)
+      if(parsed?.key)setKey(parsed.key)
+      if(parsed?.dir==='asc'||parsed?.dir==='desc')setDir(parsed.dir)
+    }catch{}
+  },[storageKey])
+
+  useEffect(()=>{
+    try{localStorage.setItem(storageKey,JSON.stringify({key,dir}))}catch{}
+  },[storageKey,key,dir])
+
+  function toggle(next:K){
+    if(next===key)setDir(value=>value==='asc'?'desc':'asc')
+    else{setKey(next);setDir('asc')}
+  }
+  return {key,dir,toggle,setKey,setDir}
+}
+
+export function SortableHeader<K extends string>({
+  column,label,sort,onSort,
+}:{
+  column:K
+  label:string
+  sort:{key:K,dir:'asc'|'desc'}
+  onSort:(column:K)=>void
+}){
+  const active=sort.key===column
+  return <button className="managed-sort-head" type="button" onClick={()=>onSort(column)}>
+    <span>{label}</span><i>{active?(sort.dir==='asc'?'↑':'↓'):'↕'}</i>
+  </button>
 }
