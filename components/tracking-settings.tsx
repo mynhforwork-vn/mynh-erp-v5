@@ -42,7 +42,7 @@ type UnknownRaw={
   description:string|null
   count:number
 }
-type Tab='rules'|'mapping'
+type Tab='operation'|'cycle'|'mapping'
 
 const PHASE_LABEL:Record<string,string>={
   PRE_SHIP:'Trước lấy hàng',
@@ -79,7 +79,7 @@ export function TrackingSettings({
   trackingTest?:string|null
   trackingMessage?:string|null
 }){
-  const [tab,setTab]=useState<Tab>('rules')
+  const [tab,setTab]=useState<Tab>('operation')
   const [editingMapping,setEditingMapping]=useState<string|null>(null)
 
   const providerMap=useMemo(()=>new Map(providers.map(x=>[String(x.carrier).toUpperCase(),x])),[providers])
@@ -90,26 +90,30 @@ export function TrackingSettings({
   const spxCarrier=trackingCarriers.find(x=>x.carrier_code.toUpperCase()==='SPX')
   const spxProvider=providerMap.get('SPX')
   const advancedCarriers=trackingCarriers.filter(x=>x.carrier_code.toUpperCase()!=='SPX')
+  const autoStatusCount=sortedRules.filter(x=>!x.terminal&&x.auto_tracking).length
 
-  return <div className="tracking-settings tracking-settings-v7">
+  return <div className="tracking-settings tracking-settings-v9">
     {trackingTest==='ok'&&<div className="settings-result success">Tracking test thành công: {trackingMessage}</div>}
     {trackingTest==='fail'&&<div className="settings-result error">Tracking test thất bại: {trackingMessage||'Không xác định'}</div>}
 
-    <div className="destination-detail-tabs settings-subtabs-v6 tracking-subtabs-v7">
-      <button type="button" className={tab==='rules'?'active':''} onClick={()=>setTab('rules')}>
-        Chu kỳ & trạng thái <span>{sortedRules.length}</span>
+    <div className="destination-detail-tabs settings-subtabs-v6 tracking-subtabs-v9">
+      <button type="button" className={tab==='operation'?'active':''} onClick={()=>setTab('operation')}>
+        Vận hành Tracking
+      </button>
+      <button type="button" className={tab==='cycle'?'active':''} onClick={()=>setTab('cycle')}>
+        Chu kỳ trạng thái <span>{sortedRules.length}</span>
       </button>
       <button type="button" className={tab==='mapping'?'active':''} onClick={()=>setTab('mapping')}>
-        Mapping trạng thái <span>{mappings.length}</span>
+        Mapping SPX <span>{mappings.length}</span>
       </button>
     </div>
 
-    {tab==='rules'&&<div className="settings-subtab-body-v6 tracking-rules-body-v7">
+    {tab==='operation'&&<div className="settings-subtab-body-v6 tracking-operation-body-v9">
       <section className="tracking-runtime-panel-v7">
         <div className="tracking-runtime-head-v7">
           <div>
-            <span className="module-eyebrow">TRACKING ENGINE</span>
             <h3>Quy tắc vận hành</h3>
+            <p>Điều khiển Auto Tracking, giờ nghỉ và lịch retry khi provider lỗi.</p>
           </div>
           <span className={'tracking-engine-state-v7 '+(runtime?.auto_tracking_enabled!==false?'on':'')}>
             {runtime?.auto_tracking_enabled!==false?'Đang tự động':'Đang tắt'}
@@ -151,7 +155,7 @@ export function TrackingSettings({
               {spxProvider?.enabled?'Đã kết nối':'Đang tắt'}
             </span>
             <span>GET</span>
-            <span>10 giây timeout</span>
+            <span>Timeout 10 giây</span>
             <span>Không cần API key</span>
           </div>
         </div>
@@ -163,7 +167,7 @@ export function TrackingSettings({
         </form>}
 
         {canEdit&&advancedCarriers.length>0&&<details className="tracking-advanced-provider-v7">
-          <summary>Cấu hình nguồn Tracking nâng cao ({advancedCarriers.length})</summary>
+          <summary>Nguồn Tracking nâng cao ({advancedCarriers.length})</summary>
           <div className="provider-settings-list">
             {advancedCarriers.map(carrier=>{
               const code=carrier.carrier_code.toUpperCase()
@@ -200,16 +204,23 @@ export function TrackingSettings({
         </details>}
       </section>
 
-      <section className="tracking-state-panel-v7">
+      <div className="tracking-operation-note-v9">
+        <b>Luồng hiện tại:</b>
+        <span>SPX Direct → chuẩn hóa trạng thái → cập nhật shipment → tạo Alert nếu transition thay đổi.</span>
+      </div>
+    </div>}
+
+    {tab==='cycle'&&<div className="settings-subtab-body-v6 tracking-cycle-body-v9">
+      <section className="tracking-state-panel-v7 tracking-full-panel-v9">
         <div className="tracking-table-title-v7">
           <div>
-            <h3>Chu kỳ theo trạng thái</h3>
-            <p>Hiển thị đủ {sortedRules.length} trạng thái. Bảng có thanh cuộn riêng; header luôn cố định.</p>
+            <h3>Chu kỳ trạng thái</h3>
+            <p>Toàn bộ {sortedRules.length} trạng thái Tracking. Header cố định; cuộn trong bảng, không kéo cả trang.</p>
           </div>
-          <span>{sortedRules.filter(x=>!x.terminal&&x.auto_tracking).length} trạng thái Auto</span>
+          <span>{autoStatusCount} trạng thái Auto</span>
         </div>
 
-        <div className="tracking-table-scroll-v7">
+        <div className="tracking-table-scroll-v7 tracking-table-scroll-full-v9">
           <div className="tracking-rule-table-v7">
             <div className="tracking-rule-head-v7">
               <span>Trạng thái MYNH ERP</span>
@@ -249,7 +260,7 @@ export function TrackingSettings({
       </section>
     </div>}
 
-    {tab==='mapping'&&<div className="settings-subtab-body-v6 tracking-mapping-body-v7">
+    {tab==='mapping'&&<div className="settings-subtab-body-v6 tracking-mapping-body-v9">
       {unknownRaw.length>0&&<section className="tracking-unknown-panel-v7">
         <div className="tracking-table-title-v7">
           <div>
@@ -276,21 +287,21 @@ export function TrackingSettings({
         </div>
       </section>}
 
-      <section className="tracking-mapping-panel-v7">
+      <section className="tracking-mapping-panel-v7 tracking-full-panel-v9">
         <div className="tracking-table-title-v7">
           <div>
-            <h3>Mapping trạng thái SPX → MYNH ERP</h3>
-            <p>Mặc định ở chế độ đọc. Chỉ dòng đang sửa mới hiện form chỉnh sửa.</p>
+            <h3>Mapping SPX → MYNH ERP</h3>
+            <p>Đọc trước, chỉ dòng bấm Sửa mới chuyển sang form chỉnh sửa.</p>
           </div>
           <span>{mappings.length} mapping</span>
         </div>
 
-        <div className="tracking-mapping-scroll-v7">
+        <div className="tracking-mapping-scroll-v7 tracking-mapping-scroll-full-v9">
           <div className="tracking-mapping-table-v7">
             <div className="tracking-mapping-head-v7">
               <span>Raw code</span>
               <span>Trạng thái SPX</span>
-              <span>Chuẩn hóa MYNH ERP</span>
+              <span>Trạng thái MYNH ERP</span>
               <span>Trạng thái</span>
               <span></span>
             </div>
@@ -340,7 +351,7 @@ export function TrackingSettings({
       </section>
 
       <div className="settings-inline-note tracking-mapping-note-v7">
-        <b>Nguyên tắc:</b> Raw code từ SPX được chuẩn hóa sang một trạng thái MYNH ERP. Riêng <code>F599</code> chỉ thành “Đến kho đích” khi location khớp HUB/alias trong <Link href="/settings?section=shipping&shipping_tab=hubs">Cấu hình vận chuyển → Kho đích</Link>.
+        <b>Nguyên tắc:</b> Raw code SPX được chuẩn hóa về một trạng thái MYNH ERP. Riêng <code>F599</code> chỉ là “Đến kho đích” khi location khớp HUB/alias trong <Link href="/settings?section=shipping&shipping_tab=hubs">Cấu hình vận chuyển → Kho đích</Link>.
       </div>
     </div>}
   </div>
