@@ -44,7 +44,7 @@ export function nextTrackAt(from:Date,status:TrackingStatus):Date|null{
   const hour=get('hour')
   if(hour>=2&&hour<6){
     const y=get('year'),m=get('month'),d=get('day')
-    return new Date(Date.UTC(y,m-1,d,23,0,0))
+    return new Date(Date.UTC(y,m-1,d,23,0,0)-24*60*60*1000)
   }
   return candidate
 }
