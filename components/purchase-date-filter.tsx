@@ -9,6 +9,7 @@ export function PurchaseDateFilter({
   label,
   basePath='/purchase',
   showAll=false,
+  extended=false,
   preserveParams={},
 }:{
   activeRange:RangeKey
@@ -17,6 +18,7 @@ export function PurchaseDateFilter({
   label:string
   basePath?:string
   showAll?:boolean
+  extended?:boolean
   preserveParams?:Record<string,string|undefined|null>
 }){
   function rangeHref(nextRange:RangeKey){
@@ -37,6 +39,8 @@ export function PurchaseDateFilter({
       <Link className={activeRange==='today'?'active':''} href={rangeHref('today')}>Hôm nay</Link>
       <Link className={activeRange==='week'?'active':''} href={rangeHref('week')}>Tuần này</Link>
       <Link className={activeRange==='month'?'active':''} href={rangeHref('month')}>Tháng này</Link>
+      {extended&&<Link className={activeRange==='quarter'?'active':''} href={rangeHref('quarter')}>Quý này</Link>}
+      {extended&&<Link className={activeRange==='year'?'active':''} href={rangeHref('year')}>Năm nay</Link>}
       {showAll&&<Link className={activeRange==='all'?'active':''} href={rangeHref('all')}>Toàn thời gian</Link>}
     </div>
 
