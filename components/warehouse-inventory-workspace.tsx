@@ -160,7 +160,7 @@ export function WarehouseInventoryWorkspace({
     </section>
 
     {active&&<aside
-      className="whx-detail-panel whx-detail-panel-v2"
+      className="whx-detail-panel whx-detail-panel-v2 mynh-slide-panel"
       style={{
         minWidth:0,
         height:'calc(100vh - 188px)',
