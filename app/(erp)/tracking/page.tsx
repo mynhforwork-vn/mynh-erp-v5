@@ -434,7 +434,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       </div>
     </section>
 
-    <div className="tracking-hub-stack tracking-hub-stack-v2">
+    <div className={'tracking-content-workspace '+(contextOrder?'with-panel':'')}>
+      <div className="tracking-hub-stack tracking-hub-stack-v2">
       {!grouped.length
         ? <div className="card empty">Không có vận đơn phù hợp với bộ lọc.</div>
         : grouped.map(([hub,groupRows])=>{
@@ -464,8 +465,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       auditRows={contextAuditRows}
       activeTab={contextOrderTab}
       parentLabel="Cảnh báo vận chuyển"
-      floating
-      backHref={contextOrderTab!=='info'
+       backHref={contextOrderTab!=='info'
         ? trackingHref({order:contextOrder.id,orderTab:'info'})
         : trackingHref({order:null,orderTab:null})}
       closeHref={trackingHref({order:null,orderTab:null})}
@@ -474,6 +474,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       historyHref={trackingHref({order:contextOrder.id,orderTab:'history'})}
       openModuleHref={'/purchase/orders?range=all&order='+contextOrder.id}
     />}
+    </div>
 
     <details className="tracking-secondary-drawer">
       <summary>
