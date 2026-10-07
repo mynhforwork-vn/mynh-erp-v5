@@ -35,6 +35,27 @@ async function settle(ms=1100){
   await page.waitForTimeout(ms)
 }
 
+async function readSlidebarContract(selector){
+  return page.locator(selector).first().evaluate(el=>{
+    const r=el.getBoundingClientRect()
+    const s=getComputedStyle(el)
+    return {
+      position:s.position,
+      top:r.top,right:r.right,bottom:r.bottom,left:r.left,
+      width:r.width,height:r.height,
+      viewportW:innerWidth,viewportH:innerHeight,
+    }
+  }).catch(()=>null)
+}
+function slidebarPass(m){
+  return Boolean(m)
+    &&m.position==='fixed'
+    &&m.width>=410&&m.width<=430
+    &&m.top<=20
+    &&m.bottom>=m.viewportH-20
+    &&m.right>=m.viewportW-24
+}
+
 const browser=await chromium.launch({headless:true})
 
 // Public / unauthenticated checks.
@@ -200,7 +221,68 @@ if(await sidebarToggle.count()){
   recordInteraction('Desktop sidebar collapses to icon rail',collapsedClass&&collapsed<100&&collapsed<before-80,{before,collapsed})
   await sidebarToggle.click();await settle(180)
   const expanded=await page.locator('.brand-shell-v1>.sidebar').evaluate(el=>el.getBoundingClientRect().width)
-  recordInteraction('Desktop sidebar expands back',expanded>=180,{expanded})
+  recordInteraction('Desktop sidebar expands back',expanded>=215&&expanded<=235,{expanded})
+  const sidebarContract=await page.evaluate(()=>{
+    const sidebar=document.querySelector('.brand-shell-v1>.sidebar')
+    const nav=sidebar?.querySelector('.nav')
+    const foot=sidebar?.querySelector('.sidebar-foot')
+    const active=nav?.querySelector('a.active')
+    if(!sidebar||!nav||!foot)return null
+    const sr=sidebar.getBoundingClientRect(),nr=nav.getBoundingClientRect(),fr=foot.getBoundingClientRect(),ar=active?.getBoundingClientRect()
+    return {
+      position:getComputedStyle(sidebar).position,
+      top:sr.top,bottom:sr.bottom,viewportH:innerHeight,
+      navScrollable:nav.scrollHeight>=nav.clientHeight,
+      navTop:nr.top,navBottom:nr.bottom,footTop:fr.top,
+      activeVisible:!ar||(ar.top>=nr.top-1&&ar.bottom<=nr.bottom+1),
+    }
+  })
+  recordInteraction(
+    'Desktop sidebar stays viewport-pinned with isolated nav scroll',
+    Boolean(sidebarContract)
+      &&sidebarContract.position==='sticky'
+      &&Math.abs(sidebarContract.top)<=2
+      &&sidebarContract.bottom>=sidebarContract.viewportH-2
+      &&sidebarContract.navBottom<=sidebarContract.footTop+2
+      &&sidebarContract.activeVisible,
+    sidebarContract??{}
+  )
+}
+
+// Desktop structural table contract checks.
+for(const spec of [
+  ['/purchase/accounts','.account-table-card'],
+  ['/purchase/orders','.order-table-card'],
+  ['/purchase/tracking','.tracking-hub-table-wrap-v2'],
+  ['/warehouse/receive','.tracking-hub-table-wrap-v2'],
+  ['/warehouse/inventory','.whx-table-scroll'],
+  ['/warehouse/history','.whx-table-scroll'],
+  ['/sales/history','.sales-history-table-wrap'],
+  ['/sales/customers','.customer-demo-table-wrap'],
+  ['/sales/debt','.debt-demo-table-wrap'],
+  ['/finance/cashflow','.finance-table-card'],
+  ['/finance/shipper-payments?mode=customer','.compact-table-wrap'],
+  ['/finance/reports','.finance-report-day-table-wrap'],
+]){
+  const [path,tableSelector]=spec
+  await go(path)
+  const table=page.locator(tableSelector).first()
+  if(await table.count()){
+    const metrics=await table.evaluate(el=>{
+      const r=el.getBoundingClientRect()
+      const th=el.querySelector('thead th')
+      return {
+        height:r.height,viewportH:innerHeight,bottom:r.bottom,
+        overflowY:getComputedStyle(el).overflowY,
+        stickyHeader:th?getComputedStyle(th).position:null,
+      }
+    })
+    recordInteraction('Table workspace contract '+path,
+      metrics.height>=120&&metrics.bottom<=metrics.viewportH+2&&metrics.stickyHeader==='sticky',
+      metrics)
+  }
+  const managed=page.locator('.managed-column-button,.column-manager-button,.finance-column-button').first()
+  recordInteraction('Table column controls '+path,await managed.count()>0,{selector:await managed.count()?await managed.getAttribute('class'):null})
 }
 
 // Non-mutating interaction tests.
@@ -392,19 +474,8 @@ const trackingOrderLink=page.locator('.tracking-hub-table a.table-link').first()
 if(await trackingOrderLink.count()){
   const trackingNav=await followLink(trackingOrderLink,{waitSelector:'aside.context-order-panel'})
   recordInteraction('Tracking contextual Order opens',await page.locator('aside.context-order-panel').count()>0,{href:trackingNav.href})
-  const trackingPanelMetrics=await page.locator('aside.context-order-panel').first().evaluate(el=>{
-    const r=el.getBoundingClientRect(),s=getComputedStyle(el)
-    return {position:s.position,left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,viewportW:innerWidth,viewportH:innerHeight}
-  }).catch(()=>null)
-  recordInteraction(
-    'Tracking contextual Order is right floating slidebar',
-    Boolean(trackingPanelMetrics)
-      &&trackingPanelMetrics.position==='fixed'
-      &&trackingPanelMetrics.right>=trackingPanelMetrics.viewportW-40
-      &&trackingPanelMetrics.left>trackingPanelMetrics.viewportW/2
-      &&trackingPanelMetrics.height>trackingPanelMetrics.viewportH*.75,
-    trackingPanelMetrics??{}
-  )
+  const trackingPanelMetrics=await readSlidebarContract('aside.context-order-panel')
+  recordInteraction('Tracking contextual Order uses system slidebar contract',slidebarPass(trackingPanelMetrics),trackingPanelMetrics??{})
   const historyTab=page.locator('aside.context-order-panel .context-order-tabs').getByRole('link',{name:'Lịch sử'}).first()
   if(await historyTab.count()){
     await followLink(historyTab,{waitSelector:'aside.context-order-panel'})
@@ -419,6 +490,8 @@ const intakeRow=page.locator('.warehouse-split-table tbody tr').filter({hasText:
 if(await intakeRow.count()){
   await intakeRow.click();await settle()
   recordInteraction('Warehouse intake detail panel opens',await page.locator('aside.warehouse-intake-panel').count()>0)
+  const intakePanelMetrics=await readSlidebarContract('aside.warehouse-intake-panel')
+  recordInteraction('Warehouse intake uses system slidebar contract',slidebarPass(intakePanelMetrics),intakePanelMetrics??{})
   for(const tabName of ['Thông tin','Lịch sử','Sản phẩm']){
     const tab=page.locator('aside.warehouse-intake-panel .whx-panel-tabs').getByRole('button',{name:new RegExp('^'+tabName)}).first()
     if(await tab.count()){
@@ -436,6 +509,8 @@ const stockRow=page.locator('.whx-stock-main .whx-table tbody tr').filter({has:p
 if(await stockRow.count()){
   await stockRow.click();await settle(150)
   recordInteraction('Inventory SKU detail panel opens',await page.locator('aside.whx-detail-panel').count()>0)
+  const inventoryPanelMetrics=await readSlidebarContract('aside.whx-detail-panel')
+  recordInteraction('Inventory SKU uses system slidebar contract',slidebarPass(inventoryPanelMetrics),inventoryPanelMetrics??{})
   const history=page.locator('aside.whx-detail-panel .whx-panel-tabs').getByRole('button',{name:/^Lịch sử/}).first()
   if(await history.count()){
     await history.click();await settle(150)
@@ -652,6 +727,8 @@ for(const label of ['+ Phiếu thu','+ Phiếu chi']){
   if(await button.count()&&await button.isEnabled()){
     await button.click();await settle(100)
     recordInteraction('Finance '+label+' panel opens',await page.locator('aside.finance-panel').count()>0)
+    const financePanelMetrics=await readSlidebarContract('aside.finance-panel')
+    recordInteraction('Finance '+label+' uses system slidebar contract',slidebarPass(financePanelMetrics),financePanelMetrics??{})
     const moneyTab=page.locator('aside.finance-panel .panel-tabs').getByRole('button',{name:/Chi tiết tiền/}).first()
     if(await moneyTab.count()){
       await moneyTab.click();await settle(80)
