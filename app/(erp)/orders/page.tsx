@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SystemSlidebar } from '@/components/system-slidebar'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
 import { ManualSyncButton } from '@/components/manual-sync-button'
@@ -455,7 +456,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       </section>
 
       {createMode&&!destinationSettingsMode&&
-        <aside className="detail-panel order-panel mynh-slide-panel">
+        <SystemSlidebar className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Tạo đơn mới</h2></div>
             <Link className="close" href={listHref({mode:null})}>×</Link>
@@ -472,11 +473,11 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             destinationHubs={destinationHubs}
             carrierConfigs={carrierConfigs}
           />
-        </aside>
+        </SystemSlidebar>
       }
 
       {detail&&editMode&&!destinationSettingsMode&&
-        <aside className="detail-panel order-panel mynh-slide-panel">
+        <SystemSlidebar className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Sửa {detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
             <Link className="close" href={listHref({order:detail.id,mode:null})}>×</Link>
@@ -514,11 +515,11 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             destinationHubs={destinationHubs}
             carrierConfigs={carrierConfigs}
           />
-        </aside>
+        </SystemSlidebar>
       }
 
       {detail&&!editMode&&!destinationSettingsMode&&
-        <aside className="detail-panel mynh-slide-panel">
+        <SystemSlidebar className="detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT ĐƠN</span><h2>{detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
             <Link className="close" href={listHref({order:null,tab:null,mode:null})}>×</Link>
@@ -888,7 +889,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
             <div className="panel-meta">Tạo đơn: {formatDateTime(detail.created_at)}</div>
           </div>
-        </aside>
+        </SystemSlidebar>
       }
     </div>
 
