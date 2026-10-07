@@ -1059,14 +1059,19 @@ body{
   height:100%!important;
   display:block!important;
 }
-.mynh-logo-primary{fill:#F4F8FC}
-.mynh-logo-secondary{fill:#9DB4C8}
-.mynh-logo-accent{fill:#45C2BC}
-.login-card .mynh-logo-primary{fill:#214F91}
-.login-card .mynh-logo-secondary{fill:#6F8CA6}
-.login-card .mynh-logo-accent{fill:#12858A}
+.mynh-logo-stroke-primary,
+.mynh-logo-stroke-accent{
+  fill:none;
+  stroke-width:4.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.brand-shell-v1 .mynh-logo-stroke-primary{stroke:#F5F9FD}
+.brand-shell-v1 .mynh-logo-stroke-accent{stroke:#4BC4BE}
+.login-card .mynh-logo-stroke-primary{stroke:#214F91}
+.login-card .mynh-logo-stroke-accent{stroke:#12858A}
 .login-card .mynh-logo-mark{
-  filter:drop-shadow(0 5px 12px rgba(33,79,145,.10));
+  filter:drop-shadow(0 4px 9px rgba(33,79,145,.09));
 }
 
 /* Refined logo proportions */
