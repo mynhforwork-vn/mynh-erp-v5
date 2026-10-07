@@ -252,9 +252,9 @@ if(await createOrderLink.count()){
     const trackingValue=await page.locator('aside.order-panel input[name="tracking_number"]').inputValue()
     const phoneValue=await page.locator('aside.order-panel input[name="recipient_phone"]').inputValue()
     const codValue=await page.locator('aside.order-panel input[name="cod"]').inputValue()
-    const itemNames=await page.locator('aside.order-panel input[name="item_product_name"]').allInputValues()
-    const originalPrices=await page.locator('aside.order-panel input[name="item_original_price"]').allInputValues()
-    const finalPrices=await page.locator('aside.order-panel input[name="item_final_price"]').allInputValues()
+    const itemNames=await page.locator('aside.order-panel input[name="item_product_name"]').evaluateAll(els=>els.map(el=>el.value))
+    const originalPrices=await page.locator('aside.order-panel input[name="item_original_price"]').evaluateAll(els=>els.map(el=>el.value))
+    const finalPrices=await page.locator('aside.order-panel input[name="item_final_price"]').evaluateAll(els=>els.map(el=>el.value))
     const recognitionText=await page.locator('aside.order-panel .order-text-recognizer-actions span').innerText()
     recordInteraction('Shopee text recognizer extracts order',orderValue==='261005SYU2NQGJ',{orderValue})
     recordInteraction('Shopee text recognizer extracts tracking',trackingValue==='SPXVN06582596012A',{trackingValue})
@@ -273,10 +273,10 @@ if(await createOrderLink.count()){
       await quick.fill('Dán từ Shopee: Dầu Đậu Nành Simply Nguyên chất chai 1 Lít x1 79.000₫78.921₫ (Đậu Nành 1 Lít). Có thể dán nhiều dòng.')
       await page.locator('aside.order-panel .quick-product-parser').getByRole('button',{name:'Nhận diện'}).click()
       await page.waitForTimeout(100)
-      const namesAfterQuick=await page.locator('aside.order-panel input[name="item_product_name"]').allInputValues()
-      const variantsAfterQuick=await page.locator('aside.order-panel input[name="item_variant"]').allInputValues()
-      const originalAfterQuick=await page.locator('aside.order-panel input[name="item_original_price"]').allInputValues()
-      const finalAfterQuick=await page.locator('aside.order-panel input[name="item_final_price"]').allInputValues()
+      const namesAfterQuick=await page.locator('aside.order-panel input[name="item_product_name"]').evaluateAll(els=>els.map(el=>el.value))
+      const variantsAfterQuick=await page.locator('aside.order-panel input[name="item_variant"]').evaluateAll(els=>els.map(el=>el.value))
+      const originalAfterQuick=await page.locator('aside.order-panel input[name="item_original_price"]').evaluateAll(els=>els.map(el=>el.value))
+      const finalAfterQuick=await page.locator('aside.order-panel input[name="item_final_price"]').evaluateAll(els=>els.map(el=>el.value))
       recordInteraction('Compact Shopee product parser splits exact UI sample',
         namesAfterQuick.at(-1)==='Dầu Đậu Nành Simply Nguyên chất chai 1 Lít'
         &&variantsAfterQuick.at(-1)==='Đậu Nành 1 Lít'
