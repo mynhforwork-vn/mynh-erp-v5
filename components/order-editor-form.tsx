@@ -111,13 +111,6 @@ function containsKeyword(haystack:string,keywords?:string[]|null){
   })
 }
 
-function parseNumberToken(value:string){
-  const raw=value.replace(/[^0-9]/g,'')
-  if(!raw)return ''
-  const n=Number(raw)
-  return Number.isFinite(n)?n:''
-}
-
 function moneyNumber(value:number|string|null|undefined){
   if(typeof value==='number')return Number.isFinite(value)?value:0
   const raw=String(value??'').replace(/[^0-9]/g,'')
@@ -190,7 +183,6 @@ export function OrderEditorForm({
   const [derivedRegion,setDerivedRegion]=useState(
     destinationHubs.find(h=>h.hub_code===values.destination_hub)?.region??''
   )
-  const [quickProductText,setQuickProductText]=useState('')
   const [expressShipperName,setExpressShipperName]=useState(String(values.express_shipper_name??''))
   const [expressShipperPhone,setExpressShipperPhone]=useState(String(values.express_shipper_phone??''))
   const [expressShipperNote,setExpressShipperNote]=useState(String(values.express_shipper_note??''))
@@ -359,161 +351,6 @@ export function OrderEditorForm({
       setDerivedArea(hub.area)
       setDerivedRegion(hub.region)
     }
-  }
-
-  function parseQuickProductLine(line:string){
-    const item:Item=emptyItem()
-    const raw=line
-      .trim()
-      .replace(/^Dán\s+từ\s+Shopee\s*:\s*/i,'')
-      .replace(/^Shopee\s*:\s*/i,'')
-      .trim()
-
-    // Shopee compact format:
-    // Tên SP xSL Giá gốc₫Giá sau giảm₫ (Phân loại)
-    // Example:
-    // Dán từ Shopee: Dầu Đậu Nành Simply Nguyên chất chai 1 Lít x1 79.000₫78.921₫ (Đậu Nành 1 Lít). Có thể...
-    //
-    // Intentionally NOT anchored at the end because copied Shopee text may
-    // append punctuation / helper copy after the variant.
-    const shopeeCompact=raw.match(/^(.*?)\s+[x×]\s*(\d+)\s+([\d.,]+)\s*₫(?:\s*([\d.,]+)\s*₫)?\s*(?:\(([^)]+)\))?/i)
-    if(shopeeCompact){
-      item.product_name=shopeeCompact[1].trim()
-      item.quantity=Math.max(1,Number(shopeeCompact[2]))
-      const firstPrice=parseNumberToken(shopeeCompact[3])
-      const secondPrice=shopeeCompact[4]?parseNumberToken(shopeeCompact[4]):''
-      if(secondPrice!==''){
-        item.original_price=firstPrice
-        item.final_price=secondPrice
-      }else{
-        item.original_price=firstPrice
-        item.final_price=''
-      }
-      item.variant=shopeeCompact[5]?.trim()??''
-      return item
-    }
-
-    const labeledSku=raw.match(/(?:^|\s)sku\s*[:=\-]?\s*([A-Za-z0-9._-]{2,60})/i)
-    const labeledQty=raw.match(/(?:^|\s)(?:sl|qty|số lượng|so luong)\s*[:=\-]?\s*(\d+)/i)
-    const labeledOriginal=raw.match(/(?:giá gốc|gia goc|original)\s*[:=\-]?\s*([\d.,]+)/i)
-    const labeledFinal=raw.match(/(?:giá sau giảm|gia sau giam|giá bán|gia ban|final|price)\s*[:=\-]?\s*([\d.,]+)/i)
-    const labeledName=raw.match(/(?:tên sản phẩm|ten san pham|tên sp|ten sp|sản phẩm|san pham)\s*[:=\-]?\s*(.+?)(?=\s+(?:phân loại|phan loai|variant|màu|mau|size|sl|qty|số lượng|so luong|giá gốc|gia goc|giá sau giảm|gia sau giam|giá bán|gia ban|final|price)\b|$)/i)
-    const labeledVariant=raw.match(/(?:phân loại|phan loai|variant|màu|mau|size)\s*[:=\-]?\s*(.+?)(?=\s+(?:sl|qty|số lượng|so luong|giá gốc|gia goc|giá sau giảm|gia sau giam|giá bán|gia ban|final|price)\b|$)/i)
-
-    if(labeledSku)item.sku=labeledSku[1].trim()
-    if(labeledQty)item.quantity=Math.max(1,Number(labeledQty[1]))
-    if(labeledOriginal)item.original_price=parseNumberToken(labeledOriginal[1])
-    if(labeledFinal)item.final_price=parseNumberToken(labeledFinal[1])
-    if(labeledName)item.product_name=labeledName[1].trim()
-    if(labeledVariant)item.variant=labeledVariant[1].trim()
-
-    const parts=raw.split(/\t|\||;/).map(x=>x.trim()).filter(Boolean)
-    const free:string[]=[]
-
-    for(const part of parts){
-      let m:RegExpMatchArray|null
-      if((m=part.match(/^\s*sku\s*[:\-=]?\s*(.+)$/i))){
-        if(!item.sku)item.sku=m[1].trim().split(/\s+/)[0]
-        continue
-      }
-      if((m=part.match(/^\s*(?:sl|qty|so luong|số lượng)\s*[:\-=]?\s*(\d+)/i))){
-        if(item.quantity==null)item.quantity=Math.max(1,Number(m[1]))
-        continue
-      }
-      if((m=part.match(/^\s*(?:phan loai|phân loại|variant|mau|màu|size)\s*[:\-=]?\s*(.+)$/i))){
-        if(!item.variant)item.variant=m[1].trim()
-        continue
-      }
-      if((m=part.match(/^\s*(?:ten sp|tên sp|ten san pham|tên sản phẩm|san pham|sản phẩm)\s*[:\-=]?\s*(.+)$/i))){
-        if(!item.product_name)item.product_name=m[1].trim()
-        continue
-      }
-      if((m=part.match(/^\s*(?:gia goc|giá gốc|original)\s*[:\-=]?\s*(.+)$/i))){
-        if(item.original_price==null)item.original_price=parseNumberToken(m[1])
-        continue
-      }
-      if((m=part.match(/^\s*(?:gia sau giam|giá sau giảm|gia ban|giá bán|final|price|gia|giá)\s*[:\-=]?\s*(.+)$/i))){
-        if(item.final_price==null)item.final_price=parseNumberToken(m[1])
-        continue
-      }
-      if(parts.length>1)free.push(part)
-    }
-
-    if(!item.sku){
-      const known=free.find(x=>skuMap.has(x.trim().toUpperCase()))
-      if(known){
-        item.sku=known
-        free.splice(free.indexOf(known),1)
-      }else if(free[0]&&/^[A-Za-z0-9._-]{3,40}$/.test(free[0])){
-        item.sku=free.shift()
-      }
-    }
-
-    const numeric=free.filter(x=>/^\s*[\d.,]+\s*$/.test(x))
-    const textParts=free.filter(x=>!/^\s*[\d.,]+\s*$/.test(x))
-    if(!item.product_name&&textParts.length)item.product_name=textParts.shift()
-    if(!item.variant&&textParts.length)item.variant=textParts.join(' · ')
-
-    if(item.quantity==null&&numeric.length&&Number(String(numeric[0]).replace(/\D/g,''))<=100){
-      item.quantity=Math.max(1,Number(String(numeric.shift()).replace(/\D/g,''))||1)
-    }
-    if(item.original_price==null&&numeric.length)item.original_price=parseNumberToken(numeric.shift()??'')
-    if(item.final_price==null&&numeric.length)item.final_price=parseNumberToken(numeric.shift()??'')
-
-    const matched=item.sku?skuMap.get(String(item.sku).trim().toUpperCase()):null
-    if(matched){
-      item.product_name=item.product_name||matched.product_name||''
-      item.variant=item.variant||matched.variant||''
-      item.original_price=item.original_price||matched.original_price||''
-      item.final_price=item.final_price||matched.final_price||''
-    }
-
-    item.quantity=item.quantity??1
-    return item
-  }
-
-  function recognizeQuickProducts(){
-    const fullOrder=parseShopeeOrderText(quickProductText)
-
-    // Split compact pasted text by line AND by repeated "Dán từ Shopee:"
-    // markers. This handles multiple copied products even when the browser
-    // concatenates them into one textarea value.
-    const compactCandidates=quickProductText
-      .replace(/\r/g,'\n')
-      .replace(/(?:^|\s+)Dán\s+từ\s+Shopee\s*:\s*/gi,'\nDán từ Shopee: ')
-      .split(/\n+/)
-      .map(line=>line.trim())
-      .filter(Boolean)
-
-    const parsed:Item[]=fullOrder.products.length
-      ? fullOrder.products.map(item=>({
-          sku:'',
-          product_name:item.product_name,
-          variant:item.variant??'',
-          quantity:item.quantity,
-          original_price:item.original_price??'',
-          final_price:item.final_price??'',
-        }))
-      : compactCandidates
-          .map(parseQuickProductLine)
-          .filter(item=>item.sku||item.product_name)
-
-    if(!parsed.length){
-      setRecognitionMessage('Chưa nhận diện được sản phẩm. Hỗ trợ: Tên SP xSL Giá gốc₫Giá sau giảm₫ (Phân loại).')
-      return
-    }
-
-    const currentIsBlank=items.length===1&&!items[0].sku&&!items[0].product_name
-    setItems(currentIsBlank?parsed:[...items,...parsed])
-    setQuickProductText('')
-
-    const priced=parsed.filter(item=>moneyNumber(item.original_price)>0).length
-    const discounted=parsed.filter(item=>moneyNumber(item.final_price)>0).length
-    setRecognitionMessage(
-      'Đã tách '+parsed.length+' sản phẩm'+
-      (priced?' · '+priced+' giá gốc':'')+
-      (discounted?' · '+discounted+' giá sau giảm':'')
-    )
   }
 
   function recognizeOrderText(){
@@ -811,15 +648,6 @@ export function OrderEditorForm({
 
     <section className="form-section">
       <div className="form-section-head"><h3>Sản phẩm</h3><button type="button" className="mini-add" onClick={()=>setItems(v=>[...v,emptyItem()])}>+ Thêm dòng</button></div>
-      <div className="quick-product-parser">
-        <textarea
-          rows={2}
-          value={quickProductText}
-          onChange={e=>{setQuickProductText(e.target.value);setRecognitionMessage('')}}
-          placeholder="Dán từ Shopee: Dầu Đậu Nành Simply Nguyên chất chai 1 Lít x1 79.000₫78.921₫ (Đậu Nành 1 Lít). Có thể dán nhiều dòng."
-        />
-        <button type="button" className="button small" disabled={!quickProductText.trim()} onClick={recognizeQuickProducts}>Nhận diện</button>
-      </div>
       <div className="repeat-stack">
         {items.map((item,i)=>{
           const matched=Boolean(item.sku&&skuMap.has(String(item.sku).trim().toUpperCase()))
