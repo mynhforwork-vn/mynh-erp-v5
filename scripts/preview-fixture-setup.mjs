@@ -37,6 +37,7 @@ if(!wh.json[1]?.id)throw new Error('Mutation QA v2 requires two active warehouse
 const suffix=Date.now().toString(36)+'-'+crypto.randomBytes(3).toString('hex')
 const fixtures={
   customer_id:crypto.randomUUID(),
+  history_customer_id:crypto.randomUUID(),
   erp_user_id:crypto.randomUUID(),
   warehouse_order_id:crypto.randomUUID(),
   warehouse_item_id:crypto.randomUUID(),
@@ -46,14 +47,17 @@ const fixtures={
   hub_item_id:crypto.randomUUID(),
   hub_shipment_id:crypto.randomUUID(),
   hub_config_id:crypto.randomUUID(),
+  sale_id:crypto.randomUUID(),
   warehouse_id:String(wh.json[0].id),
   warehouse_code:String(wh.json[0].code??''),
   transfer_warehouse_id:String(wh.json[1].id),
   transfer_warehouse_code:String(wh.json[1].code??''),
   customer_name:'QA Browser Customer '+suffix,
+  history_customer_name:'QA History Customer '+suffix,
   erp_username:'qa_browser_'+suffix.replace(/[^a-z0-9]/gi,'_'),
   warehouse_order_code:'QA-WH-'+suffix,
   hub_order_code:'QA-HUB-'+suffix,
+  sale_invoice_code:'QA-SALE-'+suffix.toUpperCase(),
   sale_sku:'QA-MUT-'+suffix.toUpperCase(),
   mutation_product_name:'QA Mutation Product '+suffix,
   mutation_sale_price:50000,
@@ -73,6 +77,14 @@ await insert('customers',{
   note:fixtures.marker,
 })
 
+await insert('customers',{
+  id:fixtures.history_customer_id,
+  name:fixtures.history_customer_name,
+  phone:'0900000011',
+  address:'QA History Fixture',
+  note:fixtures.marker,
+})
+
 await insert('erp_users',{
   id:fixtures.erp_user_id,
   username:fixtures.erp_username,
@@ -82,6 +94,27 @@ await insert('erp_users',{
   mobile:false,
   web:true,
   platform:'SHOPEE',
+})
+
+await insert('sales',{
+  id:fixtures.sale_id,
+  customer_id:fixtures.history_customer_id,
+  warehouse_id:fixtures.warehouse_id,
+  invoice_code:fixtures.sale_invoice_code,
+  total_amount:50000,
+  subtotal:50000,
+  paid_amount:0,
+  payment_status:'UNPAID',
+  sale_status:'COMPLETED',
+  note:fixtures.marker,
+})
+await insert('debt_ledger',{
+  customer_id:fixtures.history_customer_id,
+  reference_type:'SALE',
+  reference_id:fixtures.sale_id,
+  debit:50000,
+  credit:0,
+  note:fixtures.marker,
 })
 
 await insert('orders',{

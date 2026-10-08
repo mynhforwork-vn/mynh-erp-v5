@@ -7,6 +7,10 @@
 
 @import './styles/finance.css';
 @import './styles/sales-live.css';
-@import './styles/mobile-remediation.css';
 
 @import './styles/remediation-ux-v3.css';
+
+@import './styles/brand-responsive-v1.css';
+
+@import './styles/desktop-kpi-contract-v3.css';
+@import './styles/desktop-column-resize.css';

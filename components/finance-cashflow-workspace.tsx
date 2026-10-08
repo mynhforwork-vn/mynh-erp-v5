@@ -301,15 +301,6 @@ export function FinanceCashflowWorkspace({
     ? referencedOrderMap.get(activeReference.id)??null
     : null
 
-  const activeTransactions=transactions.filter(t=>t.status!=='VOID')
-  const periodTransactions=activeTransactions.filter(t=>periodMatch(t.transaction_at,period,customFrom,customTo))
-  const periodDocuments=documents.filter(d=>periodMatch(d.occurred_at,period,customFrom,customTo))
-  const totalIncome=periodTransactions.filter(t=>t.tx_type==='INCOME').reduce((sum,t)=>sum+num(t.amount),0)
-  const totalExpense=periodTransactions.filter(t=>t.tx_type==='EXPENSE').reduce((sum,t)=>sum+num(t.amount),0)
-  const incomeDocuments=periodDocuments.filter(d=>d.document_type==='INCOME'&&d.document_status!=='CANCELLED').length
-  const expenseDocuments=periodDocuments.filter(d=>d.document_type==='EXPENSE'&&d.document_status!=='CANCELLED').length
-  const pendingDocuments=periodDocuments.filter(d=>d.document_status==='DRAFT').length
-
   const rows=useMemo(()=>{
     const docRows=documents.map(doc=>{
       const docLines=doc.finance_document_lines??[]
@@ -357,6 +348,23 @@ export function FinanceCashflowWorkspace({
       })
     return [...docRows,...legacyRows].sort((a,b)=>new Date(b.time).getTime()-new Date(a.time).getTime())
   },[documents,transactions,categoryMap,categoryCodeMap])
+
+  const kpiScopeRows=useMemo(()=>rows.filter(row=>{
+    const q=search.trim().toLowerCase()
+    if(!periodMatch(row.time,period,customFrom,customTo))return false
+    if(filterSource!=='ALL'&&row.source!==filterSource)return false
+    if(filterMethod!=='ALL'&&row.method!==filterMethod)return false
+    if(filterCategory!=='ALL'&&!row.categoryIds.includes(filterCategory))return false
+    if(q&&![row.code,row.category,row.content,row.counterparty,row.source].join(' ').toLowerCase().includes(q))return false
+    return true
+  }),[rows,search,period,customFrom,customTo,filterSource,filterMethod,filterCategory])
+
+  const postedScopeRows=kpiScopeRows.filter(row=>row.status==='POSTED')
+  const totalIncome=postedScopeRows.filter(row=>row.type==='INCOME').reduce((sum,row)=>sum+num(row.amount),0)
+  const totalExpense=postedScopeRows.filter(row=>row.type==='EXPENSE').reduce((sum,row)=>sum+num(row.amount),0)
+  const incomeDocuments=kpiScopeRows.filter(row=>row.kind==='DOCUMENT'&&row.type==='INCOME'&&row.status!=='CANCELLED').length
+  const expenseDocuments=kpiScopeRows.filter(row=>row.kind==='DOCUMENT'&&row.type==='EXPENSE'&&row.status!=='CANCELLED').length
+  const pendingDocuments=kpiScopeRows.filter(row=>row.kind==='DOCUMENT'&&row.status==='DRAFT').length
 
   const filteredRows=useMemo(()=>{
     const filtered=rows.filter(row=>{
@@ -716,13 +724,15 @@ export function FinanceCashflowWorkspace({
     <div className={'finance-ledger-layout '+(panel!=='NONE'?'with-panel':'')}>
     <section className="finance-ledger">
       <div className="finance-toolbar finance-toolbar-complete">
-        <input className="search" value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}} placeholder="Tìm mã phiếu / nội dung / đối tượng..."/>
+        <div className="finance-toolbar-fields">
+          <input className="search" value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}} placeholder="Tìm mã phiếu / nội dung / đối tượng..."/>
         <select value={filterType} onChange={e=>{setFilterType(e.target.value as any);setPage(1)}}><option value="ALL">Thu / Chi</option><option value="INCOME">Thu</option><option value="EXPENSE">Chi</option></select>
         <select value={filterCategory} onChange={e=>{setFilterCategory(e.target.value);setPage(1)}}><option value="ALL">Hạng mục</option>{categories.filter(c=>c.is_active).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
         <select value={filterSource} onChange={e=>{setFilterSource(e.target.value);setPage(1)}}><option value="ALL">Nguồn</option>{sourceOptions.map(x=><option key={x} value={x}>{x}</option>)}</select>
         <select value={filterMethod} onChange={e=>{setFilterMethod(e.target.value);setPage(1)}}><option value="ALL">Phương thức</option><option value="CASH">Tiền mặt</option><option value="TRANSFER">Chuyển khoản</option><option value="COMBINED">Kết hợp</option></select>
         <select value={filterStatus} onChange={e=>{setFilterStatus(e.target.value as any);setPage(1)}}><option value="ALL">Trạng thái</option><option value="POSTED">Đã ghi nhận</option><option value="DRAFT">Nháp</option><option value="CANCELLED">Đã huỷ</option></select>
         <button className="button small" type="button" onClick={clearFilters}>Xoá lọc</button>
+        </div>
         <div className="finance-column-manager-wrap">
           <button className={'button small finance-column-button '+(columnMenu?'active':'')} type="button" onClick={()=>setColumnMenu(!columnMenu)}>☷ Cột</button>
           {columnMenu&&<div className="finance-column-manager-menu" onClick={e=>e.stopPropagation()}>
@@ -754,9 +764,12 @@ export function FinanceCashflowWorkspace({
           if(col==='expense')return <td key={col} className="money finance-money expense">{row.type==='EXPENSE'?formatMoney(row.amount):'—'}</td>
           return <td key={col}><span className={'finance-status '+String(row.status).toLowerCase()}>{statusLabel(row.status)}</span></td>
         }
-        return <div className="card table-card finance-table-card"><table className="table finance-table"><thead><tr>{visible.map(head)}</tr></thead><tbody>
-          {!pageRows.length?<tr><td className="empty" colSpan={visible.length}>Chưa có giao dịch phù hợp.</td></tr>:pageRows.map(row=><tr key={row.kind+'-'+row.id} onClick={()=>openRow(row.kind,row.id)}>{visible.map(col=>cell(row,col))}</tr>)}
-        </tbody></table></div>
+        return <>
+          
+          <div className="card table-card finance-table-card"><table className="table finance-table"><thead><tr>{visible.map(head)}</tr></thead><tbody>
+            {!pageRows.length?<tr><td className="empty" colSpan={visible.length}>Chưa có giao dịch phù hợp.</td></tr>:pageRows.map(row=><tr key={row.kind+'-'+row.id} onClick={()=>openRow(row.kind,row.id)}>{visible.map(col=>cell(row,col))}</tr>)}
+          </tbody></table></div>
+        </>
       })()}
       <div className="finance-pagination"><span>Trang {safePage}/{maxPage}</span><div><button className="button small" disabled={safePage<=1} onClick={()=>setPage(safePage-1)}>‹</button><button className="button small" disabled={safePage>=maxPage} onClick={()=>setPage(safePage+1)}>›</button><select value={pageSize} onChange={e=>{setPageSize(Number(e.target.value));setPage(1)}}><option value={10}>10 dòng</option><option value={20}>20 dòng</option><option value={50}>50 dòng</option></select></div></div>
     </section>

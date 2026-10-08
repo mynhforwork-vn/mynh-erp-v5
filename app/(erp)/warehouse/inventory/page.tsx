@@ -56,7 +56,7 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
       .order('created_at',{ascending:false})
       .limit(1500),
     supabase.from('inventory_transactions')
-      .select('tx_type,quantity')
+      .select('warehouse_id,product_variant_id,tx_type,quantity')
       .gte('created_at',todayStartVN())
       .limit(5000),
     supabase.from('warehouse_settings')
@@ -78,29 +78,48 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
     }
   }
 
-  const totalUnits=all.reduce((sum,row)=>sum+Number(row.quantity??0),0)
-  const skuCount=new Set(all.map(row=>String(row.product_variant_id))).size
-  const normalCount=all.filter(row=>Number(row.quantity??0)>3).length
-  const lowCount=all.filter(row=>Number(row.quantity??0)>0&&Number(row.quantity??0)<=3).length
-  const outCount=all.filter(row=>Number(row.quantity??0)===0).length
-  const todayIn=((todayTransactions??[]) as any[])
-    .filter(tx=>IN_TYPES.has(String(tx.tx_type)))
-    .reduce((sum,tx)=>sum+Number(tx.quantity??0),0)
-  const todayOut=((todayTransactions??[]) as any[])
-    .filter(tx=>OUT_TYPES.has(String(tx.tx_type)))
-    .reduce((sum,tx)=>sum+Number(tx.quantity??0),0)
-
-  const filtered=all.filter(row=>{
-    const qty=Number(row.quantity??0)
+  const scopeRows=all.filter(row=>{
     if(sp.warehouse&&String(row.warehouse_id)!==sp.warehouse)return false
-    if(sp.status==='normal'&&qty<=3)return false
-    if(sp.status==='low'&&(qty<=0||qty>3))return false
-    if(sp.status==='out'&&qty!==0)return false
     if(!q)return true
     const hay=[row.sku,row.product_name,row.variant_name,row.warehouse_code,row.warehouse_name]
       .filter(Boolean).join(' ').toLowerCase()
     return hay.includes(q)
   })
+
+  const totalUnits=scopeRows.reduce((sum,row)=>sum+Number(row.quantity??0),0)
+  const skuCount=new Set(scopeRows.map(row=>String(row.product_variant_id))).size
+  const normalCount=scopeRows.filter(row=>Number(row.quantity??0)>3).length
+  const lowCount=scopeRows.filter(row=>Number(row.quantity??0)>0&&Number(row.quantity??0)<=3).length
+  const outCount=scopeRows.filter(row=>Number(row.quantity??0)===0).length
+  const scopeVariantKeys=new Set(scopeRows.map(row=>String(row.warehouse_id)+'|'+String(row.product_variant_id)))
+  const todayScope=((todayTransactions??[]) as any[]).filter(tx=>{
+    if(sp.warehouse&&String(tx.warehouse_id)!==sp.warehouse)return false
+    if(q&&!scopeVariantKeys.has(String(tx.warehouse_id)+'|'+String(tx.product_variant_id)))return false
+    return true
+  })
+  const todayIn=todayScope
+    .filter(tx=>IN_TYPES.has(String(tx.tx_type)))
+    .reduce((sum,tx)=>sum+Number(tx.quantity??0),0)
+  const todayOut=todayScope
+    .filter(tx=>OUT_TYPES.has(String(tx.tx_type)))
+    .reduce((sum,tx)=>sum+Number(tx.quantity??0),0)
+
+  const filtered=scopeRows.filter(row=>{
+    const qty=Number(row.quantity??0)
+    if(sp.status==='normal'&&qty<=3)return false
+    if(sp.status==='low'&&(qty<=0||qty>3))return false
+    if(sp.status==='out'&&qty!==0)return false
+    return true
+  })
+
+  function inventoryHref(status?:string|null){
+    const params=new URLSearchParams()
+    if(sp.q)params.set('q',sp.q)
+    if(sp.warehouse)params.set('warehouse',sp.warehouse)
+    if(status)params.set('status',status)
+    const qs=params.toString()
+    return '/warehouse/inventory'+(qs?'?'+qs:'')
+  }
 
   const workspaceRows=filtered.map(row=>({
     warehouse_id:String(row.warehouse_id),
@@ -125,7 +144,7 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
     quantity:Number(row.quantity??0),
   }))
 
-  return <div className="whx-page">
+  return <div className="whx-page whx-inventory-page">
     <header className="page-head whx-page-head">
       <div>
         <span className="module-eyebrow">VẬN HÀNH KHO</span>
@@ -143,13 +162,13 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
     {error&&<div className="error-box">Không thể tải dữ liệu tồn kho: {error.message}</div>}
 
     <section className="whx-kpi-grid seven">
-      <div><span>Tổng SKU</span><b>{skuCount}</b><small>SKU bán đang quản lý</small></div>
-      <div className="success"><span>Tổng SL tồn</span><b>{totalUnits}</b><small>Đơn vị hàng hiện có</small></div>
-      <div><span>Bình thường</span><b>{normalCount}</b><small>Tồn trên ngưỡng cảnh báo</small></div>
-      <div className={lowCount?'warning':''}><span>Tồn thấp</span><b>{lowCount}</b><small>Từ 1 đến 3 đơn vị</small></div>
-      <div className={outCount?'danger':''}><span>Hết hàng</span><b>{outCount}</b><small>Tồn bằng 0</small></div>
-      <Link href="/warehouse/history?type=IN" className="info"><span>Nhập hôm nay</span><b>{todayIn}</b><small>Tổng SL ghi tăng trong ngày</small></Link>
-      <Link href="/warehouse/history?type=SALE" className="info"><span>Xuất hôm nay</span><b>{todayOut}</b><small>Tổng SL ghi giảm trong ngày</small></Link>
+      <Link href={inventoryHref(null)} className={!sp.status?'active':''}><span>Tổng SKU</span><b>{skuCount}</b><small>SKU trong phạm vi đang lọc</small></Link>
+      <Link href={inventoryHref(null)} className="success"><span>Tổng SL tồn</span><b>{totalUnits}</b><small>Đơn vị hàng trong phạm vi</small></Link>
+      <Link href={inventoryHref('normal')} className={sp.status==='normal'?'active':''}><span>Bình thường</span><b>{normalCount}</b><small>Tồn trên ngưỡng cảnh báo</small></Link>
+      <Link href={inventoryHref('low')} className={(lowCount?'warning ':'')+(sp.status==='low'?'active':'')}><span>Tồn thấp</span><b>{lowCount}</b><small>Từ 1 đến 3 đơn vị</small></Link>
+      <Link href={inventoryHref('out')} className={(outCount?'danger ':'')+(sp.status==='out'?'active':'')}><span>Hết hàng</span><b>{outCount}</b><small>Tồn bằng 0</small></Link>
+      <Link href={'/warehouse/history?type=IN'+(sp.warehouse?'&warehouse='+encodeURIComponent(sp.warehouse):'')} className="info"><span>Nhập hôm nay</span><b>{todayIn}</b><small>Tổng SL ghi tăng trong ngày</small></Link>
+      <Link href={'/warehouse/history?type=SALE'+(sp.warehouse?'&warehouse='+encodeURIComponent(sp.warehouse):'')} className="info"><span>Xuất hôm nay</span><b>{todayOut}</b><small>Tổng SL ghi giảm trong ngày</small></Link>
     </section>
 
     <div className="whx-toolbar">

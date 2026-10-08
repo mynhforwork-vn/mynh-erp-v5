@@ -33,12 +33,16 @@ export function PurchaseDateFilter({
     .filter(([,value])=>value!==null&&value!==undefined&&value!=='')
 
   return <div className="purchase-date-filter flat">
-    <div className="command-range">
+    <nav className="command-range" aria-label="Bộ lọc thời gian">
+      {showAll&&<Link className={activeRange==='all'?'active':''} href={rangeHref('all')}>Toàn thời gian</Link>}
       <Link className={activeRange==='today'?'active':''} href={rangeHref('today')}>Hôm nay</Link>
       <Link className={activeRange==='week'?'active':''} href={rangeHref('week')}>Tuần này</Link>
       <Link className={activeRange==='month'?'active':''} href={rangeHref('month')}>Tháng này</Link>
-      {showAll&&<Link className={activeRange==='all'?'active':''} href={rangeHref('all')}>Toàn thời gian</Link>}
-    </div>
+      <Link className={'desktop-period-extra '+(activeRange==='7d'?'active':'')} href={rangeHref('7d')}>7 ngày</Link>
+      <Link className={'desktop-period-extra '+(activeRange==='30d'?'active':'')} href={rangeHref('30d')}>30 ngày</Link>
+      <Link className={'desktop-period-extra '+(activeRange==='quarter'?'active':'')} href={rangeHref('quarter')}>Quý này</Link>
+      <Link className={'desktop-period-extra '+(activeRange==='year'?'active':'')} href={rangeHref('year')}>Năm nay</Link>
+    </nav>
 
     <form className="purchase-date-inline-form" action={basePath}>
       <input type="hidden" name="range" value="custom"/>
@@ -54,6 +58,8 @@ export function PurchaseDateFilter({
       </label>
       <button className="button primary" type="submit">Áp dụng</button>
     </form>
+
+    
 
     <div className="range-meta">
       <span>Khoảng đang xem</span>

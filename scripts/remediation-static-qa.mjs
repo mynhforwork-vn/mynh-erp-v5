@@ -24,6 +24,9 @@ const routes=[]
 
 for(const file of files){
   const src=fs.readFileSync(file,'utf8')
+  if(/mobile-entity-list|mobile-purchase-summary-list|mobile-date-picker|mobile-pos-cart-bar|mobile-cart-close/.test(src)){
+    issues.push(`${file}: dedicated Mobile card/cart UI must be excluded from Desktop-only release`)
+  }
   buttonCount+=(src.match(/<button\b/g)||[]).length
   handlerCount+=(src.match(/\bonClick\s*=\s*\{/g)||[]).length
   formActionCount+=(src.match(/\baction\s*=\s*\{/g)||[]).length
@@ -110,6 +113,40 @@ for(const [file,needle] of contextualForbidden){
   const src=fs.existsSync(file)?fs.readFileSync(file,'utf8'):''
   if(src.includes(needle))issues.push(`${file}: legacy cross-module drilldown remains: ${needle}`)
 }
+
+/* No migration may silently repopulate business demo/QA records on a fresh DB.
+   Legacy migration 0035 stays as a comment-only no-op; history is immutable in the DB. */
+const migrationsDir='supabase/migrations'
+if(fs.existsSync(migrationsDir)){
+  for(const entry of fs.readdirSync(migrationsDir)){
+    if(!entry.endsWith('.sql'))continue
+    const file=path.join(migrationsDir,entry)
+    const raw=fs.readFileSync(file,'utf8')
+    const executable=raw
+      .replace(/\/\*[\s\S]*?\*\//g,'')
+      .split('\n')
+      .map(line=>line.replace(/--.*$/,''))
+      .join('\n')
+    if(entry==='0035_seed_finance_demo_data.sql'&&executable.trim()){
+      issues.push(file+': retired finance demo seed must remain SQL-free')
+    }
+    if(/\binsert\s+into\b/i.test(executable)&&/\[DEMO\]|DEMO[-_]|QA_BROWSER_FIXTURE/i.test(executable)){
+      issues.push(file+': executable business demo/QA seed detected')
+    }
+  }
+}
+
+/* Desktop-only release contract: Mobile App UX must not be bundled or mounted.
+   Keep the main desktop shell and legacy shared tablet breakpoints untouched. */
+const desktopLayout=fs.readFileSync('app/(erp)/layout.tsx','utf8')
+const globalCSS=fs.readFileSync('app/globals.css','utf8')
+if(fs.existsSync('components/mobile-app-nav.tsx'))issues.push('MobileAppNav component must be excluded from Desktop release')
+if(fs.existsSync('app/styles/mobile-remediation.css'))issues.push('Legacy mobile remediation stylesheet must not ship')
+if(fs.existsSync('scripts/mobile-full-qa.mjs'))issues.push('Mobile QA script must not ship in Desktop-only release')
+if(/MobileAppNav|mobile-app-bar|mobile-bottom-nav/.test(desktopLayout))issues.push('Mobile app header/navigation still mounted in ERP layout')
+if(/mobile-remediation\.css/.test(globalCSS))issues.push('Mobile CSS is still loaded by globals.css')
+const brandCSS=fs.readFileSync('app/styles/brand-responsive-v1.css','utf8')
+if(/@media\s*\(max-width:\s*(?:900|520|430|380)px\)/.test(brandCSS))issues.push('Dedicated Mobile media queries remain in new desktop brand stylesheet')
 
 const result={
   scannedFiles:files.length,

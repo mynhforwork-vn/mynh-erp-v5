@@ -1,10 +1,12 @@
 import Link from 'next/link'
+import { SystemSlidebar } from '@/components/system-slidebar'
 import { formatMoney } from '@/lib/format'
 import { requireUser } from '@/lib/supabase/auth'
 import { archiveSalesCustomerForm,createSalesCustomer,restoreSalesCustomerForm,updateSalesCustomerForm } from '@/lib/actions/sales'
 import { ContextSalePanel } from '@/components/context-sale-panel'
 import { DebtCollectForm } from '@/components/debt-collect-form'
 import { fetchSaleContext } from '@/lib/sales/context'
+import { SalesCustomerTable } from '@/components/sales-customer-table'
 
 type SP={
   q?:string
@@ -108,11 +110,13 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
     }
   })
 
-  let rows=[...allRows]
+  const scopeRows=q
+    ? allRows.filter(x=>[x.name,x.phone,x.address].join(' ').toLowerCase().includes(q))
+    : allRows
+  let rows=[...scopeRows]
   if(state==='debt')rows=rows.filter(x=>x.debt>0)
   if(state==='repeat')rows=rows.filter(x=>x.orders>=2)
   if(state==='new')rows=rows.filter(x=>x.orders<=1)
-  if(q)rows=rows.filter(x=>[x.name,x.phone,x.address].join(' ').toLowerCase().includes(q))
 
   const selected=allRows.find(x=>x.id===sp.customer)??null
   const tab=sp.tab??'info'
@@ -145,8 +149,8 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
   const bankConfig=(bankResult.data??null) as any
   const collectMode=sp.mode==='collect'&&Boolean(selected)&&!contextSale
 
-  const totalDebt=allRows.reduce((sum,x)=>sum+x.debt,0)
-  const totalRevenue=allRows.reduce((sum,x)=>sum+x.total,0)
+  const totalDebt=scopeRows.reduce((sum,x)=>sum+x.debt,0)
+  const totalRevenue=scopeRows.reduce((sum,x)=>sum+x.total,0)
 
   function href(extra:Record<string,string|null|undefined>={}){
     const p=new URLSearchParams()
@@ -181,16 +185,16 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
 
     <section className="entity-status-strip customer-demo-kpis">
       <Link className={'entity-status-metric '+(state==='all'?'active':'')} href={href({state:null,customer:null,tab:null})}>
-        <span>Tổng khách hàng</span><b>{allRows.length}</b><small>{formatMoney(totalRevenue)} tổng mua</small>
+        <span>Tổng khách hàng</span><b>{scopeRows.length}</b><small>{formatMoney(totalRevenue)} tổng mua</small>
       </Link>
       <Link className={'entity-status-metric success '+(state==='repeat'?'active':'')} href={href({state:'repeat',customer:null,tab:null})}>
-        <span>Khách quay lại</span><b>{allRows.filter(x=>x.orders>=2).length}</b><small>Từ 2 hóa đơn trở lên</small>
+        <span>Khách quay lại</span><b>{scopeRows.filter(x=>x.orders>=2).length}</b><small>Từ 2 hóa đơn trở lên</small>
       </Link>
       <Link className={'entity-status-metric info '+(state==='new'?'active':'')} href={href({state:'new',customer:null,tab:null})}>
-        <span>Khách mới</span><b>{allRows.filter(x=>x.orders<=1).length}</b><small>Tối đa 1 hóa đơn</small>
+        <span>Khách mới</span><b>{scopeRows.filter(x=>x.orders<=1).length}</b><small>Tối đa 1 hóa đơn</small>
       </Link>
       <Link className={'entity-status-metric warning '+(state==='debt'?'active':'')} href={href({state:'debt',customer:null,tab:null})}>
-        <span>Khách còn nợ</span><b>{allRows.filter(x=>x.debt>0).length}</b><small>{formatMoney(totalDebt)}</small>
+        <span>Khách còn nợ</span><b>{scopeRows.filter(x=>x.debt>0).length}</b><small>{formatMoney(totalDebt)}</small>
       </Link>
     </section>
 
@@ -230,28 +234,15 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
 
     <div className="customer-demo-workspace">
       <section className="customer-demo-list">
-        <div className="customer-demo-table-wrap">
-          <table className="table customer-demo-table">
-            <thead><tr>
-              <th>Khách hàng</th><th>SĐT</th><th>Lần mua gần nhất</th><th>Số HĐ</th>
-              <th>Tổng mua</th><th>Còn nợ</th><th>Trạng thái</th>
-            </tr></thead>
-            <tbody>{rows.length?rows.map(row=><tr key={row.id} className={selected?.id===row.id?'selected':''}>
-              <td><Link className="table-link" href={href({customer:row.id,tab:'info',mode:null})}>{row.name}</Link><small>{row.address||'—'}</small></td>
-              <td>{phone(row.phone)}</td>
-              <td>{fmtDate(row.last)}</td>
-              <td>{row.orders}</td>
-              <td className="money">{formatMoney(row.total)}</td>
-              <td className={'money '+(row.debt>0?'warning-text':'')}>{formatMoney(row.debt)}</td>
-              <td>{row.debt>0
-                ? <span className="status-pill orange">Còn nợ</span>
-                : <span className="status-pill green">Bình thường</span>}</td>
-            </tr>):<tr><td colSpan={7}><div className="empty compact">Không có khách hàng phù hợp.</div></td></tr>}</tbody>
-          </table>
-        </div>
+        
+        <SalesCustomerTable
+          rows={rows}
+          selectedId={selected?.id??null}
+          baseQuery={href({customer:null,tab:null,mode:null,sale:null,saleTab:null}).split('?')[1]??''}
+        />
       </section>
 
-      {selected&&collectMode&&<aside className="customer-demo-panel customer-collect-context">
+      {selected&&collectMode&&<SystemSlidebar className="customer-demo-panel customer-collect-context">
         <div className="sales-detail-panel-head context-stack-head">
           <Link className="context-stack-back" href={href({customer:selected.id,tab:'debt',mode:null,sale:null,saleTab:null})} aria-label="Quay lại">←</Link>
           <div className="context-stack-title">
@@ -271,7 +262,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
           bankConfig={bankConfig}
           printConfig={(printConfigResult.data??null) as any}
         />
-      </aside>}
+      </SystemSlidebar>}
 
       {selected&&contextSale&&<ContextSalePanel
         sale={contextSale}
@@ -293,7 +284,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
         openModuleHref={'/sales/history?sale='+contextSale.id}
       />}
 
-      {selected&&!contextSale&&!collectMode&&<aside className="customer-demo-panel">
+      {selected&&!contextSale&&!collectMode&&<SystemSlidebar className="customer-demo-panel">
         <div className="sales-detail-panel-head">
           <div>
             <span className="module-eyebrow">KHÁCH HÀNG</span>
@@ -386,7 +377,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
             {selectedPayments.slice().reverse().map((row:any)=><div key={'pay-'+row.id}><i></i><span>{fmtDate(row.paid_at)}</span><b>Thu công nợ</b><small>{row.receipt_code??'PTN'} · {formatMoney(Number(row.amount??0))} · {row.payment_method}</small></div>)}
           </div>}
         </div>
-      </aside>}
+      </SystemSlidebar>}
     </div>
   </div>
 }

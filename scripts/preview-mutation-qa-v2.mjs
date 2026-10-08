@@ -110,9 +110,12 @@ async function createCashSale(quantity){
   if(quantity!==1)await qtyInput.fill(String(quantity))
 
   await page.locator('.pos-control-actions button').first().click()
-  const customerSelect=page.locator('.pos-customer-popover select').first()
-  await customerSelect.selectOption(String(f.customer_id))
-  await page.locator('.pos-customer-popover .pos-popover-head button').first().click()
+  // POS V2 uses searchable customer buttons, not the retired <select>.
+  await page.locator('.pos-customer-search-v2 input').fill(f.customer_name)
+  const choice=page.locator('.pos-customer-list-v2 button[data-customer-id="'+String(f.customer_id)+'"]').first()
+  await choice.waitFor({state:'visible',timeout:5000})
+  await choice.click()
+  await page.locator('.pos-customer-popover').waitFor({state:'hidden',timeout:5000})
 
   const extras=page.getByRole('button',{name:/Tùy chỉnh hóa đơn/}).first()
   if(await extras.count()){

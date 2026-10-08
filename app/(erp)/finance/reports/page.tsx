@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatMoney } from '@/lib/format'
 import { displayVnDateKey,financePeriodLabel,financePeriodStart,normalizeFinancePeriod,withinFinancePeriod,vnDateKey } from '@/lib/finance-period'
+import { FinanceReportDayTable } from '@/components/finance-report-day-table'
 
 type SP={period?:string}
 const num=(v:any)=>Number.isFinite(Number(v))?Number(v):0
@@ -90,7 +91,7 @@ export default async function FinanceReportsPage({searchParams}:{searchParams:Pr
 
     <nav className="finance-period-tabs" aria-label="Khoảng thời gian báo cáo">
       {[
-        ['all','Toàn thời gian'],['today','Hôm nay'],['7d','7 ngày'],['month','Tháng này']
+        ['all','Toàn thời gian'],['today','Hôm nay'],['week','Tuần này'],['7d','7 ngày'],['30d','30 ngày'],['month','Tháng này'],['quarter','Quý này'],['year','Năm nay']
       ].map(([key,label])=><Link key={key} href={href(key)} className={period===key?'active':''}>{label}</Link>)}
       <span>{financePeriodLabel(period)}</span>
     </nav>
@@ -143,18 +144,8 @@ export default async function FinanceReportsPage({searchParams}:{searchParams:Pr
 
     <section className="card finance-report-table-card">
       <div className="card-head"><div><h2>Theo ngày</h2><span>Tối đa 31 ngày có phát sinh</span></div></div>
-      <div className="compact-table-wrap">
-        <table className="table">
-          <thead><tr><th>Ngày</th><th>Doanh thu bán</th><th>Tiền vào</th><th>Tiền ra</th><th>Dòng tiền ròng</th></tr></thead>
-          <tbody>{!dayRows.length?<tr><td colSpan={5} className="empty">Chưa có dữ liệu trong kỳ.</td></tr>:dayRows.map(([key,row])=><tr key={key}>
-            <td className="strong">{displayVnDateKey(key)}</td>
-            <td className="money">{formatMoney(row.revenue)}</td>
-            <td className="money finance-money income">{formatMoney(row.income)}</td>
-            <td className="money finance-money expense">{formatMoney(row.expense)}</td>
-            <td className="money">{formatMoney(row.income-row.expense)}</td>
-          </tr>)}</tbody>
-        </table>
-      </div>
+      
+      <FinanceReportDayTable rows={dayRows.map(([key,row])=>({key,...row}))}/>
     </section>
   </div>
 }

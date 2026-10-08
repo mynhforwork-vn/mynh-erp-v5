@@ -11,6 +11,8 @@ on:
       - redesign/settings-v8
       - redesign/account-notifications-v1
       - fix/order-text-recognition-v1
+      - redesign/brand-responsive-v1
+      - fix/desktop-polish-v1
       - fix/shipping-status-group-v1
       - fix/manual-tracking-response-v1
 
@@ -44,7 +46,7 @@ jobs:
         id: cfpreview
         shell: bash
         run: |
-          npx wrangler preview             --name remediation-76aed41c             --worker-name mynh-erp-v5             --message "P6 QA $GITHUB_SHA"             --json | tee cloudflare-preview.json
+          npx wrangler preview             --name desktop-polish-v1             --worker-name mynh-erp-v5             --message "P6 QA $GITHUB_SHA"             --json | tee cloudflare-preview.json
           node - <<'NODE'
           const fs=require('fs')
           const raw=fs.readFileSync('cloudflare-preview.json','utf8')
@@ -84,9 +86,9 @@ jobs:
           PREVIEW_URL: ${{ steps.cfpreview.outputs.url }}
         run: |
           {
-            echo "## Cloudflare Remediation Preview"
+            echo "## Cloudflare Desktop Polish Preview"
             echo ""
-            echo "- Commit: `$GITHUB_SHA`"
+            printf -- '- Commit: `%s`\n' "$GITHUB_SHA"
             echo "- Preview: $PREVIEW_URL"
             echo "- Static QA: PASS"
             echo "- OpenNext Cloudflare build: PASS"

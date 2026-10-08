@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SystemSlidebar } from '@/components/system-slidebar'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime,formatMoney,statusLabel } from '@/lib/format'
 import { PrintPageButton } from '@/components/print-page-button'
@@ -232,7 +233,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
         />
       </section>
 
-      {selected&&<aside className="sales-history-panel">
+      {selected&&<SystemSlidebar className="sales-history-panel">
         <div className="sales-history-panel-head">
           <div>
             <span className="module-eyebrow">HÓA ĐƠN POS</span>
@@ -384,7 +385,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
           {selected.note&&<div className="receipt-note"><span>Ghi chú</span><b>{selected.note}</b></div>}
           <p>Cảm ơn quý khách!</p>
         </div>
-      </aside>}
+      </SystemSlidebar>}
     </div>
   </div>
 }

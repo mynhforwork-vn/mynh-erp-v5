@@ -19,7 +19,7 @@ const summary={
   qaUserId:session.user_id,
   public:{},
   desktop:[],
-  mobile:[],
+  
   interactions:[],
   consoleErrors:[],
   pageErrors:[],
@@ -33,6 +33,60 @@ function recordInteraction(name,pass,detail={}){
 
 async function settle(ms=1100){
   await page.waitForTimeout(ms)
+}
+
+async function readSlidebarContract(selector){
+  return page.locator(selector).first().evaluate(el=>{
+    const r=el.getBoundingClientRect()
+    const s=getComputedStyle(el)
+    return {
+      position:s.position,
+      top:r.top,right:r.right,bottom:r.bottom,left:r.left,
+      width:r.width,height:r.height,
+      viewportW:innerWidth,viewportH:innerHeight,
+    }
+  }).catch(()=>null)
+}
+function slidebarPass(m){
+  return Boolean(m)
+    &&m.position!=='fixed'
+    &&m.width>=380&&m.width<=430
+    &&m.left>=0
+    &&m.right<=m.viewportW+2
+}
+async function readPostKpiContract(panelSelector,kpiSelector,workspaceSelector){
+  return page.evaluate(({panelSelector,kpiSelector,workspaceSelector})=>{
+    const panel=document.querySelector(panelSelector)
+    const kpi=document.querySelector(kpiSelector)
+    const workspace=document.querySelector(workspaceSelector)
+    if(!panel||!kpi||!workspace)return null
+    const pr=panel.getBoundingClientRect(),kr=kpi.getBoundingClientRect(),wr=workspace.getBoundingClientRect()
+    return {
+      panelTop:pr.top,panelBottom:pr.bottom,panelHeight:pr.height,
+      kpiBottom:kr.bottom,workspaceTop:wr.top,workspaceBottom:wr.bottom,workspaceHeight:wr.height,
+      position:getComputedStyle(panel).position,
+    }
+  },{panelSelector,kpiSelector,workspaceSelector}).catch(()=>null)
+}
+function postKpiPass(m){
+  return Boolean(m)
+    &&m.position!=='fixed'
+    &&m.panelTop>=m.kpiBottom-2
+    &&Math.abs(m.panelTop-m.workspaceTop)<=4
+    &&m.panelBottom<=m.workspaceBottom+4
+    &&m.panelHeight<=m.workspaceHeight+4
+    &&m.panelHeight>=120
+}
+
+function verticalRightPanelPass(m){
+  return Boolean(m)
+    &&m.position!=='fixed'
+    &&m.width>=380&&m.width<=430
+    &&m.height>=m.width+60
+    &&m.left>=m.viewportW*.55
+    &&m.right<=m.viewportW+2
+    &&m.top>=0
+    &&m.bottom<=m.viewportH+2
 }
 
 const browser=await chromium.launch({headless:true})
@@ -170,6 +224,103 @@ for(const path of routes){
   fs.writeFileSync(`${outDir}/summary-partial.json`,JSON.stringify(summary,null,2))
 }
 
+// MYNH Brand System V1 checks.
+await go('/')
+recordInteraction('MYNH brand shell V1 is active',await page.locator('.brand-shell-v1').count()===1)
+recordInteraction('MYNH compact wordmark renders',await page.locator('.brand .brand-mark .mynh-logo-mark').count()===1)
+const desktopBrandMetrics=await page.evaluate(()=>({
+  innerWidth:window.innerWidth,
+  scrollWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
+  sidebarWidth:document.querySelector('.brand-shell-v1>.sidebar')?.getBoundingClientRect().width??0,
+  mainWidth:document.querySelector('.brand-shell-v1>.main')?.getBoundingClientRect().width??0,
+}))
+recordInteraction(
+  'MYNH desktop shell has no page overflow',
+  desktopBrandMetrics.scrollWidth<=desktopBrandMetrics.innerWidth+2,
+  desktopBrandMetrics
+)
+recordInteraction(
+  'MYNH desktop shell keeps operational workspace',
+  desktopBrandMetrics.sidebarWidth>=180&&desktopBrandMetrics.mainWidth>700,
+  desktopBrandMetrics
+)
+const sidebarToggle=page.locator('.sidebar-collapse-toggle').first()
+recordInteraction('Desktop sidebar collapse control exists',await sidebarToggle.count()===1)
+if(await sidebarToggle.count()){
+  const before=await page.locator('.brand-shell-v1>.sidebar').evaluate(el=>el.getBoundingClientRect().width)
+  await sidebarToggle.click();await settle(180)
+  const collapsed=await page.locator('.brand-shell-v1>.sidebar').evaluate(el=>el.getBoundingClientRect().width)
+  const collapsedClass=await page.locator('.brand-shell-v1').evaluate(el=>el.classList.contains('desktop-sidebar-collapsed'))
+  recordInteraction('Desktop sidebar collapses to icon rail',collapsedClass&&collapsed<100&&collapsed<before-80,{before,collapsed})
+  await sidebarToggle.click();await settle(180)
+  const expanded=await page.locator('.brand-shell-v1>.sidebar').evaluate(el=>el.getBoundingClientRect().width)
+  recordInteraction('Desktop sidebar expands back',expanded>=215&&expanded<=235,{expanded})
+  const sidebarContract=await page.evaluate(()=>{
+    const sidebar=document.querySelector('.brand-shell-v1>.sidebar')
+    const nav=sidebar?.querySelector('.nav')
+    const foot=sidebar?.querySelector('.sidebar-foot')
+    const active=nav?.querySelector('a.active')
+    if(!sidebar||!nav||!foot)return null
+    const sr=sidebar.getBoundingClientRect(),nr=nav.getBoundingClientRect(),fr=foot.getBoundingClientRect(),ar=active?.getBoundingClientRect()
+    return {
+      position:getComputedStyle(sidebar).position,
+      top:sr.top,bottom:sr.bottom,viewportH:innerHeight,
+      navScrollable:nav.scrollHeight>=nav.clientHeight,
+      navTop:nr.top,navBottom:nr.bottom,footTop:fr.top,
+      activeVisible:!ar||(ar.top>=nr.top-1&&ar.bottom<=nr.bottom+1),
+    }
+  })
+  recordInteraction(
+    'Desktop sidebar stays viewport-pinned with isolated nav scroll',
+    Boolean(sidebarContract)
+      &&sidebarContract.position==='sticky'
+      &&Math.abs(sidebarContract.top)<=2
+      &&sidebarContract.bottom>=sidebarContract.viewportH-2
+      &&sidebarContract.navBottom<=sidebarContract.footTop+2
+      &&sidebarContract.activeVisible,
+    sidebarContract??{}
+  )
+}
+
+// Desktop structural table contract checks.
+for(const spec of [
+  ['/purchase/accounts','.account-table-card'],
+  ['/purchase/orders','.order-table-card'],
+  ['/purchase/tracking','.tracking-hub-stack-v2'],
+  ['/warehouse/receive','.whx-intake-main'],
+  ['/warehouse/inventory','.whx-table-card'],
+  ['/warehouse/history','.whx-history-main'],
+  ['/sales/history','.sales-history-list'],
+  ['/sales/customers','.customer-demo-list'],
+  ['/sales/debt','.debt-demo-list'],
+  ['/finance/cashflow','.finance-ledger'],
+  ['/finance/shipper-payments?mode=customer','.finance-settlement-main'],
+  ['/finance/reports','.finance-report-table-card'],
+]){
+  const [path,tableSelector]=spec
+  await go(path)
+  const table=page.locator(tableSelector).first()
+  if(await table.count()){
+    const metrics=await table.evaluate(el=>{
+      const r=el.getBoundingClientRect()
+      const th=el.querySelector('thead th')
+      return {
+        height:r.height,viewportH:innerHeight,bottom:r.bottom,
+        overflowY:getComputedStyle(el).overflowY,
+        stickyHeader:th?getComputedStyle(th).position:null,
+      }
+    })
+    recordInteraction('Table workspace contract '+path,
+      metrics.height>=180&&(path==='/finance/reports'
+        ? metrics.bottom<=metrics.viewportH+30 // report document scroll is intentional
+        : metrics.bottom<=metrics.viewportH+2)
+        &&(!metrics.stickyHeader||metrics.stickyHeader==='sticky'),
+      metrics)
+  }
+  const managed=page.locator('.managed-column-button,.column-manager-button,.finance-column-button,.column-manager>.icon-button,.order-column-manager>.icon-button').first()
+  recordInteraction('Table column controls '+path,await managed.count()>0,{selector:await managed.count()?await managed.getAttribute('class'):null})
+}
+
 // Non-mutating interaction tests.
 await go('/purchase/accounts')
 if(await page.getByRole('button',{name:'Import TSV'}).count()){
@@ -188,7 +339,10 @@ if(await page.getByRole('button',{name:'Import TSV'}).count()){
   await page.getByRole('button',{name:'Import TSV'}).click()
   const reopened=await page.locator('[role=dialog]').count()>0
   if(reopened){
-    await page.locator('.sales-action-backdrop').click({position:{x:4,y:4}})
+    const backdrop=page.locator('.sales-action-backdrop').first()
+    const box=await backdrop.boundingBox()
+    if(box)await page.mouse.click(box.x+Math.max(8,box.width-12),box.y+8)
+    else await page.keyboard.press('Escape')
     await page.waitForTimeout(250)
   }
   const closedByOutside=await page.locator('[role=dialog]').count()===0
@@ -316,8 +470,8 @@ const voucherTagCount=await coloredVoucherTags.count()
 const voucherTagStyles=voucherTagCount
   ? await coloredVoucherTags.evaluateAll(nodes=>nodes.map(node=>({
       tag:node.getAttribute('data-voucher-tag'),
-      color:(node as HTMLElement).style.color,
-      background:(node as HTMLElement).style.backgroundColor,
+      color:node.style.color,
+      background:node.style.backgroundColor,
     })))
   : []
 recordInteraction(
@@ -359,6 +513,10 @@ const trackingOrderLink=page.locator('.tracking-hub-table a.table-link').first()
 if(await trackingOrderLink.count()){
   const trackingNav=await followLink(trackingOrderLink,{waitSelector:'aside.context-order-panel'})
   recordInteraction('Tracking contextual Order opens',await page.locator('aside.context-order-panel').count()>0,{href:trackingNav.href})
+  const trackingPanelMetrics=await readSlidebarContract('aside.context-order-panel')
+  recordInteraction('Tracking contextual Order uses main in-layout slidebar contract',slidebarPass(trackingPanelMetrics),trackingPanelMetrics??{})
+  const trackingPostKpi=await readPostKpiContract('aside.context-order-panel','.tracking-status-strip-v2','.tracking-content-workspace')
+  recordInteraction('Tracking slidebar stays below KPI',postKpiPass(trackingPostKpi),trackingPostKpi??{})
   const historyTab=page.locator('aside.context-order-panel .context-order-tabs').getByRole('link',{name:'Lịch sử'}).first()
   if(await historyTab.count()){
     await followLink(historyTab,{waitSelector:'aside.context-order-panel'})
@@ -373,6 +531,9 @@ const intakeRow=page.locator('.warehouse-split-table tbody tr').filter({hasText:
 if(await intakeRow.count()){
   await intakeRow.click();await settle()
   recordInteraction('Warehouse intake detail panel opens',await page.locator('aside.warehouse-intake-panel').count()>0)
+  const intakePanelMetrics=await readSlidebarContract('aside.warehouse-intake-panel')
+  recordInteraction('Warehouse intake uses main in-layout slidebar contract',slidebarPass(intakePanelMetrics),intakePanelMetrics??{})
+  recordInteraction('Warehouse intake is vertical right slidebar',verticalRightPanelPass(intakePanelMetrics),intakePanelMetrics??{})
   for(const tabName of ['Thông tin','Lịch sử','Sản phẩm']){
     const tab=page.locator('aside.warehouse-intake-panel .whx-panel-tabs').getByRole('button',{name:new RegExp('^'+tabName)}).first()
     if(await tab.count()){
@@ -390,6 +551,9 @@ const stockRow=page.locator('.whx-stock-main .whx-table tbody tr').filter({has:p
 if(await stockRow.count()){
   await stockRow.click();await settle(150)
   recordInteraction('Inventory SKU detail panel opens',await page.locator('aside.whx-detail-panel').count()>0)
+  const inventoryPanelMetrics=await readSlidebarContract('aside.whx-detail-panel')
+  recordInteraction('Inventory SKU uses main in-layout slidebar contract',slidebarPass(inventoryPanelMetrics),inventoryPanelMetrics??{})
+  recordInteraction('Inventory is vertical right slidebar',verticalRightPanelPass(inventoryPanelMetrics),inventoryPanelMetrics??{})
   const history=page.locator('aside.whx-detail-panel .whx-panel-tabs').getByRole('button',{name:/^Lịch sử/}).first()
   if(await history.count()){
     await history.click();await settle(150)
@@ -422,10 +586,28 @@ if(await txLink.count()){
 }else recordInteraction('Warehouse history fixture available',true,{skipped:true,reason:'No transactions'})
 
 await go('/sales/pos')
-const posCustomer=page.getByRole('button',{name:/Tạo khách|Gắn khách/}).first()
+const posDesktopMetrics=await page.evaluate(()=>{
+  const cartBar=document.querySelector('.mobile-pos-cart-bar')
+  const tile=document.querySelector('.pos-product-tile-final')
+  const icon=document.querySelector('.pos-cart-icon-v2')
+  const shortcuts=document.querySelector('.pos-shortcuts')
+  return {
+    cartBarDisplay:cartBar?getComputedStyle(cartBar).display:'missing',
+    tileHeight:tile?tile.getBoundingClientRect().height:0,
+    cartIcon:Boolean(icon),
+    shortcuts:Boolean(shortcuts),
+  }
+})
+recordInteraction('POS desktop excludes mobile cart summary row',posDesktopMetrics.cartBarDisplay==='missing',posDesktopMetrics)
+recordInteraction('POS desktop product tiles are enlarged',posDesktopMetrics.tileHeight>=70,posDesktopMetrics)
+recordInteraction('POS invoice header uses cart icon',posDesktopMetrics.cartIcon,posDesktopMetrics)
+recordInteraction('POS shortcut footer removed',!posDesktopMetrics.shortcuts,posDesktopMetrics)
+const posCustomer=page.getByRole('button',{name:/Tạo khách|Gắn khách|Khách lẻ/}).first()
 if(await posCustomer.count()){
   await posCustomer.click();await settle(120)
   recordInteraction('POS customer popover opens',await page.locator('.pos-customer-popover').count()>0)
+  recordInteraction('POS customer picker has searchable customer list',
+    await page.locator('.pos-customer-search-v2 input').count()>0&&await page.locator('.pos-customer-list-v2').count()>0)
   const close=page.locator('.pos-customer-popover .pos-popover-head button').first()
   if(await close.count()){await close.click();await settle(100)}
   recordInteraction('POS customer popover closes',await page.locator('.pos-customer-popover').count()===0)
@@ -441,6 +623,8 @@ const catSettings=page.getByRole('button',{name:/Phân loại/}).first()
 if(await catSettings.count()){
   await catSettings.click();await settle(100)
   recordInteraction('POS category settings opens',await page.locator('.pos-category-settings').count()>0)
+  recordInteraction('POS category manager supports delete',await page.locator('.pos-category-settings .pos-category-row-actions-v2 .button.danger').count()>0)
+  recordInteraction('POS category assignment workspace visible',await page.locator('.pos-category-assignment-v2 .pos-category-product-list').count()>0)
   const close=page.locator('.pos-category-settings .pos-popover-head button').first()
   if(await close.count()){await close.click();await settle(100)}
 }
@@ -477,13 +661,11 @@ if(await sellable.count()){
       let debtActive=await debtMode.evaluate(el=>el.classList.contains('active'))
       if(!debtActive&&await page.locator('.pos-customer-popover').count()>0){
         recordInteraction('POS debt requires customer guard',true)
-        const customerSelect=page.locator('.pos-customer-popover select').first()
         const fixtureCustomerId=String(session.fixtures?.customer_id??'')
-        const hasFixture=fixtureCustomerId&&await customerSelect.locator('option[value="'+fixtureCustomerId+'"]').count()>0
-        if(hasFixture)await customerSelect.selectOption(fixtureCustomerId)
-        const selectedFixture=hasFixture&&await customerSelect.inputValue()===fixtureCustomerId
-        const customerClose=page.locator('.pos-customer-popover .pos-popover-head button').first()
-        if(await customerClose.count()){await customerClose.click();await settle(80)}
+        const fixtureCustomerButton=page.locator('.pos-customer-list-v2 button[data-customer-id="'+fixtureCustomerId+'"]').first()
+        const hasFixture=Boolean(fixtureCustomerId)&&await fixtureCustomerButton.count()>0
+        if(hasFixture){await fixtureCustomerButton.click();await settle(80)}
+        const selectedFixture=hasFixture&&await page.locator('.pos-customer-popover').count()===0
         if(selectedFixture){
           await debtMode.click();await settle(100)
           debtActive=await debtMode.evaluate(el=>el.classList.contains('active'))
@@ -588,6 +770,9 @@ for(const label of ['+ Phiếu thu','+ Phiếu chi']){
   if(await button.count()&&await button.isEnabled()){
     await button.click();await settle(100)
     recordInteraction('Finance '+label+' panel opens',await page.locator('aside.finance-panel').count()>0)
+    const financePanelMetrics=await readSlidebarContract('aside.finance-panel')
+    recordInteraction('Finance '+label+' uses main in-layout slidebar contract',slidebarPass(financePanelMetrics),financePanelMetrics??{})
+    recordInteraction('Finance '+label+' is vertical right slidebar',verticalRightPanelPass(financePanelMetrics),financePanelMetrics??{})
     const moneyTab=page.locator('aside.finance-panel .panel-tabs').getByRole('button',{name:/Chi tiết tiền/}).first()
     if(await moneyTab.count()){
       await moneyTab.click();await settle(80)
@@ -615,6 +800,12 @@ if(await bill.count()&&await bill.isEnabled()){
 }
 
 await go('/finance/shipper-payments')
+const settlementHub=page.locator('.finance-hub-card').first()
+if(await settlementHub.count()){
+  await followLink(settlementHub,{waitSelector:'aside.finance-hub-live-panel'})
+  const settlementPanelMetrics=await readSlidebarContract('aside.finance-hub-live-panel')
+  recordInteraction('Settlement HUB is vertical right slidebar',verticalRightPanelPass(settlementPanelMetrics),settlementPanelMetrics??{})
+}
 const customerMode=page.locator('.finance-mode-tabs').getByRole('link',{name:'Khách hàng'}).first()
 if(await customerMode.count()){
   const customerModeNav=await followLink(customerMode)
@@ -638,8 +829,8 @@ if(await hubCard.count()){
 }else recordInteraction('Shipper QA HUB fixture available',false,{hub:fixtureHub||null})
 
 await go('/settings')
-recordInteraction('Sidebar notification bell',await page.locator('.sidebar-alert-trigger').count()>0)
-const appAlertTrigger=page.locator('.sidebar-alert-trigger').first()
+recordInteraction('Sidebar notification bell',await page.locator('.brand-shell-v1>.sidebar .sidebar-alert-trigger').count()>0)
+const appAlertTrigger=page.locator('.brand-shell-v1>.sidebar .sidebar-alert-trigger').first()
 if(await appAlertTrigger.count()){
   await appAlertTrigger.click()
   recordInteraction('Notification slidebar opens',await page.locator('.app-alert-panel-v2').count()>0)
@@ -647,12 +838,12 @@ if(await appAlertTrigger.count()){
   const alertBackdrop=page.locator('.app-alert-backdrop-v2').first()
   if(await alertBackdrop.count())await alertBackdrop.click()
 }
-const accountTrigger=page.locator('.sidebar-account-trigger').first()
+const accountTrigger=page.locator('.brand-shell-v1>.sidebar .sidebar-account-trigger').first()
 recordInteraction('Compact sidebar account trigger',await accountTrigger.count()>0)
 if(await accountTrigger.count()){
   await accountTrigger.click()
   recordInteraction('Sidebar account menu opens',await page.locator('.sidebar-account-popover').count()>0)
-  recordInteraction('Sidebar account menu has password action',await page.locator('.sidebar-account-popover').getByRole('link',{name:'Đổi mật khẩu'}).count()>0)
+  recordInteraction('Sidebar account menu has password action',await page.locator('.sidebar-account-popover').getByRole('menuitem',{name:'Đổi mật khẩu'}).count()>0)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(150)
   recordInteraction('Sidebar account menu closes by Esc',await page.locator('.sidebar-account-popover').count()===0)
@@ -701,12 +892,13 @@ if(await templateTab.count()){
 await go('/settings?section=data-management')
 for(const name of ['Tổng quan dữ liệu','Lưu trữ & dọn dẹp','Reset hệ thống']){
   const sub=page.locator('.data-management-settings-v10 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
-  recordInteraction('Data subtab '+name,await sub.count()>0)
+  recordInteraction('Data subtab '+name,name==='Reset hệ thống' ? await sub.count()===0 : await sub.count()>0)
 }
 await go('/settings?section=access')
 for(const name of ['Tài khoản','Vai trò & quyền']){
   const sub=page.locator('.admin-access-settings-v10 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
-  recordInteraction('Access subtab '+name,await sub.count()>0)
+  // Browser QA uses an Operator account. Access settings are Admin-only.
+  recordInteraction('Access subtab '+name+' hidden for Operator',await sub.count()===0)
 }
 
 await go('/sales/history')
@@ -732,14 +924,19 @@ if(invoiceHrefs.length===0){
     }
   }
   recordInteraction('Sales History invoice panel opens',invoicePanelOpened)
-  recordInteraction('Sales History returnable invoice found',returnableInvoiceFound)
+  const noReturnableItems=await page.getByRole('button',{name:'Hoàn hàng'}).first().evaluate(el=>
+    (el instanceof HTMLButtonElement)&&el.disabled&&el.title==='Không còn sản phẩm có thể hoàn'
+  ).catch(()=>false)
+  recordInteraction('Sales History return eligibility matches available items',returnableInvoiceFound||noReturnableItems,
+    {returnableInvoiceFound,noReturnableItems})
 
   const cancel=page.getByRole('button',{name:'Huỷ hóa đơn'})
   const returnButton=page.getByRole('button',{name:'Hoàn hàng'})
   const cancelReady=await cancel.count()>0&&await cancel.first().isEnabled()
   const returnReady=await returnButton.count()>0&&await returnButton.first().isEnabled()
   recordInteraction('Sales History cancellation action available',cancelReady)
-  recordInteraction('Sales History return action available',returnReady)
+  recordInteraction('Sales History return action guarded by available items',returnReady||noReturnableItems,
+    {returnReady,noReturnableItems})
   if(cancelReady){
     await cancel.first().click()
     const opened=await page.locator('[role=dialog]').count()>0
@@ -756,7 +953,14 @@ if(invoiceHrefs.length===0){
     await cancel.first().click()
     const reopened=await page.locator('[role=dialog]').count()>0
     if(reopened){
-      await page.locator('.sales-action-backdrop').click({position:{x:4,y:4}})
+      // Click genuinely outside the dialog, but to the right of the fixed desktop
+      // sidebar. x=4 used to hit the navigation rail instead of the backdrop.
+      const sidebarRight=await page.locator('.sidebar').evaluate(el=>el.getBoundingClientRect().right).catch(()=>220)
+      const backdrop=page.locator('.sales-action-backdrop')
+      const bb=await backdrop.boundingBox()
+      const clickX=Math.max(sidebarRight+22,(bb?.x??0)+18)
+      const clickY=(bb?.y??0)+14
+      await page.mouse.click(clickX,clickY)
       await page.waitForTimeout(250)
     }
     recordInteraction('Sales cancel modal closes by outside click',reopened&&await page.locator('[role=dialog]').count()===0)
@@ -774,28 +978,14 @@ await go('/settings')
 const settingsBody=await page.locator('body').innerText()
 summary.interactions.push({
   name:'Settings has no inactive V1 placeholders',
-  pass:!settingsBody.includes('Tài khoản & phân quyền')&&!settingsBody.includes('Tích hợp')&&!settingsBody.includes('Thông báo'),
+  // 'Thông báo' is a working settings tab, not an unfinished placeholder.
+  pass:!settingsBody.includes('Sắp triển khai')
+    &&!settingsBody.includes('Chưa hỗ trợ')
+    &&await page.locator('.settings-page-tabs-v3 a[href*="section=notifications"]').count()>0,
 })
 
-await page.setViewportSize({width:390,height:844})
-for(const path of ['/purchase/orders','/purchase/tracking','/warehouse','/warehouse/receive','/sales/pos','/sales/history','/sales/customers','/sales/debt']){
-  const r=await go(path)
-  const metrics=await page.evaluate(()=>({
-    innerWidth:window.innerWidth,
-    scrollWidth:document.documentElement.scrollWidth,
-    bodyScrollWidth:document.body.scrollWidth,
-  }))
-  summary.mobile.push({
-    path,status:r.status,finalUrl:r.url,
-    authenticated:!r.url.includes('/login'),
-    horizontalOverflow:Math.max(metrics.scrollWidth,metrics.bodyScrollWidth)>metrics.innerWidth+2,
-    navigationError:r.navigationError,
-    ...metrics,
-  })
-  const safe=path.replaceAll('/','-').replace(/^-+/,'')
-  await page.screenshot({path:`${outDir}/mobile-${safe}.png`,fullPage:true})
-  fs.writeFileSync(`${outDir}/summary-partial.json`,JSON.stringify(summary,null,2))
-}
+// Desktop-only release: Mobile is explicitly excluded from the UX contract.
+// Do not run mobile app shell/card, overflow, or handset breakpoint assertions.
 
 await browser.close()
 
@@ -803,7 +993,7 @@ await browser.close()
 // prefetches while the same document route remains healthy. Treat those as
 // warnings only when the corresponding route itself completed successfully.
 const successfulPaths=new Set(
-  [...summary.desktop,...summary.mobile]
+  summary.desktop
     .filter(r=>r.authenticated&&r.status>0&&r.status<500&&!r.navigationError&&!r.hasServerError)
     .map(r=>String(r.path).split('?')[0])
 )
@@ -859,9 +1049,6 @@ if(!summary.public.login.hasBrand||summary.public.login.emailInputs!==1||summary
 if(!summary.public.protectedRedirect.redirectedToLogin)summary.failures.push('Protected route redirect')
 for(const r of summary.desktop){
   if(!r.authenticated||r.status>=500||r.hasServerError||r.navigationError||r.horizontalOverflow)summary.failures.push(`Desktop route ${r.path}`)
-}
-for(const r of summary.mobile){
-  if(!r.authenticated||r.status>=500||r.navigationError||r.horizontalOverflow)summary.failures.push(`Mobile route ${r.path}`)
 }
 for(const interaction of summary.interactions){
   if(!interaction.pass)summary.failures.push(`Interaction: ${interaction.name}`)

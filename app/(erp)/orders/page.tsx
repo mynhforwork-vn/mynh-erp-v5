@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SystemSlidebar } from '@/components/system-slidebar'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
 import { ManualSyncButton } from '@/components/manual-sync-button'
@@ -188,10 +189,27 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     }))
 
   const dateRows=(data??[]) as any[]
-  const rows=dateRows.filter((o:any)=>{
+
+  function matchesOrderScope(o:any){
+    if(sp.user&&String(o.erp_user_id)!==String(sp.user))return false
+    if(!queryText)return true
+    const s=activeShipment(o)
+    const hay=[
+      o.shopee_order_id,o.erp_users?.username,s?.tracking_number,s?.carrier,
+      o.recipient_name,o.recipient_phone,o.area,o.destination_hub,
+      ...(o.order_items??[]).flatMap((x:any)=>[x.product_name,x.variant]),
+      ...(o.order_vouchers??[]).flatMap((x:any)=>[x.voucher_code,x.voucher_name,x.voucher_tag,x.voucher_type]),
+    ].filter(Boolean).join(' ').toLowerCase()
+    return hay.includes(queryText)
+  }
+
+  const scopeRows=dateRows.filter(matchesOrderScope)
+  const rows=scopeRows.filter((o:any)=>{
     if(sp.receive&&o.receive_status!==sp.receive)return false
     const shipment=activeShipment(o)
-    if(sp.tracking==='express'){
+    if(sp.tracking==='express_all'){
+      if(o.shipping_service!=='EXPRESS')return false
+    }else if(sp.tracking==='express'){
       const orderStatus=String(o.order_status??'').toUpperCase()
       if(
         o.shipping_service!=='EXPRESS' ||
@@ -210,33 +228,26 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     }else if(sp.tracking&&shipment?.current_tracking_status!==sp.tracking){
       return false
     }
-    if(!queryText)return true
-    const s=activeShipment(o)
-    const hay=[
-      o.shopee_order_id,o.erp_users?.username,s?.tracking_number,s?.carrier,
-      o.recipient_name,o.recipient_phone,o.area,o.destination_hub,
-      ...(o.order_items??[]).flatMap((x:any)=>[x.product_name,x.variant]),
-      ...(o.order_vouchers??[]).flatMap((x:any)=>[x.voucher_code,x.voucher_name,x.voucher_tag,x.voucher_type]),
-    ].filter(Boolean).join(' ').toLowerCase()
-    return hay.includes(queryText)
+    return true
   })
 
-  const totalOrders=dateRows.length
-  const shipping=dateRows.filter((o:any)=>{
+  const totalOrders=scopeRows.length
+  const shipping=scopeRows.filter((o:any)=>{
     const s=activeShipment(o)?.current_tracking_status
     return isShippingTrackingStatus(s)
   }).length
-  const arrivedHub=dateRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='ARRIVED_DESTINATION_HUB').length
-  const delivered=dateRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='DELIVERED').length
-  const waiting=dateRows.filter((o:any)=>o.receive_status==='WAITING_RECEIVE').length
-  const missingTracking=dateRows.filter((o:any)=>!activeShipment(o)?.tracking_number).length
-  const cancelled=dateRows.filter((o:any)=>{
+  const arrivedHub=scopeRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='ARRIVED_DESTINATION_HUB').length
+  const delivered=scopeRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='DELIVERED').length
+  const waiting=scopeRows.filter((o:any)=>o.receive_status==='WAITING_RECEIVE').length
+  const missingTracking=scopeRows.filter((o:any)=>!activeShipment(o)?.tracking_number).length
+  const cancelled=scopeRows.filter((o:any)=>{
     const status=activeShipment(o)?.current_tracking_status
     const orderStatus=String(o.order_status??'').toUpperCase()
     return status==='CANCELLED'||orderStatus==='CANCELLED'||orderStatus==='CANCELED'
   }).length
 
-  const expressAttentionRows=dateRows.filter((o:any)=>{
+  const expressCount=scopeRows.filter((o:any)=>o.shipping_service==='EXPRESS').length
+  const expressAttentionRows=scopeRows.filter((o:any)=>{
     const orderStatus=String(o.order_status??'').toUpperCase()
     return (
       o.shipping_service==='EXPRESS' &&
@@ -398,8 +409,8 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       <Link className={`kpi-card entity-status-metric info ${sp.tracking==='ARRIVED_DESTINATION_HUB'?'active':''}`} href={listHref({receive:null,tracking:'ARRIVED_DESTINATION_HUB'})}><span>Đến kho đích</span><b>{arrivedHub}</b><small>Đã đến HUB đích</small></Link>
       <Link className={`kpi-card entity-status-metric success ${sp.tracking==='DELIVERED'&&!sp.receive?'active':''}`} href={listHref({receive:null,tracking:'DELIVERED'})}><span>Giao thành công</span><b>{delivered}</b><small>Đã giao thành công</small></Link>
       <Link className={`kpi-card entity-status-metric warning ${sp.receive==='WAITING_RECEIVE'?'active':''}`} href={listHref({receive:'WAITING_RECEIVE',tracking:null})}><span>Chờ xác nhận nhận hàng</span><b>{waiting}</b><small>Cần xác nhận vật lý</small></Link>
+      <Link className={`kpi-card entity-status-metric express ${sp.tracking==='express_all'?'active':''}`} href={listHref({receive:null,tracking:'express_all'})}><span>Đơn Hỏa tốc</span><b>{expressCount}</b><small>{expressAttention} đơn cần xử lý</small></Link>
       <Link className={`kpi-card entity-status-metric danger ${sp.tracking==='cancelled'?'active':''}`} href={listHref({receive:null,tracking:'cancelled'})}><span>Bị huỷ</span><b>{cancelled}</b><small>Đơn / vận đơn đã huỷ</small></Link>
-      <Link className={`kpi-card entity-status-metric express ${sp.tracking==='express'?'active':''}`} href={listHref({receive:null,tracking:'express'})}><span>Hỏa tốc cần theo dõi</span><b>{expressAttention}</b><small>Đang giao {expressProcessing} · Lỗi {expressFailed} · Chờ nhận {expressWaitingReceive}</small></Link>
     </section>
 
     <div className={`split-view order-workspace ${panelOpen?'with-panel':''}`}>
@@ -449,7 +460,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       </section>
 
       {createMode&&!destinationSettingsMode&&
-        <aside className="detail-panel order-panel">
+        <SystemSlidebar className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Tạo đơn mới</h2></div>
             <Link className="close" href={listHref({mode:null})}>×</Link>
@@ -466,11 +477,11 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             destinationHubs={destinationHubs}
             carrierConfigs={carrierConfigs}
           />
-        </aside>
+        </SystemSlidebar>
       }
 
       {detail&&editMode&&!destinationSettingsMode&&
-        <aside className="detail-panel order-panel">
+        <SystemSlidebar className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Sửa {detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
             <Link className="close" href={listHref({order:detail.id,mode:null})}>×</Link>
@@ -508,11 +519,11 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             destinationHubs={destinationHubs}
             carrierConfigs={carrierConfigs}
           />
-        </aside>
+        </SystemSlidebar>
       }
 
       {detail&&!editMode&&!destinationSettingsMode&&
-        <aside className="detail-panel">
+        <SystemSlidebar className="detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT ĐƠN</span><h2>{detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
             <Link className="close" href={listHref({order:null,tab:null,mode:null})}>×</Link>
@@ -882,7 +893,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
             <div className="panel-meta">Tạo đơn: {formatDateTime(detail.created_at)}</div>
           </div>
-        </aside>
+        </SystemSlidebar>
       }
     </div>
 

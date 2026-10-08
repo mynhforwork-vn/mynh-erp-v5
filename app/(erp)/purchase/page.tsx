@@ -162,7 +162,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   }).length
   const arrivedHub=standardRows.filter(o=>activeShipment(o)?.current_tracking_status==='ARRIVED_DESTINATION_HUB').length
   const failed=standardRows.filter(o=>activeShipment(o)?.current_tracking_status==='DELIVERY_FAILED').length
-  const missingTracking=standardRows.filter(o=>!activeShipment(o)?.tracking_number).length
+  const missingTracking=rows.filter(o=>!activeShipment(o)?.tracking_number).length
   const cancelled=rows.filter(o=>{
     const trackingStatus=activeShipment(o)?.current_tracking_status
     const orderStatus=String(o.order_status??'').toUpperCase()
@@ -252,7 +252,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
         <span>Tổng đơn</span><b>{totalOrders}</b><small>{accountCount??0} tài khoản mua hàng</small>
       </Link>
       <Link href={orderHref({tracking:'missing'})} className="command-kpi warning">
-        <span>Chưa có mã vận đơn</span><b>{missingTracking}</b><small>Không tính đơn Hỏa tốc</small>
+        <span>Chưa có mã vận đơn</span><b>{missingTracking}</b><small>Gồm cả đơn Hỏa tốc chưa có MVD</small>
       </Link>
       <Link href={orderHref({tracking:'shipping'})} className="command-kpi info">
         <span>Đang vận chuyển</span><b>{shipping}</b><small>Đã lấy hàng / trung chuyển / đang giao</small>
@@ -265,6 +265,9 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       </Link>
       <Link href={purchaseHref('/purchase/tracking',{status:'DELIVERED',receive:'WAITING_RECEIVE'})} className="command-kpi warning">
         <span>Chờ xác nhận nhận hàng</span><b>{waiting}</b><small>{formatMoney(waitingCod)} · {waitingHubs} HUB</small>
+      </Link>
+      <Link href={orderHref({tracking:'express_all'})} className="command-kpi express">
+        <span>Đơn Hỏa tốc</span><b>{expressCount}</b><small>Vận hành và giao nhận thủ công</small>
       </Link>
       <Link href={orderHref({tracking:'cancelled'})} className="command-kpi danger">
         <span>Bị huỷ</span><b>{cancelled}</b><small>Đơn / vận đơn đã huỷ</small>
@@ -297,6 +300,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
           <div><h2>Theo kho đích</h2><span className="muted">Ưu tiên kho đang có đơn giao thành công chờ nhận</span></div>
           <Link className="button small" href={purchaseHref('/purchase/tracking')}>Mở console</Link>
         </div>
+        
         <div className="compact-table-wrap">
           <table className="table compact-summary-table">
             <thead><tr><th>Kho đích</th><th>Shipper</th><th>Đơn</th><th>COD</th><th>Giao TC</th><th>Chờ nhận</th><th>Đã nhận</th><th></th></tr></thead>
@@ -359,6 +363,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
     <section className="purchase-analytics-grid">
       <div className="card">
         <div className="card-head"><div><h2>Theo khu vực</h2><span className="muted">Đơn tiêu chuẩn có phân khu vực tự động</span></div></div>
+        
         <div className="compact-table-wrap">
           <table className="table compact-summary-table">
             <thead><tr><th>Khu vực</th><th>Đơn</th><th>COD</th><th>Giao TC</th><th>Chờ nhận</th></tr></thead>

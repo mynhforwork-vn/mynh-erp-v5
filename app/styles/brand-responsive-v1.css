@@ -1,0 +1,3473 @@
+/* =====================================================================
+   MYNH ERP — Brand & Responsive System V1
+   Final visual contract loaded after all legacy/module styles.
+   Scope: ERP shell + shared UI primitives + responsive behavior.
+   ===================================================================== */
+
+:root{
+  --mynh-cobalt-700:#214F91;
+  --mynh-cobalt-600:#2A63AD;
+  --mynh-cobalt-500:#3976C5;
+  --mynh-cobalt-100:#EAF2FB;
+  --mynh-teal-700:#0D6E72;
+  --mynh-teal-600:#12858A;
+  --mynh-teal-100:#E7F6F5;
+  --mynh-ink-950:#132235;
+  --mynh-ink-900:#1A2D42;
+  --mynh-ink-700:#40546A;
+  --mynh-ink-500:#718195;
+  --mynh-ink-400:#8D9AAA;
+  --mynh-canvas:#F3F6F9;
+  --mynh-surface:#FFFFFF;
+  --mynh-surface-soft:#F8FAFC;
+  --mynh-line:#E1E7ED;
+  --mynh-line-strong:#CFD9E2;
+  --mynh-success:#267A57;
+  --mynh-success-bg:#EAF6F0;
+  --mynh-warning:#A9680F;
+  --mynh-warning-bg:#FFF4E2;
+  --mynh-danger:#B94B4B;
+  --mynh-danger-bg:#FCEEEE;
+  --mynh-radius-sm:4px;
+  --mynh-radius-md:6px;
+  --mynh-panel-width:390px;
+  --mynh-shadow-panel:0 16px 42px rgba(17,36,55,.14);
+}
+
+html,body{
+  background:var(--mynh-canvas)!important;
+}
+body{
+  color:var(--mynh-ink-950)!important;
+  font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  font-size:13px!important;
+  line-height:1.45!important;
+}
+
+
+/* ---------- Login brand ---------- */
+.login-wrap{
+  background:
+    radial-gradient(circle at 50% -10%,rgba(42,99,173,.14),transparent 34%),
+    linear-gradient(180deg,#F8FAFC 0%,var(--mynh-canvas) 100%)!important;
+}
+.login-card{
+  width:min(390px,calc(100vw - 28px))!important;
+  padding:25px!important;
+  border:1px solid var(--mynh-line)!important;
+  border-radius:8px!important;
+  background:#fff!important;
+  box-shadow:0 22px 56px rgba(19,34,53,.11)!important;
+}
+.login-card .brand-mark{
+  width:42px!important;
+  height:42px!important;
+  display:grid!important;
+  place-items:center!important;
+  margin:0 0 14px!important;
+  border:1px solid #C9DBEE!important;
+  border-radius:7px!important;
+  background:linear-gradient(135deg,#EFF6FD 0%,#E4F5F3 100%)!important;
+  color:var(--mynh-cobalt-700)!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  letter-spacing:-.04em!important;
+  box-shadow:inset 0 -2px 0 rgba(18,133,138,.15)!important;
+}
+.login-card h1{
+  color:var(--mynh-ink-950)!important;
+  font-size:21px!important;
+  font-weight:790!important;
+  letter-spacing:-.02em!important;
+}
+.login-card p{
+  color:var(--mynh-ink-500)!important;
+  font-size:10.5px!important;
+}
+.login-card label{
+  color:#586C80!important;
+  font-size:9.5px!important;
+  font-weight:700!important;
+}
+.login-card input{
+  min-height:36px!important;
+  border:1px solid var(--mynh-line-strong)!important;
+  border-radius:5px!important;
+  color:var(--mynh-ink-900)!important;
+  font-size:11px!important;
+}
+.login-card input:focus{
+  border-color:#7FA0C4!important;
+  box-shadow:0 0 0 2px rgba(42,99,173,.09)!important;
+  outline:none!important;
+}
+.login-card .button.primary{
+  min-height:36px!important;
+  border-radius:5px!important;
+  border-color:var(--mynh-cobalt-600)!important;
+  background:linear-gradient(90deg,var(--mynh-cobalt-600),#2A6FAE)!important;
+  color:#fff!important;
+  font-size:10.5px!important;
+  font-weight:750!important;
+}
+
+/* ---------- Shell / brand ---------- */
+.brand-shell-v1{
+  grid-template-columns:218px minmax(0,1fr)!important;
+  background:var(--mynh-canvas)!important;
+}
+.brand-shell-v1>.sidebar{
+  width:auto!important;
+  min-width:0!important;
+  padding:13px 9px 11px!important;
+  background:
+    linear-gradient(180deg,#172B40 0%,#192F46 56%,#16283B 100%)!important;
+  border-right:1px solid rgba(11,26,41,.32)!important;
+  box-shadow:inset -1px 0 rgba(255,255,255,.035)!important;
+}
+.brand-shell-v1 .brand{
+  min-height:50px!important;
+  gap:9px!important;
+  padding:4px 7px 12px!important;
+  margin-bottom:9px!important;
+  border-bottom:1px solid rgba(255,255,255,.09)!important;
+}
+.brand-shell-v1 .brand .brand-mark{
+  width:34px!important;
+  height:34px!important;
+  border:1px solid rgba(255,255,255,.20)!important;
+  border-radius:6px!important;
+  background:linear-gradient(135deg,#F6FBFF 0%,#DCECF8 100%)!important;
+  color:var(--mynh-cobalt-700)!important;
+  font-size:10px!important;
+  font-weight:900!important;
+  letter-spacing:-.04em!important;
+  box-shadow:inset 0 -2px 0 rgba(18,133,138,.14)!important;
+}
+.brand-shell-v1 .brand b{
+  color:#F8FBFE!important;
+  font-size:13px!important;
+  font-weight:760!important;
+  letter-spacing:.005em!important;
+}
+.brand-shell-v1 .brand small{
+  color:#93A8BC!important;
+  font-size:7.5px!important;
+  font-weight:700!important;
+  letter-spacing:.09em!important;
+}
+.brand-shell-v1 .nav{
+  min-height:0!important;
+  gap:1px!important;
+  overflow-y:auto!important;
+  scrollbar-width:thin!important;
+}
+.brand-shell-v1 .nav-group{margin:0 0 3px!important}
+.brand-shell-v1 .nav-section-label{
+  padding:7px 9px 4px!important;
+  color:#738BA1!important;
+  font-size:7.3px!important;
+  font-weight:800!important;
+  letter-spacing:.11em!important;
+}
+.brand-shell-v1 .nav-group-items{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:1px!important;
+}
+.brand-shell-v1 .nav a{
+  position:relative!important;
+  min-width:0!important;
+  height:34px!important;
+  gap:8px!important;
+  padding:0 8px!important;
+  border:1px solid transparent!important;
+  border-radius:5px!important;
+  background:transparent!important;
+  color:#C7D4E1!important;
+  font-size:10.8px!important;
+  font-weight:610!important;
+  transition:background .12s ease,border-color .12s ease,color .12s ease!important;
+}
+.brand-shell-v1 .nav a:hover{
+  background:rgba(255,255,255,.055)!important;
+  color:#fff!important;
+}
+.brand-shell-v1 .nav a.active{
+  background:linear-gradient(90deg,rgba(57,118,197,.28),rgba(18,133,138,.12))!important;
+  border-color:rgba(118,167,218,.13)!important;
+  color:#fff!important;
+  box-shadow:none!important;
+}
+.brand-shell-v1 .nav a.active:before{
+  content:""!important;
+  position:absolute!important;
+  left:-1px!important;
+  top:7px!important;
+  bottom:7px!important;
+  width:2px!important;
+  border-radius:0 2px 2px 0!important;
+  background:#51B5B4!important;
+}
+.brand-shell-v1 .nav-icon{
+  width:21px!important;
+  height:21px!important;
+  flex:0 0 21px!important;
+  border:0!important;
+  border-radius:4px!important;
+  background:rgba(255,255,255,.045)!important;
+  color:#A8BACA!important;
+}
+.brand-shell-v1 .nav a.active .nav-icon{
+  background:rgba(255,255,255,.10)!important;
+  color:#DFF4F3!important;
+}
+.brand-shell-v1 .sidebar-foot{
+  padding:8px 3px 0!important;
+  border-top:1px solid rgba(255,255,255,.08)!important;
+}
+.brand-shell-v1>.main{
+  min-width:0!important;
+  padding:16px 18px 26px!important;
+  background:var(--mynh-canvas)!important;
+}
+
+/* ---------- Typography / page hierarchy ---------- */
+.brand-shell-v1 .page-head{
+  min-height:48px!important;
+  margin-bottom:9px!important;
+}
+.brand-shell-v1 .page-head h1{
+  color:var(--mynh-ink-950)!important;
+  font-size:19px!important;
+  line-height:1.18!important;
+  font-weight:760!important;
+  letter-spacing:-.018em!important;
+}
+.brand-shell-v1 .page-head p{
+  margin-top:4px!important;
+  color:var(--mynh-ink-500)!important;
+  font-size:10.5px!important;
+}
+.brand-shell-v1 .module-eyebrow,
+.brand-shell-v1 .eyebrow{
+  color:var(--mynh-teal-700)!important;
+  font-size:7.5px!important;
+  font-weight:800!important;
+  letter-spacing:.095em!important;
+}
+
+/* ---------- Shared controls ---------- */
+.brand-shell-v1 .button{
+  min-height:30px!important;
+  height:30px!important;
+  padding:0 10px!important;
+  border:1px solid var(--mynh-line-strong)!important;
+  border-radius:5px!important;
+  background:#fff!important;
+  color:#344A60!important;
+  box-shadow:none!important;
+  font-size:10.2px!important;
+  font-weight:680!important;
+}
+.brand-shell-v1 .button:hover{
+  border-color:#AFC1D2!important;
+  background:#F8FAFC!important;
+  color:var(--mynh-cobalt-700)!important;
+}
+.brand-shell-v1 .button.primary{
+  border-color:var(--mynh-cobalt-600)!important;
+  background:var(--mynh-cobalt-600)!important;
+  color:#fff!important;
+}
+.brand-shell-v1 .button.primary:hover{
+  border-color:var(--mynh-cobalt-700)!important;
+  background:var(--mynh-cobalt-700)!important;
+}
+.brand-shell-v1 input,
+.brand-shell-v1 select,
+.brand-shell-v1 textarea,
+.brand-shell-v1 .search{
+  border-color:var(--mynh-line-strong)!important;
+  border-radius:5px!important;
+  background:#fff!important;
+  color:var(--mynh-ink-900)!important;
+  box-shadow:none!important;
+}
+.brand-shell-v1 input:focus,
+.brand-shell-v1 select:focus,
+.brand-shell-v1 textarea:focus,
+.brand-shell-v1 .search:focus{
+  border-color:#7FA0C4!important;
+  box-shadow:0 0 0 2px rgba(42,99,173,.09)!important;
+  outline:none!important;
+}
+.brand-shell-v1 .segmented,
+.brand-shell-v1 .command-range{
+  border-radius:5px!important;
+  background:#EAF0F5!important;
+}
+.brand-shell-v1 .segmented a,
+.brand-shell-v1 .command-range a,
+.brand-shell-v1 .command-range span{
+  border-radius:4px!important;
+  color:#607287!important;
+  font-weight:680!important;
+}
+.brand-shell-v1 .segmented a.active,
+.brand-shell-v1 .command-range a.active,
+.brand-shell-v1 .command-range span.active{
+  background:#fff!important;
+  color:var(--mynh-cobalt-700)!important;
+  box-shadow:0 1px 2px rgba(22,44,66,.08)!important;
+}
+
+/* ---------- Surfaces ---------- */
+.brand-shell-v1 .card,
+.brand-shell-v1 .table-card,
+.brand-shell-v1 .command-bar{
+  border-color:var(--mynh-line)!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  box-shadow:0 1px 2px rgba(19,34,53,.025)!important;
+}
+.brand-shell-v1 .card-head h2{
+  color:var(--mynh-ink-900)!important;
+  font-size:11.5px!important;
+  font-weight:720!important;
+}
+.brand-shell-v1 .muted{
+  color:var(--mynh-ink-500)!important;
+  font-size:9px!important;
+}
+
+/* ---------- KPI system ---------- */
+.brand-shell-v1 .kpi-card,
+.brand-shell-v1 .entity-status-metric,
+.brand-shell-v1 .system-kpi{
+  border-color:var(--mynh-line)!important;
+  border-radius:6px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.brand-shell-v1 .kpi-card:before{
+  height:2px!important;
+  background:#BCD0E2!important;
+}
+.brand-shell-v1 .kpi-card.info:before,
+.brand-shell-v1 .entity-status-metric.info:before{background:var(--mynh-cobalt-500)!important}
+.brand-shell-v1 .kpi-card.success:before,
+.brand-shell-v1 .entity-status-metric.success:before{background:#4A9A75!important}
+.brand-shell-v1 .kpi-card.warning:before,
+.brand-shell-v1 .entity-status-metric.warning:before{background:#D59A42!important}
+.brand-shell-v1 .kpi-card.danger:before,
+.brand-shell-v1 .entity-status-metric.danger:before{background:#CB6B6B!important}
+.brand-shell-v1 .kpi-card span,
+.brand-shell-v1 .entity-status-metric>span{
+  color:#66788A!important;
+  font-size:9px!important;
+  font-weight:680!important;
+}
+.brand-shell-v1 .kpi-card b,
+.brand-shell-v1 .entity-status-metric>b{
+  color:var(--mynh-ink-900)!important;
+  font-weight:780!important;
+  letter-spacing:-.015em!important;
+}
+.brand-shell-v1 .kpi-card small,
+.brand-shell-v1 .entity-status-metric>small{
+  color:#8A98A7!important;
+  font-size:8px!important;
+}
+
+/* ---------- Tables ---------- */
+.brand-shell-v1 .table-card,
+.brand-shell-v1 .account-table-card,
+.brand-shell-v1 .sales-history-table-wrap,
+.brand-shell-v1 .customer-demo-table-wrap,
+.brand-shell-v1 .debt-demo-table-wrap,
+.brand-shell-v1 .whx-table-card{
+  min-width:0!important;
+  max-width:100%!important;
+}
+.brand-shell-v1 .table{
+  color:#34485D!important;
+  font-size:11px!important;
+}
+.brand-shell-v1 .table th{
+  height:31px!important;
+  padding:0 9px!important;
+  border-bottom:1px solid var(--mynh-line-strong)!important;
+  background:#F5F8FA!important;
+  color:#66798B!important;
+  font-size:8px!important;
+  font-weight:800!important;
+  letter-spacing:.035em!important;
+}
+.brand-shell-v1 .table td{
+  height:36px!important;
+  padding:0 9px!important;
+  border-bottom:1px solid #EDF1F4!important;
+  background:#fff!important;
+}
+.brand-shell-v1 .table tbody tr:hover td{background:#F8FAFC!important}
+.brand-shell-v1 .table-link{
+  color:var(--mynh-cobalt-700)!important;
+  font-weight:720!important;
+}
+.brand-shell-v1 .selected-row td,
+.brand-shell-v1 tr.selected td{
+  background:#EDF4FA!important;
+}
+.brand-shell-v1 .selected-row td:first-child,
+.brand-shell-v1 tr.selected td:first-child{
+  box-shadow:inset 2px 0 0 var(--mynh-cobalt-500)!important;
+}
+
+/* ---------- Status language ---------- */
+.brand-shell-v1 .badge,
+.brand-shell-v1 .status-pill{
+  min-height:20px!important;
+  padding:0 7px!important;
+  border-radius:999px!important;
+  font-size:8px!important;
+  font-weight:720!important;
+}
+.brand-shell-v1 .status-in_transit,
+.brand-shell-v1 .status-picked_up,
+.brand-shell-v1 .status-ready_to_ship,
+.brand-shell-v1 .status-arrived_transit_hub{
+  border-color:#C9DBEE!important;
+  background:var(--mynh-cobalt-100)!important;
+  color:var(--mynh-cobalt-700)!important;
+}
+.brand-shell-v1 .status-arrived_destination_hub,
+.brand-shell-v1 .status-out_for_delivery,
+.brand-shell-v1 .status-pill.orange{
+  border-color:#E7D1A8!important;
+  background:var(--mynh-warning-bg)!important;
+  color:var(--mynh-warning)!important;
+}
+.brand-shell-v1 .status-delivered,
+.brand-shell-v1 .badge.green,
+.brand-shell-v1 .status-pill.green{
+  border-color:#C9E2D5!important;
+  background:var(--mynh-success-bg)!important;
+  color:var(--mynh-success)!important;
+}
+.brand-shell-v1 .status-delivery_failed,
+.brand-shell-v1 .status-cancelled,
+.brand-shell-v1 .badge.red{
+  border-color:#E9CACA!important;
+  background:var(--mynh-danger-bg)!important;
+  color:var(--mynh-danger)!important;
+}
+
+/* ---------- Panel contract ---------- */
+.brand-shell-v1 .detail-panel,
+.brand-shell-v1 .account-detail-panel,
+.brand-shell-v1 .context-order-panel,
+.brand-shell-v1 .sales-history-panel,
+.brand-shell-v1 .finance-panel,
+.brand-shell-v1 .customer-demo-panel,
+.brand-shell-v1 .debt-demo-panel,
+.brand-shell-v1 .whx-detail-panel-v2{
+  border-color:var(--mynh-line-strong)!important;
+  border-radius:7px!important;
+  background:#fff!important;
+}
+.brand-shell-v1 .detail-panel.floating,
+.brand-shell-v1 .context-order-panel.floating,
+.brand-shell-v1 .finance-panel.floating{
+  width:var(--mynh-panel-width)!important;
+  max-width:var(--mynh-panel-width)!important;
+  box-shadow:var(--mynh-shadow-panel)!important;
+}
+.brand-shell-v1 .panel-head,
+.brand-shell-v1 .sales-detail-panel-head,
+.brand-shell-v1 .whx-panel-head-v2{
+  border-bottom:1px solid #EEF2F5!important;
+  background:#fff!important;
+}
+.brand-shell-v1 .panel-head h2,
+.brand-shell-v1 .sales-detail-panel-head h2,
+.brand-shell-v1 .whx-panel-head-v2 h2{
+  color:var(--mynh-ink-900)!important;
+  font-size:14px!important;
+  font-weight:760!important;
+}
+.brand-shell-v1 .panel-tabs{
+  min-height:34px!important;
+  border-top:0!important;
+  border-bottom:1px solid var(--mynh-line)!important;
+  background:#fff!important;
+}
+.brand-shell-v1 .panel-tabs a,
+.brand-shell-v1 .panel-tabs button,
+.brand-shell-v1 .panel-tabs span{
+  color:#748496!important;
+  font-size:9px!important;
+  font-weight:680!important;
+}
+.brand-shell-v1 .panel-tabs a.active,
+.brand-shell-v1 .panel-tabs button.active,
+.brand-shell-v1 .panel-tabs span.active{
+  border-bottom-color:var(--mynh-cobalt-600)!important;
+  color:var(--mynh-cobalt-700)!important;
+}
+.brand-shell-v1 .close,
+.brand-shell-v1 .panel-close{
+  border-color:var(--mynh-line)!important;
+  border-radius:5px!important;
+  background:#fff!important;
+  color:#617387!important;
+}
+.brand-shell-v1 .panel-scroll{
+  scrollbar-width:thin!important;
+  scrollbar-color:#BAC6D1 #F4F7F9!important;
+}
+
+/* ---------- Module harmonization ---------- */
+.brand-shell-v1 .pos-screen-v2,
+.brand-shell-v1 .whx-page,
+.brand-shell-v1 .sales-customers-demo,
+.brand-shell-v1 .sales-debt-demo,
+.brand-shell-v1 .finance-page{
+  color:var(--mynh-ink-900)!important;
+}
+.brand-shell-v1 .pos-product-tile-final{
+  border-color:var(--mynh-line)!important;
+  border-radius:5px!important;
+  box-shadow:none!important;
+}
+.brand-shell-v1 .pos-product-tile-final:hover:not(:disabled){
+  border-color:#A8BCCF!important;
+  background:#F8FAFC!important;
+}
+.brand-shell-v1 .pos-final-sku{
+  color:var(--mynh-cobalt-700)!important;
+}
+.brand-shell-v1 .pos-final-stock{
+  background:var(--mynh-teal-100)!important;
+  color:var(--mynh-teal-700)!important;
+}
+
+
+/* ---------- Sidebar account / alert controls ---------- */
+.brand-shell-v1 .sidebar-account-menu{min-width:0!important}
+.brand-shell-v1 .sidebar-account-trigger{
+  border-radius:5px!important;
+}
+.brand-shell-v1 .sidebar-alert-trigger{
+  border-radius:5px!important;
+}
+
+
+/* ---------- Wide desktop ---------- */
+@media(min-width:1600px){
+  .brand-shell-v1{
+    grid-template-columns:224px minmax(0,1fr)!important;
+  }
+  .brand-shell-v1>.main{
+    padding:18px 22px 30px!important;
+  }
+  :root{--mynh-panel-width:404px}
+}
+
+/* ---------- Compact desktop / tablet landscape ---------- */
+@media(max-width:1180px) and (min-width:901px){
+  :root{--mynh-panel-width:360px}
+  .brand-shell-v1{
+    grid-template-columns:72px minmax(0,1fr)!important;
+  }
+  .brand-shell-v1>.sidebar{
+    padding:10px 7px!important;
+  }
+  .brand-shell-v1 .brand{
+    justify-content:center!important;
+    padding:3px 0 11px!important;
+  }
+  .brand-shell-v1 .brand>span:last-child{display:none!important}
+  .brand-shell-v1 .brand .brand-mark{
+    width:34px!important;
+    height:34px!important;
+  }
+  .brand-shell-v1 .nav-section-label{display:none!important}
+  .brand-shell-v1 .nav-group{margin-bottom:5px!important}
+  .brand-shell-v1 .nav a{
+    width:44px!important;
+    height:38px!important;
+    margin:0 auto!important;
+    justify-content:center!important;
+    padding:0!important;
+  }
+  .brand-shell-v1 .nav a>span:last-child{display:none!important}
+  .brand-shell-v1 .nav-icon{
+    width:27px!important;
+    height:27px!important;
+    flex-basis:27px!important;
+  }
+  .brand-shell-v1 .nav a.active:before{
+    top:8px!important;
+    bottom:8px!important;
+  }
+  .brand-shell-v1>.main{
+    padding:14px 13px 24px!important;
+  }
+  .brand-shell-v1 .split-view.with-panel{
+    grid-template-columns:minmax(0,1fr) min(360px,34vw)!important;
+  }
+}
+
+/* ---------- Mobile / small tablet ---------- */
+
+
+/* ---------- Very small mobile ---------- */
+
+
+/* =====================================================================
+   MYNH Brand refinement + universal slide panel contract
+   ===================================================================== */
+
+/* Professional geometric MYNH mark */
+.brand-shell-v1 .brand .brand-mark,
+.login-card .brand-mark{
+  padding:0!important;
+  overflow:visible!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.mynh-logo-mark{
+  width:100%!important;
+  height:100%!important;
+  display:block!important;
+}
+.mynh-logo-stroke-primary,
+.mynh-logo-stroke-accent{
+  fill:none;
+  stroke-width:4.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.brand-shell-v1 .mynh-logo-stroke-primary{stroke:#F5F9FD}
+.brand-shell-v1 .mynh-logo-stroke-accent{stroke:#4BC4BE}
+.login-card .mynh-logo-stroke-primary{stroke:#214F91}
+.login-card .mynh-logo-stroke-accent{stroke:#12858A}
+.login-card .mynh-logo-mark{
+  filter:drop-shadow(0 4px 9px rgba(33,79,145,.09));
+}
+
+/* Refined logo proportions */
+.brand-shell-v1 .brand .brand-mark{
+  width:38px!important;
+  height:32px!important;
+  flex:0 0 38px!important;
+}
+.login-card .brand-mark{
+  width:56px!important;
+  height:46px!important;
+  margin-bottom:13px!important;
+}
+.brand-shell-v1 .brand b{
+  letter-spacing:.015em!important;
+}
+.brand-shell-v1 .brand small{
+  letter-spacing:.105em!important;
+}
+
+/* One width + one rhythm for every operational slide panel. */
+:root{
+  --mynh-panel-width:400px;
+  --mynh-panel-head-height:58px;
+  --mynh-panel-tabs-height:34px;
+  --mynh-panel-gap:8px;
+}
+
+.brand-shell-v1 .mynh-slide-panel{
+  box-sizing:border-box!important;
+  width:var(--mynh-panel-width)!important;
+  min-width:0!important;
+  max-width:var(--mynh-panel-width)!important;
+  min-height:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+  border:1px solid var(--mynh-line-strong)!important;
+  border-radius:7px!important;
+  background:#fff!important;
+  box-shadow:0 2px 8px rgba(18,38,57,.055)!important;
+}
+
+/* Parent workspaces must reserve exactly the same panel width. */
+.brand-shell-v1 .order-screen .split-view.with-panel,
+.brand-shell-v1 .account-screen .split-view.with-panel,
+.brand-shell-v1 .sales-history-screen.with-panel .sales-history-workspace,
+.brand-shell-v1 .sales-customers-demo.with-panel .customer-demo-workspace,
+.brand-shell-v1 .sales-debt-demo.with-panel .debt-demo-workspace,
+.brand-shell-v1 .warehouse-intake-layout.with-panel,
+.brand-shell-v1 .whx-intake-layout.with-panel,
+.brand-shell-v1 .whx-stock-layout.with-panel,
+.brand-shell-v1 .finance-ledger-layout.with-panel{
+  grid-template-columns:minmax(0,1fr) var(--mynh-panel-width)!important;
+  gap:var(--mynh-panel-gap)!important;
+}
+
+/* Embedded panels fill only their workspace height; floating panels use viewport. */
+.brand-shell-v1 .mynh-slide-panel:not(.floating){
+  position:relative!important;
+  top:auto!important;
+  align-self:stretch!important;
+}
+.brand-shell-v1 .mynh-slide-panel.floating{
+  position:fixed!important;
+  top:16px!important;
+  right:18px!important;
+  bottom:16px!important;
+  left:auto!important;
+  height:auto!important;
+  max-height:none!important;
+  z-index:700!important;
+  box-shadow:var(--mynh-shadow-panel)!important;
+}
+
+/* Thu / Chi is an embedded split-view panel, never a detached floating card. */
+.brand-shell-v1 .finance-ledger-layout.with-panel{
+  display:grid!important;
+  align-items:stretch!important;
+}
+.brand-shell-v1 .finance-ledger-layout.with-panel>.finance-ledger{
+  min-width:0!important;
+  width:100%!important;
+}
+.brand-shell-v1 .finance-ledger-layout.with-panel>.finance-panel.mynh-slide-panel{
+  position:sticky!important;
+  top:0!important;
+  right:auto!important;
+  bottom:auto!important;
+  left:auto!important;
+  align-self:stretch!important;
+  width:var(--mynh-panel-width)!important;
+  max-width:var(--mynh-panel-width)!important;
+  height:100%!important;
+  max-height:none!important;
+  box-shadow:none!important;
+}
+.brand-shell-v1 .finance-ledger-layout.with-panel>.finance-panel.mynh-slide-panel>.panel-scroll{
+  max-height:none!important;
+}
+
+/* Shared header contract across Orders / User / Sales / Debt / Finance / Warehouse. */
+.brand-shell-v1 .mynh-slide-panel>.panel-head,
+.brand-shell-v1 .mynh-slide-panel>.sales-history-panel-head,
+.brand-shell-v1 .mynh-slide-panel>.sales-detail-panel-head,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head-v2{
+  box-sizing:border-box!important;
+  flex:0 0 var(--mynh-panel-head-height)!important;
+  min-height:var(--mynh-panel-head-height)!important;
+  max-height:var(--mynh-panel-head-height)!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  padding:9px 11px!important;
+  overflow:hidden!important;
+  border-bottom:1px solid var(--mynh-line)!important;
+  background:linear-gradient(180deg,#FFFFFF 0%,#F9FBFC 100%)!important;
+}
+.brand-shell-v1 .mynh-slide-panel>.panel-head>div,
+.brand-shell-v1 .mynh-slide-panel>.sales-history-panel-head>div,
+.brand-shell-v1 .mynh-slide-panel>.sales-detail-panel-head>div,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head>div,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head-v2>div{
+  min-width:0!important;
+}
+.brand-shell-v1 .mynh-slide-panel>.panel-head h2,
+.brand-shell-v1 .mynh-slide-panel>.sales-history-panel-head h2,
+.brand-shell-v1 .mynh-slide-panel>.sales-detail-panel-head h2,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head h2,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head-v2 h2{
+  max-width:300px!important;
+  overflow:hidden!important;
+  margin:1px 0 0!important;
+  color:var(--mynh-ink-900)!important;
+  font-size:14px!important;
+  line-height:1.2!important;
+  font-weight:780!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.brand-shell-v1 .mynh-slide-panel>.panel-head p,
+.brand-shell-v1 .mynh-slide-panel>.sales-history-panel-head p,
+.brand-shell-v1 .mynh-slide-panel>.sales-detail-panel-head p,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head p,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-head-v2 p,
+.brand-shell-v1 .mynh-slide-panel .context-stack-title small{
+  max-width:300px!important;
+  overflow:hidden!important;
+  margin:2px 0 0!important;
+  color:var(--mynh-ink-500)!important;
+  font-size:8px!important;
+  line-height:1.2!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.brand-shell-v1 .mynh-slide-panel .eyebrow,
+.brand-shell-v1 .mynh-slide-panel .module-eyebrow{
+  color:var(--mynh-teal-700)!important;
+  font-size:7.5px!important;
+  font-weight:820!important;
+  letter-spacing:.085em!important;
+}
+
+/* Shared tabs — exact same height and horizontal behavior. */
+.brand-shell-v1 .mynh-slide-panel>.panel-tabs,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-tabs{
+  box-sizing:border-box!important;
+  flex:0 0 var(--mynh-panel-tabs-height)!important;
+  min-height:var(--mynh-panel-tabs-height)!important;
+  height:var(--mynh-panel-tabs-height)!important;
+  display:flex!important;
+  align-items:stretch!important;
+  gap:15px!important;
+  padding:0 11px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  scrollbar-width:none!important;
+  border-top:0!important;
+  border-bottom:1px solid var(--mynh-line)!important;
+  background:#fff!important;
+}
+.brand-shell-v1 .mynh-slide-panel>.panel-tabs::-webkit-scrollbar,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-tabs::-webkit-scrollbar{display:none!important}
+.brand-shell-v1 .mynh-slide-panel>.panel-tabs a,
+.brand-shell-v1 .mynh-slide-panel>.panel-tabs button,
+.brand-shell-v1 .mynh-slide-panel>.panel-tabs span,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-tabs button{
+  flex:0 0 auto!important;
+  height:var(--mynh-panel-tabs-height)!important;
+  display:flex!important;
+  align-items:center!important;
+  padding:0!important;
+  border:0!important;
+  border-bottom:2px solid transparent!important;
+  background:transparent!important;
+  color:#748496!important;
+  font-size:8.8px!important;
+  line-height:1!important;
+  font-weight:700!important;
+  white-space:nowrap!important;
+}
+.brand-shell-v1 .mynh-slide-panel>.panel-tabs .active,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-tabs .active{
+  border-bottom-color:var(--mynh-cobalt-600)!important;
+  color:var(--mynh-cobalt-700)!important;
+}
+
+/* Shared scroll body. */
+.brand-shell-v1 .mynh-slide-panel>.panel-scroll,
+.brand-shell-v1 .mynh-slide-panel>.sales-history-panel-scroll,
+.brand-shell-v1 .mynh-slide-panel>.customer-demo-panel-scroll,
+.brand-shell-v1 .mynh-slide-panel>.debt-demo-panel-scroll,
+.brand-shell-v1 .mynh-slide-panel>.whx-panel-scroll,
+.brand-shell-v1 .mynh-slide-panel>form.panel-scroll{
+  flex:1 1 auto!important;
+  min-width:0!important;
+  min-height:0!important;
+  max-width:100%!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain!important;
+  padding:10px 11px 16px!important;
+  scrollbar-gutter:stable!important;
+  scrollbar-width:thin!important;
+  scrollbar-color:#BAC6D1 #F4F7F9!important;
+}
+
+/* Sales actions/collection flows stay inside the same panel shell. */
+.brand-shell-v1 .mynh-slide-panel>.sales-history-actions{
+  flex:0 0 auto!important;
+  min-height:36px!important;
+  padding:5px 10px!important;
+  border-bottom:1px solid #EEF2F5!important;
+  background:#FBFCFD!important;
+}
+.brand-shell-v1 .mynh-slide-panel.customer-collect-context .debt-collect-form,
+.brand-shell-v1 .mynh-slide-panel.collect-mode .debt-collect-form{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow:auto!important;
+}
+
+/* Close/back controls are identical. */
+.brand-shell-v1 .mynh-slide-panel .close,
+.brand-shell-v1 .mynh-slide-panel .panel-close,
+.brand-shell-v1 .mynh-slide-panel .context-stack-back{
+  flex:0 0 28px!important;
+  width:28px!important;
+  height:28px!important;
+  min-width:28px!important;
+  min-height:28px!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:0!important;
+  border:1px solid var(--mynh-line)!important;
+  border-radius:5px!important;
+  background:#fff!important;
+  color:#617387!important;
+  font-size:15px!important;
+  line-height:1!important;
+}
+.brand-shell-v1 .mynh-slide-panel .context-stack-back{
+  color:var(--mynh-cobalt-700)!important;
+}
+
+/* Notification drawer follows the same desktop width. */
+.brand-shell-v1 .app-alert-panel-v2{
+  width:var(--mynh-panel-width)!important;
+  max-width:var(--mynh-panel-width)!important;
+}
+
+/* 1440×900 target */
+@media(max-width:1440px) and (min-width:1181px){
+  :root{--mynh-panel-width:392px}
+}
+
+/* Compact desktop */
+@media(max-width:1180px) and (min-width:901px){
+  :root{--mynh-panel-width:370px}
+  .brand-shell-v1 .mynh-slide-panel>.panel-head h2,
+  .brand-shell-v1 .mynh-slide-panel>.sales-history-panel-head h2,
+  .brand-shell-v1 .mynh-slide-panel>.sales-detail-panel-head h2,
+  .brand-shell-v1 .mynh-slide-panel>.whx-panel-head h2,
+  .brand-shell-v1 .mynh-slide-panel>.whx-panel-head-v2 h2{
+    max-width:270px!important;
+  }
+}
+
+/* =====================================================================
+   MYNH ERP — Desktop Polish Contract V1
+   Desktop reference layer before Mobile V2 clean-room.
+   ===================================================================== */
+@media(min-width:901px){
+  /* ---------- Sidebar: light enterprise rail + manual collapse ---------- */
+  .brand-shell-v1{
+    grid-template-columns:224px minmax(0,1fr)!important;
+    transition:grid-template-columns .18s ease!important;
+  }
+  .brand-shell-v1>.sidebar{
+    position:relative!important;
+    overflow:visible!important;
+    padding:13px 10px 11px!important;
+    border-right:1px solid #D6E0E8!important;
+    background:linear-gradient(180deg,#F8FAFC 0%,#F2F6F9 100%)!important;
+    box-shadow:inset -1px 0 rgba(255,255,255,.8)!important;
+  }
+  .brand-shell-v1 .brand{
+    border-bottom:1px solid #DFE6EC!important;
+  }
+  .brand-shell-v1 .brand b{
+    color:#1A2D42!important;
+  }
+  .brand-shell-v1 .brand small{
+    color:#7C8A98!important;
+  }
+  .brand-shell-v1 .mynh-logo-stroke-primary{stroke:#214F91!important}
+  .brand-shell-v1 .mynh-logo-stroke-accent{stroke:#12858A!important}
+  .brand-shell-v1 .nav-section-label{
+    color:#8A98A6!important;
+  }
+  .brand-shell-v1 .nav a{
+    color:#53677A!important;
+  }
+  .brand-shell-v1 .nav a:hover{
+    border-color:#DCE5ED!important;
+    background:#EEF3F7!important;
+    color:#23415F!important;
+  }
+  .brand-shell-v1 .nav a.active{
+    border-color:#C7D8E8!important;
+    background:linear-gradient(90deg,#E9F1FA 0%,#ECF7F5 100%)!important;
+    color:#214F91!important;
+  }
+  .brand-shell-v1 .nav a.active:before{
+    background:#12858A!important;
+  }
+  .brand-shell-v1 .nav-icon{
+    background:#EDF2F6!important;
+    color:#6F8294!important;
+  }
+  .brand-shell-v1 .nav a.active .nav-icon{
+    background:#DDEAF7!important;
+    color:#214F91!important;
+  }
+  .brand-shell-v1 .sidebar-foot{
+    border-top:1px solid #DFE6EC!important;
+  }
+  .brand-shell-v1 .sidebar-account-trigger,
+  .brand-shell-v1 .sidebar-alert-trigger{
+    border-color:#D9E2E9!important;
+    background:#fff!important;
+    color:#51677D!important;
+  }
+  .brand-shell-v1 .sidebar-user-copy b{color:#2B4157!important}
+  .brand-shell-v1 .sidebar-user-copy small{color:#7C8B99!important}
+  .brand-shell-v1 .sidebar-collapse-toggle{
+    position:absolute!important;
+    z-index:30!important;
+    top:21px!important;
+    right:-14px!important;
+    width:28px!important;
+    height:28px!important;
+    min-width:28px!important;
+    min-height:28px!important;
+    display:grid!important;
+    place-items:center!important;
+    padding:0!important;
+    border:1px solid #CDD8E2!important;
+    border-radius:999px!important;
+    background:#fff!important;
+    color:#60758A!important;
+    box-shadow:0 3px 10px rgba(26,45,66,.10)!important;
+    cursor:pointer!important;
+  }
+  .brand-shell-v1 .sidebar-collapse-toggle:hover{
+    border-color:#AAC0D4!important;
+    color:#214F91!important;
+  }
+
+  .brand-shell-v1.desktop-sidebar-collapsed{
+    grid-template-columns:74px minmax(0,1fr)!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed>.sidebar{
+    padding-right:7px!important;
+    padding-left:7px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .brand{
+    justify-content:center!important;
+    padding-right:0!important;
+    padding-left:0!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .brand>span:last-child,
+  .brand-shell-v1.desktop-sidebar-collapsed .nav-section-label,
+  .brand-shell-v1.desktop-sidebar-collapsed .nav a>span:last-child,
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-user-copy,
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-user-more{
+    display:none!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav-group{
+    margin-bottom:5px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav a{
+    width:44px!important;
+    height:40px!important;
+    margin:0 auto!important;
+    justify-content:center!important;
+    padding:0!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav-icon{
+    width:28px!important;
+    height:28px!important;
+    flex-basis:28px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav a.active:before{
+    top:8px!important;
+    bottom:8px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-foot{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    gap:6px!important;
+    padding-top:8px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-menu{
+    width:40px!important;
+    min-width:40px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-trigger,
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-alert-trigger{
+    width:40px!important;
+    min-width:40px!important;
+    justify-content:center!important;
+    padding:0!important;
+  }
+
+  /* ---------- Tracking context: always a true right slidebar ---------- */
+  .brand-shell-v1 .tracking-screen-v2.with-context-order-panel .context-order-panel.floating{
+    top:16px!important;
+    right:18px!important;
+    bottom:16px!important;
+    left:auto!important;
+    width:420px!important;
+    max-width:420px!important;
+    height:auto!important;
+    max-height:none!important;
+    z-index:920!important;
+    border-radius:8px!important;
+    box-shadow:0 18px 50px rgba(20,40,59,.18)!important;
+  }
+  .brand-shell-v1 .tracking-screen-v2.with-context-order-panel .context-order-panel .context-stack-breadcrumb{
+    flex:0 0 auto!important;
+  }
+
+  /* ---------- POS: desktop operation layout ---------- */
+  .brand-shell-v1 .pos-screen-v2>.pos-workspace{
+    grid-template-columns:minmax(0,1fr) clamp(390px,30vw,440px)!important;
+    gap:8px!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-products,
+  .brand-shell-v1 .pos-screen-v2 .pos-cart{
+    border-color:#D6E0E8!important;
+    border-radius:7px!important;
+    background:#fff!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-product-toolbar-v2{
+    min-height:42px!important;
+    height:42px!important;
+    padding:5px 8px!important;
+    border-bottom:1px solid #E1E7ED!important;
+    background:#F8FAFC!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-product-toolbar-v2>div:first-child>b{
+    font-size:10.5px!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-product-meta>b{
+    font-size:13px!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-category-settings-button{
+    height:30px!important;
+    min-height:30px!important;
+    padding:0 9px!important;
+    font-size:9px!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-product-body{
+    grid-template-columns:146px minmax(0,1fr)!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-category-rail{
+    padding:6px!important;
+    background:#F7F9FB!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-category-rail>button{
+    min-height:36px!important;
+    padding:0 8px!important;
+    border-radius:6px!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-category-rail>button span{
+    font-size:9px!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-category-rail>button b{
+    min-width:22px!important;
+    height:20px!important;
+    font-size:7.5px!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-category-rail>button.active{
+    border-color:#214F91!important;
+    background:#214F91!important;
+    color:#fff!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-category-rail>button.active b{
+    background:rgba(255,255,255,.18)!important;
+    color:#fff!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-product-pane>.pos-product-grid{
+    grid-template-columns:repeat(auto-fill,minmax(205px,1fr))!important;
+    grid-auto-rows:76px!important;
+    gap:7px!important;
+    padding:7px!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-product-tile-final{
+    height:76px!important;
+    min-height:76px!important;
+    display:grid!important;
+    grid-template-rows:30px 30px!important;
+    gap:4px!important;
+    padding:6px 9px!important;
+    border:1px solid #D7E1E9!important;
+    border-radius:7px!important;
+    background:#fff!important;
+    color:#20364B!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-product-tile-final:hover:not(:disabled){
+    border-color:#8FAAC2!important;
+    background:#F9FBFD!important;
+    box-shadow:0 4px 12px rgba(29,55,80,.07)!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-final-name{
+    font-size:11.5px!important;
+    font-weight:780!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-final-variant{
+    font-size:8.5px!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-final-sku{
+    color:#214F91!important;
+    font-size:9px!important;
+    font-weight:780!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-final-bottom>strong{
+    color:#1A2D42!important;
+    font-size:11.5px!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-final-stock{
+    min-height:20px!important;
+    padding:0 6px!important;
+    font-size:8px!important;
+  }
+
+  /* Invoice header: remove the heavy navy block and use cart icon. */
+  .brand-shell-v1 .pos-screen-v2 .pos-cart-head-v2{
+    min-height:58px!important;
+    padding:8px 10px!important;
+    border-bottom:1px solid #DCE5EC!important;
+    background:linear-gradient(180deg,#F9FBFD 0%,#F2F6FA 100%)!important;
+    color:#1A2D42!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-cart-title-v2{
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    gap:9px!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-cart-title-v2>div{
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:1px!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-cart-icon-v2{
+    width:34px!important;
+    height:34px!important;
+    flex:0 0 34px!important;
+    display:grid!important;
+    place-items:center!important;
+    border:1px solid #C8D9E8!important;
+    border-radius:8px!important;
+    background:#EAF2FB!important;
+    color:#214F91!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-cart-head-v2 .module-eyebrow{
+    color:#12858A!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-cart-head-v2 b{
+    color:#1A2D42!important;
+    font-size:11.5px!important;
+  }
+  .brand-shell-v1 .pos-screen-v2 .pos-cart-head-v2 small{
+    color:#748496!important;
+    font-size:8px!important;
+  }
+
+  /* Customer picker V2 */
+  .brand-shell-v1 .pos-customer-picker-v2{
+    position:fixed!important;
+    z-index:980!important;
+    top:120px!important;
+    left:50%!important;
+    width:min(640px,calc(100vw - 300px))!important;
+    max-width:640px!important;
+    max-height:calc(100vh - 150px)!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:9px!important;
+    padding:10px!important;
+    transform:translateX(-50%)!important;
+    overflow:hidden!important;
+    border:1px solid #CFDAE4!important;
+    border-radius:9px!important;
+    background:#fff!important;
+    box-shadow:0 22px 60px rgba(18,38,57,.20)!important;
+  }
+  .brand-shell-v1 .pos-customer-picker-v2 .pos-popover-head{
+    flex:0 0 auto!important;
+  }
+  .brand-shell-v1 .pos-customer-picker-v2 .pos-popover-head>div{
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .brand-shell-v1 .pos-customer-picker-v2 .pos-popover-head>div>b{
+    font-size:13px!important;
+  }
+  .brand-shell-v1 .pos-customer-picker-v2 .pos-popover-head>div>span{
+    color:#7A8998!important;
+    font-size:8.5px!important;
+  }
+  .brand-shell-v1 .pos-customer-current-v2{
+    display:grid!important;
+    grid-template-columns:auto minmax(0,1fr) auto!important;
+    align-items:center!important;
+    gap:8px!important;
+    padding:8px 10px!important;
+    border:1px solid #DCE6ED!important;
+    border-radius:7px!important;
+    background:#F8FAFC!important;
+  }
+  .brand-shell-v1 .pos-customer-current-v2>span,
+  .brand-shell-v1 .pos-customer-current-v2>small{
+    color:#788898!important;
+    font-size:8px!important;
+  }
+  .brand-shell-v1 .pos-customer-current-v2>b{
+    font-size:10.5px!important;
+  }
+  .brand-shell-v1 .pos-customer-search-v2{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    align-items:center!important;
+    gap:8px!important;
+  }
+  .brand-shell-v1 .pos-customer-search-v2 input{
+    height:34px!important;
+    padding:0 10px!important;
+    font-size:9.5px!important;
+  }
+  .brand-shell-v1 .pos-customer-search-v2 span{
+    color:#7C8B99!important;
+    font-size:8px!important;
+  }
+  .brand-shell-v1 .pos-customer-list-v2{
+    min-height:120px!important;
+    max-height:230px!important;
+    overflow:auto!important;
+    border:1px solid #E1E7ED!important;
+    border-radius:7px!important;
+  }
+  .brand-shell-v1 .pos-customer-list-v2>button{
+    width:100%!important;
+    min-height:48px!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    align-items:center!important;
+    gap:9px!important;
+    padding:7px 9px!important;
+    border:0!important;
+    border-bottom:1px solid #EDF1F4!important;
+    background:#fff!important;
+    color:#33495E!important;
+    text-align:left!important;
+    cursor:pointer!important;
+  }
+  .brand-shell-v1 .pos-customer-list-v2>button:hover,
+  .brand-shell-v1 .pos-customer-list-v2>button.active{
+    background:#EEF5FB!important;
+  }
+  .brand-shell-v1 .pos-customer-list-v2>button>span{
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:2px!important;
+  }
+  .brand-shell-v1 .pos-customer-list-v2 b{font-size:9.5px!important}
+  .brand-shell-v1 .pos-customer-list-v2 small{
+    overflow:hidden!important;
+    color:#7D8B99!important;
+    font-size:7.8px!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+  .brand-shell-v1 .pos-customer-list-v2 i{
+    color:#214F91!important;
+    font-size:8px!important;
+    font-style:normal!important;
+    font-weight:740!important;
+  }
+  .brand-shell-v1 .pos-customer-create-v2{
+    display:grid!important;
+    grid-template-columns:1.15fr .8fr 1.3fr auto!important;
+    gap:6px!important;
+    padding-top:9px!important;
+    border-top:1px solid #E1E7ED!important;
+  }
+  .brand-shell-v1 .pos-customer-create-v2>div{
+    grid-column:1/-1!important;
+    display:flex!important;
+    align-items:baseline!important;
+    gap:8px!important;
+  }
+  .brand-shell-v1 .pos-customer-create-v2>div>b{font-size:9px!important}
+  .brand-shell-v1 .pos-customer-create-v2>div>span{
+    color:#7D8C9A!important;
+    font-size:7.5px!important;
+  }
+  .brand-shell-v1 .pos-customer-create-v2 input{
+    min-width:0!important;
+    height:32px!important;
+    padding:0 8px!important;
+    font-size:8.5px!important;
+  }
+
+  /* Category manager V2: two clear work areas. */
+  .brand-shell-v1 .pos-category-settings-v2{
+    width:min(760px,calc(100% - 12px))!important;
+    max-width:760px!important;
+    max-height:calc(100% - 12px)!important;
+    display:grid!important;
+    grid-template-columns:280px minmax(0,1fr)!important;
+    grid-template-rows:auto minmax(0,1fr)!important;
+    gap:8px!important;
+    padding:9px!important;
+  }
+  .brand-shell-v1 .pos-category-settings-v2>.pos-popover-head,
+  .brand-shell-v1 .pos-category-settings-v2>.error-box{
+    grid-column:1/-1!important;
+  }
+  .brand-shell-v1 .pos-category-manager-v2,
+  .brand-shell-v1 .pos-category-assignment-v2{
+    min-width:0!important;
+    min-height:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+    border:1px solid #E0E7ED!important;
+    border-radius:7px!important;
+    background:#fff!important;
+  }
+  .brand-shell-v1 .pos-category-section-head-v2{
+    min-height:38px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    padding:7px 9px!important;
+    border-bottom:1px solid #E6EBF0!important;
+    background:#F8FAFC!important;
+  }
+  .brand-shell-v1 .pos-category-section-head-v2>div{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:1px!important;
+  }
+  .brand-shell-v1 .pos-category-section-head-v2 b{font-size:9.5px!important}
+  .brand-shell-v1 .pos-category-section-head-v2 span{
+    color:#7A8998!important;
+    font-size:7.5px!important;
+  }
+  .brand-shell-v1 .pos-category-settings-v2 .pos-category-settings-list{
+    flex:1 1 auto!important;
+    max-height:none!important;
+    padding:0 8px!important;
+  }
+  .brand-shell-v1 .pos-category-settings-v2 .pos-category-settings-list>div{
+    min-height:44px!important;
+  }
+  .brand-shell-v1 .pos-category-row-actions-v2{
+    display:flex!important;
+    align-items:center!important;
+    gap:4px!important;
+  }
+  .brand-shell-v1 .pos-category-settings-v2 .pos-category-add{
+    flex:0 0 auto!important;
+    padding:8px!important;
+    border-top:1px solid #E6EBF0!important;
+  }
+  .brand-shell-v1 .pos-category-settings-v2 .pos-category-product-list{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    padding:0!important;
+    border-top:0!important;
+    overflow:auto!important;
+  }
+  .brand-shell-v1 .pos-category-settings-v2 .pos-category-product-list label{
+    min-height:48px!important;
+    padding:6px 8px!important;
+    border-bottom:1px solid #EDF1F4!important;
+  }
+  .brand-shell-v1 .pos-category-settings-v2 .pos-category-product-list label>span b{
+    font-size:9px!important;
+  }
+  .brand-shell-v1 .pos-category-settings-v2 .pos-category-product-list label>span small{
+    font-size:7.5px!important;
+  }
+  .brand-shell-v1 .pos-category-settings-v2 .pos-category-product-list select{
+    height:30px!important;
+    font-size:8px!important;
+  }
+
+  /* Footer shortcut strip removed from UI; shortcuts remain operational. */
+  .brand-shell-v1 .pos-shortcuts{display:none!important}
+}
+
+@media(min-width:901px) and (max-width:1180px){
+  .brand-shell-v1.desktop-sidebar-collapsed{
+    grid-template-columns:72px minmax(0,1fr)!important;
+  }
+  .brand-shell-v1 .pos-customer-picker-v2{
+    width:min(620px,calc(100vw - 110px))!important;
+  }
+}
+
+
+/* =====================================================================
+   MYNH ERP — Unified Desktop KPI Contract V1
+   One visual language for operational metrics across every desktop module.
+   ===================================================================== */
+@media(min-width:901px){
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ){
+    gap:7px!important;
+    align-items:stretch!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-card,
+    .command-kpi,
+    .tracking-status-metric,
+    .whx-kpi-grid>a,
+    .whx-kpi-grid>div,
+    .entity-status-metric,
+    .finance-kpi
+  ){
+    --mynh-kpi-accent:#A9B8C6;
+    box-sizing:border-box!important;
+    min-width:0!important;
+    min-height:72px!important;
+    height:72px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    justify-content:center!important;
+    gap:3px!important;
+    padding:8px 10px!important;
+    overflow:hidden!important;
+    border:1px solid #D9E2E9!important;
+    border-top:2px solid var(--mynh-kpi-accent)!important;
+    border-radius:6px!important;
+    background:#FFFFFF!important;
+    color:#24394E!important;
+    box-shadow:none!important;
+    text-align:left!important;
+    text-decoration:none!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-card,
+    .command-kpi,
+    .tracking-status-metric,
+    .whx-kpi-grid>a,
+    .entity-status-metric,
+    button.finance-kpi
+  ){
+    cursor:pointer!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-card,
+    .command-kpi,
+    .tracking-status-metric,
+    .whx-kpi-grid>a,
+    .entity-status-metric,
+    button.finance-kpi
+  ):hover{
+    border-color:#B8C8D6!important;
+    background:#F9FBFD!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-card,
+    .command-kpi,
+    .tracking-status-metric,
+    .whx-kpi-grid>a,
+    .whx-kpi-grid>div,
+    .entity-status-metric,
+    .finance-kpi
+  )>span:first-child{
+    width:100%!important;
+    overflow:hidden!important;
+    color:#647789!important;
+    font-size:9.2px!important;
+    line-height:1.15!important;
+    font-weight:720!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-card,
+    .command-kpi,
+    .tracking-status-metric,
+    .whx-kpi-grid>a,
+    .whx-kpi-grid>div,
+    .entity-status-metric,
+    .finance-kpi
+  )>b{
+    width:100%!important;
+    overflow:hidden!important;
+    margin:0!important;
+    color:#1C3147!important;
+    font-size:18px!important;
+    line-height:1.05!important;
+    font-weight:790!important;
+    letter-spacing:-.015em!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-card,
+    .command-kpi,
+    .tracking-status-metric,
+    .whx-kpi-grid>a,
+    .whx-kpi-grid>div,
+    .entity-status-metric,
+    .finance-kpi
+  )>small{
+    width:100%!important;
+    overflow:hidden!important;
+    color:#8795A3!important;
+    font-size:8px!important;
+    line-height:1.15!important;
+    font-weight:520!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+
+  .brand-shell-v1 :is(.warning,.amber).kpi-card,
+  .brand-shell-v1 :is(.warning,.amber).command-kpi,
+  .brand-shell-v1 :is(.warning,.amber).tracking-status-metric,
+  .brand-shell-v1 .whx-kpi-grid>:is(.warning,.amber),
+  .brand-shell-v1 :is(.warning,.amber).entity-status-metric,
+  .brand-shell-v1 :is(.warning,.amber).finance-kpi{
+    --mynh-kpi-accent:#D6A33F!important;
+  }
+  .brand-shell-v1 .info.kpi-card,
+  .brand-shell-v1 .info.command-kpi,
+  .brand-shell-v1 .info.tracking-status-metric,
+  .brand-shell-v1 .whx-kpi-grid>.info,
+  .brand-shell-v1 .info.entity-status-metric,
+  .brand-shell-v1 .info.finance-kpi{
+    --mynh-kpi-accent:#4A80B8!important;
+  }
+  .brand-shell-v1 .success.kpi-card,
+  .brand-shell-v1 .success.command-kpi,
+  .brand-shell-v1 .success.tracking-status-metric,
+  .brand-shell-v1 .whx-kpi-grid>.success,
+  .brand-shell-v1 .success.entity-status-metric,
+  .brand-shell-v1 .success.finance-kpi{
+    --mynh-kpi-accent:#4A9A7D!important;
+  }
+  .brand-shell-v1 .danger.kpi-card,
+  .brand-shell-v1 .danger.command-kpi,
+  .brand-shell-v1 .danger.tracking-status-metric,
+  .brand-shell-v1 .whx-kpi-grid>.danger,
+  .brand-shell-v1 .danger.entity-status-metric,
+  .brand-shell-v1 .danger.finance-kpi{
+    --mynh-kpi-accent:#C46A6A!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-card,
+    .command-kpi,
+    .tracking-status-metric,
+    .whx-kpi-grid>a,
+    .entity-status-metric,
+    .finance-kpi
+  ).active{
+    border-color:#8FB0CE!important;
+    border-top-color:#214F91!important;
+    background:linear-gradient(180deg,#F7FAFE 0%,#F1F6FB 100%)!important;
+    box-shadow:inset 0 0 0 1px rgba(33,79,145,.07)!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-card,
+    .command-kpi,
+    .tracking-status-metric,
+    .whx-kpi-grid>a,
+    .whx-kpi-grid>div,
+    .entity-status-metric,
+    .finance-kpi
+  ) .money,
+  .brand-shell-v1 :is(
+    .kpi-card,
+    .command-kpi,
+    .tracking-status-metric,
+    .whx-kpi-grid>a,
+    .whx-kpi-grid>div,
+    .entity-status-metric,
+    .finance-kpi
+  )>b.money{
+    font-size:16px!important;
+  }
+
+  /* Strip wrappers should not add a second card around the KPI cards. */
+  .brand-shell-v1 .tracking-command-center-v2:has(>.tracking-status-strip-v2){
+    border-color:#DCE4EB!important;
+  }
+  .brand-shell-v1 .tracking-status-strip-v2{
+    padding:7px!important;
+    border:0!important;
+    background:#F6F9FB!important;
+  }
+}
+
+
+/* =====================================================================
+   MYNH ERP — Flat KPI Strip Desktop Contract V2
+   Desktop source of truth: one compact divider-led KPI strip.
+   ===================================================================== */
+@media(min-width:901px){
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ){
+    box-sizing:border-box!important;
+    width:100%!important;
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    align-items:stretch!important;
+    gap:0!important;
+    overflow:hidden!important;
+    padding:0!important;
+    border:1px solid #D8E1E8!important;
+    border-radius:5px!important;
+    background:#FFFFFF!important;
+    box-shadow:none!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ) > :is(a,div,button){
+    --mynh-kpi-accent:#A7B5C2;
+    position:relative!important;
+    box-sizing:border-box!important;
+    flex:1 1 0!important;
+    width:auto!important;
+    min-width:0!important;
+    min-height:66px!important;
+    height:66px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    justify-content:center!important;
+    gap:2px!important;
+    margin:0!important;
+    padding:8px 11px!important;
+    overflow:hidden!important;
+    border:0!important;
+    border-right:1px solid #E1E7EC!important;
+    border-radius:0!important;
+    background:#FFFFFF!important;
+    box-shadow:none!important;
+    color:#24394E!important;
+    text-align:left!important;
+    text-decoration:none!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ) > :is(a,div,button):last-child{
+    border-right:0!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ) > :is(a,button)::before{
+    content:""!important;
+    position:absolute!important;
+    left:0!important;
+    right:0!important;
+    top:0!important;
+    height:2px!important;
+    background:var(--mynh-kpi-accent)!important;
+    opacity:.72!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ) > :is(a,button):hover{
+    background:#F8FAFC!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ) > :is(a,div,button) > span:first-child{
+    width:100%!important;
+    min-width:0!important;
+    margin:0!important;
+    overflow:hidden!important;
+    color:#607487!important;
+    font-size:10.5px!important;
+    line-height:1.15!important;
+    font-weight:680!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ) > :is(a,div,button) > b{
+    width:100%!important;
+    min-width:0!important;
+    margin:0!important;
+    overflow:hidden!important;
+    color:#1D3349!important;
+    font-size:18px!important;
+    line-height:1.05!important;
+    font-weight:780!important;
+    letter-spacing:-.01em!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ) > :is(a,div,button) > small{
+    width:100%!important;
+    min-width:0!important;
+    margin:0!important;
+    overflow:hidden!important;
+    color:#8795A3!important;
+    font-size:8.8px!important;
+    line-height:1.15!important;
+    font-weight:500!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ) > :is(a,div,button).warning,
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ) > :is(a,div,button).amber{
+    --mynh-kpi-accent:#D1A047!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ) > :is(a,div,button).info{
+    --mynh-kpi-accent:#4E7EAD!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ) > :is(a,div,button).success{
+    --mynh-kpi-accent:#4F9379!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ) > :is(a,div,button).danger{
+    --mynh-kpi-accent:#BF6868!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ) > :is(a,button).active{
+    background:#F0F5FA!important;
+    box-shadow:inset 0 -2px 0 #24578E!important;
+  }
+
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ) > :is(a,div,button) > b.money,
+  .brand-shell-v1 :is(
+    .kpi-grid,
+    .purchase-command-kpis,
+    .purchase-command-kpis-v2,
+    .tracking-status-strip-v2,
+    .whx-kpi-grid,
+    .entity-status-strip,
+    .finance-kpi-grid
+  ) > :is(a,div,button) .money{
+    font-size:16px!important;
+  }
+
+  /* Remove double-card framing around status strips. */
+  .brand-shell-v1 .tracking-command-center-v2,
+  .brand-shell-v1 .sales-command-center-v2,
+  .brand-shell-v1 .warehouse-command-center{
+    box-shadow:none!important;
+  }
+  .brand-shell-v1 .tracking-command-center-v2 > .tracking-status-strip-v2,
+  .brand-shell-v1 .sales-command-center-v2 > .tracking-status-strip-v2,
+  .brand-shell-v1 .warehouse-command-center > .tracking-status-strip-v2{
+    margin:0!important;
+  }
+}
+
+
+/* =====================================================================
+   MYNH ERP — Desktop Sidebar Stability Fix V2
+   Sidebar stays pinned; only the navigation list scrolls.
+   ===================================================================== */
+@media(min-width:901px){
+  .brand-shell-v1>.sidebar{
+    position:sticky!important;
+    top:0!important;
+    z-index:950!important;
+    width:auto!important;
+    min-width:0!important;
+    height:100vh!important;
+    min-height:100vh!important;
+    max-height:100vh!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+  }
+
+  .brand-shell-v1>.sidebar>.brand{
+    flex:0 0 auto!important;
+    min-width:0!important;
+  }
+
+  .brand-shell-v1>.sidebar>.nav{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    width:100%!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain!important;
+    scrollbar-gutter:stable!important;
+    scrollbar-width:thin!important;
+    scrollbar-color:#C5D0D9 transparent!important;
+  }
+  .brand-shell-v1>.sidebar>.nav::-webkit-scrollbar{
+    width:4px!important;
+  }
+  .brand-shell-v1>.sidebar>.nav::-webkit-scrollbar-track{
+    background:transparent!important;
+  }
+  .brand-shell-v1>.sidebar>.nav::-webkit-scrollbar-thumb{
+    border-radius:999px!important;
+    background:#C5D0D9!important;
+  }
+
+  .brand-shell-v1>.sidebar>.sidebar-foot{
+    position:relative!important;
+    z-index:2!important;
+    flex:0 0 auto!important;
+    margin-top:7px!important;
+    background:linear-gradient(180deg,rgba(242,246,249,0),#F2F6F9 18%)!important;
+  }
+
+  .brand-shell-v1.desktop-sidebar-collapsed>.sidebar{
+    overflow:hidden!important;
+  }
+
+  .brand-shell-v1.desktop-sidebar-collapsed>.sidebar>.nav{
+    padding-right:0!important;
+    scrollbar-width:none!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed>.sidebar>.nav::-webkit-scrollbar{
+    display:none!important;
+  }
+}
+
+
+/* =====================================================================
+   MYNH ERP — Desktop Structural Contract V3
+   Manual sidebar state + one floating slidebar + full-height data workspaces.
+   ===================================================================== */
+@media(min-width:901px){
+  :root{
+    --mynh-desktop-sidebar:224px;
+    --mynh-desktop-sidebar-collapsed:72px;
+    --mynh-panel-width:420px;
+    --mynh-panel-top:12px;
+    --mynh-panel-bottom:12px;
+  }
+
+  /* Manual sidebar state is the only desktop source of truth. */
+  .brand-shell-v1:not(.desktop-sidebar-collapsed){
+    grid-template-columns:var(--mynh-desktop-sidebar) minmax(0,1fr)!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed{
+    grid-template-columns:var(--mynh-desktop-sidebar-collapsed) minmax(0,1fr)!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed)>.sidebar{
+    padding:13px 10px 11px!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .brand{
+    justify-content:flex-start!important;
+    padding:4px 7px 12px!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .brand>span:last-child,
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .nav-section-label,
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .nav a>span:last-child,
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-user-copy,
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-user-more{
+    display:initial!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .nav a{
+    width:auto!important;
+    height:34px!important;
+    margin:0!important;
+    justify-content:flex-start!important;
+    padding:0 8px!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .nav-icon{
+    width:21px!important;
+    height:21px!important;
+    flex-basis:21px!important;
+  }
+
+  .brand-shell-v1.desktop-sidebar-collapsed>.sidebar{
+    padding:12px 7px 10px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .brand{
+    flex:0 0 52px!important;
+    min-height:52px!important;
+    justify-content:center!important;
+    margin:0 0 7px!important;
+    padding:3px 0 10px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .brand .brand-mark{
+    width:36px!important;
+    height:36px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav{
+    width:100%!important;
+    padding:0!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav-group{
+    margin:0 0 5px!important;
+    padding:0!important;
+    border:0!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav-group-items{
+    align-items:center!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav a{
+    width:44px!important;
+    min-width:44px!important;
+    height:40px!important;
+    min-height:40px!important;
+    margin:0 auto!important;
+    padding:0!important;
+    justify-content:center!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav-icon{
+    width:28px!important;
+    height:28px!important;
+    flex:0 0 28px!important;
+    margin:0!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-foot-v2{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:40px!important;
+    justify-content:center!important;
+    gap:6px!important;
+    padding:8px 0 0!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-menu,
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-trigger,
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-alert-trigger{
+    width:40px!important;
+    min-width:40px!important;
+  }
+
+  /* One true slidebar contract: overlay, never resize the workspace behind it. */
+  .brand-shell-v1 .mynh-slide-panel,
+  .brand-shell-v1 .mynh-slide-panel:not(.floating),
+  .brand-shell-v1 .mynh-slide-panel.floating{
+    position:fixed!important;
+    z-index:980!important;
+    top:var(--mynh-panel-top)!important;
+    right:12px!important;
+    bottom:var(--mynh-panel-bottom)!important;
+    left:auto!important;
+    width:var(--mynh-panel-width)!important;
+    min-width:var(--mynh-panel-width)!important;
+    max-width:var(--mynh-panel-width)!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    align-self:auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+    border:1px solid #CBD7E1!important;
+    border-radius:8px!important;
+    background:#fff!important;
+    box-shadow:0 18px 48px rgba(19,38,57,.18)!important;
+  }
+
+  /* Opening a slidebar must never shrink the list/table. */
+  .brand-shell-v1 :is(
+    .order-screen .split-view.with-panel,
+    .account-screen .split-view.with-panel,
+    .sales-history-screen.with-panel .sales-history-workspace,
+    .sales-customers-demo.with-panel .customer-demo-workspace,
+    .sales-debt-demo.with-panel .debt-demo-workspace,
+    .warehouse-intake-layout.with-panel,
+    .whx-intake-layout.with-panel,
+    .whx-stock-layout.with-panel,
+    .finance-ledger-layout.with-panel
+  ){
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:0!important;
+  }
+  .brand-shell-v1 .finance-ledger-layout.with-panel>.finance-panel.mynh-slide-panel{
+    position:fixed!important;
+    top:var(--mynh-panel-top)!important;
+    right:12px!important;
+    bottom:var(--mynh-panel-bottom)!important;
+    width:var(--mynh-panel-width)!important;
+    height:auto!important;
+    max-height:none!important;
+    box-shadow:0 18px 48px rgba(19,38,57,.18)!important;
+  }
+
+  /* Remove module-specific panel height hacks. */
+  .brand-shell-v1 .whx-detail-panel-v2.mynh-slide-panel,
+  .brand-shell-v1 .warehouse-intake-panel.mynh-slide-panel,
+  .brand-shell-v1 .finance-hub-live-panel.mynh-slide-panel{
+    height:auto!important;
+    max-height:none!important;
+    align-self:auto!important;
+  }
+
+  /* Full-height mode is only for operational list/table pages.
+     Dashboards and analytical reports retain normal document scrolling. */
+  .brand-shell-v1>.main{
+    box-sizing:border-box!important;
+  }
+  .brand-shell-v1>.main:has(> :is(
+    .order-screen,
+    .account-screen,
+    .tracking-screen-v2,
+    .warehouse-receive-screen,
+    .whx-inventory-page,
+    .whx-history-page,
+    .sales-history-screen,
+    .sales-customers-demo,
+    .sales-debt-demo,
+    .finance-live-workspace,
+    .finance-settlement-live
+  )){
+    height:100vh!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1>.main> :is(
+    .order-screen,
+    .account-screen,
+    .tracking-screen-v2,
+    .warehouse-receive-screen,
+    .whx-inventory-page,
+    .whx-history-page,
+    .sales-history-screen,
+    .sales-customers-demo,
+    .sales-debt-demo,
+    .finance-live-workspace,
+    .finance-settlement-live
+  ){
+    height:100%!important;
+    min-height:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+
+  /* Main table/workspace area consumes all remaining vertical space. */
+  .brand-shell-v1 :is(
+    .order-workspace,
+    .account-workspace,
+    .tracking-hub-stack-v2,
+    .warehouse-intake-layout,
+    .whx-intake-layout,
+    .whx-stock-layout,
+    .sales-history-workspace,
+    .customer-demo-workspace,
+    .debt-demo-workspace,
+    .finance-ledger-layout,
+    .finance-settlement-main
+  ){
+    flex:1 1 auto!important;
+    min-height:0!important;
+  }
+
+  .brand-shell-v1 :is(
+    .order-list-pane,
+    .account-list-pane,
+    .whx-stock-main,
+    .sales-history-list,
+    .customer-demo-list,
+    .debt-demo-list,
+    .finance-ledger
+  ){
+    min-height:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+
+  .brand-shell-v1 :is(
+    .order-table-shell,
+    .account-table-shell,
+    .whx-table-card,
+    .sales-history-table-wrap,
+    .customer-demo-table-wrap,
+    .debt-demo-table-wrap,
+    .finance-table-card,
+    .compact-table-wrap
+  ){
+    min-height:0!important;
+  }
+
+  .brand-shell-v1 :is(
+    .order-table-shell,
+    .account-table-shell
+  ){
+    flex:1 1 auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+
+  .brand-shell-v1 :is(
+    .order-table-card,
+    .account-table-card,
+    .whx-table-card,
+    .sales-history-table-wrap,
+    .customer-demo-table-wrap,
+    .debt-demo-table-wrap,
+    .finance-table-card
+  ){
+    flex:1 1 auto!important;
+    min-height:0!important;
+    overflow:auto!important;
+    overscroll-behavior:contain!important;
+  }
+
+  .brand-shell-v1 .tracking-hub-stack-v2{
+    overflow:auto!important;
+    padding-bottom:8px!important;
+  }
+  .brand-shell-v1 .warehouse-intake-layout{
+    overflow:auto!important;
+  }
+
+  /* Table headers remain visible while the data region scrolls. */
+  .brand-shell-v1 :is(
+    .order-table-card,
+    .account-table-card,
+    .tracking-hub-table-wrap-v2,
+    .whx-table-scroll,
+    .sales-history-table-wrap,
+    .customer-demo-table-wrap,
+    .debt-demo-table-wrap,
+    .finance-table-card,
+    .compact-table-wrap
+  ) .table thead th{
+    position:sticky!important;
+    z-index:6!important;
+    top:0!important;
+    background:#F6F9FB!important;
+    box-shadow:0 1px 0 #DCE4EB!important;
+  }
+}
+
+
+/* =====================================================================
+   MYNH ERP — Managed Data Table Controls V1
+   Shared sort / hide / reorder UI for desktop operational tables.
+   ===================================================================== */
+@media(min-width:901px){
+  .brand-shell-v1 .managed-table-toolbar{
+    flex:0 0 auto!important;
+    min-height:36px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:6px!important;
+    padding:5px 7px!important;
+    border:1px solid #DCE4EB!important;
+    border-bottom:0!important;
+    border-radius:6px 6px 0 0!important;
+    background:#F8FAFC!important;
+  }
+  .brand-shell-v1 .managed-table-toolbar>.managed-table-meta{
+    margin-right:auto!important;
+    color:#7C8B99!important;
+    font-size:8.5px!important;
+  }
+  .brand-shell-v1 .managed-column-wrap{
+    position:relative!important;
+    z-index:40!important;
+  }
+  .brand-shell-v1 .managed-column-button{
+    height:28px!important;
+    min-height:28px!important;
+    padding:0 9px!important;
+    border-radius:5px!important;
+    font-size:8.5px!important;
+  }
+  .brand-shell-v1 .managed-column-button.active{
+    border-color:#AFC5D8!important;
+    background:#EDF4FA!important;
+    color:#214F91!important;
+  }
+  .brand-shell-v1 .managed-column-menu{
+    position:absolute!important;
+    z-index:1300!important;
+    top:calc(100% + 5px)!important;
+    right:0!important;
+    width:260px!important;
+    max-height:min(420px,calc(100vh - 130px))!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+    border:1px solid #CCD8E2!important;
+    border-radius:7px!important;
+    background:#fff!important;
+    box-shadow:0 14px 34px rgba(20,40,59,.17)!important;
+  }
+  .brand-shell-v1 .managed-column-head{
+    flex:0 0 auto!important;
+    min-height:46px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:8px!important;
+    padding:7px 9px!important;
+    border-bottom:1px solid #E3E9EE!important;
+    background:#F8FAFC!important;
+  }
+  .brand-shell-v1 .managed-column-head>div{
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:1px!important;
+  }
+  .brand-shell-v1 .managed-column-head b{
+    font-size:9.5px!important;
+    color:#263F57!important;
+  }
+  .brand-shell-v1 .managed-column-head span{
+    color:#7E8D9A!important;
+    font-size:7.5px!important;
+  }
+  .brand-shell-v1 .managed-column-head>button{
+    border:0!important;
+    background:transparent!important;
+    color:#2A63AD!important;
+    font-size:8px!important;
+    font-weight:700!important;
+    cursor:pointer!important;
+  }
+  .brand-shell-v1 .managed-column-list{
+    min-height:0!important;
+    overflow:auto!important;
+    padding:4px!important;
+  }
+  .brand-shell-v1 .managed-column-row{
+    min-height:34px!important;
+    display:grid!important;
+    grid-template-columns:24px minmax(0,1fr)!important;
+    align-items:center!important;
+    gap:4px!important;
+    padding:2px 5px!important;
+    border:1px solid transparent!important;
+    border-radius:5px!important;
+  }
+  .brand-shell-v1 .managed-column-row:hover,
+  .brand-shell-v1 .managed-column-row.drop-target{
+    border-color:#D8E4EE!important;
+    background:#F5F9FC!important;
+  }
+  .brand-shell-v1 .managed-column-row.hidden{
+    opacity:.55!important;
+  }
+  .brand-shell-v1 .managed-column-row.dragging{
+    opacity:.45!important;
+  }
+  .brand-shell-v1 .managed-column-drag{
+    width:24px!important;
+    height:28px!important;
+    display:grid!important;
+    place-items:center!important;
+    color:#93A1AE!important;
+    cursor:grab!important;
+    user-select:none!important;
+  }
+  .brand-shell-v1 .managed-column-row label{
+    min-width:0!important;
+    display:flex!important;
+    align-items:center!important;
+    gap:7px!important;
+    color:#40566A!important;
+    font-size:8.8px!important;
+    cursor:pointer!important;
+  }
+  .brand-shell-v1 .managed-column-row label input{
+    width:14px!important;
+    height:14px!important;
+    min-height:14px!important;
+    flex:0 0 14px!important;
+  }
+  .brand-shell-v1 .managed-sort-head{
+    width:100%!important;
+    min-height:26px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:5px!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+    color:inherit!important;
+    font:inherit!important;
+    text-align:left!important;
+    cursor:pointer!important;
+  }
+  .brand-shell-v1 .managed-sort-head i{
+    color:#8395A5!important;
+    font-size:8px!important;
+    font-style:normal!important;
+  }
+}
+
+
+/* =====================================================================
+   MYNH ERP — MAIN SLIDEBAR GEOMETRY RESTORE
+   Desktop slidebars are workspace columns, not popups.
+   Source of truth: main branch slidebar behavior.
+   ===================================================================== */
+@media(min-width:901px){
+  :root{
+    --mynh-slidebar-width:420px;
+    --mynh-slidebar-width-compact:390px;
+  }
+
+  /* Orders + Accounts: list and slidebar share the workspace. */
+  .brand-shell-v1 .order-screen .split-view.with-panel,
+  .brand-shell-v1 .account-screen .split-view.with-panel{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    gap:7px!important;
+  }
+  .brand-shell-v1 .order-workspace>.system-slidebar-v1,
+  .brand-shell-v1 .account-workspace>.system-slidebar-v1{
+    position:relative!important;
+    inset:auto!important;
+    z-index:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:none!important;
+    align-self:stretch!important;
+    margin:0!important;
+    box-shadow:0 2px 7px rgba(30,50,70,.045)!important;
+  }
+
+  /* Warehouse intake + inventory use the same right column. */
+  .brand-shell-v1 .warehouse-intake-layout.with-panel,
+  .brand-shell-v1 .whx-stock-layout.with-panel{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    gap:8px!important;
+    align-items:stretch!important;
+  }
+  .brand-shell-v1 .warehouse-intake-layout.with-panel>.system-slidebar-v1,
+  .brand-shell-v1 .whx-stock-layout.with-panel>.system-slidebar-v1{
+    position:relative!important;
+    inset:auto!important;
+    z-index:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    align-self:stretch!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+
+  /* Sales history + Customer + Debt follow main's two-column workspace. */
+  .brand-shell-v1 .sales-history-screen.with-panel .sales-history-workspace,
+  .brand-shell-v1 .sales-live-customers.with-panel .customer-demo-workspace,
+  .brand-shell-v1 .sales-live-debt.with-panel .debt-demo-workspace,
+  .brand-shell-v1 .sales-live-debt.with-panel .debt-demo-workspace:has(.debt-demo-panel.collect-mode){
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    gap:8px!important;
+  }
+  .brand-shell-v1 .sales-history-workspace>.system-slidebar-v1,
+  .brand-shell-v1 .customer-demo-workspace>.system-slidebar-v1,
+  .brand-shell-v1 .debt-demo-workspace>.system-slidebar-v1{
+    position:relative!important;
+    inset:auto!important;
+    z-index:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:var(--mynh-slidebar-width)!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    align-self:stretch!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+
+  /* Finance: only ledger + panel split; page header/KPI remain full width. */
+  .brand-shell-v1 .finance-ledger-layout.with-panel{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    align-items:stretch!important;
+    gap:8px!important;
+  }
+  .brand-shell-v1 .finance-ledger-layout.with-panel>.system-slidebar-v1{
+    position:sticky!important;
+    inset:auto!important;
+    top:8px!important;
+    z-index:auto!important;
+    width:var(--mynh-slidebar-width)!important;
+    min-width:0!important;
+    max-width:var(--mynh-slidebar-width)!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:none!important;
+    align-self:stretch!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+
+  /* Tracking contextual order: reserve a real right-side lane, as in main. */
+  .brand-shell-v1 .tracking-screen-v2.with-context-order-panel{
+    position:relative!important;
+    padding-right:calc(var(--mynh-slidebar-width) + 8px)!important;
+  }
+  .brand-shell-v1 .tracking-screen-v2.with-context-order-panel>.system-slidebar-v1.context-order-panel{
+    position:absolute!important;
+    top:0!important;
+    right:0!important;
+    bottom:0!important;
+    left:auto!important;
+    z-index:12!important;
+    width:var(--mynh-slidebar-width)!important;
+    min-width:0!important;
+    max-width:var(--mynh-slidebar-width)!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    margin:0!important;
+    border-radius:6px!important;
+    box-shadow:0 3px 12px rgba(30,50,70,.08)!important;
+  }
+
+  /* Warehouse history contextual drill-down keeps table space reserved. */
+  .brand-shell-v1 .whx-history-page.with-context-panel{
+    position:relative!important;
+    padding-right:calc(var(--mynh-slidebar-width) + 8px)!important;
+  }
+  .brand-shell-v1 .whx-history-page.with-context-panel>.system-slidebar-v1{
+    position:fixed!important;
+    z-index:710!important;
+    top:168px!important;
+    right:16px!important;
+    bottom:16px!important;
+    left:auto!important;
+    width:var(--mynh-slidebar-width)!important;
+    min-width:0!important;
+    max-width:var(--mynh-slidebar-width)!important;
+    height:auto!important;
+    max-height:calc(100vh - 184px)!important;
+    margin:0!important;
+    box-shadow:0 18px 45px rgba(21,42,63,.16)!important;
+  }
+
+  /* Finance settlement follows its existing layout lane, not viewport popup. */
+  .brand-shell-v1 .finance-settlement-live>.system-slidebar-v1{
+    position:sticky!important;
+    top:8px!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    z-index:auto!important;
+    width:var(--mynh-slidebar-width)!important;
+    min-width:0!important;
+    max-width:var(--mynh-slidebar-width)!important;
+    height:calc(100vh - 16px)!important;
+    max-height:calc(100vh - 16px)!important;
+    align-self:start!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+
+  /* Restore main visual treatment: embedded operational surface. */
+  .brand-shell-v1 .system-slidebar-v1{
+    overflow:hidden!important;
+    border:1px solid #CAD6E1!important;
+    border-radius:5px!important;
+    background:#FFFFFF!important;
+  }
+}
+
+@media(max-width:1440px) and (min-width:901px){
+  :root{--mynh-slidebar-width:390px}
+  .brand-shell-v1 .order-screen .split-view.with-panel,
+  .brand-shell-v1 .account-screen .split-view.with-panel,
+  .brand-shell-v1 .warehouse-intake-layout.with-panel,
+  .brand-shell-v1 .whx-stock-layout.with-panel,
+  .brand-shell-v1 .sales-history-screen.with-panel .sales-history-workspace,
+  .brand-shell-v1 .sales-live-customers.with-panel .customer-demo-workspace,
+  .brand-shell-v1 .sales-live-debt.with-panel .debt-demo-workspace,
+  .brand-shell-v1 .finance-ledger-layout.with-panel{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+  }
+}
+
+
+/* =====================================================================
+   MYNH ERP — Post-KPI Slidebar Height Contract V1
+   Desktop panels live only in the workspace below KPI.
+   ===================================================================== */
+@media(min-width:901px){
+  .brand-shell-v1 .system-slidebar-v1{
+    display:flex!important;
+    flex-direction:column!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+
+  /* Tracking: KPI/control stay full width; HUB list + panel share remaining height. */
+  .brand-shell-v1 .tracking-screen-v2.with-context-order-panel{
+    padding-right:0!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace{
+    flex:1 1 auto!important;
+    min-width:0!important;
+    min-height:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:8px!important;
+    align-items:stretch!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace>.tracking-hub-stack-v2{
+    min-width:0!important;
+    min-height:0!important;
+    overflow:auto!important;
+    padding-right:0!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace>.system-slidebar-v1{
+    position:relative!important;
+    inset:auto!important;
+    z-index:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    align-self:stretch!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+
+  /* Warehouse history: toolbar/table are left lane; panel starts at KPI bottom. */
+  .brand-shell-v1 .whx-history-page.with-context-panel{
+    padding-right:0!important;
+  }
+  .brand-shell-v1 .whx-history-workspace{
+    flex:1 1 auto!important;
+    min-width:0!important;
+    min-height:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:8px!important;
+    align-items:stretch!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .whx-history-workspace.with-panel{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+  }
+  .brand-shell-v1 .whx-history-main{
+    min-width:0!important;
+    min-height:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .whx-history-main>.whx-toolbar{
+    flex:0 0 auto!important;
+  }
+  .brand-shell-v1 .whx-history-main>.whx-table-card{
+    flex:1 1 auto!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .whx-history-main>.whx-table-card>.whx-table-scroll{
+    min-height:0!important;
+    overflow:auto!important;
+  }
+  .brand-shell-v1 .whx-history-workspace>.system-slidebar-v1{
+    position:relative!important;
+    inset:auto!important;
+    z-index:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    align-self:stretch!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+
+  /* Finance settlement: KPI remains full width; content + panel begin below it. */
+  .brand-shell-v1 .finance-settlement-main{
+    min-height:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .finance-settlement-workspace{
+    flex:1 1 auto!important;
+    min-width:0!important;
+    min-height:0!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:8px!important;
+    align-items:stretch!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .finance-settlement-workspace.with-panel{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+  }
+  .brand-shell-v1 .finance-settlement-content{
+    min-width:0!important;
+    min-height:0!important;
+    overflow:auto!important;
+  }
+  .brand-shell-v1 .finance-settlement-workspace>.system-slidebar-v1{
+    position:relative!important;
+    inset:auto!important;
+    top:auto!important;
+    z-index:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    align-self:stretch!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+
+  /* Existing in-layout modules must also use only their post-KPI workspace height. */
+  .brand-shell-v1 :is(
+    .order-workspace,
+    .account-workspace,
+    .warehouse-intake-layout,
+    .whx-stock-layout,
+    .sales-history-workspace,
+    .customer-demo-workspace,
+    .debt-demo-workspace,
+    .finance-ledger-layout
+  )>.system-slidebar-v1{
+    top:auto!important;
+    bottom:auto!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    align-self:stretch!important;
+  }
+}
+
+@media(max-width:1440px) and (min-width:901px){
+  .brand-shell-v1 .tracking-content-workspace.with-panel,
+  .brand-shell-v1 .whx-history-workspace.with-panel,
+  .brand-shell-v1 .finance-settlement-workspace.with-panel{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+  }
+}
+
+
+/* =====================================================================
+   MYNH ERP — Desktop Right Slidebar Placement Lock V1
+   Main-style vertical panels must occupy column 2, row 1.
+   ===================================================================== */
+@media(min-width:901px){
+  /* Nhập kho */
+  .brand-shell-v1 .warehouse-intake-layout.with-panel{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    grid-template-rows:minmax(0,1fr)!important;
+    gap:8px!important;
+    align-items:stretch!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .warehouse-intake-layout.with-panel>.whx-intake-main{
+    grid-column:1!important;
+    grid-row:1!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:auto!important;
+  }
+  .brand-shell-v1 .warehouse-intake-layout.with-panel>.warehouse-intake-panel{
+    grid-column:2!important;
+    grid-row:1!important;
+    justify-self:stretch!important;
+    align-self:stretch!important;
+    position:relative!important;
+    inset:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    margin:0!important;
+  }
+
+  /* Tồn kho */
+  .brand-shell-v1 .whx-stock-layout.with-panel{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    grid-template-rows:minmax(0,1fr)!important;
+    gap:8px!important;
+    align-items:stretch!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .whx-stock-layout.with-panel>.whx-stock-main{
+    grid-column:1!important;
+    grid-row:1!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .whx-stock-layout.with-panel>.whx-detail-panel-v2{
+    grid-column:2!important;
+    grid-row:1!important;
+    justify-self:stretch!important;
+    align-self:stretch!important;
+    position:sticky!important;
+    top:0!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    margin:0!important;
+  }
+
+  /* Thu / Chi */
+  .brand-shell-v1 .finance-ledger-layout.with-panel{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    grid-template-rows:minmax(0,1fr)!important;
+    gap:8px!important;
+    align-items:stretch!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .finance-ledger-layout.with-panel>.finance-ledger{
+    grid-column:1!important;
+    grid-row:1!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .finance-ledger-layout.with-panel>.finance-panel{
+    grid-column:2!important;
+    grid-row:1!important;
+    justify-self:stretch!important;
+    align-self:stretch!important;
+    position:sticky!important;
+    top:0!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+
+  /* Đối soát & Thanh toán — main page itself is the two-column shell. */
+  .brand-shell-v1 .finance-settlement-live.has-slidebar{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+    grid-template-rows:minmax(0,1fr)!important;
+    gap:8px!important;
+    align-items:stretch!important;
+    width:100%!important;
+    height:100%!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .finance-settlement-live.has-slidebar>.finance-settlement-main{
+    grid-column:1!important;
+    grid-row:1!important;
+    min-width:0!important;
+    min-height:0!important;
+    overflow:auto!important;
+  }
+  .brand-shell-v1 .finance-settlement-live.has-slidebar>aside.finance-hub-live-panel,
+  .brand-shell-v1 .finance-settlement-live.has-slidebar>aside.context-order-panel{
+    grid-column:2!important;
+    grid-row:1!important;
+    justify-self:stretch!important;
+    align-self:stretch!important;
+    position:sticky!important;
+    top:0!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    margin:0!important;
+    box-shadow:none!important;
+  }
+}
+
+@media(max-width:1440px) and (min-width:901px){
+  .brand-shell-v1 .warehouse-intake-layout.with-panel,
+  .brand-shell-v1 .whx-stock-layout.with-panel,
+  .brand-shell-v1 .finance-ledger-layout.with-panel,
+  .brand-shell-v1 .finance-settlement-live.has-slidebar{
+    grid-template-columns:minmax(0,1fr) 390px!important;
+  }
+}
+
+
+/* =====================================================================
+   MYNH ERP — Desktop Slidebar Exact Width Lock V1
+   Border-box width is identical across operational right panels.
+   ===================================================================== */
+@media(min-width:901px){
+  .brand-shell-v1 .warehouse-intake-layout.with-panel>.warehouse-intake-panel,
+  .brand-shell-v1 .whx-stock-layout.with-panel>.whx-detail-panel-v2,
+  .brand-shell-v1 .finance-ledger-layout.with-panel>.finance-panel,
+  .brand-shell-v1 .finance-settlement-live.has-slidebar>aside.finance-hub-live-panel,
+  .brand-shell-v1 .finance-settlement-live.has-slidebar>aside.context-order-panel{
+    box-sizing:border-box!important;
+    width:var(--mynh-slidebar-width)!important;
+    min-width:var(--mynh-slidebar-width)!important;
+    max-width:var(--mynh-slidebar-width)!important;
+    justify-self:end!important;
+  }
+}
+@media(max-width:1440px) and (min-width:901px){
+  :root{--mynh-slidebar-width:390px}
+  .brand-shell-v1 .warehouse-intake-layout.with-panel>.warehouse-intake-panel,
+  .brand-shell-v1 .whx-stock-layout.with-panel>.whx-detail-panel-v2,
+  .brand-shell-v1 .finance-ledger-layout.with-panel>.finance-panel,
+  .brand-shell-v1 .finance-settlement-live.has-slidebar>aside.finance-hub-live-panel,
+  .brand-shell-v1 .finance-settlement-live.has-slidebar>aside.context-order-panel{
+    width:390px!important;
+    min-width:390px!important;
+    max-width:390px!important;
+  }
+}
+
+
+/* =====================================================================
+   MYNH ERP — Full Height Operational Data Surfaces V1
+   Fill the remaining desktop workspace without stretching fake data rows.
+   ===================================================================== */
+@media(min-width:901px){
+  .brand-shell-v1 .tracking-content-workspace>.tracking-hub-stack-v2{
+    height:100%!important;
+    min-height:0!important;
+    box-sizing:border-box!important;
+    overflow:auto!important;
+    border:1px solid #D8E1E8!important;
+    border-radius:5px!important;
+    background:#FFFFFF!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace>.tracking-hub-stack-v2>.tracking-hub-card-v2{
+    border-right:0!important;
+    border-left:0!important;
+    border-radius:0!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace>.tracking-hub-stack-v2>.tracking-hub-card-v2:first-child{
+    border-top:0!important;
+  }
+
+  .brand-shell-v1 .warehouse-intake-layout>.whx-intake-main{
+    height:100%!important;
+    min-height:0!important;
+    box-sizing:border-box!important;
+    overflow:auto!important;
+    border:1px solid #D8E1E8!important;
+    border-radius:5px!important;
+    background:#FFFFFF!important;
+  }
+  .brand-shell-v1 .warehouse-intake-layout>.whx-intake-main>.warehouse-receive-card{
+    border-right:0!important;
+    border-left:0!important;
+    border-radius:0!important;
+  }
+  .brand-shell-v1 .warehouse-intake-layout>.whx-intake-main>.warehouse-receive-card:first-child{
+    border-top:0!important;
+  }
+
+  .brand-shell-v1 .whx-history-main,
+  .brand-shell-v1 .sales-history-list,
+  .brand-shell-v1 .customer-demo-list,
+  .brand-shell-v1 .debt-demo-list,
+  .brand-shell-v1 .finance-ledger{
+    height:100%!important;
+    min-height:0!important;
+  }
+
+  .brand-shell-v1 .finance-settlement-main{
+    min-height:0!important;
+  }
+}
+
+
+/* =====================================================================
+   MYNH ERP — Desktop Full-Height Data Surface V2
+   Data surfaces fill the remaining viewport; headers stay sticky.
+   ===================================================================== */
+@media(min-width:901px){
+  /* Tracking + warehouse receive: open groups share all remaining height. */
+  .brand-shell-v1 .tracking-content-workspace>.tracking-hub-stack-v2,
+  .brand-shell-v1 .warehouse-intake-layout>.warehouse-receive-groups{
+    min-height:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    gap:7px!important;
+    overflow:auto!important;
+  }
+
+  .brand-shell-v1 .tracking-hub-stack-v2>.tracking-hub-card-v2.open,
+  .brand-shell-v1 .warehouse-receive-groups>.warehouse-receive-card.open{
+    flex:1 1 0!important;
+    min-height:190px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+
+  .brand-shell-v1 .tracking-hub-stack-v2>.tracking-hub-card-v2.collapsed,
+  .brand-shell-v1 .warehouse-receive-groups>.warehouse-receive-card.collapsed{
+    flex:0 0 auto!important;
+  }
+
+  .brand-shell-v1 .tracking-hub-card-v2.open>.tracking-hub-head-v2,
+  .brand-shell-v1 .warehouse-receive-card.open>.tracking-hub-head-v2,
+  .brand-shell-v1 .tracking-hub-card-v2.open>.managed-table-toolbar,
+  .brand-shell-v1 .warehouse-receive-card.open>.managed-table-toolbar,
+  .brand-shell-v1 .warehouse-receive-card.open>.warehouse-intake-section-head,
+  .brand-shell-v1 .warehouse-receive-card.open>.warehouse-confirm-stock-bar{
+    flex:0 0 auto!important;
+  }
+
+  .brand-shell-v1 .tracking-hub-card-v2.open>.tracking-hub-table-wrap-v2{
+    flex:1 1 auto!important;
+    min-height:120px!important;
+    max-height:none!important;
+    overflow:auto!important;
+    background:#fff!important;
+  }
+
+  .brand-shell-v1 .warehouse-receive-card.open>.tracking-hub-table-wrap-v2{
+    flex:1 1 0!important;
+    min-height:120px!important;
+    max-height:none!important;
+    overflow:auto!important;
+    background:#fff!important;
+  }
+
+  /* Inventory / sales / customer / debt / finance tables fill their list pane. */
+  .brand-shell-v1 :is(
+    .whx-stock-main,
+    .sales-history-list,
+    .customer-demo-list,
+    .debt-demo-list,
+    .finance-ledger
+  ){
+    height:100%!important;
+    min-height:0!important;
+  }
+
+  .brand-shell-v1 :is(
+    .whx-table-card,
+    .sales-history-table-wrap,
+    .customer-demo-table-wrap,
+    .debt-demo-table-wrap,
+    .finance-table-card
+  ){
+    flex:1 1 auto!important;
+    min-height:160px!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow:auto!important;
+    background:#fff!important;
+  }
+
+  .brand-shell-v1 .whx-table-card>.whx-table-scroll{
+    height:100%!important;
+    min-height:160px!important;
+    max-height:none!important;
+    overflow:auto!important;
+  }
+
+  /* Finance customer settlement: the data card occupies remaining height. */
+  .brand-shell-v1 .finance-settlement-main:has(.finance-customer-settlement){
+    display:flex!important;
+    flex-direction:column!important;
+    min-height:0!important;
+  }
+  .brand-shell-v1 .finance-settlement-main>.finance-customer-settlement{
+    flex:1 1 auto!important;
+    min-height:220px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .finance-customer-settlement>.compact-table-wrap{
+    flex:1 1 auto!important;
+    min-height:160px!important;
+    overflow:auto!important;
+  }
+
+  /* Reports stay document-scrollable, but table surface is never a tiny strip. */
+  .brand-shell-v1 .finance-report-table-card{
+    min-height:260px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .finance-report-table-card>.finance-report-day-table-wrap,
+  .brand-shell-v1 .finance-report-table-card>.compact-table-wrap{
+    flex:1 1 auto!important;
+    min-height:190px!important;
+    overflow:auto!important;
+  }
+
+  /* Purchase legacy column buttons use the same common control appearance. */
+  .brand-shell-v1 :is(.column-manager,.order-column-manager).managed-column-wrap{
+    position:relative!important;
+    z-index:40!important;
+  }
+  .brand-shell-v1 :is(.column-manager,.order-column-manager)>.managed-column-button{
+    width:30px!important;
+    min-width:30px!important;
+    height:28px!important;
+    min-height:28px!important;
+    padding:0!important;
+    border-radius:5px!important;
+  }
+}
+
+
+/* =====================================================================
+   MYNH ERP — Desktop Sidebar Footer Contract V5
+   Expanded = one quiet row. Collapsed = avatar + bell on one rail row.
+   ===================================================================== */
+@media(min-width:901px){
+  .brand-shell-v1>.sidebar>.sidebar-foot-v2{
+    box-sizing:border-box!important;
+    flex:0 0 auto!important;
+    margin:7px 0 0!important;
+    border-top:1px solid #DDE5EC!important;
+    background:transparent!important;
+  }
+
+  /* Expanded sidebar footer */
+  .brand-shell-v1:not(.desktop-sidebar-collapsed)>.sidebar>.sidebar-foot-v2{
+    width:100%!important;
+    min-height:44px!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 32px!important;
+    align-items:center!important;
+    gap:4px!important;
+    padding:7px 0 0!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-account-menu{
+    width:100%!important;
+    min-width:0!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-account-trigger{
+    box-sizing:border-box!important;
+    width:100%!important;
+    min-width:0!important;
+    height:34px!important;
+    min-height:34px!important;
+    display:grid!important;
+    grid-template-columns:26px minmax(0,1fr) 16px!important;
+    align-items:center!important;
+    gap:6px!important;
+    padding:3px 4px!important;
+    border:0!important;
+    border-radius:6px!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-account-trigger:hover,
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-account-trigger.open{
+    background:#EAF1F6!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-user-avatar{
+    width:26px!important;
+    min-width:26px!important;
+    height:26px!important;
+    min-height:26px!important;
+    margin:0!important;
+    border:1px solid #DCE5EC!important;
+    border-radius:6px!important;
+    background:#F5F8FB!important;
+    box-shadow:none!important;
+    font-size:9px!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-user-copy{
+    min-width:0!important;
+    display:grid!important;
+    grid-template-rows:auto auto!important;
+    align-content:center!important;
+    gap:1px!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-user-copy b,
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-user-copy small{
+    display:block!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-user-more{
+    width:16px!important;
+    height:24px!important;
+    display:grid!important;
+    place-items:center!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-alert-trigger{
+    box-sizing:border-box!important;
+    width:32px!important;
+    min-width:32px!important;
+    height:32px!important;
+    min-height:32px!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:6px!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-collapsed) .sidebar-alert-trigger:hover{
+    background:#EAF1F6!important;
+  }
+
+  /* Collapsed sidebar footer */
+  .brand-shell-v1.desktop-sidebar-collapsed>.sidebar>.sidebar-foot-v2{
+    box-sizing:border-box!important;
+    width:58px!important;
+    min-width:58px!important;
+    max-width:58px!important;
+    min-height:38px!important;
+    height:38px!important;
+    display:grid!important;
+    grid-template-columns:28px 28px!important;
+    grid-template-rows:28px!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:2px!important;
+    margin:7px auto 0!important;
+    padding:7px 0 3px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-menu{
+    box-sizing:border-box!important;
+    width:28px!important;
+    min-width:28px!important;
+    max-width:28px!important;
+    height:28px!important;
+    min-height:28px!important;
+    margin:0!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-trigger{
+    box-sizing:border-box!important;
+    width:28px!important;
+    min-width:28px!important;
+    max-width:28px!important;
+    height:28px!important;
+    min-height:28px!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    place-items:center!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:6px!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-user-avatar{
+    box-sizing:border-box!important;
+    width:24px!important;
+    min-width:24px!important;
+    height:24px!important;
+    min-height:24px!important;
+    margin:0!important;
+    transform:none!important;
+    border:1px solid #DCE5EC!important;
+    border-radius:6px!important;
+    background:#F5F8FB!important;
+    box-shadow:none!important;
+    font-size:8.5px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-user-copy,
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-user-more{
+    display:none!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-alert-trigger{
+    box-sizing:border-box!important;
+    width:28px!important;
+    min-width:28px!important;
+    max-width:28px!important;
+    height:28px!important;
+    min-height:28px!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:6px!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-trigger:hover,
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-alert-trigger:hover{
+    background:#E6EEF5!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-popover{
+    position:fixed!important;
+    left:78px!important;
+    right:auto!important;
+    bottom:12px!important;
+    width:238px!important;
+  }
+}
+
+
+/* =====================================================================
+   MYNH ERP — Collapsed Sidebar Footer Centering V6
+   Keep the compact footer fully inside the 72px rail.
+   ===================================================================== */
+@media(min-width:901px){
+  .brand-shell-v1.desktop-sidebar-collapsed>.sidebar>.sidebar-foot-v2{
+    position:relative!important;
+    left:14px!important;
+    right:auto!important;
+    transform:none!important;
+  }
+}
+
+/* Desktop-only shell; seam control activates via min-width:901px styles. */
+.desktop-sidebar-seam-handle{display:none;}

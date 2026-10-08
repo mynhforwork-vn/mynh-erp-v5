@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SystemSlidebar } from '@/components/system-slidebar'
 import { formatDateTime,formatMoney,formatPhone,sourceLabel,statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
 
@@ -16,6 +17,7 @@ type Props={
   historyHref:string
   openModuleHref:string
   parentLabel?:string
+  floating?:boolean
 }
 
 function activeShipment(order:any){
@@ -27,7 +29,7 @@ function voucherLabel(v:any){
 
 export function ContextOrderPanel({
   order,items,vouchers,trackingEvents,auditRows,activeTab,
-  backHref,closeHref,infoHref,trackingHref,historyHref,openModuleHref,parentLabel='User',
+  backHref,closeHref,infoHref,trackingHref,historyHref,openModuleHref,parentLabel='User',floating=false,
 }:Props){
   const shipment=activeShipment(order)
   const voucherText=(vouchers??[]).map(voucherLabel).filter(Boolean).join(' · ')
@@ -37,7 +39,7 @@ export function ContextOrderPanel({
   )
   const isExpress=order.shipping_service==='EXPRESS'
 
-  return <aside className="detail-panel context-order-panel">
+  return <SystemSlidebar className={"detail-panel context-order-panel"+(floating?" floating":"")}>
     <div className="panel-head context-stack-head">
       <Link className="context-stack-back" href={backHref} aria-label="Quay lại">←</Link>
       <div className="context-stack-title">
@@ -153,5 +155,5 @@ export function ContextOrderPanel({
 
       <div className="panel-meta">Tạo đơn: {formatDateTime(order.created_at)}</div>
     </div>
-  </aside>
+  </SystemSlidebar>
 }

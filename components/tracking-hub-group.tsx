@@ -6,6 +6,7 @@ import { confirmReceiveOrders } from '@/lib/actions/core'
 import { ManualSyncButton } from '@/components/manual-sync-button'
 import { formatMoney, formatPhone, statusLabel } from '@/lib/format'
 import { suggestReceivingWarehouseForAddresses } from '@/lib/warehouse-routing'
+import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
 
 type OrderRow={
   id:string
@@ -20,6 +21,11 @@ type OrderRow={
   receive_status?:string|null
   tracking_status?:string|null
   shipment_id?:string|null
+}
+type ColKey='order'|'product'|'cod'|'recipient'|'status'|'actions'
+const ALL_COLUMNS:ColKey[]=['order','product','cod','recipient','status','actions']
+const COLUMN_LABELS:Record<ColKey,string>={
+  order:'Mã đơn / MVĐ',product:'Sản phẩm',cod:'COD',recipient:'Người nhận / Địa chỉ',status:'Trạng thái',actions:'Xử lý',
 }
 type Warehouse={id:string,code?:string|null,name?:string|null,address?:string|null}
 type AssignedShipper={id:string,name:string,phone?:string|null}
@@ -52,6 +58,25 @@ export function TrackingHubGroup({
   const urgentCount=eligible.length+failed+atHub+outForDelivery
 
   const [open,setOpen]=useState(defaultOpen??urgentCount>0)
+  const columns=useManagedColumns<ColKey>('mynh-tracking-hub-columns-v2',ALL_COLUMNS,['order'])
+  const sort=useManagedSort<ColKey>('mynh-tracking-hub-sort-v2','order','asc')
+  const sortedRows=useMemo(()=>{
+    const next=[...rows]
+    const value=(row:OrderRow,key:ColKey)=>{
+      if(key==='order')return String(row.shopee_order_id??row.id)
+      if(key==='product')return String(row.product_summary??'')
+      if(key==='cod')return Number(row.cod??0)
+      if(key==='recipient')return String(row.recipient_name??'')+' '+String(row.recipient_address??'')
+      if(key==='status')return String(row.tracking_status??'')+' '+String(row.receive_status??'')
+      return String(row.shipment_id??'')
+    }
+    next.sort((a,b)=>{
+      const av=value(a,sort.key),bv=value(b,sort.key)
+      const cmp=typeof av==='number'&&typeof bv==='number'?av-bv:String(av).localeCompare(String(bv),'vi')
+      return sort.dir==='asc'?cmp:-cmp
+    })
+    return next
+  },[rows,sort.key,sort.dir])
   const [selected,setSelected]=useState<string[]>([])
   const selectedSet=useMemo(()=>new Set(selected),[selected])
   const selectedRows=eligible.filter(r=>selectedSet.has(r.id))
@@ -119,7 +144,7 @@ export function TrackingHubGroup({
     return orderBasePath+'?'+p.toString()
   }
 
-  return <section className={'card tracking-hub-card tracking-hub-card-v2 '+(open?'open':'collapsed')}>
+  return <section className={'card tracking-hub-card tracking-hub-card-v2 '+(open?'open':'collapsed')+(columns.open?' columns-open':'')}>
     <div className="tracking-hub-head-v2">
       <button
         type="button"
@@ -132,7 +157,7 @@ export function TrackingHubGroup({
       </button>
 
       <div className="tracking-hub-identity">
-        <span className={'tracking-hub-priority-dot '+(urgentCount?'attention':'')}/>
+        <span className={'tracking-hub-priority-dot '+(urgentCount?'attention':'')} aria-hidden="true"/>
         <div>
           <b>{hub}</b>
           <small>{assignedShippers.length
@@ -153,63 +178,37 @@ export function TrackingHubGroup({
       <div className="tracking-hub-summary-state">
         {delivered>0&&<span className="success">{delivered} giao TC</span>}
         <span>{open?'Thu gọn':'Xem đơn'}</span>
+        {open&&<ManagedColumnsMenu labels={COLUMN_LABELS} manager={columns}/>}
       </div>
     </div>
 
     {open&&<>
+      
+
       <div className="tracking-hub-table-wrap tracking-hub-table-wrap-v2">
         <table className="table tracking-hub-table tracking-hub-table-v2">
           <thead><tr>
             <th className="select-col">
               <input type="checkbox" aria-label="Chọn tất cả đơn chờ nhận" checked={allSelected} onChange={toggleAll} disabled={!eligible.length}/>
             </th>
-            <th>Mã đơn / MVĐ</th>
-            <th>Sản phẩm</th>
-            <th>COD</th>
-            <th>Người nhận / Địa chỉ</th>
-            <th>Trạng thái</th>
-            <th>Xử lý</th>
+            {columns.visible.map(col=><th key={col}><SortableHeader column={col} label={COLUMN_LABELS[col]} sort={sort} onSort={sort.toggle}/></th>)}
           </tr></thead>
           <tbody>
-            {rows.map(r=>{
+            {sortedRows.map(r=>{
               const canReceive=r.receive_status==='WAITING_RECEIVE'&&r.tracking_status==='DELIVERED'
+              const cell=(col:ColKey)=>{
+                if(col==='order')return <td key={col}><div className="tracking-order-id"><Link className="table-link" href={orderHref(r.id)}>{r.shopee_order_id??r.id.slice(0,8)}</Link><span>{r.tracking_number??'Chưa có MVĐ'}{r.carrier?' · '+r.carrier:''}</span></div></td>
+                if(col==='product')return <td key={col} className="truncate tracking-product-cell" title={r.product_summary??''}>{r.product_summary??'—'}</td>
+                if(col==='cod')return <td key={col} className="money">{formatMoney(r.cod)}</td>
+                if(col==='recipient')return <td key={col}><div className="tracking-recipient tracking-recipient-v2"><b>{r.recipient_name??'—'} <small>{formatPhone(r.recipient_phone)}</small></b><span title={r.recipient_address??''}>{r.recipient_address??'Chưa có địa chỉ'}</span></div></td>
+                if(col==='status')return <td key={col}><div className="order-state-cell tracking-state-cell-v2"><span className={'status-pill status-'+String(r.tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(r.tracking_status)}</span>{r.receive_status!=='NOT_READY'&&<span className={'status-pill '+(r.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(r.receive_status)}</span>}</div></td>
+                return <td key={col}><div className="tracking-row-actions">{r.shipment_id&&!['DELIVERED','CANCELLED','RETURNED'].includes(String(r.tracking_status))&&<ManualSyncButton shipmentId={r.shipment_id}/>}<Link className="button small" href={orderHref(r.id)}>Chi tiết</Link></div></td>
+              }
               return <tr key={r.id} className={canReceive?'tracking-row-waiting':''}>
                 <td className="select-col">
-                  <input
-                    type="checkbox"
-                    name="pick"
-                    aria-label={'Chọn '+(r.shopee_order_id??r.id)}
-                    checked={selectedSet.has(r.id)}
-                    onChange={()=>toggle(r.id)}
-                    disabled={!canReceive}
-                  />
+                  <input type="checkbox" name="pick" aria-label={'Chọn '+(r.shopee_order_id??r.id)} checked={selectedSet.has(r.id)} onChange={()=>toggle(r.id)} disabled={!canReceive}/>
                 </td>
-                <td>
-                  <div className="tracking-order-id">
-                    <Link className="table-link" href={orderHref(r.id)}>{r.shopee_order_id??r.id.slice(0,8)}</Link>
-                    <span>{r.tracking_number??'Chưa có MVĐ'}{r.carrier?' · '+r.carrier:''}</span>
-                  </div>
-                </td>
-                <td className="truncate tracking-product-cell" title={r.product_summary??''}>{r.product_summary??'—'}</td>
-                <td className="money">{formatMoney(r.cod)}</td>
-                <td>
-                  <div className="tracking-recipient tracking-recipient-v2">
-                    <b>{r.recipient_name??'—'} <small>{formatPhone(r.recipient_phone)}</small></b>
-                    <span title={r.recipient_address??''}>{r.recipient_address??'Chưa có địa chỉ'}</span>
-                  </div>
-                </td>
-                <td>
-                  <div className="order-state-cell tracking-state-cell-v2">
-                    <span className={'status-pill status-'+String(r.tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(r.tracking_status)}</span>
-                    {r.receive_status!=='NOT_READY'&&<span className={'status-pill '+(r.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(r.receive_status)}</span>}
-                  </div>
-                </td>
-                <td>
-                  <div className="tracking-row-actions">
-                    {r.shipment_id&&!['DELIVERED','CANCELLED','RETURNED'].includes(String(r.tracking_status))&&<ManualSyncButton shipmentId={r.shipment_id}/>}
-                    <Link className="button small" href={orderHref(r.id)}>Chi tiết</Link>
-                  </div>
-                </td>
+                {columns.visible.map(cell)}
               </tr>
             })}
           </tbody>

@@ -94,7 +94,9 @@ const baselineItem=await first('/rest/v1/order_items?select=id,product_variant_i
 const baselineSales=await admin('/rest/v1/sales?select=id&customer_id=eq.'+encodeURIComponent(f.customer_id))
 record('Baseline warehouse order is ready',baselineOrder?.warehouse_status==='READY_TO_TRANSFER'&&baselineOrder?.receive_status==='RECEIVED')
 record('Baseline warehouse item is unmapped',baselineItem?.product_variant_id===null&&Number(baselineItem?.quantity)===Number(f.mutation_stock_quantity))
-record('Baseline customer has no QA sales',Array.isArray(baselineSales)&&baselineSales.length===0)
+record('Baseline mutation customer has no sales or debt',
+  Array.isArray(baselineSales)&&baselineSales.length===0,
+  {count:baselineSales?.length??-1})
 
 // 1) Warehouse Intake mutation: map SKU through real UI.
 await go('/warehouse/receive')
@@ -167,9 +169,12 @@ await tile.click()
 
 const customerButton=page.locator('.pos-control-actions button').first()
 await customerButton.click()
-const customerSelect=page.locator('.pos-customer-popover select').first()
-await customerSelect.selectOption(String(f.customer_id))
-await page.locator('.pos-customer-popover .pos-popover-head button').first().click()
+// POS V2 uses searchable customer buttons, not the retired <select>.
+await page.locator('.pos-customer-search-v2 input').fill(f.customer_name)
+const choice=page.locator('.pos-customer-list-v2 button[data-customer-id="'+String(f.customer_id)+'"]').first()
+await choice.waitFor({state:'visible',timeout:5000})
+await choice.click()
+await page.locator('.pos-customer-popover').waitFor({state:'hidden',timeout:5000})
 
 const extras=page.getByRole('button',{name:/Tùy chỉnh hóa đơn/}).first()
 if(await extras.count()){

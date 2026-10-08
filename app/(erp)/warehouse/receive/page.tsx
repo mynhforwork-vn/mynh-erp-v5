@@ -20,7 +20,11 @@ function receiveBatchOf(row:any){
   return Array.isArray(batch)?batch[0]??null:batch??null
 }
 
-export default async function WarehouseReceivePage(){
+type SP={state?:'all'|'incomplete'|'missing'|'ready'}
+
+export default async function WarehouseReceivePage({searchParams}:{searchParams:Promise<SP>}){
+  const sp=await searchParams
+  const state=sp.state??'all'
   const {supabase}=await requireUser()
 
   const [
@@ -104,6 +108,12 @@ export default async function WarehouseReceivePage(){
     }
   }
 
+  const displayRows=state==='ready'
+    ? readyRows
+    : state==='incomplete'||state==='missing'
+      ? incompleteRows
+      : rows
+
   const receivingWarehouseIds=new Set(
     rows
       .map(row=>receiveBatchOf(row)?.warehouse_id)
@@ -134,18 +144,18 @@ export default async function WarehouseReceivePage(){
 
     <section className="tracking-command-center-v2 warehouse-command-center">
       <div className="tracking-status-strip-v2">
-        <div className="tracking-status-metric warning">
-          <span>Chờ bóc tách</span><b>{incompleteRows.length}</b><small>Chỉ đơn chưa bóc tách</small>
-        </div>
-        <div className="tracking-status-metric amber">
+        <Link href="/warehouse/receive?state=incomplete" className={'tracking-status-metric warning '+(state==='incomplete'?'active':'')}>
+          <span>Chờ bóc tách</span><b>{incompleteRows.length}</b><small>Đơn còn thiếu mapping SKU</small>
+        </Link>
+        <Link href="/warehouse/receive?state=missing" className={'tracking-status-metric amber '+(state==='missing'?'active':'')}>
           <span>SKU chưa map</span><b>{missingItems}</b><small>Dòng sản phẩm cần xử lý</small>
-        </div>
-        <div className="tracking-status-metric success">
+        </Link>
+        <Link href="/warehouse/receive?state=ready" className={'tracking-status-metric success '+(state==='ready'?'active':'')}>
           <span>Chờ nhập kho</span><b>{readyRows.length}</b><small>Đã bóc tách, chưa ghi tồn</small>
-        </div>
-        <div className="tracking-status-metric info">
-          <span>Kho nhận</span><b>{receivingWarehouseIds.size}</b><small>Kho đang có hàng chờ xử lý</small>
-        </div>
+        </Link>
+        <Link href="/warehouse/receive" className={'tracking-status-metric info '+(state==='all'?'active':'')}>
+          <span>Kho nhận</span><b>{receivingWarehouseIds.size}</b><small>{rows.length} đơn đang chờ xử lý</small>
+        </Link>
         <div className="tracking-status-metric">
           <span>COD chờ xử lý</span><b>{formatMoney(waitingCod)}</b><small>{rows.length} đơn đã nhận</small>
         </div>
@@ -154,7 +164,7 @@ export default async function WarehouseReceivePage(){
       <div className="tracking-control-row-v2 warehouse-control-row">
         <div className="tracking-console-title">
           <b>Nhập kho theo Kho nhận</b>
-          <span>{rows.length} đơn đã nhận · không tự động nhập tồn</span>
+          <span>{displayRows.length} / {rows.length} đơn · không tự động nhập tồn</span>
         </div>
         <div className="warehouse-intake-rule">
           <b>Gợi ý SKU ≠ tự động bóc tách.</b>
@@ -164,7 +174,7 @@ export default async function WarehouseReceivePage(){
     </section>
 
     <WarehouseIntakeWorkspace
-      rows={rows}
+      rows={displayRows}
       variants={(variants??[]) as any[]}
       auditLogs={(auditLogs??[]) as any[]}
       suggestions={suggestions}

@@ -1,9 +1,11 @@
 import Link from 'next/link'
+import { SystemSlidebar } from '@/components/system-slidebar'
 import { formatMoney } from '@/lib/format'
 import { requireUser } from '@/lib/supabase/auth'
 import { DebtCollectForm } from '@/components/debt-collect-form'
 import { ContextSalePanel } from '@/components/context-sale-panel'
 import { fetchSaleContext } from '@/lib/sales/context'
+import { SalesDebtTable } from '@/components/sales-debt-table'
 
 type SP={
   q?:string
@@ -119,11 +121,13 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
     })
     .filter(row=>row.debt>0)
 
-  let rows=[...allRows]
+  const scopeRows=q
+    ? allRows.filter(x=>[x.name,x.phone,x.address,...x.rows.map(r=>r.code)].join(' ').toLowerCase().includes(q))
+    : allRows
+  let rows=[...scopeRows]
   if(state==='open')rows=rows.filter(x=>x.debt>0)
   if(state==='partial')rows=rows.filter(x=>x.rows.some(r=>r.paid>0&&r.debt>0))
   if(state==='old')rows=rows.filter(x=>x.age>=7)
-  if(q)rows=rows.filter(x=>[x.name,x.phone,x.address,...x.rows.map(r=>r.code)].join(' ').toLowerCase().includes(q))
 
   const selected=allRows.find(x=>x.customer_id===sp.customer)??null
   const tab=sp.tab??'summary'
@@ -133,14 +137,16 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
     : null
   const saleTab=sp.saleTab==='products'||sp.saleTab==='payment'||sp.saleTab==='history'?sp.saleTab:'info'
   const collectMode=sp.mode==='collect'&&Boolean(selected)&&!contextSale
-  const totalDebt=allRows.reduce((sum,x)=>sum+x.debt,0)
-  const openInvoices=allRows.reduce((sum,x)=>sum+x.invoices,0)
-  const partialCustomers=allRows.filter(x=>x.rows.some(r=>r.paid>0&&r.debt>0)).length
-  const oldCustomers=allRows.filter(x=>x.age>=7)
+  const totalDebt=scopeRows.reduce((sum,x)=>sum+x.debt,0)
+  const openInvoices=scopeRows.reduce((sum,x)=>sum+x.invoices,0)
+  const partialCustomers=scopeRows.filter(x=>x.rows.some(r=>r.paid>0&&r.debt>0)).length
+  const oldCustomers=scopeRows.filter(x=>x.age>=7)
+  const scopeCustomerIds=new Set(scopeRows.map(x=>x.customer_id))
+  const scopePayments=payments.filter(x=>scopeCustomerIds.has(String(x.customer_id)))
   const todayStart=startOfTodayVN()
   const monthStart=startOfMonthVN()
-  const collectedToday=payments.filter(x=>String(x.paid_at)>=todayStart).reduce((sum,x)=>sum+Number(x.amount??0),0)
-  const collectedMonth=payments.filter(x=>String(x.paid_at)>=monthStart).reduce((sum,x)=>sum+Number(x.amount??0),0)
+  const collectedToday=scopePayments.filter(x=>String(x.paid_at)>=todayStart).reduce((sum,x)=>sum+Number(x.amount??0),0)
+  const collectedMonth=scopePayments.filter(x=>String(x.paid_at)>=monthStart).reduce((sum,x)=>sum+Number(x.amount??0),0)
   const bankConfig=(bankResult.data??null) as any
 
   function href(extra:Record<string,string|null|undefined>={}){
@@ -172,7 +178,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
 
     <section className="entity-status-strip debt-demo-kpis">
       <Link className={'entity-status-metric warning '+(state==='all'?'active':'')} href={href({state:null,customer:null,tab:null,mode:null})}>
-        <span>Tổng công nợ</span><b className="money">{formatMoney(totalDebt)}</b><small>{allRows.length} khách còn nợ</small>
+        <span>Tổng công nợ</span><b className="money">{formatMoney(totalDebt)}</b><small>{scopeRows.length} khách còn nợ</small>
       </Link>
       <Link className={'entity-status-metric '+(state==='open'?'active':'')} href={href({state:'open',customer:null,tab:null,mode:null})}>
         <span>Hóa đơn còn nợ</span><b>{openInvoices}</b><small>Chưa thu đủ</small>
@@ -208,20 +214,12 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
 
     <div className="debt-demo-workspace">
       <section className="debt-demo-list">
-        <div className="debt-demo-table-wrap">
-          <table className="table debt-demo-table">
-            <thead><tr><th>Khách hàng</th><th>SĐT</th><th>Số HĐ nợ</th><th>Công nợ</th><th>Nợ cũ nhất</th><th>Thu gần nhất</th><th>Xử lý</th></tr></thead>
-            <tbody>{rows.length?rows.map(row=><tr key={row.customer_id} className={selected?.customer_id===row.customer_id?'selected':''}>
-              <td><Link className="table-link" href={href({customer:row.customer_id,tab:'summary',mode:null})}>{row.name}</Link><small>{row.address||'—'}</small></td>
-              <td>{phone(row.phone)}</td>
-              <td>{row.invoices}</td>
-              <td className="money warning-text">{formatMoney(row.debt)}</td>
-              <td>{fmtDate(row.oldest,false)}<small>{row.age===0?'Hôm nay':row.age+' ngày'}</small></td>
-              <td>{fmtDate(row.lastPayment)}</td>
-              <td><Link className="button small primary" href={href({customer:row.customer_id,tab:'summary',mode:'collect'})}>Thu nợ</Link></td>
-            </tr>):<tr><td colSpan={7}><div className="empty compact">Không có công nợ phù hợp bộ lọc.</div></td></tr>}</tbody>
-          </table>
-        </div>
+        
+        <SalesDebtTable
+          rows={rows}
+          selectedId={selected?.customer_id??null}
+          baseQuery={href({customer:null,tab:null,mode:null,sale:null,saleTab:null}).split('?')[1]??''}
+        />
       </section>
 
       {selected&&contextSale&&<ContextSalePanel
@@ -244,7 +242,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
         openModuleHref={'/sales/history?sale='+contextSale.id}
       />}
 
-      {selected&&!contextSale&&<aside className={'debt-demo-panel '+(collectMode?'collect-mode':'')}>
+      {selected&&!contextSale&&<SystemSlidebar className={'debt-demo-panel '+(collectMode?'collect-mode':'')}>
         <div className="sales-detail-panel-head">
           <div><span className="module-eyebrow">CÔNG NỢ KHÁCH HÀNG</span><h2>{selected.name}</h2><p>{phone(selected.phone)} · {selected.address||'—'}</p></div>
           <Link className="panel-close" href={href({customer:null,tab:null,mode:null})}>×</Link>
@@ -328,7 +326,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
                 })}
           </div>}
         </div>}
-      </aside>}
+      </SystemSlidebar>}
     </div>
   </div>
 }

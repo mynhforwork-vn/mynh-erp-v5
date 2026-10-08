@@ -1,15 +1,22 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime,formatMoney } from '@/lib/format'
-import { financePeriodLabel,financePeriodStart,normalizeFinancePeriod,withinFinancePeriod,vnDateKey,displayVnDateKey } from '@/lib/finance-period'
+import { vnDateKey,displayVnDateKey } from '@/lib/finance-period'
+import { PurchaseDateFilter } from '@/components/purchase-date-filter'
+import { resolveErpRange, type ErpRangeInput } from '@/lib/erp-date-range'
 
-type SP={period?:string}
+type SP=ErpRangeInput & {period?:string}
 const num=(v:any)=>Number.isFinite(Number(v))?Number(v):0
 
 export default async function FinanceOverviewPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
-  const period=normalizeFinancePeriod(sp.period)
-  const start=financePeriodStart(period)
+  const range=resolveErpRange({...sp,range:sp.range??sp.period})
+  const withinRange=(value:string|Date|null|undefined)=>{
+    if(range.key==='all')return true
+    if(!value)return false
+    const valueMs=new Date(value).getTime()
+    return valueMs>=new Date(range.start).getTime()&&valueMs<=new Date(range.end).getTime()
+  }
   const {supabase}=await requireUser()
 
   const [txResult,docResult,salesResult,shipperResult,categoryResult]=await Promise.all([
@@ -31,10 +38,10 @@ export default async function FinanceOverviewPage({searchParams}:{searchParams:P
   const errors=[txResult.error,docResult.error,salesResult.error,shipperResult.error,categoryResult.error].filter(Boolean).map((x:any)=>x.message)
   const categories=(categoryResult.data??[]) as any[]
   const categoryMap=new Map(categories.map(c=>[c.id,c]))
-  const tx=((txResult.data??[]) as any[]).filter(x=>x.status!=='VOID'&&withinFinancePeriod(x.transaction_at,start))
-  const docs=((docResult.data??[]) as any[]).filter(x=>withinFinancePeriod(x.occurred_at,start))
-  const sales=((salesResult.data??[]) as any[]).filter(x=>x.sale_status!=='CANCELLED'&&withinFinancePeriod(x.sale_at,start))
-  const shipper=((shipperResult.data??[]) as any[]).filter(x=>withinFinancePeriod(x.transferred_at,start))
+  const tx=((txResult.data??[]) as any[]).filter(x=>x.status!=='VOID'&&withinRange(x.transaction_at))
+  const docs=((docResult.data??[]) as any[]).filter(x=>withinRange(x.occurred_at))
+  const sales=((salesResult.data??[]) as any[]).filter(x=>x.sale_status!=='CANCELLED'&&withinRange(x.sale_at))
+  const shipper=((shipperResult.data??[]) as any[]).filter(x=>withinRange(x.transferred_at))
 
   const representedShipperIds=new Set(tx.filter(x=>x.reference_type==='SHIPPER_PAYMENT'&&x.reference_id).map(x=>x.reference_id))
   const missingShipperExpense=shipper.filter(x=>!representedShipperIds.has(x.id)).reduce((s,x)=>s+num(x.actual_transferred),0)
@@ -86,8 +93,6 @@ export default async function FinanceOverviewPage({searchParams}:{searchParams:P
     })),
   ].sort((a,b)=>new Date(b.time).getTime()-new Date(a.time).getTime()).slice(0,8)
 
-  function href(p:string){return '/finance?period='+p}
-
   return <div className="finance-screen">
     <header className="page-head finance-page-head">
       <div>
@@ -103,12 +108,7 @@ export default async function FinanceOverviewPage({searchParams}:{searchParams:P
 
     {errors.length>0&&<div className="error-box finance-alert">Có dữ liệu chưa tải được: {errors.join(' · ')}</div>}
 
-    <nav className="finance-period-tabs" aria-label="Khoảng thời gian">
-      {[
-        ['all','Toàn thời gian'],['today','Hôm nay'],['7d','7 ngày'],['month','Tháng này']
-      ].map(([key,label])=><Link key={key} href={href(key)} className={period===key?'active':''}>{label}</Link>)}
-      <span>{financePeriodLabel(period)}</span>
-    </nav>
+    <PurchaseDateFilter activeRange={range.key} from={range.from} to={range.to} label={range.label} basePath="/finance" showAll/>
 
     <section className="finance-kpi-grid finance-overview-kpis">
       <div className="finance-kpi"><span>Tổng thu</span><b className="income">{formatMoney(income)}</b><small>Sổ tài chính đã ghi nhận</small></div>
@@ -121,7 +121,7 @@ export default async function FinanceOverviewPage({searchParams}:{searchParams:P
 
     <section className="finance-overview-grid">
       <div className="card finance-overview-card">
-        <div className="card-head"><div><h2>Dòng tiền gần nhất</h2><span>{financePeriodLabel(period)}</span></div><Link href="/finance/cashflow">Mở sổ Thu / Chi</Link></div>
+        <div className="card-head"><div><h2>Dòng tiền gần nhất</h2><span>{range.label}</span></div><Link href="/finance/cashflow">Mở sổ Thu / Chi</Link></div>
         {!dailyRows.length?<div className="empty compact">Chưa có dòng tiền trong kỳ.</div>:<div className="finance-daily-list">
           {dailyRows.map(([key,row])=><div key={key}>
             <b>{displayVnDateKey(key)}</b>

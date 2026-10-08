@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import { useEffect,useRef } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 
 type IconName=
@@ -69,6 +70,23 @@ const groups:Group[]=[
 export function Nav(){
   const pathname=usePathname()
   const searchParams=useSearchParams()
+  const navRef=useRef<HTMLElement|null>(null)
+
+  useEffect(()=>{
+    const nav=navRef.current
+    if(!nav)return
+    const revealActive=()=>{
+      const active=nav.querySelector('a.active') as HTMLElement|null
+      if(!active)return
+      const top=active.offsetTop
+      const bottom=top+active.offsetHeight
+      if(top<nav.scrollTop)nav.scrollTop=Math.max(0,top-8)
+      else if(bottom>nav.scrollTop+nav.clientHeight)nav.scrollTop=Math.max(0,bottom-nav.clientHeight+8)
+    }
+    revealActive()
+    window.addEventListener('mynh-sidebar-resized',revealActive)
+    return ()=>window.removeEventListener('mynh-sidebar-resized',revealActive)
+  },[pathname])
 
   function contextualHref(href:string){
     if(!href.startsWith('/purchase'))return href
@@ -86,13 +104,13 @@ export function Nav(){
     return href+(qs?'?'+qs:'')
   }
 
-  return <nav className="nav" aria-label="Điều hướng chính">
+  return <nav ref={navRef} className="nav" aria-label="Điều hướng chính">
     {groups.map(group=><section className="nav-group" key={group.label}>
       <div className="nav-section-label">{group.label}</div>
       <div className="nav-group-items">
         {group.items.map(item=>{
           const active=item.exact?pathname===item.href:pathname===item.href||pathname.startsWith(item.href+'/')
-          return <Link key={item.href} href={contextualHref(item.href)} className={active?'active':''}>
+          return <Link key={item.href} href={contextualHref(item.href)} className={active?'active':''} title={item.label}>
             <span className="nav-icon"><NavIcon name={item.icon}/></span>
             <span>{item.label}</span>
           </Link>
