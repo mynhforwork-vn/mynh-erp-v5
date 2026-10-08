@@ -82,6 +82,7 @@ jobs:
         run: node scripts/desktop-slidebar-qa.mjs
 
       - name: Run focused desktop table QA
+        if: success() || failure()
         run: node scripts/desktop-table-qa.mjs
 
       - name: Run focused desktop sidebar QA
