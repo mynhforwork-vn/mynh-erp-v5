@@ -181,9 +181,12 @@ export function InAppAlertCenter({role='viewer',trackingEnabled:initialTrackingE
    window.addEventListener('keydown',key)
    return()=>window.removeEventListener('keydown',key)
  },[open,load,pending])
+ const lastFetchedSelection=useRef(view+'|'+category+'|'+page)
  useEffect(()=>{
-   if(!open||!enabledRef.current)return
-   void load(true)
+   const current=view+'|'+category+'|'+page
+   if(current===lastFetchedSelection.current)return
+   lastFetchedSelection.current=current
+   if(open&&enabledRef.current)void load(true)
  },[view,category,page,open,load])
  function toggleNotifications(){
    const enabled=notificationsEnabled!==true
