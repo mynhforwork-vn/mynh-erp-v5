@@ -315,6 +315,44 @@ for(const path of [
     }
   })
   rec('Bảng '+path+' — nút bảng có nhãn thao tác',controls.unnamed===0,controls)
+  // Functional, non-destructive controls. Keep create/delete/receive/collect actions untouched.
+  const sorter=table.locator('thead th button.managed-sort-head,thead th button.sort-head,thead th button.finance-sort-head,thead th a.sortable-head').first()
+  if(await sorter.count()){
+    try{
+      await sorter.click({timeout:4000})
+      await page.waitForTimeout(120)
+      rec('Bảng '+path+' — sắp xếp không làm mất bảng',await page.locator('.brand-shell-v1 > .main table.table').count()>0)
+    }catch(err){rec('Bảng '+path+' — nút sắp xếp thao tác được',false,{error:String(err).slice(0,140)})}
+  }
+  const columnTrigger=page.locator('.brand-shell-v1 > .main .managed-column-button, .brand-shell-v1 > .main .finance-column-button').first()
+  if(await columnTrigger.count()){
+    try {
+      await columnTrigger.click({timeout:4000})
+      const menu=page.locator('.brand-shell-v1 > .main .managed-column-menu, .brand-shell-v1 > .main .column-manager-menu, .brand-shell-v1 > .main .finance-column-manager-menu').first()
+      const opened=await menu.isVisible().catch(()=>false)
+      rec('Bảng '+path+' — menu Cột mở được',opened)
+      if(opened){
+        const movable=await menu.locator('[draggable="true"]').count()
+        const checks=await menu.locator('input[type="checkbox"]:not([disabled])').count()
+        rec('Bảng '+path+' — cấu hình cột có điều khiển',movable>0||checks>0,{movable,checks})
+        await page.keyboard.press('Escape')
+        await page.waitForTimeout(80)
+        const closed=!(await menu.isVisible().catch(()=>false))
+        rec('Bảng '+path+' — Esc đóng menu Cột',closed)
+      }
+    }catch(err){rec('Bảng '+path+' — nút Cột thao tác được',false,{error:String(err).slice(0,140)})}
+  }
+  if(path==='/purchase/accounts'||path==='/purchase/orders'){
+    const kebab=page.locator('.row-action-kebab').first()
+    if(await kebab.count()){
+      try{
+        await kebab.click({timeout:4000})
+        const menu=page.locator('.row-action-menu').first()
+        rec('Bảng '+path+' — menu thao tác dòng mở được',await menu.isVisible().catch(()=>false))
+        await page.keyboard.press('Escape')
+      }catch(err){rec('Bảng '+path+' — menu thao tác dòng',false,{error:String(err).slice(0,140)})}
+    }
+  }
   if(gripCount){
     const first=grips.first()
     const before=await first.evaluate(el=>el.parentElement.getBoundingClientRect().width)
