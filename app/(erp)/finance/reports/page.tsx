@@ -91,7 +91,7 @@ export default async function FinanceReportsPage({searchParams}:{searchParams:Pr
 
     <nav className="finance-period-tabs" aria-label="Khoảng thời gian báo cáo">
       {[
-        ['all','Toàn thời gian'],['today','Hôm nay'],['7d','7 ngày'],['month','Tháng này']
+        ['all','Toàn thời gian'],['today','Hôm nay'],['week','Tuần này'],['7d','7 ngày'],['30d','30 ngày'],['month','Tháng này'],['quarter','Quý này'],['year','Năm nay']
       ].map(([key,label])=><Link key={key} href={href(key)} className={period===key?'active':''}>{label}</Link>)}
       <span>{financePeriodLabel(period)}</span>
     </nav>
