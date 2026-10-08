@@ -420,7 +420,7 @@ export function PurchaseOrderTable({
   function renderCell(key:ColKey,o:any,i:number){
     const s=activeShipment(o)
     if(key==='number')return <td key={key}>{i+1}</td>
-    if(key==='order')return <td key={key}><Link className="table-link" href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
+    if(key==='order')return <td key={key}><Link className="table-link" prefetch={false} href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
     if(key==='username')return <td key={key}>{o.erp_users?.username??'—'}</td>
     if(key==='time')return <td key={key} className="order-time-cell">{formatDateTime(o.order_date)}</td>
     if(key==='product')return <td key={key} className="truncate product-cell">{productSummary(o.order_items??[])}</td>

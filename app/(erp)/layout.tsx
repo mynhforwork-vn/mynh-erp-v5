@@ -18,7 +18,7 @@ export default async function ERPLayout({children}:{children:React.ReactNode}){
     <DesktopTableColumnResize/>
     <div className="shell brand-shell-v1">
     <aside className="sidebar">
-      <Link href="/" className="brand"><span className="brand-mark small"><MynhLogoMark/></span><span><b>MYNH ERP</b><small>HỆ THỐNG VẬN HÀNH</small></span></Link>
+      <Link href="/" prefetch={false} className="brand"><span className="brand-mark small"><MynhLogoMark/></span><span><b>MYNH ERP</b><small>HỆ THỐNG VẬN HÀNH</small></span></Link>
       <Suspense fallback={null}><Nav/></Suspense>
       <div className="sidebar-foot sidebar-foot-v2">
         <SidebarAccountMenu email={user.email??'Người dùng MYNH ERP'} role={roleLabel(role)}/>

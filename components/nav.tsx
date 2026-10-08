@@ -110,7 +110,7 @@ export function Nav(){
       <div className="nav-group-items">
         {group.items.map(item=>{
           const active=item.exact?pathname===item.href:pathname===item.href||pathname.startsWith(item.href+'/')
-          return <Link key={item.href} href={contextualHref(item.href)} className={active?'active':''} title={item.label}>
+          return <Link key={item.href} href={contextualHref(item.href)} prefetch={false} className={active?'active':''} title={item.label}>
             <span className="nav-icon"><NavIcon name={item.icon}/></span>
             <span>{item.label}</span>
           </Link>

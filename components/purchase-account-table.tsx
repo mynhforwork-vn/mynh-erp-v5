@@ -275,7 +275,7 @@ export function PurchaseAccountTable({
     if(key==='number')return <td key={key}>{i+1}</td>
     if(key==='username')return <td key={key}>
       <div className="user-name-actions">
-        <Link className="table-link" href={hrefFor(u.id)}>{u.username}</Link>
+        <Link className="table-link" prefetch={false} href={hrefFor(u.id)}>{u.username}</Link>
         {!u.archived_at&&u.status!=='Blocked'&&<Link className="quick-order-link" href={createOrderHref(u.id)} title="Tạo đơn từ User">+ Đơn</Link>}
       </div>
     </td>
