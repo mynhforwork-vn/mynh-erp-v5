@@ -187,6 +187,80 @@ for(const [path,label]of [
   rec('Bộ lọc KPI '+path,selected.includes(label),{selected})
 }
 
+
+// Tracking HUB accordion: no redundant toolbar and no flex stretching of open HUBs.
+for(const width of [1024,1440,2560]){
+  await page.setViewportSize({width,height:900})
+  await go('/purchase/tracking?range=all')
+  const cards=page.locator('.tracking-hub-stack-v2 > .tracking-hub-card-v2')
+  const count=await cards.count()
+  if(!count){
+    rec('Cảnh báo giao — có nhóm HUB '+width,false,{count})
+    continue
+  }
+  const first=cards.first()
+  if((await first.getAttribute('class')||'').includes('collapsed'))await first.locator('.tracking-hub-toggle').click()
+  const k=await page.evaluate(()=>{
+    const stack=document.querySelector('.tracking-hub-stack-v2')
+    const a=stack?.querySelector('.tracking-hub-card-v2')
+    const header=a?.querySelector('.tracking-hub-head-v2')
+    const col=a?.querySelector('.tracking-hub-summary-state .managed-column-button')
+    const table=a?.querySelector('.tracking-hub-table-wrap-v2')
+    const extraBar=a?.querySelector('.tracking-managed-toolbar')
+    const other=[...(stack?.querySelectorAll('.tracking-hub-card-v2')||[])][1]
+    const hdrStyle=header?getComputedStyle(header):null
+    const rect=(el)=>el?.getBoundingClientRect()
+    let simulated=null
+    if(!other && stack && a){
+      simulated=document.createElement('section')
+      simulated.className='card tracking-hub-card tracking-hub-card-v2 collapsed'
+      const inner=document.createElement('div')
+      inner.className='tracking-hub-head-v2'
+      inner.textContent='HUB QA kiểm tra bố cục'
+      simulated.append(inner)
+      stack.append(simulated)
+    }
+    const b=other||simulated
+    const ar=rect(a),br=rect(b),hr=rect(header),cr=rect(col),tr=rect(table)
+    const secondHeader=b?.querySelector('.tracking-hub-head-v2')
+    const color2=secondHeader?getComputedStyle(secondHeader).backgroundColor:null
+    const result={
+      count:stack?.querySelectorAll('.tracking-hub-card-v2').length||0,
+      originalCount:stack?.querySelectorAll('.tracking-hub-card-v2').length-(simulated?1:0),
+      nextGap:ar&&br?Math.round(br.top-ar.bottom):null,
+      headerColor:hdrStyle?.backgroundColor,
+      nextHeaderColor:color2,
+      toolbarGone:!extraBar,
+      buttonInHeader:!!hr&&!!cr&&cr.top>=hr.top-2&&cr.bottom<=hr.bottom+2,
+      tableHeight:tr?.height??0,
+      tableMaxHeight:table?getComputedStyle(table).maxHeight:null,
+      firstCardHeight:ar?.height??0,
+      width:innerWidth,
+      scrollWidth:document.documentElement.scrollWidth,
+    }
+    simulated?.remove()
+    return result
+  })
+  rec('Cảnh báo giao — HUB liên tiếp sau khi xổ '+width,
+    k.nextGap!==null&&k.nextGap>=0&&k.nextGap<=14&&k.scrollWidth<=width+2,k)
+  rec('Cảnh báo giao — nút Cột trong tiêu đề, không thêm dòng '+width,
+    k.toolbarGone&&k.buttonInHeader,k)
+  rec('Cảnh báo giao — HUB cùng nền trung tính '+width,
+    !!k.headerColor&&k.headerColor===k.nextHeaderColor,k)
+  const col=first.locator('.tracking-hub-summary-state .managed-column-button')
+  if(await col.count()){
+    await col.click()
+    const m=await page.evaluate(()=>{
+      const r=document.querySelector('.tracking-hub-summary-state .managed-column-menu')?.getBoundingClientRect()
+      return {shown:!!r,width:r?.width||0,left:r?.left||0,right:r?.right||0,viewport:innerWidth}
+    })
+    rec('Cảnh báo giao — điều chỉnh Cột không bị cắt '+width,
+      m.shown&&m.width>=170&&m.left>=-2&&m.right<=m.viewport+2,m)
+    await page.keyboard.press('Escape')
+  }else rec('Cảnh báo giao — còn chức năng chỉnh Cột '+width,false)
+  if(width===1440)await page.screenshot({path:artifactDir+'/tracking-hub-expanded-1440.png',fullPage:false})
+}
+
 const pass=results.every(x=>x.pass)
 console.log(JSON.stringify({preview:PREVIEW_URL,pass,results},null,2))
 await browser.close()
