@@ -4,6 +4,7 @@ import { chromium } from 'playwright'
 import { createBrowserClient } from '@supabase/ssr'
 import fs from 'node:fs'
 
+const DESKTOP_ONLY_QA=process.env.DESKTOP_ONLY_QA==='true'
 const PREVIEW_URL=process.env.PREVIEW_URL
 const SUPABASE_URL=process.env.SUPABASE_URL
 const SUPABASE_KEY=process.env.SUPABASE_KEY
@@ -138,7 +139,7 @@ const routes=[
   '/finance','/finance/cashflow','/finance/shipper-payments','/finance/customer-payments','/finance/reports',
   '/settings','/account'
 ]
-const screenshotRoutes=new Set(['/purchase/orders','/purchase/tracking','/warehouse','/sales','/sales/pos','/sales/history','/sales/customers','/sales/debt','/finance','/settings'])
+const screenshotRoutes=new Set(['/','/purchase','/purchase/orders','/purchase/tracking','/warehouse','/sales','/sales/pos','/sales/history','/sales/customers','/sales/debt','/finance','/settings'])
 
 for(const path of routes){
   const r=await go(path)
@@ -798,6 +799,78 @@ summary.interactions.push({
   pass:!settingsBody.includes('Tài khoản & phân quyền')&&!settingsBody.includes('Tích hợp')&&!settingsBody.includes('Thông báo'),
 })
 
+
+/* Desktop-first release gate — the five dashboard landing pages at three sizes.
+   Mobile checks intentionally remain available for the later mobile redesign. */
+if (DESKTOP_ONLY_QA) {
+  const dashboardRoutes=[
+    {path:'/',strip:'.kpi-grid:not(.order-kpi-grid):not(.order-kpi-grid-v2)',cards:'.kpi-card',min:6},
+    {path:'/purchase',strip:'.purchase-command-kpis-v2',cards:'.command-kpi',min:7},
+    {path:'/warehouse',strip:'.whx-kpi-grid.seven',cards:'a',min:7},
+    {path:'/sales',strip:'.sales-kpi-strip',cards:'.sales-kpi',min:7},
+    {path:'/finance',strip:'.finance-overview-kpis',cards:'.finance-kpi',min:6},
+  ]
+  for (const width of [1024,1440,2560]) {
+    await page.setViewportSize({width,height:900})
+    await go('/')
+    await page.waitForTimeout(250)
+    const toggle=page.locator('.brand-shell-v1 > .sidebar .desktop-sidebar-toggle')
+    recordInteraction('Desktop '+width+' has top sidebar toggle',await toggle.count()===1)
+    if(await toggle.count()) {
+      const expand=async(desired)=>{
+        const collapsed=await page.locator('.brand-shell-v1.desktop-sidebar-collapsed').count()>0
+        if(collapsed===desired)await toggle.click()
+        await page.waitForTimeout(250)
+      }
+      await expand(true)
+      const compact=await page.evaluate(()=>{
+        const side=document.querySelector('.brand-shell-v1 > .sidebar')
+        const button=document.querySelector('.desktop-sidebar-toggle')
+        const logo=document.querySelector('.brand-shell-v1 > .sidebar .brand')
+        const account=document.querySelector('.brand-shell-v1 > .sidebar .sidebar-account-trigger')
+        const bell=document.querySelector('.brand-shell-v1 > .sidebar .sidebar-alert-trigger')
+        const s=side?.getBoundingClientRect(),b=button?.getBoundingClientRect(),l=logo?.getBoundingClientRect()
+        const inside=(el)=>{const r=el?.getBoundingClientRect();return !!r&&!!s&&r.left>=s.left-1&&r.right<=s.right+1}
+        return {width:s?.width??0,toggleOnTop:!!b&&!!l&&b.bottom<=l.top+3,accountInside:inside(account),bellInside:inside(bell)}
+      })
+      recordInteraction('Desktop '+width+' compact sidebar aligned',
+        compact.width>=68&&compact.width<=76&&compact.toggleOnTop&&compact.accountInside&&compact.bellInside,compact)
+      await page.screenshot({path:`${outDir}/desktop-${width}-sidebar-collapsed.png`,fullPage:false})
+      await expand(false)
+      const expanded=await page.evaluate(()=>{
+        const s=document.querySelector('.brand-shell-v1 > .sidebar')?.getBoundingClientRect()
+        const account=document.querySelector('.brand-shell-v1 > .sidebar .sidebar-account-trigger')?.getBoundingClientRect()
+        const bell=document.querySelector('.brand-shell-v1 > .sidebar .sidebar-alert-trigger')?.getBoundingClientRect()
+        return {sidebarWidth:s?.width??0,accountInside:!!s&&!!account&&account.right<=s.right+1,bellInside:!!s&&!!bell&&bell.right<=s.right+1}
+      })
+      recordInteraction('Desktop '+width+' expanded sidebar aligned',
+        expanded.sidebarWidth>=205&&expanded.accountInside&&expanded.bellInside,expanded)
+    }
+    for(const d of dashboardRoutes){
+      const r=await go(d.path)
+      const m=await page.evaluate((cfg)=>{
+        const strip=document.querySelector(cfg.strip)
+        const nodes=[...(strip?.querySelectorAll(cfg.cards)??[])]
+        const tops=nodes.map(n=>n.getBoundingClientRect().top)
+        const main=document.querySelector('.brand-shell-v1 > .main')?.getBoundingClientRect()
+        return {
+          innerWidth:window.innerWidth,
+          documentWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
+          mainRight:main?.right??0,
+          count:nodes.length,
+          oneRow:tops.length>0&&Math.max(...tops)-Math.min(...tops)<=3,
+          stripWithinMain:!!strip&&!!main&&strip.getBoundingClientRect().right<=main.right+2,
+        }
+      },d)
+      recordInteraction('Dashboard '+d.path+' desktop '+width+' composition',
+        r.status>0&&r.status<500&&!r.url.includes('/login')&&m.count>=d.min&&m.oneRow
+        &&m.documentWidth<=m.innerWidth+2&&m.stripWithinMain,m)
+      const safe=d.path.replaceAll('/','-').replace(/^-+/,'')||'home'
+      await page.screenshot({path:`${outDir}/dashboard-${width}-${safe}.png`,fullPage:true})
+    }
+  }
+}
+if (!DESKTOP_ONLY_QA) {
 await page.setViewportSize({width:390,height:844})
 await go('/purchase/orders')
 const mobileBrandMetrics=await page.evaluate(()=>{
@@ -927,6 +1000,8 @@ for(const path of ['/purchase/accounts','/purchase/orders','/purchase/tracking',
   const safe=path.replaceAll('/','-').replace(/^-+/,'')
   await page.screenshot({path:`${outDir}/mobile-${safe}.png`,fullPage:true})
   fs.writeFileSync(`${outDir}/summary-partial.json`,JSON.stringify(summary,null,2))
+}
+
 }
 
 await browser.close()
