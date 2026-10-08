@@ -168,7 +168,12 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
     const orderStatus=String(o.order_status??'').toUpperCase()
     return trackingStatus==='CANCELLED'||orderStatus==='CANCELLED'||orderStatus==='CANCELED'
   }).length
-  const expressCount=rows.filter(o=>o.shipping_service==='EXPRESS').length
+  const expressRows=rows.filter(o=>o.shipping_service==='EXPRESS')
+  const expressCount=expressRows.length
+  const expressAttention=expressRows.filter(o=>{
+    const status=String(o.order_status??'').toUpperCase()
+    return o.receive_status!=='RECEIVED'&&status!=='CANCELLED'&&status!=='CANCELED'
+  }).length
 
   const byArea=aggregate(standardRows,'area')
   const byHub=aggregate(standardRows,'destination_hub')
@@ -268,6 +273,9 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       </Link>
       <Link href={orderHref({tracking:'cancelled'})} className="command-kpi danger">
         <span>Bị huỷ</span><b>{cancelled}</b><small>Đơn / vận đơn đã huỷ</small>
+      </Link>
+      <Link href={orderHref({service:'express'})} className="command-kpi express">
+        <span>Đơn Hỏa tốc</span><b>{expressCount}</b><small>{expressAttention} chưa nhận · Theo dõi thủ công</small>
       </Link>
     </section>
 
