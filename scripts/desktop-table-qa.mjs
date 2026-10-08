@@ -82,6 +82,51 @@ for(const spec of [
   }
 }
 
+// Desktop KPI and period-filter contract on the approved desktop-polish Preview.
+for (const width of [1024,1440,2560]) {
+  await page.setViewportSize({width,height:900})
+  for (const [path,selector,expected,label] of [
+    ['/purchase/orders?range=all','.order-kpi-grid-v2 > .kpi-card',8,'Đơn nhập'],
+    ['/purchase?range=all','.purchase-command-kpis-v2 > .command-kpi',8,'Tổng quan mua hàng'],
+    ['/?range=all','main .kpi-grid > .kpi-card',6,'Dashboard'],
+    ['/warehouse','.whx-kpi-grid.seven > a',7,'Tổng quan kho'],
+    ['/sales?range=all','.sales-kpi-strip > .sales-kpi',7,'Tổng quan bán hàng'],
+    ['/finance?range=all','.finance-overview-kpis > .finance-kpi',6,'Tổng quan tài chính'],
+  ]) {
+    await go(path)
+    const m=await page.evaluate(sel=>{
+      const els=[...document.querySelectorAll(sel)]
+      const tops=els.map(x=>x.getBoundingClientRect().top)
+      const first=els[0]?.parentElement, r=first?.getBoundingClientRect()
+      const parentStyle=first?getComputedStyle(first):null
+      return {count:els.length,
+        rowAligned:tops.length>0&&Math.max(...tops)-Math.min(...tops)<3,
+        radius:parseFloat(parentStyle?.borderTopLeftRadius||'0'),
+        shadow:parentStyle?.boxShadow||'none',
+        contained:!!r&&r.left>=0&&r.right<=innerWidth+2,
+        viewport:innerWidth}
+    },selector)
+    rec(label+' — KPI '+width+'px',m.count===expected&&m.rowAligned&&m.radius>=3&&m.radius<=5&&m.shadow!=='none'&&m.contained,m)
+  }
+  await go('/purchase/orders?range=all')
+  const express=page.locator('.order-kpi-grid-v2 > .express')
+  rec('Đơn nhập — có KPI Hỏa tốc và bộ lọc tổng',await express.count()===1&&String(await express.getAttribute('href')).includes('tracking=express_all'))
+  await go('/purchase?range=all')
+  rec('Tổng quan mua hàng — KPI Hỏa tốc dẫn sang Đơn nhập',await page.locator('.purchase-command-kpis-v2 > .express[href*="express_all"]').count()===1)
+}
+for(const [path,active] of [
+  ['/?range=all','Toàn thời gian'],
+  ['/purchase?range=quarter','Quý này'],
+  ['/purchase/orders?range=year','Năm nay'],
+  ['/sales?range=30d','30 ngày'],
+  ['/finance?range=7d','7 ngày'],
+]){
+  await go(path)
+  const nav=page.locator('.purchase-date-filter .command-range')
+  const selected=(await nav.locator('.active').allTextContents()).map(x=>x.trim())
+  rec('KPI period '+path,selected.includes(active),{selected})
+}
+
 const pass=results.every(x=>x.pass)
 console.log(JSON.stringify({preview:PREVIEW_URL,pass,results},null,2))
 await browser.close()
