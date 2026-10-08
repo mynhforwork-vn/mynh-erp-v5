@@ -228,12 +228,17 @@ for(const width of [1024,1440,2560]){
     const ar=rect(a),br=rect(b),hr=rect(header),cr=rect(col),tr=rect(table)
     const secondHeader=b?.querySelector('.tracking-hub-head-v2')
     const color2=secondHeader?getComputedStyle(secondHeader).backgroundColor:null
+    const firstStripe=a?.querySelector('.tracking-hub-priority-dot')
+    const secondStripe=b?.querySelector('.tracking-hub-priority-dot')
+    const stripeColor=firstStripe?getComputedStyle(firstStripe).backgroundColor:null
+    const nextStripeColor=secondStripe?getComputedStyle(secondStripe).backgroundColor:null
     const result={
       count:stack?.querySelectorAll('.tracking-hub-card-v2').length||0,
       originalCount:stack?.querySelectorAll('.tracking-hub-card-v2').length-(simulated?1:0),
       nextGap:ar&&br?Math.round(br.top-ar.bottom):null,
       headerColor:hdrStyle?.backgroundColor,
       nextHeaderColor:color2,
+      stripeColor,nextStripeColor,
       toolbarGone:!extraBar,
       buttonInHeader:!!hr&&!!cr&&cr.top>=hr.top-2&&cr.bottom<=hr.bottom+2,
       tableHeight:tr?.height??0,
@@ -251,6 +256,8 @@ for(const width of [1024,1440,2560]){
     k.toolbarGone&&k.buttonInHeader,k)
   rec('Cảnh báo giao — HUB cùng nền trung tính '+width,
     !!k.headerColor&&k.headerColor===k.nextHeaderColor,k)
+  rec('Cảnh báo giao — vạch nhận diện HUB đồng nhất Cobalt '+width,
+    k.stripeColor==='rgb(61, 117, 184)'&&(!k.nextStripeColor||k.stripeColor===k.nextStripeColor),k)
   const col=first.locator('.tracking-hub-summary-state .managed-column-button')
   if(await col.count()){
     await col.click()
