@@ -10,6 +10,10 @@ on:
       - scripts/desktop-slidebar-qa.mjs
       - scripts/desktop-table-qa.mjs
       - scripts/desktop-sidebar-qa.mjs
+      - scripts/remediation-static-qa.mjs
+      - supabase/migrations/**
+      - docs/DESKTOP_V1_PREMERGE_AUDIT.md
+      - .github/workflows/preview-browser-qa.yml
       - scripts/preview-auth-setup.mjs
       - scripts/preview-auth-cleanup.mjs
       - scripts/preview-fixture-setup.mjs
