@@ -347,7 +347,7 @@ for(const path of [
     if(await kebab.count()){
       try{
         await kebab.click({timeout:4000})
-        const menu=page.locator('.row-action-menu').first()
+        const menu=page.locator('.brand-shell-v1 > .main table.table .row-action-menu:visible').first()
         rec('Bảng '+path+' — menu thao tác dòng mở được',await menu.isVisible().catch(()=>false))
         await page.keyboard.press('Escape')
       }catch(err){rec('Bảng '+path+' — menu thao tác dòng',false,{error:String(err).slice(0,140)})}
