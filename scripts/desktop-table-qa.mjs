@@ -355,6 +355,18 @@ for(const path of [
   }
   if(gripCount){
     const first=grips.first()
+    if(path==='/purchase/orders'||path==='/sales/customers'){
+      const bounds=await first.boundingBox()
+      const from=await first.evaluate(el=>el.parentElement.getBoundingClientRect().width)
+      if(bounds){
+        await page.mouse.move(bounds.x+bounds.width/2,bounds.y+bounds.height/2)
+        await page.mouse.down()
+        await page.mouse.move(bounds.x+bounds.width/2+48,bounds.y+bounds.height/2,{steps:5})
+        await page.mouse.up()
+        const to=await first.evaluate(el=>el.parentElement.getBoundingClientRect().width)
+        rec('Bảng '+path+' — kéo chuột thay đổi độ rộng thực tế',to>=from+20,{from,to})
+      }else rec('Bảng '+path+' — mép kéo cột hiển thị',false)
+    }
     const before=await first.evaluate(el=>el.parentElement.getBoundingClientRect().width)
     await first.focus()
     await page.keyboard.press('ArrowRight')
