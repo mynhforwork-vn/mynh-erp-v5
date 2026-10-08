@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { DeleteOrderConfirmForm } from '@/components/delete-order-confirm-form'
 import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
 import {
   archiveOrder,
   archiveOrdersBulk,
-  deleteOrderPermanent,
   deleteOrdersBulkPermanent,
   quickAddTrackingNumber,
   restoreOrder,
@@ -137,22 +138,7 @@ function OrderLifecycleCell({
               ? 'Đơn sẽ bị xóa khỏi hệ thống.'
               : 'Không cần lưu trữ trước. Hệ thống sẽ hoàn tác nhận hàng, đối soát và nhập kho nếu an toàn.'}
           </span>
-          <form action={deleteOrderPermanent}>
-            <input type="hidden" name="order_id" value={row.id}/>
-            <input type="hidden" name="return_query" value={returnQuery}/>
-            <input type="hidden" name="table_action" value="1"/>
-            <input
-              name="confirm_text"
-              placeholder={String(row.shopee_order_id??row.id.slice(0,8))}
-              autoComplete="off"
-              required
-              autoFocus
-            />
-            <div>
-              <button type="button" className="row-delete-cancel" onClick={()=>setDeleteOpen(false)}>Hủy</button>
-              <button type="submit" className="row-delete-confirm">Xóa vĩnh viễn</button>
-            </div>
-          </form>
+          <DeleteOrderConfirmForm compact orderId={String(row.id)} confirmCode={String(row.shopee_order_id??row.id.slice(0,8))} returnQuery={returnQuery} onCancel={()=>setDeleteOpen(false)}/>
         </div>}
       </>}
     </div>}
@@ -238,6 +224,22 @@ export function PurchaseOrderTable({
   const [sort,setSort]=useState<SortKey>('time_new')
   const [selected,setSelected]=useState<string[]>([])
   const [bulkDeleteOpen,setBulkDeleteOpen]=useState(false)
+  const [bulkDeleteError,setBulkDeleteError]=useState('')
+  const [bulkDeletePending,startBulkDelete]=useTransition()
+  const router=useRouter()
+  function submitBulkDelete(formData:FormData){
+    setBulkDeleteError('')
+    startBulkDelete(async()=>{
+      try{
+        const result=await deleteOrdersBulkPermanent(formData)
+        if(!result.ok){setBulkDeleteError(result.error);return}
+        router.replace(result.href)
+        router.refresh()
+      }catch{
+        setBulkDeleteError('Không kết nối được máy chủ. Hãy tải lại trang và kiểm tra đơn trước khi thử tiếp.')
+      }
+    })
+  }
   const [openActionId,setOpenActionId]=useState<string|null>(null)
   const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
   const [dragOverColumn,setDragOverColumn]=useState<ColKey|null>(null)
@@ -479,14 +481,15 @@ export function PurchaseOrderTable({
           onClick={()=>setBulkDeleteOpen(v=>!v)}
           aria-expanded={bulkDeleteOpen}
         >Xóa đã chọn</button>
-        {bulkDeleteOpen&&<form action={deleteOrdersBulkPermanent} className="order-bulk-delete-confirm">
+        {bulkDeleteOpen&&<form action={submitBulkDelete} className="order-bulk-delete-confirm">
           <input type="hidden" name="return_query" value={baseQuery}/>
           {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
           <span>Nhập <b>XOA DON DA CHON</b> để xóa vĩnh viễn {selected.length} đơn. Hệ thống sẽ hoàn tác nhận hàng, đối soát và nhập kho; đơn đã chuyển kho hoặc làm tồn âm sẽ bị chặn.</span>
           <input name="confirm_text" placeholder="XOA DON DA CHON" autoComplete="off" required autoFocus/>
+          {bulkDeleteError&&<p className="error-box compact" role="alert">{bulkDeleteError}</p>}
           <div>
-            <button type="button" className="button small" onClick={()=>setBulkDeleteOpen(false)}>Hủy</button>
-            <button type="submit" className="button small danger">Xóa vĩnh viễn</button>
+            <button type="button" className="button small" onClick={()=>setBulkDeleteOpen(false)} disabled={bulkDeletePending}>Hủy</button>
+            <button type="submit" className="button small danger" disabled={bulkDeletePending}>{bulkDeletePending?"Đang xóa...":"Xóa vĩnh viễn"}</button>
           </div>
         </form>}
       </div>}

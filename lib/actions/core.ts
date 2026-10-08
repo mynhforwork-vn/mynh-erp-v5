@@ -653,43 +653,48 @@ export async function restoreOrder(formData:FormData){
     : returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,tab:'info',archive:null}))
 }
 
-export async function deleteOrderPermanent(formData:FormData){
-  const {supabase,role}=await actor()
-  requireAdmin(role)
-  const returnQuery=text(formData.get('return_query'))
-  const orderId=text(formData.get('order_id'))
-  const confirmText=text(formData.get('confirm_text'))
-  if(!orderId)throw new Error('Thiếu đơn cần xóa')
-
-  const {data:row,error:readError}=await supabase
-    .from('orders')
-    .select('id,shopee_order_id,erp_user_id,cod,order_status,receive_status,warehouse_status,archived_at')
-    .eq('id',orderId)
-    .maybeSingle()
-  if(readError)throw new Error(readError.message)
-  if(!row)throw new Error('Đơn hàng không tồn tại')
-
-  const expected=String(row.shopee_order_id??row.id.slice(0,8))
-  if(confirmText!==expected)throw new Error('Mã đơn xác nhận không khớp')
-
-  const {error}=await supabase.rpc('delete_orders_permanent_safe',{p_order_ids:[orderId]})
-  if(error)throw new Error(error.message)
-
-  revalidatePath('/purchase/orders')
-  revalidatePath('/purchase/tracking')
-  revalidatePath('/purchase/accounts')
-  revalidatePath('/purchase')
-  revalidatePath('/warehouse')
-  revalidatePath('/warehouse/receive')
-  revalidatePath('/')
-  redirect(returnHref('/purchase/orders',returnQuery,{
-    order:null,
-    mode:null,
-    tab:null,
-    archive:row.archived_at?'archived':null,
-  }))
+// Return a structured result instead of throwing a Server Action exception.
+// A rejected deletion must never replace the ERP workspace with a generic error page.
+function deleteOrderErrorMessage(error:unknown){
+  const message=error instanceof Error?error.message:String((error as {message?:string})?.message??error??'')
+  if(/timed?\s*out|timeout|fetch failed|failed to fetch|status\s*50[234]|worker exceeded/i.test(message)){
+    return 'Máy chủ đang quá tải hoặc kết nối bị gián đoạn. Chưa xác nhận được kết quả xóa. Hãy tải lại danh sách và kiểm tra đơn trước khi thử tiếp.'
+  }
+  return message||'Không thể xóa đơn. Vui lòng thử lại hoặc kiểm tra quyền thao tác.'
 }
+export async function deleteOrderPermanent(formData:FormData){
+  try{
+    const {supabase,role}=await actor()
+    requireAdmin(role)
+    const returnQuery=text(formData.get('return_query'))
+    const orderId=text(formData.get('order_id'))
+    const confirmText=text(formData.get('confirm_text'))
+    if(!orderId)return {ok:false as const,error:'Thiếu đơn cần xóa'}
 
+    const {data:row,error:readError}=await supabase
+      .from('orders')
+      .select('id,shopee_order_id,archived_at')
+      .eq('id',orderId)
+      .maybeSingle()
+    if(readError)throw readError
+    if(!row)return {ok:false as const,error:'Đơn không còn tồn tại. Tải lại danh sách để cập nhật.'}
+
+    const expected=String(row.shopee_order_id??row.id.slice(0,8))
+    if(confirmText!==expected)return {ok:false as const,error:'Mã đơn xác nhận không khớp'}
+
+    // Exactly one RPC attempt: do not replay a potentially committed destructive request.
+    const {error}=await supabase.rpc('delete_orders_permanent_safe',{p_order_ids:[orderId]})
+    if(error)throw error
+
+    revalidateOrderLifecycle()
+    return {ok:true as const,href:returnHref('/purchase/orders',returnQuery,{
+      order:null,mode:null,tab:null,archive:row.archived_at?'archived':null,
+    })}
+  }catch(error){
+    console.error('deleteOrderPermanent rejected:',error)
+    return {ok:false as const,error:deleteOrderErrorMessage(error)}
+  }
+}
 
 function bulkOrderIds(formData:FormData){
   const ids=[...new Set(formData.getAll('order_ids').map(v=>text(v)).filter(Boolean))]
@@ -851,26 +856,35 @@ export async function restoreOrdersBulk(formData:FormData){
 }
 
 export async function deleteOrdersBulkPermanent(formData:FormData){
-  const {supabase,role}=await actor()
-  requireAdmin(role)
-  const returnQuery=text(formData.get('return_query'))
-  const orderIds=bulkOrderIds(formData)
-  const confirmText=text(formData.get('confirm_text')).toUpperCase()
-  if(confirmText!=='XOA DON DA CHON')throw new Error('Cụm xác nhận không đúng')
+  try{
+    const {supabase,role}=await actor()
+    requireAdmin(role)
+    const returnQuery=text(formData.get('return_query'))
+    const orderIds=bulkOrderIds(formData)
+    const confirmText=text(formData.get('confirm_text')).toUpperCase()
+    if(confirmText!=='XOA DON DA CHON')return {ok:false as const,error:'Cụm xác nhận không đúng'}
 
-  const {data:rows,error:readError}=await supabase
-    .from('orders')
-    .select('id,shopee_order_id,erp_user_id,cod,order_status,receive_status,warehouse_status,archived_at')
-    .in('id',orderIds)
-  if(readError)throw new Error(readError.message)
-  if((rows??[]).length!==orderIds.length)throw new Error('Có đơn không tồn tại hoặc không có quyền truy cập')
-  const returnArchive=(rows??[]).every((x:any)=>Boolean(x.archived_at))?'archived':null
+    const {data:rows,error:readError}=await supabase
+      .from('orders')
+      .select('id,archived_at')
+      .in('id',orderIds)
+    if(readError)throw readError
+    if((rows??[]).length!==orderIds.length){
+      return {ok:false as const,error:'Có đơn không tồn tại hoặc không có quyền truy cập'}
+    }
+    const returnArchive=(rows??[]).every((x:any)=>Boolean(x.archived_at))?'archived':null
 
-  const {error}=await supabase.rpc('delete_orders_permanent_safe',{p_order_ids:orderIds})
-  if(error)throw new Error(error.message)
+    const {error}=await supabase.rpc('delete_orders_permanent_safe',{p_order_ids:orderIds})
+    if(error)throw error
 
-  revalidateOrderLifecycle()
-  redirect(returnHref('/purchase/orders',returnQuery,{order:null,mode:null,tab:null,archive:returnArchive}))
+    revalidateOrderLifecycle()
+    return {ok:true as const,href:returnHref('/purchase/orders',returnQuery,{
+      order:null,mode:null,tab:null,archive:returnArchive,
+    })}
+  }catch(error){
+    console.error('deleteOrdersBulkPermanent rejected:',error)
+    return {ok:false as const,error:deleteOrderErrorMessage(error)}
+  }
 }
 
 export async function purgeEligibleArchivedOrders(formData:FormData){

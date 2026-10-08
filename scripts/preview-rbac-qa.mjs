@@ -374,6 +374,12 @@ for(const role of ['admin','operator','viewer']){
       const dialog=matching.locator('.row-delete-popover')
       const confirmationVisible=await dialog.getByText('Xóa vĩnh viễn?').count()>0
       record('ui','Delete order requires exact code confirmation',confirmationVisible)
+      // Invalid confirmation must NOT render the fatal Next.js error boundary or delete data.
+      await dialog.locator('input[name="confirm_text"]').fill('QA_SAI_MA_DON')
+      await dialog.getByRole('button',{name:'Xóa vĩnh viễn'}).click()
+      const inlineError=await dialog.getByRole('alert').filter({hasText:'Mã đơn xác nhận không khớp'}).count()>0
+      const rejectedOrder=(await adminRest('/rest/v1/orders?select=id&id=eq.'+encodeURIComponent(orderId)))[0]
+      record('ui','Wrong delete confirmation reports inline without crashing',inlineError&&String(rejectedOrder?.id)===orderId)
       await dialog.locator('input[name="confirm_text"]').fill(orderCode)
       await dialog.getByRole('button',{name:'Xóa vĩnh viễn'}).click()
       let vanished=false
