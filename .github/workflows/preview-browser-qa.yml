@@ -29,6 +29,8 @@ on:
       - scripts/preview-mutation-qa.mjs
       - scripts/preview-mutation-qa-v2.mjs
       - scripts/preview-rbac-qa.mjs
+      - docs/DESKTOP_V1_PREMERGE_AUDIT.md
+      - scripts/remediation-static-qa.mjs
       - scripts/preview-auth-setup.mjs
       - scripts/preview-auth-cleanup.mjs
       - scripts/preview-fixture-setup.mjs
