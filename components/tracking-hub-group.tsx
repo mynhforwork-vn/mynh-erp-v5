@@ -157,7 +157,7 @@ export function TrackingHubGroup({
       </button>
 
       <div className="tracking-hub-identity">
-        <span className={'tracking-hub-priority-dot '+(urgentCount?'attention':'')}/>
+        <span className="tracking-hub-priority-dot" aria-hidden="true"/>
         <div>
           <b>{hub}</b>
           <small>{assignedShippers.length
