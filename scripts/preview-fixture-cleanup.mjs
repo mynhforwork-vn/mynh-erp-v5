@@ -47,6 +47,9 @@ async function del(table,column,value){
 }
 
 const sales=await rows('/rest/v1/sales?select=id&customer_id=eq.'+encodeURIComponent(f.customer_id))
+const historySales=f.history_customer_id
+  ? await rows('/rest/v1/sales?select=id&customer_id=eq.'+encodeURIComponent(f.history_customer_id))
+  : []
 const payments=await rows('/rest/v1/customer_payments?select=id&customer_id=eq.'+encodeURIComponent(f.customer_id))
 const products=f.sale_sku
   ? await rows('/rest/v1/products?select=id&sku=eq.'+encodeURIComponent(f.sale_sku))
@@ -63,6 +66,8 @@ for(const productId of productIds){
 variantIds=[...new Set(variantIds.filter(Boolean))]
 const saleIds=[...new Set([
   ...sales.map(x=>String(x.id)),
+  ...historySales.map(x=>String(x.id)),
+  ...(f.sale_id?[String(f.sale_id)]:[]),
   ...(f.mutation_sale_id?[String(f.mutation_sale_id)]:[]),
 ])]
 const paymentIds=[...new Set([
@@ -108,6 +113,7 @@ for(const returnId of returnIds)await del('sale_return_items','sale_return_id',r
 for(const returnId of returnIds)await del('sale_returns','id',returnId)
 
 await del('debt_ledger','customer_id',f.customer_id)
+await del('debt_ledger','customer_id',f.history_customer_id)
 for(const paymentId of paymentIds)await del('finance_transactions','reference_id',paymentId)
 for(const saleId of saleIds)await del('finance_transactions','reference_id',saleId)
 for(const returnId of returnIds)await del('finance_transactions','reference_id',returnId)
@@ -152,6 +158,7 @@ await del('receive_batches','id',f.receive_batch_id)
 for(const variantId of variantIds)await del('product_variants','id',variantId)
 for(const productId of productIds)await del('products','id',productId)
 await del('customers','id',f.customer_id)
+await del('customers','id',f.history_customer_id)
 await del('purchase_account_devices','erp_user_id',f.erp_user_id)
 await del('erp_users','id',f.erp_user_id)
 await del('destination_hub_shipper_assignments','hub_config_id',f.hub_config_id)
@@ -162,12 +169,21 @@ async function count(path){
 }
 const leftovers={
   customer:await count('/rest/v1/customers?select=id&id=eq.'+encodeURIComponent(f.customer_id)),
+  history_customer:f.history_customer_id
+    ? await count('/rest/v1/customers?select=id&id=eq.'+encodeURIComponent(f.history_customer_id))
+    : 0,
   warehouse_order:await count('/rest/v1/orders?select=id&id=eq.'+encodeURIComponent(f.warehouse_order_id)),
   hub_order:await count('/rest/v1/orders?select=id&id=eq.'+encodeURIComponent(f.hub_order_id)),
   receive_batch:await count('/rest/v1/receive_batches?select=id&id=eq.'+encodeURIComponent(f.receive_batch_id)),
   sales:await count('/rest/v1/sales?select=id&customer_id=eq.'+encodeURIComponent(f.customer_id)),
+  history_sales:f.history_customer_id
+    ? await count('/rest/v1/sales?select=id&customer_id=eq.'+encodeURIComponent(f.history_customer_id))
+    : 0,
   payments:await count('/rest/v1/customer_payments?select=id&customer_id=eq.'+encodeURIComponent(f.customer_id)),
   debt_ledger:await count('/rest/v1/debt_ledger?select=id&customer_id=eq.'+encodeURIComponent(f.customer_id)),
+  history_debt:f.history_customer_id
+    ? await count('/rest/v1/debt_ledger?select=id&customer_id=eq.'+encodeURIComponent(f.history_customer_id))
+    : 0,
   finance_documents:0,
   finance_document_lines:0,
   product: f.sale_sku?await count('/rest/v1/products?select=id&sku=eq.'+encodeURIComponent(f.sale_sku)):0,
