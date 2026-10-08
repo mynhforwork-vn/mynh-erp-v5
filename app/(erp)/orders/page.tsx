@@ -207,7 +207,9 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const rows=scopeRows.filter((o:any)=>{
     if(sp.receive&&o.receive_status!==sp.receive)return false
     const shipment=activeShipment(o)
-    if(sp.tracking==='express'){
+    if(sp.tracking==='express_all'){
+      if(o.shipping_service!=='EXPRESS')return false
+    }else if(sp.tracking==='express'){
       const orderStatus=String(o.order_status??'').toUpperCase()
       if(
         o.shipping_service!=='EXPRESS' ||
@@ -244,6 +246,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     return status==='CANCELLED'||orderStatus==='CANCELLED'||orderStatus==='CANCELED'
   }).length
 
+  const expressCount=scopeRows.filter((o:any)=>o.shipping_service==='EXPRESS').length
   const expressAttentionRows=scopeRows.filter((o:any)=>{
     const orderStatus=String(o.order_status??'').toUpperCase()
     return (
@@ -406,6 +409,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       <Link className={`kpi-card entity-status-metric info ${sp.tracking==='ARRIVED_DESTINATION_HUB'?'active':''}`} href={listHref({receive:null,tracking:'ARRIVED_DESTINATION_HUB'})}><span>Đến kho đích</span><b>{arrivedHub}</b><small>Đã đến HUB đích</small></Link>
       <Link className={`kpi-card entity-status-metric success ${sp.tracking==='DELIVERED'&&!sp.receive?'active':''}`} href={listHref({receive:null,tracking:'DELIVERED'})}><span>Giao thành công</span><b>{delivered}</b><small>Đã giao thành công</small></Link>
       <Link className={`kpi-card entity-status-metric warning ${sp.receive==='WAITING_RECEIVE'?'active':''}`} href={listHref({receive:'WAITING_RECEIVE',tracking:null})}><span>Chờ xác nhận nhận hàng</span><b>{waiting}</b><small>Cần xác nhận vật lý</small></Link>
+      <Link className={`kpi-card entity-status-metric express ${sp.tracking==='express_all'?'active':''}`} href={listHref({receive:null,tracking:'express_all'})}><span>Đơn Hỏa tốc</span><b>{expressCount}</b><small>{expressAttention} đơn cần xử lý</small></Link>
       <Link className={`kpi-card entity-status-metric danger ${sp.tracking==='cancelled'?'active':''}`} href={listHref({receive:null,tracking:'cancelled'})}><span>Bị huỷ</span><b>{cancelled}</b><small>Đơn / vận đơn đã huỷ</small></Link>
     </section>
 
