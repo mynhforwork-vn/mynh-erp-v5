@@ -32,8 +32,17 @@ await context.addCookies([...cookieMap.values()].map(c=>({
 const page=await context.newPage()
 const results=[]
 
-await page.goto(PREVIEW_URL+'/purchase/tracking?range=all',{waitUntil:'domcontentloaded',timeout:30000})
-await page.waitForTimeout(700)
+let navigationOK=false
+for(let attempt=1;attempt<=4;attempt++){
+  const response=await page.goto(PREVIEW_URL+'/purchase/tracking?range=all',{waitUntil:'domcontentloaded',timeout:30000}).catch(()=>null)
+  await page.waitForTimeout(400*attempt)
+  const status=response?.status()??0
+  if(status>0&&status<500&&await page.locator('.desktop-sidebar-seam-handle .sidebar-collapse-toggle').count()){
+    navigationOK=true
+    break
+  }
+}
+if(!navigationOK)throw new Error('Desktop sidebar did not render after retries; url='+page.url())
 
 function rec(name,pass,detail={}){results.push({name,pass:Boolean(pass),...detail})}
 async function read(){
