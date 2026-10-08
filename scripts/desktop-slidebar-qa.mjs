@@ -46,9 +46,14 @@ function push(name,pass,metrics={},detail={}){
 }
 async function go(path){
   const target=path.startsWith('http')?path:PREVIEW_URL+path
-  const res=await page.goto(target,{waitUntil:'domcontentloaded',timeout:30000})
-  await page.waitForTimeout(700)
-  if((res?.status()??0)>=500)throw new Error(path+' returned '+res.status())
+  let lastStatus=0
+  for(let attempt=1;attempt<=4;attempt++){
+    const res=await page.goto(target,{waitUntil:'domcontentloaded',timeout:30000}).catch(()=>null)
+    lastStatus=res?.status()??0
+    await page.waitForTimeout(attempt===1?700:1200*attempt)
+    if(lastStatus>0&&lastStatus<500)return
+  }
+  throw new Error(path+' returned '+lastStatus+' after 4 attempts')
 }
 async function metric(selector){
   return page.locator(selector).first().evaluate(el=>{
