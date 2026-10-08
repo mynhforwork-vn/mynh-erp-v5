@@ -32,6 +32,8 @@ jobs:
           node scripts/notification-preview-config-qa.mjs
           test -n "$CLOUDFLARE_API_TOKEN" || (echo "::error::Cloudflare API token missing" && exit 1)
           test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "::error::Cloudflare account missing" && exit 1)
+      - name: Validate Bangkok quiet-hour boundaries
+        run: node --experimental-strip-types scripts/notification-quiet-hours-qa.mjs
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Static QA
