@@ -8,6 +8,7 @@ import { InAppAlertCenter } from '@/components/in-app-alert-center'
 import { SidebarAccountMenu } from '@/components/sidebar-account-menu'
 import { MynhLogoMark } from '@/components/mynh-logo-mark'
 import { MobileAppNav } from '@/components/mobile-app-nav'
+import { DesktopSidebarToggle } from '@/components/desktop-sidebar-toggle'
 
 export default async function ERPLayout({children}:{children:React.ReactNode}){
   const {user}=await requireUser()
@@ -23,6 +24,7 @@ export default async function ERPLayout({children}:{children:React.ReactNode}){
       </div>
     </header>
     <aside className="sidebar">
+      <DesktopSidebarToggle/>
       <Link href="/" className="brand"><span className="brand-mark small"><MynhLogoMark/></span><span><b>MYNH ERP</b><small>HỆ THỐNG VẬN HÀNH</small></span></Link>
       <Suspense fallback={null}><Nav/></Suspense>
       <div className="sidebar-foot sidebar-foot-v2">
