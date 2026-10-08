@@ -130,4 +130,17 @@ jobs:
             console.log('PERIOD_COUNTS '+JSON.stringify({label,ok:Array.isArray(rows),totals:rows.map(x=>({
               name:x.dimensions?.scriptName,requests:x.sum?.requests,errors:x.sum?.errors}))}));
           }
+
+          const accessOrg=await api('/accounts/'+account+'/access/organizations');
+          console.log('ACCESS_ORG '+JSON.stringify({http:accessOrg.http,success:accessOrg.success,
+            configured:!!accessOrg.result?.auth_domain,code:accessOrg.code}));
+          const accessApps=await api('/accounts/'+account+'/access/apps?per_page=100');
+          const apps=Array.isArray(accessApps.result)?accessApps.result:[];
+          const interesting=apps.filter(x=>/mynh|erp|tracking|ghn/i.test((x.name||'')+' '+JSON.stringify(x.destinations||[])+' '+JSON.stringify(x.domain||'')));
+          console.log('ACCESS_APPS '+JSON.stringify({http:accessApps.http,success:accessApps.success,
+            count:apps.length,code:accessApps.code,
+            relevant:interesting.map(x=>({name:x.name,type:x.type, destinations:x.destinations?.map(y=>({type:y.type,worker_id:y.worker_id})),domain:x.domain, has_policies:Array.isArray(x.policies)&&x.policies.length>0}))}));
+          const accessIdps=await api('/accounts/'+account+'/access/identity_providers');
+          console.log('ACCESS_IDPS '+JSON.stringify({http:accessIdps.http,success:accessIdps.success,code:accessIdps.code,
+            methods:(Array.isArray(accessIdps.result)?accessIdps.result:[]).map(x=>x.type)}));
           NODE
