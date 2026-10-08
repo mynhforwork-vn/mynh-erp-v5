@@ -46,11 +46,16 @@ jobs:
         shell: bash
         run: |
           echo "New isolated Preview: $PREVIEW_URL"
-          curl --fail --silent --show-error --retry 4 --retry-delay 3 "$PREVIEW_URL/api/health" | tee health.json
+          # New workers.dev hostnames can take time to propagate after first deploy.
+          # Retry HTTP 404 too, without touching the original desktop Preview.
+          curl --fail --show-error --silent --retry 20 --retry-all-errors --retry-delay 5 \
+            --max-time 15 "$PREVIEW_URL/api/health" | tee health.json
           grep -q '"ok":true' health.json
-          code=$(curl -sS -o login.html -w '%{http_code}' "$PREVIEW_URL/login")
-          test "$code" = "200"
+          curl --fail --show-error --silent --retry 12 --retry-all-errors --retry-delay 4 \
+            --max-time 15 "$PREVIEW_URL/login" -o login.html
           grep -q 'MYNH ERP' login.html
+          code=$(curl -sS -o /dev/null -w '%{http_code}' "$PREVIEW_URL/api/alerts/in-app")
+          test "$code" = "401"
       - name: Summary
         shell: bash
         run: |
