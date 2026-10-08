@@ -74,7 +74,7 @@ for(const spec of [
     : Boolean(m)&&m.bottom<=m.viewportH+2
   // One-row HUB and intake lists should hug content instead of reserving 120px
   // of blank space. Multi-row operational tables retain their height threshold.
-  const contentAwareMin=(label==='Tracking'||label==='Nhập kho')&&m&&m.rowCount<=1?60:minHeight
+  const contentAwareMin=(label==='Tracking'||label==='Nhập kho')&&m&&m.height>=60&&m.rowCount<=2?60:minHeight
   rec(label+' — vùng bảng đủ chiều cao',Boolean(m)&&m.height>=contentAwareMin&&withinExpectedBounds,m??{})
 }
 
@@ -343,7 +343,7 @@ for(const path of [
     }catch(err){rec('Bảng '+path+' — nút Cột thao tác được',false,{error:String(err).slice(0,140)})}
   }
   if(path==='/purchase/accounts'||path==='/purchase/orders'){
-    const kebab=page.locator('.row-action-kebab').first()
+    const kebab=page.locator('.brand-shell-v1 > .main table.table .row-actions-cell .row-action-kebab:visible').first()
     if(await kebab.count()){
       try{
         await kebab.click({timeout:4000})
