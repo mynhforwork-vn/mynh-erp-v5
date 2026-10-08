@@ -11,8 +11,12 @@ import { SidebarCollapseToggle } from '@/components/sidebar-collapse-toggle'
 import { DesktopTableColumnResize } from '@/components/desktop-table-column-resize'
 
 export default async function ERPLayout({children}:{children:React.ReactNode}){
-  const {user}=await requireUser()
+  const {user,supabase}=await requireUser()
   const role=String(user.app_metadata?.role??'viewer')
+  const {data:runtime,error:trackingError}=await supabase
+    .from('tracking_runtime_settings').select('auto_tracking_enabled')
+    .eq('id','main').maybeSingle()
+  const trackingEnabled=!trackingError&&runtime?.auto_tracking_enabled===true
   return <>
     <DismissOpenDetails/>
     <DesktopTableColumnResize/>
@@ -22,7 +26,7 @@ export default async function ERPLayout({children}:{children:React.ReactNode}){
       <Suspense fallback={null}><Nav/></Suspense>
       <div className="sidebar-foot sidebar-foot-v2">
         <SidebarAccountMenu email={user.email??'Người dùng MYNH ERP'} role={roleLabel(role)}/>
-        <InAppAlertCenter role={role}/>
+        <InAppAlertCenter role={role} trackingEnabled={trackingEnabled}/>
       </div>
     </aside>
     <div className="desktop-sidebar-seam-handle"><SidebarCollapseToggle/></div>
