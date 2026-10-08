@@ -89,7 +89,7 @@ function verticalRightPanelPass(m){
     &&m.bottom<=m.viewportH+2
 }
 
-const browser=await chromium.launch({headless:true})
+const browser=await chromium.launch({headless:true,...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{})})
 
 // Public / unauthenticated checks.
 const publicContext=await browser.newContext({viewport:{width:1440,height:900}})
@@ -815,7 +815,16 @@ if(await customerMode.count()){
 await go('/finance/shipper-payments?view=hub')
 const fixtureHub=String(session.fixtures?.shipper_hub??'')
 const hubCard=page.locator('a.finance-hub-card').filter({hasText:fixtureHub}).first()
-if(await hubCard.count()){
+// A full document request can precede newly persisted fixture visibility.
+// Require the actual HUB card rather than passing merely because the route renders.
+let hubVisible=await hubCard.count()>0
+for(let attempt=2;!hubVisible&&attempt<=4;attempt++){
+  await page.waitForTimeout(850*attempt)
+  await go('/finance/shipper-payments?view=hub')
+  hubVisible=await hubCard.count()>0
+  if(hubVisible)summary.transientWarnings.push({type:'QA_HUB_VISIBLE_AFTER_RETRY',attempt,hub:fixtureHub})
+}
+if(hubVisible){
   const hubNav=await followLink(hubCard,{waitSelector:'aside.finance-hub-live-panel'})
   recordInteraction('Shipper QA HUB panel opens',await page.locator('aside.finance-hub-live-panel').count()>0,{href:hubNav.href,hub:fixtureHub})
   const linkedOrder=page.locator('aside.finance-hub-live-panel a.finance-hub-order-link').filter({hasText:'QA Shipper HUB'}).first()
@@ -826,7 +835,11 @@ if(await hubCard.count()){
     if(await back.count())await followLink(back,{waitSelector:'aside.finance-hub-live-panel'})
     recordInteraction('Shipper contextual QA Order Back returns HUB',await page.locator('aside.finance-hub-live-panel').count()>0)
   }else recordInteraction('Shipper contextual QA Order link available',false,{hub:fixtureHub})
-}else recordInteraction('Shipper QA HUB fixture available',false,{hub:fixtureHub||null})
+}else{
+  const visibleHubs=(await page.locator('a.finance-hub-card .finance-hub-card-head b').allTextContents()).slice(0,10)
+  const body=(await page.locator('body').innerText()).slice(0,1200)
+  recordInteraction('Shipper QA HUB fixture available',false,{hub:fixtureHub||null,visibleHubs,route:page.url(),emptyState:body.includes('Không có HUB phù hợp.'),errorBanner:body.includes('Không thể tải dữ liệu')})
+}
 
 await go('/settings')
 recordInteraction('Sidebar notification bell',await page.locator('.brand-shell-v1>.sidebar .sidebar-alert-trigger').count()>0)
@@ -901,77 +914,49 @@ for(const name of ['Tài khoản','Vai trò & quyền']){
   recordInteraction('Access subtab '+name+' hidden for Operator',await sub.count()===0)
 }
 
-await go('/sales/history')
-const invoiceLinks=page.locator('.sales-history-table .table-link')
-const invoiceHrefs=[]
-for(let i=0;i<Math.min(await invoiceLinks.count(),12);i++){
-  const href=await invoiceLinks.nth(i).getAttribute('href')
-  if(href)invoiceHrefs.push(href)
-}
-
-if(invoiceHrefs.length===0){
-  recordInteraction('Sales History invoice fixture available',true,{skipped:true,reason:'Clean production has no sales before mutation QA'})
-}else{
-  let invoicePanelOpened=false
-  let returnableInvoiceFound=false
-  for(const href of invoiceHrefs){
-    await go(href)
-    invoicePanelOpened=page.url().includes('sale=')&&await page.locator('.sales-history-panel').count()>0
-    const candidate=page.getByRole('button',{name:'Hoàn hàng'})
-    if(invoicePanelOpened&&await candidate.count()>0&&await candidate.first().isEnabled()){
-      returnableInvoiceFound=true
-      break
-    }
+// Use a dedicated, deterministic QA invoice for cancellation-modal assertions.
+// The prior test selected up to 12 arbitrary invoices and wrongly required
+// cancellation to be enabled for an already returned or cancelled invoice.
+await go('/sales/history?sale='+encodeURIComponent(session.fixtures.sale_id))
+const invoicePanelOpened=page.url().includes('sale=')&&await page.locator('.sales-history-panel').count()>0
+const invoiceIdentity=await page.locator('.sales-history-panel-head h2').innerText().catch(()=>'')
+recordInteraction('Sales History QA invoice panel opens',invoicePanelOpened&&invoiceIdentity===session.fixtures.sale_invoice_code,{invoiceIdentity})
+const cancel=page.getByRole('button',{name:'Huỷ hóa đơn'})
+const returnButton=page.getByRole('button',{name:'Hoàn hàng'})
+const cancelReady=await cancel.count()>0&&await cancel.first().isEnabled()
+const returnReady=await returnButton.count()>0&&await returnButton.first().isEnabled()
+const noReturnableItems=await returnButton.first().evaluate(el=>
+  (el instanceof HTMLButtonElement)&&el.disabled&&el.title==='Không còn sản phẩm có thể hoàn'
+).catch(()=>false)
+recordInteraction('QA completed invoice exposes cancellation action',cancelReady)
+recordInteraction('QA fixture without items safely blocks return',!returnReady&&noReturnableItems,{returnReady,noReturnableItems})
+if(cancelReady){
+  await cancel.first().click()
+  const cancelDialog=page.getByRole('dialog',{name:'Xác nhận huỷ hóa đơn'})
+  const opened=await cancelDialog.waitFor({state:'visible',timeout:8000}).then(()=>true).catch(()=>false)
+  if(opened)await page.waitForTimeout(120)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(250)
+  const closedByEsc=await page.locator('[role=dialog]').count()===0
+  recordInteraction('Sales cancel modal opens',opened)
+  recordInteraction('Sales cancel modal closes by Esc',closedByEsc)
+  if(!closedByEsc){
+    const close=page.getByRole('button',{name:'Đóng'})
+    if(await close.count())await close.first().click()
   }
-  recordInteraction('Sales History invoice panel opens',invoicePanelOpened)
-  const noReturnableItems=await page.getByRole('button',{name:'Hoàn hàng'}).first().evaluate(el=>
-    (el instanceof HTMLButtonElement)&&el.disabled&&el.title==='Không còn sản phẩm có thể hoàn'
-  ).catch(()=>false)
-  recordInteraction('Sales History return eligibility matches available items',returnableInvoiceFound||noReturnableItems,
-    {returnableInvoiceFound,noReturnableItems})
 
-  const cancel=page.getByRole('button',{name:'Huỷ hóa đơn'})
-  const returnButton=page.getByRole('button',{name:'Hoàn hàng'})
-  const cancelReady=await cancel.count()>0&&await cancel.first().isEnabled()
-  const returnReady=await returnButton.count()>0&&await returnButton.first().isEnabled()
-  recordInteraction('Sales History cancellation action available',cancelReady)
-  recordInteraction('Sales History return action guarded by available items',returnReady||noReturnableItems,
-    {returnReady,noReturnableItems})
-  if(cancelReady){
-    await cancel.first().click()
-    const opened=await page.locator('[role=dialog]').count()>0
-    await page.keyboard.press('Escape')
+  await cancel.first().click()
+  const reopened=await cancelDialog.waitFor({state:'visible',timeout:8000}).then(()=>true).catch(()=>false)
+  if(reopened){
+    const sidebarRight=await page.locator('.sidebar').evaluate(el=>el.getBoundingClientRect().right).catch(()=>220)
+    const backdrop=page.locator('.erp-confirm-overlay')
+    const bb=await backdrop.boundingBox()
+    const clickX=Math.max(sidebarRight+22,(bb?.x??0)+18)
+    const clickY=(bb?.y??0)+14
+    await page.mouse.click(clickX,clickY)
     await page.waitForTimeout(250)
-    const closedByEsc=await page.locator('[role=dialog]').count()===0
-    recordInteraction('Sales cancel modal opens',opened)
-    recordInteraction('Sales cancel modal closes by Esc',closedByEsc)
-    if(!closedByEsc){
-      const close=page.getByRole('button',{name:'Đóng'})
-      if(await close.count())await close.first().click()
-    }
-
-    await cancel.first().click()
-    const reopened=await page.locator('[role=dialog]').count()>0
-    if(reopened){
-      // Click genuinely outside the dialog, but to the right of the fixed desktop
-      // sidebar. x=4 used to hit the navigation rail instead of the backdrop.
-      const sidebarRight=await page.locator('.sidebar').evaluate(el=>el.getBoundingClientRect().right).catch(()=>220)
-      const backdrop=page.locator('.sales-action-backdrop')
-      const bb=await backdrop.boundingBox()
-      const clickX=Math.max(sidebarRight+22,(bb?.x??0)+18)
-      const clickY=(bb?.y??0)+14
-      await page.mouse.click(clickX,clickY)
-      await page.waitForTimeout(250)
-    }
-    recordInteraction('Sales cancel modal closes by outside click',reopened&&await page.locator('[role=dialog]').count()===0)
   }
-  if(returnReady){
-    await returnButton.first().click()
-    const returnOpened=await page.locator('[role=dialog]').count()>0
-    await page.keyboard.press('Escape')
-    await page.waitForTimeout(250)
-    recordInteraction('Sales return modal opens and closes by Esc',returnOpened&&await page.locator('[role=dialog]').count()===0)
-  }
+  recordInteraction('Sales cancel modal closes by outside click',reopened&&await page.locator('[role=dialog]').count()===0)
 }
 
 await go('/settings')

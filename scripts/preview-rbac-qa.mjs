@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import {randomUUID} from 'node:crypto'
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
 import { createBrowserClient } from '@supabase/ssr'
@@ -93,7 +94,7 @@ async function browserFor(session,role){
   const {error}=await cookieClient.auth.setSession({access_token:session.access_token,refresh_token:session.refresh_token})
   if(error)throw new Error('Cookie session failed '+role+': '+error.message)
 
-  const browser=await chromium.launch({headless:true})
+  const browser=await chromium.launch({headless:true,...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{})})
   const context=await browser.newContext({viewport:{width:1440,height:900}})
   await context.addCookies([...cookieMap.values()].map(c=>({
     name:c.name,value:c.value,url:PREVIEW_URL,
@@ -209,6 +210,34 @@ for(const role of ['admin','operator','viewer']){
     const resetVisible=await resetTab.count()>0
     record('ui',role+' data reset visibility',role==='admin'?(dataWorkspace&&resetVisible):(dataWorkspace&&!resetVisible),{dataWorkspace,resetVisible})
 
+
+    // SAFE reset QA: never supply valid reset confirmation on a shared Supabase DB.
+    if(role==='admin'){
+      await go(page,role,'/settings?section=data-management')
+      const reset=page.locator('.data-management-settings-v10').getByRole('button',{name:/^Reset hệ thống/}).first()
+      await reset.click()
+      for(const [scope,label,expected] of [
+        ['DATA','Xóa dữ liệu vận hành','RESET DU LIEU'],
+        ['ALL','Xóa toàn bộ dữ liệu + cài đặt','RESET TOAN HE THONG'],
+      ]){
+        await page.getByRole('button',{name:label}).click()
+        const dialog=page.getByRole('dialog').last()
+        const exists=await dialog.count()>0
+        const instruction=exists?await dialog.innerText():''
+        if(exists){
+          await dialog.locator('input').fill('QA_SAI_XAC_NHAN')
+          await dialog.getByRole('button',{name:'Xác nhận xóa'}).click()
+        }
+        const rejects=await page.getByText('Chuỗi xác nhận chưa đúng.').count()>0
+        record('ui','Admin '+scope+' reset rejects incorrect confirmation',exists&&instruction.includes(expected)&&rejects)
+        if(exists)await dialog.getByRole('button',{name:'Hủy'}).click()
+        const backend=await rest(session,'/rest/v1/rpc/admin_reset_erp_data',{method:'POST',body:{p_scope:scope,p_confirm:'QA_SAI_XAC_NHAN'}})
+        record('backend','Admin '+scope+' reset RPC refuses invalid confirmation',expectDenied(backend,'Chuỗi xác nhận chưa đúng'),{status:backend.status})
+      }
+      const canary=(await adminRest('/rest/v1/orders?select=id&id=eq.'+encodeURIComponent(f.hub_order_id)))[0]
+      record('backend','Safe reset probes preserve unrelated QA order',String(canary?.id)===String(f.hub_order_id))
+    }
+
     await go(page,role,'/settings?section=shipping')
     const carrierInputs=page.locator('.carrier-config-row input:not([type="hidden"]), .carrier-config-row select')
     const carrierEditable=await carrierInputs.count()>0&&!(await carrierInputs.first().isDisabled())
@@ -311,6 +340,59 @@ for(const role of ['admin','operator','viewer']){
       const canCancel=await cancel.count()>0&&!await cancel.isDisabled()
       const canReturn=await returnBtn.count()>0&&!await returnBtn.isDisabled()
       record('ui',role+' sale mutation controls',role==='viewer'?(!canCancel&&!canReturn):(canCancel&&canReturn),{canCancel,canReturn})
+    }
+
+    if(role==='admin'){
+      // Isolated, labelled purchase order. Never select a real order in this QA.
+      const orderId=randomUUID()
+      const itemId=randomUUID()
+      const orderCode='QA-DELETE-'+Date.now().toString(36).toUpperCase()
+      f.critical_delete_order_id=orderId
+      f.critical_delete_item_id=itemId
+      qa.fixtures=f
+      fs.writeFileSync('qa-session.json',JSON.stringify(qa))
+      const {error:createError}=await adminClient.from('orders').insert({
+        id:orderId,shopee_order_id:orderCode,recipient_name:'QA Delete Only',
+        recipient_phone:'0900000012',recipient_address:'QA isolated deletion',
+        cod:12345,receive_status:'WAITING_RECEIVE',warehouse_status:'NOT_READY',
+        order_status:'COMPLETED',payment_status:'UNPAID',
+        source:'MANUAL',shipping_service:'STANDARD',
+      })
+      if(createError)throw new Error('QA isolated order insert failed '+createError.message)
+      const {error:itemError}=await adminClient.from('order_items').insert({
+        id:itemId,order_id:orderId,sku:'QA-DELETE',product_name:'QA disposable item',
+        variant:'Default',quantity:1,original_price:12345,final_price:12345,inventory_multiplier:1,
+      })
+      if(itemError)throw new Error('QA isolated item insert failed '+itemError.message)
+      await go(page,role,'/purchase/orders?range=all&q='+encodeURIComponent(orderCode))
+      const matching=page.locator('tr').filter({hasText:orderCode}).first()
+      const found=await matching.count()>0
+      record('ui','Delete-order QA fixture visible only by unique code',found,{orderCode})
+      if(!found)throw new Error('Cannot locate unique QA deletion order')
+      await matching.getByRole('button',{name:'Mở thao tác'}).click()
+      await matching.getByRole('button',{name:'Xóa đơn',exact:true}).click()
+      const dialog=page.getByRole('dialog',{name:'Xóa vĩnh viễn đơn hàng'})
+      await dialog.waitFor({state:'visible'})
+      const noCredentials=await dialog.locator('input[type="password"],input[type="email"],input[name="confirm_text"]').count()===0
+      const reasonOptional=await dialog.locator('textarea').count()===1&&!(await dialog.locator('textarea').first().evaluate(el=>el.required))
+      const correctTarget=await dialog.getByText(orderCode,{exact:true}).count()>0
+      record('ui','Order delete requires only confirmation, optional reason',noCredentials&&reasonOptional&&correctTarget)
+      await dialog.locator('textarea').fill(f.marker+' deleted for QA audit')
+      await dialog.getByRole('button',{name:'Xác nhận xóa'}).click()
+      let vanished=false
+      for(let i=0;i<30;i++){
+        const rows=await adminRest('/rest/v1/orders?select=id&id=eq.'+encodeURIComponent(orderId))
+        if(rows.length===0){vanished=true;break}
+        await new Promise(res=>setTimeout(res,400))
+      }
+      const itemRows=await adminRest('/rest/v1/order_items?select=id&id=eq.'+encodeURIComponent(itemId))
+      record('backend','Admin deletes isolated QA order via UI',vanished,{orderCode})
+      record('backend','Deletion cascades QA order item',vanished&&itemRows.length===0)
+      const auditRows=await adminRest('/rest/v1/audit_logs?select=actor_user_id,old_value,new_value&action=eq.DELETE_ORDER_PERMANENT&order=created_at.desc&limit=20')
+      const deleteAudit=(auditRows??[]).find(row=>(row.old_value?.order_ids??[]).includes(orderId))
+      record('backend','Delete audit retains actor, order and optional reason',Boolean(deleteAudit?.actor_user_id)&&deleteAudit?.new_value?.reason===f.marker+' deleted for QA audit')
+      const otherOrder=(await adminRest('/rest/v1/orders?select=id&id=eq.'+encodeURIComponent(f.hub_order_id)))[0]
+      record('backend','Deletion preserves unrelated QA order',String(otherOrder?.id)===String(f.hub_order_id))
     }
   }finally{
     await browser.close()

@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { DeleteOrderConfirmForm } from '@/components/delete-order-confirm-form'
+import { ConfirmOperationDialog } from '@/components/confirm-operation-dialog'
 import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
 import {
   archiveOrder,
   archiveOrdersBulk,
-  deleteOrderPermanent,
   deleteOrdersBulkPermanent,
   quickAddTrackingNumber,
   restoreOrder,
@@ -130,30 +132,8 @@ function OrderLifecycleCell({
           onClick={()=>setDeleteOpen(true)}
         >Xóa đơn</button>
 
-        {deleteOpen&&<div className="row-delete-popover compact">
-          <b>Xóa vĩnh viễn?</b>
-          <span>
-            {row.archived_at
-              ? 'Đơn sẽ bị xóa khỏi hệ thống.'
-              : 'Không cần lưu trữ trước. Hệ thống sẽ hoàn tác nhận hàng, đối soát và nhập kho nếu an toàn.'}
-          </span>
-          <form action={deleteOrderPermanent}>
-            <input type="hidden" name="order_id" value={row.id}/>
-            <input type="hidden" name="return_query" value={returnQuery}/>
-            <input type="hidden" name="table_action" value="1"/>
-            <input
-              name="confirm_text"
-              placeholder={String(row.shopee_order_id??row.id.slice(0,8))}
-              autoComplete="off"
-              required
-              autoFocus
-            />
-            <div>
-              <button type="button" className="row-delete-cancel" onClick={()=>setDeleteOpen(false)}>Hủy</button>
-              <button type="submit" className="row-delete-confirm">Xóa vĩnh viễn</button>
-            </div>
-          </form>
-        </div>}
+        {deleteOpen&&<DeleteOrderConfirmForm compact orderId={String(row.id)} confirmCode={String(row.shopee_order_id??row.id.slice(0,8))} returnQuery={returnQuery} onCancel={()=>setDeleteOpen(false)}/>}
+
       </>}
     </div>}
   </div>
@@ -238,6 +218,29 @@ export function PurchaseOrderTable({
   const [sort,setSort]=useState<SortKey>('time_new')
   const [selected,setSelected]=useState<string[]>([])
   const [bulkDeleteOpen,setBulkDeleteOpen]=useState(false)
+  const [bulkDeleteError,setBulkDeleteError]=useState('')
+  const [bulkDeleteReason,setBulkDeleteReason]=useState('')
+  const [bulkDeletePending,startBulkDelete]=useTransition()
+  const router=useRouter()
+  function submitBulkDelete(){
+    const formData=new FormData()
+    formData.set('return_query',baseQuery)
+    for(const id of selected)formData.append('order_ids',id)
+    formData.set('reason',bulkDeleteReason)
+    setBulkDeleteError('')
+    startBulkDelete(async()=>{
+      try{
+        const result=await deleteOrdersBulkPermanent(formData)
+        if(!result.ok){setBulkDeleteError(result.error);return}
+        setBulkDeleteOpen(false)
+        setBulkDeleteReason('')
+        router.replace(result.href)
+        router.refresh()
+      }catch{
+        setBulkDeleteError('Không kết nối được máy chủ. Hãy tải lại trang và kiểm tra đơn trước khi thử tiếp.')
+      }
+    })
+  }
   const [openActionId,setOpenActionId]=useState<string|null>(null)
   const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
   const [dragOverColumn,setDragOverColumn]=useState<ColKey|null>(null)
@@ -282,11 +285,11 @@ export function PurchaseOrderTable({
     if(!openActionId)return
     function onPointerDown(event:PointerEvent){
       const target=event.target as HTMLElement|null
-      if(target?.closest('.row-action-menu-wrap'))return
+      if(target?.closest('.row-action-menu-wrap')||target?.closest('.erp-confirm-overlay'))return
       setOpenActionId(null)
     }
     function onKeyDown(event:KeyboardEvent){
-      if(event.key==='Escape')setOpenActionId(null)
+      if(event.key==='Escape'&&!document.querySelector('.erp-confirm-overlay'))setOpenActionId(null)
     }
     document.addEventListener('pointerdown',onPointerDown)
     document.addEventListener('keydown',onKeyDown)
@@ -301,12 +304,12 @@ export function PurchaseOrderTable({
     function onPointerDown(event:PointerEvent){
       const target=event.target as Node|null
       if(open&&target&&!columnManagerRef.current?.contains(target))setOpen(false)
-      if(bulkDeleteOpen&&target&&!bulkDeleteRef.current?.contains(target))setBulkDeleteOpen(false)
+      if(bulkDeleteOpen&&target&&!bulkDeleteRef.current?.contains(target)&&!(target instanceof Element&&target.closest('.erp-confirm-overlay')))setBulkDeleteOpen(false)
     }
     function onKeyDown(event:KeyboardEvent){
       if(event.key!=='Escape')return
       setOpen(false)
-      setBulkDeleteOpen(false)
+      if(!document.querySelector('.erp-confirm-overlay'))setBulkDeleteOpen(false)
     }
     document.addEventListener('pointerdown',onPointerDown)
     document.addEventListener('keydown',onKeyDown)
@@ -420,7 +423,7 @@ export function PurchaseOrderTable({
   function renderCell(key:ColKey,o:any,i:number){
     const s=activeShipment(o)
     if(key==='number')return <td key={key}>{i+1}</td>
-    if(key==='order')return <td key={key}><Link className="table-link" href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
+    if(key==='order')return <td key={key}><Link className="table-link" prefetch={false} href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
     if(key==='username')return <td key={key}>{o.erp_users?.username??'—'}</td>
     if(key==='time')return <td key={key} className="order-time-cell">{formatDateTime(o.order_date)}</td>
     if(key==='product')return <td key={key} className="truncate product-cell">{productSummary(o.order_items??[])}</td>
@@ -479,16 +482,17 @@ export function PurchaseOrderTable({
           onClick={()=>setBulkDeleteOpen(v=>!v)}
           aria-expanded={bulkDeleteOpen}
         >Xóa đã chọn</button>
-        {bulkDeleteOpen&&<form action={deleteOrdersBulkPermanent} className="order-bulk-delete-confirm">
-          <input type="hidden" name="return_query" value={baseQuery}/>
-          {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
-          <span>Nhập <b>XOA DON DA CHON</b> để xóa vĩnh viễn {selected.length} đơn. Hệ thống sẽ hoàn tác nhận hàng, đối soát và nhập kho; đơn đã chuyển kho hoặc làm tồn âm sẽ bị chặn.</span>
-          <input name="confirm_text" placeholder="XOA DON DA CHON" autoComplete="off" required autoFocus/>
-          <div>
-            <button type="button" className="button small" onClick={()=>setBulkDeleteOpen(false)}>Hủy</button>
-            <button type="submit" className="button small danger">Xóa vĩnh viễn</button>
-          </div>
-        </form>}
+        {bulkDeleteOpen&&<ConfirmOperationDialog
+          title={'Xóa vĩnh viễn '+selected.length+' đơn hàng'}
+          kind="XÁC NHẬN XÓA NHIỀU ĐƠN"
+          target={selected.map(id=>String(rows.find(row=>String(row.id)===id)?.shopee_order_id??id.slice(0,8))).slice(0,4).join(' · ')+(selected.length>4?' và '+(selected.length-4)+' đơn khác':'')}
+          description={'Đã chọn '+selected.length+' đơn. Hãy kiểm tra danh sách trước khi xác nhận.'}
+          notice="Không thể hoàn tác. Những đơn phát sinh giao dịch không thể đảo ngược sẽ bị chặn xóa."
+          reason={bulkDeleteReason} onReasonChange={setBulkDeleteReason}
+          pending={bulkDeletePending} error={bulkDeleteError}
+          onClose={()=>{if(!bulkDeletePending){setBulkDeleteOpen(false);setBulkDeleteError('');setBulkDeleteReason('')}}}
+          onConfirm={submitBulkDelete} confirmLabel="Xác nhận xóa"
+        />}
       </div>}
     </div>}
 

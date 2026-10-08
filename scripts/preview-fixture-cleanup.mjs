@@ -151,6 +151,20 @@ await del('shipments','id',f.hub_shipment_id)
 await del('receive_batch_details','id',f.receive_detail_id)
 await del('order_items','id',f.warehouse_item_id)
 await del('order_items','id',f.hub_item_id)
+
+if(f.critical_delete_order_id){
+  // If the privileged action failed, still remove only the known throwaway QA record.
+  await del('order_items','order_id',f.critical_delete_order_id)
+  await del('shipments','order_id',f.critical_delete_order_id)
+  await del('orders','id',f.critical_delete_order_id)
+  const purgeLogs=await rows('/rest/v1/audit_logs?select=id,old_value&action=eq.DELETE_ORDER_PERMANENT&order=created_at.desc&limit=60')
+  for(const entry of purgeLogs){
+    if(Array.isArray(entry.old_value?.order_ids)&&entry.old_value.order_ids.includes(f.critical_delete_order_id)){
+      await del('audit_logs','id',entry.id)
+    }
+  }
+}
+
 await del('orders','id',f.warehouse_order_id)
 await del('orders','id',f.hub_order_id)
 await del('receive_batches','id',f.receive_batch_id)
@@ -173,6 +187,7 @@ const leftovers={
     ? await count('/rest/v1/customers?select=id&id=eq.'+encodeURIComponent(f.history_customer_id))
     : 0,
   warehouse_order:await count('/rest/v1/orders?select=id&id=eq.'+encodeURIComponent(f.warehouse_order_id)),
+  critical_delete_order:f.critical_delete_order_id?await count('/rest/v1/orders?select=id&id=eq.'+encodeURIComponent(f.critical_delete_order_id)):0,
   hub_order:await count('/rest/v1/orders?select=id&id=eq.'+encodeURIComponent(f.hub_order_id)),
   receive_batch:await count('/rest/v1/receive_batches?select=id&id=eq.'+encodeURIComponent(f.receive_batch_id)),
   sales:await count('/rest/v1/sales?select=id&customer_id=eq.'+encodeURIComponent(f.customer_id)),

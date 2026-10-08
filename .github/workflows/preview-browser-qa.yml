@@ -120,11 +120,18 @@ jobs:
         if: steps.browser_qa_prereq.outputs.ready == 'true'
         run: node scripts/preview-fixture-setup.mjs
 
-      - name: Install Playwright
+      - name: Prepare Playwright with system Chrome
         if: steps.browser_qa_prereq.outputs.ready == 'true'
+        shell: bash
         run: |
           npm install --no-save playwright
-          npx playwright install --with-deps chromium
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME_PATH" ]; then
+            echo "::error::System Chrome/Chromium not found"
+            exit 1
+          fi
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+          "$CHROME_PATH" --version
 
       - name: Run Preview browser QA
         if: steps.browser_qa_prereq.outputs.ready == 'true'

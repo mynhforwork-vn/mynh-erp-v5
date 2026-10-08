@@ -3,7 +3,8 @@ import { SystemSlidebar } from '@/components/system-slidebar'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
 import { ManualSyncButton } from '@/components/manual-sync-button'
-import { archiveOrder, confirmReceiveOrders, deleteOrderPermanent, markExpressDelivered, markExpressDeliveryFailed, replaceShipment, restoreOrder, retryExpressDelivery } from '@/lib/actions/core'
+import { archiveOrder, confirmReceiveOrders, markExpressDelivered, markExpressDeliveryFailed, replaceShipment, restoreOrder, retryExpressDelivery } from '@/lib/actions/core'
+import { DeleteOrderConfirmForm } from '@/components/delete-order-confirm-form'
 import { CopyOrderButton } from '@/components/copy-order-button'
 import { OrderEditorForm } from '@/components/order-editor-form'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
@@ -697,18 +698,10 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                         <div><b>Đơn đang lưu trữ</b><span>Dữ liệu và lịch sử vẫn được giữ nguyên.</span></div>
                         <button className="button primary" type="submit">Khôi phục</button>
                       </form>
-                      {role==='admin'&&<details className="permanent-delete-box">
-                        <summary>Xóa vĩnh viễn đơn</summary>
-                        <form action={deleteOrderPermanent}>
-                          <input type="hidden" name="order_id" value={detail.id}/>
-                          <input type="hidden" name="return_query" value={returnQuery}/>
-                          <p>Chỉ xóa được khi đơn chưa phát sinh nhận hàng, đối soát hoặc chuyển kho. Hành động này không thể hoàn tác.</p>
-                          <label>Nhập <b>{detail.shopee_order_id??detail.id.slice(0,8)}</b> để xác nhận
-                            <input name="confirm_text" autoComplete="off" required/>
-                          </label>
-                          <button className="button danger" type="submit">Xóa vĩnh viễn</button>
-                        </form>
-                      </details>}
+                      {role==='admin'&&<div className="permanent-delete-box erp-confirm-detail-entry">
+                        <div><b>Xóa vĩnh viễn</b><span>Cần xác nhận trước khi xóa. Hệ thống tự ghi lịch sử.</span></div>
+                        <DeleteOrderConfirmForm orderId={String(detail.id)} confirmCode={String(detail.shopee_order_id??detail.id.slice(0,8))} returnQuery={returnQuery}/>
+                      </div>}
                     </>}
               </div>}
 

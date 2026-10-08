@@ -61,7 +61,7 @@ const {error:setSessionError}=await cookieClient.auth.setSession({
 })
 if(setSessionError)throw new Error('Unable to serialize mutation QA v2 session: '+setSessionError.message)
 
-const browser=await chromium.launch({headless:true})
+const browser=await chromium.launch({headless:true,...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{})})
 const context=await browser.newContext({viewport:{width:1440,height:900}})
 await context.addCookies([...cookieMap.values()].map(c=>({
   name:c.name,value:c.value,url:PREVIEW_URL,
@@ -135,6 +135,29 @@ async function createCashSale(quantity){
   return sale
 }
 
+
+// CRITICAL QA: Browser print output must contain the actual invoice, not ERP chrome.
+async function verifyInvoicePrint(source,invoiceCode,{trigger,receiptSelector}){
+  await page.evaluate(()=>{window.__qaPrintCalls=0;window.print=()=>{window.__qaPrintCalls++}})
+  await trigger()
+  await page.waitForFunction(()=>window.__qaPrintCalls===1,{timeout:6000})
+  const receipt=page.locator(receiptSelector).first()
+  const domReady=await receipt.count()>0&&await receipt.innerText().then(t=>t.includes(invoiceCode))
+  await page.emulateMedia({media:'print'})
+  const media=await receipt.evaluate(el=>({
+    visibility:getComputedStyle(el).visibility,
+    display:getComputedStyle(el).display,
+    rectWidth:Math.round(el.getBoundingClientRect().width),
+  })).catch(()=>({visibility:'missing',display:'none',rectWidth:0}))
+  const pdf=await page.pdf({printBackground:true,preferCSSPageSize:true})
+  const validPdf=pdf.subarray(0,5).toString()==='%PDF-'&&pdf.length>2500
+  record(source+' invokes one print dialog',await page.evaluate(()=>window.__qaPrintCalls)===1)
+  record(source+' contains matching invoice ID',domReady,{invoiceCode})
+  record(source+' print media renders receipt',media.visibility==='visible'&&media.display!=='none'&&media.rectWidth>100,media)
+  record(source+' produces printable PDF',validPdf,{bytes:pdf.length})
+  await page.emulateMedia({media:'screen'})
+}
+
 // V2 baseline: v1 left two QA units in the source warehouse and no customer debt.
 record('V2 baseline source stock is two',await balance(f.warehouse_id)===2,{quantity:await balance(f.warehouse_id)})
 const baselineDebt=await first('/rest/v1/customer_debt_balances?select=balance&customer_id=eq.'+encodeURIComponent(f.customer_id))
@@ -143,6 +166,16 @@ record('V2 baseline customer debt is zero',!baselineDebt||Number(baselineDebt.ba
 // A) Cash sale cancellation must reverse inventory and finance.
 const cancelSale=await createCashSale(1)
 persist({mutation_cancel_sale_id:String(cancelSale.id)})
+await verifyInvoicePrint('POS completed sale',String(cancelSale.invoice_code),{
+  trigger:()=>page.locator('.pos-success-actions').getByRole('button',{name:'In hóa đơn'}).click(),
+  receiptSelector:'.pos-inline-receipt-print',
+})
+await go('/sales/history?sale='+encodeURIComponent(cancelSale.id))
+await verifyInvoicePrint('Sales history invoice reprint',String(cancelSale.invoice_code),{
+  trigger:()=>page.locator('.sales-history-actions').getByRole('button',{name:'In hóa đơn'}).click(),
+  receiptSelector:'.sales-receipt-print',
+})
+
 record('Cancellation fixture cash sale persisted',cancelSale.payment_status==='PAID'&&Number(cancelSale.paid_amount)===Number(f.mutation_sale_price),{saleId:cancelSale.id})
 record('Cancellation fixture decrements stock',await balance(f.warehouse_id)===1,{quantity:await balance(f.warehouse_id)})
 
@@ -150,6 +183,9 @@ await go('/sales/history?sale='+encodeURIComponent(cancelSale.id))
 await page.getByRole('button',{name:'Huỷ hóa đơn'}).click()
 const cancelDialog=page.getByRole('dialog',{name:'Xác nhận huỷ hóa đơn'})
 await cancelDialog.locator('textarea').fill(f.marker+' cancel')
+record('Cancel dialog reason is optional, credentials not requested',await cancelDialog.locator('input[type="password"],input[type="email"]').count()===0
+  &&await cancelDialog.locator('textarea').count()===1
+  &&!(await cancelDialog.locator('textarea').evaluate(el=>el.required)))
 await cancelDialog.getByRole('button',{name:'Xác nhận huỷ'}).click()
 const cancelled=await waitFor(async()=>{
   const row=await first('/rest/v1/sales?select=id,sale_status,total_amount,paid_amount,debt_amount&id=eq.'+encodeURIComponent(cancelSale.id))
@@ -161,6 +197,8 @@ record('Cancel sale creates CANCEL return',Boolean(cancelReturn?.id)&&Number(can
 const cancelFinance=cancelReturn?.id?await first('/rest/v1/finance_transactions?select=tx_type,category,amount,status&reference_type=eq.SALE_CANCEL&reference_id=eq.'+encodeURIComponent(cancelReturn.id)):null
 record('Cancel sale creates finance refund',cancelFinance?.tx_type==='EXPENSE'&&cancelFinance?.category==='SALE_CANCEL_REFUND'&&Number(cancelFinance?.amount)===Number(f.mutation_sale_price)&&cancelFinance?.status==='POSTED')
 record('Cancel sale restores stock',await balance(f.warehouse_id)===2,{quantity:await balance(f.warehouse_id)})
+const cancelAudit=await first('/rest/v1/audit_logs?select=actor_user_id,new_value&module=eq.SALES&action=eq.CANCEL_SALE&entity_id=eq.'+encodeURIComponent(cancelSale.id))
+record('Cancel audit preserves actor and optional reason',Boolean(cancelAudit?.actor_user_id)&&cancelAudit?.new_value?.reason===f.marker+' cancel')
 
 // B) Partial then full return.
 const returnSale=await createCashSale(2)
@@ -197,6 +235,9 @@ const returnFinance=await admin('/rest/v1/finance_transactions?select=id,amount,
 const relatedReturnIds=new Set((returnRows??[]).map(x=>String(x.id)))
 const relatedFinance=(returnFinance??[]).filter(x=>relatedReturnIds.has(String(x.reference_id??'')))
 record('Return flow refunds collected cash',relatedFinance.reduce((s,x)=>s+Number(x.amount??0),0)===Number(f.mutation_sale_price)*2,{refundTotal:relatedFinance.reduce((s,x)=>s+Number(x.amount??0),0)})
+const returnAudit=await admin('/rest/v1/audit_logs?select=actor_user_id,new_value&module=eq.SALES&action=eq.RETURN_SALE&entity_id=eq.'+encodeURIComponent(returnSale.id))
+record('Return audit preserves actor and optional reasons',Array.isArray(returnAudit)&&returnAudit.length===2
+  &&returnAudit.every(x=>Boolean(x.actor_user_id)&&String(x.new_value?.reason??'').includes(f.marker+' return ')))
 
 // C) Archive / restore returned invoice.
 const returnInvoice=(await first('/rest/v1/sales?select=invoice_code&id=eq.'+encodeURIComponent(returnSale.id)))?.invoice_code
