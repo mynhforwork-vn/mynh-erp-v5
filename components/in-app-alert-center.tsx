@@ -14,6 +14,9 @@ type Notice={
 type Feed={items:Notice[];total:number;unread_total:number;action_total:number;migration_pending?:boolean}
 const empty:Feed={items:[],total:0,unread_total:0,action_total:0}
 const size=20
+const NOTIFICATION_PREFERENCE_KEY='mynh-erp-in-app-notifications-enabled'
+const TRACKING_PREFERENCE_KEY='mynh-erp-auto-tracking-enabled'
+const POLL_INTERVAL_MS=120000
 const categories:{id:Category;label:string}[]=[
  {id:'all',label:'Tất cả'}, {id:'tracking',label:'Vận chuyển'}, {id:'purchase',label:'Đơn nhập'},
  {id:'warehouse',label:'Kho'}, {id:'sales',label:'Bán hàng'}, {id:'finance',label:'Tài chính'},
@@ -54,7 +57,7 @@ function target(row:Notice){
  if(row.destination_hub)qs.set('hub',row.destination_hub)
  return '/purchase/tracking?'+qs.toString()
 }
-export function InAppAlertCenter({role='viewer'}:{role?:string}){
+export function InAppAlertCenter({role='viewer',trackingEnabled:initialTrackingEnabled}:{role?:string;trackingEnabled:boolean}){
  const router=useRouter()
  const [open,setOpen]=useState(false)
  const [view,setView]=useState<View>('all')
@@ -65,72 +68,135 @@ export function InAppAlertCenter({role='viewer'}:{role?:string}){
  const [pending,setPending]=useState(false)
  const [error,setError]=useState('')
  const canResolve=role==='admin'||role==='operator'
+ const [notificationsEnabled,setNotificationsEnabled]=useState<boolean|null>(null)
+ const [trackingEnabled,setTrackingEnabled]=useState(initialTrackingEnabled)
+ const enabledRef=useRef(false)
+ enabledRef.current=notificationsEnabled===true&&trackingEnabled===true
  const inflight=useRef(false)
  const lastAt=useRef(0)
+ const nextAllowedAt=useRef(0)
+ const currentRequest=useRef<AbortController|null>(null)
  const active=useRef(true)
  const selection=useRef({view,category,page})
  const openState=useRef(open)
  selection.current={view,category,page}
  openState.current=open
+
  const load=useCallback(async(force=false)=>{
-   if(typeof document!=='undefined'&&document.visibilityState==='hidden')return
-   if(inflight.current)return
+   if(!enabledRef.current||inflight.current)return
    const now=Date.now()
-   const minInterval=openState.current?300000:900000
-   if(!force&&now-lastAt.current<minInterval)return
+   if(now<nextAllowedAt.current||(!force&&now-lastAt.current<POLL_INTERVAL_MS))return
    inflight.current=true
    lastAt.current=now
+   const controller=new AbortController()
+   currentRequest.current=controller
    const {view,category,page}=selection.current
    if(openState.current)setBusy(true)
    try{
      const params=new URLSearchParams({
        view,category,limit:String(size),offset:String(page*size),
      })
-     const response=await fetch('/api/alerts/in-app?'+params.toString(),{cache:'no-store'})
+     const response=await fetch('/api/alerts/in-app?'+params.toString(),
+       {cache:'no-store',signal:controller.signal})
+     if(!enabledRef.current||controller.signal.aborted)return
+     if(response.status===429||response.status===503){
+       nextAllowedAt.current=Date.now()+900000
+       throw Error('Hệ thống đang giới hạn truy cập; sẽ tự thử lại sau.')
+     }
      if(!response.ok)throw Error('Không thể tải thông báo.')
      const data=feedFrom(await response.json())
-     if(!active.current)return
+     if(!active.current||!enabledRef.current)return
      if(selection.current.view===view&&selection.current.category===category&&selection.current.page===page){
        setFeed(data)
        setError('')
      }
    }catch{
-     if(active.current)setError('Không thể tải thông báo. Hãy thử lại sau.')
+     if(!controller.signal.aborted&&enabledRef.current){
+       nextAllowedAt.current=Math.max(nextAllowedAt.current,Date.now()+300000)
+       if(active.current)setError('Không thể tải thông báo. Hãy thử lại sau.')
+     }
    }finally{
+     if(currentRequest.current===controller)currentRequest.current=null
      inflight.current=false
      if(active.current)setBusy(false)
    }
  },[])
+
+ useEffect(()=>setTrackingEnabled(initialTrackingEnabled),[initialTrackingEnabled])
+
+ useEffect(()=>{
+   try{setNotificationsEnabled(window.localStorage.getItem(NOTIFICATION_PREFERENCE_KEY)!=='off')}
+   catch{setNotificationsEnabled(true)}
+   const onStorage=(event:StorageEvent)=>{
+     if(event.key===NOTIFICATION_PREFERENCE_KEY){
+       const enabled=event.newValue!=='off'
+       setNotificationsEnabled(enabled)
+       if(!enabled)currentRequest.current?.abort()
+     }
+     if(event.key===TRACKING_PREFERENCE_KEY){
+       const enabled=event.newValue==='true'
+       setTrackingEnabled(enabled)
+       if(!enabled)currentRequest.current?.abort()
+     }
+   }
+   const onTrackingChanged=(event:Event)=>{
+     const enabled=(event as CustomEvent<{enabled:boolean}>).detail?.enabled===true
+     setTrackingEnabled(enabled)
+     if(!enabled)currentRequest.current?.abort()
+   }
+   window.addEventListener('storage',onStorage)
+   window.addEventListener('mynh-erp-tracking-changed',onTrackingChanged)
+   return()=>{
+     window.removeEventListener('storage',onStorage)
+     window.removeEventListener('mynh-erp-tracking-changed',onTrackingChanged)
+   }
+ },[])
+
  useEffect(()=>{
    active.current=true
-   void load(true)
-   return()=>{active.current=false}
- },[load])
- useEffect(()=>{
-   const timer=window.setInterval(()=>void load(),open?300000:900000)
-   const wake=()=>{if(document.visibilityState==='visible')void load()}
+   if(notificationsEnabled!==true||trackingEnabled!==true){
+     currentRequest.current?.abort()
+     setFeed(empty)
+     setBusy(false)
+     return
+   }
+   lastAt.current=0
+   nextAllowedAt.current=0
+   void load()
+   const timer=window.setInterval(()=>void load(),POLL_INTERVAL_MS)
+   const wake=()=>void load()
    window.addEventListener('focus',wake)
-   document.addEventListener('visibilitychange',wake)
+   window.addEventListener('visibilitychange',wake)
    return()=>{
      window.clearInterval(timer)
      window.removeEventListener('focus',wake)
-     document.removeEventListener('visibilitychange',wake)
+     window.removeEventListener('visibilitychange',wake)
+     currentRequest.current?.abort()
    }
- },[load,open])
+ },[load,notificationsEnabled,trackingEnabled])
  useEffect(()=>{
    if(!open)return
-   void load(true)
+   void load()
    const key=(event:KeyboardEvent)=>{if(event.key==='Escape'&&!pending)setOpen(false)}
    window.addEventListener('keydown',key)
    return()=>window.removeEventListener('keydown',key)
  },[open,load,pending])
  useEffect(()=>{
-   if(!open)return
+   if(!open||!enabledRef.current)return
    void load(true)
  },[view,category,page,open,load])
+ function toggleNotifications(){
+   const enabled=notificationsEnabled!==true
+   enabledRef.current=enabled&&trackingEnabled===true
+   if(!enabled)currentRequest.current?.abort()
+   try{window.localStorage.setItem(NOTIFICATION_PREFERENCE_KEY,enabled?'on':'off')}
+   catch{/* Keep current-tab setting when storage is blocked. */}
+   setNotificationsEnabled(enabled)
+ }
  function setTab(next:View){setView(next);setPage(0)}
  function setGroup(next:Category){setCategory(next);setPage(0)}
  async function action(body:Record<string,unknown>){
+   if(!enabledRef.current)throw Error('Thông báo hoặc Auto Tracking đang tắt')
    const res=await fetch('/api/alerts/in-app',{
      method:'POST',headers:{'Content-Type':'application/json'},
      body:JSON.stringify(body),
@@ -163,6 +229,7 @@ export function InAppAlertCenter({role='viewer'}:{role?:string}){
    finally{setPending(false)}
  }
  async function openRow(row:Notice){
+   if(!enabledRef.current)return
    const route=target(row)
    if(!route){setError('Thông báo chưa có đường dẫn chi tiết.');return}
    if(!await mark(row))return
@@ -170,10 +237,10 @@ export function InAppAlertCenter({role='viewer'}:{role?:string}){
    router.push(route)
  }
  return <>
-   <button type="button" className={'sidebar-alert-trigger'+(feed.unread_total?' has-unread':'')}
-     aria-label={'Thông báo'+(feed.unread_total?' · '+feed.unread_total+' chưa đọc':'')}
+   <button type="button" className={'sidebar-alert-trigger'+(enabledRef.current&&feed.unread_total?' has-unread':'')}
+     aria-label={'Thông báo'+(enabledRef.current&&feed.unread_total?' · '+feed.unread_total+' chưa đọc':'')}
      onClick={()=>setOpen(true)}><Bell/>
-     {feed.unread_total>0&&<span className="sidebar-alert-badge">
+     {enabledRef.current&&feed.unread_total>0&&<span className="sidebar-alert-badge">
        {feed.unread_total>99?'99+':feed.unread_total}
      </span>}
    </button>
@@ -211,7 +278,9 @@ export function InAppAlertCenter({role='viewer'}:{role?:string}){
       {error&&<div role="alert" className="notification-center-error">{error}
         <button type="button" onClick={()=>void load(true)}>Thử lại</button></div>}
       <div className="app-alert-list-v2 notification-center-list" aria-live="polite">
-       {busy?<div className="app-alert-empty-v2">Đang tải thông báo…</div>
+       {!trackingEnabled?<div className="app-alert-empty-v2">Auto Tracking đang tắt. Không gọi API thông báo.</div>
+        :notificationsEnabled===false?<div className="app-alert-empty-v2">Thông báo đang tắt. Không gọi API thông báo.</div>
+        :busy?<div className="app-alert-empty-v2">Đang tải thông báo…</div>
         :feed.items.length===0?<div className="app-alert-empty-v2">
           <strong>{view==='action'?'Chưa có việc cần xử lý':
            view==='unread'?'Không có thông báo chưa đọc':'Chưa có thông báo phù hợp'}</strong>
@@ -240,6 +309,9 @@ export function InAppAlertCenter({role='viewer'}:{role?:string}){
         </article>)}
       </div>
       <footer className="app-alert-panel-foot-v2 notification-center-foot">
+        <button type="button" aria-pressed={notificationsEnabled===true} onClick={toggleNotifications}>
+          {notificationsEnabled===false?'Bật thông báo':'Tắt thông báo'}
+        </button>
         <div className="notification-center-pagination">
           <span>{feed.total?Math.min(page*size+1,feed.total):0}–{Math.min((page+1)*size,feed.total)} / {feed.total}</span>
           <div>
