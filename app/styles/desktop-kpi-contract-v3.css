@@ -836,23 +836,23 @@
   }
 }
 
-/* V7 — Seam-attached, mid-height navigation control.
-   It straddles the vertical boundary between navigation and content at 50vh.
+/* V7 — Seam-attached, top-aligned navigation control.
+   It straddles the vertical boundary between navigation and content near the top alongside the logo.
    This only affects the LEFT desktop navigation, never the approved right panels. */
 @media (min-width:901px){
   .brand-shell-v1 > .desktop-sidebar-seam-handle {
     position:fixed!important;
     z-index:1100!important;
     box-sizing:border-box!important;
-    top:50vh!important;
+    top:34px!important;
     left:calc(var(--mynh-desktop-sidebar,224px) - 14px)!important;
     right:auto!important;
     bottom:auto!important;
     display:flex!important;
     width:28px!important;
-    height:46px!important;
+    height:30px!important;
     min-width:28px!important;
-    min-height:46px!important;
+    min-height:30px!important;
     justify-content:center!important;
     align-items:center!important;
     margin:0!important;
@@ -878,13 +878,13 @@
     width:28px!important;
     min-width:28px!important;
     max-width:28px!important;
-    height:46px!important;
-    min-height:46px!important;
-    max-height:46px!important;
+    height:30px!important;
+    min-height:30px!important;
+    max-height:30px!important;
     margin:0!important;
     padding:0!important;
     border:1px solid #C7D7E5!important;
-    border-radius:10px!important;
+    border-radius:7px!important;
     background:#FFFFFF!important;
     color:#315C86!important;
     box-shadow:0 2px 9px rgba(25,52,78,.12)!important;
@@ -899,11 +899,13 @@
     box-shadow:0 3px 11px rgba(25,52,78,.17)!important;
     outline-offset:2px!important;
   }
-  /* One Cobalt identity bar for all HUBs; status is communicated in metric chips. */
-  .brand-shell-v1 .tracking-hub-card-v2 .tracking-hub-priority-dot,
-  .brand-shell-v1 .tracking-hub-card-v2 .tracking-hub-priority-dot.attention {
-    background:#3D75B8!important;
+  /* HUB urgency is derived from urgentCount; not from HUB identity. */
+  .brand-shell-v1 .tracking-hub-card-v2 .tracking-hub-priority-dot {
+    background:#B7C2CD!important;
     border-radius:2px!important;
+  }
+  .brand-shell-v1 .tracking-hub-card-v2 .tracking-hub-priority-dot.attention {
+    background:linear-gradient(180deg,#E2A13D,#C77436)!important;
   }
 }
 @media(max-width:900px){
