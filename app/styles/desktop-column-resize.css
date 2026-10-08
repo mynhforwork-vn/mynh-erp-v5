@@ -7,11 +7,11 @@
   .brand-shell-v1>.main table.table .mynh-column-resize-grip{
     position:absolute!important;
     top:3px!important;
-    right:-5px!important;
+    right:0!important;
     bottom:3px!important;
     z-index:20!important;
-    width:10px!important;
-    min-width:10px!important;
+    width:12px!important;
+    min-width:12px!important;
     border-right:2px solid transparent!important;
     border-radius:0!important;
     cursor:col-resize!important;
