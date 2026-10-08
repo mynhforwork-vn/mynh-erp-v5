@@ -51,6 +51,7 @@ async function metrics(selector){
       height:Math.round(r.height),top:Math.round(r.top),bottom:Math.round(r.bottom),
       width:Math.round(r.width),overflowY:s.overflowY,display:s.display,
       viewportH:innerHeight,viewportW:innerWidth,
+      rowCount:el.querySelectorAll('tbody tr').length,
     }
   }).catch(()=>null)
 }
@@ -71,7 +72,10 @@ for(const spec of [
   const withinExpectedBounds=label==='Báo cáo tài chính'
     ? Boolean(m)&&m.top>=0&&m.width<=m.viewportW+2
     : Boolean(m)&&m.bottom<=m.viewportH+2
-  rec(label+' — vùng bảng đủ chiều cao',Boolean(m)&&m.height>=minHeight&&withinExpectedBounds,m??{})
+  // One-row HUB and intake lists should hug content instead of reserving 120px
+  // of blank space. Multi-row operational tables retain their height threshold.
+  const contentAwareMin=(label==='Tracking'||label==='Nhập kho')&&m&&m.rowCount<=1?60:minHeight
+  rec(label+' — vùng bảng đủ chiều cao',Boolean(m)&&m.height>=contentAwareMin&&withinExpectedBounds,m??{})
 }
 
 for(const spec of [
