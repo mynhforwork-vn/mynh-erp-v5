@@ -46,7 +46,7 @@ async function read(){
     const avatar=sidebar?.querySelector('.sidebar-user-avatar')
     const copy=sidebar?.querySelector('.sidebar-user-copy')
     const alert=sidebar?.querySelector('.sidebar-alert-trigger')
-    const toggle=sidebar?.querySelector('.sidebar-collapse-toggle')
+    const toggle=shell?.querySelector('.desktop-sidebar-seam-handle > .sidebar-collapse-toggle')
     const brand=sidebar?.querySelector('.brand')
         const active=nav?.querySelector('a.active')
     if(!shell||!sidebar||!nav||!foot||!account||!avatar||!alert)return null
@@ -56,6 +56,8 @@ async function read(){
       collapsed:shell.classList.contains('desktop-sidebar-collapsed'),
       toggle:toggle?{left:r(toggle).left,right:r(toggle).right,top:r(toggle).top,bottom:r(toggle).bottom,width:r(toggle).width}:null,
       brand:brand?{left:r(brand).left,right:r(brand).right,top:r(brand).top,bottom:r(brand).bottom}:null,
+      dividerCenterDelta:toggle?Math.abs((r(toggle).left+r(toggle).right)/2-sr.right):null,
+      midHeightDelta:toggle?Math.abs((r(toggle).top+r(toggle).bottom)/2-innerHeight/2):null,
       footerCenterDelta:Math.abs((avr.left+avr.right+br.left+br.right)/4-(sr.left+sr.right)/2),
       sidebar:{left:sr.left,right:sr.right,top:sr.top,bottom:sr.bottom,width:sr.width,height:sr.height},
       nav:{top:nr.top,bottom:nr.bottom,height:nr.height,scrollHeight:nav.scrollHeight,clientHeight:nav.clientHeight},
@@ -73,7 +75,7 @@ async function read(){
 
 let m=await read()
 rec('Sidebar mở rộng đúng width',m&&m.sidebar.width>=215&&m.sidebar.width<=235,m??{})
-rec('Sidebar nút thu/mở cùng hàng logo',m&&m.toggle&&m.brand&&Math.abs((m.toggle.top+m.toggle.bottom)/2-(m.brand.top+m.brand.bottom)/2)<=5&&m.toggle.left>=m.brand.right-2&&m.toggle.right<=m.sidebar.right,m??{})
+rec('Sidebar nút thu/mở nằm giữa vạch phân cách',m&&m.toggle&&m.dividerCenterDelta<=2&&m.midHeightDelta<=2&&!m.bodyScrollX,m??{})
 rec('Sidebar mở rộng footer một hàng',m&&Math.abs(m.account.top-m.bell.top)<=4&&m.account.height<=40&&m.bell.height<=36,m??{})
 rec('Sidebar mở rộng copy hiển thị',m&&m.copyDisplay!=='none',m??{})
 rec('Sidebar mở rộng không tràn ngang',m&&!m.bodyScrollX,m??{})
@@ -90,7 +92,7 @@ rec('Sidebar thu gọn copy ẩn',m&&m.copyDisplay==='none',m??{})
 rec('Sidebar thu gọn footer gọn',m&&m.foot.height<=48&&m.foot.width<=78,m??{})
 rec('Sidebar thu gọn footer nằm trọn trong rail',m&&m.foot.left>=m.sidebar.left-1&&m.foot.right<=m.sidebar.right+1,m??{})
 rec('Sidebar thu gọn footer cân giữa',m&&m.footerCenterDelta<=3,m??{})
-rec('Sidebar thu gọn nút mở cùng hàng logo',m&&m.toggle&&m.brand&&Math.abs((m.toggle.top+m.toggle.bottom)/2-(m.brand.top+m.brand.bottom)/2)<=5&&m.toggle.left>=m.brand.right-2&&m.toggle.right<=m.sidebar.right,m??{})
+rec('Sidebar thu gọn nút mở trên vạch phân cách',m&&m.toggle&&m.dividerCenterDelta<=2&&m.midHeightDelta<=2&&!m.bodyScrollX,m??{})
 rec('Sidebar thu gọn active menu còn nhìn thấy',m&&m.activeVisible,m??{})
 rec('Sidebar thu gọn không tràn ngang',m&&!m.bodyScrollX,m??{})
 await page.screenshot({path:'qa-desktop-slidebar-artifacts/sidebar-collapsed.png',fullPage:false})
