@@ -69,6 +69,14 @@ export function TrackingSettings({
   trackingTest?:string|null
   trackingMessage?:string|null
 }){
+  async function saveRuntimeAndNotify(formData:FormData){
+    await saveTrackingRuntimeSettings(formData)
+    const enabled=formData.get('auto_tracking_enabled')==='on'
+    try{window.localStorage.setItem('mynh-erp-auto-tracking-enabled',String(enabled))}
+    catch{/* Same-tab event still works if storage is blocked. */}
+    window.dispatchEvent(new CustomEvent('mynh-erp-tracking-changed',{detail:{enabled}}))
+  }
+
   const [tab,setTab]=useState<Tab>('operation')
   const [editingMapping,setEditingMapping]=useState<string|null>(null)
 
@@ -105,7 +113,7 @@ export function TrackingSettings({
           </span>
         </div>
 
-        <form action={saveTrackingRuntimeSettings} className="tracking-runtime-grid-v7">
+        <form action={saveRuntimeAndNotify} className="tracking-runtime-grid-v7">
           <label className="settings-check">
             <input type="checkbox" name="auto_tracking_enabled" defaultChecked={runtime?.auto_tracking_enabled!==false} disabled={!canEdit}/>
             <span>Auto Tracking</span>
