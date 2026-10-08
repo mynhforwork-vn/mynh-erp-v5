@@ -2,6 +2,7 @@
 
 import {useCallback,useEffect,useRef,useState} from 'react'
 import {useRouter} from 'next/navigation'
+import {isTrackingQuietNow,msToQuietBoundary,NOTIFICATION_POLL_MS} from '@/lib/notification-quiet-hours'
 
 type View='all'|'unread'|'action'
 type Category='all'|'tracking'|'purchase'|'warehouse'|'sales'|'finance'|'system'
@@ -15,8 +16,7 @@ type Feed={items:Notice[];total:number;unread_total:number;action_total:number;m
 const empty:Feed={items:[],total:0,unread_total:0,action_total:0}
 const size=20
 const NOTIFICATION_PREFERENCE_KEY='mynh-erp-in-app-notifications-enabled'
-const TRACKING_PREFERENCE_KEY='mynh-erp-auto-tracking-enabled'
-const POLL_INTERVAL_MS=120000
+const TRACKING_RUNTIME_KEY='mynh-erp-tracking-runtime'
 const categories:{id:Category;label:string}[]=[
  {id:'all',label:'Tất cả'}, {id:'tracking',label:'Vận chuyển'}, {id:'purchase',label:'Đơn nhập'},
  {id:'warehouse',label:'Kho'}, {id:'sales',label:'Bán hàng'}, {id:'finance',label:'Tài chính'},
@@ -57,7 +57,7 @@ function target(row:Notice){
  if(row.destination_hub)qs.set('hub',row.destination_hub)
  return '/purchase/tracking?'+qs.toString()
 }
-export function InAppAlertCenter({role='viewer',trackingEnabled:initialTrackingEnabled}:{role?:string;trackingEnabled:boolean}){
+export function InAppAlertCenter({role='viewer',trackingEnabled:initialTrackingEnabled,quietStart:initialQuietStart,quietEnd:initialQuietEnd}:{role?:string;trackingEnabled:boolean;quietStart:string;quietEnd:string}){
  const router=useRouter()
  const [open,setOpen]=useState(false)
  const [view,setView]=useState<View>('all')
@@ -70,6 +70,10 @@ export function InAppAlertCenter({role='viewer',trackingEnabled:initialTrackingE
  const canResolve=role==='admin'||role==='operator'
  const [notificationsEnabled,setNotificationsEnabled]=useState<boolean|null>(null)
  const [trackingEnabled,setTrackingEnabled]=useState(initialTrackingEnabled)
+ const [quietStart,setQuietStart]=useState(initialQuietStart)
+ const [quietEnd,setQuietEnd]=useState(initialQuietEnd)
+ const quietRef=useRef({start:quietStart,end:quietEnd})
+ quietRef.current={start:quietStart,end:quietEnd}
  const enabledRef=useRef(false)
  enabledRef.current=notificationsEnabled===true&&trackingEnabled===true
  const inflight=useRef(false)
@@ -84,8 +88,9 @@ export function InAppAlertCenter({role='viewer',trackingEnabled:initialTrackingE
 
  const load=useCallback(async(force=false)=>{
    if(!enabledRef.current||inflight.current)return
+   if(isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end))return
    const now=Date.now()
-   if(now<nextAllowedAt.current||(!force&&now-lastAt.current<POLL_INTERVAL_MS))return
+   if(now<nextAllowedAt.current||(!force&&now-lastAt.current<NOTIFICATION_POLL_MS))return
    inflight.current=true
    lastAt.current=now
    const controller=new AbortController()
@@ -98,7 +103,7 @@ export function InAppAlertCenter({role='viewer',trackingEnabled:initialTrackingE
      })
      const response=await fetch('/api/alerts/in-app?'+params.toString(),
        {cache:'no-store',signal:controller.signal})
-     if(!enabledRef.current||controller.signal.aborted)return
+     if(!enabledRef.current||controller.signal.aborted||isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end))return
      if(response.status===429||response.status===503){
        nextAllowedAt.current=Date.now()+900000
        throw Error('Hệ thống đang giới hạn truy cập; sẽ tự thử lại sau.')
@@ -122,28 +127,36 @@ export function InAppAlertCenter({role='viewer',trackingEnabled:initialTrackingE
    }
  },[])
 
- useEffect(()=>setTrackingEnabled(initialTrackingEnabled),[initialTrackingEnabled])
+ useEffect(()=>{
+   setTrackingEnabled(initialTrackingEnabled)
+   setQuietStart(initialQuietStart)
+   setQuietEnd(initialQuietEnd)
+ },[initialTrackingEnabled,initialQuietStart,initialQuietEnd])
 
  useEffect(()=>{
    try{setNotificationsEnabled(window.localStorage.getItem(NOTIFICATION_PREFERENCE_KEY)!=='off')}
    catch{setNotificationsEnabled(true)}
+   const apply=(payload:unknown)=>{
+     if(!payload||typeof payload!=='object')return
+     const state=payload as {enabled?:boolean;quietStart?:string;quietEnd?:string}
+     const start=state.quietStart??quietRef.current.start
+     const end=state.quietEnd??quietRef.current.end
+     setTrackingEnabled(state.enabled===true)
+     setQuietStart(start)
+     setQuietEnd(end)
+     if(state.enabled!==true||isTrackingQuietNow(new Date(),start,end))currentRequest.current?.abort()
+   }
    const onStorage=(event:StorageEvent)=>{
      if(event.key===NOTIFICATION_PREFERENCE_KEY){
        const enabled=event.newValue!=='off'
        setNotificationsEnabled(enabled)
        if(!enabled)currentRequest.current?.abort()
      }
-     if(event.key===TRACKING_PREFERENCE_KEY){
-       const enabled=event.newValue==='true'
-       setTrackingEnabled(enabled)
-       if(!enabled)currentRequest.current?.abort()
+     if(event.key===TRACKING_RUNTIME_KEY&&event.newValue){
+       try{apply(JSON.parse(event.newValue))}catch{/* ignore invalid data */}
      }
    }
-   const onTrackingChanged=(event:Event)=>{
-     const enabled=(event as CustomEvent<{enabled:boolean}>).detail?.enabled===true
-     setTrackingEnabled(enabled)
-     if(!enabled)currentRequest.current?.abort()
-   }
+   const onTrackingChanged=(event:Event)=>apply((event as CustomEvent).detail)
    window.addEventListener('storage',onStorage)
    window.addEventListener('mynh-erp-tracking-changed',onTrackingChanged)
    return()=>{
@@ -160,20 +173,46 @@ export function InAppAlertCenter({role='viewer',trackingEnabled:initialTrackingE
      setBusy(false)
      return
    }
+   let stopped=false
    lastAt.current=0
    nextAllowedAt.current=0
-   void load()
-   const timer=window.setInterval(()=>void load(),POLL_INTERVAL_MS)
-   const wake=()=>void load()
+   let timer:ReturnType<typeof setTimeout>|null=null
+   const schedule=()=>{
+     if(timer)clearTimeout(timer)
+     if(stopped||!enabledRef.current)return
+     const at=new Date()
+     const {start,end}=quietRef.current
+     if(isTrackingQuietNow(at,start,end)){
+       currentRequest.current?.abort()
+       timer=setTimeout(()=>void tick(),msToQuietBoundary(at,'end',start,end))
+       return
+     }
+     const next=Math.max(lastAt.current+NOTIFICATION_POLL_MS,nextAllowedAt.current)
+     const wait=Math.max(0,next-at.getTime(),inflight.current?1000:0)
+     timer=setTimeout(()=>void tick(),Math.min(wait,msToQuietBoundary(at,'start',start,end)))
+   }
+   const tick=async()=>{
+     if(stopped||!enabledRef.current)return
+     if(isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end)){
+       currentRequest.current?.abort()
+       schedule()
+       return
+     }
+     await load()
+     schedule()
+   }
+   const wake=()=>void tick()
    window.addEventListener('focus',wake)
    window.addEventListener('visibilitychange',wake)
+   void tick()
    return()=>{
-     window.clearInterval(timer)
+     stopped=true
+     if(timer)clearTimeout(timer)
      window.removeEventListener('focus',wake)
      window.removeEventListener('visibilitychange',wake)
      currentRequest.current?.abort()
    }
- },[load,notificationsEnabled,trackingEnabled])
+ },[load,notificationsEnabled,trackingEnabled,quietStart,quietEnd])
  useEffect(()=>{
    if(!open)return
    void load()
@@ -199,7 +238,7 @@ export function InAppAlertCenter({role='viewer',trackingEnabled:initialTrackingE
  function setTab(next:View){setView(next);setPage(0)}
  function setGroup(next:Category){setCategory(next);setPage(0)}
  async function action(body:Record<string,unknown>){
-   if(!enabledRef.current)throw Error('Thông báo hoặc Auto Tracking đang tắt')
+   if(!enabledRef.current||isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end))throw Error('Thông báo đang nghỉ theo lịch Tracking')
    const res=await fetch('/api/alerts/in-app',{
      method:'POST',headers:{'Content-Type':'application/json'},
      body:JSON.stringify(body),
