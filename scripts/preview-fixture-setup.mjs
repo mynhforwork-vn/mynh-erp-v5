@@ -37,6 +37,7 @@ if(!wh.json[1]?.id)throw new Error('Mutation QA v2 requires two active warehouse
 const suffix=Date.now().toString(36)+'-'+crypto.randomBytes(3).toString('hex')
 const fixtures={
   customer_id:crypto.randomUUID(),
+  history_customer_id:crypto.randomUUID(),
   erp_user_id:crypto.randomUUID(),
   warehouse_order_id:crypto.randomUUID(),
   warehouse_item_id:crypto.randomUUID(),
@@ -52,6 +53,7 @@ const fixtures={
   transfer_warehouse_id:String(wh.json[1].id),
   transfer_warehouse_code:String(wh.json[1].code??''),
   customer_name:'QA Browser Customer '+suffix,
+  history_customer_name:'QA History Customer '+suffix,
   erp_username:'qa_browser_'+suffix.replace(/[^a-z0-9]/gi,'_'),
   warehouse_order_code:'QA-WH-'+suffix,
   hub_order_code:'QA-HUB-'+suffix,
@@ -75,6 +77,14 @@ await insert('customers',{
   note:fixtures.marker,
 })
 
+await insert('customers',{
+  id:fixtures.history_customer_id,
+  name:fixtures.history_customer_name,
+  phone:'0900000011',
+  address:'QA History Fixture',
+  note:fixtures.marker,
+})
+
 await insert('erp_users',{
   id:fixtures.erp_user_id,
   username:fixtures.erp_username,
@@ -88,7 +98,7 @@ await insert('erp_users',{
 
 await insert('sales',{
   id:fixtures.sale_id,
-  customer_id:fixtures.customer_id,
+  customer_id:fixtures.history_customer_id,
   warehouse_id:fixtures.warehouse_id,
   invoice_code:fixtures.sale_invoice_code,
   total_amount:50000,
@@ -99,7 +109,7 @@ await insert('sales',{
   note:fixtures.marker,
 })
 await insert('debt_ledger',{
-  customer_id:fixtures.customer_id,
+  customer_id:fixtures.history_customer_id,
   reference_type:'SALE',
   reference_id:fixtures.sale_id,
   debit:50000,
