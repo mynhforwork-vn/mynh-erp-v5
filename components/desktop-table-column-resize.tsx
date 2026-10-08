@@ -24,7 +24,7 @@ export function DesktopTableColumnResize() {
       Array.from(table.querySelectorAll(':scope > thead > tr:first-child > th')) as HTMLTableCellElement[]
     const tableId = (table:HTMLTableElement) => {
       const custom = table.dataset.tableResizeKey
-      const names = [...table.classList].filter(x => x !== 'table' && x !== 'active' && x !== 'striped').sort()
+      const names = [...table.classList].filter(x => x !== 'table' && x !== 'active' && x !== 'striped' && x !== 'mynh-resizable-table').sort()
       const parent = table.closest('.table-card, .managed-table-shell, .tracking-hub-table-wrap, .whx-table-wrap')
       const parentClass = parent ? [...parent.classList].filter(x => x !== 'card').sort().join('.') : ''
       return 'mynh-col-widths-v1:' + location.pathname + ':' + (custom || names.join('.') || parentClass || 'table')
