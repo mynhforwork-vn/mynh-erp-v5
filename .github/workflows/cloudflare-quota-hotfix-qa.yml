@@ -1,0 +1,54 @@
+name: Cloudflare Quota Hotfix QA
+on:
+  push:
+    branches:
+      - fix/cloudflare-request-quota
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Static QA
+        run: node scripts/remediation-static-qa.mjs
+      - name: Next.js build
+        run: npm run build
+      - name: Verify quiet hour boundary cases
+        run: node --experimental-strip-types scripts/notification-quiet-hours-qa.mjs
+      - name: Verify five-minute Tracking-gated request schedule
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          import fs from 'node:fs'
+          const source=fs.readFileSync('components/in-app-alert-center.tsx','utf8')
+          const layout=fs.readFileSync('app/(erp)/layout.tsx','utf8')
+          const settings=fs.readFileSync('components/tracking-settings.tsx','utf8')
+          const guards=[
+            "import {isTrackingQuietNow,msToQuietBoundary,NOTIFICATION_POLL_MS}",
+            "if(isTrackingQuietNow(new Date(),start,end))return",
+            "msToQuietBoundary(at,'end',start,end)",
+            "msToQuietBoundary(at,'start',start,end)",
+            "if(notificationsEnabled!==true||trackingEnabled!==true)",
+            "pendingRequest.current?.abort()",
+            "window.addEventListener('storage',stored)",
+            "window.addEventListener('mynh-erp-tracking-changed',changed)",
+            'nextAllowedAt.current=Date.now()+900000',
+            'requestInFlight.current',
+          ]
+          for(const guard of guards)assert.ok(source.includes(guard),'Missing guard: '+guard)
+          assert.ok(layout.includes(".select('auto_tracking_enabled,quiet_start,quiet_end')"))
+          assert.ok(layout.includes("trackingRuntime?.auto_tracking_enabled===true"))
+          assert.ok(layout.includes('quietStart={quietStart} quietEnd={quietEnd}'))
+          assert.ok(settings.includes('await saveTrackingRuntimeSettings(formData)'))
+          assert.ok(settings.includes("'mynh-erp-tracking-runtime'"))
+          console.log('PASS: Tracking OFF=0, notifications OFF=0, quiet 02-06=0, otherwise 5-minute GETs')
+          NODE
