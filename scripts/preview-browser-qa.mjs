@@ -89,7 +89,7 @@ function verticalRightPanelPass(m){
     &&m.bottom<=m.viewportH+2
 }
 
-const browser=await chromium.launch({headless:true})
+const browser=await chromium.launch({headless:true,...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{})})
 
 // Public / unauthenticated checks.
 const publicContext=await browser.newContext({viewport:{width:1440,height:900}})

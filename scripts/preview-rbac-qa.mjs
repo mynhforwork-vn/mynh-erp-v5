@@ -94,7 +94,7 @@ async function browserFor(session,role){
   const {error}=await cookieClient.auth.setSession({access_token:session.access_token,refresh_token:session.refresh_token})
   if(error)throw new Error('Cookie session failed '+role+': '+error.message)
 
-  const browser=await chromium.launch({headless:true})
+  const browser=await chromium.launch({headless:true,...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{})})
   const context=await browser.newContext({viewport:{width:1440,height:900}})
   await context.addCookies([...cookieMap.values()].map(c=>({
     name:c.name,value:c.value,url:PREVIEW_URL,
