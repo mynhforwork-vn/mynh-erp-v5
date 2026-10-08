@@ -205,10 +205,6 @@
     display:none!important;
   }
 }
-@media(max-width:900px){
-  /* Mobile remains frozen until the separate mobile redesign. */
-  .brand-shell-v1 .desktop-period-extra{display:none!important;}
-}
 
 
 /* V4 desktop refinement: compact table command rails, soft lifted KPI cards.
@@ -908,6 +904,4 @@
     background:linear-gradient(180deg,#E2A13D,#C77436)!important;
   }
 }
-@media(max-width:900px){
-  .brand-shell-v1 > .desktop-sidebar-seam-handle{display:none!important;}
-}
+
