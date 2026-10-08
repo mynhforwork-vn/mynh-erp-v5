@@ -72,9 +72,13 @@ export function TrackingSettings({
   async function saveRuntimeAndNotify(formData:FormData){
     await saveTrackingRuntimeSettings(formData)
     const enabled=formData.get('auto_tracking_enabled')==='on'
-    try{window.localStorage.setItem('mynh-erp-auto-tracking-enabled',String(enabled))}
+    const quietStart=String(formData.get('quiet_start')??'02:00').slice(0,5)
+    const quietEnd=String(formData.get('quiet_end')??'06:00').slice(0,5)
+    const runtime={enabled,quietStart,quietEnd}
+    // One atomic cross-tab event prevents a transient request during newly configured quiet hours.
+    try{window.localStorage.setItem('mynh-erp-tracking-runtime',JSON.stringify(runtime))}
     catch{/* Same-tab event still works if storage is blocked. */}
-    window.dispatchEvent(new CustomEvent('mynh-erp-tracking-changed',{detail:{enabled}}))
+    window.dispatchEvent(new CustomEvent('mynh-erp-tracking-changed',{detail:runtime}))
   }
 
   const [tab,setTab]=useState<Tab>('operation')
