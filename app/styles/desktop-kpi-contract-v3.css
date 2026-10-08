@@ -835,3 +835,77 @@
     box-shadow:0 12px 28px rgba(32,54,74,.17)!important;
   }
 }
+
+/* V7 — Seam-attached, mid-height navigation control.
+   It straddles the vertical boundary between navigation and content at 50vh.
+   This only affects the LEFT desktop navigation, never the approved right panels. */
+@media (min-width:901px){
+  .brand-shell-v1 > .desktop-sidebar-seam-handle {
+    position:fixed!important;
+    z-index:1100!important;
+    box-sizing:border-box!important;
+    top:50vh!important;
+    left:calc(var(--mynh-desktop-sidebar,224px) - 14px)!important;
+    right:auto!important;
+    bottom:auto!important;
+    display:flex!important;
+    width:28px!important;
+    height:46px!important;
+    min-width:28px!important;
+    min-height:46px!important;
+    justify-content:center!important;
+    align-items:center!important;
+    margin:0!important;
+    padding:0!important;
+    transform:translateY(-50%)!important;
+    pointer-events:auto!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed > .desktop-sidebar-seam-handle{
+    left:calc(var(--mynh-desktop-sidebar-collapsed,72px) - 14px)!important;
+  }
+  .brand-shell-v1 > .desktop-sidebar-seam-handle > .sidebar-collapse-toggle {
+    position:static!important;
+    inset:auto!important;
+    top:auto!important;
+    left:auto!important;
+    right:auto!important;
+    bottom:auto!important;
+    z-index:auto!important;
+    box-sizing:border-box!important;
+    display:grid!important;
+    place-items:center!important;
+    flex:0 0 28px!important;
+    width:28px!important;
+    min-width:28px!important;
+    max-width:28px!important;
+    height:46px!important;
+    min-height:46px!important;
+    max-height:46px!important;
+    margin:0!important;
+    padding:0!important;
+    border:1px solid #C7D7E5!important;
+    border-radius:10px!important;
+    background:#FFFFFF!important;
+    color:#315C86!important;
+    box-shadow:0 2px 9px rgba(25,52,78,.12)!important;
+    cursor:pointer!important;
+    transform:none!important;
+  }
+  .brand-shell-v1 > .desktop-sidebar-seam-handle > .sidebar-collapse-toggle:hover,
+  .brand-shell-v1 > .desktop-sidebar-seam-handle > .sidebar-collapse-toggle:focus-visible{
+    border-color:#94B7D4!important;
+    color:#1E568E!important;
+    background:#EFF5FB!important;
+    box-shadow:0 3px 11px rgba(25,52,78,.17)!important;
+    outline-offset:2px!important;
+  }
+  /* One Cobalt identity bar for all HUBs; status is communicated in metric chips. */
+  .brand-shell-v1 .tracking-hub-card-v2 .tracking-hub-priority-dot,
+  .brand-shell-v1 .tracking-hub-card-v2 .tracking-hub-priority-dot.attention {
+    background:#3D75B8!important;
+    border-radius:2px!important;
+  }
+}
+@media(max-width:900px){
+  .brand-shell-v1 > .desktop-sidebar-seam-handle{display:none!important;}
+}
