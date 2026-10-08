@@ -1,0 +1,98 @@
+name: Cloudflare MYNH Worker Audit (Read Only)
+
+on:
+  push:
+    branches:
+      - audit/cloudflare-workers-v5
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Inspect Cloudflare Workers without changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          if(!token||!account) { console.log('CREDENTIALS_MISSING'); process.exit(0); }
+          const targets=['mynh-erp-notify-v1','mynh-erp-v5','mynh-erp','erp-auto-tracking','ghn-proxy'];
+          const root='https://api.cloudflare.com/client/v4';
+          const safe=(x)=>JSON.stringify(x);
+          async function api(path){
+            try{
+              const r=await fetch(root+path,{headers:{authorization:'Bearer '+token}});
+              const j=await r.json().catch(()=>({}));
+              return {http:r.status,success:!!j.success,result:j.result,code:j.errors?.[0]?.code??null};
+            }catch{return {http:0,success:false,code:'NETWORK_ERROR'};}
+          }
+          const listed=await api('/accounts/'+account+'/workers/scripts');
+          const scripts=Array.isArray(listed.result)?listed.result:[];
+          console.log('INVENTORY '+safe({status:listed.http,success:listed.success,list_count:scripts.length,
+            target_present:targets.map(x=>({name:x,present:scripts.some(y=>y.id===x)}))}));
+          for(const name of targets){
+            const entry=scripts.find(x=>x.id===name);
+            const prefix='/accounts/'+account+'/workers/scripts/'+encodeURIComponent(name);
+            const [settings,cron,subdomain]=await Promise.all([
+              api(prefix+'/settings'),api(prefix+'/schedules'),api(prefix+'/subdomain')
+            ]);
+            const bs=Array.isArray(settings.result?.bindings)?settings.result.bindings:[];
+            const services=bs.filter(b=>b.type==='service'||b.type==='dispatch_namespace')
+              .map(b=>({type:b.type,service:b.service??null,environment:b.environment??null}));
+            const types=bs.reduce((o,b)=>(o[b.type]=(o[b.type]||0)+1,o),{});
+            console.log('WORKER '+safe({name,list_present:!!entry,created:entry?.created_on??null,
+              modified:entry?.modified_on??null,settings_http:settings.http,setting_types:types,
+              service_bindings:services,cron_http:cron.http,
+              cron:Array.isArray(cron.result?.schedules)?cron.result.schedules.map(x=>x.cron):null,
+              subdomain_http:subdomain.http,subdomain_enabled:subdomain.result?.enabled??null}));
+            // Never output Worker source, secret names, secret values, or environment values.
+            try {
+              const r=await fetch(root+prefix,{headers:{authorization:'Bearer '+token}});
+              const source=r.ok?await r.text():'';
+              console.log('SOURCE_FLAGS '+safe({name,http:r.status,readable:r.ok,
+                links_to_old_erp:source.includes('mynh-erp.mynh-forwork.workers.dev'),
+                links_to_tracking:source.includes('erp-auto-tracking'),
+                links_to_ghn_proxy:source.includes('ghn-proxy'),
+                references_ghn:source.toLowerCase().includes('ghn'),
+                references_spx:source.toLowerCase().includes('spx.vn'),
+                references_telegram:source.toLowerCase().includes('api.telegram.org')
+              }));
+            } catch{console.log('SOURCE_FLAGS '+safe({name,readable:false}));}
+          }
+          const day=new Date();
+          const currentStart=new Date(Date.UTC(day.getUTCFullYear(),day.getUTCMonth(),day.getUTCDate()));
+          const periods=[{label:'last_complete_utc_day',start:new Date(currentStart.getTime()-86400000),end:currentStart},
+            {label:'current_utc_day_partial',start:currentStart,end:day}];
+          const query="query($accountTag:String!, $start:Time!, $end:Time!){viewer{accounts(filter:{accountTag:$accountTag}){workersInvocationsAdaptiveGroups(limit:200,filter:{datetime_geq:$start,datetime_lt:$end}){dimensions{scriptName} sum{requests errors subrequests}}}}}";
+          for(const period of periods){
+            try{
+              const r=await fetch(root+'/graphql',{method:'POST',
+                headers:{authorization:'Bearer '+token,'content-type':'application/json'},
+                body:JSON.stringify({query,variables:{accountTag:account,start:period.start.toISOString(),end:period.end.toISOString()}})});
+              const json=await r.json();
+              const group=json.data?.viewer?.accounts?.[0]?.workersInvocationsAdaptiveGroups;
+              if(!Array.isArray(group)){
+                console.log('ANALYTICS '+safe({period:period.label,http:r.status,available:false,
+                  error_count:json.errors?.length||0,notes:'Analytics permission or GraphQL schema may be unavailable'}));
+                continue;
+              }
+              const sums=group.reduce((m,e)=>{
+                const n=e.dimensions?.scriptName||'(unnamed)';
+                const v=m[n]||(m[n]={requests:0,errors:0,subrequests:0});
+                for(const f of ['requests','errors','subrequests'])v[f]+=Number(e.sum?.[f]||0);
+                return m;
+              },{});
+              console.log('ANALYTICS '+safe({period:period.label,http:r.status,available:true,
+                from:period.start.toISOString(),to:period.end.toISOString(),
+                group_count:group.length,groups:sums}));
+            }catch {console.log('ANALYTICS '+safe({period:period.label,available:false,notes:'FETCH_ERROR'}));}
+          }
+          NODE
