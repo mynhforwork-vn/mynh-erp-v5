@@ -71,14 +71,14 @@ jobs:
           const currentStart=new Date(Date.UTC(day.getUTCFullYear(),day.getUTCMonth(),day.getUTCDate()));
           const periods=[{label:'last_complete_utc_day',start:new Date(currentStart.getTime()-86400000),end:currentStart},
             {label:'current_utc_day_partial',start:currentStart,end:day}];
-          const query="query($accountTag:String!, $start:Time!, $end:Time!){viewer{accounts(filter:{accountTag:$accountTag}){workersInvocationsAdaptiveGroups(limit:200,filter:{datetime_geq:$start,datetime_lt:$end}){dimensions{scriptName} sum{requests errors subrequests}}}}}";
+          const query="query($accountTag: string, $start: string, $end: string){viewer{accounts(filter:{accountTag:$accountTag}){workersInvocationsAdaptive(limit:10000,filter:{datetime_geq:$start,datetime_lt:$end}){dimensions{scriptName} sum{requests errors subrequests}}}}}";
           for(const period of periods){
             try{
               const r=await fetch(root+'/graphql',{method:'POST',
                 headers:{authorization:'Bearer '+token,'content-type':'application/json'},
                 body:JSON.stringify({query,variables:{accountTag:account,start:period.start.toISOString(),end:period.end.toISOString()}})});
               const json=await r.json();
-              const group=json.data?.viewer?.accounts?.[0]?.workersInvocationsAdaptiveGroups;
+              const group=json.data?.viewer?.accounts?.[0]?.workersInvocationsAdaptive;
               if(!Array.isArray(group)){
                 console.log('ANALYTICS '+safe({period:period.label,http:r.status,available:false,
                   error_count:json.errors?.length||0,notes:'Analytics permission or GraphQL schema may be unavailable'}));
