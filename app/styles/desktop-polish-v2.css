@@ -205,8 +205,14 @@
   .brand-shell-v1 > .main .finance-kpi b {
     color:#1E3B55!important; font-variant-numeric:tabular-nums!important;
   }
-  .brand-shell-v1 > .main .warning > b,
-  .brand-shell-v1 > .main .danger > b {color:inherit!important;}
+  .brand-shell-v1 > .main .warning > b {color:#9A681C!important;}
+  .brand-shell-v1 > .main .danger > b {color:#B4535B!important;}
+  .brand-shell-v1 > .main .success > b {color:#237456!important;}
+  .brand-shell-v1 > .main .info > b {color:#285F99!important;}
+  .brand-shell-v1 > .main .system-kpi-period-note {
+    margin:-2px 0 8px!important; padding:0 2px!important;
+    font-size:9px!important; color:#708298!important; line-height:1.25!important;
+  }
   .brand-shell-v1 > .main .command-kpi > small,
   .brand-shell-v1 > .main .finance-kpi small {
     color:#728699!important; font-size:8.6px!important; line-height:1.25!important;
