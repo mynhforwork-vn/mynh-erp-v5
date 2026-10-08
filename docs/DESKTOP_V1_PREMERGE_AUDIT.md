@@ -9,7 +9,7 @@
 
 - Giữ giao diện đã chốt trên Desktop: KPI, bộ lọc ngày, sidebar, slidebar ngữ cảnh, bảng/HUB, kéo/ẩn/hiện/sắp xếp cột, màu cảnh báo HUB theo `urgentCount`.
 - Không thay hình thức bên ngoài chỉ để sửa bài kiểm thử.
-- Không tự chỉnh lại Mobile trước giai đoạn Mobile riêng.
+- **Không phát hành Mobile:** người dùng xác nhận loại hoàn toàn Mobile App UI, header, bottom navigation, stylesheet Mobile và QA Mobile khỏi bản Desktop chuẩn bị vào `main`.
 - Việc tạo PR không đồng nghĩa được phép deploy `main`.
 
 ## 2. Phạm vi chênh lệch với main
@@ -22,7 +22,7 @@ Tại lần audit 08/10/2026, nhánh đi trước `main` nhiều commit nên ph�
 | POS / Bán hàng | `components/sales-pos-workspace.tsx`, `lib/actions/sales.ts` | Test tạo POS, quản lý phân loại, xóa phân loại và xác minh quyền |
 | Tài chính | `app/(erp)/finance/*`, `components/finance-*table.tsx`, `lib/finance-period.ts` | So sánh KPI, lọc ngày, đối soát, chứng từ và tiền |
 | Điều hướng ngữ cảnh | `components/context-order-panel.tsx`, `context-sale-panel.tsx`, `system-slidebar.tsx` | Mở/đóng/Back không đổi tab; không tràn |
-| Mobile (chưa chốt) | `components/mobile-app-nav.tsx`, CSS responsive | **Rủi ro phạm vi:** mobile regression smoke tối thiểu hoặc loại thay đổi khỏi bản phát hành Desktop |
+| Mobile (loại khỏi bản phát hành) | Đã bỏ `mobile-app-nav.tsx`, `mobile-remediation.css`, `mobile-full-qa.mjs` và CSS mobile dưới 901px của Brand Responsive | Không tái nhập Mobile UX, không làm thay đổi desktop >=901px |
 | Database | `0008_add_purchase_account_devices.sql`, `0035_seed_finance_demo_data.sql` | Không có INSERT DEMO trong migration; schema/RLS giữ nguyên |
 | QA + CI | `scripts/*qa*`, `.github/workflows/*` | Build, Preview, Desktop QA đều PASS đúng HEAD commit |
 
@@ -42,8 +42,8 @@ Tại lần audit 08/10/2026, nhánh đi trước `main` nhiều commit nên ph�
 - [ ] Remediation static + Next.js build PASS trên HEAD.
 - [ ] Cloudflare isolated Preview PASS trên HEAD; Health/Login PASS.
 - [ ] Desktop Slidebar QA: phải, bảng, trái và cleanup fixture đều PASS trên HEAD.
-- [ ] Browser QA nghiệp vụ trọng yếu: Orders, Tracking, Kho, POS, Finance, role/bảo vệ thao tác xóa được kiểm tra bằng dữ liệu cô lập.
-- [ ] Mobile: chứng minh không hồi quy so với main hoặc loại mobile delta khỏi release.
+- [ ] Browser QA nghiệp vụ trọng yếu: Orders, Tracking, Kho, POS, Finance, role/bảo vệ thao tác xóa được kiểm tra bằng dữ liệu cô lập. **POS và Tài chính được người dùng duyệt UX, không miễn kiểm thử chức năng.**
+- [x] **Loại Mobile App UX khỏi release** theo quyết định người dùng. Mobile không còn là phần được đề xuất vào `main`; không triển khai thêm Mobile trong đợt này.
 - [ ] Data: không còn marker DEMO/QA sau QA cleanup; không xóa dữ liệu vận hành thực.
 - [ ] Kiểm tra phân quyền đối với `SECURITY DEFINER` RPC và xóa phân loại POS.
 - [ ] Người dùng đồng ý phát hành. Chỉ sau đó mới đánh dấu PR ready và merge `main`.
@@ -53,4 +53,11 @@ Tại lần audit 08/10/2026, nhánh đi trước `main` nhiều commit nên ph�
 - Không chạy migration reset / seed tại bước phát hành UX; không xóa cấu hình HUB, tracking, Telegram, ngân hàng.
 - Kiểm tra đường dẫn Đơn nhập, Cảnh báo vận chuyển, POS, Thu/Chi trước và ngay sau merge.
 - Bảo lưu SHA `main` trước merge để có thể rollback code qua revert nếu phát hiện lỗi; revert code **không tự rollback dữ liệu**.
-- Mobile redesign là giai đoạn riêng sau khi Desktop ổn định.
+- Không lập lại Mobile App UI trong đợt release này; nếu sau này cần hỗ trợ điện thoại sẽ phải xác định phạm vi và nghiệm thu riêng.
+
+## 6. Quyết định phạm vi (08/10/2026)
+
+- POS: **đã duyệt UX**.
+- Tài chính: **đã duyệt UX**.
+- Mobile: **không thêm vào main**. Đã gỡ bộ điều hướng/UX Mobile khỏi nhánh Desktop trước merge. Các responsive rule cũ thuộc code nền không được xem là một giao diện Mobile đã nghiệm thu.
+- Vẫn phải PASS Browser QA + Mutation/RBAC + Desktop QA trên commit sau khi loại Mobile mới được đề xuất merge.
