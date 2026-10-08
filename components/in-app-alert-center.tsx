@@ -58,24 +58,43 @@ export function InAppAlertCenter(){
   const [filter,setFilter]=useState<Filter>('unread')
   const [alerts,setAlerts]=useState<AlertGroup[]>([])
   const [loading,setLoading]=useState(true)
-  const timer=useRef<ReturnType<typeof setInterval>|null>(null)
+  const lastRequestAt=useRef(0)
+  const inFlight=useRef(false)
 
   async function load(){
+    // Keep the unread badge fresh without spending Cloudflare Free requests
+    // on hidden tabs or allowing duplicate requests from overlapping timers.
+    if(document.visibilityState==='hidden'||inFlight.current)return
+    const now=Date.now()
+    if(now-lastRequestAt.current<(open?300000:900000))return
+    lastRequestAt.current=now
+    inFlight.current=true
     try{
       const res=await fetch('/api/alerts/in-app',{cache:'no-store'})
       if(!res.ok)return
       const body=await res.json()
       setAlerts(Array.isArray(body.alerts)?body.alerts:[])
+    }catch{
+      // Keep the last known alerts if Cloudflare is temporarily unavailable.
     }finally{
+      inFlight.current=false
       setLoading(false)
     }
   }
 
   useEffect(()=>{
-    load()
-    timer.current=setInterval(load,30000)
-    return()=>{if(timer.current)clearInterval(timer.current)}
-  },[])
+    void load()
+    const check=()=>{if(document.visibilityState==='visible')void load()}
+    // Closed bell: every fifteen minutes. Open panel: every five minutes.
+    const interval=window.setInterval(check,open?300000:900000)
+    document.addEventListener('visibilitychange',check)
+    window.addEventListener('focus',check)
+    return()=>{
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange',check)
+      window.removeEventListener('focus',check)
+    }
+  },[open])
 
   useEffect(()=>{
     if(!open)return
