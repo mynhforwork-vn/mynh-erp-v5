@@ -263,8 +263,15 @@ for(const role of ['admin','operator','viewer']){
     }
 
     await go(page,role,'/settings?section=data-management')
-    const permanentDelete=await page.getByText('Xóa dữ liệu lưu trữ',{exact:true}).count()>0
-    record('ui',role+' permanent purge visibility',role==='admin'?permanentDelete:!permanentDelete,{permanentDelete})
+    // The permanent purge control is rendered only after opening the Archive subtab.
+    // Checking from the default Overview tab produces a false-negative for Admin.
+    const archiveTab=page.locator('.data-management-settings-v10 .settings-subtabs-v6')
+      .getByRole('button',{name:/^Lưu trữ & dọn dẹp/}).first()
+    const archiveTabVisible=await archiveTab.count()>0
+    if(archiveTabVisible)await archiveTab.click()
+    const permanentDelete=await page.locator('.data-management-settings-v10 .data-danger-confirm-v10')
+      .getByText('Xóa dữ liệu lưu trữ',{exact:true}).count()>0
+    record('ui',role+' permanent purge visibility',archiveTabVisible&&(role==='admin'?permanentDelete:!permanentDelete),{archiveTabVisible,permanentDelete})
 
     await go(page,role,'/settings?section=shipping&shipping_tab=hubs')
     const hubSubtab=page.locator('.shipping-settings-v6 .settings-subtabs-v6').getByRole('button',{name:/^Kho đích/}).first()
