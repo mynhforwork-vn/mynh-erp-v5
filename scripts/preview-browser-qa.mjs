@@ -919,7 +919,9 @@ recordInteraction('QA completed invoice exposes cancellation action',cancelReady
 recordInteraction('QA fixture without items safely blocks return',!returnReady&&noReturnableItems,{returnReady,noReturnableItems})
 if(cancelReady){
   await cancel.first().click()
-  const opened=await page.locator('[role=dialog]').count()>0
+  const cancelDialog=page.getByRole('dialog',{name:'Xác nhận huỷ hóa đơn'})
+  const opened=await cancelDialog.waitFor({state:'visible',timeout:8000}).then(()=>true).catch(()=>false)
+  if(opened)await page.waitForTimeout(120)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(250)
   const closedByEsc=await page.locator('[role=dialog]').count()===0
@@ -931,7 +933,7 @@ if(cancelReady){
   }
 
   await cancel.first().click()
-  const reopened=await page.locator('[role=dialog]').count()>0
+  const reopened=await cancelDialog.waitFor({state:'visible',timeout:8000}).then(()=>true).catch(()=>false)
   if(reopened){
     const sidebarRight=await page.locator('.sidebar').evaluate(el=>el.getBoundingClientRect().right).catch(()=>220)
     const backdrop=page.locator('.erp-confirm-overlay')
