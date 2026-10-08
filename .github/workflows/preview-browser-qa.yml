@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
-      PREVIEW_URL: https://remediation-76aed41c-mynh-erp-v5.mynh-forwork.workers.dev
+      PREVIEW_URL: https://redesign-brand-responsive-v1-mynh-erp-v5.mynh-forwork.workers.dev
       SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
       SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -122,9 +122,7 @@ jobs:
           npm install --no-save playwright
           npx playwright install --with-deps chromium
 
-      - name: Run full mobile tab/function QA
-        if: steps.browser_qa_prereq.outputs.ready == 'true'
-        run: node scripts/mobile-full-qa.mjs
+      # Mobile full QA deferred until the mobile-design phase.
 
       - name: Run Preview browser QA
         if: steps.browser_qa_prereq.outputs.ready == 'true'
@@ -148,7 +146,6 @@ jobs:
           name: preview-browser-qa-${{ github.sha }}
           path: |
             qa-browser-artifacts/
-            qa-mobile-full-artifacts/
           retention-days: 7
 
       - name: Cleanup isolated QA fixtures
