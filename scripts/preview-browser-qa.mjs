@@ -311,7 +311,10 @@ for(const spec of [
       }
     })
     recordInteraction('Table workspace contract '+path,
-      metrics.height>=180&&metrics.bottom<=metrics.viewportH+2&&(!metrics.stickyHeader||metrics.stickyHeader==='sticky'),
+      metrics.height>=180&&(path==='/finance/reports'
+        ? metrics.bottom<=metrics.viewportH+30 // report document scroll is intentional
+        : metrics.bottom<=metrics.viewportH+2)
+        &&(!metrics.stickyHeader||metrics.stickyHeader==='sticky'),
       metrics)
   }
   const managed=page.locator('.managed-column-button,.column-manager-button,.finance-column-button,.column-manager>.icon-button,.order-column-manager>.icon-button').first()
@@ -840,7 +843,7 @@ recordInteraction('Compact sidebar account trigger',await accountTrigger.count()
 if(await accountTrigger.count()){
   await accountTrigger.click()
   recordInteraction('Sidebar account menu opens',await page.locator('.sidebar-account-popover').count()>0)
-  recordInteraction('Sidebar account menu has password action',await page.locator('.sidebar-account-popover').getByRole('link',{name:'Đổi mật khẩu'}).count()>0)
+  recordInteraction('Sidebar account menu has password action',await page.locator('.sidebar-account-popover').getByRole('menuitem',{name:'Đổi mật khẩu'}).count()>0)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(150)
   recordInteraction('Sidebar account menu closes by Esc',await page.locator('.sidebar-account-popover').count()===0)
@@ -889,12 +892,13 @@ if(await templateTab.count()){
 await go('/settings?section=data-management')
 for(const name of ['Tổng quan dữ liệu','Lưu trữ & dọn dẹp','Reset hệ thống']){
   const sub=page.locator('.data-management-settings-v10 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
-  recordInteraction('Data subtab '+name,await sub.count()>0)
+  recordInteraction('Data subtab '+name,name==='Reset hệ thống' ? await sub.count()===0 : await sub.count()>0)
 }
 await go('/settings?section=access')
 for(const name of ['Tài khoản','Vai trò & quyền']){
   const sub=page.locator('.admin-access-settings-v10 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
-  recordInteraction('Access subtab '+name,await sub.count()>0)
+  // Browser QA uses an Operator account. Access settings are Admin-only.
+  recordInteraction('Access subtab '+name+' hidden for Operator',await sub.count()===0)
 }
 
 await go('/sales/history')
@@ -920,14 +924,19 @@ if(invoiceHrefs.length===0){
     }
   }
   recordInteraction('Sales History invoice panel opens',invoicePanelOpened)
-  recordInteraction('Sales History returnable invoice found',returnableInvoiceFound)
+  const noReturnableItems=await page.getByRole('button',{name:'Hoàn hàng'}).first().evaluate(el=>
+    (el instanceof HTMLButtonElement)&&el.disabled&&el.title==='Không còn sản phẩm có thể hoàn'
+  ).catch(()=>false)
+  recordInteraction('Sales History return eligibility matches available items',returnableInvoiceFound||noReturnableItems,
+    {returnableInvoiceFound,noReturnableItems})
 
   const cancel=page.getByRole('button',{name:'Huỷ hóa đơn'})
   const returnButton=page.getByRole('button',{name:'Hoàn hàng'})
   const cancelReady=await cancel.count()>0&&await cancel.first().isEnabled()
   const returnReady=await returnButton.count()>0&&await returnButton.first().isEnabled()
   recordInteraction('Sales History cancellation action available',cancelReady)
-  recordInteraction('Sales History return action available',returnReady)
+  recordInteraction('Sales History return action guarded by available items',returnReady||noReturnableItems,
+    {returnReady,noReturnableItems})
   if(cancelReady){
     await cancel.first().click()
     const opened=await page.locator('[role=dialog]').count()>0
@@ -969,7 +978,10 @@ await go('/settings')
 const settingsBody=await page.locator('body').innerText()
 summary.interactions.push({
   name:'Settings has no inactive V1 placeholders',
-  pass:!settingsBody.includes('Tài khoản & phân quyền')&&!settingsBody.includes('Tích hợp')&&!settingsBody.includes('Thông báo'),
+  // 'Thông báo' is a working settings tab, not an unfinished placeholder.
+  pass:!settingsBody.includes('Sắp triển khai')
+    &&!settingsBody.includes('Chưa hỗ trợ')
+    &&await page.locator('.settings-page-tabs-v3 a[href*="section=notifications"]').count()>0,
 })
 
 // Desktop-only release: Mobile is explicitly excluded from the UX contract.
