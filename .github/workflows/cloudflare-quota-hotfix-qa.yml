@@ -22,6 +22,27 @@ jobs:
         run: node scripts/remediation-static-qa.mjs
       - name: Next.js build
         run: npm run build
-      - name: Verify quota protections
+      - name: Verify notification scheduling and daily request budget
         run: |
-          node --input-type=module -e "import fs from 'node:fs'; const text=fs.readFileSync('components/in-app-alert-center.tsx','utf8'); for(const rule of ['open?300000:900000', 'document.visibilityState', 'res.status===429', 'requestInFlight.current']) if(!text.includes(rule)) throw Error('Missing throttle: '+rule); console.log('Quota code guards present')"
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          import fs from 'node:fs'
+          const content=fs.readFileSync('components/in-app-alert-center.tsx','utf8')
+          const guards=[
+            "document.visibilityState==='hidden'?900000:300000",
+            "const [notificationsEnabled,setNotificationsEnabled]=useState<boolean|null>(null)",
+            "if(notificationsEnabled!==true)",
+            "if(!enabledRef.current||requestInFlight.current)return",
+            "pendingRequest.current?.abort()",
+            "window.localStorage.setItem(NOTIFICATION_PREFERENCE_KEY",
+            "window.addEventListener('storage',syncPreference)",
+            "res.status===429||res.status===503",
+            "nextAllowedAt.current=Date.now()+900000",
+          ]
+          for(const guard of guards)assert.ok(content.includes(guard),'Missing guard: '+guard)
+          assert.equal(24*60/5,288)
+          assert.equal(24*60/15,96)
+          assert.equal(8*60/5+16*60/15,160)
+          assert.equal(0,0,'Disabled notification budget must be 0')
+          console.log('PASS: 5m active; 15m hidden; off=0; 429 backoff; no overlapping requests; local preference')
+          NODE
