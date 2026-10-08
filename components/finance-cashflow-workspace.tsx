@@ -716,6 +716,7 @@ export function FinanceCashflowWorkspace({
     <div className={'finance-ledger-layout '+(panel!=='NONE'?'with-panel':'')}>
     <section className="finance-ledger">
       <div className="finance-toolbar finance-toolbar-complete">
+        <div className="finance-toolbar-fields">
         <input className="search" value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}} placeholder="Tìm mã phiếu / nội dung / đối tượng..."/>
         <select value={filterType} onChange={e=>{setFilterType(e.target.value as any);setPage(1)}}><option value="ALL">Thu / Chi</option><option value="INCOME">Thu</option><option value="EXPENSE">Chi</option></select>
         <select value={filterCategory} onChange={e=>{setFilterCategory(e.target.value);setPage(1)}}><option value="ALL">Hạng mục</option>{categories.filter(c=>c.is_active).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
@@ -723,6 +724,7 @@ export function FinanceCashflowWorkspace({
         <select value={filterMethod} onChange={e=>{setFilterMethod(e.target.value);setPage(1)}}><option value="ALL">Phương thức</option><option value="CASH">Tiền mặt</option><option value="TRANSFER">Chuyển khoản</option><option value="COMBINED">Kết hợp</option></select>
         <select value={filterStatus} onChange={e=>{setFilterStatus(e.target.value as any);setPage(1)}}><option value="ALL">Trạng thái</option><option value="POSTED">Đã ghi nhận</option><option value="DRAFT">Nháp</option><option value="CANCELLED">Đã huỷ</option></select>
         <button className="button small" type="button" onClick={clearFilters}>Xoá lọc</button>
+        </div>
         <div className="finance-column-manager-wrap">
           <button className={'button small finance-column-button '+(columnMenu?'active':'')} type="button" onClick={()=>setColumnMenu(!columnMenu)}>☷ Cột</button>
           {columnMenu&&<div className="finance-column-manager-menu" onClick={e=>e.stopPropagation()}>
