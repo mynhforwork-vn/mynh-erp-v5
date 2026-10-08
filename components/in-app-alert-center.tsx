@@ -66,7 +66,7 @@ export function InAppAlertCenter(){
     // on hidden tabs or allowing duplicate requests from overlapping timers.
     if(document.visibilityState==='hidden'||inFlight.current)return
     const now=Date.now()
-    if(now-lastRequestAt.current<60000)return
+    if(now-lastRequestAt.current<(open?300000:900000))return
     lastRequestAt.current=now
     inFlight.current=true
     try{
@@ -85,8 +85,8 @@ export function InAppAlertCenter(){
   useEffect(()=>{
     void load()
     const check=()=>{if(document.visibilityState==='visible')void load()}
-    // Closed bell: every five minutes. Open panel: every minute.
-    const interval=window.setInterval(check,open?60000:300000)
+    // Closed bell: every fifteen minutes. Open panel: every five minutes.
+    const interval=window.setInterval(check,open?300000:900000)
     document.addEventListener('visibilitychange',check)
     window.addEventListener('focus',check)
     return()=>{
