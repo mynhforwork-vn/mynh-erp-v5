@@ -868,6 +868,60 @@ if (DESKTOP_ONLY_QA) {
       const safe=d.path.replaceAll('/','-').replace(/^-+/,'')||'home'
       await page.screenshot({path:`${outDir}/dashboard-${width}-${safe}.png`,fullPage:true})
     }
+
+    // Table toolbar and column settings must not create accidental second lines.
+    for (const t of [
+      {path:'/purchase/accounts',bar:'.entity-user-command',trigger:'.account-table-shell > .column-manager > .icon-button',menu:'.account-table-shell .column-manager-menu'},
+      {path:'/purchase/orders',bar:'.order-toolbar.entity-command-bar',trigger:'.order-table-shell > .order-column-manager > .icon-button',menu:'.order-table-shell .column-manager-menu'},
+      {path:'/finance/cashflow',bar:'.finance-toolbar-complete',trigger:'.finance-column-manager-wrap > .finance-column-button',menu:'.finance-column-manager-menu'},
+    ]) {
+      const r=await go(t.path)
+      const layout=await page.evaluate((cfg)=>{
+        const bar=document.querySelector(cfg.bar),button=document.querySelector(cfg.trigger)
+        const a=bar?.getBoundingClientRect(),b=button?.getBoundingClientRect()
+        const main=document.querySelector('.brand-shell-v1 > .main')?.getBoundingClientRect()
+        return {
+          barHeight:a?.height??0,buttonTop:b?.top??0,
+          buttonWithinMain:!!b&&!!main&&b.left>=main.left-1&&b.right<=main.right+1,
+          viewport:window.innerWidth,
+          documentWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
+          buttonVisible:!!b&&b.width>=24&&b.height>=24,
+        }
+      },t)
+      recordInteraction('Desktop '+width+' table toolbar '+t.path+' one row',
+        r.status>0&&r.status<500&&!r.url.includes('/login')
+        &&layout.barHeight>=28&&layout.barHeight<=48
+        &&layout.buttonWithinMain&&layout.buttonVisible
+        &&layout.documentWidth<=layout.viewport+2,layout)
+      const button=page.locator(t.trigger).first()
+      if(await button.count()){
+        await button.click()
+        const pop=await page.evaluate(sel=>{
+          const m=document.querySelector(sel)
+          const r=m?.getBoundingClientRect()
+          return {open:!!m,left:r?.left??-1,right:r?.right??-1,width:r?.width??0,viewport:window.innerWidth}
+        },t.menu)
+        recordInteraction('Desktop '+width+' column menu '+t.path+' inside viewport',
+          pop.open&&pop.left>=-1&&pop.right<=pop.viewport+2&&pop.width>=170,pop)
+        await page.keyboard.press('Escape')
+      }
+      const safe=t.path.replaceAll('/','-').replace(/^-+/,'')
+      await page.screenshot({path:`${outDir}/table-toolbar-${width}-${safe}.png`,fullPage:false})
+    }
+
+    for(const [range,label] of [['all','Toàn thời gian'],['today','Hôm nay'],['7d','7 ngày'],['30d','30 ngày'],['month','Tháng này']]){
+      await go('/?range='+range)
+      const actual=await page.locator('.system-kpi-filter .command-range a.active').allInnerTexts()
+      const active=actual.map(x=>x.trim())
+      recordInteraction('Desktop '+width+' KPI filter '+range,active.includes(label),{active})
+    }
+    await go('/')
+    const cardStyle=await page.locator('.kpi-grid .kpi-card').first().evaluate(el=>{
+      const s=getComputedStyle(el)
+      return {radius:parseFloat(s.borderTopLeftRadius),shadow:s.boxShadow,bg:s.backgroundImage}
+    })
+    recordInteraction('Desktop '+width+' KPI card soft elevation',
+      cardStyle.radius>=8&&cardStyle.shadow!=='none',cardStyle)
   }
 }
 if (!DESKTOP_ONLY_QA) {
