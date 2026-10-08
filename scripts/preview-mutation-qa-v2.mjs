@@ -183,13 +183,9 @@ await go('/sales/history?sale='+encodeURIComponent(cancelSale.id))
 await page.getByRole('button',{name:'Huỷ hóa đơn'}).click()
 const cancelDialog=page.getByRole('dialog',{name:'Xác nhận huỷ hóa đơn'})
 await cancelDialog.locator('textarea').fill(f.marker+' cancel')
-record('Cancel invoice requires account password',await cancelDialog.getByRole('textbox',{name:'Mật khẩu đăng nhập ERP'}).count()===0&&await cancelDialog.locator('input[name="account_password"][type="password"]').count()===1)
-await cancelDialog.locator('input[name="account_password"]').fill('QA_WRONG_PASSWORD')
-await cancelDialog.getByRole('button',{name:'Xác nhận huỷ'}).click()
-await cancelDialog.getByRole('alert').filter({hasText:'Mật khẩu đăng nhập không chính xác'}).waitFor({state:'visible',timeout:12000})
-const afterWrongPass=await first('/rest/v1/sales?select=sale_status&id=eq.'+encodeURIComponent(cancelSale.id))
-record('Wrong login password prevents sale cancellation',afterWrongPass?.sale_status==='COMPLETED')
-await cancelDialog.locator('input[name="account_password"]').fill(session.password)
+record('Cancel dialog reason is optional, credentials not requested',await cancelDialog.locator('input[type="password"],input[type="email"]').count()===0
+  &&await cancelDialog.locator('textarea').count()===1
+  &&!(await cancelDialog.locator('textarea').evaluate(el=>el.required)))
 await cancelDialog.getByRole('button',{name:'Xác nhận huỷ'}).click()
 const cancelled=await waitFor(async()=>{
   const row=await first('/rest/v1/sales?select=id,sale_status,total_amount,paid_amount,debt_amount&id=eq.'+encodeURIComponent(cancelSale.id))
@@ -201,6 +197,8 @@ record('Cancel sale creates CANCEL return',Boolean(cancelReturn?.id)&&Number(can
 const cancelFinance=cancelReturn?.id?await first('/rest/v1/finance_transactions?select=tx_type,category,amount,status&reference_type=eq.SALE_CANCEL&reference_id=eq.'+encodeURIComponent(cancelReturn.id)):null
 record('Cancel sale creates finance refund',cancelFinance?.tx_type==='EXPENSE'&&cancelFinance?.category==='SALE_CANCEL_REFUND'&&Number(cancelFinance?.amount)===Number(f.mutation_sale_price)&&cancelFinance?.status==='POSTED')
 record('Cancel sale restores stock',await balance(f.warehouse_id)===2,{quantity:await balance(f.warehouse_id)})
+const cancelAudit=await first('/rest/v1/audit_logs?select=actor_user_id,new_value&module=eq.SALES&action=eq.CANCEL_SALE&entity_id=eq.'+encodeURIComponent(cancelSale.id))
+record('Cancel audit preserves actor and optional reason',Boolean(cancelAudit?.actor_user_id)&&cancelAudit?.new_value?.reason===f.marker+' cancel')
 
 // B) Partial then full return.
 const returnSale=await createCashSale(2)
@@ -237,6 +235,9 @@ const returnFinance=await admin('/rest/v1/finance_transactions?select=id,amount,
 const relatedReturnIds=new Set((returnRows??[]).map(x=>String(x.id)))
 const relatedFinance=(returnFinance??[]).filter(x=>relatedReturnIds.has(String(x.reference_id??'')))
 record('Return flow refunds collected cash',relatedFinance.reduce((s,x)=>s+Number(x.amount??0),0)===Number(f.mutation_sale_price)*2,{refundTotal:relatedFinance.reduce((s,x)=>s+Number(x.amount??0),0)})
+const returnAudit=await admin('/rest/v1/audit_logs?select=actor_user_id,new_value&module=eq.SALES&action=eq.RETURN_SALE&entity_id=eq.'+encodeURIComponent(returnSale.id))
+record('Return audit preserves actor and optional reasons',Array.isArray(returnAudit)&&returnAudit.length===2
+  &&returnAudit.every(x=>Boolean(x.actor_user_id)&&String(x.new_value?.reason??'').includes(f.marker+' return ')))
 
 // C) Archive / restore returned invoice.
 const returnInvoice=(await first('/rest/v1/sales?select=invoice_code&id=eq.'+encodeURIComponent(returnSale.id)))?.invoice_code

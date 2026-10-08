@@ -1,0 +1,37 @@
+/* Unified operation confirmation on MYNH ERP desktop. */
+.erp-confirm-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(24,39,56,.44)}
+.erp-confirm-dialog{width:min(460px,100%);max-height:86vh;overflow:auto;background:#fff;border:1px solid #dbe3eb;border-radius:9px;box-shadow:0 18px 54px rgba(18,33,50,.20);color:#273e56;text-align:left}
+.erp-confirm-header{display:flex;align-items:flex-start;gap:12px;padding:20px 20px 16px;border-bottom:1px solid #e8edf2}
+.erp-confirm-symbol{display:flex;align-items:center;justify-content:center;flex:none;width:38px;height:38px;border:1px solid #cce4e3;border-radius:7px;background:#eef8f7;color:#247b7a;font-size:18px;font-weight:800}
+.erp-confirm-symbol.danger{background:#fff1f1;color:#b74747;border-color:#eed3d3}
+.erp-confirm-header-main{min-width:0;flex:1}
+.erp-confirm-eyebrow{display:block;color:#7a91a4;letter-spacing:.09em;font-size:10px;font-weight:760;margin-bottom:4px}
+.erp-confirm-header h2{margin:0;color:#233d55;font-size:18px;line-height:1.25;font-weight:760}
+.erp-confirm-header p{margin:7px 0 0;color:#72859a;font-size:12px;line-height:1.55}
+.erp-confirm-close{flex:none;border:0;background:transparent;color:#788c9f;font-size:23px;width:25px;height:25px;line-height:1;cursor:pointer}
+.erp-confirm-body{padding:17px 20px}
+.erp-confirm-target{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid #e3e9ef;background:#f8fafc;border-radius:6px}
+.erp-confirm-target>span{color:#74889b;font-size:11px;white-space:nowrap}
+.erp-confirm-target>b{font-size:12px;color:#315d81;text-align:right;line-height:1.4;overflow-wrap:anywhere}
+.erp-confirm-note{margin:12px 0 15px;padding:9px 11px;background:#fff8f5;border-left:3px solid #dc9992;color:#745e5d;font-size:11px;line-height:1.6}
+.erp-confirm-label{display:flex;flex-direction:column;gap:7px;margin-top:13px;font-size:12px;font-weight:700;color:#354e68}
+.erp-confirm-label>span{font-size:11px;font-weight:450;color:#8493a3}
+.erp-confirm-label textarea{width:100%;min-height:67px;resize:vertical;border:1px solid #cfdae4;border-radius:6px;background:#fff;padding:10px 11px;color:#284059;font-size:12px;line-height:1.5;outline:none}
+.erp-confirm-label textarea:focus{border-color:#397ba8;box-shadow:0 0 0 2px rgba(56,123,168,.10)}
+.erp-confirm-history{margin:9px 0 0;color:#8192a3;font-size:11px;line-height:1.5}
+.erp-confirm-error{margin:12px 0 0;padding:9px 11px;background:#fff3f2;color:#a13f3f;border:1px solid #f1cccc;border-radius:6px;font-size:11px;line-height:1.5}
+.erp-confirm-footer{display:flex;justify-content:flex-end;gap:9px;padding:15px 20px 18px;border-top:1px solid #e9edf2;background:#fbfcfd}
+.erp-confirm-footer button{min-height:36px;padding:0 15px;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer}
+.erp-confirm-back{border:1px solid #d2dce6;color:#536d86;background:#fff}
+.erp-confirm-submit{border:1px solid #1f7b78;background:#1f7b78;color:#fff}
+.erp-confirm-submit.danger{border-color:#b5484b;background:#b5484b}
+.erp-confirm-submit:disabled,.erp-confirm-back:disabled{opacity:.6;cursor:wait}
+.erp-confirm-trigger{border:1px solid #dfbaba;background:#fff7f7;color:#a5474b;padding:7px 11px;min-height:31px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer}
+.erp-confirm-detail-entry{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:#fffbfb;border-top:1px solid #e8d9dc}
+.erp-confirm-detail-entry>div{display:flex;flex-direction:column;gap:4px;min-width:0}
+.erp-confirm-detail-entry b{font-size:11px;color:#884f56}
+.erp-confirm-detail-entry span{font-size:10px;color:#8390a0}
+.erp-confirm-return-items{display:flex;flex-direction:column;gap:7px;margin-top:14px;max-height:260px;overflow-y:auto}
+.erp-confirm-return-items .sales-return-line{padding:9px 10px;border:1px solid #e0e7ed;border-radius:6px;background:#fafcfd}
+.erp-confirm-return-items input[type=number]{width:68px;min-height:33px;font-size:13px}
+@media(max-width:520px){.erp-confirm-overlay{padding:11px}.erp-confirm-dialog{max-height:94vh}.erp-confirm-header{padding:16px}.erp-confirm-body{padding:14px 16px}.erp-confirm-footer{padding:14px 16px;flex-direction:column-reverse}.erp-confirm-footer button{width:100%}.erp-confirm-detail-entry{flex-direction:column;align-items:stretch}}

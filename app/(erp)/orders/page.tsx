@@ -698,10 +698,10 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                         <div><b>Đơn đang lưu trữ</b><span>Dữ liệu và lịch sử vẫn được giữ nguyên.</span></div>
                         <button className="button primary" type="submit">Khôi phục</button>
                       </form>
-                      {role==='admin'&&<details className="permanent-delete-box">
-                        <summary>Xóa vĩnh viễn đơn</summary>
+                      {role==='admin'&&<div className="permanent-delete-box erp-confirm-detail-entry">
+                        <div><b>Xóa vĩnh viễn</b><span>Cần xác nhận trước khi xóa. Hệ thống tự ghi lịch sử.</span></div>
                         <DeleteOrderConfirmForm orderId={String(detail.id)} confirmCode={String(detail.shopee_order_id??detail.id.slice(0,8))} returnQuery={returnQuery}/>
-                      </details>}
+                      </div>}
                     </>}
               </div>}
 

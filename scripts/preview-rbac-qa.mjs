@@ -371,23 +371,14 @@ for(const role of ['admin','operator','viewer']){
       if(!found)throw new Error('Cannot locate unique QA deletion order')
       await matching.getByRole('button',{name:'Mở thao tác'}).click()
       await matching.getByRole('button',{name:'Xóa đơn',exact:true}).click()
-      const dialog=matching.locator('.row-delete-popover')
-      const confirmationVisible=await dialog.getByText('Xóa vĩnh viễn?').count()>0
-      record('ui','Delete order requires exact code confirmation',confirmationVisible)
-      // Invalid confirmation must NOT render the fatal Next.js error boundary or delete data.
-      await dialog.locator('input[name="confirm_text"]').fill('QA_SAI_MA_DON')
-      await dialog.getByRole('button',{name:'Xóa vĩnh viễn'}).click()
-      const inlineError=await dialog.getByRole('alert').filter({hasText:'Mã đơn xác nhận không khớp'}).count()>0
-      const rejectedOrder=(await adminRest('/rest/v1/orders?select=id&id=eq.'+encodeURIComponent(orderId)))[0]
-      record('ui','Wrong delete confirmation reports inline without crashing',inlineError&&String(rejectedOrder?.id)===orderId)
-      await dialog.locator('input[name="confirm_text"]').fill(orderCode)
-      await dialog.locator('input[name="account_password"]').fill('QA_WRONG_PASSWORD')
-      await dialog.getByRole('button',{name:'Xóa vĩnh viễn'}).click()
-      const passwordRejected=await dialog.getByRole('alert').filter({hasText:'Mật khẩu đăng nhập không chính xác'}).count()>0
-      const stillThere=(await adminRest('/rest/v1/orders?select=id&id=eq.'+encodeURIComponent(orderId)))[0]
-      record('ui','Wrong login password blocks permanent deletion',passwordRejected&&String(stillThere?.id)===orderId)
-      await dialog.locator('input[name="account_password"]').fill(qa.password)
-      await dialog.getByRole('button',{name:'Xóa vĩnh viễn'}).click()
+      const dialog=page.getByRole('dialog',{name:'Xóa vĩnh viễn đơn hàng'})
+      await dialog.waitFor({state:'visible'})
+      const noCredentials=await dialog.locator('input[type="password"],input[type="email"],input[name="confirm_text"]').count()===0
+      const reasonOptional=await dialog.locator('textarea').count()===1&&!(await dialog.locator('textarea').first().evaluate(el=>el.required))
+      const correctTarget=await dialog.getByText(orderCode,{exact:true}).count()>0
+      record('ui','Order delete requires only confirmation, optional reason',noCredentials&&reasonOptional&&correctTarget)
+      await dialog.locator('textarea').fill(f.marker+' deleted for QA audit')
+      await dialog.getByRole('button',{name:'Xác nhận xóa'}).click()
       let vanished=false
       for(let i=0;i<30;i++){
         const rows=await adminRest('/rest/v1/orders?select=id&id=eq.'+encodeURIComponent(orderId))
@@ -397,6 +388,9 @@ for(const role of ['admin','operator','viewer']){
       const itemRows=await adminRest('/rest/v1/order_items?select=id&id=eq.'+encodeURIComponent(itemId))
       record('backend','Admin deletes isolated QA order via UI',vanished,{orderCode})
       record('backend','Deletion cascades QA order item',vanished&&itemRows.length===0)
+      const auditRows=await adminRest('/rest/v1/audit_logs?select=actor_user_id,old_value,new_value&action=eq.DELETE_ORDER_PERMANENT&order=created_at.desc&limit=20')
+      const deleteAudit=(auditRows??[]).find(row=>(row.old_value?.order_ids??[]).includes(orderId))
+      record('backend','Delete audit retains actor, order and optional reason',Boolean(deleteAudit?.actor_user_id)&&deleteAudit?.new_value?.reason===f.marker+' deleted for QA audit')
       const otherOrder=(await adminRest('/rest/v1/orders?select=id&id=eq.'+encodeURIComponent(f.hub_order_id)))[0]
       record('backend','Deletion preserves unrelated QA order',String(otherOrder?.id)===String(f.hub_order_id))
     }

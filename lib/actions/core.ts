@@ -2,7 +2,6 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/supabase/auth'
-import { verifyAccountPassword } from '@/lib/security/verify-account-password'
 
 function text(v:FormDataEntryValue|null){return String(v??'').trim()}
 
@@ -665,11 +664,10 @@ function deleteOrderErrorMessage(error:unknown){
 }
 export async function deleteOrderPermanent(formData:FormData){
   try{
-    const {supabase,user,role}=await actor()
+    const {supabase,role}=await actor()
     requireAdmin(role)
     const returnQuery=text(formData.get('return_query'))
     const orderId=text(formData.get('order_id'))
-    const confirmText=text(formData.get('confirm_text'))
     if(!orderId)return {ok:false as const,error:'Thiếu đơn cần xóa'}
 
     const {data:row,error:readError}=await supabase
@@ -680,13 +678,9 @@ export async function deleteOrderPermanent(formData:FormData){
     if(readError)throw readError
     if(!row)return {ok:false as const,error:'Đơn không còn tồn tại. Tải lại danh sách để cập nhật.'}
 
-    const expected=String(row.shopee_order_id??row.id.slice(0,8))
-    if(confirmText!==expected)return {ok:false as const,error:'Mã đơn xác nhận không khớp'}
-    const verified=await verifyAccountPassword(user,String(formData.get('account_password')??''))
-    if(!verified.ok)return verified
 
     // Exactly one RPC attempt: do not replay a potentially committed destructive request.
-    const {error}=await supabase.rpc('delete_orders_permanent_safe',{p_order_ids:[orderId]})
+    const {error}=await supabase.rpc('delete_orders_permanent_safe',{p_order_ids:[orderId],p_reason:text(formData.get('reason'))||null})
     if(error)throw error
 
     revalidateOrderLifecycle()
@@ -860,12 +854,10 @@ export async function restoreOrdersBulk(formData:FormData){
 
 export async function deleteOrdersBulkPermanent(formData:FormData){
   try{
-    const {supabase,user,role}=await actor()
+    const {supabase,role}=await actor()
     requireAdmin(role)
     const returnQuery=text(formData.get('return_query'))
     const orderIds=bulkOrderIds(formData)
-    const confirmText=text(formData.get('confirm_text')).toUpperCase()
-    if(confirmText!=='XOA DON DA CHON')return {ok:false as const,error:'Cụm xác nhận không đúng'}
 
     const {data:rows,error:readError}=await supabase
       .from('orders')
@@ -876,10 +868,7 @@ export async function deleteOrdersBulkPermanent(formData:FormData){
       return {ok:false as const,error:'Có đơn không tồn tại hoặc không có quyền truy cập'}
     }
     const returnArchive=(rows??[]).every((x:any)=>Boolean(x.archived_at))?'archived':null
-    const verified=await verifyAccountPassword(user,String(formData.get('account_password')??''))
-    if(!verified.ok)return verified
-
-    const {error}=await supabase.rpc('delete_orders_permanent_safe',{p_order_ids:orderIds})
+    const {error}=await supabase.rpc('delete_orders_permanent_safe',{p_order_ids:orderIds,p_reason:text(formData.get('reason'))||null})
     if(error)throw error
 
     revalidateOrderLifecycle()
