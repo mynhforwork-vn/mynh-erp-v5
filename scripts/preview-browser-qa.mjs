@@ -815,7 +815,16 @@ if(await customerMode.count()){
 await go('/finance/shipper-payments?view=hub')
 const fixtureHub=String(session.fixtures?.shipper_hub??'')
 const hubCard=page.locator('a.finance-hub-card').filter({hasText:fixtureHub}).first()
-if(await hubCard.count()){
+// A full document request can precede newly persisted fixture visibility.
+// Require the actual HUB card rather than passing merely because the route renders.
+let hubVisible=await hubCard.count()>0
+for(let attempt=2;!hubVisible&&attempt<=4;attempt++){
+  await page.waitForTimeout(850*attempt)
+  await go('/finance/shipper-payments?view=hub')
+  hubVisible=await hubCard.count()>0
+  if(hubVisible)summary.transientWarnings.push({type:'QA_HUB_VISIBLE_AFTER_RETRY',attempt,hub:fixtureHub})
+}
+if(hubVisible){
   const hubNav=await followLink(hubCard,{waitSelector:'aside.finance-hub-live-panel'})
   recordInteraction('Shipper QA HUB panel opens',await page.locator('aside.finance-hub-live-panel').count()>0,{href:hubNav.href,hub:fixtureHub})
   const linkedOrder=page.locator('aside.finance-hub-live-panel a.finance-hub-order-link').filter({hasText:'QA Shipper HUB'}).first()
@@ -826,7 +835,11 @@ if(await hubCard.count()){
     if(await back.count())await followLink(back,{waitSelector:'aside.finance-hub-live-panel'})
     recordInteraction('Shipper contextual QA Order Back returns HUB',await page.locator('aside.finance-hub-live-panel').count()>0)
   }else recordInteraction('Shipper contextual QA Order link available',false,{hub:fixtureHub})
-}else recordInteraction('Shipper QA HUB fixture available',false,{hub:fixtureHub||null})
+}else{
+  const visibleHubs=(await page.locator('a.finance-hub-card .finance-hub-card-head b').allTextContents()).slice(0,10)
+  const body=(await page.locator('body').innerText()).slice(0,1200)
+  recordInteraction('Shipper QA HUB fixture available',false,{hub:fixtureHub||null,visibleHubs,route:page.url(),emptyState:body.includes('Không có HUB phù hợp.'),errorBanner:body.includes('Không thể tải dữ liệu')})
+}
 
 await go('/settings')
 recordInteraction('Sidebar notification bell',await page.locator('.brand-shell-v1>.sidebar .sidebar-alert-trigger').count()>0)
