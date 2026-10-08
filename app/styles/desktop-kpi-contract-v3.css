@@ -637,3 +637,201 @@
     margin-right:auto!important;
   }
 }
+
+/* V6 — Sidebar header alignment and Tracking HUB accordion density.
+   Navigation toggle shares the logo row; no separate top row.
+   Tracking HUBs follow document flow, not equal-height flex expansion. */
+@media(min-width:901px){
+  .brand-shell-v1 > .sidebar > .sidebar-brand-row {
+    box-sizing:border-box!important;
+    width:100%!important;
+    min-width:0!important;
+    height:49px!important;
+    min-height:49px!important;
+    flex:0 0 49px!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 28px!important;
+    align-items:center!important;
+    gap:3px!important;
+    border-bottom:1px solid #DFE6EC!important;
+    margin-bottom:7px!important;
+    padding:0 2px 4px!important;
+    overflow:visible!important;
+  }
+  .brand-shell-v1 > .sidebar > .sidebar-brand-row > .brand {
+    box-sizing:border-box!important;
+    display:flex!important;
+    flex:initial!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    min-height:0!important;
+    height:41px!important;
+    justify-content:flex-start!important;
+    align-items:center!important;
+    gap:7px!important;
+    padding:0!important;
+    margin:0!important;
+    border:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 > .sidebar > .sidebar-brand-row > .brand > span:last-child {
+    min-width:0!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 > .sidebar > .sidebar-brand-row > .sidebar-collapse-toggle {
+    box-sizing:border-box!important;
+    position:static!important;
+    inset:auto!important;
+    transform:none!important;
+    align-self:center!important;
+    justify-self:center!important;
+    flex:none!important;
+    width:27px!important;
+    min-width:27px!important;
+    height:27px!important;
+    min-height:27px!important;
+    margin:0!important;
+    padding:0!important;
+    border:1px solid #D1DEE8!important;
+    border-radius:5px!important;
+    color:#476782!important;
+    background:#FFF!important;
+    box-shadow:none!important;
+  }
+  .brand-shell-v1 > .sidebar > .sidebar-brand-row > .sidebar-collapse-toggle:hover{
+    background:#EDF4FA!important;
+    border-color:#A9C2D7!important;
+    color:#214F91!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed > .sidebar > .sidebar-brand-row{
+    grid-template-columns:28px 23px!important;
+    justify-content:center!important;
+    gap:3px!important;
+    height:43px!important;
+    min-height:43px!important;
+    flex-basis:43px!important;
+    padding:0 0 4px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed > .sidebar > .sidebar-brand-row > .brand{
+    flex:initial!important;
+    width:28px!important;
+    min-width:28px!important;
+    height:35px!important;
+    min-height:35px!important;
+    margin:0!important;
+    padding:0!important;
+    justify-content:center!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed > .sidebar > .sidebar-brand-row .brand-mark{
+    width:28px!important;
+    min-width:28px!important;
+    height:28px!important;
+    min-height:28px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed > .sidebar > .sidebar-brand-row > .sidebar-collapse-toggle{
+    width:23px!important;
+    min-width:23px!important;
+    height:25px!important;
+    min-height:25px!important;
+  }
+
+  /* Tracking accordion: natural stacking with a bounded inner table scroller. */
+  .brand-shell-v1 .tracking-content-workspace > .tracking-hub-stack-v2{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    align-content:start!important;
+    justify-content:flex-start!important;
+    gap:4px!important;
+    height:100%!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    padding:0 0 6px!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace > .tracking-hub-stack-v2 > .tracking-hub-card-v2,
+  .brand-shell-v1 .tracking-content-workspace > .tracking-hub-stack-v2 > .tracking-hub-card-v2.open{
+    position:relative!important;
+    flex:0 0 auto!important;
+    align-self:stretch!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    border:1px solid #DCE5EC!important;
+    background:#FFF!important;
+    border-radius:5px!important;
+    box-shadow:none!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace > .tracking-hub-stack-v2 > .tracking-hub-card-v2.columns-open{
+    z-index:25!important;
+  }
+  .brand-shell-v1 .tracking-hub-card-v2 .tracking-hub-head-v2,
+  .brand-shell-v1 .tracking-hub-card-v2.collapsed .tracking-hub-head-v2 {
+    flex:0 0 auto!important;
+    border-bottom:1px solid #E1E8EE!important;
+    background:#F7FAFC!important;
+  }
+  .brand-shell-v1 .tracking-hub-card-v2.collapsed .tracking-hub-head-v2{
+    border-bottom:0!important;
+  }
+  .brand-shell-v1 .tracking-hub-card-v2.open > .tracking-hub-table-wrap-v2{
+    box-sizing:border-box!important;
+    flex:0 1 auto!important;
+    min-height:0!important;
+    height:auto!important;
+    max-height:min(46vh,430px)!important;
+    overflow-y:auto!important;
+    overflow-x:auto!important;
+    background:#FFF!important;
+  }
+  .brand-shell-v1 .tracking-hub-card-v2.open > .receive-compact-bar{
+    flex:0 0 auto!important;
+  }
+  /* Only status / urgency indicators carry meaning; HUB identity is always neutral. */
+  .brand-shell-v1 .tracking-hub-card-v2 .tracking-hub-identity > b,
+  .brand-shell-v1 .tracking-hub-card-v2 .tracking-hub-identity > div > b{
+    color:#294158!important;
+  }
+  /* Column control is inside the HUB header; the redundant toolbar no longer exists. */
+  .brand-shell-v1 .tracking-hub-card-v2 > .tracking-managed-toolbar{
+    display:none!important;
+  }
+  .brand-shell-v1 .tracking-hub-card-v2 .tracking-hub-summary-state{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:5px!important;
+    white-space:nowrap!important;
+  }
+  .brand-shell-v1 .tracking-hub-card-v2 .tracking-hub-summary-state > .managed-column-wrap{
+    position:relative!important;
+    flex:0 0 auto!important;
+    z-index:35!important;
+  }
+  .brand-shell-v1 .tracking-hub-card-v2 .tracking-hub-summary-state .managed-column-button{
+    display:inline-flex!important;
+    min-width:44px!important;
+    width:44px!important;
+    height:26px!important;
+    min-height:26px!important;
+    padding:0 4px!important;
+    font-size:9px!important;
+    border-radius:4px!important;
+    white-space:nowrap!important;
+  }
+  .brand-shell-v1 .tracking-hub-card-v2 .tracking-hub-summary-state .managed-column-menu{
+    position:absolute!important;
+    top:calc(100% + 4px)!important;
+    right:0!important;
+    left:auto!important;
+    z-index:100!important;
+    width:244px!important;
+    min-width:244px!important;
+    max-height:min(62vh,410px)!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    box-shadow:0 12px 28px rgba(32,54,74,.17)!important;
+  }
+}
