@@ -944,7 +944,14 @@ if(invoiceHrefs.length===0){
     await cancel.first().click()
     const reopened=await page.locator('[role=dialog]').count()>0
     if(reopened){
-      await page.locator('.sales-action-backdrop').click({position:{x:4,y:4}})
+      // Click genuinely outside the dialog, but to the right of the fixed desktop
+      // sidebar. x=4 used to hit the navigation rail instead of the backdrop.
+      const sidebarRight=await page.locator('.sidebar').evaluate(el=>el.getBoundingClientRect().right).catch(()=>220)
+      const backdrop=page.locator('.sales-action-backdrop')
+      const bb=await backdrop.boundingBox()
+      const clickX=Math.max(sidebarRight+22,(bb?.x??0)+18)
+      const clickY=(bb?.y??0)+14
+      await page.mouse.click(clickX,clickY)
       await page.waitForTimeout(250)
     }
     recordInteraction('Sales cancel modal closes by outside click',reopened&&await page.locator('[role=dialog]').count()===0)
