@@ -23,6 +23,10 @@ jobs:
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
+      - name: Static QA
+        run: node scripts/remediation-static-qa.mjs
+      - name: Next.js build with account-specific recovery boundary
+        run: npm run build
       - name: Verify temporary QA authorization available
         run: test -n "$SUPABASE_SERVICE_ROLE_KEY"
       - name: Create one temporary operator session for read-only route checks
