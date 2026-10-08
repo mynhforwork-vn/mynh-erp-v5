@@ -1,0 +1,25 @@
+name: Cloudflare Request Root Cause Audit (Read Only)
+
+on:
+  push:
+    branches:
+      - audit/cloudflare-workers-v5
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Inspect usage and permission boundaries without modifying resources
+        run: node scripts/cloudflare-request-rootcause-audit.mjs
