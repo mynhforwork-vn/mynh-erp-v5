@@ -1,0 +1,27 @@
+name: Cloudflare Quota Hotfix QA
+on:
+  push:
+    branches:
+      - fix/cloudflare-request-quota
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Static QA
+        run: node scripts/remediation-static-qa.mjs
+      - name: Next.js build
+        run: npm run build
+      - name: Verify quota protections
+        run: |
+          node --input-type=module -e "import fs from 'node:fs'; const text=fs.readFileSync('components/in-app-alert-center.tsx','utf8'); for(const rule of ['open?300000:900000', 'document.visibilityState', 'res.status===429', 'requestInFlight.current']) if(!text.includes(rule)) throw Error('Missing throttle: '+rule); console.log('Quota code guards present')"
