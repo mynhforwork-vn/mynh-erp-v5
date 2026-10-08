@@ -135,6 +135,29 @@ async function createCashSale(quantity){
   return sale
 }
 
+
+// CRITICAL QA: Browser print output must contain the actual invoice, not ERP chrome.
+async function verifyInvoicePrint(source,invoiceCode,{trigger,receiptSelector}){
+  await page.evaluate(()=>{window.__qaPrintCalls=0;window.print=()=>{window.__qaPrintCalls++}})
+  await trigger()
+  await page.waitForFunction(()=>window.__qaPrintCalls===1,{timeout:6000})
+  const receipt=page.locator(receiptSelector).first()
+  const domReady=await receipt.count()>0&&await receipt.innerText().then(t=>t.includes(invoiceCode))
+  await page.emulateMedia({media:'print'})
+  const media=await receipt.evaluate(el=>({
+    visibility:getComputedStyle(el).visibility,
+    display:getComputedStyle(el).display,
+    rectWidth:Math.round(el.getBoundingClientRect().width),
+  })).catch(()=>({visibility:'missing',display:'none',rectWidth:0}))
+  const pdf=await page.pdf({printBackground:true,preferCSSPageSize:true})
+  const validPdf=pdf.subarray(0,5).toString()==='%PDF-'&&pdf.length>2500
+  record(source+' invokes one print dialog',await page.evaluate(()=>window.__qaPrintCalls)===1)
+  record(source+' contains matching invoice ID',domReady,{invoiceCode})
+  record(source+' print media renders receipt',media.visibility==='visible'&&media.display!=='none'&&media.rectWidth>100,media)
+  record(source+' produces printable PDF',validPdf,{bytes:pdf.length})
+  await page.emulateMedia({media:'screen'})
+}
+
 // V2 baseline: v1 left two QA units in the source warehouse and no customer debt.
 record('V2 baseline source stock is two',await balance(f.warehouse_id)===2,{quantity:await balance(f.warehouse_id)})
 const baselineDebt=await first('/rest/v1/customer_debt_balances?select=balance&customer_id=eq.'+encodeURIComponent(f.customer_id))
@@ -143,6 +166,16 @@ record('V2 baseline customer debt is zero',!baselineDebt||Number(baselineDebt.ba
 // A) Cash sale cancellation must reverse inventory and finance.
 const cancelSale=await createCashSale(1)
 persist({mutation_cancel_sale_id:String(cancelSale.id)})
+await verifyInvoicePrint('POS completed sale',String(cancelSale.invoice_code),{
+  trigger:()=>page.locator('.pos-success-actions').getByRole('button',{name:'In hóa đơn'}).click(),
+  receiptSelector:'.pos-inline-receipt-print',
+})
+await go('/sales/history?sale='+encodeURIComponent(cancelSale.id))
+await verifyInvoicePrint('Sales history invoice reprint',String(cancelSale.invoice_code),{
+  trigger:()=>page.locator('.sales-history-actions').getByRole('button',{name:'In hóa đơn'}).click(),
+  receiptSelector:'.sales-receipt-print',
+})
+
 record('Cancellation fixture cash sale persisted',cancelSale.payment_status==='PAID'&&Number(cancelSale.paid_amount)===Number(f.mutation_sale_price),{saleId:cancelSale.id})
 record('Cancellation fixture decrements stock',await balance(f.warehouse_id)===1,{quantity:await balance(f.warehouse_id)})
 
