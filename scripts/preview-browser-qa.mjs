@@ -934,7 +934,7 @@ if(cancelReady){
   const reopened=await page.locator('[role=dialog]').count()>0
   if(reopened){
     const sidebarRight=await page.locator('.sidebar').evaluate(el=>el.getBoundingClientRect().right).catch(()=>220)
-    const backdrop=page.locator('.sales-action-backdrop')
+    const backdrop=page.locator('.erp-confirm-overlay')
     const bb=await backdrop.boundingBox()
     const clickX=Math.max(sidebarRight+22,(bb?.x??0)+18)
     const clickY=(bb?.y??0)+14
