@@ -41,6 +41,18 @@ export function DesktopTableColumnResize() {
     }
     const save = (table:HTMLTableElement, values:Record<string,number>) => {
       try { window.localStorage.setItem(tableId(table), JSON.stringify(values)) } catch { /* storage disabled */ }
+      window.dispatchEvent(new CustomEvent('mynh-table-column-width-changed',{detail:{key:tableId(table)}}))
+    }
+    const clearInlineWidths = (table:HTMLTableElement) => {
+      table.style.removeProperty('table-layout')
+      table.style.removeProperty('width')
+      table.style.removeProperty('min-width')
+      table.classList.remove('mynh-resizable-table')
+      headerCells(table).forEach(th=>{
+        th.style.removeProperty('width')
+        th.style.removeProperty('min-width')
+        th.style.removeProperty('max-width')
+      })
     }
     // Only take control of fixed widths once a user has customized this table.
     const freezeWidths = (table:HTMLTableElement, overrides:Record<string,number>) => {
@@ -131,16 +143,10 @@ export function DesktopTableColumnResize() {
           if(!table)return
           const widths=readSaved(table)
           delete widths[label]
-          if(!Object.keys(widths).length){
-            save(table,{})
-            table.style.removeProperty('table-layout')
-            table.style.removeProperty('width')
-            table.style.removeProperty('min-width')
-            table.classList.remove('mynh-resizable-table')
-            headerCells(table).forEach(h=>{
-              h.style.removeProperty('width');h.style.removeProperty('min-width');h.style.removeProperty('max-width')
-            })
-          }else{save(table,widths);freezeWidths(table,widths)}
+          // Measure the natural width again before re-applying any other custom widths.
+          clearInlineWidths(table)
+          save(table,widths)
+          if(Object.keys(widths).length)freezeWidths(table,widths)
         })
         grip.addEventListener('keydown',e=>{
           if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return
@@ -173,9 +179,22 @@ export function DesktopTableColumnResize() {
     observer.observe(main,{childList:true,subtree:true})
     const onChange=()=>{if(mq.matches)queue()}
     mq.addEventListener('change',onChange)
+    const sync=(event:Event)=>{
+      const key=(event as CustomEvent<{key?:string}>).detail?.key
+      if(!key || !mq.matches)return
+      main.querySelectorAll('table.table').forEach(el=>{
+        const table=el as HTMLTableElement
+        if(tableId(table)!==key)return
+        const widths=readSaved(table)
+        clearInlineWidths(table)
+        if(Object.keys(widths).length)freezeWidths(table,widths)
+      })
+    }
+    window.addEventListener('mynh-table-column-width-changed',sync)
     queue()
     return ()=>{
       observer.disconnect()
+      window.removeEventListener('mynh-table-column-width-changed',sync)
       mq.removeEventListener('change',onChange)
       if(scheduled)window.cancelAnimationFrame(scheduled)
     }
