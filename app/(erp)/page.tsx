@@ -41,7 +41,7 @@ export default async function Dashboard({searchParams}:{searchParams:Promise<Das
     count(inPeriod(supabase.from('shipments').select('*',{count:'exact',head:true}).eq('tracking_enabled',true).eq('is_active',true),'created_at')),
     count(inPeriod(supabase.from('shipments').select('*',{count:'exact',head:true}).eq('tracking_enabled',true).lte('next_track_at',now),'created_at')),
     count(inPeriod(supabase.from('alert_events').select('id,orders!inner(archived_at)',{count:'exact',head:true}).is('sent_at',null).is('orders.archived_at',null),'created_at')),
-    count(inPeriod(supabase.from('tracking_sync_logs').select('*',{count:'exact',head:true}).eq('result','FAILED'),'created_at')),
+    count(inPeriod(supabase.from('tracking_sync_logs').select('*',{count:'exact',head:true}).eq('result','FAILED'),'started_at')),
     count(inPeriod(supabase.from('orders').select('*',{count:'exact',head:true}).is('archived_at',null),'order_date')),
     count(inPeriod(supabase.from('orders').select('*',{count:'exact',head:true}).is('archived_at',null).eq('receive_status','WAITING_RECEIVE'),'order_date')),
     inPeriod(supabase.from('orders').select('id,shopee_order_id,cod,destination_hub,receive_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active)').is('archived_at',null),'order_date').order('created_at',{ascending:false}).limit(8),
