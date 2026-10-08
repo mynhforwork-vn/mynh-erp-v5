@@ -2,6 +2,7 @@
 
 import { useCallback,useEffect,useMemo,useRef,useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {isTrackingQuietNow,msToQuietBoundary,NOTIFICATION_POLL_MS} from '@/lib/notification-quiet-hours'
 
 type AlertGroup={
   alert_ids:string[]
@@ -18,8 +19,7 @@ type AlertGroup={
 }
 type Filter='unread'|'all'
 const NOTIFICATION_PREFERENCE_KEY='mynh-erp-in-app-notifications-enabled'
-const TRACKING_PREFERENCE_KEY='mynh-erp-auto-tracking-enabled'
-const NOTIFICATION_POLL_MS=120000
+const TRACKING_RUNTIME_KEY='mynh-erp-tracking-runtime'
 
 function BellIcon(){
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -55,7 +55,7 @@ function when(value:string){
   }catch{return value}
 }
 
-export function InAppAlertCenter({trackingEnabled:initialTrackingEnabled}:{trackingEnabled:boolean}){
+export function InAppAlertCenter({trackingEnabled:initialTrackingEnabled,quietStart:initialQuietStart,quietEnd:initialQuietEnd}:{trackingEnabled:boolean;quietStart:string;quietEnd:string}){
   const router=useRouter()
   const [open,setOpen]=useState(false)
   const [filter,setFilter]=useState<Filter>('unread')
@@ -64,6 +64,10 @@ export function InAppAlertCenter({trackingEnabled:initialTrackingEnabled}:{track
   // null until browser preference has loaded; avoid an unwanted first request.
   const [notificationsEnabled,setNotificationsEnabled]=useState<boolean|null>(null)
   const [trackingEnabled,setTrackingEnabled]=useState(initialTrackingEnabled)
+  const [quietStart,setQuietStart]=useState(initialQuietStart)
+  const [quietEnd,setQuietEnd]=useState(initialQuietEnd)
+  const quietRef=useRef({start:quietStart,end:quietEnd})
+  quietRef.current={start:quietStart,end:quietEnd}
   const enabledRef=useRef(false)
   enabledRef.current=notificationsEnabled===true&&trackingEnabled===true
   const timer=useRef<ReturnType<typeof setTimeout>|null>(null)
@@ -74,6 +78,8 @@ export function InAppAlertCenter({trackingEnabled:initialTrackingEnabled}:{track
 
   const load=useCallback(async()=>{
     if(!enabledRef.current||requestInFlight.current)return
+    const {start,end}=quietRef.current
+    if(isTrackingQuietNow(new Date(),start,end))return
     const now=Date.now()
     const interval=NOTIFICATION_POLL_MS
     if(now<nextAllowedAt.current||now-lastRequestAt.current<interval)return
@@ -83,7 +89,7 @@ export function InAppAlertCenter({trackingEnabled:initialTrackingEnabled}:{track
     pendingRequest.current=controller
     try{
       const res=await fetch('/api/alerts/in-app',{cache:'no-store',signal:controller.signal})
-      if(!enabledRef.current)return
+      if(!enabledRef.current||isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end))return
       if(res.status===429||res.status===503){
         nextAllowedAt.current=Date.now()+900000
         return
@@ -100,27 +106,34 @@ export function InAppAlertCenter({trackingEnabled:initialTrackingEnabled}:{track
     }
   },[])
 
-  // Follow the server-confirmed Auto Tracking state on layout refresh.
-  useEffect(()=>setTrackingEnabled(initialTrackingEnabled),[initialTrackingEnabled])
-
-  // Same-tab event and cross-tab storage event are dispatched after a successful settings save.
+  // Read the current runtime from Supabase on page load, then follow verified admin saves.
   useEffect(()=>{
-    const onTrackingChanged=(event:Event)=>{
-      const enabled=(event as CustomEvent<{enabled:boolean}>).detail?.enabled===true
-      setTrackingEnabled(enabled)
-      if(!enabled)pendingRequest.current?.abort()
+    setTrackingEnabled(initialTrackingEnabled)
+    setQuietStart(initialQuietStart)
+    setQuietEnd(initialQuietEnd)
+  },[initialTrackingEnabled,initialQuietStart,initialQuietEnd])
+
+  useEffect(()=>{
+    const apply=(payload:unknown)=>{
+      if(!payload||typeof payload!=='object')return
+      const value=payload as {enabled?:boolean;quietStart?:string;quietEnd?:string}
+      const start=value.quietStart??quietRef.current.start
+      const end=value.quietEnd??quietRef.current.end
+      setTrackingEnabled(value.enabled===true)
+      setQuietStart(start)
+      setQuietEnd(end)
+      if(value.enabled!==true||isTrackingQuietNow(new Date(),start,end))pendingRequest.current?.abort()
     }
-    const onTrackingStorage=(event:StorageEvent)=>{
-      if(event.key!==TRACKING_PREFERENCE_KEY)return
-      const enabled=event.newValue==='true'
-      setTrackingEnabled(enabled)
-      if(!enabled)pendingRequest.current?.abort()
+    const changed=(event:Event)=>apply((event as CustomEvent).detail)
+    const stored=(event:StorageEvent)=>{
+      if(event.key!==TRACKING_RUNTIME_KEY||!event.newValue)return
+      try{apply(JSON.parse(event.newValue))}catch{/* ignore invalid data */}
     }
-    window.addEventListener('mynh-erp-tracking-changed',onTrackingChanged)
-    window.addEventListener('storage',onTrackingStorage)
+    window.addEventListener('mynh-erp-tracking-changed',changed)
+    window.addEventListener('storage',stored)
     return()=>{
-      window.removeEventListener('mynh-erp-tracking-changed',onTrackingChanged)
-      window.removeEventListener('storage',onTrackingStorage)
+      window.removeEventListener('mynh-erp-tracking-changed',changed)
+      window.removeEventListener('storage',stored)
     }
   },[])
 
@@ -151,13 +164,24 @@ export function InAppAlertCenter({trackingEnabled:initialTrackingEnabled}:{track
     const schedule=()=>{
       if(timer.current)clearTimeout(timer.current)
       if(stopped||!enabledRef.current)return
-      const interval=NOTIFICATION_POLL_MS
-      const next=Math.max(lastRequestAt.current+interval,nextAllowedAt.current)
-      const delay=Math.max(0,next-Date.now(),requestInFlight.current?1000:0)
-      timer.current=setTimeout(()=>void tick(),delay)
+      const at=new Date()
+      const {start,end}=quietRef.current
+      if(isTrackingQuietNow(at,start,end)){
+        pendingRequest.current?.abort()
+        timer.current=setTimeout(()=>void tick(),msToQuietBoundary(at,'end',start,end))
+        return
+      }
+      const next=Math.max(lastRequestAt.current+NOTIFICATION_POLL_MS,nextAllowedAt.current)
+      const wait=Math.max(0,next-at.getTime(),requestInFlight.current?1000:0)
+      timer.current=setTimeout(()=>void tick(),Math.min(wait,msToQuietBoundary(at,'start',start,end)))
     }
     const tick=async()=>{
       if(stopped||!enabledRef.current)return
+      if(isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end)){
+        pendingRequest.current?.abort()
+        schedule()
+        return
+      }
       await load()
       schedule()
     }
@@ -169,11 +193,11 @@ export function InAppAlertCenter({trackingEnabled:initialTrackingEnabled}:{track
       if(timer.current){clearTimeout(timer.current);timer.current=null}
       document.removeEventListener('visibilitychange',onVisibility)
     }
-  },[notificationsEnabled,trackingEnabled,load])
+  },[notificationsEnabled,trackingEnabled,quietStart,quietEnd,load])
 
   function toggleNotifications(){
     const next=notificationsEnabled!==true
-    enabledRef.current=next
+    enabledRef.current=next&&trackingEnabled
     if(!next){
       pendingRequest.current?.abort()
       setAlerts([])
@@ -200,7 +224,7 @@ export function InAppAlertCenter({trackingEnabled:initialTrackingEnabled}:{track
   )
 
   async function mark(ids:string[]){
-    if(!ids.length||!enabledRef.current)return
+    if(!ids.length||!enabledRef.current||isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end))return
     setAlerts(current=>current.map(x=>x.alert_ids.some(id=>ids.includes(id))?{...x,is_read:true}:x))
     await fetch('/api/alerts/in-app',{
       method:'POST',
@@ -210,7 +234,7 @@ export function InAppAlertCenter({trackingEnabled:initialTrackingEnabled}:{track
   }
 
   async function markAll(){
-    if(!enabledRef.current)return
+    if(!enabledRef.current||isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end))return
     setAlerts(current=>current.map(x=>({...x,is_read:true})))
     await fetch('/api/alerts/in-app',{
       method:'POST',
