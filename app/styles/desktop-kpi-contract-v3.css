@@ -543,3 +543,97 @@
     width:260px!important;
   }
 }
+
+/* V5 — Desktop navigation rail geometry.
+   Keep toggle as the FIRST control within the sidebar, not a floating edge control.
+   Override historical 14px footer offset without touching right-side system slidebars. */
+@media (min-width:901px) {
+  .brand-shell-v1 > .sidebar > .sidebar-collapse-toggle {
+    position:relative!important;
+    inset:auto!important;
+    top:auto!important;
+    right:auto!important;
+    left:auto!important;
+    bottom:auto!important;
+    z-index:10!important;
+    flex:0 0 30px!important;
+    align-self:flex-end!important;
+    width:30px!important;
+    min-width:30px!important;
+    height:30px!important;
+    min-height:30px!important;
+    margin:0 0 6px!important;
+    padding:0!important;
+    display:grid!important;
+    place-items:center!important;
+    border:1px solid #CBD9E4!important;
+    border-radius:6px!important;
+    background:#FFF!important;
+    color:#385F85!important;
+    box-shadow:0 1px 4px rgba(28,54,79,.07)!important;
+    transform:none!important;
+  }
+  .brand-shell-v1 > .sidebar > .sidebar-collapse-toggle:hover,
+  .brand-shell-v1 > .sidebar > .sidebar-collapse-toggle:focus-visible{
+    border-color:#8DADC9!important;
+    color:#214F91!important;
+    background:#EFF5FA!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed > .sidebar > .sidebar-collapse-toggle {
+    align-self:center!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+  }
+  .brand-shell-v1 > .sidebar > .brand {
+    flex-shrink:0!important;
+    margin-top:0!important;
+  }
+  /* The collapsed rail's inner space is exactly 58px: (72 - 2×7).
+     No left translation; avatar and bell sit symmetrically on the same row. */
+  .brand-shell-v1.desktop-sidebar-collapsed > .sidebar > .sidebar-foot-v2 {
+    position:relative!important;
+    left:0!important;
+    right:auto!important;
+    top:auto!important;
+    transform:none!important;
+    box-sizing:border-box!important;
+    display:grid!important;
+    flex-direction:row!important;
+    grid-template-columns:28px 28px!important;
+    grid-template-rows:28px!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:2px!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:40px!important;
+    min-height:40px!important;
+    margin:7px 0 0!important;
+    padding:7px 0 4px!important;
+    overflow:visible!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-menu,
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-trigger,
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-alert-trigger {
+    box-sizing:border-box!important;
+    width:28px!important;
+    min-width:28px!important;
+    max-width:28px!important;
+    height:28px!important;
+    min-height:28px!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-user-avatar {
+    margin:auto!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-alert-trigger {
+    display:grid!important;
+    place-items:center!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav a {
+    margin-left:auto!important;
+    margin-right:auto!important;
+  }
+}
