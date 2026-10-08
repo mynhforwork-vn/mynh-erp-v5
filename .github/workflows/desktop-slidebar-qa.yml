@@ -11,6 +11,9 @@ on:
       - scripts/desktop-table-qa.mjs
       - scripts/desktop-sidebar-qa.mjs
       - scripts/preview-browser-qa.mjs
+      - scripts/preview-mutation-qa.mjs
+      - scripts/preview-mutation-qa-v2.mjs
+      - scripts/preview-rbac-qa.mjs
       - scripts/remediation-static-qa.mjs
       - supabase/migrations/**
       - docs/DESKTOP_V1_PREMERGE_AUDIT.md
