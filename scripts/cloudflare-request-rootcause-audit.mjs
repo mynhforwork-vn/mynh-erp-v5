@@ -57,6 +57,27 @@ const top=[...hours].sort((a,b)=>b.requests-a.requests).slice(0,10)
 console.log('TOP_HOURLY '+JSON.stringify({hours_examined:hours.length,top10:top,
   hours_over_5000:hours.filter(x=>x.requests>5000).length,
   hours_over_10000:hours.filter(x=>x.requests>10000).length}))
+// Invocation outcome is not an HTTP status; it tells whether the Worker executed successfully.
+const outcomeQuery='query($accountTag:string,$start:string,$end:string){viewer{accounts(filter:{accountTag:$accountTag}){workersInvocationsAdaptive(limit:10000,filter:{datetime_geq:$start,datetime_lt:$end}){dimensions{scriptName status} sum{requests errors}}}}}'
+for(const p of windows){
+  const response=await graph(outcomeQuery,{accountTag:account,start:new Date(p.start).toISOString(),end:new Date(p.end).toISOString()})
+  const entries=response.result?.viewer?.accounts?.[0]?.workersInvocationsAdaptive
+  const summary={}
+  if(Array.isArray(entries)){
+    for(const row of entries){
+      const service=row.dimensions?.scriptName||'(unassigned)'
+      const status=row.dimensions?.status||'(unset)'
+      if(!summary[service])summary[service]={}
+      const current=summary[service][status]||{requests:0,errors:0}
+      current.requests+=Number(row.sum?.requests||0)
+      current.errors+=Number(row.sum?.errors||0)
+      summary[service][status]=current
+    }
+  }
+  console.log('WORKER_OUTCOMES '+JSON.stringify({period:p.label,available:Array.isArray(entries),
+    http:response.status,errorCount:response.errors.length,
+    production:summary['mynh-erp-v5']||{},legacy:summary['erp-auto-tracking']||{}}))
+}
 for(const typeName of ['WorkersInvocationsAdaptiveDimensions','WorkersInvocationsAdaptiveSum']){
   const g=await graph('query($name:String!){__type(name:$name){name fields{name}}}',{name:typeName})
   const fields=(g.result?.__type?.fields||[]).map(x=>x.name)
