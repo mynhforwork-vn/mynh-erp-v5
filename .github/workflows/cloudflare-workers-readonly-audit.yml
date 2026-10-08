@@ -95,4 +95,20 @@ jobs:
                 group_count:group.length,groups:sums}));
             }catch {console.log('ANALYTICS '+safe({period:period.label,available:false,notes:'FETCH_ERROR'}));}
           }
+          const telemetry='/accounts/'+account+'/workers/observability/telemetry/keys';
+          try{
+            const r=await fetch(root+telemetry,{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:'{}'});
+            const j=await r.json();
+            console.log('TELEMETRY_KEYS '+JSON.stringify({http:r.status,success:j.success,
+              keys:(Array.isArray(j.result)?j.result:[]).map(x=>x.key).filter(x=>/url|method|status|service|origin|trigger|request|path/i.test(x)).slice(0,60),
+              errorCodes:(j.errors||[]).map(e=>e.code||'UNKNOWN')}));
+          }catch{console.log('TELEMETRY_KEYS ERROR');}
+          for(const name of ['mynh-erp-v5','mynh-erp-notify-v1']){
+            try{
+              const response=await fetch('https://'+name+'.mynh-forwork.workers.dev/api/health');
+              const raw=(await response.text()).slice(0,3000);
+              console.log('SITE_PROBE '+JSON.stringify({name,status:response.status,cloudflareCode:(raw.match(/(?:error\s*code|code)[^\d]{0,50}(10\d\d)/i)||[])[1]||null,
+                mentionsDailyLimit:/daily|quota|limit exceeded|free tier/i.test(raw),mentionsRateLimit:/rate limit|too many requests/i.test(raw)}));
+            }catch{console.log('SITE_PROBE '+JSON.stringify({name,unreachable:true}));}
+          }
           NODE
