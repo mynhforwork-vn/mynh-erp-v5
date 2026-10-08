@@ -88,6 +88,7 @@ for(const spec of [
 const dashboardCases=[
   ['/purchase/orders?range=all','.order-kpi-grid-v2 > .kpi-card',8,'Đơn nhập'],
   ['/purchase?range=all','.purchase-command-kpis-v2 > .command-kpi',8,'Tổng quan mua hàng'],
+  ['/purchase/tracking?range=all','.tracking-status-strip-v2 > .tracking-status-metric',5,'Cảnh báo vận chuyển'],
   ['/?range=all','main .kpi-grid > .kpi-card',6,'Dashboard tổng'],
   ['/warehouse','.whx-kpi-grid.seven > a',7,'Tổng quan kho'],
   ['/warehouse/inventory','.whx-kpi-grid.seven > a',7,'Tồn kho'],
@@ -145,7 +146,12 @@ for(const width of [1024,1440,2560]){
       m.barHeight>=28&&m.barHeight<=43&&m.buttonWidth>=25&&m.buttonInViewport&&m.buttonAligned&&m.documentWidth<=width+2,m)
     const trigger=page.locator(t.button).first()
     if(await trigger.count()){
-      await trigger.click({timeout:5000})
+      let clickOK=true
+      try { await trigger.click({timeout:5000}) } catch(e) {
+        clickOK=false
+        rec(t.name+' — nút Cột click được '+width,false,{error:String(e).slice(0,180)})
+      }
+      if(clickOK){
       const popup=await page.evaluate(sel=>{
         const el=document.querySelector(sel),r=el?.getBoundingClientRect()
         return {present:!!el,visible:!!r&&r.width>100,left:r?.left??-1,right:r?.right??-1,viewport:innerWidth}
@@ -153,6 +159,7 @@ for(const width of [1024,1440,2560]){
       rec(t.name+' — menu Cột gọn trong màn hình '+width,
         popup.present&&popup.visible&&popup.left>=-2&&popup.right<=popup.viewport+2,popup)
       await page.keyboard.press('Escape')
+      }
     }else rec(t.name+' — có nút Cột '+width,false)
   }
   await go('/purchase/orders?range=all')
