@@ -111,6 +111,23 @@ jobs:
                 mentionsDailyLimit:/daily|quota|limit exceeded|free tier/i.test(raw),mentionsRateLimit:/rate limit|too many requests/i.test(raw)}));
             }catch{console.log('SITE_PROBE '+JSON.stringify({name,unreachable:true}));}
           }
+          // Anonymous-only, non-mutating Preview probes: no credentials and no user data.
+          const previewBase='https://desktop-polish-v1-mynh-erp-v5.mynh-forwork.workers.dev';
+          for(const test of [
+            {method:'GET',path:'/purchase/accounts?mode=create'},
+            {method:'POST',path:'/api/alerts/in-app'}
+          ]){
+            try{
+              const res=await fetch(previewBase+test.path,{
+                method:test.method,redirect:'manual',
+                headers:test.method==='POST'?{'content-type':'application/json'}:undefined,
+                body:test.method==='POST'?'{}':undefined
+              });
+              console.log('DESKTOP_WRITE_GATE '+JSON.stringify({method:test.method,path:test.path,status:res.status,
+                redirectsToLogin:res.headers.get('location')?.startsWith('/login')??false,
+                isRateLimited:res.status===429,unauthorized:res.status===401}));
+            }catch{console.log('DESKTOP_WRITE_GATE '+JSON.stringify({method:test.method,path:test.path,unreachable:true}));}
+          }
           const subscription=await api('/accounts/'+account+'/workers/subscription');
           console.log('SUBSCRIPTION '+JSON.stringify({http:subscription.http,success:subscription.success,
             plan:subscription.result?.plan?.id??subscription.result?.plan?.name??subscription.result?.name??null}));
