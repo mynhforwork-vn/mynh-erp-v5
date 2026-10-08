@@ -31,6 +31,8 @@ await context.addCookies([...cookieMap.values()].map(c=>({
 })))
 const page=await context.newPage()
 const results=[]
+const artifactDir='qa-desktop-slidebar-artifacts'
+fs.mkdirSync(artifactDir,{recursive:true})
 
 async function go(path){
   let lastStatus=0
@@ -82,39 +84,86 @@ for(const spec of [
   }
 }
 
-// Desktop KPI and period-filter contract on the approved desktop-polish Preview.
-for (const width of [1024,1440,2560]) {
+// Desktop KPI/toolbar audit on the approved desktop-polish Preview.
+const dashboardCases=[
+  ['/purchase/orders?range=all','.order-kpi-grid-v2 > .kpi-card',8,'Đơn nhập'],
+  ['/purchase?range=all','.purchase-command-kpis-v2 > .command-kpi',8,'Tổng quan mua hàng'],
+  ['/?range=all','main .kpi-grid > .kpi-card',6,'Dashboard tổng'],
+  ['/warehouse','.whx-kpi-grid.seven > a',7,'Tổng quan kho'],
+  ['/warehouse/inventory','.whx-kpi-grid.seven > a',7,'Tồn kho'],
+  ['/warehouse/history','.whx-kpi-grid.five > div',5,'Lịch sử kho'],
+  ['/sales?range=all','.sales-kpi-strip > .sales-kpi',7,'Tổng quan bán hàng'],
+  ['/sales/customers','.customer-demo-kpis > a',4,'Khách hàng'],
+  ['/sales/debt','.debt-demo-kpis > :is(a,div)',5,'Công nợ'],
+  ['/finance?range=all','.finance-overview-kpis > .finance-kpi',6,'Tổng quan tài chính'],
+  ['/finance/reports','.finance-report-kpis:not(.five) > .finance-kpi',3,'Báo cáo tài chính'],
+  ['/finance/cashflow','.finance-kpi-grid > .finance-kpi',0,'Thu–Chi'],
+]
+for(const width of [1024,1440,2560]){
   await page.setViewportSize({width,height:900})
-  for (const [path,selector,expected,label] of [
-    ['/purchase/orders?range=all','.order-kpi-grid-v2 > .kpi-card',8,'Đơn nhập'],
-    ['/purchase?range=all','.purchase-command-kpis-v2 > .command-kpi',8,'Tổng quan mua hàng'],
-    ['/?range=all','main .kpi-grid > .kpi-card',6,'Dashboard'],
-    ['/warehouse','.whx-kpi-grid.seven > a',7,'Tổng quan kho'],
-    ['/sales?range=all','.sales-kpi-strip > .sales-kpi',7,'Tổng quan bán hàng'],
-    ['/finance?range=all','.finance-overview-kpis > .finance-kpi',6,'Tổng quan tài chính'],
-  ]) {
+  for(const [path,selector,expected,label] of dashboardCases){
     await go(path)
     const m=await page.evaluate(sel=>{
-      const els=[...document.querySelectorAll(sel)]
+      const els=[...document.querySelectorAll(sel)].filter(x=>getComputedStyle(x).display!=='none')
       const tops=els.map(x=>x.getBoundingClientRect().top)
-      const first=els[0]?.parentElement, r=first?.getBoundingClientRect()
-      const parentStyle=first?getComputedStyle(first):null
-      return {count:els.length,
-        rowAligned:tops.length>0&&Math.max(...tops)-Math.min(...tops)<3,
-        radius:parseFloat(parentStyle?.borderTopLeftRadius||'0'),
-        shadow:parentStyle?.boxShadow||'none',
-        contained:!!r&&r.left>=0&&r.right<=innerWidth+2,
-        viewport:innerWidth}
+      const parent=els[0]?.parentElement
+      const pr=parent?.getBoundingClientRect()
+      const style=els[0]?getComputedStyle(els[0]):null
+      return {
+        count:els.length,
+        rowAligned:tops.length>0 && Math.max(...tops)-Math.min(...tops)<=3,
+        radius:parseFloat(style?.borderTopLeftRadius||'0'),
+        shadow:style?.boxShadow||'none',
+        contained:!!pr&&pr.left>=-1&&pr.right<=innerWidth+2,
+        documentWidth:document.documentElement.scrollWidth,
+        viewport:innerWidth,
+      }
     },selector)
-    rec(label+' — KPI '+width+'px',m.count===expected&&m.rowAligned&&m.radius>=3&&m.radius<=5&&m.shadow!=='none'&&m.contained,m)
+    // Some cashflow KPI cards are generated client-side; check them when present.
+    const validCount=expected===0?m.count>=1:m.count===expected
+    rec(label+' — desktop KPI '+width,validCount&&m.rowAligned&&m.radius>=4&&m.radius<=8&&m.shadow!=='none'&&m.contained&&m.documentWidth<=width+2,m)
+    if(width===1440){
+      const safe=label.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'-').toLowerCase()
+      await page.screenshot({path:artifactDir+'/dashboard-'+safe+'-1440.png',fullPage:false})
+    }
+  }
+  for(const t of [
+    {path:'/purchase/accounts',bar:'.account-filter-bar.one-line',button:'.account-table-shell .managed-column-button',menu:'.account-table-shell .column-manager-menu',name:'User'},
+    {path:'/purchase/orders',bar:'.order-toolbar.entity-command-bar',button:'.order-table-shell .managed-column-button',menu:'.order-table-shell .column-manager-menu',name:'Đơn nhập'},
+    {path:'/finance/cashflow',bar:'.finance-toolbar-complete',button:'.finance-toolbar-complete .finance-column-button',menu:'.finance-column-manager-menu',name:'Thu–Chi'},
+  ]){
+    await go(t.path)
+    const m=await page.evaluate(cfg=>{
+      const bar=document.querySelector(cfg.bar),button=document.querySelector(cfg.button)
+      const br=bar?.getBoundingClientRect(),cr=button?.getBoundingClientRect()
+      return {barHeight:br?.height??0,buttonWidth:cr?.width??0,
+        buttonInViewport:!!cr&&cr.left>=-1&&cr.right<=innerWidth+1,
+        buttonAligned:!!br&&!!cr&&cr.top>=br.top-4&&cr.bottom<=br.bottom+5,
+        documentWidth:document.documentElement.scrollWidth}
+    },t)
+    rec(t.name+' — single-row toolbar + cột '+width,
+      m.barHeight>=28&&m.barHeight<=43&&m.buttonWidth>=25&&m.buttonInViewport&&m.buttonAligned&&m.documentWidth<=width+2,m)
+    const trigger=page.locator(t.button).first()
+    if(await trigger.count()){
+      await trigger.click({timeout:5000})
+      const popup=await page.evaluate(sel=>{
+        const el=document.querySelector(sel),r=el?.getBoundingClientRect()
+        return {present:!!el,visible:!!r&&r.width>100,left:r?.left??-1,right:r?.right??-1,viewport:innerWidth}
+      },t.menu)
+      rec(t.name+' — menu Cột gọn trong màn hình '+width,
+        popup.present&&popup.visible&&popup.left>=-2&&popup.right<=popup.viewport+2,popup)
+      await page.keyboard.press('Escape')
+    }else rec(t.name+' — có nút Cột '+width,false)
   }
   await go('/purchase/orders?range=all')
   const express=page.locator('.order-kpi-grid-v2 > .express')
-  rec('Đơn nhập — có KPI Hỏa tốc và bộ lọc tổng',await express.count()===1&&String(await express.getAttribute('href')).includes('tracking=express_all'))
+  rec('Đơn nhập — KPI Hỏa tốc hoạt động '+width,
+    await express.count()===1&&String(await express.getAttribute('href')).includes('tracking=express_all'))
   await go('/purchase?range=all')
-  rec('Tổng quan mua hàng — KPI Hỏa tốc dẫn sang Đơn nhập',await page.locator('.purchase-command-kpis-v2 > .express[href*="express_all"]').count()===1)
+  rec('Mua hàng — KPI Hỏa tốc hoạt động '+width,
+    await page.locator('.purchase-command-kpis-v2 > .express[href*="express_all"]').count()===1)
 }
-for(const [path,active] of [
+for(const [path,label]of [
   ['/?range=all','Toàn thời gian'],
   ['/purchase?range=quarter','Quý này'],
   ['/purchase/orders?range=year','Năm nay'],
@@ -122,9 +171,8 @@ for(const [path,active] of [
   ['/finance?range=7d','7 ngày'],
 ]){
   await go(path)
-  const nav=page.locator('.purchase-date-filter .command-range')
-  const selected=(await nav.locator('.active').allTextContents()).map(x=>x.trim())
-  rec('KPI period '+path,selected.includes(active),{selected})
+  const selected=(await page.locator('.purchase-date-filter .command-range .active').allTextContents()).map(x=>x.trim())
+  rec('Bộ lọc KPI '+path,selected.includes(label),{selected})
 }
 
 const pass=results.every(x=>x.pass)
