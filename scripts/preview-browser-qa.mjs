@@ -817,12 +817,12 @@ if (DESKTOP_ONLY_QA) {
     const toggle=page.locator('.brand-shell-v1 > .sidebar .desktop-sidebar-toggle')
     recordInteraction('Desktop '+width+' has top sidebar toggle',await toggle.count()===1)
     if(await toggle.count()) {
-      const expand=async(desired)=>{
+      const ensureCollapsed=async(desired)=>{
         const collapsed=await page.locator('.brand-shell-v1.desktop-sidebar-collapsed').count()>0
-        if(collapsed===desired)await toggle.click()
+        if(collapsed!==desired)await toggle.click()
         await page.waitForTimeout(250)
       }
-      await expand(true)
+      await ensureCollapsed(true)
       const compact=await page.evaluate(()=>{
         const side=document.querySelector('.brand-shell-v1 > .sidebar')
         const button=document.querySelector('.desktop-sidebar-toggle')
@@ -836,7 +836,7 @@ if (DESKTOP_ONLY_QA) {
       recordInteraction('Desktop '+width+' compact sidebar aligned',
         compact.width>=68&&compact.width<=76&&compact.toggleOnTop&&compact.accountInside&&compact.bellInside,compact)
       await page.screenshot({path:`${outDir}/desktop-${width}-sidebar-collapsed.png`,fullPage:false})
-      await expand(false)
+      await ensureCollapsed(false)
       const expanded=await page.evaluate(()=>{
         const s=document.querySelector('.brand-shell-v1 > .sidebar')?.getBoundingClientRect()
         const account=document.querySelector('.brand-shell-v1 > .sidebar .sidebar-account-trigger')?.getBoundingClientRect()
