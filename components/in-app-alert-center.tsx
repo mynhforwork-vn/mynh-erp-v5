@@ -59,23 +59,46 @@ export function InAppAlertCenter(){
   const [alerts,setAlerts]=useState<AlertGroup[]>([])
   const [loading,setLoading]=useState(true)
   const timer=useRef<ReturnType<typeof setInterval>|null>(null)
+  const lastRequestAt=useRef(0)
+  const nextAllowedAt=useRef(0)
+  const requestInFlight=useRef(false)
 
   async function load(){
+    // Cloudflare Workers Free quota is shared by all previews and Production.
+    // Never poll an invisible tab, overlap requests, or retry rapidly after 429.
+    if(document.visibilityState==='hidden'||requestInFlight.current)return
+    const now=Date.now()
+    const interval=open?300000:900000
+    if(now<nextAllowedAt.current||now-lastRequestAt.current<interval)return
+    requestInFlight.current=true
+    lastRequestAt.current=now
     try{
       const res=await fetch('/api/alerts/in-app',{cache:'no-store'})
+      if(res.status===429||res.status===503){
+        nextAllowedAt.current=Date.now()+900000
+        return
+      }
       if(!res.ok)return
       const body=await res.json()
       setAlerts(Array.isArray(body.alerts)?body.alerts:[])
+    }catch{
+      nextAllowedAt.current=Date.now()+300000
     }finally{
+      requestInFlight.current=false
       setLoading(false)
     }
   }
 
   useEffect(()=>{
-    load()
-    timer.current=setInterval(load,30000)
-    return()=>{if(timer.current)clearInterval(timer.current)}
-  },[])
+    void load()
+    timer.current=setInterval(()=>void load(),open?300000:900000)
+    const onVisibility=()=>{if(document.visibilityState==='visible')void load()}
+    document.addEventListener('visibilitychange',onVisibility)
+    return()=>{
+      if(timer.current)clearInterval(timer.current)
+      document.removeEventListener('visibilitychange',onVisibility)
+    }
+  },[open])
 
   useEffect(()=>{
     if(!open)return
