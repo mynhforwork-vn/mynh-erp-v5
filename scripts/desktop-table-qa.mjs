@@ -35,14 +35,42 @@ const artifactDir='qa-desktop-slidebar-artifacts'
 fs.mkdirSync(artifactDir,{recursive:true})
 
 async function go(path){
+  const target=PREVIEW_URL+path
+  const delays=[700,1200,2000,3500,5500]
   let lastStatus=0
-  for(let attempt=1;attempt<=3;attempt++){
-    const res=await page.goto(PREVIEW_URL+path,{waitUntil:'domcontentloaded',timeout:30000}).catch(()=>null)
+  let lastUrl=''
+  let lastBody=''
+  let lastError=''
+  let lastRay=''
+  for(let attempt=1;attempt<=delays.length+1;attempt++){
+    lastError=''
+    const res=await page.goto(target,{waitUntil:'domcontentloaded',timeout:30000}).catch(error=>{
+      lastError=String(error?.message??error)
+      return null
+    })
     lastStatus=res?.status()??0
-    await page.waitForTimeout(attempt===1?700:1400)
-    if(lastStatus<500&&lastStatus!==0)return
+    lastUrl=page.url()
+    lastRay=res?.headers()['cf-ray']??''
+    if(res){
+      await page.waitForTimeout(500)
+      lastBody=(await page.locator('body').innerText().catch(()=>'')).slice(0,500)
+      const login=new URL(lastUrl).pathname==='/login'
+      const applicationError=/Application error|Internal Server Error|Server Components render/i.test(lastBody)
+      if(lastStatus>=200&&lastStatus<400&&!login&&!applicationError){
+        if(attempt>1)console.log('DESKTOP_TABLE_ROUTE_RECOVERED '+JSON.stringify({path,attempt,lastStatus,lastRay}))
+        return
+      }
+      if(lastStatus>=400&&lastStatus<500&&lastStatus!==429){
+        throw new Error('Desktop table route rejected '+JSON.stringify({path,lastStatus,lastUrl,lastRay,body:lastBody}))
+      }
+      if(login){
+        throw new Error('Desktop table QA authentication redirected to login '+JSON.stringify({path,lastStatus,lastUrl}))
+      }
+    }
+    console.warn('DESKTOP_TABLE_ROUTE_RETRY '+JSON.stringify({path,attempt,lastStatus,lastUrl,lastRay,body:lastBody,error:lastError}))
+    if(attempt<=delays.length)await page.waitForTimeout(delays[attempt-1])
   }
-  throw new Error(path+' returned '+lastStatus+' after 3 attempts')
+  throw new Error('Desktop table route unavailable after bounded retries '+JSON.stringify({path,lastStatus,lastUrl,lastRay,body:lastBody,error:lastError}))
 }
 async function metrics(selector){
   return page.locator(selector).first().evaluate(el=>{

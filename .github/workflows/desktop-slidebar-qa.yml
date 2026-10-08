@@ -32,7 +32,7 @@ concurrency:
 jobs:
   slidebar-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 50
     env:
       PREVIEW_URL: https://desktop-polish-v1-mynh-erp-v5.mynh-forwork.workers.dev
       SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
@@ -67,6 +67,36 @@ jobs:
             await sleep(10000)
           }
           throw new Error('Timed out waiting preview '+sha)
+          NODE
+
+      # The Browser QA suite creates and mutates isolated data in the same Preview.
+      # Start Desktop fixtures only after Browser QA completes to avoid load/collision.
+      - name: Wait for matching Browser QA to finish
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node - <<'NODE'
+          const repo=process.env.GITHUB_REPOSITORY
+          const sha=process.env.GITHUB_SHA
+          const token=process.env.GH_TOKEN
+          const headers={Accept:'application/vnd.github+json',Authorization:'Bearer '+token,'X-GitHub-Api-Version':'2022-11-28'}
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms))
+          for(let attempt=1;attempt<=160;attempt++){
+            const url='https://api.github.com/repos/'+repo+'/actions/workflows/preview-browser-qa.yml/runs?head_sha='+sha+'&per_page=20'
+            const res=await fetch(url,{headers})
+            if(!res.ok)throw new Error('Cannot read Browser QA status: '+res.status)
+            const data=await res.json()
+            const runs=(data.workflow_runs??[]).filter(x=>x.head_sha===sha)
+            const done=runs.find(x=>x.status==='completed')
+            if(done){
+              console.log('Browser QA finished sha='+sha+' conclusion='+done.conclusion+' run='+done.id)
+              process.exit(0)
+            }
+            if(attempt%6===1)console.log('Waiting for Browser QA to finish attempt='+attempt+' runs='+runs.length)
+            await sleep(10000)
+          }
+          throw new Error('Browser QA did not finish for '+sha+' within the readiness window')
           NODE
 
       - name: Create temporary QA auth session
