@@ -20,10 +20,10 @@ const {data:auth,error:sessionError}=await client.auth.setSession({
 if(sessionError||!auth.session)throw Error('Cannot initialize QA auth session')
 
 const {data:users,error:usersError}=await client.from('erp_users')
-  .select('id,created_at').eq('platform','SHOPEE').is('archived_at',null)
+  .select('id,created_at,archived_at').eq('platform','SHOPEE')
   .order('created_at',{ascending:false}).limit(3)
 if(usersError||!users?.length)throw Error('Cannot read account IDs for authorized QA')
-console.log('ACCOUNT_DATA_READ '+JSON.stringify({available:users.length,selected_created_at:users[0]?.created_at}))
+console.log('ACCOUNT_DATA_READ '+JSON.stringify({available:users.length,selected_created_at:users[0]?.created_at,latest_is_archived:Boolean(users[0]?.archived_at)}))
 
 const cookieMap=new Map()
 const cookieClient=createBrowserClient(supabaseUrl,publishable,{cookies:{
@@ -38,20 +38,21 @@ const cookie=[...cookieMap.values()].map(x=>x.name+'='+encodeURIComponent(x.valu
 const links=[
   {name:'list',path:'/purchase/accounts?range=all'},
   {name:'create_panel',path:'/purchase/accounts?range=all&mode=create'},
-  {name:'newest_detail',path:'/purchase/accounts?range=all&user='+encodeURIComponent(users[0].id)+'&tab=info'},
-  {name:'newest_edit',path:'/purchase/accounts?range=all&user='+encodeURIComponent(users[0].id)+'&mode=edit'},
+  {name:'newest_detail',expectPanel:!users[0].archived_at,path:'/purchase/accounts?range=all&user='+encodeURIComponent(users[0].id)+'&tab=info'},
+  {name:'newest_archived_detail',expectPanel:true,path:'/purchase/accounts?range=all&archive=archived&user='+encodeURIComponent(users[0].id)+'&tab=info'},
+  {name:'newest_edit',expectPanel:!users[0].archived_at,path:'/purchase/accounts?range=all&user='+encodeURIComponent(users[0].id)+'&mode=edit'},
   ...(users[1]?[{name:'previous_detail',path:'/purchase/accounts?range=all&user='+encodeURIComponent(users[1].id)+'&tab=info'}]:[]),
 ]
 let failed=false
-for(const {name,path} of links){
+for(const {name,path,expectPanel} of links){
   try{
     const r=await fetch(base+path,{headers:{cookie,accept:'text/html'},redirect:'manual',signal:AbortSignal.timeout(25000)})
     const body=await r.text()
     const digest=body.match(/(?:digest|ERROR)[^0-9]{0,50}([0-9]{8,12})/i)?.[1]??null
     const errorPage=/This page couldn.t load|A server error occurred|Application error: a server-side|Internal Server Error/i.test(body)
-    const hasAccountPanel=body.includes('CHI TIẾT USER')||body.includes('Sửa tài khoản')
+    const hasAccountPanel=body.includes('CHI TIẾT USER')||body.includes('TÀI KHOẢN MUA HÀNG')&&body.includes('Lưu thay đổi')
     const hasCreatePanel=body.includes('Thêm tài khoản')
-    const pass=r.status===200&&!errorPage&&(!name.includes('detail')||hasAccountPanel)&&(!name.includes('edit')||hasAccountPanel)
+    const pass=r.status===200&&!errorPage&&(expectPanel!==true||hasAccountPanel)
     console.log('ACCOUNT_ROUTE '+JSON.stringify({name,status:r.status,pass,digest,hasAccountPanel,hasCreatePanel,
       redirect:r.status>=300&&r.status<400,htmlBytes:body.length}))
     if(!pass)failed=true
