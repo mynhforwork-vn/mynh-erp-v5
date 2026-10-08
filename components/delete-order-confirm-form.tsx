@@ -42,7 +42,10 @@ export function DeleteOrderConfirmForm({
             <input name="confirm_text" autoComplete="off" required disabled={pending}/>
           </label>
         </>}
-    {error&&<p className="error-box compact" role="alert">{error}</p>}
+    <label>Mật khẩu đăng nhập tài khoản ERP
+      <input type="password" name="account_password" aria-label="Mật khẩu đăng nhập ERP" autoComplete="current-password" required disabled={pending}/>
+    </label>
+    {error&&<p className="error-box compact" role="alert">{error}</p>
     {compact
       ? <div>
           <button type="button" className="row-delete-cancel" onClick={onCancel} disabled={pending}>Hủy</button>

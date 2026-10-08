@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/supabase/auth'
+import { verifyAccountPassword } from '@/lib/security/verify-account-password'
 
 type POSItemInput={
   product_variant_id:string
@@ -427,12 +428,14 @@ export async function assignProductSalesCategory(input:{product_id:string,catego
 
 
 
-export async function cancelPOSSale(input:{sale_id:string,reason?:string|null}){
+export async function cancelPOSSale(input:{sale_id:string,reason?:string|null,account_password:string}){
   try{
-    const {supabase}=await actor()
+    const {supabase,user}=await actor()
     const sale_id=String(input?.sale_id??'').trim()
     const reason=String(input?.reason??'').trim()||null
     if(!sale_id)return {ok:false as const,error:'Thiếu hóa đơn cần huỷ'}
+    const verified=await verifyAccountPassword(user,String(input?.account_password??''))
+    if(!verified.ok)return verified
 
     const {data,error}=await supabase.rpc('cancel_pos_sale',{
       p_sale_id:sale_id,

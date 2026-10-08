@@ -486,6 +486,9 @@ export function PurchaseOrderTable({
           {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
           <span>Nhập <b>XOA DON DA CHON</b> để xóa vĩnh viễn {selected.length} đơn. Hệ thống sẽ hoàn tác nhận hàng, đối soát và nhập kho; đơn đã chuyển kho hoặc làm tồn âm sẽ bị chặn.</span>
           <input name="confirm_text" placeholder="XOA DON DA CHON" autoComplete="off" required autoFocus/>
+          <label>Mật khẩu đăng nhập tài khoản ERP
+            <input type="password" name="account_password" aria-label="Mật khẩu đăng nhập ERP" autoComplete="current-password" required disabled={bulkDeletePending}/>
+          </label>
           {bulkDeleteError&&<p className="error-box compact" role="alert">{bulkDeleteError}</p>}
           <div>
             <button type="button" className="button small" onClick={()=>setBulkDeleteOpen(false)} disabled={bulkDeletePending}>Hủy</button>

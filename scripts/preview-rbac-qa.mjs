@@ -381,6 +381,12 @@ for(const role of ['admin','operator','viewer']){
       const rejectedOrder=(await adminRest('/rest/v1/orders?select=id&id=eq.'+encodeURIComponent(orderId)))[0]
       record('ui','Wrong delete confirmation reports inline without crashing',inlineError&&String(rejectedOrder?.id)===orderId)
       await dialog.locator('input[name="confirm_text"]').fill(orderCode)
+      await dialog.locator('input[name="account_password"]').fill('QA_WRONG_PASSWORD')
+      await dialog.getByRole('button',{name:'Xóa vĩnh viễn'}).click()
+      const passwordRejected=await dialog.getByRole('alert').filter({hasText:'Mật khẩu đăng nhập không chính xác'}).count()>0
+      const stillThere=(await adminRest('/rest/v1/orders?select=id&id=eq.'+encodeURIComponent(orderId)))[0]
+      record('ui','Wrong login password blocks permanent deletion',passwordRejected&&String(stillThere?.id)===orderId)
+      await dialog.locator('input[name="account_password"]').fill(qa.password)
       await dialog.getByRole('button',{name:'Xóa vĩnh viễn'}).click()
       let vanished=false
       for(let i=0;i<30;i++){

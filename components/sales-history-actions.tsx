@@ -29,6 +29,7 @@ export function SalesHistoryActions({
   const router=useRouter()
   const [mode,setMode]=useState<'cancel'|'return'|null>(null)
   const [reason,setReason]=useState('')
+  const [accountPassword,setAccountPassword]=useState('')
   const [message,setMessage]=useState('')
   const [returnQty,setReturnQty]=useState<Record<string,number>>({})
   const [pending,startTransition]=useTransition()
@@ -53,13 +54,16 @@ export function SalesHistoryActions({
     setMode(null)
     setMessage('')
     setReason('')
+    setAccountPassword('')
     setReturnQty({})
   }
 
   function submitCancel(){
     setMessage('')
+    if(!accountPassword){setMessage('Nhập mật khẩu đăng nhập để xác nhận hủy hóa đơn.');return}
     startTransition(async()=>{
-      const result=await cancelPOSSale({sale_id:saleId,reason})
+      const result=await cancelPOSSale({sale_id:saleId,reason,account_password:accountPassword})
+      setAccountPassword('')
       if(!result.ok){setMessage(result.error);return}
       close()
       router.refresh()
@@ -88,7 +92,7 @@ export function SalesHistoryActions({
       className="button small"
       type="button"
       disabled={!cancellable||pending}
-      onClick={()=>setMode('cancel')}
+      onClick={()=>{setAccountPassword('');setMessage('');setMode('cancel')}}
       title={!canOperate?'Chỉ Admin/Operator được thao tác':saleStatus!=='COMPLETED'?'Hóa đơn không còn ở trạng thái cho phép huỷ':''}
     >
       Huỷ hóa đơn
@@ -137,7 +141,10 @@ export function SalesHistoryActions({
         <label>Lý do {mode==='cancel'?'huỷ':'hoàn'}
           <textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder={mode==='cancel'?'Nhập lý do huỷ hóa đơn...':'Nhập lý do hoàn hàng...'} rows={3}/>
         </label>
-        {message&&<div className="error-box compact">{message}</div>}
+        {mode==='cancel'&&<label>Mật khẩu đăng nhập tài khoản ERP
+          <input type="password" name="account_password" aria-label="Mật khẩu đăng nhập ERP" autoComplete="current-password" value={accountPassword} onChange={e=>setAccountPassword(e.target.value)} disabled={pending} required/>
+        </label>}
+        {message&&<div className="error-box compact" role="alert">{message}</div>}
         <div className="form-actions">
           <button className="button" type="button" onClick={close} disabled={pending}>Đóng</button>
           <button className="button danger" type="button" onClick={mode==='cancel'?submitCancel:submitReturn} disabled={pending}>

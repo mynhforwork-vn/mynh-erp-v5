@@ -75,5 +75,6 @@ fs.writeFileSync('qa-session.json',JSON.stringify({
   user_id:id,
   access_token:access,
   refresh_token:refresh,
-}))
+  password,
+}),{mode:0o600})
 console.log('QA_SESSION_WRITTEN id='+id)
