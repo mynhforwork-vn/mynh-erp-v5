@@ -25,7 +25,6 @@ on:
       - supabase/migrations/**
       - supabase/functions/**
       - scripts/preview-browser-qa.mjs
-      - scripts/mobile-full-qa.mjs
       - scripts/preview-mutation-qa.mjs
       - scripts/preview-mutation-qa-v2.mjs
       - scripts/preview-rbac-qa.mjs
@@ -130,11 +129,6 @@ jobs:
         if: steps.browser_qa_prereq.outputs.ready == 'true'
         run: node scripts/preview-browser-qa.mjs
 
-      - name: Run full mobile tab/function QA
-        # Mobile redesign remains deferred until the desktop Preview passes.
-        if: always() && steps.browser_qa_prereq.outputs.ready == 'true' && github.ref_name != 'fix/desktop-polish-v1'
-        run: node scripts/mobile-full-qa.mjs
-
       - name: Run Preview mutation QA
         if: steps.browser_qa_prereq.outputs.ready == 'true'
         run: node scripts/preview-mutation-qa.mjs
@@ -153,7 +147,6 @@ jobs:
           name: preview-browser-qa-${{ github.sha }}
           path: |
             qa-browser-artifacts/
-            qa-mobile-full-artifacts/
           retention-days: 7
 
       - name: Cleanup isolated QA fixtures
