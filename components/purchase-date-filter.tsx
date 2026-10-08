@@ -1,6 +1,16 @@
 import Link from 'next/link'
 
-type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
+export type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
+export const RANGE_PRESETS:ReadOnlyArray<readonly [RangeKey,string]>=[
+  ['all','Toàn thời gian'],
+  ['today','Hôm nay'],
+  ['week','Tuần này'],
+  ['7d','7 ngày'],
+  ['30d','30 ngày'],
+  ['month','Tháng này'],
+  ['quarter','Quý này'],
+  ['year','Năm nay'],
+]
 
 export function PurchaseDateFilter({
   activeRange,
@@ -10,6 +20,7 @@ export function PurchaseDateFilter({
   basePath='/purchase',
   showAll=false,
   preserveParams={},
+  paramKey='range',
 }:{
   activeRange:RangeKey
   from:string
@@ -18,10 +29,11 @@ export function PurchaseDateFilter({
   basePath?:string
   showAll?:boolean
   preserveParams?:Record<string,string|undefined|null>
+  paramKey?:'range'|'period'
 }){
   function rangeHref(nextRange:RangeKey){
     const p=new URLSearchParams()
-    p.set('range',nextRange)
+    p.set(paramKey,nextRange)
     for(const [key,value] of Object.entries(preserveParams)){
       if(value===null||value===undefined||value==='')continue
       p.set(key,value)
@@ -34,14 +46,13 @@ export function PurchaseDateFilter({
 
   return <div className="purchase-date-filter flat">
     <div className="command-range">
-      <Link className={activeRange==='today'?'active':''} href={rangeHref('today')}>Hôm nay</Link>
-      <Link className={activeRange==='week'?'active':''} href={rangeHref('week')}>Tuần này</Link>
-      <Link className={activeRange==='month'?'active':''} href={rangeHref('month')}>Tháng này</Link>
-      {showAll&&<Link className={activeRange==='all'?'active':''} href={rangeHref('all')}>Toàn thời gian</Link>}
+      {RANGE_PRESETS.filter(([key])=>showAll||key!=='all').map(([key,text])=>
+        <Link key={key} className={activeRange===key?'active':''} href={rangeHref(key)}>{text}</Link>
+      )}
     </div>
 
     <form className="purchase-date-inline-form" action={basePath}>
-      <input type="hidden" name="range" value="custom"/>
+      <input type="hidden" name={paramKey} value="custom"/>
       {preservedHidden.map(([key,value])=><input key={key} type="hidden" name={key} value={String(value)}/>)}
       <label>
         <span>Từ ngày</span>
@@ -58,7 +69,7 @@ export function PurchaseDateFilter({
     <details className="mobile-date-picker">
       <summary><span>Chọn khoảng ngày</span><b>{label}</b><i>⌄</i></summary>
       <form action={basePath}>
-        <input type="hidden" name="range" value="custom"/>
+        <input type="hidden" name={paramKey} value="custom"/>
         {preservedHidden.map(([key,value])=><input key={key} type="hidden" name={key} value={String(value)}/>)}
         <label>
           <span>Từ ngày</span>
