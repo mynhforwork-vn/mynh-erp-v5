@@ -234,29 +234,7 @@ export default async function CustomersPage({searchParams}:{searchParams:Promise
 
     <div className="customer-demo-workspace">
       <section className="customer-demo-list">
-        <div className="mobile-entity-list mobile-customer-list">
-          {!rows.length
-            ? <div className="mobile-empty-state">Không có khách hàng phù hợp.</div>
-            : rows.map(row=><article className={'mobile-entity-card '+(selected?.id===row.id?'selected':'')} key={'mobile-'+row.id}>
-                <div className="mobile-entity-card-head">
-                  <div className="mobile-entity-card-title">
-                    <Link href={href({customer:row.id,tab:'info',mode:null})}>{row.name}</Link>
-                    <span>{phone(row.phone)} · {row.address||'Chưa có địa chỉ'}</span>
-                  </div>
-                  {row.debt>0?<span className="status-pill orange">Còn nợ</span>:<span className="status-pill green">Bình thường</span>}
-                </div>
-                <div className="mobile-account-meta">
-                  <div><span>Số hóa đơn</span><b>{row.orders}</b></div>
-                  <div><span>Tổng mua</span><b>{formatMoney(row.total)}</b></div>
-                  <div><span>Công nợ</span><b>{formatMoney(row.debt)}</b></div>
-                  <div><span>Mua gần nhất</span><b>{fmtDate(row.last)}</b></div>
-                </div>
-                <div className="mobile-entity-card-foot">
-                  {row.debt>0?<Link className="mobile-card-secondary" href={'/sales/debt?customer='+row.id+'&mode=collect'}>Thu nợ</Link>:<span/>}
-                  <Link className="mobile-card-open" href={href({customer:row.id,tab:'info',mode:null})}>Chi tiết ›</Link>
-                </div>
-              </article>)}
-        </div>
+        
         <SalesCustomerTable
           rows={rows}
           selectedId={selected?.id??null}

@@ -24,6 +24,9 @@ const routes=[]
 
 for(const file of files){
   const src=fs.readFileSync(file,'utf8')
+  if(/mobile-entity-list|mobile-purchase-summary-list|mobile-date-picker|mobile-pos-cart-bar|mobile-cart-close/.test(src)){
+    issues.push(`${file}: dedicated Mobile card/cart UI must be excluded from Desktop-only release`)
+  }
   buttonCount+=(src.match(/<button\b/g)||[]).length
   handlerCount+=(src.match(/\bonClick\s*=\s*\{/g)||[]).length
   formActionCount+=(src.match(/\baction\s*=\s*\{/g)||[]).length

@@ -140,34 +140,7 @@ export function WarehouseInventoryWorkspace({
             <ManagedColumnsMenu labels={COLUMN_LABELS} manager={columns}/>
           </div>
         </div>
-        <div className="mobile-entity-list mobile-inventory-list">
-          {!rows.length
-            ? <div className="mobile-empty-state">Không có tồn kho phù hợp.</div>
-            : sortedRows.map(row=>{
-                const key=row.warehouse_id+'|'+row.product_variant_id
-                return <button
-                  type="button"
-                  className={'mobile-inventory-card '+(activeKey===key?'selected':'')}
-                  key={'mobile-'+key}
-                  onClick={()=>openRow(key)}
-                >
-                  <div className="mobile-inventory-card-head">
-                    <div><b>{row.sku}</b><span>{row.product_name} · {row.variant_name}</span></div>
-                    {row.quantity===0
-                      ? <span className="status-pill red">Hết hàng</span>
-                      : row.quantity<=3
-                        ? <span className="status-pill orange">Tồn thấp</span>
-                        : <span className="status-pill green">Bình thường</span>}
-                  </div>
-                  <div className="mobile-inventory-metrics">
-                    <div><span>Kho</span><b>{row.warehouse_code}</b></div>
-                    <div><span>Tồn</span><b>{row.quantity}</b></div>
-                    <div><span>Đang về</span><b>{row.incoming||0}</b></div>
-                    <div><span>Giá bán</span><b>{formatMoney(row.sale_price)}</b></div>
-                  </div>
-                </button>
-              })}
-        </div>
+        
         <div className="whx-table-scroll">
           <table className="table whx-table">
             <thead><tr>{columns.visible.map(col=><th key={col}><SortableHeader column={col} label={COLUMN_LABELS[col]} sort={sort} onSort={sort.toggle}/></th>)}</tr></thead>

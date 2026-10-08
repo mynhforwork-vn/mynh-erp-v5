@@ -240,38 +240,7 @@ export default async function WarehouseHistoryPage({searchParams}:{searchParams:
         </div>
       </div>
 
-      <div className="mobile-entity-list mobile-warehouse-history-list">
-        {!data.length
-          ? <div className="mobile-empty-state">Chưa có giao dịch kho phù hợp.</div>
-          : data.map(row=>{
-              const incoming=IN_TYPES.has(String(row.tx_type))
-              const stocktake=String(row.reference_type??'').startsWith('STOCKTAKE')
-              return <Link
-                href={openTransactionHref(row)}
-                className={'mobile-warehouse-history-card '+(selectedTx?.id===row.id?'selected':'')}
-                key={'mobile-'+row.id}
-              >
-                <div className="mobile-warehouse-history-head">
-                  <div>
-                    <b>{row.product_variants?.products?.sku??'—'}</b>
-                    <span>{row.warehouses?.code??'—'} · {formatDateTime(row.created_at)}</span>
-                  </div>
-                  <span className={'whx-tx-type '+(stocktake?'stocktake':incoming?'in':'out')}>
-                    {txLabel(String(row.tx_type),row.reference_type)}
-                  </span>
-                </div>
-                <div className="mobile-warehouse-history-product">
-                  <b>{row.product_variants?.products?.name??'—'}</b>
-                  <span>{row.product_variants?.variant_name??'Mặc định'}</span>
-                </div>
-                <div className="mobile-warehouse-history-foot">
-                  <div><span>Số lượng</span><b className={incoming?'in':'out'}>{incoming?'+':'-'}{row.quantity}</b></div>
-                  <div><span>Chứng từ</span><b>{row.reference_type??'—'}</b></div>
-                  <i>›</i>
-                </div>
-              </Link>
-            })}
-      </div>
+      
 
       <WarehouseHistoryTable
         rows={data}

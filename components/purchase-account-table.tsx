@@ -352,53 +352,7 @@ export function PurchaseAccountTable({
       </div>}
     </div>
 
-    <div className="mobile-entity-list mobile-account-list">
-      {!rows.length
-        ? <div className="mobile-empty-state">Không có tài khoản phù hợp.</div>
-        : rows.map((u:any)=><article className={'mobile-entity-card '+(selectedId===u.id?'selected':'')} key={'mobile-'+u.id}>
-            <div className="mobile-entity-card-head">
-              {canManage&&<input
-                className="mobile-card-check"
-                type="checkbox"
-                aria-label={'Chọn '+u.username}
-                checked={selectedSet.has(String(u.id))}
-                onChange={()=>toggleSelect(String(u.id))}
-              />}
-              <div className="mobile-entity-card-title">
-                <Link href={hrefFor(u.id)}>{u.username}</Link>
-                <span>{formatPhone(u.phone)}{u.email?' · '+u.email:''}</span>
-              </div>
-              <UserLifecycleCell
-                row={u}
-                returnQuery={detailQuery}
-                canManage={canManage}
-                open={openActionId===String(u.id)}
-                onToggle={()=>setOpenActionId(prev=>prev===String(u.id)?null:String(u.id))}
-              />
-            </div>
-
-            <div className="mobile-account-state-row">
-              {u.archived_at
-                ? <span className="status-pill archived">Lưu trữ</span>
-                : <span className={'status-pill '+statusClass(u.status)}>{statusLabel(u.status)}</span>}
-              <DeviceIcons row={u}/>
-            </div>
-
-            <div className="mobile-account-meta">
-              <div><span>Số đơn</span><b>{u.order_count??0}</b></div>
-              <div><span>Tạo lúc</span><b>{formatDateTime(u.created_at)}</b></div>
-            </div>
-
-            {u.voucher_used_summary&&<div className="mobile-account-voucher"><span>Voucher</span><VoucherTags value={u.voucher_used_summary} compact maxVisible={2}/></div>}
-
-            <div className="mobile-entity-card-foot">
-              {!u.archived_at&&u.status!=='Blocked'
-                ? <Link href={createOrderHref(u.id)} className="mobile-card-secondary">+ Tạo đơn</Link>
-                : <span/>}
-              <Link href={hrefFor(u.id)} className="mobile-card-open">Chi tiết ›</Link>
-            </div>
-          </article>)}
-    </div>
+    
 
     <div className="card table-card account-table-card">
       <table className="table user-table">

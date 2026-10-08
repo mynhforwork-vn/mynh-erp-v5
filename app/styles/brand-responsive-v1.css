@@ -946,55 +946,6 @@ body{
   }
 }
 
-/* Mobile: every slide panel becomes the same full-screen drawer. */
-
-
-/* =====================================================================
-   MYNH Mobile App UX V2
-   Dedicated phone composition — not a scaled desktop layout.
-   ===================================================================== */
-.mobile-app-bar,
-.mobile-bottom-nav,
-.mobile-more-sheet,
-.mobile-more-scrim,
-.mobile-entity-list{
-  display:none;
-}
-
-
-/* =====================================================================
-   Mobile density correction — tuned from real Android screenshots
-   ===================================================================== */
-.mobile-date-picker{display:none}
-
-
-/* =====================================================================
-   Full mobile module remediation — every operational tab
-   ===================================================================== */
-
-
-/* =====================================================================
-   MYNH ERP — Mobile Interaction & Typography Contract V2
-   Canonical phone contract: readable type, 44px touch targets, compact
-   density without desktop-scale text. Keep this block as the final
-   mobile override inside the brand system.
-   ===================================================================== */
-
-
-/* =====================================================================
-   MYNH ERP — Mobile QA Remediation V3
-   Fix real phone-width issues found by the full tab/function QA.
-   ===================================================================== */
-.brand-shell-v1 .mobile-purchase-summary-list{display:none}
-
-
-/* =====================================================================
-   MYNH ERP — Mobile Visual UX Contract V4
-   Visual remediation from real-device screenshots (360–430 CSS px).
-   Mobile is an app layout, not a compressed desktop layout.
-   ===================================================================== */
-
-
 /* =====================================================================
    MYNH ERP — Desktop Polish Contract V1
    Desktop reference layer before Mobile V2 clean-room.
@@ -1162,9 +1113,6 @@ body{
   }
 
   /* ---------- POS: desktop operation layout ---------- */
-  .brand-shell-v1 .mobile-pos-cart-bar{
-    display:none!important;
-  }
   .brand-shell-v1 .pos-screen-v2>.pos-workspace{
     grid-template-columns:minmax(0,1fr) clamp(390px,30vw,440px)!important;
     gap:8px!important;

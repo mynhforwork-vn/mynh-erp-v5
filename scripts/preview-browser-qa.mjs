@@ -598,7 +598,7 @@ const posDesktopMetrics=await page.evaluate(()=>{
     shortcuts:Boolean(shortcuts),
   }
 })
-recordInteraction('POS desktop hides mobile cart summary row',posDesktopMetrics.cartBarDisplay==='none',posDesktopMetrics)
+recordInteraction('POS desktop excludes mobile cart summary row',posDesktopMetrics.cartBarDisplay==='missing',posDesktopMetrics)
 recordInteraction('POS desktop product tiles are enlarged',posDesktopMetrics.tileHeight>=70,posDesktopMetrics)
 recordInteraction('POS invoice header uses cart icon',posDesktopMetrics.cartIcon,posDesktopMetrics)
 recordInteraction('POS shortcut footer removed',!posDesktopMetrics.shortcuts,posDesktopMetrics)

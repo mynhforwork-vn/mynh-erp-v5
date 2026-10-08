@@ -183,46 +183,7 @@ export function TrackingHubGroup({
     </div>
 
     {open&&<>
-      <div className="mobile-entity-list mobile-tracking-order-list">
-        {sortedRows.map(r=>{
-          const canReceive=r.receive_status==='WAITING_RECEIVE'&&r.tracking_status==='DELIVERED'
-          return <article className={'mobile-entity-card '+(canReceive?'attention':'')} key={'mobile-'+r.id}>
-            <div className="mobile-entity-card-head">
-              <input
-                className="mobile-card-check"
-                type="checkbox"
-                aria-label={'Chọn '+(r.shopee_order_id??r.id)}
-                checked={selectedSet.has(r.id)}
-                onChange={()=>toggle(r.id)}
-                disabled={!canReceive}
-              />
-              <div className="mobile-entity-card-title">
-                <Link href={orderHref(r.id)}>{r.shopee_order_id??r.id.slice(0,8)}</Link>
-                <span>{r.tracking_number??'Chưa có MVĐ'}{r.carrier?' · '+r.carrier:''}</span>
-              </div>
-              <span className={'status-pill status-'+String(r.tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(r.tracking_status)}</span>
-            </div>
-            <div className="mobile-order-product">
-              <b>{r.product_summary??'—'}</b>
-              <span>{r.recipient_name??'—'} · {formatPhone(r.recipient_phone)}</span>
-            </div>
-            <div className="mobile-tracking-address">{r.recipient_address??'Chưa có địa chỉ'}</div>
-            <div className="mobile-order-meta">
-              <div><span>COD</span><b>{formatMoney(r.cod)}</b></div>
-              <div><span>Nhận hàng</span><b>{r.receive_status==='RECEIVED'?'Đã nhận':canReceive?'Chờ nhận':'Chưa sẵn sàng'}</b></div>
-            </div>
-            <div className="mobile-entity-card-foot">
-              <div className="mobile-card-statuses">
-                {r.receive_status!=='NOT_READY'&&<span className={'status-pill '+(r.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(r.receive_status)}</span>}
-              </div>
-              <div className="mobile-card-actions">
-                {r.shipment_id&&!['DELIVERED','CANCELLED','RETURNED'].includes(String(r.tracking_status))&&<ManualSyncButton shipmentId={r.shipment_id}/>}
-                <Link className="mobile-card-open" href={orderHref(r.id)}>Chi tiết ›</Link>
-              </div>
-            </div>
-          </article>
-        })}
-      </div>
+      
 
       <div className="tracking-hub-table-wrap tracking-hub-table-wrap-v2">
         <table className="table tracking-hub-table tracking-hub-table-v2">

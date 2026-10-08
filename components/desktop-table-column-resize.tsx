@@ -81,7 +81,7 @@ export function DesktopTableColumnResize() {
     }
 
     const enhance = (table:HTMLTableElement) => {
-      if (table.closest('.system-slidebar-v1, .system-slidebar, .context-panel, .side-panel, .finance-panel, .receive-confirm-modal, .mobile-entity-list')) return
+      if (table.closest('.system-slidebar-v1, .system-slidebar, .context-panel, .side-panel, .finance-panel, .receive-confirm-modal')) return
       const ths = headerCells(table)
       if (ths.length < 2) return
       const saved = readSaved(table)

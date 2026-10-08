@@ -214,29 +214,7 @@ export default async function DebtPage({searchParams}:{searchParams:Promise<SP>}
 
     <div className="debt-demo-workspace">
       <section className="debt-demo-list">
-        <div className="mobile-entity-list mobile-debt-list">
-          {!rows.length
-            ? <div className="mobile-empty-state">Không có công nợ phù hợp bộ lọc.</div>
-            : rows.map(row=><article className={'mobile-entity-card '+(selected?.customer_id===row.customer_id?'selected':'')} key={'mobile-'+row.customer_id}>
-                <div className="mobile-entity-card-head">
-                  <div className="mobile-entity-card-title">
-                    <Link href={href({customer:row.customer_id,tab:'summary',mode:null})}>{row.name}</Link>
-                    <span>{phone(row.phone)} · {row.address||'Chưa có địa chỉ'}</span>
-                  </div>
-                  <span className="status-pill orange">{formatMoney(row.debt)}</span>
-                </div>
-                <div className="mobile-account-meta">
-                  <div><span>HĐ còn nợ</span><b>{row.invoices}</b></div>
-                  <div><span>Tuổi nợ</span><b>{row.age===0?'Hôm nay':row.age+' ngày'}</b></div>
-                  <div><span>Nợ cũ nhất</span><b>{fmtDate(row.oldest,false)}</b></div>
-                  <div><span>Thu gần nhất</span><b>{fmtDate(row.lastPayment)}</b></div>
-                </div>
-                <div className="mobile-entity-card-foot">
-                  <Link className="mobile-card-secondary" href={href({customer:row.customer_id,tab:'summary',mode:null})}>Xem nợ</Link>
-                  <Link className="mobile-card-open" href={href({customer:row.customer_id,tab:'summary',mode:'collect'})}>Thu nợ ›</Link>
-                </div>
-              </article>)}
-        </div>
+        
         <SalesDebtTable
           rows={rows}
           selectedId={selected?.customer_id??null}

@@ -9,7 +9,7 @@
 
 - Giữ giao diện đã chốt trên Desktop: KPI, bộ lọc ngày, sidebar, slidebar ngữ cảnh, bảng/HUB, kéo/ẩn/hiện/sắp xếp cột, màu cảnh báo HUB theo `urgentCount`.
 - Không thay hình thức bên ngoài chỉ để sửa bài kiểm thử.
-- **Không phát hành Mobile:** người dùng xác nhận loại hoàn toàn Mobile App UI, header, bottom navigation, stylesheet Mobile và QA Mobile khỏi bản Desktop chuẩn bị vào `main`.
+- **Không phát hành Mobile:** loại Mobile App UI, header/bottom navigation, dedicated Mobile stylesheet/QA, các mobile-only card/list và POS cart bar khỏi nhánh Desktop trước merge; không thay đổi luồng Desktop.
 - Việc tạo PR không đồng nghĩa được phép deploy `main`.
 
 ## 2. Phạm vi chênh lệch với main

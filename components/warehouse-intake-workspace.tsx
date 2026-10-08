@@ -246,32 +246,7 @@ export function WarehouseIntakeWorkspace({
                   <strong>{splitRows.length}</strong>
                 </div>
 
-                <div className="mobile-entity-list mobile-warehouse-split-list">
-                  {!splitRows.length
-                    ? <div className="mobile-empty-state">Không còn đơn cần bóc tách tại kho này.</div>
-                    : splitRows.map(row=>{
-                        const missing=row.order_items.filter(item=>!item.product_variant_id).length
-                        return <button
-                          type="button"
-                          className={'mobile-warehouse-order-card '+(activeId===row.id?'selected':'')}
-                          key={'mobile-split-'+row.id}
-                          onClick={()=>{setActiveId(row.id);setPanelTab('products');setEditingItem(null)}}
-                        >
-                          <div className="mobile-warehouse-order-head">
-                            <div><b>{row.shopee_order_id??row.id.slice(0,8)}</b><span>{formatDateTime(receivedAt(row))}</span></div>
-                            <span className="status-pill orange">Cần bóc tách</span>
-                          </div>
-                          <div className="mobile-warehouse-order-product">
-                            <b>{row.order_items[0]?.product_name??'—'}</b>
-                            <span>{row.order_items.length>1?('+'+(row.order_items.length-1)+' sản phẩm khác'):'1 sản phẩm'}</span>
-                          </div>
-                          <div className="mobile-warehouse-order-metrics">
-                            <div><span>COD</span><b>{formatMoney(row.cod)}</b></div>
-                            <div><span>SKU chưa map</span><b>{missing}</b></div>
-                          </div>
-                        </button>
-                      })}
-                </div>
+                
 
                 <div className="managed-table-toolbar warehouse-intake-managed-toolbar">
                   <span className="managed-table-meta">Bảng chờ bóc tách · áp dụng mọi kho nhận</span>
@@ -309,43 +284,7 @@ export function WarehouseIntakeWorkspace({
                   <strong>{readyRows.length}</strong>
                 </div>
 
-                <div className="mobile-entity-list mobile-warehouse-ready-list">
-                  {!readyRows.length
-                    ? <div className="mobile-empty-state">Chưa có đơn đã bóc tách chờ nhập kho.</div>
-                    : readyRows.map(row=>{
-                        const stockQty=row.order_items.reduce(
-                          (sum,item)=>sum+Number(item.quantity??0)*Number(item.inventory_multiplier??1),
-                          0
-                        )
-                        const checked=selectedGroup===group.id&&selectedSet.has(row.id)
-                        return <article
-                          className={'mobile-warehouse-order-card '+(activeId===row.id?'selected':'')}
-                          key={'mobile-ready-'+row.id}
-                        >
-                          <div className="mobile-warehouse-order-head">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={()=>toggleReady(group.id,row.id)}
-                              aria-label={'Chọn '+(row.shopee_order_id??row.id)}
-                            />
-                            <button type="button" onClick={()=>{setActiveId(row.id);setPanelTab('products');setEditingItem(null)}}>
-                              <b>{row.shopee_order_id??row.id.slice(0,8)}</b>
-                              <span>{formatDateTime(receivedAt(row))}</span>
-                            </button>
-                            <span className="status-pill green">Chờ nhập</span>
-                          </div>
-                          <button type="button" className="mobile-warehouse-order-product" onClick={()=>{setActiveId(row.id);setPanelTab('products');setEditingItem(null)}}>
-                            <b>{row.order_items.length} dòng sản phẩm</b>
-                            <span>Đã bóc tách đủ SKU</span>
-                          </button>
-                          <div className="mobile-warehouse-order-metrics">
-                            <div><span>SL nhập</span><b>{stockQty}</b></div>
-                            <div><span>COD</span><b>{formatMoney(row.cod)}</b></div>
-                          </div>
-                        </article>
-                      })}
-                </div>
+                
 
                 <div className="managed-table-toolbar warehouse-intake-managed-toolbar">
                   <span className="managed-table-meta">Bảng chờ nhập kho · áp dụng mọi kho nhận</span>
