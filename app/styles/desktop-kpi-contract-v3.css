@@ -1,0 +1,211 @@
+/* MYNH ERP — Desktop KPI / filter contract V3
+ * Correct source: fix/desktop-polish-v1.
+ * Desktop only. Right-side system-slidebar-v1 geometry is deliberately excluded.
+ * KPI semantic palette: Cobalt=info, Teal=express, Green=success,
+ * Amber=attention, Red=error, Slate=neutral.
+ */
+@media (min-width:901px) {
+  .brand-shell-v1>.main {
+    --kpi-neutral:#9AAFC0;
+    --kpi-info:#3D75B8;
+    --kpi-express:#159098;
+    --kpi-success:#39866A;
+    --kpi-warning:#C4933A;
+    --kpi-danger:#B96065;
+  }
+
+  /* Keep existing one-row strip; 8-order metrics scroll inside it on narrow desktop. */
+  .brand-shell-v1>.main :is(
+    .kpi-grid,.purchase-command-kpis,.purchase-command-kpis-v2,
+    .tracking-status-strip-v2,.whx-kpi-grid,.entity-status-strip,.finance-kpi-grid
+  ):not(.system-slidebar-v1 *){
+    box-sizing:border-box!important;
+    flex-wrap:nowrap!important;
+    gap:0!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    border-radius:4px!important;
+    border-color:#D9E3EB!important;
+    background:#FFFFFF!important;
+    box-shadow:0 2px 7px rgba(28,54,78,.07),inset 0 1px 0 rgba(255,255,255,.9)!important;
+    scrollbar-width:thin!important;
+    overscroll-behavior-inline:contain!important;
+  }
+
+  .brand-shell-v1>.main :is(
+    .kpi-grid,.purchase-command-kpis,.purchase-command-kpis-v2,
+    .tracking-status-strip-v2,.whx-kpi-grid,.entity-status-strip,.finance-kpi-grid
+  ):not(.system-slidebar-v1 *) > :is(a,button,div){
+    box-sizing:border-box!important;
+    min-width:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+    background:linear-gradient(180deg,#FFFFFF 0%,#FBFCFE 100%)!important;
+    transition:background-color .12s ease!important;
+  }
+
+  .brand-shell-v1>.main :is(
+    .kpi-grid,.purchase-command-kpis,.purchase-command-kpis-v2,
+    .tracking-status-strip-v2,.whx-kpi-grid,.entity-status-strip,.finance-kpi-grid
+  ):not(.system-slidebar-v1 *) > :is(a,button,div):hover {
+    background:#F3F7FB!important;
+  }
+
+  .brand-shell-v1>.main .order-kpi-grid-v2,
+  .brand-shell-v1>.main .purchase-command-kpis-v2{
+    min-height:68px!important;
+  }
+  .brand-shell-v1>.main .order-kpi-grid-v2 > .kpi-card,
+  .brand-shell-v1>.main .purchase-command-kpis-v2 > .command-kpi {
+    flex:1 0 123px!important;
+    min-width:123px!important;
+    height:68px!important;
+    min-height:68px!important;
+    padding:8px 9px!important;
+  }
+  .brand-shell-v1>.main .order-kpi-grid-v2 > .kpi-card > span,
+  .brand-shell-v1>.main .purchase-command-kpis-v2 > .command-kpi > span{
+    font-size:9.5px!important;
+    line-height:1.25!important;
+    color:#50677C!important;
+    font-weight:700!important;
+  }
+  .brand-shell-v1>.main .order-kpi-grid-v2 > .kpi-card > b,
+  .brand-shell-v1>.main .purchase-command-kpis-v2 > .command-kpi > b{
+    font-size:19px!important;
+    color:#263E55!important;
+    line-height:1.05!important;
+  }
+  .brand-shell-v1>.main .order-kpi-grid-v2 > .kpi-card > small,
+  .brand-shell-v1>.main .purchase-command-kpis-v2 > .command-kpi > small{
+    font-size:8.1px!important;
+    color:#77899A!important;
+  }
+  /* Express is not a warning/failure — its teal accent denotes service type. */
+  .brand-shell-v1>.main :is(.order-kpi-grid-v2,.purchase-command-kpis-v2) > .express{
+    --mynh-kpi-accent:var(--kpi-express)!important;
+  }
+  .brand-shell-v1>.main .order-kpi-grid-v2 > .express.active{
+    background:#EAF7F7!important;
+    box-shadow:inset 0 -2px 0 var(--kpi-express)!important;
+  }
+  .brand-shell-v1>.main :is(.order-kpi-grid-v2,.purchase-command-kpis-v2) > .express::before{
+    background:var(--kpi-express)!important;
+  }
+
+  /* Same compact, non-pill filter system for the dashboard/purchase/orders/sales/finance. */
+  .brand-shell-v1>.main .purchase-date-filter.flat{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto auto!important;
+    align-items:center!important;
+    gap:7px!important;
+    box-sizing:border-box!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    min-height:42px!important;
+    height:auto!important;
+    padding:5px 7px!important;
+    margin-bottom:8px!important;
+    border:1px solid #D9E3EB!important;
+    border-radius:4px!important;
+    background:#fff!important;
+    box-shadow:0 1px 5px rgba(26,52,78,.035)!important;
+  }
+  .brand-shell-v1>.main .purchase-date-filter.flat>.command-range {
+    box-sizing:border-box!important;
+    width:auto!important;
+    max-width:100%!important;
+    min-width:0!important;
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    gap:2px!important;
+    padding:2px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    white-space:nowrap!important;
+    scrollbar-width:thin!important;
+    border-radius:4px!important;
+  }
+  .brand-shell-v1>.main .purchase-date-filter.flat>.command-range a {
+    flex:0 0 auto!important;
+    min-width:max-content!important;
+    min-height:28px!important;
+    height:28px!important;
+    padding:0 8px!important;
+    font-size:9.4px!important;
+    font-weight:650!important;
+    white-space:nowrap!important;
+    border-radius:4px!important;
+  }
+  .brand-shell-v1>.main .purchase-date-filter.flat>.command-range a.active{
+    border-radius:4px!important;
+    background:#2A63AD!important;
+    color:#fff!important;
+  }
+  .brand-shell-v1>.main .purchase-date-filter.flat>.purchase-date-inline-form{
+    min-width:0!important;
+    display:flex!important;
+    align-items:flex-end!important;
+    justify-content:flex-end!important;
+    flex-wrap:nowrap!important;
+    gap:5px!important;
+    white-space:nowrap!important;
+  }
+  .brand-shell-v1>.main .purchase-date-inline-form input{
+    box-sizing:border-box!important;
+    width:111px!important;
+    min-width:111px!important;
+    height:28px!important;
+    border-radius:4px!important;
+    font-size:9px!important;
+  }
+  .brand-shell-v1>.main .purchase-date-inline-form .button{
+    height:28px!important;
+    min-height:28px!important;
+    border-radius:4px!important;
+    padding-inline:8px!important;
+  }
+  .brand-shell-v1>.main .purchase-date-filter.flat>.range-meta{
+    min-width:0!important;
+    max-width:136px!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+
+  /* Distinguish a stock snapshot from a time-filtered historical dashboard. */
+  .brand-shell-v1>.main .warehouse-snapshot-hint{
+    color:#71869A!important;
+    font-size:9.5px!important;
+    font-weight:600!important;
+    white-space:nowrap!important;
+  }
+  /* Old finance-only filter bar still uses the same small rounding. */
+  .brand-shell-v1>.main .finance-period-tabs{
+    border-radius:4px!important;
+    gap:3px!important;
+  }
+  .brand-shell-v1>.main .finance-period-tabs > a,
+  .brand-shell-v1>.main .finance-period-tabs > button{
+    border-radius:4px!important;
+  }
+}
+@media(min-width:901px) and (max-width:1280px){
+  .brand-shell-v1>.main .purchase-date-filter.flat{
+    grid-template-columns:minmax(0,1fr) auto!important;
+  }
+  .brand-shell-v1>.main .purchase-date-filter.flat>.range-meta{
+    display:none!important;
+  }
+}
+@media(min-width:901px) and (max-width:1050px){
+  .brand-shell-v1>.main .purchase-date-filter.flat>.purchase-date-inline-form label>span{
+    display:none!important;
+  }
+}
+@media(max-width:900px){
+  /* Mobile remains frozen until the separate mobile redesign. */
+  .brand-shell-v1 .desktop-period-extra{display:none!important;}
+}
