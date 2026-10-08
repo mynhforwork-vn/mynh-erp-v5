@@ -18,6 +18,8 @@ type AlertGroup={
 }
 type Filter='unread'|'all'
 const NOTIFICATION_PREFERENCE_KEY='mynh-erp-in-app-notifications-enabled'
+const TRACKING_PREFERENCE_KEY='mynh-erp-auto-tracking-enabled'
+const NOTIFICATION_POLL_MS=120000
 
 function BellIcon(){
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -53,7 +55,7 @@ function when(value:string){
   }catch{return value}
 }
 
-export function InAppAlertCenter(){
+export function InAppAlertCenter({trackingEnabled:initialTrackingEnabled}:{trackingEnabled:boolean}){
   const router=useRouter()
   const [open,setOpen]=useState(false)
   const [filter,setFilter]=useState<Filter>('unread')
@@ -61,8 +63,9 @@ export function InAppAlertCenter(){
   const [loading,setLoading]=useState(true)
   // null until browser preference has loaded; avoid an unwanted first request.
   const [notificationsEnabled,setNotificationsEnabled]=useState<boolean|null>(null)
+  const [trackingEnabled,setTrackingEnabled]=useState(initialTrackingEnabled)
   const enabledRef=useRef(false)
-  enabledRef.current=notificationsEnabled===true
+  enabledRef.current=notificationsEnabled===true&&trackingEnabled===true
   const timer=useRef<ReturnType<typeof setTimeout>|null>(null)
   const lastRequestAt=useRef(0)
   const nextAllowedAt=useRef(0)
@@ -72,7 +75,7 @@ export function InAppAlertCenter(){
   const load=useCallback(async()=>{
     if(!enabledRef.current||requestInFlight.current)return
     const now=Date.now()
-    const interval=document.visibilityState==='hidden'?900000:300000
+    const interval=NOTIFICATION_POLL_MS
     if(now<nextAllowedAt.current||now-lastRequestAt.current<interval)return
     requestInFlight.current=true
     lastRequestAt.current=now
@@ -97,6 +100,30 @@ export function InAppAlertCenter(){
     }
   },[])
 
+  // Follow the server-confirmed Auto Tracking state on layout refresh.
+  useEffect(()=>setTrackingEnabled(initialTrackingEnabled),[initialTrackingEnabled])
+
+  // Same-tab event and cross-tab storage event are dispatched after a successful settings save.
+  useEffect(()=>{
+    const onTrackingChanged=(event:Event)=>{
+      const enabled=(event as CustomEvent<{enabled:boolean}>).detail?.enabled===true
+      setTrackingEnabled(enabled)
+      if(!enabled)pendingRequest.current?.abort()
+    }
+    const onTrackingStorage=(event:StorageEvent)=>{
+      if(event.key!==TRACKING_PREFERENCE_KEY)return
+      const enabled=event.newValue==='true'
+      setTrackingEnabled(enabled)
+      if(!enabled)pendingRequest.current?.abort()
+    }
+    window.addEventListener('mynh-erp-tracking-changed',onTrackingChanged)
+    window.addEventListener('storage',onTrackingStorage)
+    return()=>{
+      window.removeEventListener('mynh-erp-tracking-changed',onTrackingChanged)
+      window.removeEventListener('storage',onTrackingStorage)
+    }
+  },[])
+
   // Preference is local to this browser; changes propagate to other ERP tabs.
   useEffect(()=>{
     try{setNotificationsEnabled(window.localStorage.getItem(NOTIFICATION_PREFERENCE_KEY)!=='off')}
@@ -113,7 +140,7 @@ export function InAppAlertCenter(){
 
   useEffect(()=>{
     if(timer.current){clearTimeout(timer.current);timer.current=null}
-    if(notificationsEnabled!==true){
+    if(notificationsEnabled!==true||trackingEnabled!==true){
       pendingRequest.current?.abort()
       setLoading(false)
       return
@@ -124,7 +151,7 @@ export function InAppAlertCenter(){
     const schedule=()=>{
       if(timer.current)clearTimeout(timer.current)
       if(stopped||!enabledRef.current)return
-      const interval=document.visibilityState==='hidden'?900000:300000
+      const interval=NOTIFICATION_POLL_MS
       const next=Math.max(lastRequestAt.current+interval,nextAllowedAt.current)
       const delay=Math.max(0,next-Date.now(),requestInFlight.current?1000:0)
       timer.current=setTimeout(()=>void tick(),delay)
@@ -142,7 +169,7 @@ export function InAppAlertCenter(){
       if(timer.current){clearTimeout(timer.current);timer.current=null}
       document.removeEventListener('visibilitychange',onVisibility)
     }
-  },[notificationsEnabled,load])
+  },[notificationsEnabled,trackingEnabled,load])
 
   function toggleNotifications(){
     const next=notificationsEnabled!==true
@@ -166,14 +193,14 @@ export function InAppAlertCenter(){
     return()=>window.removeEventListener('keydown',onKey)
   },[open])
 
-  const unread=useMemo(()=>notificationsEnabled?alerts.filter(x=>!x.is_read).length:0,[alerts,notificationsEnabled])
+  const unread=useMemo(()=>notificationsEnabled&&trackingEnabled?alerts.filter(x=>!x.is_read).length:0,[alerts,notificationsEnabled,trackingEnabled])
   const visible=useMemo(
-    ()=>!notificationsEnabled?[]:filter==='unread'?alerts.filter(x=>!x.is_read):alerts,
-    [alerts,filter,notificationsEnabled],
+    ()=>!notificationsEnabled||!trackingEnabled?[]:filter==='unread'?alerts.filter(x=>!x.is_read):alerts,
+    [alerts,filter,notificationsEnabled,trackingEnabled],
   )
 
   async function mark(ids:string[]){
-    if(!ids.length)return
+    if(!ids.length||!enabledRef.current)return
     setAlerts(current=>current.map(x=>x.alert_ids.some(id=>ids.includes(id))?{...x,is_read:true}:x))
     await fetch('/api/alerts/in-app',{
       method:'POST',
@@ -183,6 +210,7 @@ export function InAppAlertCenter(){
   }
 
   async function markAll(){
+    if(!enabledRef.current)return
     setAlerts(current=>current.map(x=>({...x,is_read:true})))
     await fetch('/api/alerts/in-app',{
       method:'POST',
@@ -244,7 +272,9 @@ export function InAppAlertCenter(){
         </div>
 
         <div className="app-alert-list app-alert-list-v2">
-          {notificationsEnabled===false
+          {!trackingEnabled
+            ? <div className="app-alert-empty app-alert-empty-v2">Auto Tracking đang tắt. Hệ thống không gọi API thông báo.</div>
+            : notificationsEnabled===false
             ? <div className="app-alert-empty app-alert-empty-v2">Thông báo đã tắt. Hệ thống không gửi yêu cầu cập nhật thông báo từ trình duyệt.</div>
             : loading
             ? <div className="app-alert-empty app-alert-empty-v2">Đang tải thông báo…</div>
