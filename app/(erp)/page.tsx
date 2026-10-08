@@ -26,7 +26,7 @@ export default async function Dashboard(){
   return <>
     <header className="page-head"><div><h1>Tổng quan vận hành</h1><p>Tình trạng hoạt động của MYNH ERP</p></div><div className="head-actions"><Link className="button" href="/purchase/tracking">Theo dõi vận chuyển</Link><Link className="button primary" href="/purchase/orders?mode=create">+ Tạo đơn</Link></div></header>
 
-    <div className="command-bar"><div className="command-range"><span className="active">Hôm nay</span><span>7 ngày</span><span>30 ngày</span><span>Tháng này</span><span>Tùy chọn</span></div><div className="command-health"><span>● Dữ liệu đã kết nối</span><span>Giờ nghỉ tự động 02:00–06:00</span><span>Lịch tự động mỗi phút</span></div></div>
+    <div className="command-bar"><div className="command-range"><span className="active">Toàn thời gian</span></div><div className="command-health"><span>● Dữ liệu đã kết nối</span><span>Giờ nghỉ tự động 02:00–06:00</span><span>Lịch tự động mỗi phút</span></div></div>
 
     <section className="kpi-grid">
       <Link href="/purchase/orders" className="kpi-card"><span>Tổng đơn</span><b>{orders}</b><small>Đơn hàng đang lưu trong hệ thống</small></Link>
