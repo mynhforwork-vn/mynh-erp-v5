@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect,useMemo,useRef,useState } from 'react'
+import { useCallback,useEffect,useMemo,useRef,useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 type AlertGroup={
@@ -17,6 +17,7 @@ type AlertGroup={
   is_read:boolean
 }
 type Filter='unread'|'all'
+const NOTIFICATION_PREFERENCE_KEY='mynh-erp-in-app-notifications-enabled'
 
 function BellIcon(){
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -58,47 +59,105 @@ export function InAppAlertCenter(){
   const [filter,setFilter]=useState<Filter>('unread')
   const [alerts,setAlerts]=useState<AlertGroup[]>([])
   const [loading,setLoading]=useState(true)
-  const timer=useRef<ReturnType<typeof setInterval>|null>(null)
+  // null until browser preference has loaded; avoid an unwanted first request.
+  const [notificationsEnabled,setNotificationsEnabled]=useState<boolean|null>(null)
+  const enabledRef=useRef(false)
+  enabledRef.current=notificationsEnabled===true
+  const timer=useRef<ReturnType<typeof setTimeout>|null>(null)
   const lastRequestAt=useRef(0)
   const nextAllowedAt=useRef(0)
   const requestInFlight=useRef(false)
+  const pendingRequest=useRef<AbortController|null>(null)
 
-  async function load(){
-    // Cloudflare Workers Free quota is shared by all previews and Production.
-    // Never poll an invisible tab, overlap requests, or retry rapidly after 429.
-    if(document.visibilityState==='hidden'||requestInFlight.current)return
+  const load=useCallback(async()=>{
+    if(!enabledRef.current||requestInFlight.current)return
     const now=Date.now()
-    const interval=open?300000:900000
+    const interval=document.visibilityState==='hidden'?900000:300000
     if(now<nextAllowedAt.current||now-lastRequestAt.current<interval)return
     requestInFlight.current=true
     lastRequestAt.current=now
+    const controller=new AbortController()
+    pendingRequest.current=controller
     try{
-      const res=await fetch('/api/alerts/in-app',{cache:'no-store'})
+      const res=await fetch('/api/alerts/in-app',{cache:'no-store',signal:controller.signal})
+      if(!enabledRef.current)return
       if(res.status===429||res.status===503){
         nextAllowedAt.current=Date.now()+900000
         return
       }
       if(!res.ok)return
       const body=await res.json()
-      setAlerts(Array.isArray(body.alerts)?body.alerts:[])
+      if(enabledRef.current)setAlerts(Array.isArray(body.alerts)?body.alerts:[])
     }catch{
-      nextAllowedAt.current=Date.now()+300000
+      if(!controller.signal.aborted)nextAllowedAt.current=Date.now()+300000
     }finally{
+      if(pendingRequest.current===controller)pendingRequest.current=null
       requestInFlight.current=false
-      setLoading(false)
+      if(enabledRef.current)setLoading(false)
     }
-  }
+  },[])
+
+  // Preference is local to this browser; changes propagate to other ERP tabs.
+  useEffect(()=>{
+    try{setNotificationsEnabled(window.localStorage.getItem(NOTIFICATION_PREFERENCE_KEY)!=='off')}
+    catch{setNotificationsEnabled(true)}
+    const syncPreference=(event:StorageEvent)=>{
+      if(event.key===NOTIFICATION_PREFERENCE_KEY){
+        setNotificationsEnabled(event.newValue!=='off')
+        if(event.newValue==='off')pendingRequest.current?.abort()
+      }
+    }
+    window.addEventListener('storage',syncPreference)
+    return()=>window.removeEventListener('storage',syncPreference)
+  },[])
 
   useEffect(()=>{
-    void load()
-    timer.current=setInterval(()=>void load(),open?300000:900000)
-    const onVisibility=()=>{if(document.visibilityState==='visible')void load()}
+    if(timer.current){clearTimeout(timer.current);timer.current=null}
+    if(notificationsEnabled!==true){
+      pendingRequest.current?.abort()
+      setLoading(false)
+      return
+    }
+    lastRequestAt.current=0
+    nextAllowedAt.current=0
+    let stopped=false
+    const schedule=()=>{
+      if(timer.current)clearTimeout(timer.current)
+      if(stopped||!enabledRef.current)return
+      const interval=document.visibilityState==='hidden'?900000:300000
+      const next=Math.max(lastRequestAt.current+interval,nextAllowedAt.current)
+      const delay=Math.max(0,next-Date.now(),requestInFlight.current?1000:0)
+      timer.current=setTimeout(()=>void tick(),delay)
+    }
+    const tick=async()=>{
+      if(stopped||!enabledRef.current)return
+      await load()
+      schedule()
+    }
+    const onVisibility=()=>void tick()
     document.addEventListener('visibilitychange',onVisibility)
+    void tick()
     return()=>{
-      if(timer.current)clearInterval(timer.current)
+      stopped=true
+      if(timer.current){clearTimeout(timer.current);timer.current=null}
       document.removeEventListener('visibilitychange',onVisibility)
     }
-  },[open])
+  },[notificationsEnabled,load])
+
+  function toggleNotifications(){
+    const next=notificationsEnabled!==true
+    enabledRef.current=next
+    if(!next){
+      pendingRequest.current?.abort()
+      setAlerts([])
+      setLoading(false)
+    }else{
+      setLoading(true)
+    }
+    try{window.localStorage.setItem(NOTIFICATION_PREFERENCE_KEY,next?'on':'off')}
+    catch{/* Browsers with storage restrictions keep the state for this session. */}
+    setNotificationsEnabled(next)
+  }
 
   useEffect(()=>{
     if(!open)return
@@ -107,10 +166,10 @@ export function InAppAlertCenter(){
     return()=>window.removeEventListener('keydown',onKey)
   },[open])
 
-  const unread=useMemo(()=>alerts.filter(x=>!x.is_read).length,[alerts])
+  const unread=useMemo(()=>notificationsEnabled?alerts.filter(x=>!x.is_read).length:0,[alerts,notificationsEnabled])
   const visible=useMemo(
-    ()=>filter==='unread'?alerts.filter(x=>!x.is_read):alerts,
-    [alerts,filter],
+    ()=>!notificationsEnabled?[]:filter==='unread'?alerts.filter(x=>!x.is_read):alerts,
+    [alerts,filter,notificationsEnabled],
   )
 
   async function mark(ids:string[]){
@@ -168,6 +227,8 @@ export function InAppAlertCenter(){
             </div>
           </div>
           <div className="app-alert-panel-actions-v2">
+            <button type="button" className="app-alert-mark-all-v2" aria-pressed={notificationsEnabled===true}
+              onClick={toggleNotifications}>{notificationsEnabled===false?'Bật thông báo':'Tắt thông báo'}</button>
             {unread>0&&<button type="button" className="app-alert-mark-all-v2" onClick={markAll}>
               <CheckIcon/><span>Đọc tất cả</span>
             </button>}
@@ -185,7 +246,9 @@ export function InAppAlertCenter(){
         </div>
 
         <div className="app-alert-list app-alert-list-v2">
-          {loading
+          {notificationsEnabled===false
+            ? <div className="app-alert-empty app-alert-empty-v2">Thông báo đã tắt. Hệ thống không gửi yêu cầu cập nhật thông báo từ trình duyệt.</div>
+            : loading
             ? <div className="app-alert-empty app-alert-empty-v2">Đang tải thông báo…</div>
             : !visible.length
               ? <div className="app-alert-empty app-alert-empty-v2">
