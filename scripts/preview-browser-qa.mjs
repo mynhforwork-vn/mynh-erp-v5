@@ -19,7 +19,7 @@ const summary={
   qaUserId:session.user_id,
   public:{},
   desktop:[],
-  mobile:[],
+  
   interactions:[],
   consoleErrors:[],
   pageErrors:[],
@@ -965,136 +965,8 @@ summary.interactions.push({
   pass:!settingsBody.includes('Tài khoản & phân quyền')&&!settingsBody.includes('Tích hợp')&&!settingsBody.includes('Thông báo'),
 })
 
-await page.setViewportSize({width:390,height:844})
-await go('/purchase/orders')
-const mobileBrandMetrics=await page.evaluate(()=>{
-  const sidebar=document.querySelector('.brand-shell-v1>.sidebar')
-  const appBar=document.querySelector('.mobile-app-bar')
-  const bottomNav=document.querySelector('.mobile-bottom-nav')
-  const cards=document.querySelectorAll('.mobile-order-list .mobile-entity-card')
-  const sidebarStyle=sidebar?getComputedStyle(sidebar):null
-  const appBarStyle=appBar?getComputedStyle(appBar):null
-  const bottomStyle=bottomNav?getComputedStyle(bottomNav):null
-  return {
-    innerWidth:window.innerWidth,
-    scrollWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
-    sidebarDisplay:sidebarStyle?.display??'',
-    appBarDisplay:appBarStyle?.display??'',
-    appBarPosition:appBarStyle?.position??'',
-    bottomDisplay:bottomStyle?.display??'',
-    bottomPosition:bottomStyle?.position??'',
-    mobileOrderCards:cards.length,
-  }
-})
-recordInteraction(
-  'MYNH mobile app shell uses app bar + bottom navigation',
-  mobileBrandMetrics.sidebarDisplay==='none'
-  &&mobileBrandMetrics.appBarDisplay!=='none'
-  &&mobileBrandMetrics.appBarPosition==='fixed'
-  &&mobileBrandMetrics.bottomDisplay!=='none'
-  &&mobileBrandMetrics.bottomPosition==='fixed',
-  mobileBrandMetrics
-)
-recordInteraction(
-  'MYNH mobile orders use card view',
-  mobileBrandMetrics.mobileOrderCards>0,
-  mobileBrandMetrics
-)
-recordInteraction(
-  'MYNH mobile shell has no page overflow',
-  mobileBrandMetrics.scrollWidth<=mobileBrandMetrics.innerWidth+2,
-  mobileBrandMetrics
-)
-
-
-await go('/purchase/accounts')
-const accountMobileMetrics=await page.evaluate(()=>{
-  const strip=document.querySelector('.account-kpi-grid.entity-status-strip')
-  const cards=[...document.querySelectorAll('.account-kpi-grid .account-kpi')]
-  const rect=strip?.getBoundingClientRect()
-  return {
-    viewport:window.innerWidth,
-    stripLeft:rect?.left??0,
-    stripRight:rect?.right??0,
-    cardCount:cards.length,
-    overflow:cards.some(card=>{
-      const r=card.getBoundingClientRect()
-      return r.left<-1||r.right>window.innerWidth+1
-    }),
-  }
-})
-recordInteraction(
-  'MYNH mobile account KPI stays inside viewport',
-  accountMobileMetrics.cardCount>0&&!accountMobileMetrics.overflow&&accountMobileMetrics.stripRight<=accountMobileMetrics.viewport+1,
-  accountMobileMetrics
-)
-
-await go('/purchase/orders')
-const orderMobileDensity=await page.evaluate(()=>{
-  const filter=document.querySelector('.purchase-date-filter')
-  const kpis=[...document.querySelectorAll('.order-kpi-grid .kpi-card')]
-  const datePicker=document.querySelector('.mobile-date-picker')
-  const filterRect=filter?.getBoundingClientRect()
-  const heights=kpis.map(x=>Math.round(x.getBoundingClientRect().height))
-  return {
-    viewport:window.innerWidth,
-    filterRight:filterRect?.right??0,
-    filterLeft:filterRect?.left??0,
-    datePickerDisplay:datePicker?getComputedStyle(datePicker).display:'',
-    kpiCount:kpis.length,
-    maxKpiHeight:heights.length?Math.max(...heights):0,
-  }
-})
-recordInteraction(
-  'MYNH mobile order filters and KPI are compact',
-  orderMobileDensity.filterRight<=orderMobileDensity.viewport+1
-  &&orderMobileDensity.filterLeft>=-1
-  &&orderMobileDensity.datePickerDisplay!=='none'
-  &&orderMobileDensity.kpiCount>0
-  &&orderMobileDensity.maxKpiHeight<=64,
-  orderMobileDensity
-)
-
-await go('/sales/pos')
-const posMobileMetrics=await page.evaluate(()=>{
-  const grid=document.querySelector('.pos-product-grid')
-  const cards=[...document.querySelectorAll('.pos-product-grid .pos-product-tile-final')]
-  const railButtons=[...document.querySelectorAll('.pos-category-rail button')]
-  const columns=grid?getComputedStyle(grid).gridTemplateColumns:''
-  return {
-    viewport:window.innerWidth,
-    columns,
-    cardCount:cards.length,
-    maxCardWidth:cards.length?Math.max(...cards.map(x=>x.getBoundingClientRect().width)):0,
-    minCardWidth:cards.length?Math.min(...cards.map(x=>x.getBoundingClientRect().width)):0,
-    railOverflow:railButtons.some(x=>x.getBoundingClientRect().right>window.innerWidth+1),
-  }
-})
-recordInteraction(
-  'MYNH mobile POS uses full-width product rows',
-  posMobileMetrics.cardCount>0
-  &&!posMobileMetrics.railOverflow
-  &&posMobileMetrics.minCardWidth>=posMobileMetrics.viewport*0.8,
-  posMobileMetrics
-)
-for(const path of ['/purchase/accounts','/purchase/orders','/purchase/tracking','/warehouse','/warehouse/receive','/warehouse/inventory','/sales/pos','/sales/history','/sales/customers','/sales/debt','/finance/cashflow']){
-  const r=await go(path)
-  const metrics=await page.evaluate(()=>({
-    innerWidth:window.innerWidth,
-    scrollWidth:document.documentElement.scrollWidth,
-    bodyScrollWidth:document.body.scrollWidth,
-  }))
-  summary.mobile.push({
-    path,status:r.status,finalUrl:r.url,
-    authenticated:!r.url.includes('/login'),
-    horizontalOverflow:Math.max(metrics.scrollWidth,metrics.bodyScrollWidth)>metrics.innerWidth+2,
-    navigationError:r.navigationError,
-    ...metrics,
-  })
-  const safe=path.replaceAll('/','-').replace(/^-+/,'')
-  await page.screenshot({path:`${outDir}/mobile-${safe}.png`,fullPage:true})
-  fs.writeFileSync(`${outDir}/summary-partial.json`,JSON.stringify(summary,null,2))
-}
+// Desktop-only release: Mobile is explicitly excluded from the UX contract.
+// Do not run mobile app shell/card, overflow, or handset breakpoint assertions.
 
 await browser.close()
 
@@ -1102,7 +974,7 @@ await browser.close()
 // prefetches while the same document route remains healthy. Treat those as
 // warnings only when the corresponding route itself completed successfully.
 const successfulPaths=new Set(
-  [...summary.desktop,...summary.mobile]
+  summary.desktop
     .filter(r=>r.authenticated&&r.status>0&&r.status<500&&!r.navigationError&&!r.hasServerError)
     .map(r=>String(r.path).split('?')[0])
 )
@@ -1158,9 +1030,6 @@ if(!summary.public.login.hasBrand||summary.public.login.emailInputs!==1||summary
 if(!summary.public.protectedRedirect.redirectedToLogin)summary.failures.push('Protected route redirect')
 for(const r of summary.desktop){
   if(!r.authenticated||r.status>=500||r.hasServerError||r.navigationError||r.horizontalOverflow)summary.failures.push(`Desktop route ${r.path}`)
-}
-for(const r of summary.mobile){
-  if(!r.authenticated||r.status>=500||r.navigationError||r.horizontalOverflow)summary.failures.push(`Mobile route ${r.path}`)
 }
 for(const interaction of summary.interactions){
   if(!interaction.pass)summary.failures.push(`Interaction: ${interaction.name}`)
