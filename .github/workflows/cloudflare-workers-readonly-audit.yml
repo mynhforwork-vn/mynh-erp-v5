@@ -111,4 +111,23 @@ jobs:
                 mentionsDailyLimit:/daily|quota|limit exceeded|free tier/i.test(raw),mentionsRateLimit:/rate limit|too many requests/i.test(raw)}));
             }catch{console.log('SITE_PROBE '+JSON.stringify({name,unreachable:true}));}
           }
+          const subscription=await api('/accounts/'+account+'/workers/subscription');
+          console.log('SUBSCRIPTION '+JSON.stringify({http:subscription.http,success:subscription.success,
+            plan:subscription.result?.plan?.id??subscription.result?.plan?.name??subscription.result?.name??null}));
+          for(const [label,start,end] of [
+            ['utc07_00_06',Date.parse('2026-10-07T00:00:00Z'),Date.parse('2026-10-07T06:00:00Z')],
+            ['utc07_06_12',Date.parse('2026-10-07T06:00:00Z'),Date.parse('2026-10-07T12:00:00Z')],
+            ['utc07_12_18',Date.parse('2026-10-07T12:00:00Z'),Date.parse('2026-10-07T18:00:00Z')],
+            ['utc07_18_24',Date.parse('2026-10-07T18:00:00Z'),Date.parse('2026-10-08T00:00:00Z')],
+            ['utc08_00_06',Date.parse('2026-10-08T00:00:00Z'),Date.parse('2026-10-08T06:00:00Z')],
+            ['utc08_06_12',Date.parse('2026-10-08T06:00:00Z'),Date.parse('2026-10-08T12:00:00Z')],
+            ['utc08_12_18',Date.parse('2026-10-08T12:00:00Z'),Date.now()]
+          ]){
+            const vars={accountTag:account,start:new Date(start).toISOString(),end:new Date(end).toISOString()};
+            const r=await fetch(root+'/graphql',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({query,variables:vars})});
+            const j=await r.json();
+            const rows=j.data?.viewer?.accounts?.[0]?.workersInvocationsAdaptive||[];
+            console.log('PERIOD_COUNTS '+JSON.stringify({label,ok:Array.isArray(rows),totals:rows.map(x=>({
+              name:x.dimensions?.scriptName,requests:x.sum?.requests,errors:x.sum?.errors}))}));
+          }
           NODE
