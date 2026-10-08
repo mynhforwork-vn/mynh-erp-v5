@@ -17,10 +17,12 @@ export default async function ERPLayout({children}:{children:React.ReactNode}){
   // Fail closed: if the setting cannot be verified, do not poll notifications.
   const {data:trackingRuntime,error:trackingError}=await supabase
     .from('tracking_runtime_settings')
-    .select('auto_tracking_enabled')
+    .select('auto_tracking_enabled,quiet_start,quiet_end')
     .eq('id','main')
     .maybeSingle()
   const trackingEnabled=!trackingError&&trackingRuntime?.auto_tracking_enabled===true
+  const quietStart=String(trackingRuntime?.quiet_start??'02:00').slice(0,5)
+  const quietEnd=String(trackingRuntime?.quiet_end??'06:00').slice(0,5)
   return <>
     <DismissOpenDetails/>
     <DesktopTableColumnResize/>
@@ -30,7 +32,7 @@ export default async function ERPLayout({children}:{children:React.ReactNode}){
       <Suspense fallback={null}><Nav/></Suspense>
       <div className="sidebar-foot sidebar-foot-v2">
         <SidebarAccountMenu email={user.email??'Người dùng MYNH ERP'} role={roleLabel(role)}/>
-        <InAppAlertCenter trackingEnabled={trackingEnabled}/>
+        <InAppAlertCenter trackingEnabled={trackingEnabled} quietStart={quietStart} quietEnd={quietEnd}/>
       </div>
     </aside>
     <div className="desktop-sidebar-seam-handle"><SidebarCollapseToggle/></div>
