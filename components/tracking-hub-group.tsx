@@ -144,7 +144,7 @@ export function TrackingHubGroup({
     return orderBasePath+'?'+p.toString()
   }
 
-  return <section className={'card tracking-hub-card tracking-hub-card-v2 '+(open?'open':'collapsed')}>
+  return <section className={'card tracking-hub-card tracking-hub-card-v2 '+(open?'open':'collapsed')+(columns.open?' columns-open':'')}>
     <div className="tracking-hub-head-v2">
       <button
         type="button"
@@ -178,6 +178,7 @@ export function TrackingHubGroup({
       <div className="tracking-hub-summary-state">
         {delivered>0&&<span className="success">{delivered} giao TC</span>}
         <span>{open?'Thu gọn':'Xem đơn'}</span>
+        {open&&<ManagedColumnsMenu labels={COLUMN_LABELS} manager={columns}/>}
       </div>
     </div>
 
@@ -223,10 +224,6 @@ export function TrackingHubGroup({
         })}
       </div>
 
-      <div className="managed-table-toolbar tracking-managed-toolbar">
-        <span className="managed-table-meta">{sortedRows.length} đơn · Cấu hình áp dụng cho mọi HUB</span>
-        <ManagedColumnsMenu labels={COLUMN_LABELS} manager={columns}/>
-      </div>
       <div className="tracking-hub-table-wrap tracking-hub-table-wrap-v2">
         <table className="table tracking-hub-table tracking-hub-table-v2">
           <thead><tr>
