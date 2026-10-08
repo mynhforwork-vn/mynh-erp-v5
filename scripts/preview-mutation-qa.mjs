@@ -94,8 +94,8 @@ const baselineItem=await first('/rest/v1/order_items?select=id,product_variant_i
 const baselineSales=await admin('/rest/v1/sales?select=id&customer_id=eq.'+encodeURIComponent(f.customer_id))
 record('Baseline warehouse order is ready',baselineOrder?.warehouse_status==='READY_TO_TRANSFER'&&baselineOrder?.receive_status==='RECEIVED')
 record('Baseline warehouse item is unmapped',baselineItem?.product_variant_id===null&&Number(baselineItem?.quantity)===Number(f.mutation_stock_quantity))
-record('Baseline customer has only isolated history-sale fixture',
-  Array.isArray(baselineSales)&&baselineSales.length===1&&String(baselineSales[0]?.id)===String(f.sale_id),
+record('Baseline mutation customer has no sales or debt',
+  Array.isArray(baselineSales)&&baselineSales.length===0,
   {count:baselineSales?.length??-1})
 
 // 1) Warehouse Intake mutation: map SKU through real UI.
