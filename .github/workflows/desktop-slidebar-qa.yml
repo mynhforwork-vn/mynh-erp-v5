@@ -8,6 +8,7 @@ on:
       - app/**
       - components/**
       - scripts/desktop-slidebar-qa.mjs
+      - scripts/desktop-table-qa.mjs
       - scripts/preview-auth-setup.mjs
       - scripts/preview-auth-cleanup.mjs
       - scripts/preview-fixture-setup.mjs
