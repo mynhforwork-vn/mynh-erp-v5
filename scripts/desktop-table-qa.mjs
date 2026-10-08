@@ -256,8 +256,15 @@ for(const width of [1024,1440,2560]){
     k.toolbarGone&&k.buttonInHeader,k)
   rec('Cảnh báo giao — HUB cùng nền trung tính '+width,
     !!k.headerColor&&k.headerColor===k.nextHeaderColor,k)
-  rec('Cảnh báo giao — vạch nhận diện HUB đồng nhất Cobalt '+width,
-    k.stripeColor==='rgb(61, 117, 184)'&&(!k.nextStripeColor||k.stripeColor===k.nextStripeColor),k)
+  const hubColors=await page.locator('.tracking-hub-card-v2 .tracking-hub-priority-dot').evaluateAll(els=>
+    els.map(el=>{
+      const css=getComputedStyle(el)
+      return {urgent:el.classList.contains('attention'),bg:css.backgroundColor,image:css.backgroundImage}
+    }))
+  rec('Cảnh báo giao — vạch cam theo urgentCount, xám nếu không ưu tiên '+width,
+    hubColors.length>0&&hubColors.every(c=>c.urgent
+      ? c.image.includes('linear-gradient')
+      : c.bg==='rgb(183, 194, 205)'),{hubColors})
   const col=first.locator('.tracking-hub-summary-state .managed-column-button')
   if(await col.count()){
     await col.click()
@@ -270,6 +277,67 @@ for(const width of [1024,1440,2560]){
     await page.keyboard.press('Escape')
   }else rec('Cảnh báo giao — còn chức năng chỉnh Cột '+width,false)
   if(width===1440)await page.screenshot({path:artifactDir+'/tracking-hub-expanded-1440.png',fullPage:false})
+}
+
+
+// Functional desktop table controls + persistent column widths on representative modules.
+// Never trigger destructive actions (delete, receive, pay, archive, submit).
+for(const path of [
+  '/purchase/accounts','/purchase/orders','/purchase/tracking',
+  '/warehouse/receive','/warehouse/inventory','/warehouse/history',
+  '/sales/customers','/sales/debt','/sales/history',
+  '/finance/cashflow','/finance/reports','/finance/shipper-payments?mode=customer'
+]){
+  await page.setViewportSize({width:1440,height:900})
+  await go(path)
+  const table=page.locator('.brand-shell-v1 > .main table.table').first()
+  if(!(await table.count())){
+    rec('Kiểm tra bảng '+path+' — bảng có hiển thị',false)
+    continue
+  }
+  if(path.includes('/purchase/tracking')){
+    const card=page.locator('.tracking-hub-card-v2').first()
+    if((await card.count())&&(await card.getAttribute('class')||'').includes('collapsed')){
+      await card.locator('.tracking-hub-toggle').click()
+    }
+  }
+  await page.waitForTimeout(200)
+  const grips=table.locator('thead th .mynh-column-resize-grip')
+  const gripCount=await grips.count()
+  const headerCount=await table.locator('thead tr:first-child th').count()
+  rec('Bảng '+path+' — có kéo chỉnh độ rộng cột',gripCount>=Math.max(1,headerCount-3),{gripCount,headerCount})
+  const controls=await table.evaluate(el=>{
+    const buttons=[...el.querySelectorAll('button')]
+    return {
+      buttons:buttons.length,
+      labels:buttons.slice(0,35).map(b=>b.getAttribute('aria-label')||b.textContent?.trim()||''),
+      unnamed:buttons.filter(b=>!b.getAttribute('aria-label')&&!b.title&&!b.textContent?.trim()).length,
+    }
+  })
+  rec('Bảng '+path+' — nút bảng có nhãn thao tác',controls.unnamed===0,controls)
+  if(gripCount){
+    const first=grips.first()
+    const before=await first.evaluate(el=>el.parentElement.getBoundingClientRect().width)
+    await first.focus()
+    await page.keyboard.press('ArrowRight')
+    await page.waitForTimeout(120)
+    const after=await first.evaluate(el=>el.parentElement.getBoundingClientRect().width)
+    const persisted=await page.evaluate(()=>{
+      return Object.entries(localStorage)
+        .filter(([key])=>key.startsWith('mynh-col-widths-v1:')&&key.includes(location.pathname))
+        .some(([,value])=>{try{return Object.keys(JSON.parse(value)).length>0}catch{return false}})
+    })
+    rec('Bảng '+path+' — điều chỉnh bằng bàn phím và lưu độ rộng',
+      after>=before+5&&persisted,{before,after,persisted})
+    if(path==='/purchase/orders'||path==='/sales/customers'){
+      await page.reload({waitUntil:'domcontentloaded'})
+      await page.waitForTimeout(650)
+      const afterReload=await page.locator('.brand-shell-v1 > .main table.table').first()
+        .locator('thead th .mynh-column-resize-grip').first()
+        .evaluate(el=>el.parentElement.getBoundingClientRect().width)
+      rec('Bảng '+path+' — độ rộng lưu sau tải lại',Math.abs(afterReload-after)<=4,{after,afterReload})
+    }
+  }
 }
 
 const pass=results.every(x=>x.pass)
