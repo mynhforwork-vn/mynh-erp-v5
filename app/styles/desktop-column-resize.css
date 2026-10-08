@@ -1,7 +1,11 @@
 /* ERP Desktop — column-width grips. Never adds a toolbar row or touches right-side panels. */
 @media(min-width:901px){
   .brand-shell-v1>.main table.table thead th.mynh-column-resize-head{
-    position:relative!important;
+    /* Sticky headers are part of the approved Desktop table contract.
+       A resize handle can anchor to sticky just as to relative positioning. */
+    position:sticky!important;
+    top:0!important;
+    z-index:4!important;
     overflow:visible!important;
   }
   .brand-shell-v1>.main table.table .mynh-column-resize-grip{
