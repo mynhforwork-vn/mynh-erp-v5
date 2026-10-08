@@ -111,6 +111,28 @@ for(const [file,needle] of contextualForbidden){
   if(src.includes(needle))issues.push(`${file}: legacy cross-module drilldown remains: ${needle}`)
 }
 
+/* No migration may silently repopulate business demo/QA records on a fresh DB.
+   Legacy migration 0035 stays as a comment-only no-op; history is immutable in the DB. */
+const migrationsDir='supabase/migrations'
+if(fs.existsSync(migrationsDir)){
+  for(const entry of fs.readdirSync(migrationsDir)){
+    if(!entry.endsWith('.sql'))continue
+    const file=path.join(migrationsDir,entry)
+    const raw=fs.readFileSync(file,'utf8')
+    const executable=raw
+      .replace(/\/\*[\s\S]*?\*\//g,'')
+      .split('\n')
+      .map(line=>line.replace(/--.*$/,''))
+      .join('\n')
+    if(entry==='0035_seed_finance_demo_data.sql'&&executable.trim()){
+      issues.push(file+': retired finance demo seed must remain SQL-free')
+    }
+    if(/\binsert\s+into\b/i.test(executable)&&/\[DEMO\]|DEMO[-_]|QA_BROWSER_FIXTURE/i.test(executable)){
+      issues.push(file+': executable business demo/QA seed detected')
+    }
+  }
+}
+
 const result={
   scannedFiles:files.length,
   routeCount:routes.length,
