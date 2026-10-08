@@ -183,7 +183,7 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
           <Link className={mode==='customer'?'active':''} href={href({mode:'customer',hub:null,view:null})}>Khách hàng</Link>
         </div>
         <div className="finance-period-tabs compact">
-          {([['all','Toàn thời gian'],['today','Hôm nay'],['7d','7 ngày'],['month','Tháng này']] as const).map(([key,label])=><Link key={key} href={href({period:key})} className={period===key?'active':''}>{label}</Link>)}
+          {([['all','Toàn thời gian'],['today','Hôm nay'],['week','Tuần này'],['7d','7 ngày'],['30d','30 ngày'],['month','Tháng này'],['quarter','Quý này'],['year','Năm nay']] as const).map(([key,label])=><Link key={key} href={href({period:key})} className={period===key?'active':''}>{label}</Link>)}
         </div>
       </div>
 
