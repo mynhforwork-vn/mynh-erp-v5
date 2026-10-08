@@ -227,8 +227,6 @@ export function InAppAlertCenter(){
             </div>
           </div>
           <div className="app-alert-panel-actions-v2">
-            <button type="button" className="app-alert-mark-all-v2" aria-pressed={notificationsEnabled===true}
-              onClick={toggleNotifications}>{notificationsEnabled===false?'Bật thông báo':'Tắt thông báo'}</button>
             {unread>0&&<button type="button" className="app-alert-mark-all-v2" onClick={markAll}>
               <CheckIcon/><span>Đọc tất cả</span>
             </button>}
@@ -282,7 +280,9 @@ export function InAppAlertCenter(){
                 </button>)}
         </div>
 
-        <footer className="app-alert-panel-foot-v2">
+        <footer className="app-alert-panel-foot-v2" style={{display:'grid',gap:5}}>
+          <button type="button" aria-pressed={notificationsEnabled===true}
+            onClick={toggleNotifications}>{notificationsEnabled===false?'Bật thông báo':'Tắt thông báo'}</button>
           <button type="button" onClick={()=>{
             setOpen(false)
             router.push('/purchase/tracking')
