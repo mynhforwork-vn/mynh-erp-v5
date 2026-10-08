@@ -904,10 +904,10 @@ for(const name of ['Tài khoản','Vai trò & quyền']){
 // Use a dedicated, deterministic QA invoice for cancellation-modal assertions.
 // The prior test selected up to 12 arbitrary invoices and wrongly required
 // cancellation to be enabled for an already returned or cancelled invoice.
-await go('/sales/history?sale='+encodeURIComponent(f.sale_id))
+await go('/sales/history?sale='+encodeURIComponent(session.fixtures.sale_id))
 const invoicePanelOpened=page.url().includes('sale=')&&await page.locator('.sales-history-panel').count()>0
 const invoiceIdentity=await page.locator('.sales-history-panel-head h2').innerText().catch(()=>'')
-recordInteraction('Sales History QA invoice panel opens',invoicePanelOpened&&invoiceIdentity===f.sale_invoice_code,{invoiceIdentity})
+recordInteraction('Sales History QA invoice panel opens',invoicePanelOpened&&invoiceIdentity===session.fixtures.sale_invoice_code,{invoiceIdentity})
 const cancel=page.getByRole('button',{name:'Huỷ hóa đơn'})
 const returnButton=page.getByRole('button',{name:'Hoàn hàng'})
 const cancelReady=await cancel.count()>0&&await cancel.first().isEnabled()
