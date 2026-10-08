@@ -202,15 +202,17 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       )return false
     }else if(sp.tracking==='shipping'){
       const status=shipment?.current_tracking_status
-      if(!isShippingTrackingStatus(status))return false
+      if(o.shipping_service==='EXPRESS'||!isShippingTrackingStatus(status))return false
     }else if(sp.tracking==='missing'){
-      if(shipment?.tracking_number)return false
+      if(o.shipping_service==='EXPRESS'||shipment?.tracking_number)return false
     }else if(sp.tracking==='cancelled'){
       const orderStatus=String(o.order_status??'').toUpperCase()
       if(shipment?.current_tracking_status!=='CANCELLED'&&orderStatus!=='CANCELLED'&&orderStatus!=='CANCELED')return false
     }else if(sp.tracking&&shipment?.current_tracking_status!==sp.tracking){
       return false
     }
+    if(['ARRIVED_DESTINATION_HUB','DELIVERED'].includes(sp.tracking??'')&&o.shipping_service==='EXPRESS')return false
+    if(sp.receive==='WAITING_RECEIVE'&&o.shipping_service==='EXPRESS'&&sp.service!=='express')return false
     if(!queryText)return true
     const s=activeShipment(o)
     const hay=[
@@ -415,6 +417,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
             {sp.receive&&<input type="hidden" name="receive" value={sp.receive}/>}
             {sp.tracking&&<input type="hidden" name="tracking" value={sp.tracking}/>}
+            {sp.service&&<input type="hidden" name="service" value={sp.service}/>}
             {sp.order&&<input type="hidden" name="order" value={sp.order}/>}
             {sp.mode&&<input type="hidden" name="mode" value={sp.mode}/>}
             {sp.tab&&<input type="hidden" name="tab" value={sp.tab}/>}
