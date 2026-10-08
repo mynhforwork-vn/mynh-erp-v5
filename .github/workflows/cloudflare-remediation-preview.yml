@@ -11,6 +11,7 @@ on:
       - redesign/settings-v8
       - redesign/account-notifications-v1
       - fix/order-text-recognition-v1
+      - redesign/brand-responsive-v1
       - fix/shipping-status-group-v1
       - fix/manual-tracking-response-v1
 
@@ -86,7 +87,7 @@ jobs:
           {
             echo "## Cloudflare Remediation Preview"
             echo ""
-            echo "- Commit: `$GITHUB_SHA`"
+            printf -- '- Commit: `%s`\n' "$GITHUB_SHA"
             echo "- Preview: $PREVIEW_URL"
             echo "- Static QA: PASS"
             echo "- OpenNext Cloudflare build: PASS"

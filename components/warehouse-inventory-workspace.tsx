@@ -108,6 +108,34 @@ export function WarehouseInventoryWorkspace({
             <span>{rows.length} dòng phù hợp bộ lọc hiện tại</span>
           </div>
         </div>
+        <div className="mobile-entity-list mobile-inventory-list">
+          {!rows.length
+            ? <div className="mobile-empty-state">Không có tồn kho phù hợp.</div>
+            : rows.map(row=>{
+                const key=row.warehouse_id+'|'+row.product_variant_id
+                return <button
+                  type="button"
+                  className={'mobile-inventory-card '+(activeKey===key?'selected':'')}
+                  key={'mobile-'+key}
+                  onClick={()=>openRow(key)}
+                >
+                  <div className="mobile-inventory-card-head">
+                    <div><b>{row.sku}</b><span>{row.product_name} · {row.variant_name}</span></div>
+                    {row.quantity===0
+                      ? <span className="status-pill red">Hết hàng</span>
+                      : row.quantity<=3
+                        ? <span className="status-pill orange">Tồn thấp</span>
+                        : <span className="status-pill green">Bình thường</span>}
+                  </div>
+                  <div className="mobile-inventory-metrics">
+                    <div><span>Kho</span><b>{row.warehouse_code}</b></div>
+                    <div><span>Tồn</span><b>{row.quantity}</b></div>
+                    <div><span>Đang về</span><b>{row.incoming||0}</b></div>
+                    <div><span>Giá bán</span><b>{formatMoney(row.sale_price)}</b></div>
+                  </div>
+                </button>
+              })}
+        </div>
         <div className="whx-table-scroll">
           <table className="table whx-table">
             <thead><tr>
@@ -160,7 +188,7 @@ export function WarehouseInventoryWorkspace({
     </section>
 
     {active&&<aside
-      className="whx-detail-panel whx-detail-panel-v2"
+      className="whx-detail-panel whx-detail-panel-v2 mynh-slide-panel"
       style={{
         minWidth:0,
         height:'calc(100vh - 188px)',

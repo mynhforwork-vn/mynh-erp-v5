@@ -168,7 +168,12 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
     const orderStatus=String(o.order_status??'').toUpperCase()
     return trackingStatus==='CANCELLED'||orderStatus==='CANCELLED'||orderStatus==='CANCELED'
   }).length
-  const expressCount=rows.filter(o=>o.shipping_service==='EXPRESS').length
+  const expressRows=rows.filter(o=>o.shipping_service==='EXPRESS')
+  const expressCount=expressRows.length
+  const expressAttention=expressRows.filter(o=>{
+    const status=String(o.order_status??'').toUpperCase()
+    return o.receive_status!=='RECEIVED'&&status!=='CANCELLED'&&status!=='CANCELED'
+  }).length
 
   const byArea=aggregate(standardRows,'area')
   const byHub=aggregate(standardRows,'destination_hub')
@@ -269,6 +274,9 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       <Link href={orderHref({tracking:'cancelled'})} className="command-kpi danger">
         <span>Bị huỷ</span><b>{cancelled}</b><small>Đơn / vận đơn đã huỷ</small>
       </Link>
+      <Link href={orderHref({service:'express'})} className="command-kpi express">
+        <span>Đơn Hỏa tốc</span><b>{expressCount}</b><small>{expressAttention} chưa nhận · Theo dõi thủ công</small>
+      </Link>
     </section>
 
     <section className="purchase-receive-command">
@@ -296,6 +304,30 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
         <div className="card-head">
           <div><h2>Theo kho đích</h2><span className="muted">Ưu tiên kho đang có đơn giao thành công chờ nhận</span></div>
           <Link className="button small" href={purchaseHref('/purchase/tracking')}>Mở console</Link>
+        </div>
+        <div className="mobile-purchase-summary-list mobile-purchase-hub-list">
+          {!byHub.length
+            ? <div className="mobile-empty-state">Chưa có dữ liệu kho đích.</div>
+            : byHub.slice(0,12).map(x=>{
+                const hubShippers=(hubShipperMap.get(x.name)??[]) as any[]
+                const href=purchaseHref('/purchase/tracking',{hub:x.name==='Chưa xác định'?null:x.name,status:x.waiting?'DELIVERED':null,receive:x.waiting?'WAITING_RECEIVE':null})
+                return <Link className={'mobile-purchase-summary-card '+(x.waiting?'needs-action':'')} href={href} key={'mobile-hub-'+x.name}>
+                  <div className="mobile-purchase-summary-head">
+                    <div><span>Kho đích</span><b>{x.name}</b></div>
+                    {x.waiting?<span className="status-pill orange">{x.waiting} chờ nhận</span>:<span className="status-pill green">Ổn định</span>}
+                  </div>
+                  <div className="mobile-purchase-summary-grid">
+                    <div><span>Đơn</span><b>{x.orders}</b></div>
+                    <div><span>COD</span><b>{formatMoney(x.cod)}</b></div>
+                    <div><span>Giao TC</span><b>{x.delivered}</b></div>
+                    <div><span>Đã nhận</span><b>{x.received}</b></div>
+                  </div>
+                  <div className="mobile-purchase-summary-foot">
+                    <span>{hubShippers.length?hubShippers.map((s:any)=>s.name).join(', '):'Chưa gán Shipper'}</span>
+                    <b>Xử lý ›</b>
+                  </div>
+                </Link>
+              })}
         </div>
         <div className="compact-table-wrap">
           <table className="table compact-summary-table">
@@ -359,6 +391,19 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
     <section className="purchase-analytics-grid">
       <div className="card">
         <div className="card-head"><div><h2>Theo khu vực</h2><span className="muted">Đơn tiêu chuẩn có phân khu vực tự động</span></div></div>
+        <div className="mobile-purchase-summary-list mobile-purchase-area-list">
+          {!byArea.length
+            ? <div className="mobile-empty-state">Chưa có dữ liệu khu vực.</div>
+            : byArea.map(x=><article className="mobile-purchase-summary-card" key={'mobile-area-'+x.name}>
+                <div className="mobile-purchase-summary-head"><div><span>Khu vực</span><b>{x.name}</b></div><strong>{x.orders} đơn</strong></div>
+                <div className="mobile-purchase-summary-grid">
+                  <div><span>COD</span><b>{formatMoney(x.cod)}</b></div>
+                  <div><span>Giao TC</span><b>{x.delivered}</b></div>
+                  <div><span>Chờ nhận</span><b>{x.waiting}</b></div>
+                  <div><span>Đã nhận</span><b>{x.received}</b></div>
+                </div>
+              </article>)}
+        </div>
         <div className="compact-table-wrap">
           <table className="table compact-summary-table">
             <thead><tr><th>Khu vực</th><th>Đơn</th><th>COD</th><th>Giao TC</th><th>Chờ nhận</th></tr></thead>

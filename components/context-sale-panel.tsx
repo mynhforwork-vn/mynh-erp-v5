@@ -32,7 +32,7 @@ export function ContextSalePanel({
   sale,activeTab,backHref,closeHref,infoHref,productsHref,paymentHref,historyHref,
   openModuleHref,canOperate,receiptQR='',receiptQRAmount=0,receiptQRDescription='',bankConfig,parentLabel,
 }:Props){
-  return <aside className="sales-history-panel context-sale-panel">
+  return <aside className="sales-history-panel context-sale-panel mynh-slide-panel">
     <div className="sales-history-panel-head context-stack-head">
       <Link className="context-stack-back" href={backHref} aria-label="Quay lại">←</Link>
       <div className="context-stack-title">

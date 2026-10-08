@@ -232,7 +232,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
         />
       </section>
 
-      {selected&&<aside className="sales-history-panel">
+      {selected&&<aside className="sales-history-panel mynh-slide-panel">
         <div className="sales-history-panel-head">
           <div>
             <span className="module-eyebrow">HÓA ĐƠN POS</span>

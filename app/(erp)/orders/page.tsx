@@ -12,7 +12,7 @@ import { DestinationHubConfigModal } from '@/components/destination-hub-config-p
 import { suggestReceivingWarehouseId } from '@/lib/warehouse-routing'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
-type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,user?:string,settings?:string,archive?:string}
+type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,service?:string,user?:string,settings?:string,archive?:string}
 
 const HOUR=60*60*1000
 const DAY=24*HOUR
@@ -190,6 +190,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const dateRows=(data??[]) as any[]
   const rows=dateRows.filter((o:any)=>{
     if(sp.receive&&o.receive_status!==sp.receive)return false
+    if(sp.service==='express'&&o.shipping_service!=='EXPRESS')return false
     const shipment=activeShipment(o)
     if(sp.tracking==='express'){
       const orderStatus=String(o.order_status??'').toUpperCase()
@@ -201,15 +202,17 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       )return false
     }else if(sp.tracking==='shipping'){
       const status=shipment?.current_tracking_status
-      if(!isShippingTrackingStatus(status))return false
+      if(o.shipping_service==='EXPRESS'||!isShippingTrackingStatus(status))return false
     }else if(sp.tracking==='missing'){
-      if(shipment?.tracking_number)return false
+      if(o.shipping_service==='EXPRESS'||shipment?.tracking_number)return false
     }else if(sp.tracking==='cancelled'){
       const orderStatus=String(o.order_status??'').toUpperCase()
       if(shipment?.current_tracking_status!=='CANCELLED'&&orderStatus!=='CANCELLED'&&orderStatus!=='CANCELED')return false
     }else if(sp.tracking&&shipment?.current_tracking_status!==sp.tracking){
       return false
     }
+    if(['ARRIVED_DESTINATION_HUB','DELIVERED'].includes(sp.tracking??'')&&o.shipping_service==='EXPRESS')return false
+    if(sp.receive==='WAITING_RECEIVE'&&o.shipping_service==='EXPRESS'&&sp.service!=='express')return false
     if(!queryText)return true
     const s=activeShipment(o)
     const hay=[
@@ -222,14 +225,16 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   })
 
   const totalOrders=dateRows.length
-  const shipping=dateRows.filter((o:any)=>{
+  const standardRows=dateRows.filter((o:any)=>o.shipping_service!=='EXPRESS')
+  const expressCount=dateRows.length-standardRows.length
+  const shipping=standardRows.filter((o:any)=>{
     const s=activeShipment(o)?.current_tracking_status
     return isShippingTrackingStatus(s)
   }).length
-  const arrivedHub=dateRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='ARRIVED_DESTINATION_HUB').length
-  const delivered=dateRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='DELIVERED').length
-  const waiting=dateRows.filter((o:any)=>o.receive_status==='WAITING_RECEIVE').length
-  const missingTracking=dateRows.filter((o:any)=>!activeShipment(o)?.tracking_number).length
+  const arrivedHub=standardRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='ARRIVED_DESTINATION_HUB').length
+  const delivered=standardRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='DELIVERED').length
+  const waiting=standardRows.filter((o:any)=>o.receive_status==='WAITING_RECEIVE').length
+  const missingTracking=standardRows.filter((o:any)=>!activeShipment(o)?.tracking_number).length
   const cancelled=dateRows.filter((o:any)=>{
     const status=activeShipment(o)?.current_tracking_status
     const orderStatus=String(o.order_status??'').toUpperCase()
@@ -263,6 +268,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     if(queryText)p.set('q',sp.q??'')
     if(sp.receive)p.set('receive',sp.receive)
     if(sp.tracking)p.set('tracking',sp.tracking)
+    if(sp.service)p.set('service',sp.service)
     if(sp.order)p.set('order',sp.order)
     if(sp.mode)p.set('mode',sp.mode)
     if(sp.tab)p.set('tab',sp.tab)
@@ -387,19 +393,20 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         q:sp.q,
         receive:sp.receive,
         tracking:sp.tracking,
+        service:sp.service,
         archive:sp.archive,
       }}
     />
 
     <section className="kpi-grid order-kpi-grid order-kpi-grid-v2 entity-status-strip">
-      <Link className={`kpi-card entity-status-metric ${!sp.receive&&!sp.tracking?'active':''}`} href={listHref({receive:null,tracking:null})}><span>Tổng đơn</span><b>{totalOrders}</b><small>Trong khoảng đã chọn</small></Link>
-      <Link className={`kpi-card entity-status-metric warning ${sp.tracking==='missing'?'active':''}`} href={listHref({receive:null,tracking:'missing'})}><span>Chưa có mã vận đơn</span><b>{missingTracking}</b><small>Gồm cả đơn Hỏa tốc</small></Link>
-      <Link className={`kpi-card entity-status-metric info ${sp.tracking==='shipping'?'active':''}`} href={listHref({receive:null,tracking:'shipping'})}><span>Đang vận chuyển</span><b>{shipping}</b><small>Đã lấy hàng / trung chuyển / đang giao</small></Link>
-      <Link className={`kpi-card entity-status-metric info ${sp.tracking==='ARRIVED_DESTINATION_HUB'?'active':''}`} href={listHref({receive:null,tracking:'ARRIVED_DESTINATION_HUB'})}><span>Đến kho đích</span><b>{arrivedHub}</b><small>Đã đến HUB đích</small></Link>
-      <Link className={`kpi-card entity-status-metric success ${sp.tracking==='DELIVERED'&&!sp.receive?'active':''}`} href={listHref({receive:null,tracking:'DELIVERED'})}><span>Giao thành công</span><b>{delivered}</b><small>Đã giao thành công</small></Link>
-      <Link className={`kpi-card entity-status-metric warning ${sp.receive==='WAITING_RECEIVE'?'active':''}`} href={listHref({receive:'WAITING_RECEIVE',tracking:null})}><span>Chờ xác nhận nhận hàng</span><b>{waiting}</b><small>Cần xác nhận vật lý</small></Link>
-      <Link className={`kpi-card entity-status-metric danger ${sp.tracking==='cancelled'?'active':''}`} href={listHref({receive:null,tracking:'cancelled'})}><span>Bị huỷ</span><b>{cancelled}</b><small>Đơn / vận đơn đã huỷ</small></Link>
-      <Link className={`kpi-card entity-status-metric express ${sp.tracking==='express'?'active':''}`} href={listHref({receive:null,tracking:'express'})}><span>Hỏa tốc cần theo dõi</span><b>{expressAttention}</b><small>Đang giao {expressProcessing} · Lỗi {expressFailed} · Chờ nhận {expressWaitingReceive}</small></Link>
+      <Link className={`kpi-card entity-status-metric ${!sp.receive&&!sp.tracking&&!sp.service?'active':''}`} href={listHref({receive:null,tracking:null,service:null})}><span>Tổng đơn</span><b>{totalOrders}</b><small>Trong khoảng đã chọn</small></Link>
+      <Link className={`kpi-card entity-status-metric warning ${sp.tracking==='missing'?'active':''}`} href={listHref({receive:null,tracking:'missing',service:null})}><span>Chưa có mã vận đơn</span><b>{missingTracking}</b><small>Không tính đơn Hỏa tốc</small></Link>
+      <Link className={`kpi-card entity-status-metric info ${sp.tracking==='shipping'?'active':''}`} href={listHref({receive:null,tracking:'shipping',service:null})}><span>Đang vận chuyển</span><b>{shipping}</b><small>Đã lấy hàng / trung chuyển / đang giao</small></Link>
+      <Link className={`kpi-card entity-status-metric info ${sp.tracking==='ARRIVED_DESTINATION_HUB'?'active':''}`} href={listHref({receive:null,tracking:'ARRIVED_DESTINATION_HUB',service:null})}><span>Đến kho đích</span><b>{arrivedHub}</b><small>Đã đến HUB đích</small></Link>
+      <Link className={`kpi-card entity-status-metric success ${sp.tracking==='DELIVERED'&&!sp.receive?'active':''}`} href={listHref({receive:null,tracking:'DELIVERED',service:null})}><span>Giao thành công</span><b>{delivered}</b><small>Đã giao thành công</small></Link>
+      <Link className={`kpi-card entity-status-metric warning ${sp.receive==='WAITING_RECEIVE'?'active':''}`} href={listHref({receive:'WAITING_RECEIVE',tracking:null,service:null})}><span>Chờ xác nhận nhận hàng</span><b>{waiting}</b><small>Cần xác nhận vật lý</small></Link>
+      <Link className={`kpi-card entity-status-metric danger ${sp.tracking==='cancelled'?'active':''}`} href={listHref({receive:null,tracking:'cancelled',service:null})}><span>Bị huỷ</span><b>{cancelled}</b><small>Đơn / vận đơn đã huỷ</small></Link>
+      <Link className={`kpi-card entity-status-metric express ${sp.service==='express'&&!sp.tracking&&!sp.receive?'active':''}`} href={listHref({service:'express',receive:null,tracking:null})}><span>Đơn Hỏa tốc</span><b>{expressCount}</b><small>{expressAttention} chưa nhận · {expressFailed} giao lỗi</small></Link>
     </section>
 
     <div className={`split-view order-workspace ${panelOpen?'with-panel':''}`}>
@@ -410,6 +417,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
             {sp.receive&&<input type="hidden" name="receive" value={sp.receive}/>}
             {sp.tracking&&<input type="hidden" name="tracking" value={sp.tracking}/>}
+            {sp.service&&<input type="hidden" name="service" value={sp.service}/>}
             {sp.order&&<input type="hidden" name="order" value={sp.order}/>}
             {sp.mode&&<input type="hidden" name="mode" value={sp.mode}/>}
             {sp.tab&&<input type="hidden" name="tab" value={sp.tab}/>}
@@ -449,7 +457,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       </section>
 
       {createMode&&!destinationSettingsMode&&
-        <aside className="detail-panel order-panel">
+        <aside className="detail-panel order-panel mynh-slide-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Tạo đơn mới</h2></div>
             <Link className="close" href={listHref({mode:null})}>×</Link>
@@ -470,7 +478,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       }
 
       {detail&&editMode&&!destinationSettingsMode&&
-        <aside className="detail-panel order-panel">
+        <aside className="detail-panel order-panel mynh-slide-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Sửa {detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
             <Link className="close" href={listHref({order:detail.id,mode:null})}>×</Link>
@@ -512,7 +520,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       }
 
       {detail&&!editMode&&!destinationSettingsMode&&
-        <aside className="detail-panel">
+        <aside className="detail-panel mynh-slide-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT ĐƠN</span><h2>{detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
             <Link className="close" href={listHref({order:null,tab:null,mode:null})}>×</Link>

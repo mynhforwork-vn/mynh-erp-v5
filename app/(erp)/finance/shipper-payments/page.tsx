@@ -250,7 +250,27 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
           <div className="finance-kpi"><span>Phiếu thu công nợ</span><b>{payments.length}</b><small>{financePeriodLabel(period)}</small></div>
           <div className="finance-kpi"><span>Đã thu</span><b className="income">{formatMoney(collected)}</b><small>Đã phân bổ {formatMoney(allocated)}</small></div>
         </section>
-        <section className="card finance-customer-settlement"><div className="card-head"><div><h2>Công nợ theo khách hàng</h2><span>Thu tiền thực hiện tại module Công nợ; Finance tự nhận Phiếu thu.</span></div></div><div className="compact-table-wrap"><table className="table"><thead><tr><th>Khách hàng</th><th>SĐT</th><th>HĐ còn nợ</th><th>Tổng mua</th><th>Còn phải thu</th><th>Đã thu trong kỳ</th><th>Thu gần nhất</th></tr></thead><tbody>{!customerRows.length?<tr><td colSpan={7} className="empty">Chưa có dữ liệu khách hàng phù hợp.</td></tr>:customerRows.map(row=><tr key={row.id}><td className="strong">{row.name}</td><td>{row.phone||'—'}</td><td>{row.openInvoices}</td><td className="money">{formatMoney(row.totalSales)}</td><td className="money warning-text">{formatMoney(row.debt)}</td><td className="money finance-money income">{formatMoney(row.paid)}</td><td>{row.lastPayment?formatDateTime(row.lastPayment):'—'}</td></tr>)}</tbody></table></div></section>
+        <section className="card finance-customer-settlement">
+          <div className="card-head"><div><h2>Công nợ theo khách hàng</h2><span>Thu tiền thực hiện tại module Công nợ; Finance tự nhận Phiếu thu.</span></div></div>
+          <div className="mobile-entity-list mobile-finance-customer-list">
+            {!customerRows.length
+              ? <div className="mobile-empty-state">Chưa có dữ liệu khách hàng phù hợp.</div>
+              : customerRows.map(row=><article className="mobile-finance-customer-card" key={'mobile-'+row.id}>
+                  <div className="mobile-finance-customer-head">
+                    <div><b>{row.name}</b><span>{row.phone||'Không SĐT'}</span></div>
+                    {row.debt>0?<span className="status-pill orange">Còn nợ</span>:<span className="status-pill green">Đã tất toán</span>}
+                  </div>
+                  <div className="mobile-finance-customer-metrics">
+                    <div><span>HĐ còn nợ</span><b>{row.openInvoices}</b></div>
+                    <div><span>Tổng mua</span><b>{formatMoney(row.totalSales)}</b></div>
+                    <div><span>Phải thu</span><b className="warning-text">{formatMoney(row.debt)}</b></div>
+                    <div><span>Đã thu kỳ này</span><b className="income">{formatMoney(row.paid)}</b></div>
+                  </div>
+                  <div className="mobile-finance-customer-last"><span>Thu gần nhất</span><b>{row.lastPayment?formatDateTime(row.lastPayment):'—'}</b></div>
+                </article>)}
+          </div>
+          <div className="compact-table-wrap"><table className="table"><thead><tr><th>Khách hàng</th><th>SĐT</th><th>HĐ còn nợ</th><th>Tổng mua</th><th>Còn phải thu</th><th>Đã thu trong kỳ</th><th>Thu gần nhất</th></tr></thead><tbody>{!customerRows.length?<tr><td colSpan={7} className="empty">Chưa có dữ liệu khách hàng phù hợp.</td></tr>:customerRows.map(row=><tr key={row.id}><td className="strong">{row.name}</td><td>{row.phone||'—'}</td><td>{row.openInvoices}</td><td className="money">{formatMoney(row.totalSales)}</td><td className="money warning-text">{formatMoney(row.debt)}</td><td className="money finance-money income">{formatMoney(row.paid)}</td><td>{row.lastPayment?formatDateTime(row.lastPayment):'—'}</td></tr>)}</tbody></table></div>
+        </section>
       </>}
     </div>
 
@@ -272,7 +292,7 @@ export default async function FinanceSettlementPage({searchParams}:{searchParams
       openModuleHref={'/purchase/orders?range=all&order='+contextOrder.id}
     />}
 
-    {selected&&mode==='shipper'&&!contextOrder&&<aside className="detail-panel finance-panel finance-hub-live-panel">
+    {selected&&mode==='shipper'&&!contextOrder&&<aside className="detail-panel finance-panel finance-hub-live-panel mynh-slide-panel">
       <div className="panel-head"><div><span className="eyebrow">ĐỐI SOÁT HUB</span><h2>{selected.hub}</h2></div><Link className="close" href={href({hub:null})}>×</Link></div>
       <div className="panel-tabs"><span className="active">Tổng quan & thao tác</span></div>
       <div className="panel-scroll finance-hub-panel">

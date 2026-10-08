@@ -4,6 +4,7 @@ import { chromium } from 'playwright'
 import { createBrowserClient } from '@supabase/ssr'
 import fs from 'node:fs'
 
+const DESKTOP_ONLY_QA=process.env.DESKTOP_ONLY_QA==='true'
 const PREVIEW_URL=process.env.PREVIEW_URL
 const SUPABASE_URL=process.env.SUPABASE_URL
 const SUPABASE_KEY=process.env.SUPABASE_KEY
@@ -138,7 +139,7 @@ const routes=[
   '/finance','/finance/cashflow','/finance/shipper-payments','/finance/customer-payments','/finance/reports',
   '/settings','/account'
 ]
-const screenshotRoutes=new Set(['/purchase/orders','/purchase/tracking','/warehouse','/sales','/sales/pos','/sales/history','/sales/customers','/sales/debt','/finance','/settings'])
+const screenshotRoutes=new Set(['/','/purchase','/purchase/orders','/purchase/tracking','/warehouse','/sales','/sales/pos','/sales/history','/sales/customers','/sales/debt','/finance','/settings'])
 
 for(const path of routes){
   const r=await go(path)
@@ -169,6 +170,27 @@ for(const path of routes){
   }
   fs.writeFileSync(`${outDir}/summary-partial.json`,JSON.stringify(summary,null,2))
 }
+
+// MYNH Brand System V1 checks.
+await go('/')
+recordInteraction('MYNH brand shell V1 is active',await page.locator('.brand-shell-v1').count()===1)
+recordInteraction('MYNH compact wordmark renders',await page.locator('.brand .brand-mark .mynh-logo-mark').count()===1)
+const desktopBrandMetrics=await page.evaluate(()=>({
+  innerWidth:window.innerWidth,
+  scrollWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
+  sidebarWidth:document.querySelector('.brand-shell-v1>.sidebar')?.getBoundingClientRect().width??0,
+  mainWidth:document.querySelector('.brand-shell-v1>.main')?.getBoundingClientRect().width??0,
+}))
+recordInteraction(
+  'MYNH desktop shell has no page overflow',
+  desktopBrandMetrics.scrollWidth<=desktopBrandMetrics.innerWidth+2,
+  desktopBrandMetrics
+)
+recordInteraction(
+  'MYNH desktop shell keeps operational workspace',
+  desktopBrandMetrics.sidebarWidth>=180&&desktopBrandMetrics.mainWidth>700,
+  desktopBrandMetrics
+)
 
 // Non-mutating interaction tests.
 await go('/purchase/accounts')
@@ -316,8 +338,8 @@ const voucherTagCount=await coloredVoucherTags.count()
 const voucherTagStyles=voucherTagCount
   ? await coloredVoucherTags.evaluateAll(nodes=>nodes.map(node=>({
       tag:node.getAttribute('data-voucher-tag'),
-      color:(node as HTMLElement).style.color,
-      background:(node as HTMLElement).style.backgroundColor,
+      color:node.style.color,
+      background:node.style.backgroundColor,
     })))
   : []
 recordInteraction(
@@ -638,8 +660,8 @@ if(await hubCard.count()){
 }else recordInteraction('Shipper QA HUB fixture available',false,{hub:fixtureHub||null})
 
 await go('/settings')
-recordInteraction('Sidebar notification bell',await page.locator('.sidebar-alert-trigger').count()>0)
-const appAlertTrigger=page.locator('.sidebar-alert-trigger').first()
+recordInteraction('Sidebar notification bell',await page.locator('.brand-shell-v1>.sidebar .sidebar-alert-trigger').count()>0)
+const appAlertTrigger=page.locator('.brand-shell-v1>.sidebar .sidebar-alert-trigger').first()
 if(await appAlertTrigger.count()){
   await appAlertTrigger.click()
   recordInteraction('Notification slidebar opens',await page.locator('.app-alert-panel-v2').count()>0)
@@ -647,7 +669,7 @@ if(await appAlertTrigger.count()){
   const alertBackdrop=page.locator('.app-alert-backdrop-v2').first()
   if(await alertBackdrop.count())await alertBackdrop.click()
 }
-const accountTrigger=page.locator('.sidebar-account-trigger').first()
+const accountTrigger=page.locator('.brand-shell-v1>.sidebar .sidebar-account-trigger').first()
 recordInteraction('Compact sidebar account trigger',await accountTrigger.count()>0)
 if(await accountTrigger.count()){
   await accountTrigger.click()
@@ -777,8 +799,245 @@ summary.interactions.push({
   pass:!settingsBody.includes('Tài khoản & phân quyền')&&!settingsBody.includes('Tích hợp')&&!settingsBody.includes('Thông báo'),
 })
 
+
+/* Desktop-first release gate — the five dashboard landing pages at three sizes.
+   Mobile checks intentionally remain available for the later mobile redesign. */
+if (DESKTOP_ONLY_QA) {
+  const dashboardRoutes=[
+    {path:'/',strip:'.kpi-grid:not(.order-kpi-grid):not(.order-kpi-grid-v2)',cards:'.kpi-card',min:6},
+    {path:'/purchase',strip:'.purchase-command-kpis-v2',cards:'.command-kpi',min:7},
+    {path:'/warehouse',strip:'.whx-kpi-grid.seven',cards:'a',min:7},
+    {path:'/sales',strip:'.sales-kpi-strip',cards:'.sales-kpi',min:7},
+    {path:'/finance',strip:'.finance-overview-kpis',cards:'.finance-kpi',min:6},
+  ]
+  for (const width of [1024,1440,2560]) {
+    await page.setViewportSize({width,height:900})
+    await go('/')
+    await page.waitForTimeout(250)
+    const toggle=page.locator('.brand-shell-v1 > .sidebar .desktop-sidebar-toggle')
+    recordInteraction('Desktop '+width+' has top sidebar toggle',await toggle.count()===1)
+    if(await toggle.count()) {
+      const ensureCollapsed=async(desired)=>{
+        const collapsed=await page.locator('.brand-shell-v1.desktop-sidebar-collapsed').count()>0
+        if(collapsed!==desired)await toggle.click()
+        await page.waitForTimeout(250)
+      }
+      await ensureCollapsed(true)
+      const compact=await page.evaluate(()=>{
+        const side=document.querySelector('.brand-shell-v1 > .sidebar')
+        const button=document.querySelector('.desktop-sidebar-toggle')
+        const logo=document.querySelector('.brand-shell-v1 > .sidebar .brand')
+        const account=document.querySelector('.brand-shell-v1 > .sidebar .sidebar-account-trigger')
+        const bell=document.querySelector('.brand-shell-v1 > .sidebar .sidebar-alert-trigger')
+        const s=side?.getBoundingClientRect(),b=button?.getBoundingClientRect(),l=logo?.getBoundingClientRect()
+        const inside=(el)=>{const r=el?.getBoundingClientRect();return !!r&&!!s&&r.left>=s.left-1&&r.right<=s.right+1}
+        return {width:s?.width??0,toggleOnTop:!!b&&!!l&&b.bottom<=l.top+3,accountInside:inside(account),bellInside:inside(bell)}
+      })
+      recordInteraction('Desktop '+width+' compact sidebar aligned',
+        compact.width>=68&&compact.width<=76&&compact.toggleOnTop&&compact.accountInside&&compact.bellInside,compact)
+      await page.screenshot({path:`${outDir}/desktop-${width}-sidebar-collapsed.png`,fullPage:false})
+      await ensureCollapsed(false)
+      const expanded=await page.evaluate(()=>{
+        const s=document.querySelector('.brand-shell-v1 > .sidebar')?.getBoundingClientRect()
+        const account=document.querySelector('.brand-shell-v1 > .sidebar .sidebar-account-trigger')?.getBoundingClientRect()
+        const bell=document.querySelector('.brand-shell-v1 > .sidebar .sidebar-alert-trigger')?.getBoundingClientRect()
+        return {sidebarWidth:s?.width??0,accountInside:!!s&&!!account&&account.right<=s.right+1,bellInside:!!s&&!!bell&&bell.right<=s.right+1}
+      })
+      recordInteraction('Desktop '+width+' expanded sidebar aligned',
+        expanded.sidebarWidth>=205&&expanded.accountInside&&expanded.bellInside,expanded)
+    }
+    for(const d of dashboardRoutes){
+      const r=await go(d.path)
+      const m=await page.evaluate((cfg)=>{
+        const strip=document.querySelector(cfg.strip)
+        const nodes=[...(strip?.querySelectorAll(cfg.cards)??[])]
+        const tops=nodes.map(n=>n.getBoundingClientRect().top)
+        const main=document.querySelector('.brand-shell-v1 > .main')?.getBoundingClientRect()
+        return {
+          innerWidth:window.innerWidth,
+          documentWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
+          mainRight:main?.right??0,
+          count:nodes.length,
+          oneRow:tops.length>0&&Math.max(...tops)-Math.min(...tops)<=3,
+          stripWithinMain:!!strip&&!!main&&strip.getBoundingClientRect().right<=main.right+2,
+        }
+      },d)
+      recordInteraction('Dashboard '+d.path+' desktop '+width+' composition',
+        r.status>0&&r.status<500&&!r.url.includes('/login')&&m.count>=d.min&&m.oneRow
+        &&m.documentWidth<=m.innerWidth+2&&m.stripWithinMain,m)
+      const safe=d.path.replaceAll('/','-').replace(/^-+/,'')||'home'
+      await page.screenshot({path:`${outDir}/dashboard-${width}-${safe}.png`,fullPage:true})
+    }
+
+    // Table toolbar and column settings must not create accidental second lines.
+    for (const t of [
+      {path:'/purchase/accounts',bar:'.entity-user-command',trigger:'.account-table-shell > .column-manager > .icon-button',menu:'.account-table-shell .column-manager-menu'},
+      {path:'/purchase/orders',bar:'.order-toolbar.entity-command-bar',trigger:'.order-table-shell > .order-column-manager > .icon-button',menu:'.order-table-shell .column-manager-menu'},
+      {path:'/finance/cashflow',bar:'.finance-toolbar-complete',trigger:'.finance-column-manager-wrap > .finance-column-button',menu:'.finance-column-manager-menu'},
+    ]) {
+      const r=await go(t.path)
+      const layout=await page.evaluate((cfg)=>{
+        const bar=document.querySelector(cfg.bar),button=document.querySelector(cfg.trigger)
+        const a=bar?.getBoundingClientRect(),b=button?.getBoundingClientRect()
+        const main=document.querySelector('.brand-shell-v1 > .main')?.getBoundingClientRect()
+        return {
+          barHeight:a?.height??0,buttonTop:b?.top??0,
+          buttonWithinMain:!!b&&!!main&&b.left>=main.left-1&&b.right<=main.right+1,
+          viewport:window.innerWidth,
+          documentWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
+          buttonVisible:!!b&&b.width>=24&&b.height>=24,
+        }
+      },t)
+      recordInteraction('Desktop '+width+' table toolbar '+t.path+' one row',
+        r.status>0&&r.status<500&&!r.url.includes('/login')
+        &&layout.barHeight>=28&&layout.barHeight<=48
+        &&layout.buttonWithinMain&&layout.buttonVisible
+        &&layout.documentWidth<=layout.viewport+2,layout)
+      const button=page.locator(t.trigger).first()
+      if(await button.count()){
+        await button.click()
+        const pop=await page.evaluate(sel=>{
+          const m=document.querySelector(sel)
+          const r=m?.getBoundingClientRect()
+          return {open:!!m,left:r?.left??-1,right:r?.right??-1,width:r?.width??0,viewport:window.innerWidth}
+        },t.menu)
+        recordInteraction('Desktop '+width+' column menu '+t.path+' inside viewport',
+          pop.open&&pop.left>=-1&&pop.right<=pop.viewport+2&&pop.width>=170,pop)
+        await page.keyboard.press('Escape')
+      }
+      const safe=t.path.replaceAll('/','-').replace(/^-+/,'')
+      await page.screenshot({path:`${outDir}/table-toolbar-${width}-${safe}.png`,fullPage:false})
+    }
+
+    for(const [range,label] of [['all','Toàn thời gian'],['today','Hôm nay'],['7d','7 ngày'],['30d','30 ngày'],['month','Tháng này']]){
+      await go('/?range='+range)
+      const actual=await page.locator('.system-kpi-filter .command-range a.active').allInnerTexts()
+      const active=actual.map(x=>x.trim())
+      recordInteraction('Desktop '+width+' KPI filter '+range,active.includes(label),{active})
+    }
+    await go('/')
+    const cardStyle=await page.locator('.kpi-grid .kpi-card').first().evaluate(el=>{
+      const s=getComputedStyle(el)
+      return {radius:parseFloat(s.borderTopLeftRadius),shadow:s.boxShadow,bg:s.backgroundImage}
+    })
+    recordInteraction('Desktop '+width+' KPI card soft elevation',
+      cardStyle.radius>=8&&cardStyle.shadow!=='none',cardStyle)
+  }
+}
+if (!DESKTOP_ONLY_QA) {
 await page.setViewportSize({width:390,height:844})
-for(const path of ['/purchase/orders','/purchase/tracking','/warehouse','/warehouse/receive','/sales/pos','/sales/history','/sales/customers','/sales/debt']){
+await go('/purchase/orders')
+const mobileBrandMetrics=await page.evaluate(()=>{
+  const sidebar=document.querySelector('.brand-shell-v1>.sidebar')
+  const appBar=document.querySelector('.mobile-app-bar')
+  const bottomNav=document.querySelector('.mobile-bottom-nav')
+  const cards=document.querySelectorAll('.mobile-order-list .mobile-entity-card')
+  const sidebarStyle=sidebar?getComputedStyle(sidebar):null
+  const appBarStyle=appBar?getComputedStyle(appBar):null
+  const bottomStyle=bottomNav?getComputedStyle(bottomNav):null
+  return {
+    innerWidth:window.innerWidth,
+    scrollWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
+    sidebarDisplay:sidebarStyle?.display??'',
+    appBarDisplay:appBarStyle?.display??'',
+    appBarPosition:appBarStyle?.position??'',
+    bottomDisplay:bottomStyle?.display??'',
+    bottomPosition:bottomStyle?.position??'',
+    mobileOrderCards:cards.length,
+  }
+})
+recordInteraction(
+  'MYNH mobile app shell uses app bar + bottom navigation',
+  mobileBrandMetrics.sidebarDisplay==='none'
+  &&mobileBrandMetrics.appBarDisplay!=='none'
+  &&mobileBrandMetrics.appBarPosition==='fixed'
+  &&mobileBrandMetrics.bottomDisplay!=='none'
+  &&mobileBrandMetrics.bottomPosition==='fixed',
+  mobileBrandMetrics
+)
+recordInteraction(
+  'MYNH mobile orders use card view',
+  mobileBrandMetrics.mobileOrderCards>0,
+  mobileBrandMetrics
+)
+recordInteraction(
+  'MYNH mobile shell has no page overflow',
+  mobileBrandMetrics.scrollWidth<=mobileBrandMetrics.innerWidth+2,
+  mobileBrandMetrics
+)
+
+
+await go('/purchase/accounts')
+const accountMobileMetrics=await page.evaluate(()=>{
+  const strip=document.querySelector('.account-kpi-grid.entity-status-strip')
+  const cards=[...document.querySelectorAll('.account-kpi-grid .account-kpi')]
+  const rect=strip?.getBoundingClientRect()
+  return {
+    viewport:window.innerWidth,
+    stripLeft:rect?.left??0,
+    stripRight:rect?.right??0,
+    cardCount:cards.length,
+    overflow:cards.some(card=>{
+      const r=card.getBoundingClientRect()
+      return r.left<-1||r.right>window.innerWidth+1
+    }),
+  }
+})
+recordInteraction(
+  'MYNH mobile account KPI stays inside viewport',
+  accountMobileMetrics.cardCount>0&&!accountMobileMetrics.overflow&&accountMobileMetrics.stripRight<=accountMobileMetrics.viewport+1,
+  accountMobileMetrics
+)
+
+await go('/purchase/orders')
+const orderMobileDensity=await page.evaluate(()=>{
+  const filter=document.querySelector('.purchase-date-filter')
+  const kpis=[...document.querySelectorAll('.order-kpi-grid .kpi-card')]
+  const datePicker=document.querySelector('.mobile-date-picker')
+  const filterRect=filter?.getBoundingClientRect()
+  const heights=kpis.map(x=>Math.round(x.getBoundingClientRect().height))
+  return {
+    viewport:window.innerWidth,
+    filterRight:filterRect?.right??0,
+    filterLeft:filterRect?.left??0,
+    datePickerDisplay:datePicker?getComputedStyle(datePicker).display:'',
+    kpiCount:kpis.length,
+    maxKpiHeight:heights.length?Math.max(...heights):0,
+  }
+})
+recordInteraction(
+  'MYNH mobile order filters and KPI are compact',
+  orderMobileDensity.filterRight<=orderMobileDensity.viewport+1
+  &&orderMobileDensity.filterLeft>=-1
+  &&orderMobileDensity.datePickerDisplay!=='none'
+  &&orderMobileDensity.kpiCount>0
+  &&orderMobileDensity.maxKpiHeight<=64,
+  orderMobileDensity
+)
+
+await go('/sales/pos')
+const posMobileMetrics=await page.evaluate(()=>{
+  const grid=document.querySelector('.pos-product-grid')
+  const cards=[...document.querySelectorAll('.pos-product-grid .pos-product-tile-final')]
+  const railButtons=[...document.querySelectorAll('.pos-category-rail button')]
+  const columns=grid?getComputedStyle(grid).gridTemplateColumns:''
+  return {
+    viewport:window.innerWidth,
+    columns,
+    cardCount:cards.length,
+    maxCardWidth:cards.length?Math.max(...cards.map(x=>x.getBoundingClientRect().width)):0,
+    minCardWidth:cards.length?Math.min(...cards.map(x=>x.getBoundingClientRect().width)):0,
+    railOverflow:railButtons.some(x=>x.getBoundingClientRect().right>window.innerWidth+1),
+  }
+})
+recordInteraction(
+  'MYNH mobile POS uses full-width product rows',
+  posMobileMetrics.cardCount>0
+  &&!posMobileMetrics.railOverflow
+  &&posMobileMetrics.minCardWidth>=posMobileMetrics.viewport*0.8,
+  posMobileMetrics
+)
+for(const path of ['/purchase/accounts','/purchase/orders','/purchase/tracking','/warehouse','/warehouse/receive','/warehouse/inventory','/sales/pos','/sales/history','/sales/customers','/sales/debt','/finance/cashflow']){
   const r=await go(path)
   const metrics=await page.evaluate(()=>({
     innerWidth:window.innerWidth,
@@ -795,6 +1054,8 @@ for(const path of ['/purchase/orders','/purchase/tracking','/warehouse','/wareho
   const safe=path.replaceAll('/','-').replace(/^-+/,'')
   await page.screenshot({path:`${outDir}/mobile-${safe}.png`,fullPage:true})
   fs.writeFileSync(`${outDir}/summary-partial.json`,JSON.stringify(summary,null,2))
+}
+
 }
 
 await browser.close()

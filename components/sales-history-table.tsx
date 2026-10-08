@@ -64,6 +64,38 @@ export function SalesHistoryTable({
       {message&&<span className="danger-text">{message}</span>}
     </div>}
 
+    <div className="mobile-entity-list mobile-sales-history-list">
+      {!rows.length
+        ? <div className="mobile-empty-state">Chưa có hóa đơn POS phù hợp.</div>
+        : rows.map((row:any)=>{
+            const qty=(row.sale_items??[]).reduce((sum:number,item:any)=>sum+Number(item.quantity??0),0)
+            const checked=selectedSet.has(String(row.id))
+            const selectedRow=selectedId&&String(selectedId)===String(row.id)
+            return <article className={'mobile-entity-card '+(selectedRow?'selected':'')} key={'mobile-'+row.id}>
+              <div className="mobile-entity-card-head">
+                {canOperate&&<input className="mobile-card-check" type="checkbox" checked={checked} onChange={()=>toggle(String(row.id))} aria-label={'Chọn '+String(row.invoice_code??row.id)}/>}
+                <div className="mobile-entity-card-title">
+                  <Link href={href(String(row.id))}>{row.invoice_code??'POS-'+String(row.id).slice(0,8)}</Link>
+                  <span>{formatDateTime(row.sale_at)} · {row.warehouses?.code??'—'}</span>
+                </div>
+                <span className={'status-pill '+(row.sale_status==='COMPLETED'?'green':row.sale_status==='CANCELLED'?'red':'orange')}>{statusLabel(row.sale_status)}</span>
+              </div>
+              <div className="mobile-order-product">
+                <b>{row.customers?.name??'Khách lẻ'}</b>
+                <span>{row.customers?.phone??'Không SĐT'} · {qty} sản phẩm</span>
+              </div>
+              <div className="mobile-order-meta">
+                <div><span>Tổng tiền</span><b>{formatMoney(row.total_amount)}</b></div>
+                <div><span>Còn nợ</span><b>{formatMoney(row.debt_amount)}</b></div>
+              </div>
+              <div className="mobile-entity-card-foot">
+                <span className={'status-pill '+(row.payment_status==='PAID'?'green':row.payment_status==='PARTIAL'?'orange':'red')}>{statusLabel(row.payment_status)}</span>
+                <Link href={href(String(row.id))} className="mobile-card-open">Chi tiết ›</Link>
+              </div>
+            </article>
+          })}
+    </div>
+
     <div className="sales-history-table-wrap">
       <table className="table sales-history-table">
         <thead><tr>

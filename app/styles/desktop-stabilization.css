@@ -1,0 +1,207 @@
+/* MYNH ERP | Desktop stabilization phase.
+   Mobile visual redesign is deferred. No changes to right-side slide panels. */
+
+/* Sidebar control lives at the very top, never in the user/alert footer. */
+@media (min-width: 901px) {
+  .brand-shell-v1 > .sidebar .desktop-sidebar-toggle-row {
+    display:flex!important; flex:0 0 30px!important; align-items:center!important;
+    justify-content:flex-end!important; min-height:30px!important;
+    padding:0 4px 5px!important; border-bottom:0!important;
+  }
+  .brand-shell-v1 > .sidebar .desktop-sidebar-toggle {
+    width:29px!important; height:27px!important; min-width:29px!important;
+    display:grid!important; place-items:center!important;
+    padding:0!important; color:#B9CDDF!important; cursor:pointer!important;
+    border:1px solid rgba(255,255,255,.17)!important; border-radius:5px!important;
+    background:rgba(255,255,255,.055)!important;
+  }
+  .brand-shell-v1 > .sidebar .desktop-sidebar-toggle:hover,
+  .brand-shell-v1 > .sidebar .desktop-sidebar-toggle:focus-visible {
+    color:#fff!important; background:rgba(57,118,197,.27)!important;
+    border-color:rgba(159,195,231,.50)!important; outline-offset:2px!important;
+  }
+  .brand-shell-v1 > .sidebar .brand {
+    flex:0 0 auto!important; margin-bottom:8px!important;
+  }
+
+  /* The same compact mode applies whether triggered automatically or manually. */
+  .brand-shell-v1.desktop-sidebar-collapsed {
+    grid-template-columns:72px minmax(0,1fr)!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed > .sidebar {
+    padding:10px 7px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .desktop-sidebar-toggle-row {
+    justify-content:center!important; padding-left:0!important; padding-right:0!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .brand {
+    justify-content:center!important; padding:3px 0 11px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .brand > span:last-child,
+  .brand-shell-v1.desktop-sidebar-collapsed .nav-section-label,
+  .brand-shell-v1.desktop-sidebar-collapsed .nav a > span:last-child,
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-user-copy,
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-user-more {display:none!important;}
+  .brand-shell-v1.desktop-sidebar-collapsed .nav-group {margin-bottom:5px!important;}
+  .brand-shell-v1.desktop-sidebar-collapsed .nav a {
+    width:44px!important; height:38px!important; margin:0 auto!important;
+    justify-content:center!important; padding:0!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .nav-icon {
+    width:27px!important; height:27px!important; flex-basis:27px!important;
+  }
+
+  /* Fix footer clipping from the 72px rail (user avatar + alert bell). */
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-foot-v2 {
+    display:flex!important; flex-direction:column!important; grid-template-columns:none!important;
+    align-items:center!important; justify-content:center!important; gap:8px!important;
+    width:100%!important; min-width:0!important; padding:9px 0 0!important;
+    margin-top:auto!important; overflow:visible!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-menu {
+    width:38px!important; min-width:38px!important; flex:0 0 38px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-trigger {
+    width:38px!important; height:38px!important; min-height:38px!important;
+    display:grid!important; grid-template-columns:1fr!important; place-items:center!important;
+    padding:0!important; background:rgba(255,255,255,.055)!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-user-avatar {
+    margin:auto!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-alert-trigger {
+    width:38px!important; height:38px!important; min-width:38px!important;
+    min-height:38px!important; margin:auto!important;
+  }
+  .brand-shell-v1.desktop-sidebar-collapsed .sidebar-account-popover {
+    position:fixed!important; left:80px!important; right:auto!important;
+    bottom:12px!important; top:auto!important;
+    width:min(294px,calc(100vw - 100px))!important; z-index:1100!important;
+  }
+
+  /* KPI rows stay in a single strip; scroll within the strip on narrow desktops. */
+  .brand-shell-v1 > .main .kpi-grid:not(.order-kpi-grid):not(.order-kpi-grid-v2) {
+    display:grid!important; grid-template-columns:repeat(6,minmax(145px,1fr))!important;
+    overflow-x:auto!important; overflow-y:hidden!important; max-width:100%!important;
+    scrollbar-width:thin!important; overscroll-behavior-x:contain;
+  }
+  .brand-shell-v1 > .main .purchase-command-kpis-v2 {
+    display:grid!important; grid-template-columns:repeat(7,minmax(132px,1fr))!important;
+    overflow-x:auto!important; overflow-y:hidden!important; max-width:100%!important;
+    scrollbar-width:thin!important; overscroll-behavior-x:contain;
+  }
+  .brand-shell-v1 > .main .whx-kpi-grid.seven {
+    grid-template-columns:repeat(7,minmax(132px,1fr))!important;
+    max-width:100%!important; overflow-x:auto!important;
+  }
+  .brand-shell-v1 > .main .sales-dashboard-v2 .sales-kpi-strip {
+    display:grid!important; grid-template-columns:repeat(7,minmax(138px,1fr))!important;
+    max-width:100%!important; overflow-x:auto!important; overflow-y:hidden!important;
+    scrollbar-width:thin!important; overscroll-behavior-x:contain;
+  }
+  .brand-shell-v1 > .main .finance-kpi-grid {
+    max-width:100%!important; overflow-x:auto!important; overflow-y:hidden!important;
+    scrollbar-width:thin!important; overscroll-behavior-x:contain;
+  }
+  .brand-shell-v1 > .main .finance-overview-kpis {
+    grid-template-columns:repeat(6,minmax(138px,1fr))!important;
+  }
+  .brand-shell-v1 > .main .finance-settlement-kpis {
+    grid-template-columns:repeat(4,minmax(138px,1fr))!important;
+  }
+  .brand-shell-v1 > .main .finance-report-kpis {
+    grid-template-columns:repeat(3,minmax(138px,1fr))!important;
+  }
+  .brand-shell-v1 > .main .finance-report-kpis.five {
+    grid-template-columns:repeat(5,minmax(138px,1fr))!important;
+  }
+  .brand-shell-v1 > .main .kpi-card,
+  .brand-shell-v1 > .main .command-kpi,
+  .brand-shell-v1 > .main .finance-kpi,
+  .brand-shell-v1 > .main .tracking-status-metric,
+  .brand-shell-v1 > .main .whx-kpi-grid > * {
+    min-width:0!important; box-sizing:border-box!important;
+  }
+  .brand-shell-v1 > .main .command-kpi > span,
+  .brand-shell-v1 > .main .whx-kpi-grid span,
+  .brand-shell-v1 > .main .finance-kpi span,
+  .brand-shell-v1 > .main .sales-kpi span {
+    overflow:hidden!important; text-overflow:ellipsis!important;
+  }
+  .brand-shell-v1 > .main .dashboard-ops-grid,
+  .brand-shell-v1 > .main .purchase-dashboard-grid,
+  .brand-shell-v1 > .main .purchase-analytics-grid,
+  .brand-shell-v1 > .main .whx-overview-grid,
+  .brand-shell-v1 > .main .sales-dashboard-grid,
+  .brand-shell-v1 > .main .finance-overview-grid {
+    max-width:100%!important; min-width:0!important;
+  }
+  .brand-shell-v1 > .main .dashboard-ops-grid > *,
+  .brand-shell-v1 > .main .purchase-dashboard-grid > *,
+  .brand-shell-v1 > .main .purchase-analytics-grid > *,
+  .brand-shell-v1 > .main .whx-overview-grid > *,
+  .brand-shell-v1 > .main .sales-dashboard-grid > *,
+  .brand-shell-v1 > .main .finance-overview-grid > * {min-width:0!important;}
+  .brand-shell-v1 > .main .dashboard-table-wrap,
+  .brand-shell-v1 > .main .compact-table-wrap {
+    min-width:0!important; max-width:100%!important; overflow-x:auto!important;
+  }
+}
+@media (min-width:901px) and (max-width:1180px) {
+  /* Old desktop-compact breakpoint also needs a compact footer (not <=900px). */
+  .brand-shell-v1:not(.desktop-sidebar-expanded) .sidebar-foot-v2 {
+    display:flex!important; flex-direction:column!important; grid-template-columns:none!important;
+    align-items:center!important; justify-content:center!important; gap:8px!important;
+    width:100%!important; padding:9px 0 0!important; overflow:visible!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-expanded) .sidebar-account-menu {
+    width:38px!important; min-width:38px!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-expanded) .sidebar-account-trigger {
+    width:38px!important; height:38px!important; min-height:38px!important;
+    display:grid!important; grid-template-columns:1fr!important; place-items:center!important;
+    padding:0!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-expanded) .sidebar-user-copy,
+  .brand-shell-v1:not(.desktop-sidebar-expanded) .sidebar-user-more {display:none!important;}
+  .brand-shell-v1:not(.desktop-sidebar-expanded) .sidebar-alert-trigger {
+    width:38px!important; height:38px!important; margin:auto!important;
+  }
+  .brand-shell-v1:not(.desktop-sidebar-expanded) .desktop-sidebar-toggle-row {
+    justify-content:center!important;
+  }
+
+  /* Manual expansion must undo legacy auto-collapse rules at this breakpoint. */
+  .brand-shell-v1.desktop-sidebar-expanded {
+    grid-template-columns:218px minmax(0,1fr)!important;
+  }
+  .brand-shell-v1.desktop-sidebar-expanded > .sidebar {padding:13px 9px 11px!important;}
+  .brand-shell-v1.desktop-sidebar-expanded .brand {
+    justify-content:flex-start!important; padding:4px 7px 12px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-expanded .brand > span:last-child {display:block!important;}
+  .brand-shell-v1.desktop-sidebar-expanded .nav-section-label {display:block!important;}
+  .brand-shell-v1.desktop-sidebar-expanded .nav a {
+    width:auto!important; height:34px!important; margin:0!important;
+    justify-content:flex-start!important; padding:0 8px!important;
+  }
+  .brand-shell-v1.desktop-sidebar-expanded .nav a > span:last-child {display:inline!important;}
+  .brand-shell-v1.desktop-sidebar-expanded .nav-icon {
+    width:21px!important; height:21px!important; flex-basis:21px!important;
+  }
+}
+@media (min-width:901px) and (max-width:1280px) {
+  /* Keep charts, summary tables and their side stacks inside the working area. */
+  .brand-shell-v1 > .main .dashboard-ops-grid,
+  .brand-shell-v1 > .main .purchase-dashboard-grid,
+  .brand-shell-v1 > .main .purchase-dashboard-grid.second-row,
+  .brand-shell-v1 > .main .purchase-analytics-grid,
+  .brand-shell-v1 > .main .whx-overview-grid,
+  .brand-shell-v1 > .main .sales-dashboard-grid,
+  .brand-shell-v1 > .main .finance-overview-grid {
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+}
+@media (max-width:900px) {
+  .desktop-sidebar-toggle-row{display:none!important;}
+}

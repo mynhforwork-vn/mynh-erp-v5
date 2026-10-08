@@ -716,6 +716,7 @@ export function FinanceCashflowWorkspace({
     <div className={'finance-ledger-layout '+(panel!=='NONE'?'with-panel':'')}>
     <section className="finance-ledger">
       <div className="finance-toolbar finance-toolbar-complete">
+        <div className="finance-toolbar-fields">
         <input className="search" value={search} onChange={e=>{setSearch(e.target.value);setPage(1)}} placeholder="Tìm mã phiếu / nội dung / đối tượng..."/>
         <select value={filterType} onChange={e=>{setFilterType(e.target.value as any);setPage(1)}}><option value="ALL">Thu / Chi</option><option value="INCOME">Thu</option><option value="EXPENSE">Chi</option></select>
         <select value={filterCategory} onChange={e=>{setFilterCategory(e.target.value);setPage(1)}}><option value="ALL">Hạng mục</option>{categories.filter(c=>c.is_active).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
@@ -723,6 +724,7 @@ export function FinanceCashflowWorkspace({
         <select value={filterMethod} onChange={e=>{setFilterMethod(e.target.value);setPage(1)}}><option value="ALL">Phương thức</option><option value="CASH">Tiền mặt</option><option value="TRANSFER">Chuyển khoản</option><option value="COMBINED">Kết hợp</option></select>
         <select value={filterStatus} onChange={e=>{setFilterStatus(e.target.value as any);setPage(1)}}><option value="ALL">Trạng thái</option><option value="POSTED">Đã ghi nhận</option><option value="DRAFT">Nháp</option><option value="CANCELLED">Đã huỷ</option></select>
         <button className="button small" type="button" onClick={clearFilters}>Xoá lọc</button>
+        </div>
         <div className="finance-column-manager-wrap">
           <button className={'button small finance-column-button '+(columnMenu?'active':'')} type="button" onClick={()=>setColumnMenu(!columnMenu)}>☷ Cột</button>
           {columnMenu&&<div className="finance-column-manager-menu" onClick={e=>e.stopPropagation()}>
@@ -754,14 +756,39 @@ export function FinanceCashflowWorkspace({
           if(col==='expense')return <td key={col} className="money finance-money expense">{row.type==='EXPENSE'?formatMoney(row.amount):'—'}</td>
           return <td key={col}><span className={'finance-status '+String(row.status).toLowerCase()}>{statusLabel(row.status)}</span></td>
         }
-        return <div className="card table-card finance-table-card"><table className="table finance-table"><thead><tr>{visible.map(head)}</tr></thead><tbody>
-          {!pageRows.length?<tr><td className="empty" colSpan={visible.length}>Chưa có giao dịch phù hợp.</td></tr>:pageRows.map(row=><tr key={row.kind+'-'+row.id} onClick={()=>openRow(row.kind,row.id)}>{visible.map(col=>cell(row,col))}</tr>)}
-        </tbody></table></div>
+        return <>
+          <div className="mobile-entity-list mobile-finance-list">
+            {!pageRows.length
+              ? <div className="mobile-empty-state">Chưa có giao dịch phù hợp.</div>
+              : pageRows.map(row=><button
+                  type="button"
+                  className="mobile-finance-card"
+                  key={'mobile-'+row.kind+'-'+row.id}
+                  onClick={()=>openRow(row.kind,row.id)}
+                >
+                  <div className="mobile-finance-card-head">
+                    <div><b>{row.code}</b><span>{formatDateTime(row.time)} · {row.source}</span></div>
+                    <span className={'finance-type '+(row.type==='INCOME'?'income':'expense')}>{typeLabel(row.type)}</span>
+                  </div>
+                  <div className="mobile-finance-card-body">
+                    <div><span>Hạng mục</span><b>{row.category}</b></div>
+                    <div><span>Đối tượng</span><b>{row.counterparty}</b></div>
+                  </div>
+                  <div className="mobile-finance-card-foot">
+                    <span className={'finance-status '+String(row.status).toLowerCase()}>{statusLabel(row.status)}</span>
+                    <strong className={row.type==='INCOME'?'income':'expense'}>{row.type==='INCOME'?'+':'−'} {formatMoney(row.amount)}</strong>
+                  </div>
+                </button>)}
+          </div>
+          <div className="card table-card finance-table-card"><table className="table finance-table"><thead><tr>{visible.map(head)}</tr></thead><tbody>
+            {!pageRows.length?<tr><td className="empty" colSpan={visible.length}>Chưa có giao dịch phù hợp.</td></tr>:pageRows.map(row=><tr key={row.kind+'-'+row.id} onClick={()=>openRow(row.kind,row.id)}>{visible.map(col=>cell(row,col))}</tr>)}
+          </tbody></table></div>
+        </>
       })()}
       <div className="finance-pagination"><span>Trang {safePage}/{maxPage}</span><div><button className="button small" disabled={safePage<=1} onClick={()=>setPage(safePage-1)}>‹</button><button className="button small" disabled={safePage>=maxPage} onClick={()=>setPage(safePage+1)}>›</button><select value={pageSize} onChange={e=>{setPageSize(Number(e.target.value));setPage(1)}}><option value={10}>10 dòng</option><option value={20}>20 dòng</option><option value={50}>50 dòng</option></select></div></div>
     </section>
 
-    {panel!=='NONE'&&<aside className="detail-panel floating finance-panel">
+    {panel!=='NONE'&&<aside className="detail-panel finance-panel mynh-slide-panel">
       {panel==='CREATE'&&<>
         <div className="panel-head"><div><span className="eyebrow">{documentType==='INCOME'?'PHIẾU THU':'PHIẾU CHI'}</span><h2>{editingId?'Sửa phiếu nháp':documentType==='INCOME'?'Tạo Phiếu thu':'Tạo Phiếu chi'}</h2></div><button className="close" type="button" onClick={closePanel}>×</button></div>
         <div className="panel-tabs"><button className={documentTab==='INFO'?'active':''} onClick={()=>setDocumentTab('INFO')}>Thông tin</button><button className={documentTab==='MONEY'?'active':''} onClick={()=>setDocumentTab('MONEY')}>Chi tiết tiền <span className="panel-tab-count">{lines.length}</span></button></div>

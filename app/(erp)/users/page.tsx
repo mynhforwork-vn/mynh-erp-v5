@@ -438,7 +438,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       </section>
 
       {canOperate&&sp.mode==='create'&&
-        <aside className="detail-panel account-detail-panel">
+        <aside className="detail-panel account-detail-panel mynh-slide-panel">
           <div className="panel-head">
             <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Thêm tài khoản</h2></div>
             <Link className="close" href={filterHref({mode:null,user:null,tab:null})}>×</Link>
@@ -496,7 +496,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       }
 
       {selected&&!isEdit&&!contextOrder&&
-        <aside className="detail-panel account-detail-panel">
+        <aside className="detail-panel account-detail-panel mynh-slide-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT USER</span><h2>{selected.username}</h2></div>
             <Link className="close" href={filterHref({user:null,mode:null,tab:null})}>×</Link>
@@ -629,7 +629,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       }
 
       {selected&&isEdit&&
-        <aside className="detail-panel account-detail-panel">
+        <aside className="detail-panel account-detail-panel mynh-slide-panel">
           <div className="panel-head">
             <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Sửa {selected.username}</h2></div>
             <Link className="close" href={detailHref({user:selected.id,mode:null})}>×</Link>

@@ -2,19 +2,50 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { alertTypeLabel, formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 
+type DashboardRange = 'all'|'today'|'7d'|'30d'|'month'|'custom'
+type DashboardSP = {range?:string;from?:string;to?:string}
+const DAY=86400000
+function dashboardDate(shiftDays=0){
+  const d=new Date(Date.now()+7*3600000+shiftDays*DAY)
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`
+}
+function dashboardRange(sp:DashboardSP){
+  const allowed:DashboardRange[]=['all','today','7d','30d','month','custom']
+  const key:DashboardRange=allowed.includes(sp.range as DashboardRange)?sp.range as DashboardRange:'all'
+  const today=dashboardDate()
+  let from=today,to=today
+  let label='Hôm nay'
+  if(key==='7d'){from=dashboardDate(-6);label='7 ngày'}
+  if(key==='30d'){from=dashboardDate(-29);label='30 ngày'}
+  if(key==='month'){from=today.slice(0,8)+'01';label='Tháng này'}
+  if(key==='all'){label='Toàn thời gian'}
+  if(key==='custom'){
+    const valid=(value?:string)=>!!value&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(new Date(value+'T00:00:00+07:00').getTime())
+    from=valid(sp.from)?String(sp.from):today
+    to=valid(sp.to)?String(sp.to):today
+    if(from>to)[from,to]=[to,from]
+    label=from.split('-').reverse().join('/')+' → '+to.split('-').reverse().join('/')
+  }
+  return {key,from,to,label,start:new Date(from+'T00:00:00+07:00').toISOString(),end:new Date(to+'T23:59:59.999+07:00').toISOString()}
+}
+
 async function count(q:PromiseLike<{count:number|null}>){try{return (await q).count??0}catch{return 0}}
 
-export default async function Dashboard(){
+export default async function Dashboard({searchParams}:{searchParams:Promise<DashboardSP>}){
+  const sp=await searchParams
+  const range=dashboardRange(sp)
   const {supabase}=await requireUser(); const now=new Date().toISOString()
+  // Statuses are evaluated now; the selected period scopes when a record was created.
+  const inPeriod=(query:any,field:string)=>range.key==='all'?query:query.gte(field,range.start).lte(field,range.end)
   const [active,due,alerts,failed,orders,waiting,recentOrders,recentAlerts,warehouses]=await Promise.all([
-    count(supabase.from('shipments').select('*',{count:'exact',head:true}).eq('tracking_enabled',true).eq('is_active',true)),
-    count(supabase.from('shipments').select('*',{count:'exact',head:true}).eq('tracking_enabled',true).lte('next_track_at',now)),
-    count(supabase.from('alert_events').select('id,orders!inner(archived_at)',{count:'exact',head:true}).is('sent_at',null).is('orders.archived_at',null)),
-    count(supabase.from('tracking_sync_logs').select('*',{count:'exact',head:true}).eq('result','FAILED')),
-    count(supabase.from('orders').select('*',{count:'exact',head:true}).is('archived_at',null)),
-    count(supabase.from('orders').select('*',{count:'exact',head:true}).is('archived_at',null).eq('receive_status','WAITING_RECEIVE')),
-    supabase.from('orders').select('id,shopee_order_id,cod,destination_hub,receive_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active)').is('archived_at',null).order('created_at',{ascending:false}).limit(8),
-    supabase.from('alert_events').select('id,alert_type,destination_hub,created_at,sent_at,orders!inner(archived_at)').is('orders.archived_at',null).order('created_at',{ascending:false}).limit(5),
+    count(inPeriod(supabase.from('shipments').select('*',{count:'exact',head:true}).eq('tracking_enabled',true).eq('is_active',true),'created_at')),
+    count(inPeriod(supabase.from('shipments').select('*',{count:'exact',head:true}).eq('tracking_enabled',true).lte('next_track_at',now),'created_at')),
+    count(inPeriod(supabase.from('alert_events').select('id,orders!inner(archived_at)',{count:'exact',head:true}).is('sent_at',null).is('orders.archived_at',null),'created_at')),
+    count(inPeriod(supabase.from('tracking_sync_logs').select('*',{count:'exact',head:true}).eq('result','FAILED'),'started_at')),
+    count(inPeriod(supabase.from('orders').select('*',{count:'exact',head:true}).is('archived_at',null),'order_date')),
+    count(inPeriod(supabase.from('orders').select('*',{count:'exact',head:true}).is('archived_at',null).eq('receive_status','WAITING_RECEIVE'),'order_date')),
+    inPeriod(supabase.from('orders').select('id,shopee_order_id,cod,destination_hub,receive_status,created_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active)').is('archived_at',null),'order_date').order('created_at',{ascending:false}).limit(8),
+    inPeriod(supabase.from('alert_events').select('id,alert_type,destination_hub,created_at,sent_at,orders!inner(archived_at)').is('orders.archived_at',null),'created_at').order('created_at',{ascending:false}).limit(5),
     count(supabase.from('warehouses').select('*',{count:'exact',head:true}).eq('is_active',true)),
   ])
 
@@ -26,7 +57,20 @@ export default async function Dashboard(){
   return <>
     <header className="page-head"><div><h1>Tổng quan vận hành</h1><p>Tình trạng hoạt động của MYNH ERP</p></div><div className="head-actions"><Link className="button" href="/purchase/tracking">Theo dõi vận chuyển</Link><Link className="button primary" href="/purchase/orders?mode=create">+ Tạo đơn</Link></div></header>
 
-    <div className="command-bar"><div className="command-range"><span className="active">Hôm nay</span><span>7 ngày</span><span>30 ngày</span><span>Tháng này</span><span>Tùy chọn</span></div><div className="command-health"><span>● Dữ liệu đã kết nối</span><span>Giờ nghỉ tự động 02:00–06:00</span><span>Lịch tự động mỗi phút</span></div></div>
+    <div className="command-bar system-kpi-filter">
+      <nav className="command-range" aria-label="Lọc thời gian KPI">
+        {([['all','Toàn thời gian'],['today','Hôm nay'],['7d','7 ngày'],['30d','30 ngày'],['month','Tháng này']] as [DashboardRange,string][]).map(([key,label])=><Link key={key} className={range.key===key?'active':''} href={'/?range='+key}>{label}</Link>)}
+      </nav>
+      <form className="system-kpi-filter-form" action="/">
+        <input type="hidden" name="range" value="custom"/>
+        <label>Từ <input type="date" name="from" aria-label="Từ ngày KPI" required defaultValue={range.key==='all'?'':range.from}/></label>
+        <span>→</span>
+        <label>Đến <input type="date" name="to" aria-label="Đến ngày KPI" required defaultValue={range.key==='all'?'':range.to}/></label>
+        <button className="button small primary" type="submit">Áp dụng</button>
+      </form>
+      <span className="system-kpi-filter-meta">{range.label}</span>
+    </div>
+    <p className="system-kpi-period-note">KPI phản ánh trạng thái hiện tại của các bản ghi phát sinh trong khoảng đã chọn; số kho hoạt động là số liệu hiện tại.</p>
 
     <section className="kpi-grid">
       <Link href="/purchase/orders" className="kpi-card"><span>Tổng đơn</span><b>{orders}</b><small>Đơn hàng đang lưu trong hệ thống</small></Link>

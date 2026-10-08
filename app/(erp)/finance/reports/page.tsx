@@ -143,6 +143,22 @@ export default async function FinanceReportsPage({searchParams}:{searchParams:Pr
 
     <section className="card finance-report-table-card">
       <div className="card-head"><div><h2>Theo ngày</h2><span>Tối đa 31 ngày có phát sinh</span></div></div>
+      <div className="mobile-entity-list mobile-finance-report-days">
+        {!dayRows.length
+          ? <div className="mobile-empty-state">Chưa có dữ liệu trong kỳ.</div>
+          : dayRows.map(([key,row])=><article className="mobile-finance-day-card" key={'mobile-'+key}>
+              <div className="mobile-finance-day-head">
+                <b>{displayVnDateKey(key)}</b>
+                <strong className={row.income-row.expense>=0?'income':'expense'}>{formatMoney(row.income-row.expense)}</strong>
+              </div>
+              <div className="mobile-finance-day-grid">
+                <div><span>Doanh thu</span><b>{formatMoney(row.revenue)}</b></div>
+                <div><span>Tiền vào</span><b className="income">{formatMoney(row.income)}</b></div>
+                <div><span>Tiền ra</span><b className="expense">{formatMoney(row.expense)}</b></div>
+                <div><span>Dòng tiền ròng</span><b>{formatMoney(row.income-row.expense)}</b></div>
+              </div>
+            </article>)}
+      </div>
       <div className="compact-table-wrap">
         <table className="table">
           <thead><tr><th>Ngày</th><th>Doanh thu bán</th><th>Tiền vào</th><th>Tiền ra</th><th>Dòng tiền ròng</th></tr></thead>
