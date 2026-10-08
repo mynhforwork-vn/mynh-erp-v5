@@ -66,7 +66,12 @@ for(const spec of [
   const [path,selector,minHeight,label]=spec
   await go(path)
   const m=await metrics(selector)
-  rec(label+' — vùng bảng đủ chiều cao',Boolean(m)&&m.height>=minHeight&&m.bottom<=m.viewportH+2,m??{})
+  // Finance reports use normal document scrolling, unlike full-height operational tables.
+  // Their table must be tall/readable, not artificially clamped to the viewport edge.
+  const withinExpectedBounds=label==='Báo cáo tài chính'
+    ? Boolean(m)&&m.top>=0&&m.width<=m.viewportW+2
+    : Boolean(m)&&m.bottom<=m.viewportH+2
+  rec(label+' — vùng bảng đủ chiều cao',Boolean(m)&&m.height>=minHeight&&withinExpectedBounds,m??{})
 }
 
 for(const spec of [
