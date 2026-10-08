@@ -16,9 +16,19 @@ if(/cron|\[triggers\]/i.test(fs.readFileSync('wrangler.notifications-preview.jso
  throw Error('Duplicated scheduled tracking would be unsafe')
 }
 const layout=fs.readFileSync('app/(erp)/layout.tsx','utf8')
-if(!layout.includes('<InAppAlertCenter role={role}/>'))throw Error('Alert center is not role-bound')
+if(!layout.includes('<InAppAlertCenter role={role} trackingEnabled={trackingEnabled}/>'))throw Error('Alert center must be role-bound and use real Tracking setting')
+if(!layout.includes(".from('tracking_runtime_settings')"))throw Error('Tracking state not read from Supabase')
 const api=fs.readFileSync('app/api/alerts/in-app/route.ts','utf8')
 if(!api.includes("get_notification_feed")||!api.includes('get_in_app_alerts'))throw Error('Missing merged notification feed or legacy fallback')
 const ui=fs.readFileSync('components/in-app-alert-center.tsx','utf8')
-if(!ui.includes('open?300000:900000')||!ui.includes("document.visibilityState==='hidden'"))throw Error('15/5 minute Cloudflare quota rule missing')
+if(!ui.includes('POLL_INTERVAL_MS=120000')||!ui.includes('notificationsEnabled===true&&trackingEnabled===true')){
+ throw Error('2-minute polling and Auto Tracking gate missing')
+}
+if(!ui.includes('if(!enabledRef.current||inflight.current)return')||!ui.includes('currentRequest.current?.abort()')){
+ throw Error('Notification disable gate/abort missing')
+}
+const trackingUI=fs.readFileSync('components/tracking-settings.tsx','utf8')
+if(!trackingUI.includes('saveRuntimeAndNotify')||!trackingUI.includes('mynh-erp-tracking-changed')){
+ throw Error('Tracking switch not synchronized with alerts')
+}
 console.log('Notification isolated preview config/static QA: PASS')
