@@ -15,6 +15,12 @@ export function DesktopTableColumnResize() {
 
     const mq = window.matchMedia('(min-width: 901px)')
     const clamp = (v:number) => Math.max(76, Math.min(680, Math.round(v)))
+    const compactCol = (th:HTMLTableCellElement) =>
+      th.matches('.bulk-select-col, .select-col, .row-actions-head, .checkbox-col')
+    const headerWidth = (th:HTMLTableCellElement) =>
+      compactCol(th)
+        ? Math.max(24, Math.min(140, Math.round(th.getBoundingClientRect().width)))
+        : clamp(th.getBoundingClientRect().width)
     const headerName = (th:HTMLTableCellElement) => {
       const clone = th.cloneNode(true) as HTMLElement
       clone.querySelectorAll('.mynh-column-resize-grip').forEach(x => x.remove())
@@ -58,11 +64,11 @@ export function DesktopTableColumnResize() {
     const freezeWidths = (table:HTMLTableElement, overrides:Record<string,number>) => {
       const ths = headerCells(table)
       if (!ths.length) return
-      const visibleWidths = ths.map(th => clamp(th.getBoundingClientRect().width))
+      const visibleWidths = ths.map(headerWidth)
       const assigned = ths.map((th,i) => overrides[headerName(th)] || visibleWidths[i])
       let total = 0
       ths.forEach((th,i) => {
-        const width = clamp(assigned[i])
+        const width = compactCol(th) ? Math.max(24, Math.min(140, assigned[i])) : clamp(assigned[i])
         total += width
         th.style.setProperty('width', width+'px', 'important')
         th.style.setProperty('min-width', width+'px', 'important')
@@ -104,7 +110,7 @@ export function DesktopTableColumnResize() {
           const startX = e.clientX
           const initial = th.getBoundingClientRect().width
           freezeWidths(table,{})
-          const baseline = headerCells(table).map(h => clamp(h.getBoundingClientRect().width))
+          const baseline = headerCells(table).map(headerWidth)
           const idx = headerCells(table).indexOf(th)
           if (idx < 0) return
           const before = baseline[idx] || initial
