@@ -13,6 +13,7 @@ on:
       - fix/order-text-recognition-v1
       - redesign/brand-responsive-v1
       - fix/desktop-polish-v1
+      - fix/cloudflare-free-request-budget
       - fix/shipping-status-group-v1
       - fix/manual-tracking-response-v1
   workflow_dispatch:
