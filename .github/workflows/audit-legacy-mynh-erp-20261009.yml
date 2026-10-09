@@ -1,0 +1,62 @@
+name: Audit legacy mynh-erp Worker (read only)
+on:
+  push:
+    branches: [audit/legacy-mynh-erp-20261009]
+permissions:
+  contents: read
+  actions: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check last 7 days request, routes, schedules, bindings and Production
+        run: |
+          node <<'NODE'
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID
+          if(!token||!account)throw Error('Missing Cloudflare credentials')
+          const root='https://api.cloudflare.com/client/v4'
+          const headers={Authorization:'Bearer '+token}
+          async function get(path){
+            const response=await fetch(root+path,{headers,signal:AbortSignal.timeout(18000)})
+            const body=await response.json()
+            return {status:response.status,ok:response.ok&&body.success!==false,result:body.result,errors:body.errors??[]}
+          }
+          const scripts=await get('/accounts/'+account+'/workers/scripts?per_page=100')
+          if(!scripts.ok)throw Error('Worker inventory unavailable')
+          const names=(scripts.result??[]).map(x=>x.id)
+          if(!names.includes('mynh-erp-v5')||!names.includes('erp-auto-tracking'))throw Error('Protected Worker missing')
+          console.log('WORKER_INVENTORY '+JSON.stringify({legacyExists:names.includes('mynh-erp'),names}))
+          if(!names.includes('mynh-erp'))return
+          const now=new Date()
+          const dayStart=new Date(now.toISOString().slice(0,10)+'T00:00:00.000Z')
+          const sevenStart=new Date(now.getTime()-7*86400000)
+          const query='query Usage($id:string,$since:string,$today:string,$now:string){viewer{accounts(filter:{accountTag:$id}){week:workersInvocationsAdaptive(limit:1000,filter:{datetime_geq:$since,datetime_lt:$now}){dimensions{scriptName status}sum{requests errors}}today:workersInvocationsAdaptive(limit:1000,filter:{datetime_geq:$today,datetime_lt:$now}){dimensions{scriptName status}sum{requests errors}}}}}'
+          const resp=await fetch(root+'/graphql',{method:'POST',headers:{...headers,'content-type':'application/json'},body:JSON.stringify({query,variables:{id:account,since:sevenStart.toISOString(),today:dayStart.toISOString(),now:now.toISOString()}}),signal:AbortSignal.timeout(30000)})
+          const body=await resp.json()
+          if(!resp.ok||body.errors?.length||!body.data?.viewer?.accounts?.length){
+            console.log('ANALYTICS_UNAVAILABLE '+JSON.stringify({status:resp.status,errors:body.errors?.map(x=>x.message)}))
+            throw Error('Cannot safely evaluate legacy Worker request usage')
+          }
+          for(const [period,rows] of Object.entries(body.data.viewer.accounts[0])){
+            const target=rows.filter(row=>row.dimensions?.scriptName==='mynh-erp')
+            console.log('USAGE '+JSON.stringify({period,requests:target.reduce((a,b)=>a+Number(b.sum?.requests??0),0),errors:target.reduce((a,b)=>a+Number(b.sum?.errors??0),0),queryFrom:period==='week'?sevenStart.toISOString():dayStart.toISOString(),queryTo:now.toISOString(),sampleRows:rows.length}))
+          }
+          const schedule=await get('/accounts/'+account+'/workers/scripts/mynh-erp/schedules')
+          console.log('LEGACY_CRONS '+JSON.stringify({status:schedule.status,ok:schedule.ok,crons:schedule.result?.schedules??null}))
+          const domains=await get('/accounts/'+account+'/workers/domains')
+          console.log('LEGACY_CUSTOM_DOMAINS '+JSON.stringify({status:domains.status,ok:domains.ok,domains:(domains.result??[]).filter(x=>x.service==='mynh-erp').map(x=>x.hostname)}))
+          const settings=await get('/accounts/'+account+'/workers/scripts/mynh-erp/settings')
+          console.log('LEGACY_SETTINGS '+JSON.stringify({status:settings.status,ok:settings.ok,bindings:(settings.result?.bindings??[]).map(x=>({name:x.name,type:x.type,service:x.service,environment:x.environment}))}))
+          for(const name of ['mynh-erp-v5','erp-auto-tracking','ghn-proxy']){
+            const x=await get('/accounts/'+account+'/workers/scripts/'+encodeURIComponent(name)+'/settings')
+            console.log('PROTECTED_DEPENDENCY '+JSON.stringify({worker:name,status:x.status,ok:x.ok,bindings:(x.result?.bindings??[]).filter(b=>b.type==='service').map(b=>({name:b.name,service:b.service,environment:b.environment}))}))
+          }
+          const r=await fetch('https://mynh-erp-v5.mynh-forwork.workers.dev/api/health',{signal:AbortSignal.timeout(15000)})
+          console.log('PRODUCTION_HEALTH '+r.status)
+          if(r.status!==200)throw Error('Production health is not 200')
+          NODE
