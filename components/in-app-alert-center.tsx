@@ -2,10 +2,12 @@
 
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react'
 import {useRouter} from 'next/navigation'
+import {suggestReceivingWarehouseId} from '@/lib/warehouse-routing'
 import {isTrackingQuietNow,msToQuietBoundary,NOTIFICATION_POLL_MS} from '@/lib/notification-quiet-hours'
 
 type Step={id:string;type:string;label:string;created_at:string;is_read:boolean;reason:string|null}
 type ProductSummary={product_name:string;variant:string|null;quantity:number}
+type ReceivingWarehouse={id:string;code?:string|null;name?:string|null;address?:string|null}
 type Notice={
   id:string;source:'tracking'|'system';category:string;severity:'info'|'warning'|'critical';
   title:string;message:string;event_type:string;created_at:string;is_read:boolean;
@@ -14,14 +16,14 @@ type Notice={
   target_path:string|null;timeline?:Step[];
   username?:string|null;cod?:number|null;recipient_name?:string|null;
   recipient_phone?:string|null;recipient_address?:string|null;tracking_number?:string|null;
-  carrier?:string|null;products?:ProductSummary[];receive_status?:string;
+  carrier?:string|null;products?:ProductSummary[];receive_status?:string;shipping_service?:string|null;
 }
 type Feed={
   items:Notice[];total:number;unread_total:number;action_total:number;
-  migration_pending?:boolean
+  migration_pending?:boolean;receiving_warehouses?:ReceivingWarehouse[]
 }
 type Filter='unread'|'action'|'all'
-const empty:Feed={items:[],total:0,unread_total:0,action_total:0}
+const empty:Feed={items:[],total:0,unread_total:0,action_total:0,receiving_warehouses:[]}
 const preference='mynh-erp-in-app-notifications-enabled'
 const runtimeKey='mynh-erp-tracking-runtime'
 
@@ -104,6 +106,13 @@ export function InAppAlertCenter({
   const [filter,setFilter]=useState<Filter>('all')
   const [hub,setHub]=useState('all')
   const [selectedId,setSelectedId]=useState<string|null>(null)
+  const [receiveFor,setReceiveFor]=useState<string|null>(null)
+  const [receiveWarehouseId,setReceiveWarehouseId]=useState('')
+  const [receiveActual,setReceiveActual]=useState('')
+  const [receiveNote,setReceiveNote]=useState('')
+  const [receivePending,setReceivePending]=useState(false)
+  const [receiveError,setReceiveError]=useState('')
+  const [receiveSuccess,setReceiveSuccess]=useState('')
   const listRef=useRef<HTMLDivElement|null>(null)
   const [expanded,setExpanded]=useState<string[]>([])
   const [feed,setFeed]=useState<Feed>(empty)
@@ -124,6 +133,8 @@ export function InAppAlertCenter({
   const requestInFlight=useRef(false)
   const pendingRequest=useRef<AbortController|null>(null)
   const canResolve=role==='admin'||role==='operator'
+  const canReceive=canResolve
+  const receivingWarehouses=feed.receiving_warehouses??[]
 
   const load=useCallback(async()=>{
     if(!enabledRef.current||requestInFlight.current)return
@@ -159,6 +170,7 @@ export function InAppAlertCenter({
         total:Math.max(0,Number(value.total)||0),
         unread_total:Math.max(0,Number(value.unread_total)||0),
         action_total:Math.max(0,Number(value.action_total)||0),
+        receiving_warehouses:Array.isArray(value.receiving_warehouses)?value.receiving_warehouses:[],
         migration_pending:value.migration_pending===true,
       })
       setError('')
@@ -295,7 +307,65 @@ export function InAppAlertCenter({
       :row.source==='tracking'&&row.receive_status!=='RECEIVED'&&row.destination_hub===hub))
   ),[feed.items,filter,hub])
   function toggleOrder(id:string){
+    if(receivePending)return
     setSelectedId(current=>current===id?null:id)
+    setReceiveFor(null)
+    setReceiveError('')
+  }
+  function receiptEligible(row:Notice){
+    return canReceive&&row.source==='tracking'&&Boolean(row.order_id)&&
+      row.event_type==='DELIVERED'&&row.receive_status==='WAITING_RECEIVE'&&
+      row.shipping_service!=='EXPRESS'
+  }
+  function beginReceive(row:Notice){
+    if(!receiptEligible(row))return
+    setReceiveFor(row.id)
+    setReceiveError('')
+    setReceiveSuccess('')
+    setReceiveNote('')
+    setReceiveActual(String(row.cod??0))
+    setReceiveWarehouseId(suggestReceivingWarehouseId(row.recipient_address,receivingWarehouses)??'')
+  }
+  async function submitReceive(row:Notice,mode:'receive_only'|'with_payment'){
+    if(!receiptEligible(row)||receivePending)return
+    if(!receiveWarehouseId||!receivingWarehouses.some(x=>x.id===receiveWarehouseId)){
+      setReceiveError('Vui lòng chọn kho nhận hàng')
+      return
+    }
+    const amount=Number(receiveActual)
+    if(mode==='with_payment'&&(!receiveActual.trim()||!Number.isSafeInteger(amount)||
+      amount<Number(row.cod??0))){
+      setReceiveError('Tiền thực chuyển phải là số nguyên và không thấp hơn COD')
+      return
+    }
+    setReceivePending(true);setReceiveError('')
+    try{
+      const result=await fetch('/api/alerts/receive',{
+        method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({
+          order_id:row.order_id,warehouse_id:receiveWarehouseId,
+          payment_mode:mode,
+          ...(mode==='with_payment'?{actual_transferred:amount}:{}),
+          note:receiveNote.trim(),
+        }),
+      })
+      const body:unknown=await result.json()
+      const payload=body&&typeof body==='object'&&!Array.isArray(body)
+        ?body as {ok?:boolean;error?:string;tip?:number|null}:null
+      if(!result.ok||payload?.ok!==true){
+        throw Error(payload?.error||'Không thể xác nhận. Vui lòng thử lại.')
+      }
+      setFeed(prev=>({...prev,
+        items:prev.items.map(x=>x.id===row.id
+          ?{...x,receive_status:'RECEIVED',destination_hub:'',requires_action:false}:x),
+        action_total:Math.max(0,prev.action_total-(row.requires_action?1:0)),
+      }))
+      setReceiveFor(null)
+      setReceiveSuccess('Đã xác nhận nhận hàng cho đơn '+(row.order_code??'')+
+        (mode==='with_payment'?' và ghi nhận tiền chuyển ship.':' — chưa ghi tiền chuyển ship.'))
+    }catch(e){
+      setReceiveError(e instanceof Error?e.message:'Xác nhận chưa thành công, vui lòng thử lại.')
+    }finally{setReceivePending(false)}
   }
   const money=(v:number|null|undefined)=>v===null||v===undefined||!Number.isFinite(v)
     ?'Chưa có':new Intl.NumberFormat('vi-VN').format(v)+'₫'
@@ -425,6 +495,10 @@ export function InAppAlertCenter({
 
         <div ref={listRef} className="app-alert-list app-alert-list-v2 neo-soft-content">
           {error&&<div role="alert" className="neo-soft-error">{error}</div>}
+          {receiveSuccess&&<div className="neo-soft-receive-success" role="status">
+            {receiveSuccess}
+            <button type="button" onClick={()=>setReceiveSuccess('')} aria-label="Ẩn xác nhận">×</button>
+          </div>}
           {!trackingEnabled
             ?<div className="app-alert-empty app-alert-empty-v2">Auto Tracking đang tắt. Không gọi API thông báo.</div>
             :notificationsEnabled===false
@@ -506,6 +580,55 @@ export function InAppAlertCenter({
                         </li>)}</ol>
                       :<p className="neo-soft-inline-empty">Chưa có lịch sử vận chuyển.</p>}
                   </section>
+                  {receiptEligible(row)&&<>
+                    {receiveFor!==row.id
+                      ?<button type="button" className="neo-soft-receive-trigger"
+                        onClick={()=>beginReceive(row)}>Xác nhận đã nhận hàng</button>
+                      :<div className="neo-soft-receive-form" aria-label={'Xác nhận nhận hàng đơn '+row.order_code}>
+                        <div className="neo-soft-receive-heading">Xác nhận đã nhận hàng</div>
+                        <p>Hàng đã về kho nhận. Chọn kho trước khi xác nhận; đơn sẽ chuyển sang chờ nhập kho.</p>
+                        <label>Kho nhận
+                          <select value={receiveWarehouseId} disabled={receivePending}
+                            onChange={event=>setReceiveWarehouseId(event.target.value)}>
+                            <option value="">Chọn kho nhận</option>
+                            {receivingWarehouses.map(w=><option key={w.id} value={w.id}>
+                              {(w.code?w.code+' · ':'')+(w.address??w.name??'Kho nhận')}
+                            </option>)}
+                          </select>
+                        </label>
+                        <div className="neo-soft-receive-cod">
+                          <span>COD đơn hàng</span><span>{money(row.cod)}</span>
+                        </div>
+                        <label>Tiền thực chuyển ship (nếu ghi đối soát)
+                          <input type="number" min={Number(row.cod??0)} step="1"
+                            value={receiveActual} disabled={receivePending}
+                            onChange={event=>setReceiveActual(event.target.value)}/>
+                        </label>
+                        <div className="neo-soft-receive-tip">Tiền tip: {receiveActual.trim()&&Number(receiveActual)>=Number(row.cod??0)
+                          ?money(Number(receiveActual)-Number(row.cod??0)):'—'}</div>
+                        <label>Ghi chú (không bắt buộc)
+                          <input maxLength={240} value={receiveNote} disabled={receivePending}
+                            onChange={event=>setReceiveNote(event.target.value)}/>
+                        </label>
+                        {receiveError&&<p className="neo-soft-receive-error" role="alert">{receiveError}</p>}
+                        <div className="neo-soft-receive-actions">
+                          <button type="button" disabled={receivePending}
+                            onClick={()=>{setReceiveFor(null);setReceiveError('')}}>Hủy</button>
+                          <button type="button" disabled={receivePending||!receiveWarehouseId}
+                            onClick={()=>void submitReceive(row,'receive_only')}>
+                            {receivePending?'Đang lưu…':'Chỉ nhận hàng'}
+                          </button>
+                          <button type="button" className="with-payment"
+                            disabled={receivePending||!receiveWarehouseId||!receiveActual.trim()||
+                              !Number.isSafeInteger(Number(receiveActual))||
+                              Number(receiveActual)<Number(row.cod??0)}
+                            onClick={()=>void submitReceive(row,'with_payment')}>
+                            Nhận + ghi chuyển ship
+                          </button>
+                        </div>
+                        <small>Thao tác lưu vào dữ liệu thật; không thể xác nhận lại cùng đơn.</small>
+                      </div>}
+                  </>}
                   <div className="neo-soft-expanded-actions">
                     {!row.is_read&&<button type="button" disabled={pending}
                       onClick={()=>void mark(row)}>Đánh dấu đã đọc</button>}
