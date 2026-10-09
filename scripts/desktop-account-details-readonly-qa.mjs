@@ -39,7 +39,7 @@ const links=[
   {name:'list',path:'/purchase/accounts?range=all'},
   {name:'create_panel',path:'/purchase/accounts?range=all&mode=create'},
   {name:'newest_detail',expectPanel:!users[0].archived_at,path:'/purchase/accounts?range=all&user='+encodeURIComponent(users[0].id)+'&tab=info'},
-  {name:'newest_archived_detail',expectPanel:true,path:'/purchase/accounts?range=all&archive=archived&user='+encodeURIComponent(users[0].id)+'&tab=info'},
+  {name:'newest_archived_detail',expectPanel:Boolean(users[0].archived_at),path:'/purchase/accounts?range=all&archive=archived&user='+encodeURIComponent(users[0].id)+'&tab=info'},
   {name:'newest_edit',expectPanel:!users[0].archived_at,path:'/purchase/accounts?range=all&user='+encodeURIComponent(users[0].id)+'&mode=edit'},
   ...(users[1]?[{name:'previous_detail',path:'/purchase/accounts?range=all&user='+encodeURIComponent(users[1].id)+'&tab=info'}]:[]),
 ]
