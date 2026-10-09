@@ -58,7 +58,8 @@ jobs:
         run: npx wrangler deploy --config wrangler.stage-v1.jsonc
       - name: Smoke staging URL (no business data writes)
         run: |
-          health_code=$(curl -sS --max-time 18 -o health.json -w '%{http_code}' "$PREVIEW_URL/api/health")
+          # New workers.dev hostnames may return a brief 404 during propagation.
+          health_code=$(curl -sS --retry 15 --retry-all-errors --retry-delay 5 --max-time 18 -o health.json -w '%{http_code}' "$PREVIEW_URL/api/health")
           echo "HEALTH_HTTP $health_code"
           test "$health_code" = "200"
           grep -q '"ok":true' health.json
