@@ -1,0 +1,92 @@
+name: Desktop Account Recovery Preview (Isolated Version)
+on:
+  push:
+    branches:
+      - fix/desktop-account-details-qa
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: desktop-account-recovery-isolated-preview
+  cancel-in-progress: true
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify preview credentials
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Static QA
+        run: node scripts/remediation-static-qa.mjs
+      - name: Build isolated OpenNext Preview
+        run: npx opennextjs-cloudflare build
+      - name: Publish NEW preview version (no production/desktop override)
+        id: preview
+        shell: bash
+        run: |
+          npx wrangler preview --name desktop-account-fix-v1 --worker-name mynh-erp-v5 --message "Account recovery QA $GITHUB_SHA" --json > preview-output.json
+          node - <<'NODE'
+          const fs=require('fs')
+          const raw=fs.readFileSync('preview-output.json','utf8')
+          let data
+          try{data=JSON.parse(raw)}catch{
+            const start=raw.indexOf('{'),end=raw.lastIndexOf('}')
+            if(start<0||end<start)throw Error('Wrangler preview JSON not found')
+            data=JSON.parse(raw.slice(start,end+1))
+          }
+          const urls=[]
+          const visit=x=>{
+            if(!x)return
+            if(typeof x==='string'&&/^https:\/\//.test(x))urls.push(x)
+            else if(Array.isArray(x))x.forEach(visit)
+            else if(typeof x==='object')Object.values(x).forEach(visit)
+          }
+          visit(data)
+          const url=urls.find(x=>x.includes('workers.dev'))||urls[0]
+          if(!url)throw Error('Preview URL missing')
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'url='+url+'\n')
+          console.log('SAFE_PREVIEW_URL '+url)
+          NODE
+      - name: Smoke preview without authentication or mutations
+        shell: bash
+        env:
+          URL: ${{ steps.preview.outputs.url }}
+        run: |
+          echo "Checking isolated Preview: $URL"
+          code=$(curl -sS --max-time 15 -o /tmp/health.json -w '%{http_code}' "$URL/api/health")
+          echo "HEALTH_HTTP $code"
+          test "$code" = "200"
+          grep -q '"ok":true' /tmp/health.json
+          login_code=$(curl -sS --max-time 15 -o /tmp/login.html -w '%{http_code}' "$URL/login")
+          echo "LOGIN_HTTP $login_code"
+          test "$login_code" = "200"
+          account_code=$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' --max-redirs 0 "$URL/purchase/accounts?mode=create")
+          echo "UNAUTH_ACCOUNT_HTTP $account_code"
+          test "$account_code" = "307" -o "$account_code" = "302"
+      - name: Summary
+        if: always()
+        shell: bash
+        env:
+          URL: ${{ steps.preview.outputs.url }}
+        run: |
+          {
+            echo '## Desktop Account Recovery QA Preview'
+            echo ''
+            echo "- Commit: `$GITHUB_SHA`"
+            echo "- Preview: $URL"
+            echo '- Desktop Preview original: UNCHANGED'
+            echo '- Production main: UNCHANGED'
+            echo '- Supabase data/migrations: UNCHANGED'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,38 @@
+name: Desktop Account Detail Read-Only QA
+on:
+  push:
+    branches:
+      - fix/desktop-account-details-qa
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PREVIEW_URL: https://desktop-polish-v1-mynh-erp-v5.mynh-forwork.workers.dev
+      SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+      SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Static QA
+        run: node scripts/remediation-static-qa.mjs
+      - name: Next.js build with account-specific recovery boundary
+        run: npm run build
+      - name: Verify temporary QA authorization available
+        run: test -n "$SUPABASE_SERVICE_ROLE_KEY"
+      - name: Create one temporary operator session for read-only route checks
+        run: node scripts/preview-auth-setup.mjs
+      - name: Reproduce account list, create, detail, edit over HTTP without database writes
+        run: node scripts/desktop-account-details-readonly-qa.mjs
+      - name: Always remove temporary QA authorization
+        if: always()
+        run: node scripts/preview-auth-cleanup.mjs
