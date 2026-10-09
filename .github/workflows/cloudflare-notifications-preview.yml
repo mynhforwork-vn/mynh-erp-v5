@@ -34,6 +34,8 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "::error::Cloudflare account missing" && exit 1)
       - name: Validate Bangkok quiet-hour boundaries
         run: node --experimental-strip-types scripts/notification-quiet-hours-qa.mjs
+      - name: Validate grouped-order timeline and independent status flags
+        run: node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Static QA
