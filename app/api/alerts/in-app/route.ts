@@ -27,9 +27,14 @@ export async function GET(request:Request){
   const legacyRows=(legacy.data??[]) as LegacyAlert[]
   const orderCodes=[...new Set(legacyRows.flatMap(row=>row.order_codes??[]).filter(Boolean))]
   const orderResult=orderCodes.length
-    ?await supabase.from('orders').select('id,shopee_order_id,receive_status,destination_hub,cod,recipient_name,recipient_phone,recipient_address,order_status,erp_users(username),order_items(product_name,variant,quantity),shipments(tracking_number,carrier)')
+    ?await supabase.from('orders').select('id,shopee_order_id,receive_status,shipping_service,destination_hub,cod,recipient_name,recipient_phone,recipient_address,order_status,erp_users(username),order_items(product_name,variant,quantity),shipments(tracking_number,carrier)')
       .in('shopee_order_id',orderCodes).is('archived_at',null)
     :{data:[],error:null}
+  const role=String(user.app_metadata?.role??'viewer')
+  const canConfirmReceipt=role==='admin'||role==='operator'
+  const {data:receivingWarehouses}=canConfirmReceipt
+    ?await supabase.from('warehouses').select('id,code,name,address').eq('is_active',true).order('code')
+    :{data:[]}
   const tracking=buildOrderNotices(legacyRows,orderResult.error?[]:(orderResult.data??[]))
   // Detail fields are attached to the *same* GET response. Switching HUB, opening
   // an order or viewing its timeline does not create additional Cloudflare calls.
@@ -43,6 +48,7 @@ export async function GET(request:Request){
     const userAccount=Array.isArray(order.erp_users)?order.erp_users[0]:order.erp_users
     const shipment=shipments.find((x:Record<string,unknown>)=>x.tracking_number)??shipments[0]
     return {...row,
+      shipping_service:order.shipping_service??null,
       receive_status:String(order.receive_status??''),
       destination_hub:order.receive_status==='RECEIVED'?'':String(order.destination_hub??row.destination_hub??''),
       username:typeof userAccount?.username==='string'?userAccount.username:null,
@@ -79,6 +85,7 @@ export async function GET(request:Request){
     items:relevant.slice(offset,offset+limit),total:relevant.length,
     unread_total:newest.filter(x=>!x.is_read).length,
     action_total:newest.filter(x=>x.requires_action&&!x.is_resolved).length,
+    receiving_warehouses:receivingWarehouses??[],
     migration_pending:Boolean(newer.error),
   },{headers:noCache})
 }
