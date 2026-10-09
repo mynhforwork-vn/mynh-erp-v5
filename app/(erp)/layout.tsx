@@ -32,7 +32,7 @@ export default async function ERPLayout({children}:{children:React.ReactNode}){
       <Suspense fallback={null}><Nav/></Suspense>
       <div className="sidebar-foot sidebar-foot-v2">
         <SidebarAccountMenu email={user.email??'Người dùng MYNH ERP'} role={roleLabel(role)}/>
-        <InAppAlertCenter trackingEnabled={trackingEnabled} quietStart={quietStart} quietEnd={quietEnd}/>
+        <InAppAlertCenter role={role} trackingEnabled={trackingEnabled} quietStart={quietStart} quietEnd={quietEnd}/>
       </div>
     </aside>
     <div className="desktop-sidebar-seam-handle"><SidebarCollapseToggle/></div>
