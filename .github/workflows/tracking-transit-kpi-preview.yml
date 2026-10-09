@@ -53,3 +53,48 @@ jobs:
           prod=$(curl --silent --show-error --max-time 20 -o /dev/null -w '%{http_code}' "https://mynh-erp-v5.mynh-forwork.workers.dev/api/health")
           echo "PRODUCTION_UNCHANGED_HEALTH_HTTP $prod"
           test "$prod" = "200"
+
+      - name: Create temporary authenticated QA user
+        env:
+          SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+          SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-setup.mjs
+      - name: Create isolated tracking test fixture
+        env:
+          SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-fixture-setup.mjs
+      - name: Prepare Chrome for visual browser QA
+        shell: bash
+        run: |
+          npm install --no-save playwright --no-audit --no-fund
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+          "$CHROME_PATH" --version
+      - name: Check both sidebars and column resize in real browser
+        env:
+          PREVIEW_URL: https://tracking-kpi-v1-mynh-erp-v5.mynh-forwork.workers.dev
+          SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+          SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
+        run: node scripts/tracking-slidebars-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tracking-sidebar-layout-${{ github.sha }}
+          path: qa-tracking-slidebar-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Cleanup isolated QA fixtures
+        if: always()
+        env:
+          SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-fixture-cleanup.mjs
+      - name: Cleanup temporary QA user
+        if: always()
+        env:
+          SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-cleanup.mjs
