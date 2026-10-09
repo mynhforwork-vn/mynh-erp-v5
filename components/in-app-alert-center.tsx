@@ -1,208 +1,385 @@
 'use client'
 
-import { useEffect,useMemo,useRef,useState } from 'react'
-import { useRouter } from 'next/navigation'
+import {useCallback,useEffect,useRef,useState} from 'react'
+import {useRouter} from 'next/navigation'
+import {isTrackingQuietNow,msToQuietBoundary,NOTIFICATION_POLL_MS} from '@/lib/notification-quiet-hours'
 
-type AlertGroup={
-  alert_ids:string[]
-  alert_type:string
-  label:string
-  destination_hub:string
-  alert_count:number
-  order_codes:string[]
-  tracking_numbers:string[]
-  primary_order_id:string
-  reason_summary:string|null
-  created_at:string
-  is_read:boolean
+type View='all'|'unread'|'action'
+type Category='all'|'tracking'|'purchase'|'warehouse'|'sales'|'finance'|'system'
+type Notice={
+ id:string;source:'tracking'|'system';category:Category;severity:'info'|'warning'|'critical';
+ title:string;message:string;event_type:string;created_at:string;is_read:boolean;
+ requires_action:boolean;is_resolved:boolean;legacy_ids:string[];notification_id:string|null;
+ order_id:string|null;destination_hub:string;group_count:number;target_path:string|null;
+ order_code?:string;timeline?:{id:string;type:string;label:string;created_at:string;is_read:boolean;reason:string|null}[]
 }
-type Filter='unread'|'all'
-
-function BellIcon(){
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 3a6 6 0 0 0-6 6v4l-2 3h16l-2-3V9a6 6 0 0 0-6-6Z"/>
-    <path d="M10 20h4"/>
-  </svg>
+type Feed={items:Notice[];total:number;unread_total:number;action_total:number;migration_pending?:boolean}
+const empty:Feed={items:[],total:0,unread_total:0,action_total:0}
+const size=20
+const NOTIFICATION_PREFERENCE_KEY='mynh-erp-in-app-notifications-enabled'
+const TRACKING_RUNTIME_KEY='mynh-erp-tracking-runtime'
+const categories:{id:Category;label:string}[]=[
+ {id:'all',label:'Tất cả'}, {id:'tracking',label:'Vận chuyển'}, {id:'purchase',label:'Đơn nhập'},
+ {id:'warehouse',label:'Kho'}, {id:'sales',label:'Bán hàng'}, {id:'finance',label:'Tài chính'},
+ {id:'system',label:'Hệ thống'},
+]
+const views:{id:View;label:string}[]=[
+ {id:'action',label:'Cần xử lý'}, {id:'unread',label:'Chưa đọc'}, {id:'all',label:'Tất cả'},
+]
+function Bell(){
+ return <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+ strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+ <path d="M12 3a6 6 0 0 0-6 6v4l-2 3h16l-2-3V9a6 6 0 0 0-6-6Z"/><path d="M10 20h4"/></svg>
 }
-function CloseIcon(){
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-    <path d="m6 6 12 12M18 6 6 18"/>
-  </svg>
+function dateVN(s:string){
+ try{return new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',
+   day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date(s))}
+ catch{return 'Không rõ thời gian'}
 }
-function CheckIcon(){
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="m5 12 4 4L19 6"/>
-  </svg>
+function feedFrom(raw:unknown):Feed{
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return empty
+ const v=raw as Record<string,unknown>
+ return {
+   items:Array.isArray(v.items)?v.items as Notice[]:[],
+   total:Math.max(0,Number(v.total)||0),
+   unread_total:Math.max(0,Number(v.unread_total)||0),
+   action_total:Math.max(0,Number(v.action_total)||0),
+   migration_pending:v.migration_pending===true,
+ }
 }
-
-function tone(type:string){
-  if(type==='PICKUP_FAILED'||type==='DELIVERY_FAILED')return 'danger'
-  if(type==='DELIVERED')return 'success'
-  if(type==='OUT_FOR_DELIVERY')return 'info'
-  return 'warning'
+function target(row:Notice){
+ if(row.source==='system'){
+   const p=row.target_path??''
+   if(!p.startsWith('/')||p.startsWith('//')||p.includes('\\')||p.includes('\n')||p.includes('\r'))return null
+   return p
+ }
+ if(row.order_id)return '/purchase/orders?order='+encodeURIComponent(row.order_id)
+ const qs=new URLSearchParams({status:row.event_type})
+ if(row.destination_hub)qs.set('hub',row.destination_hub)
+ return '/purchase/tracking?'+qs.toString()
 }
+export function InAppAlertCenter({role='viewer',trackingEnabled:initialTrackingEnabled,quietStart:initialQuietStart,quietEnd:initialQuietEnd}:{role?:string;trackingEnabled:boolean;quietStart:string;quietEnd:string}){
+ const router=useRouter()
+ const [open,setOpen]=useState(false)
+ const [expanded,setExpanded]=useState<string[]>([])
+ const [view,setView]=useState<View>('all')
+ const [category,setCategory]=useState<Category>('all')
+ const [page,setPage]=useState(0)
+ const [feed,setFeed]=useState<Feed>(empty)
+ const [busy,setBusy]=useState(false)
+ const [pending,setPending]=useState(false)
+ const [error,setError]=useState('')
+ const canResolve=role==='admin'||role==='operator'
+ const [notificationsEnabled,setNotificationsEnabled]=useState<boolean|null>(null)
+ const [trackingEnabled,setTrackingEnabled]=useState(initialTrackingEnabled)
+ const [quietStart,setQuietStart]=useState(initialQuietStart)
+ const [quietEnd,setQuietEnd]=useState(initialQuietEnd)
+ const quietRef=useRef({start:quietStart,end:quietEnd})
+ quietRef.current={start:quietStart,end:quietEnd}
+ const enabledRef=useRef(false)
+ enabledRef.current=notificationsEnabled===true&&trackingEnabled===true
+ const inflight=useRef(false)
+ const lastAt=useRef(0)
+ const nextAllowedAt=useRef(0)
+ const currentRequest=useRef<AbortController|null>(null)
+ const active=useRef(true)
+ const selection=useRef({view,category,page})
+ const openState=useRef(open)
+ selection.current={view,category,page}
+ openState.current=open
 
-function when(value:string){
-  try{
-    return new Intl.DateTimeFormat('vi-VN',{
-      timeZone:'Asia/Ho_Chi_Minh',
-      day:'2-digit',month:'2-digit',
-      hour:'2-digit',minute:'2-digit',
-    }).format(new Date(value))
-  }catch{return value}
-}
+ const load=useCallback(async(force=false)=>{
+   if(!enabledRef.current||inflight.current)return
+   if(isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end))return
+   const now=Date.now()
+   if(now<nextAllowedAt.current||(!force&&now-lastAt.current<NOTIFICATION_POLL_MS))return
+   inflight.current=true
+   lastAt.current=now
+   const controller=new AbortController()
+   currentRequest.current=controller
+   const {view,category,page}=selection.current
+   if(openState.current)setBusy(true)
+   try{
+     const params=new URLSearchParams({
+       view,category,limit:String(size),offset:String(page*size),
+     })
+     const response=await fetch('/api/alerts/in-app?'+params.toString(),
+       {cache:'no-store',signal:controller.signal})
+     if(!enabledRef.current||controller.signal.aborted||isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end))return
+     if(response.status===429||response.status===503){
+       nextAllowedAt.current=Date.now()+900000
+       throw Error('Hệ thống đang giới hạn truy cập; sẽ tự thử lại sau.')
+     }
+     if(!response.ok)throw Error('Không thể tải thông báo.')
+     const data=feedFrom(await response.json())
+     if(!active.current||!enabledRef.current)return
+     if(selection.current.view===view&&selection.current.category===category&&selection.current.page===page){
+       setFeed(data)
+       setError('')
+     }
+   }catch{
+     if(!controller.signal.aborted&&enabledRef.current){
+       nextAllowedAt.current=Math.max(nextAllowedAt.current,Date.now()+300000)
+       if(active.current)setError('Không thể tải thông báo. Hãy thử lại sau.')
+     }
+   }finally{
+     if(currentRequest.current===controller)currentRequest.current=null
+     inflight.current=false
+     if(active.current)setBusy(false)
+   }
+ },[])
 
-export function InAppAlertCenter(){
-  const router=useRouter()
-  const [open,setOpen]=useState(false)
-  const [filter,setFilter]=useState<Filter>('unread')
-  const [alerts,setAlerts]=useState<AlertGroup[]>([])
-  const [loading,setLoading]=useState(true)
-  const timer=useRef<ReturnType<typeof setInterval>|null>(null)
+ useEffect(()=>{
+   setTrackingEnabled(initialTrackingEnabled)
+   setQuietStart(initialQuietStart)
+   setQuietEnd(initialQuietEnd)
+ },[initialTrackingEnabled,initialQuietStart,initialQuietEnd])
 
-  async function load(){
-    try{
-      const res=await fetch('/api/alerts/in-app',{cache:'no-store'})
-      if(!res.ok)return
-      const body=await res.json()
-      setAlerts(Array.isArray(body.alerts)?body.alerts:[])
-    }finally{
-      setLoading(false)
-    }
-  }
+ useEffect(()=>{
+   try{setNotificationsEnabled(window.localStorage.getItem(NOTIFICATION_PREFERENCE_KEY)!=='off')}
+   catch{setNotificationsEnabled(true)}
+   const apply=(payload:unknown)=>{
+     if(!payload||typeof payload!=='object')return
+     const state=payload as {enabled?:boolean;quietStart?:string;quietEnd?:string}
+     const start=state.quietStart??quietRef.current.start
+     const end=state.quietEnd??quietRef.current.end
+     setTrackingEnabled(state.enabled===true)
+     setQuietStart(start)
+     setQuietEnd(end)
+     if(state.enabled!==true||isTrackingQuietNow(new Date(),start,end))currentRequest.current?.abort()
+   }
+   const onStorage=(event:StorageEvent)=>{
+     if(event.key===NOTIFICATION_PREFERENCE_KEY){
+       const enabled=event.newValue!=='off'
+       setNotificationsEnabled(enabled)
+       if(!enabled)currentRequest.current?.abort()
+     }
+     if(event.key===TRACKING_RUNTIME_KEY&&event.newValue){
+       try{apply(JSON.parse(event.newValue))}catch{/* ignore invalid data */}
+     }
+   }
+   const onTrackingChanged=(event:Event)=>apply((event as CustomEvent).detail)
+   window.addEventListener('storage',onStorage)
+   window.addEventListener('mynh-erp-tracking-changed',onTrackingChanged)
+   return()=>{
+     window.removeEventListener('storage',onStorage)
+     window.removeEventListener('mynh-erp-tracking-changed',onTrackingChanged)
+   }
+ },[])
 
-  useEffect(()=>{
-    load()
-    timer.current=setInterval(load,30000)
-    return()=>{if(timer.current)clearInterval(timer.current)}
-  },[])
-
-  useEffect(()=>{
-    if(!open)return
-    const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape')setOpen(false)}
-    window.addEventListener('keydown',onKey)
-    return()=>window.removeEventListener('keydown',onKey)
-  },[open])
-
-  const unread=useMemo(()=>alerts.filter(x=>!x.is_read).length,[alerts])
-  const visible=useMemo(
-    ()=>filter==='unread'?alerts.filter(x=>!x.is_read):alerts,
-    [alerts,filter],
-  )
-
-  async function mark(ids:string[]){
-    if(!ids.length)return
-    setAlerts(current=>current.map(x=>x.alert_ids.some(id=>ids.includes(id))?{...x,is_read:true}:x))
-    await fetch('/api/alerts/in-app',{
-      method:'POST',
-      headers:{'content-type':'application/json'},
-      body:JSON.stringify({alert_ids:ids}),
-    }).catch(()=>null)
-  }
-
-  async function markAll(){
-    setAlerts(current=>current.map(x=>({...x,is_read:true})))
-    await fetch('/api/alerts/in-app',{
-      method:'POST',
-      headers:{'content-type':'application/json'},
-      body:JSON.stringify({all:true}),
-    }).catch(()=>null)
-  }
-
-  async function openAlert(row:AlertGroup){
-    await mark(row.alert_ids)
-    setOpen(false)
-    if(row.alert_count===1&&row.primary_order_id){
-      router.push('/purchase/orders?order='+encodeURIComponent(row.primary_order_id))
-      return
-    }
-    const p=new URLSearchParams()
-    p.set('status',row.alert_type)
-    if(row.destination_hub)p.set('hub',row.destination_hub)
-    router.push('/purchase/tracking?'+p.toString())
-  }
-
-  return <>
-    <button
-      type="button"
-      className={'sidebar-alert-trigger'+(unread?' has-unread':'')}
-      aria-label={'Thông báo'+(unread?' · '+unread+' chưa đọc':'')}
-      onClick={()=>setOpen(true)}
-    >
-      <BellIcon/>
-      {unread>0&&<span className="sidebar-alert-badge">{unread>99?'99+':unread}</span>}
-    </button>
-
-    {open&&<>
-      <button className="app-alert-backdrop app-alert-backdrop-v2" aria-label="Đóng thông báo" onClick={()=>setOpen(false)}/>
-      <aside className="app-alert-panel app-alert-panel-v2" aria-label="Thông báo trong ứng dụng">
-        <header className="app-alert-panel-head-v2">
-          <div className="app-alert-panel-title-v2">
-            <span className="app-alert-panel-icon-v2"><BellIcon/></span>
-            <div>
-              <h2>Thông báo</h2>
-              <p>Cảnh báo vận chuyển từ MYNH ERP</p>
-            </div>
+ useEffect(()=>{
+   active.current=true
+   if(notificationsEnabled!==true||trackingEnabled!==true){
+     currentRequest.current?.abort()
+     setFeed(empty)
+     setBusy(false)
+     return
+   }
+   let stopped=false
+   lastAt.current=0
+   nextAllowedAt.current=0
+   let timer:ReturnType<typeof setTimeout>|null=null
+   const schedule=()=>{
+     if(timer)clearTimeout(timer)
+     if(stopped||!enabledRef.current)return
+     const at=new Date()
+     const {start,end}=quietRef.current
+     if(isTrackingQuietNow(at,start,end)){
+       currentRequest.current?.abort()
+       timer=setTimeout(()=>void tick(),msToQuietBoundary(at,'end',start,end))
+       return
+     }
+     const next=Math.max(lastAt.current+NOTIFICATION_POLL_MS,nextAllowedAt.current)
+     const wait=Math.max(0,next-at.getTime(),inflight.current?1000:0)
+     timer=setTimeout(()=>void tick(),Math.min(wait,msToQuietBoundary(at,'start',start,end)))
+   }
+   const tick=async()=>{
+     if(stopped||!enabledRef.current)return
+     if(isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end)){
+       currentRequest.current?.abort()
+       schedule()
+       return
+     }
+     await load()
+     schedule()
+   }
+   const wake=()=>void tick()
+   window.addEventListener('focus',wake)
+   window.addEventListener('visibilitychange',wake)
+   void tick()
+   return()=>{
+     stopped=true
+     if(timer)clearTimeout(timer)
+     window.removeEventListener('focus',wake)
+     window.removeEventListener('visibilitychange',wake)
+     currentRequest.current?.abort()
+   }
+ },[load,notificationsEnabled,trackingEnabled,quietStart,quietEnd])
+ useEffect(()=>{
+   if(!open)return
+   void load()
+   const key=(event:KeyboardEvent)=>{if(event.key==='Escape'&&!pending)setOpen(false)}
+   window.addEventListener('keydown',key)
+   return()=>window.removeEventListener('keydown',key)
+ },[open,load,pending])
+ const lastFetchedSelection=useRef(view+'|'+category+'|'+page)
+ useEffect(()=>{
+   const current=view+'|'+category+'|'+page
+   if(current===lastFetchedSelection.current)return
+   lastFetchedSelection.current=current
+   if(open&&enabledRef.current)void load(true)
+ },[view,category,page,open,load])
+ function toggleNotifications(){
+   const enabled=notificationsEnabled!==true
+   enabledRef.current=enabled&&trackingEnabled===true
+   if(!enabled)currentRequest.current?.abort()
+   try{window.localStorage.setItem(NOTIFICATION_PREFERENCE_KEY,enabled?'on':'off')}
+   catch{/* Keep current-tab setting when storage is blocked. */}
+   setNotificationsEnabled(enabled)
+ }
+ function setTab(next:View){setView(next);setPage(0)}
+ function setGroup(next:Category){setCategory(next);setPage(0)}
+ async function action(body:Record<string,unknown>){
+   if(!enabledRef.current||isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end))throw Error('Thông báo đang nghỉ theo lịch Tracking')
+   const res=await fetch('/api/alerts/in-app',{
+     method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify(body),
+   })
+   if(!res.ok)throw Error('Không lưu được thao tác.')
+ }
+ async function mark(row:Notice){
+   if(row.is_read)return true
+   setPending(true)
+   try{
+     await action(row.source==='tracking'
+       ?{action:'read',source:'tracking',alert_ids:row.legacy_ids}
+       :{action:'read',source:'system',notification_id:row.notification_id})
+     await load(true)
+     return true
+   }catch{setError('Không đánh dấu đã đọc được.');return false}
+   finally{setPending(false)}
+ }
+ async function markAll(){
+   setPending(true)
+   try{await action({action:'read_all'});await load(true)}
+   catch{setError('Không thể đánh dấu đã đọc tất cả.')}
+   finally{setPending(false)}
+ }
+ async function resolve(row:Notice){
+   if(row.source!=='system'||!row.notification_id||!canResolve)return
+   setPending(true)
+   try{await action({action:'resolve',source:'system',notification_id:row.notification_id});await load(true)}
+   catch{setError('Bạn chưa có quyền hoặc không thể cập nhật trạng thái xử lý.')}
+   finally{setPending(false)}
+ }
+ async function openRow(row:Notice){
+   if(!enabledRef.current)return
+   const route=target(row)
+   if(!route){setError('Thông báo chưa có đường dẫn chi tiết.');return}
+   if(!await mark(row))return
+   setOpen(false)
+   router.push(route)
+ }
+ return <>
+   <button type="button" className={'sidebar-alert-trigger'+(enabledRef.current&&feed.unread_total?' has-unread':'')}
+     aria-label={'Thông báo'+(enabledRef.current&&feed.unread_total?' · '+feed.unread_total+' chưa đọc':'')}
+     onClick={()=>setOpen(true)}><Bell/>
+     {enabledRef.current&&feed.unread_total>0&&<span className="sidebar-alert-badge">
+       {feed.unread_total>99?'99+':feed.unread_total}
+     </span>}
+   </button>
+   {open&&<>
+    <button type="button" className="app-alert-backdrop app-alert-backdrop-v2"
+      aria-label="Đóng trung tâm thông báo" onClick={()=>{if(!pending)setOpen(false)}}/>
+    <aside className="app-alert-panel app-alert-panel-v2 notification-center-v1" aria-label="Trung tâm thông báo">
+      <header className="app-alert-panel-head-v2 notification-center-head">
+        <div className="app-alert-panel-title-v2">
+         <span className="app-alert-panel-icon-v2"><Bell/></span>
+         <div><h2>Trung tâm thông báo</h2><p>MYNH ERP · Quản lý công việc</p></div>
+        </div>
+        <div className="app-alert-panel-actions-v2 notification-center-actions">
+          <button type="button" className="app-alert-mark-all-v2" disabled={pending||!feed.unread_total}
+            onClick={()=>void markAll()}>Đọc tất cả</button>
+          <button type="button" className="app-alert-close-v2" disabled={pending}
+            aria-label="Đóng" onClick={()=>setOpen(false)}>×</button>
+        </div>
+      </header>
+      <div className="notification-center-stats">
+        <div><strong>{feed.unread_total}</strong><span>Chưa đọc</span></div>
+        <div><strong>{feed.action_total}</strong><span>Cần xử lý</span></div>
+        <div><strong>{feed.total}</strong><span>Trong bộ lọc</span></div>
+      </div>
+      <div className="app-alert-tabs-v2 notification-center-tabs" aria-label="Trạng thái thông báo">
+        {views.map(t=><button type="button" key={t.id} className={view===t.id?'active':''}
+          onClick={()=>setTab(t.id)}>{t.label}{t.id==='unread'?' · '+feed.unread_total:''}
+          {t.id==='action'?' · '+feed.action_total:''}</button>)}
+      </div>
+      <div className="notification-center-categories" aria-label="Bộ lọc phân hệ">
+        {categories.map(c=><button type="button" key={c.id}
+          className={category===c.id?'active':''} onClick={()=>setGroup(c.id)}>{c.label}</button>)}
+      </div>
+      {feed.migration_pending&&<p className="notification-center-warning">Đang hiển thị cảnh báo vận chuyển. Trung tâm thông báo mở rộng chờ cập nhật cơ sở dữ liệu.</p>}
+      {error&&<div role="alert" className="notification-center-error">{error}
+        <button type="button" onClick={()=>void load(true)}>Thử lại</button></div>}
+      <div className="app-alert-list-v2 notification-center-list" aria-live="polite">
+       {!trackingEnabled?<div className="app-alert-empty-v2">Auto Tracking đang tắt. Không gọi API thông báo.</div>
+        :notificationsEnabled===false?<div className="app-alert-empty-v2">Thông báo đang tắt. Không gọi API thông báo.</div>
+        :busy?<div className="app-alert-empty-v2">Đang tải thông báo…</div>
+        :feed.items.length===0?<div className="app-alert-empty-v2">
+          <strong>{view==='action'?'Chưa có việc cần xử lý':
+           view==='unread'?'Không có thông báo chưa đọc':'Chưa có thông báo phù hợp'}</strong>
+          <small>Các thông báo mới sẽ xuất hiện tại đây.</small>
+        </div>
+        :feed.items.map(row=><article key={row.id}
+           className={'notification-center-row '+(row.is_read?'read':'unread')+' severity-'+row.severity}>
+          <div className="notification-center-rowhead">
+           <strong>{row.title}</strong><time>{dateVN(row.created_at)}</time>
           </div>
-          <div className="app-alert-panel-actions-v2">
-            {unread>0&&<button type="button" className="app-alert-mark-all-v2" onClick={markAll}>
-              <CheckIcon/><span>Đọc tất cả</span>
+          <p className="notification-center-message">{row.message}</p>
+          <div className="notification-center-tags">
+            <span>{categories.find(x=>x.id===row.category)?.label??'Hệ thống'}</span>
+            {row.source==='tracking'&&row.group_count>1&&<span>{row.group_count} cập nhật</span>}
+            {row.source==='tracking'&&row.requires_action&&<span className="needs-action">Cần xử lý nghiệp vụ</span>}
+            {row.requires_action&&<span className={row.is_resolved?'resolved':'needs-action'}>
+             {row.is_resolved?'Đã xử lý':'Cần xử lý'}
+            </span>}
+            {!row.is_read&&<span className="new">Mới</span>}
+          </div>
+          {row.source==='tracking'&&Array.isArray(row.timeline)&&row.timeline.length>1&&
+            <button type="button" className="notification-center-history-toggle"
+              aria-expanded={expanded.includes(row.id)}
+              onClick={()=>setExpanded(current=>current.includes(row.id)?current.filter(v=>v!==row.id):[...current,row.id])}>
+              {expanded.includes(row.id)?'Ẩn lịch sử':'Xem lịch sử'} ({row.timeline.length})
             </button>}
-            <button type="button" className="app-alert-close-v2" onClick={()=>setOpen(false)} aria-label="Đóng"><CloseIcon/></button>
+          {row.source==='tracking'&&expanded.includes(row.id)&&row.timeline&&
+            <ol className="notification-center-order-history">
+              {row.timeline.map(step=><li key={step.id}>
+                <strong>{step.label}</strong> <time>{dateVN(step.created_at)}</time>
+                {step.reason&&<small>{step.reason}</small>}
+              </li>)}
+            </ol>}
+          <div className="notification-center-rowbuttons">
+            <button type="button" disabled={pending} onClick={()=>void openRow(row)}>Xem chi tiết →</button>
+            {!row.is_read&&<button type="button" disabled={pending} onClick={()=>void mark(row)}>Đã đọc</button>}
+            {row.source==='system'&&row.requires_action&&!row.is_resolved&&canResolve&&
+             <button type="button" disabled={pending} onClick={()=>void resolve(row)}>Đánh dấu đã xử lý</button>}
           </div>
-        </header>
-
-        <div className="app-alert-tabs-v2">
-          <button type="button" className={filter==='unread'?'active':''} onClick={()=>setFilter('unread')}>
-            Chưa đọc <span>{unread}</span>
-          </button>
-          <button type="button" className={filter==='all'?'active':''} onClick={()=>setFilter('all')}>
-            Tất cả <span>{alerts.length}</span>
-          </button>
+        </article>)}
+      </div>
+      <footer className="app-alert-panel-foot-v2 notification-center-foot">
+        <button type="button" aria-pressed={notificationsEnabled===true} onClick={toggleNotifications}>
+          {notificationsEnabled===false?'Bật thông báo':'Tắt thông báo'}
+        </button>
+        <div className="notification-center-pagination">
+          <span>{feed.total?Math.min(page*size+1,feed.total):0}–{Math.min((page+1)*size,feed.total)} / {feed.total}</span>
+          <div>
+           <button type="button" disabled={!page||pending||busy} onClick={()=>setPage(v=>Math.max(0,v-1))}>Trước</button>
+           <button type="button" disabled={(page+1)*size>=feed.total||pending||busy} onClick={()=>setPage(v=>v+1)}>Sau</button>
+          </div>
         </div>
-
-        <div className="app-alert-list app-alert-list-v2">
-          {loading
-            ? <div className="app-alert-empty app-alert-empty-v2">Đang tải thông báo…</div>
-            : !visible.length
-              ? <div className="app-alert-empty app-alert-empty-v2">
-                  <span className="app-alert-empty-icon-v2"><CheckIcon/></span>
-                  <b>{filter==='unread'?'Không có thông báo chưa đọc':'Chưa có thông báo'}</b>
-                  <small>{filter==='unread'?'Bạn đã xử lý hết cảnh báo hiện tại.':'Cảnh báo vận chuyển mới sẽ xuất hiện tại đây.'}</small>
-                </div>
-              : visible.map((row,index)=><button
-                  type="button"
-                  onClick={()=>openAlert(row)}
-                  className={'app-alert-row app-alert-row-v2 '+tone(row.alert_type)+(row.is_read?' read':' unread')}
-                  key={row.alert_type+'-'+row.created_at+'-'+index}
-                >
-                  <span className={'app-alert-type-mark-v2 '+tone(row.alert_type)}/>
-                  <div className="app-alert-row-main-v2">
-                    <div className="app-alert-row-title-v2">
-                      <b>{row.label}</b>
-                      <time>{when(row.created_at)}</time>
-                    </div>
-                    <div className="app-alert-row-order-v2">
-                      {(row.order_codes??[]).slice(0,2).filter(Boolean).join(' · ')||'Đơn hàng'}
-                      {Number(row.alert_count)>2&&' · +'+(Number(row.alert_count)-2)}
-                    </div>
-                    <div className="app-alert-row-meta-v2">
-                      <span>{row.destination_hub||'Chưa xác định HUB'}</span>
-                      {Number(row.alert_count)>1&&<em>{row.alert_count} đơn</em>}
-                    </div>
-                    {row.reason_summary&&<small>{row.reason_summary}</small>}
-                  </div>
-                  {!row.is_read&&<span className="app-alert-unread-dot-v2"/>}
-                </button>)}
-        </div>
-
-        <footer className="app-alert-panel-foot-v2">
-          <button type="button" onClick={()=>{
-            setOpen(false)
-            router.push('/purchase/tracking')
-          }}>Mở Cảnh báo vận chuyển</button>
-        </footer>
-      </aside>
-    </>}
-  </>
+        <small>Đã đọc ≠ cần xử lý. Lịch sử theo từng đơn, không xóa sự kiện.</small>
+      </footer>
+    </aside>
+   </>}
+ </>
 }

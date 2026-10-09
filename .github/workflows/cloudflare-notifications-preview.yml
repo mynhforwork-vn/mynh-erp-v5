@@ -1,0 +1,75 @@
+name: Cloudflare Notification V1 Preview (Independent Worker)
+
+on:
+  push:
+    branches:
+      - feat/notification-center-v1
+  workflow_dispatch:
+
+concurrency:
+  group: notification-center-v1-preview
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PREVIEW_URL: https://mynh-erp-notify-v1.mynh-forwork.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate dedicated preview configuration
+        shell: bash
+        run: |
+          node scripts/notification-preview-config-qa.mjs
+          test -n "$CLOUDFLARE_API_TOKEN" || (echo "::error::Cloudflare API token missing" && exit 1)
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "::error::Cloudflare account missing" && exit 1)
+      - name: Validate Bangkok quiet-hour boundaries
+        run: node --experimental-strip-types scripts/notification-quiet-hours-qa.mjs
+      - name: Validate grouped-order timeline and independent status flags
+        run: node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Static QA
+        run: node scripts/remediation-static-qa.mjs
+      - name: Next.js typecheck + Cloudflare build
+        run: npx opennextjs-cloudflare build
+      - name: Deploy dedicated notification preview Worker
+        shell: bash
+        run: |
+          npx wrangler deploy --config wrangler.notifications-preview.jsonc
+      - name: Smoke dedicated Worker (not the existing desktop Preview)
+        shell: bash
+        run: |
+          echo "New isolated Preview: $PREVIEW_URL"
+          # New workers.dev hostnames can take time to propagate after first deploy.
+          # Retry HTTP 404 too, without touching the original desktop Preview.
+          curl --fail --show-error --silent --retry 20 --retry-all-errors --retry-delay 5 \
+            --max-time 15 "$PREVIEW_URL/api/health" | tee health.json
+          grep -q '"ok":true' health.json
+          curl --fail --show-error --silent --retry 12 --retry-all-errors --retry-delay 4 \
+            --max-time 15 "$PREVIEW_URL/login" -o login.html
+          grep -q 'MYNH ERP' login.html
+          code=$(curl -sS -o /dev/null -w '%{http_code}' "$PREVIEW_URL/api/alerts/in-app")
+          test "$code" = "401"
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo '## Notification V1 Preview'
+            echo ''
+            echo '- Dedicated Worker: `mynh-erp-notify-v1`'
+            echo "- URL: $PREVIEW_URL"
+            echo "- Commit: $GITHUB_SHA"
+            echo '- Original desktop-polish-v1 Preview: UNCHANGED'
+            echo '- Production main: UNCHANGED'
+            echo '- Supabase: shared; migration applied separately only after schema QA'
+          } >> "$GITHUB_STEP_SUMMARY"
