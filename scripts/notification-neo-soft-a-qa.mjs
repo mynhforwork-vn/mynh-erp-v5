@@ -40,8 +40,8 @@ const inlineStart=view.indexOf('selectedId===row.id&&<div',rowStart)
 const rowEnd=view.indexOf('</article>',rowStart)
 assert.ok(rowStart>=0&&inlineStart>rowStart&&inlineStart<rowEnd,
   'Expanded details must be inside the same notification article')
-assert.equal((view.match(/\bfetch\(/g)||[]).length,3,
-  'Only periodic GET, deliberate alert POST and explicit receipt POST may use fetch')
+assert.equal((view.match(/\bfetch\(/g)||[]).length,4,
+  'Only periodic GET, alert POST, explicit single receipt and explicit batch receipt may fetch')
 assert.ok(view.includes("fetch('/api/alerts/receive'"),'Receipt must use dedicated guarded backend')
 assert.ok(!view.includes('fetch('+'\'/api/alerts/receive\'') ||
   view.includes('async function submitReceive'),'Receipt request must run only after an explicit click')
@@ -88,7 +88,7 @@ for(const color of ['#303e4c','#5a6875','#526573','#293d4d','#335266','#647784']
 const receipt=fs.readFileSync('app/api/alerts/receive/route.ts','utf8')
 for(const t of [
  "['admin','operator']","receive_status!=='WAITING_RECEIVE'",
- "order.shipping_service==='EXPRESS'","x.current_tracking_status==='DELIVERED'",
+ "o.shipping_service==='EXPRESS'","x.current_tracking_status==='DELIVERED'",
  "from('warehouses')","eq('is_active',true)",
  "confirm_receive_orders","confirm_receive_and_pay_hub",
  "confirm_receive_and_pay_hub","destination_hub",
@@ -116,5 +116,44 @@ for(const t of [
  'margin:6px 9px!important','background:#eff7f5',
 ])has(css,t)
 console.log('PASS: receipt RPC wired only on explicit confirmation, eligibility guard, active warehouse, HUB transfer/tip, idempotency and rounded accents')
+
+// Multi-select receipt must aggregate by one HUB and use ONE atomic RPC call,
+// not a loop of per-order POSTs.
+for(const needle of [
+  'batchMode,setBatchMode','selectedOrderIds,setSelectedOrderIds','batchSelected',
+  'batchCod=batchSelected.reduce','batchHub=batchSelected[0]?.destination_hub',
+  'batchVisibleInHub','toggleBatchItem(row:Notice)','selectAllBatchHub()',
+  "row.destination_hub!==batchHub", "setSelectedOrderIds(ids)",
+  "beginBatchReceive()", "setReceiveFor('batch')",
+  'aria-label={\'Chọn đơn \'+row.order_code}',
+  'checked={Boolean(row.order_id&&selectedOrderIds.includes(row.order_id))}',
+  'disabled={receivePending||Boolean(batchHub&&row.destination_hub!==batchHub)}',
+  'neo-soft-bulk-summary','batchSelected.length} đơn · COD {money(batchCod)}',
+  "onClick={()=>void submitBatchReceive('receive_only')}",
+  "onClick={()=>void submitBatchReceive('with_payment')}",
+  'order_ids:confirmedIds','selectedOrderIds.length',
+  'payload.order_count!==confirmedIds.length',
+  'clearBatchSelection()', 'action_total:Math.max(0',
+])has(view,needle)
+for(const needle of [
+ "input.order_ids??(input.order_id?[input.order_id]:[])",
+ 'submittedIds.length>40','new Set(submittedIds).size!==submittedIds.length',
+ ".in('id',orderIds)","orders.length!==orderIds.length",
+ "o.receive_status!=='WAITING_RECEIVE'",
+ "o.shipping_service==='EXPRESS'",
+ "shipment.current_tracking_status==='DELIVERED'",
+ 'hubs.length!==1||!hubs[0]','totalCod=orders.reduce',
+ 'p_order_ids:orderIds','order_count:orderIds.length','amount<cod',
+])has(receipt,needle)
+assert.equal((receipt.match(/p_order_ids:orderIds/g)||[]).length,2,
+  'Both receipt RPC modes must use selected whole batch')
+assert.ok(!receipt.includes("for(const orderId of orderIds)"),
+  'Never loop individual order writes; keep one transaction')
+for(const needle of [
+ '.neo-soft-bulk-toolbar','.neo-soft-bulk-summary',
+ '.neo-soft-select-checkbox','.neo-soft-notice.bulk-mode',
+ '.neo-soft-batch-form','accent-color:#438b82',
+])has(css,needle)
+console.log('PASS: multi-order selected same HUB, aggregated COD, duplicate/eligibility validation and one atomic batch RPC')
 
 console.log('PASS: in-place accordion under each order, one persistent list, light typography <=600, compact 408px, HUB, MVD and polling safety')
