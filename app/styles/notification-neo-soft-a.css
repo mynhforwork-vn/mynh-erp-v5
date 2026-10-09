@@ -383,3 +383,25 @@
 }
 .neo-soft-v1 .neo-soft-bulk-toolbar button:disabled,
 .neo-soft-v1 .neo-soft-bulk-summary button:disabled{opacity:.5;cursor:not-allowed}
+
+
+/* Operational action groups: compact, low-contrast chrome and legible labels. */
+.neo-soft-v1 .neo-soft-task-tabs{
+  display:flex;align-items:center;gap:5px;max-width:100%;
+  overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;
+  padding:1px 0 3px;
+}
+.neo-soft-v1 .neo-soft-task-tabs button{
+  flex:none;white-space:nowrap;display:inline-flex;gap:5px;align-items:center;
+  min-height:27px;padding:4px 8px;border-radius:8px;
+  background:#fff;border:1px solid #e0e8ec;color:#536a79;
+  font:450 10.5px inherit;cursor:pointer;
+}
+.neo-soft-v1 .neo-soft-task-tabs button.active{
+  background:#eef5f6;border-color:#bcd7de;color:#2c6577;
+}
+.neo-soft-v1 .neo-soft-task-tabs button span{font-weight:550;font-size:10px}
+.neo-soft-v1 .neo-soft-task-explainer{
+  color:#546d7a;line-height:1.55;font-size:10.5px;font-weight:400;
+  margin:8px 0 0;
+}
