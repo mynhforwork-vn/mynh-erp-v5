@@ -1,0 +1,67 @@
+name: Verify Cloudflare Preview Cleanup
+on:
+  push:
+    branches:
+      - audit/cloudflare-requests-20261009
+permissions:
+  contents: read
+  actions: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Wait for Cloudflare worker deletion propagation and verify production
+        run: |
+          node <<'NODE'
+          const token=process.env.CLOUDFLARE_API_TOKEN,account=process.env.CLOUDFLARE_ACCOUNT_ID
+          const gh=process.env.GH_TOKEN,repo=process.env.GITHUB_REPOSITORY
+          if(!token||!account||!gh||repo!=='mynhforwork-vn/mynh-erp-v5')throw Error('Invalid context')
+          const base='https://api.cloudflare.com/client/v4/accounts/'+account+'/workers'
+          const required=['mynh-erp-v5','erp-auto-tracking','ghn-proxy','mynh-erp']
+          const deleted=['mynh-erp-neo-soft-a','mynh-erp-stage-v1','mynh-erp-notify-v1']
+          async function list(){
+            const res=await fetch(base+'/scripts?per_page=100',{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(16000)})
+            const body=await res.json()
+            if(!res.ok||!body.success)throw Error('Cannot list Cloudflare scripts')
+            return (body.result??[]).map(x=>x.id)
+          }
+          const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))
+          let workerNames=[]
+          let okay=false
+          for(let attempt=1;attempt<=12;attempt++){
+            workerNames=await list()
+            const found=deleted.filter(x=>workerNames.includes(x))
+            console.log('DELETE_PROPAGATION '+JSON.stringify({attempt,stillPresent:found,protectedPresent:required.filter(x=>workerNames.includes(x))}))
+            if(required.every(x=>workerNames.includes(x))&&!found.length){okay=true;break}
+            if(attempt<12)await sleep(6000)
+          }
+          if(!okay)throw Error('Deletion did not propagate fully; left intact for manual review: '+deleted.filter(x=>workerNames.includes(x)).join(','))
+          const health=await fetch('https://mynh-erp-v5.mynh-forwork.workers.dev/api/health',{signal:AbortSignal.timeout(15000)})
+          const login=await fetch('https://mynh-erp-v5.mynh-forwork.workers.dev/login',{signal:AbortSignal.timeout(15000)})
+          console.log('POST_CLEANUP_SMOKE '+JSON.stringify({productionHealth:health.status,productionLogin:login.status}))
+          if(health.status!==200||login.status!==200)throw Error('Production health/login failed after cleanup')
+          const ghHeaders={Authorization:'Bearer '+gh,Accept:'application/vnd.github+json'}
+          const wr=await fetch('https://api.github.com/repos/'+repo+'/actions/workflows?per_page=100',{headers:ghHeaders})
+          if(!wr.ok)throw Error('Cannot verify workflow disable states')
+          const workflows=(await wr.json()).workflows??[]
+          const requiredDisabled=[
+            'Cloudflare Notification V1 Preview (Independent Worker)',
+            'Cloudflare Remediation Preview',
+            'Desktop Account Recovery Preview (Isolated Version)',
+            'MYNH Integrated QA Preview (Isolated Worker)',
+            'MYNH Notification Neo Soft A Preview',
+            'Desktop Slidebar QA',
+            'Preview Browser QA',
+            'Desktop Account Detail Read-Only QA',
+            'Cloudflare Quota Hotfix QA',
+          ]
+          const notDisabled=requiredDisabled.filter(name=>workflows.find(x=>x.name===name)?.state!=='disabled_manually')
+          console.log('WORKFLOW_VERIFY '+JSON.stringify({expected:requiredDisabled.length,disabled:requiredDisabled.length-notDisabled.length,notDisabled}))
+          if(notDisabled.length)throw Error('Preview workflows still active')
+          console.log('FINAL_CLEANUP_PASS '+JSON.stringify({deletedWorkers:deleted,protectedWorkers:required,productionHealthy:true,disabledPreviewWorkflows:requiredDisabled.length}))
+          NODE
