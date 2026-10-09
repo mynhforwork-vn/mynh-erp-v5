@@ -1,0 +1,96 @@
+name: Delete Two Legacy Named Worker Previews
+on:
+  push:
+    branches:
+      - audit/cloudflare-requests-20261009
+permissions:
+  contents: read
+  actions: write
+jobs:
+  delete-named-previews:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate exact Production base Worker, GitHub SHA and preview URLs
+        run: |
+          node <<'NODE'
+          const fs=require('fs')
+          const wrangler=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'))
+          if(wrangler.name!=='mynh-erp-v5')throw Error('Incorrect Wrangler Worker target')
+          const hdr={Authorization:'Bearer '+process.env.GH_TOKEN,Accept:'application/vnd.github+json'}
+          const main=await fetch('https://api.github.com/repos/'+process.env.GITHUB_REPOSITORY+'/branches/main',{headers:hdr}).then(r=>r.json())
+          if(main.commit?.sha!=='3051f646a1e56e5ed802267871e0eb4a821410d0')throw Error('Production main SHA changed')
+          const health=await fetch('https://mynh-erp-v5.mynh-forwork.workers.dev/api/health')
+          if(health.status!==200)throw Error('Production health not passing')
+          for(const name of ['desktop-polish-v1','desktop-account-fix-v1']){
+            const url='https://'+name+'-mynh-erp-v5.mynh-forwork.workers.dev/login'
+            const r=await fetch(url,{redirect:'manual',signal:AbortSignal.timeout(15000)})
+            console.log('LEGACY_PREVIEW_BEFORE '+JSON.stringify({name,status:r.status}))
+            if(r.status!==200)throw Error('Unexpected Preview response; stop deletion')
+          }
+          console.log('PRECHECK_SAFE_TO_DELETE_NAMED_PREVIEWS')
+          NODE
+      - name: Install pinned Wrangler without build or deploy
+        run: npm install --no-audit --no-fund
+      - name: Confirm Wrangler named Preview deletion command supported
+        run: |
+          npx wrangler preview delete --help > /tmp/preview-delete-help.txt
+          grep -q -- '--name' /tmp/preview-delete-help.txt
+          grep -q -- '--skip-confirmation' /tmp/preview-delete-help.txt
+          echo 'NAMED_PREVIEW_DELETE_COMMAND_READY'
+      - name: Delete only desktop-polish-v1 Preview under mynh-erp-v5
+        run: npx wrangler preview delete --name desktop-polish-v1 --skip-confirmation
+      - name: Delete only desktop-account-fix-v1 Preview under mynh-erp-v5
+        run: npx wrangler preview delete --name desktop-account-fix-v1 --skip-confirmation
+      - name: Verify all old Preview URLs down and Production healthy
+        run: |
+          node <<'NODE'
+          const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))
+          const previews=['desktop-polish-v1','desktop-account-fix-v1']
+          let allGone=false
+          for(let attempt=1;attempt<=12;attempt++){
+            const statuses=[]
+            for(const name of previews){
+              let status
+              try{const r=await fetch('https://'+name+'-mynh-erp-v5.mynh-forwork.workers.dev/login',{redirect:'manual',signal:AbortSignal.timeout(14000)});status=r.status}
+              catch{status='UNREACHABLE'}
+              statuses.push({name,status})
+            }
+            console.log('PREVIEW_PROPAGATION '+JSON.stringify({attempt,statuses}))
+            if(statuses.every(x=>x.status!==200)){allGone=true;break}
+            await sleep(5000)
+          }
+          if(!allGone)throw Error('Legacy named Previews still responding 200')
+          const production=await fetch('https://mynh-erp-v5.mynh-forwork.workers.dev/api/health',{signal:AbortSignal.timeout(15000)})
+          const login=await fetch('https://mynh-erp-v5.mynh-forwork.workers.dev/login',{signal:AbortSignal.timeout(15000)})
+          console.log('FINAL_PRODUCTION '+JSON.stringify({health:production.status,login:login.status}))
+          if(production.status!==200||login.status!==200)throw Error('Production unhealthy after Preview deletion')
+          console.log('TWO_NAMED_PREVIEWS_REMOVED')
+          NODE
+      - name: Disable this one-time cleanup workflow
+        if: success()
+        run: |
+          node <<'NODE'
+          const base='https://api.github.com/repos/'+process.env.GITHUB_REPOSITORY+'/actions/workflows'
+          const headers={Authorization:'Bearer '+process.env.GH_TOKEN,Accept:'application/vnd.github+json'}
+          const response=await fetch(base+'?per_page=100',{headers})
+          if(!response.ok)throw Error('Cannot retrieve workflows')
+          const workflows=(await response.json()).workflows
+          const workflow=workflows.find(x=>x.name==='Delete Two Legacy Named Worker Previews')
+          if(!workflow)throw Error('Cleanup workflow not found')
+          const endpoint=base+'/'+workflow.id
+          const update=await fetch(endpoint+'/disable',{method:'PUT',headers})
+          if(update.status!==204)throw Error('Could not disable cleanup workflow')
+          const check=await fetch(endpoint,{headers})
+          const state=(await check.json()).state
+          if(state!=='disabled_manually')throw Error('Cleanup workflow remains enabled')
+          console.log('ONEOFF_NAMED_PREVIEW_CLEANUP_DISABLED')
+          NODE
