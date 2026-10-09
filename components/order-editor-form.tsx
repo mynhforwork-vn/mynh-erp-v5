@@ -1,5 +1,7 @@
 'use client'
 
+import {suggestDestinationHub} from '@/lib/destination-hub-resolution'
+
 import { useMemo, useState } from 'react'
 import { createOrder, updateOrder } from '@/lib/actions/core'
 import { formatParsedOrderSummary, parseShopeeOrderText } from '@/lib/shopee-order-text-parser'
@@ -299,26 +301,10 @@ export function OrderEditorForm({
     }
 
     const provinceMatches=sortedHubs.filter(h=>containsKeyword(normalized,h.province_keywords))
-    const wardMatches=sortedHubs
-      .map(h=>{
-        const wardMatched=containsKeyword(normalized,h.district_keywords)
-        const extraMatched=containsKeyword(normalized,h.address_keywords)
-        const provinceMatched=containsKeyword(normalized,h.province_keywords)
-        const hasWardRules=Boolean(h.district_keywords?.length)
-        return {
-          hub:h,
-          eligible:hasWardRules?wardMatched:extraMatched,
-          score:
-            (wardMatched?100:0)+
-            (provinceMatched?20:0)+
-            (extraMatched?10:0)-
-            Math.min(Number(h.priority??100),99)/100,
-        }
-      })
-      .filter(x=>x.eligible)
-      .sort((a,b)=>b.score-a.score)
-
-    const bestHub=wardMatches[0]?.hub??null
+    // Use the same ambiguity-safe routing rule as quick-MVD and backend.
+    // The unique Bắc Giang/Bắc Ninh province configuration is allowed,
+    // while multiple Hà Nội HUBs require a matching ward/district.
+    const bestHub=suggestDestinationHub(address,sortedHubs,'SPX')
     const bestArea=bestHub??provinceMatches[0]??null
 
     setDerivedArea(bestArea?.area??'')

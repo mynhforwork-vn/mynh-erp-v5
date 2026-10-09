@@ -1,0 +1,47 @@
+name: Notification V3 Production Release QA
+
+on:
+  push:
+    branches:
+      - release/notifications-v3-20261009
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'components/in-app-alert-center.tsx'
+      - 'components/order-editor-form.tsx'
+      - 'components/tracking-settings.tsx'
+      - 'lib/actions/core.ts'
+      - 'lib/notification-*.ts'
+      - 'lib/destination-hub-resolution.ts'
+      - 'scripts/notification-*.mjs'
+      - 'scripts/destination-hub-routing-qa.mjs'
+      - '.github/workflows/notification-production-release-qa.yml'
+
+concurrency:
+  group: notification-release-qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Verify main static QA
+        run: node scripts/remediation-static-qa.mjs
+      - name: Verify notification grouping, status and security
+        run: |
+          node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+          node --experimental-strip-types scripts/notification-quiet-hours-qa.mjs
+          node --experimental-strip-types scripts/notification-order-tasks-qa.mjs
+          node --experimental-strip-types scripts/destination-hub-routing-qa.mjs
+          node --experimental-strip-types scripts/notification-production-qa.mjs
+      - name: Build Cloudflare Worker without deploying
+        run: npx opennextjs-cloudflare build

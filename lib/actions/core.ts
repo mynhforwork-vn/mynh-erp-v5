@@ -2,6 +2,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/supabase/auth'
+import {suggestDestinationHub,type AddressHub} from '@/lib/destination-hub-resolution'
 
 function text(v:FormDataEntryValue|null){return String(v??'').trim()}
 
@@ -50,6 +51,16 @@ async function trackingScheduleFromDb(supabase:any,status:string){
     interval:interval===null?null:Number(interval),
     nextAt:next?String(next):null,
   }
+}
+
+// Adding an ordinary shipping code is the trigger for the first tracking
+// probe. It cannot infer the destination HUB itself: apply_tracking_event_v2
+// sets HUB only after an actual provider location matches configured aliases.
+async function queueFirstTracking(supabase:any,orderId:string){
+  const {error}=await supabase.from('shipments')
+    .update({next_track_at:new Date().toISOString(),locked_until:null,queue_status:'READY'})
+    .eq('order_id',orderId).eq('is_active',true).eq('tracking_enabled',true)
+  if(error)throw new Error('Đã lưu MVD nhưng chưa lên lịch đồng bộ đầu tiên: '+error.message)
 }
 
 export async function createERPUser(formData:FormData){
@@ -361,15 +372,28 @@ async function resolveCarrierName(supabase:any,trackingNumber:string,explicitCar
 
 async function carrierUsesDestinationHub(supabase:any,carrierName:string|null){
   if(!carrierName)return false
-  const {data,error}=await supabase
-    .from('shipping_carrier_configs')
-    .select('supports_destination_hub')
-    .eq('display_name',carrierName)
-    .order('priority',{ascending:true})
-    .limit(1)
-    .maybeSingle()
+  const query=supabase.from('shipping_carrier_configs')
+    .select('supports_destination_hub').eq('is_active',true)
+  const byName=await query.eq('display_name',carrierName).maybeSingle()
+  if(byName.error)throw new Error(byName.error.message)
+  if(byName.data)return Boolean(byName.data.supports_destination_hub)
+  // resolveCarrierName() returns the carrier_code (SPX), while manual
+  // carrier selection returns display_name (SPX Express). Both must work.
+  const byCode=await supabase.from('shipping_carrier_configs')
+    .select('supports_destination_hub').eq('is_active',true)
+    .eq('carrier_code',carrierName).maybeSingle()
+  if(byCode.error)throw new Error(byCode.error.message)
+  return Boolean(byCode.data?.supports_destination_hub)
+}
+
+async function destinationHubFromAddress(supabase:any,address:string|null|undefined,carrier:string|null){
+  if(!address||!carrier||!await carrierUsesDestinationHub(supabase,carrier))return null
+  const {data:hubs,error}=await supabase.from('destination_hub_configs')
+    .select('hub_code,area,region,priority,carrier_code,province_keywords,district_keywords,address_keywords')
+    .eq('is_active',true)
   if(error)throw new Error(error.message)
-  return Boolean(data?.supports_destination_hub)
+  return suggestDestinationHub(address,(hubs??[]) as AddressHub[],
+    carrier==='SPX Express'?'SPX':carrier)
 }
 
 function itemPayload(formData:FormData){
@@ -415,6 +439,10 @@ export async function createOrder(formData:FormData){
     ? (trackingNumber?'Hỏa tốc':null)
     : await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
   const usesDestinationHub=!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
+  const matchedHub=usesDestinationHub?await destinationHubFromAddress(
+    supabase,text(formData.get('recipient_address')),carrier):null
+  const effectiveHub=usesDestinationHub
+    ?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''): ''
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
   const orderStatus=isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
 
@@ -425,7 +453,7 @@ export async function createOrder(formData:FormData){
     p_recipient_name:text(formData.get('recipient_name'))||null,
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
-    p_destination_hub:usesDestinationHub?(text(formData.get('destination_hub'))||null):null,
+    p_destination_hub:effectiveHub||null,
     p_cod:numberOrNull(formData.get('cod'))??0,
     p_order_status:orderStatus,
     p_payment_status:text(formData.get('payment_status'))||'UNPAID',
@@ -436,11 +464,11 @@ export async function createOrder(formData:FormData){
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  const derivedArea=usesDestinationHub?(text(formData.get('area'))||null):null
+  const derivedArea=usesDestinationHub?(text(formData.get('area'))||matchedHub?.area||null):null
   if(data){
     const {error:orderMetaError}=await supabase.from('orders').update({
       area:derivedArea,
-      destination_hub:usesDestinationHub?(text(formData.get('destination_hub'))||null):null,
+      destination_hub:effectiveHub||null,
       express_shipper_name:isExpress?(text(formData.get('express_shipper_name'))||null):null,
       express_shipper_phone:isExpress?(text(formData.get('express_shipper_phone'))||null):null,
       express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
@@ -458,6 +486,7 @@ export async function createOrder(formData:FormData){
       if(shipmentError)throw new Error(shipmentError.message)
     }
   }
+  if(data&&trackingNumber&&!isExpress)await queueFirstTracking(supabase,String(data))
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
 }
@@ -475,6 +504,10 @@ export async function updateOrder(formData:FormData){
     ? (trackingNumber?'Hỏa tốc':null)
     : await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
   const usesDestinationHub=!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
+  const matchedHub=usesDestinationHub?await destinationHubFromAddress(
+    supabase,text(formData.get('recipient_address')),carrier):null
+  const effectiveHub=usesDestinationHub
+    ?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''): ''
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
   const orderStatus=isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
 
@@ -486,7 +519,7 @@ export async function updateOrder(formData:FormData){
     p_recipient_name:text(formData.get('recipient_name'))||null,
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
-    p_destination_hub:usesDestinationHub?(text(formData.get('destination_hub'))||null):null,
+    p_destination_hub:effectiveHub||null,
     p_cod:numberOrNull(formData.get('cod'))??0,
     p_order_status:orderStatus,
     p_payment_status:text(formData.get('payment_status'))||'UNPAID',
@@ -497,10 +530,10 @@ export async function updateOrder(formData:FormData){
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  const derivedArea=usesDestinationHub?(text(formData.get('area'))||null):null
+  const derivedArea=usesDestinationHub?(text(formData.get('area'))||matchedHub?.area||null):null
   const {error:orderMetaError}=await supabase.from('orders').update({
     area:derivedArea,
-    destination_hub:usesDestinationHub?(text(formData.get('destination_hub'))||null):null,
+    destination_hub:effectiveHub||null,
     express_shipper_name:isExpress?(text(formData.get('express_shipper_name'))||null):null,
     express_shipper_phone:isExpress?(text(formData.get('express_shipper_phone'))||null):null,
     express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
@@ -526,6 +559,7 @@ export async function updateOrder(formData:FormData){
         }).eq('order_id',orderId).eq('is_active',true)
     if(shipmentError)throw new Error(shipmentError.message)
   }
+  if(trackingNumber&&!isExpress)await queueFirstTracking(supabase,orderId)
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
 }
@@ -1391,7 +1425,7 @@ export async function quickAddTrackingNumber(formData:FormData){
 
   const {data:order,error:orderError}=await supabase
     .from('orders')
-    .select('id,shipping_service')
+    .select('id,shipping_service,recipient_address,destination_hub')
     .eq('id',orderId)
     .maybeSingle()
   if(orderError)throw new Error(orderError.message)
@@ -1456,9 +1490,15 @@ export async function quickAddTrackingNumber(formData:FormData){
     if(error)throw new Error(error.message)
   }
 
+  if(!isExpress)await queueFirstTracking(supabase,orderId)
+  const inferredHub=!isExpress&&!order.destination_hub
+    ?await destinationHubFromAddress(supabase,order.recipient_address,carrier):null
   const {error:orderStatusError}=await supabase
     .from('orders')
-    .update({order_status:'PROCESSING'})
+    .update({
+      order_status:'PROCESSING',
+      ...(inferredHub?{destination_hub:inferredHub.hub_code,area:inferredHub.area}:{}),
+    })
     .eq('id',orderId)
   if(orderStatusError)throw new Error(orderStatusError.message)
 
@@ -1469,7 +1509,8 @@ export async function quickAddTrackingNumber(formData:FormData){
     entity_type:'ORDER',
     entity_id:orderId,
     old_value:{tracking_number:null,carrier:active?.carrier??null},
-    new_value:{tracking_number:trackingNumber,carrier},
+    new_value:{tracking_number:trackingNumber,carrier,
+      destination_hub:inferredHub?.hub_code??order.destination_hub??null},
     source:'USER',
   })
 
@@ -1488,7 +1529,7 @@ export async function replaceShipment(formData:FormData){
 
   const {data:order,error:orderError}=await supabase
     .from('orders')
-    .select('id,shipping_service')
+    .select('id,shipping_service,recipient_address,destination_hub')
     .eq('id',orderId)
     .maybeSingle()
   if(orderError)throw new Error(orderError.message)
@@ -1525,11 +1566,21 @@ export async function replaceShipment(formData:FormData){
     throw new Error(newError.message)
   }
 
+  if(!isExpress)await queueFirstTracking(supabase,orderId)
+  const inferredHub=!isExpress&&!order.destination_hub
+    ?await destinationHubFromAddress(supabase,order.recipient_address,carrier):null
+  if(inferredHub){
+    const {error}=await supabase.from('orders')
+      .update({destination_hub:inferredHub.hub_code,area:inferredHub.area})
+      .eq('id',orderId)
+    if(error)throw new Error(error.message)
+  }
   await supabase.from('audit_logs').insert({
     actor_user_id:user.id,module:'ORDERS',action:'UPDATE_TRACKING_NUMBER',
     entity_type:'ORDER',entity_id:orderId,
     old_value:{tracking_number:previous?.tracking_number??null,carrier:previous?.carrier??null},
-    new_value:{tracking_number:trackingNumber,carrier},
+    new_value:{tracking_number:trackingNumber,carrier,
+      destination_hub:inferredHub?.hub_code??order.destination_hub??null},
     source:'USER'
   })
 
