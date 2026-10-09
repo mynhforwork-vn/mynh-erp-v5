@@ -1,0 +1,54 @@
+name: Read-only Cloudflare Worker Request Audit
+on:
+  push:
+    branches:
+      - audit/cloudflare-requests-20261009
+permissions:
+  contents: read
+jobs:
+  count-requests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Query Workers Analytics read-only
+        shell: bash
+        run: |
+          node <<'NODE'
+          const token=process.env.CLOUDFLARE_API_TOKEN
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID
+          if(!token||!account){console.log('ANALYTICS_ACCESS missing credentials');process.exit(1)}
+          const now=new Date()
+          const utcDate=now.toISOString().slice(0,10)
+          const utcStart=new Date(utcDate+'T00:00:00Z')
+          const prevStart=new Date(utcStart.getTime()-86400000)
+          const prevEnd=new Date(prevStart.getTime()+(now.getTime()-utcStart.getTime()))
+          const vnDate=new Date(now.getTime()+7*3600000).toISOString().slice(0,10)
+          const vnStart=new Date(Date.parse(vnDate+'T00:00:00Z')-7*3600000)
+          const query='query WorkerUsage($accountTag:string,$start:string,$now:string,$previousStart:string,$previousEnd:string,$vietnamStart:string){viewer{accounts(filter:{accountTag:$accountTag}){current:workersInvocationsAdaptive(limit:10000,filter:{datetime_geq:$start,datetime_lt:$now}){dimensions{scriptName status}sum{requests errors}}previous:workersInvocationsAdaptive(limit:10000,filter:{datetime_geq:$previousStart,datetime_lt:$previousEnd}){dimensions{scriptName status}sum{requests errors}}vietnam:workersInvocationsAdaptive(limit:10000,filter:{datetime_geq:$vietnamStart,datetime_lt:$now}){dimensions{scriptName status}sum{requests errors}}}}}'
+          const variables={accountTag:account,start:utcStart.toISOString(),now:now.toISOString(),previousStart:prevStart.toISOString(),previousEnd:prevEnd.toISOString(),vietnamStart:vnStart.toISOString()}
+          const res=await fetch('https://api.cloudflare.com/client/v4/graphql',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({query,variables}),signal:AbortSignal.timeout(30000)})
+          const data=await res.json()
+          if(!res.ok||data.errors?.length||!data.data?.viewer?.accounts?.length){
+            console.log('ANALYTICS_ACCESS unavailable HTTP '+res.status)
+            console.log('ERRORS '+JSON.stringify((data.errors??data.messages??[]).map(x=>({code:x.code,message:x.message}))).slice(0,1700))
+            process.exit(2)
+          }
+          const accountData=data.data.viewer.accounts[0]
+          for(const [period,rows] of Object.entries(accountData)){
+            if(!Array.isArray(rows)){console.log('PERIOD '+period+' unavailable');continue}
+            let total=0,errors=0;const scripts={}
+            for(const item of rows){
+              const name=item.dimensions?.scriptName??'(unknown)'
+              const req=Number(item.sum?.requests??0),err=Number(item.sum?.errors??0)
+              total+=req;errors+=err
+              scripts[name]??={requests:0,errors:0}
+              scripts[name].requests+=req;scripts[name].errors+=err
+            }
+            const byScript=Object.entries(scripts).sort((a,b)=>b[1].requests-a[1].requests).slice(0,20)
+            console.log('PERIOD '+period+' '+JSON.stringify({total,errors,rows:rows.length,possiblyTruncated:rows.length>=10000,byScript}))
+          }
+          console.log('TIMES '+JSON.stringify({nowUTC:now.toISOString(),UTCstart:utcStart.toISOString(),vietnamStart:vnStart.toISOString(),priorStart:prevStart.toISOString(),priorEnd:prevEnd.toISOString()}))
+          NODE
