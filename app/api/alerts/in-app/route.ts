@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {buildOrderNotices,type LegacyAlert,type TrackingOrderNotice} from '@/lib/notification-order-presentation'
+import {buildOrderWorkNotices,type TaskOrder} from '@/lib/notification-order-tasks'
 
 const noCache={ 'Cache-Control':'private, no-store, max-age=0' }
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -66,6 +67,20 @@ export async function GET(request:Request){
     }
   })
 
+  // Operational notifications are derived from *live order state* rather than
+  // tracking events. Newly-created orders lacking a MVD and received orders
+  // awaiting warehouse intake therefore appear without a new DB migration.
+  // One bounded read shares the existing 5-minute notification GET.
+  const {data:taskOrders,error:taskError}=await supabase.from('orders')
+    .select('id,shopee_order_id,order_date,order_status,shipping_service,receive_status,warehouse_status,destination_hub,cod,recipient_name,recipient_phone,recipient_address,erp_users(username),order_items(product_name,variant,quantity),shipments(id,tracking_number,carrier,is_active,current_tracking_status)')
+    .is('archived_at',null)
+    .order('order_date',{ascending:false})
+    .limit(150)
+  const workNotices=taskError?[]:buildOrderWorkNotices((taskOrders??[]) as TaskOrder[])
+    .map(item=>canViewRecipient?item:{
+      ...item,recipient_name:null,recipient_phone:null,recipient_address:null,
+    })
+
   // Migration 0068 is additive. Pull system notices only when its RPC exists.
   // Ignore its legacy tracking rows; they group by alert type rather than order.
   const newer=await supabase.rpc('get_notification_feed',{
@@ -76,7 +91,7 @@ export async function GET(request:Request){
   const systems=(!newer.error&&Array.isArray(newer.data?.items)
     ?newer.data.items.filter((x:Record<string,unknown>)=>x.source==='system')
     :[]) as SystemNotice[]
-  const combined:(TrackingOrderNotice|SystemNotice)[]=[...enriched,...systems]
+  const combined:(TrackingOrderNotice|SystemNotice|typeof workNotices[number])[]=[...enriched,...workNotices,...systems]
   const newest=combined.sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))
   const relevant=newest.filter(x=>category==='all'||x.category===category)
     .filter(x=>view==='all'||(view==='unread'&&!x.is_read)||
