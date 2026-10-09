@@ -353,7 +353,7 @@ export function InAppAlertCenter({
         <header className="app-alert-panel-head-v2">
           <div className="app-alert-panel-title-v2">
             <span className="app-alert-panel-icon-v2"><BellIcon/></span>
-            <div><h2>Trung tâm thông báo</h2><p>MYNH ERP · Theo dõi vận hành</p></div>
+            <div><h2>Thông báo</h2><p>Cập nhật đơn hàng theo HUB</p></div>
           </div>
           <div className="app-alert-panel-actions-v2">
             {unread>0&&<button type="button" className="app-alert-mark-all-v2"
@@ -373,12 +373,7 @@ export function InAppAlertCenter({
             </button>
             <span>Chi tiết đơn</span>
           </div>:<>
-            <div className="neo-soft-stats" aria-label="Tổng quan thông báo">
-              <div className="neo-soft-stat"><strong>{feed.total}</strong><span>Đơn & thông báo</span></div>
-              <div className="neo-soft-stat neo-soft-stat-action"><strong>{actionCount}</strong><span>Cần xử lý</span></div>
-              <div className="neo-soft-stat neo-soft-stat-unread"><strong>{unread}</strong><span>Chưa đọc</span></div>
-            </div>
-            <div className="app-alert-tabs-v2 neo-soft-tabs">
+            <div className="app-alert-tabs-v2 neo-soft-tabs" aria-label="Lọc trạng thái thông báo">
               <button type="button" className={filter==='all'?'active':''}
                 onClick={()=>setFilter('all')}>Tất cả <span>{feed.total}</span></button>
               <button type="button" className={filter==='action'?'active':''}
@@ -387,12 +382,13 @@ export function InAppAlertCenter({
                 onClick={()=>setFilter('unread')}>Chưa đọc <span>{unread}</span></button>
             </div>
             <div className="neo-soft-hub-line">
-              <label htmlFor="neo-soft-hub-select">HUB kho đích</label>
+              <label htmlFor="neo-soft-hub-select">Lọc HUB</label>
               <select id="neo-soft-hub-select" value={hub} onChange={e=>setHub(e.target.value)}>
                 <option value="all">Tất cả HUB</option>
                 {hubs.map(x=><option key={x} value={x}>{x}</option>)}
                 <option value="unknown">Chưa xác định HUB</option>
               </select>
+              <span className="neo-soft-result-count">{visible.length} đơn</span>
             </div>
           </>}
         </div>
@@ -467,43 +463,41 @@ export function InAppAlertCenter({
              </div>
             :<div className="neo-soft-notice-list">{visible.map(row=>
               <article key={row.id} className={'neo-soft-notice neo-soft-'+tone(row)+(row.is_read?' read':' unread')}>
-                <button type="button" className="neo-soft-notice-main" onClick={()=>openDetail(row)}>
+                <button type="button" className="neo-soft-notice-main" onClick={()=>openDetail(row)}
+                  aria-label={'Xem chi tiết đơn '+(row.order_code??row.title)}>
                   <div className="neo-soft-notice-first">
-                    <span className={'neo-soft-status neo-soft-status-'+tone(row)}>{row.title}</span>
+                    <span className={'neo-soft-status neo-soft-status-'+tone(row)}>
+                      <span className="neo-soft-status-dot" aria-hidden="true"/>
+                      {row.title}
+                    </span>
                     <time>{when(row.created_at)}</time>
                   </div>
-                  <strong className="neo-soft-notice-code">{row.order_code??row.message??'Thông báo hệ thống'}</strong>
-                  <div className="neo-soft-notice-hub">
-                    {row.receive_status==='RECEIVED'?'Đã nhận — lịch sử'
-                      :row.destination_hub||'Chưa xác định HUB'}
+                  <div className="neo-soft-notice-primary">
+                    <strong className="neo-soft-notice-code">{row.order_code??row.message??'Thông báo hệ thống'}</strong>
+                    <strong className="neo-soft-notice-cod">{money(row.cod)}</strong>
                   </div>
-                  <div className="neo-soft-notice-bottom">
-                    <span>{row.source==='tracking'?(row.group_count>1
-                      ?row.group_count+' cập nhật vận chuyển':'Cập nhật vận chuyển'):'Thông báo hệ thống'}</span>
-                    <strong>{money(row.cod)}</strong>
-                  </div>
-                  <div className="neo-soft-notice-tags">
-                    {row.requires_action&&!row.is_resolved&&<span className="needs-action">Cần xử lý nghiệp vụ</span>}
-                    {!row.is_read&&<span className="unread-label">Chưa đọc</span>}
-                    <span className="neo-soft-detail-link">Xem chi tiết →</span>
+                  <div className="neo-soft-notice-secondary">
+                    <span className="neo-soft-notice-hub">{row.receive_status==='RECEIVED'
+                      ?'Đã nhận · Lịch sử':row.destination_hub||'Chưa xác định HUB'}</span>
+                    {row.source==='tracking'&&row.group_count>1&&
+                      <small>{row.group_count} cập nhật</small>}
+                    {row.requires_action&&!row.is_resolved&&
+                      <span className="neo-soft-action-mark" title="Cần xử lý" aria-label="Cần xử lý">!</span>}
+                    {!row.is_read&&<span className="neo-soft-unread-mark" title="Chưa đọc" aria-label="Chưa đọc"/>}
+                    <span className="neo-soft-chevron" aria-hidden="true">›</span>
                   </div>
                 </button>
               </article>
             )}</div>}
         </div>
 
-        <footer className="app-alert-panel-foot-v2" style={{display:'grid',gap:5}}>
+        <footer className="app-alert-panel-foot-v2 neo-soft-footer">
           <button type="button" aria-pressed={notificationsEnabled===true}
             onClick={toggleNotifications}>{notificationsEnabled===false?'Bật thông báo':'Tắt thông báo'}</button>
           <button type="button" onClick={()=>{
             setOpen(false);router.push('/purchase/tracking')
-          }}>Mở Cảnh báo vận chuyển</button>
-          <small style={{color:'#748699',textAlign:'center',fontSize:9}}>
-            Đã đọc ≠ đã xử lý · Lịch sử giữ theo từng đơn
-          </small>
-          {feed.migration_pending&&<small style={{color:'#9e7848',fontSize:9,textAlign:'center'}}>
-            Thông báo các phân hệ khác cần migration 0068 để kích hoạt.
-          </small>}
+          }}>Cảnh báo vận chuyển ↗</button>
+          {feed.migration_pending&&<small>Thông báo phân hệ khác đang chờ kích hoạt.</small>}
         </footer>
       </aside>
     </>}
