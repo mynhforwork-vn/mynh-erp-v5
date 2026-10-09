@@ -64,4 +64,39 @@ jobs:
           console.log('WORKFLOW_VERIFY '+JSON.stringify({expected:requiredDisabled.length,disabled:requiredDisabled.length-notDisabled.length,notDisabled}))
           if(notDisabled.length)throw Error('Preview workflows still active')
           console.log('FINAL_CLEANUP_PASS '+JSON.stringify({deletedWorkers:deleted,protectedWorkers:required,productionHealthy:true,disabledPreviewWorkflows:requiredDisabled.length}))
+          const oldPreviewHosts=[
+            'mynh-erp-neo-soft-a.mynh-forwork.workers.dev',
+            'mynh-erp-stage-v1.mynh-forwork.workers.dev',
+            'mynh-erp-notify-v1.mynh-forwork.workers.dev',
+            'desktop-polish-v1-mynh-erp-v5.mynh-forwork.workers.dev',
+            'desktop-account-fix-v1-mynh-erp-v5.mynh-forwork.workers.dev',
+          ]
+          for(const host of oldPreviewHosts){
+            let status
+            try{
+              const r=await fetch('https://'+host+'/login',{redirect:'manual',signal:AbortSignal.timeout(12000)})
+              status=r.status
+            }catch(error){status='UNREACHABLE'}
+            console.log('PREVIEW_URL_CHECK '+JSON.stringify({host,status}))
+          }
+          // Turn off the one-off audit workflows, including this verifier,
+          // to avoid leaving any recurring or push-triggered probes behind.
+          const auditNames=[
+            'Read-only Cloudflare Worker Request Audit',
+            'Inventory MYNH Preview Workers (read only)',
+            'Authorized MYNH Preview Cleanup 20261009',
+            'Verify Cloudflare Preview Cleanup',
+          ]
+          for(const name of auditNames){
+            const item=workflows.find(x=>x.name===name)
+            if(!item||!Number.isInteger(item.id))throw Error('Cannot locate one-off workflow '+name)
+            const endpoint='https://api.github.com/repos/'+repo+'/actions/workflows/'+item.id
+            const disabled=await fetch(endpoint+'/disable',{method:'PUT',headers:ghHeaders,signal:AbortSignal.timeout(15000)})
+            const check=await fetch(endpoint,{headers:ghHeaders,signal:AbortSignal.timeout(15000)})
+            const info=check.ok?await check.json():null
+            const ok=disabled.status===204&&info?.state==='disabled_manually'
+            console.log('STOP_ONEOFF_AUDIT '+JSON.stringify({name,status:disabled.status,ok}))
+            if(!ok)throw Error('Could not disable one-off audit: '+name)
+          }
+          console.log('ALL_CLEANUP_AND_AUDIT_WORKFLOWS_STOPPED')
           NODE
