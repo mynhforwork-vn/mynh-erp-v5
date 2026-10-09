@@ -52,6 +52,16 @@ async function trackingScheduleFromDb(supabase:any,status:string){
   }
 }
 
+// Adding an ordinary shipping code is the trigger for the first tracking
+// probe. It cannot infer the destination HUB itself: apply_tracking_event_v2
+// sets HUB only after an actual provider location matches configured aliases.
+async function queueFirstTracking(supabase:any,orderId:string){
+  const {error}=await supabase.from('shipments')
+    .update({next_track_at:new Date().toISOString(),locked_until:null,queue_status:'READY'})
+    .eq('order_id',orderId).eq('is_active',true).eq('tracking_enabled',true)
+  if(error)throw new Error('Đã lưu MVD nhưng chưa lên lịch đồng bộ đầu tiên: '+error.message)
+}
+
 export async function createERPUser(formData:FormData){
   const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
@@ -458,6 +468,7 @@ export async function createOrder(formData:FormData){
       if(shipmentError)throw new Error(shipmentError.message)
     }
   }
+  if(data&&trackingNumber&&!isExpress)await queueFirstTracking(supabase,String(data))
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
 }
@@ -526,6 +537,7 @@ export async function updateOrder(formData:FormData){
         }).eq('order_id',orderId).eq('is_active',true)
     if(shipmentError)throw new Error(shipmentError.message)
   }
+  if(trackingNumber&&!isExpress)await queueFirstTracking(supabase,orderId)
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
 }
@@ -1456,6 +1468,7 @@ export async function quickAddTrackingNumber(formData:FormData){
     if(error)throw new Error(error.message)
   }
 
+  if(!isExpress)await queueFirstTracking(supabase,orderId)
   const {error:orderStatusError}=await supabase
     .from('orders')
     .update({order_status:'PROCESSING'})
@@ -1525,6 +1538,7 @@ export async function replaceShipment(formData:FormData){
     throw new Error(newError.message)
   }
 
+  if(!isExpress)await queueFirstTracking(supabase,orderId)
   await supabase.from('audit_logs').insert({
     actor_user_id:user.id,module:'ORDERS',action:'UPDATE_TRACKING_NUMBER',
     entity_type:'ORDER',entity_id:orderId,
