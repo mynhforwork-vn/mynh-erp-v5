@@ -1,0 +1,9 @@
+# MYNH ERP V5 — independent backup deployment on Netlify.
+# Netlify auto-detects Next.js and provisions SSR/API/Server Actions via OpenNext.
+# DO NOT switch this to static export: ERP auth, POS and API routes need SSR.
+[build]
+command = "npm run build"
+publish = ".next"
+
+[build.environment]
+NODE_VERSION = "22"
