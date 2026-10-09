@@ -2,7 +2,7 @@
 
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react'
 import {useRouter} from 'next/navigation'
-import {suggestReceivingWarehouseId} from '@/lib/warehouse-routing'
+import {suggestReceivingWarehouseId,suggestReceivingWarehouseForAddresses} from '@/lib/warehouse-routing'
 import {isTrackingQuietNow,msToQuietBoundary,NOTIFICATION_POLL_MS} from '@/lib/notification-quiet-hours'
 
 type Step={id:string;type:string;label:string;created_at:string;is_read:boolean;reason:string|null}
@@ -106,6 +106,8 @@ export function InAppAlertCenter({
   const [filter,setFilter]=useState<Filter>('all')
   const [hub,setHub]=useState('all')
   const [selectedId,setSelectedId]=useState<string|null>(null)
+  const [batchMode,setBatchMode]=useState(false)
+  const [selectedOrderIds,setSelectedOrderIds]=useState<string[]>([])
   const [receiveFor,setReceiveFor]=useState<string|null>(null)
   const [receiveWarehouseId,setReceiveWarehouseId]=useState('')
   const [receiveActual,setReceiveActual]=useState('')
@@ -306,6 +308,41 @@ export function InAppAlertCenter({
       ?row.source==='tracking'&&row.receive_status!=='RECEIVED'&&!row.destination_hub
       :row.source==='tracking'&&row.receive_status!=='RECEIVED'&&row.destination_hub===hub))
   ),[feed.items,filter,hub])
+  // Only same-HUB, delivered and unreceived orders can be included in one batch.
+  const batchSelected=feed.items.filter(row=>row.order_id&&
+    selectedOrderIds.includes(row.order_id)&&receiptEligible(row)&&Boolean(row.destination_hub))
+  const batchHub=batchSelected[0]?.destination_hub??''
+  const batchCod=batchSelected.reduce((sum,row)=>sum+Number(row.cod??0),0)
+  const batchEligible=visible.filter(row=>receiptEligible(row)&&Boolean(row.destination_hub))
+  const batchVisibleInHub=batchEligible.filter(row=>!batchHub||row.destination_hub===batchHub)
+  function clearBatchSelection(){
+    setBatchMode(false);setSelectedOrderIds([]);setReceiveFor(null);setReceiveError('')
+  }
+  function toggleBatchItem(row:Notice){
+    if(!receiptEligible(row)||!row.order_id||!row.destination_hub||receivePending)return
+    if(batchHub&&row.destination_hub!==batchHub){
+      setReceiveError('Mỗi đợt nhận hàng chỉ chọn các đơn cùng HUB kho đích.')
+      return
+    }
+    setSelectedOrderIds(prev=>prev.includes(row.order_id!)
+      ?prev.filter(id=>id!==row.order_id)
+      :[...prev,row.order_id!].slice(0,40))
+    setReceiveFor(null);setReceiveError('')
+  }
+  function selectAllBatchHub(){
+    if(receivePending||!batchEligible.length)return
+    const chosenHub=batchHub||batchEligible[0].destination_hub
+    const ids=batchEligible.filter(row=>row.destination_hub===chosenHub)
+      .map(row=>row.order_id).filter((id):id is string=>Boolean(id)).slice(0,40)
+    setSelectedOrderIds(ids);setReceiveFor(null);setReceiveError('')
+  }
+  function beginBatchReceive(){
+    if(receivePending||!batchSelected.length||batchSelected.length!==selectedOrderIds.length)return
+    setReceiveFor('batch');setSelectedId(null);setReceiveError('');setReceiveSuccess('')
+    setReceiveActual(String(batchCod));setReceiveNote('')
+    setReceiveWarehouseId(suggestReceivingWarehouseForAddresses(
+      batchSelected.map(row=>row.recipient_address),receivingWarehouses)??'')
+  }
   function toggleOrder(id:string){
     if(receivePending)return
     setSelectedId(current=>current===id?null:id)
@@ -325,6 +362,48 @@ export function InAppAlertCenter({
     setReceiveNote('')
     setReceiveActual(String(row.cod??0))
     setReceiveWarehouseId(suggestReceivingWarehouseId(row.recipient_address,receivingWarehouses)??'')
+  }
+  async function submitBatchReceive(mode:'receive_only'|'with_payment'){
+    if(receivePending||!batchSelected.length||batchSelected.length!==selectedOrderIds.length)return
+    if(!batchHub||batchSelected.some(row=>row.destination_hub!==batchHub)){
+      setReceiveError('Mỗi đợt nhận hàng phải cùng một HUB kho đích.');return
+    }
+    if(!receiveWarehouseId||!receivingWarehouses.some(w=>w.id===receiveWarehouseId)){
+      setReceiveError('Vui lòng chọn kho nhận hàng.');return
+    }
+    const amount=Number(receiveActual)
+    if(mode==='with_payment'&&(!receiveActual.trim()||!Number.isSafeInteger(amount)||amount<batchCod)){
+      setReceiveError('Tiền chuyển phải là số nguyên và không thấp hơn tổng COD.');return
+    }
+    setReceivePending(true);setReceiveError('')
+    const confirmedIds=[...selectedOrderIds]
+    try{
+      const result=await fetch('/api/alerts/receive',{
+        method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({
+          order_ids:confirmedIds,warehouse_id:receiveWarehouseId,payment_mode:mode,
+          ...(mode==='with_payment'?{actual_transferred:amount}:{}),
+          note:receiveNote.trim(),
+        }),
+      })
+      const body:unknown=await result.json()
+      const payload=body&&typeof body==='object'&&!Array.isArray(body)
+        ?body as {ok?:boolean;error?:string;order_count?:number}:null
+      if(!result.ok||payload?.ok!==true||payload.order_count!==confirmedIds.length){
+        throw Error(payload?.error||'Không thể xác nhận đợt nhận hàng.')
+      }
+      const ids=new Set(confirmedIds)
+      setFeed(prev=>({...prev,
+        items:prev.items.map(x=>x.order_id&&ids.has(x.order_id)
+          ?{...x,receive_status:'RECEIVED',destination_hub:'',requires_action:false}:x),
+        action_total:Math.max(0,prev.action_total-batchSelected.filter(x=>x.requires_action).length),
+      }))
+      clearBatchSelection()
+      setReceiveSuccess('Đã nhận '+confirmedIds.length+' đơn · HUB '+batchHub+
+        (mode==='with_payment'?' · Đã ghi tiền chuyển ship.':' · Chưa ghi tiền chuyển ship.'))
+    }catch(error){
+      setReceiveError(error instanceof Error?error.message:'Không thể xác nhận đợt nhận hàng.')
+    }finally{setReceivePending(false)}
   }
   async function submitReceive(row:Notice,mode:'receive_only'|'with_payment'){
     if(!receiptEligible(row)||receivePending)return
@@ -475,26 +554,83 @@ export function InAppAlertCenter({
         <div className="neo-soft-topzone">
           <div className="app-alert-tabs-v2 neo-soft-tabs" aria-label="Lọc trạng thái thông báo">
             <button type="button" className={filter==='all'?'active':''}
-              onClick={()=>{setFilter('all');setSelectedId(null)}}>Tất cả <span>{feed.total}</span></button>
+              onClick={()=>{setFilter('all');clearBatchSelection();setSelectedId(null)}}>Tất cả <span>{feed.total}</span></button>
             <button type="button" className={filter==='action'?'active':''}
-              onClick={()=>{setFilter('action');setSelectedId(null)}}>Cần xử lý <span>{actionCount}</span></button>
+              onClick={()=>{setFilter('action');clearBatchSelection();setSelectedId(null)}}>Cần xử lý <span>{actionCount}</span></button>
             <button type="button" className={filter==='unread'?'active':''}
-              onClick={()=>{setFilter('unread');setSelectedId(null)}}>Chưa đọc <span>{unread}</span></button>
+              onClick={()=>{setFilter('unread');clearBatchSelection();setSelectedId(null)}}>Chưa đọc <span>{unread}</span></button>
           </div>
           <div className="neo-soft-hub-line">
             <label htmlFor="neo-soft-hub-select">Lọc HUB</label>
             <select id="neo-soft-hub-select" value={hub}
-              onChange={e=>{setHub(e.target.value);setSelectedId(null)}}>
+              onChange={e=>{setHub(e.target.value);clearBatchSelection();setSelectedId(null)}}>
               <option value="all">Tất cả HUB</option>
               {hubs.map(x=><option key={x} value={x}>{x}</option>)}
               <option value="unknown">Chưa xác định HUB</option>
             </select>
             <span className="neo-soft-result-count">{visible.length} đơn</span>
           </div>
+          {canReceive&&batchEligible.length>0&&<div className="neo-soft-bulk-toolbar">
+            <button type="button" className={batchMode?'active':''}
+              disabled={receivePending}
+              onClick={()=>{if(batchMode)clearBatchSelection();else{setBatchMode(true);setReceiveFor(null)}}}>
+              {batchMode?'Bỏ chọn':'Chọn nhiều đơn'}
+            </button>
+            {batchMode&&<>
+              <span>{batchSelected.length} đã chọn</span>
+              <button type="button" disabled={receivePending}
+                onClick={selectAllBatchHub}>Chọn tất cả cùng HUB</button>
+            </>}
+          </div>}
+          {batchMode&&batchSelected.length>0&&<div className="neo-soft-bulk-summary">
+            <span>{batchSelected.length} đơn · COD {money(batchCod)}</span>
+            <button type="button" disabled={receivePending}
+              onClick={beginBatchReceive}>Nhận hàng ({batchSelected.length})</button>
+          </div>}
         </div>
 
         <div ref={listRef} className="app-alert-list app-alert-list-v2 neo-soft-content">
           {error&&<div role="alert" className="neo-soft-error">{error}</div>}
+          {batchMode&&receiveFor==='batch'&&batchSelected.length>0&&<div
+            className="neo-soft-receive-form neo-soft-batch-form" role="group"
+            aria-label={'Xác nhận nhận '+batchSelected.length+' đơn'}>
+            <div className="neo-soft-receive-heading">Xác nhận nhận {batchSelected.length} đơn</div>
+            <p>HUB: {batchHub} · Tổng COD: {money(batchCod)}</p>
+            <p>Một đợt nhận chỉ gồm các đơn cùng HUB, cùng kho nhận.</p>
+            <label>Kho nhận
+              <select value={receiveWarehouseId} disabled={receivePending}
+                onChange={e=>setReceiveWarehouseId(e.target.value)}>
+                <option value="">Chọn kho nhận</option>
+                {receivingWarehouses.map(w=><option key={w.id} value={w.id}>
+                  {(w.code?w.code+' · ':'')+(w.address??w.name??'Kho nhận')}
+                </option>)}
+              </select>
+            </label>
+            <label>Tiền thực chuyển ship (khi đối soát)
+              <input type="number" step="1" min={batchCod} value={receiveActual}
+                disabled={receivePending} onChange={e=>setReceiveActual(e.target.value)}/>
+            </label>
+            <div className="neo-soft-receive-tip">Tip: {receiveActual.trim()&&Number(receiveActual)>=batchCod
+              ?money(Number(receiveActual)-batchCod):'—'}</div>
+            <label>Ghi chú
+              <input maxLength={240} disabled={receivePending} value={receiveNote}
+                onChange={e=>setReceiveNote(e.target.value)}/>
+            </label>
+            {receiveError&&<p role="alert" className="neo-soft-receive-error">{receiveError}</p>}
+            <div className="neo-soft-receive-actions">
+              <button type="button" disabled={receivePending}
+                onClick={()=>{setReceiveFor(null);setReceiveError('')}}>Hủy</button>
+              <button type="button" disabled={receivePending||!receiveWarehouseId}
+                onClick={()=>void submitBatchReceive('receive_only')}>Chỉ nhận hàng</button>
+              <button type="button" className="with-payment"
+                disabled={receivePending||!receiveWarehouseId||!receiveActual.trim()||
+                  !Number.isSafeInteger(Number(receiveActual))||Number(receiveActual)<batchCod}
+                onClick={()=>void submitBatchReceive('with_payment')}>
+                Nhận + ghi chuyển ship
+              </button>
+            </div>
+            <small>Xác nhận sẽ ghi vào dữ liệu thật, không thể xác nhận lại cùng các đơn.</small>
+          </div>}
           {receiveSuccess&&<div className="neo-soft-receive-success" role="status">
             {receiveSuccess}
             <button type="button" onClick={()=>setReceiveSuccess('')} aria-label="Ẩn xác nhận">×</button>
@@ -512,7 +648,13 @@ export function InAppAlertCenter({
                <small>Thử chọn HUB khác hoặc thay đổi bộ lọc trạng thái.</small>
              </div>
             :<div className="neo-soft-notice-list">{visible.map(row=>
-              <article key={row.id} className={'neo-soft-notice neo-soft-'+tone(row)+(row.is_read?' read':' unread')+(selectedId===row.id?' expanded':'')}>
+              <article key={row.id} className={'neo-soft-notice neo-soft-'+tone(row)+(row.is_read?' read':' unread')+(selectedId===row.id?' expanded':'')+(batchMode?' bulk-mode':'')}>
+                {batchMode&&receiptEligible(row)&&row.destination_hub&&<label className="neo-soft-select-checkbox">
+                  <input type="checkbox" aria-label={'Chọn đơn '+row.order_code}
+                    checked={Boolean(row.order_id&&selectedOrderIds.includes(row.order_id))}
+                    disabled={receivePending||Boolean(batchHub&&row.destination_hub!==batchHub)}
+                    onChange={()=>toggleBatchItem(row)}/>
+                </label>}
                 <button type="button" className="neo-soft-notice-main"
                   onClick={()=>toggleOrder(row.id)}
                   aria-label={(selectedId===row.id?'Thu gọn':'Xem chi tiết')+' đơn '+(row.order_code??row.title)}
