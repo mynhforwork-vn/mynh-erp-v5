@@ -98,8 +98,13 @@ export function DesktopTableColumnResize() {
       if (!ths.length) return
       const visibleWidths = ths.map(headerWidth)
       const isTracking=table.classList.contains('tracking-hub-table-v2')
+      // Beginning a drag passes empty overrides. In that case freeze what is
+      // actually on screen (not the default contract), preventing a width jump.
+      const fromStoredPreferences=Object.keys(overrides).length>0
       const preferred = ths.map((th,i) => overrides[headerName(th)]
-        || (isTracking ? Object.entries(trackingDefaults).find(([name])=>th.classList.contains(name))?.[1] : undefined)
+        || (isTracking&&fromStoredPreferences
+          ? Object.entries(trackingDefaults).find(([name])=>th.classList.contains(name))?.[1]
+          : undefined)
         || visibleWidths[i])
       const assigned = isTracking ? fitTrackingPanel(table,ths,preferred) : preferred
       let total = 0
