@@ -187,3 +187,54 @@
     max-width:none!important;
   }
 }
+
+/* Context-aware table sizing: when the right slidebar opens, distribute its
+   reduced lane across the information columns instead of retaining 1050px.
+   Narrow 1280px desktop retains a short internal scroll to protect readability.
+   Widths return to the normal desktop contract when the panel closes. */
+@media(min-width:901px){
+  .brand-shell-v1 .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table){
+    width:100%!important;
+    min-width:680px!important;
+    table-layout:fixed!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-order{
+    width:140px!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-cod{
+    width:84px!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-status{
+    width:134px!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-order{
+    width:140px!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-cod{
+    width:84px!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-status{
+    width:134px!important;
+  }
+  .brand-shell-v1 .tracking-hub-table-v2 .tracking-recipient-v2,
+  .brand-shell-v1 .tracking-hub-table-v2 .tracking-order-id{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  .brand-shell-v1 .tracking-hub-table-v2 .tracking-recipient-v2 > span,
+  .brand-shell-v1 .tracking-hub-table-v2 .tracking-recipient-v2 > b,
+  .brand-shell-v1 .tracking-hub-table-v2 .tracking-order-id > span{
+    display:block;
+    max-width:100%;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+}

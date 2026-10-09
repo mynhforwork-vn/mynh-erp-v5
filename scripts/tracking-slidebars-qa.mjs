@@ -62,6 +62,13 @@ try{
           workspace:rect('.tracking-content-workspace'),
           hub:rect('.tracking-content-workspace>.tracking-hub-stack-v2'),
           panel:rect('.tracking-content-workspace>.context-order-panel'),
+          table:rect('.tracking-hub-table-v2'),
+          tableWrap:rect('.tracking-hub-table-wrap-v2'),
+          columns:Object.fromEntries(['order','product','cod','recipient','status','actions'].map(name=>{
+            const cell=document.querySelector('.tracking-hub-table-v2 th.tracking-col-'+name)
+            return [name,cell?Math.round(cell.getBoundingClientRect().width):null]
+          })),
+          customized:Boolean(document.querySelector('.tracking-hub-table-v2.mynh-resizable-table')),
           action:head?{width:head.getBoundingClientRect().width}:null,
           icon:button?{width:button.getBoundingClientRect().width,height:button.getBoundingClientRect().height}:null,
           resizerPresent:Boolean(grip),
@@ -85,8 +92,15 @@ try{
         &&!v.bodyOverflowX
       const compactOK=Boolean(v.action&&v.action.width<=50)
         &&(!v.icon||v.icon.width<=25&&v.icon.height<=25)
-      check(viewport.width+' '+name,Boolean(panelOK&&leftOK&&layoutOK&&compactOK&&v.resizerPresent),v)
+      const tableFits=Boolean(v.table&&v.tableWrap)
+        &&v.table.width<=Math.max(expectedPanel?680:1050,v.tableWrap.width)+12
+      // On a narrow desktop an internal <= 70px scroll protects cell readability.
+      const adaptive=expectedPanel
+        ? tableFits&&v.table.width<=Math.max(680,v.tableWrap.width)+12
+        :Boolean(v.table)
+      check(viewport.width+' '+name,Boolean(panelOK&&leftOK&&layoutOK&&compactOK&&v.resizerPresent&&adaptive),v)
       await page.screenshot({path:output+'/'+viewport.width+'-'+name+'.png',fullPage:false})
+      return v
     }
     const ensureLeft=async(collapsed)=>{
       const state=await page.locator('.brand-shell-v1').evaluate(el=>el.classList.contains('desktop-sidebar-collapsed'))
@@ -96,7 +110,8 @@ try{
       }
     }
     await ensureLeft(false)
-    await measuring('left-open_right-closed',false,false)
+    const initial=await measuring('left-open_right-closed',false,false)
+    let draggedProduct=null
     if(viewport.width===1440){
       const grip=page.locator('.tracking-hub-table-v2 th.tracking-col-product .mynh-column-resize-grip').first()
       if(await grip.count()){
@@ -111,6 +126,7 @@ try{
           await page.mouse.up()
           await page.waitForTimeout(250)
           const after=await th.evaluate(el=>el.getBoundingClientRect().width)
+          draggedProduct=after
           check('1440 drag product column',after>=before+20&&after<=before+60,{before,after})
         }else check('1440 drag product column',false,{reason:'Resize grip has no bounding box'})
       }else check('1440 drag product column',false,{reason:'Resize grip missing'})
@@ -122,14 +138,35 @@ try{
       await orderLink.click()
       await page.locator('aside.context-order-panel').waitFor({state:'visible',timeout:15000})
       await page.waitForTimeout(300)
-      await measuring('left-closed_right-open',true,true)
+      const panelNarrow=await measuring('left-closed_right-open',true,true)
       await ensureLeft(false)
-      await measuring('left-open_right-open',false,true)
+      const panelWide=await measuring('left-open_right-open',false,true)
+      check(viewport.width+' right open shrinks table',
+        Boolean(initial.table&&panelWide.table&&panelWide.table.width<initial.table.width-60
+          &&panelWide.table.width<=Math.max(680,panelWide.tableWrap.width)+12),
+        {before:initial.table?.width,after:panelWide.table?.width,available:panelWide.tableWrap?.width,customized:panelWide.customized})
+      check(viewport.width+' right panel changes widths',Boolean(initial.columns&&panelWide.columns
+        &&(panelWide.columns.product??0)<(initial.columns.product??0)
+        &&(panelWide.columns.recipient??0)<(initial.columns.recipient??0)),
+        {before:initial.columns,after:panelWide.columns})
+      if(draggedProduct!==null){
+        check('1440 custom saved widths fit with right slidebar',
+          Boolean(panelWide.customized&&panelWide.table&&panelWide.tableWrap
+            &&panelWide.table.width<=Math.max(680,panelWide.tableWrap.width)+12),
+          {table:panelWide.table?.width,available:panelWide.tableWrap?.width})
+      }
       const close=page.locator('aside.context-order-panel a[aria-label="Đóng toàn bộ"]').first()
       if(await close.count()){
         await close.click()
         await page.locator('aside.context-order-panel').waitFor({state:'detached',timeout:12000})
-        await measuring('left-open_right-reclosed',false,false)
+        const restored=await measuring('left-open_right-reclosed',false,false)
+        check(viewport.width+' right close restores table width',
+          Boolean(initial.table&&restored.table&&restored.table.width>panelWide.table.width+60),
+          {initial:initial.table?.width,restored:restored.table?.width,opened:panelWide.table?.width})
+        if(draggedProduct!==null){
+          check('1440 custom product width restored',Math.abs((restored.columns.product??0)-draggedProduct)<=6,
+            {saved:draggedProduct,restored:restored.columns.product})
+        }
       }else check(viewport.width+' right panel closes',false,{reason:'Missing close action'})
     }
     await context.close()

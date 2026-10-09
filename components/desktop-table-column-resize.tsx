@@ -61,12 +61,47 @@ export function DesktopTableColumnResize() {
         th.style.removeProperty('max-width')
       })
     }
+    // Tracking panes need responsive widths even when manual widths were saved.
+    // Saved preferences remain untouched: panel-fit widths are presentation only.
+    const fitTrackingPanel = (table:HTMLTableElement, ths:HTMLTableCellElement[], widths:number[]) => {
+      if(!table.closest('.tracking-content-workspace.with-panel'))return widths
+      const lane=table.closest('.tracking-hub-table-wrap-v2') as HTMLElement|null
+      const target=Math.max(680,Math.floor(lane?.clientWidth??0)-2)
+      const fitted=[...widths]
+      let surplus=fitted.reduce((sum,v)=>sum+v,0)-target
+      const priorities:[string,number][]=[
+        ['tracking-col-product',112],
+        ['tracking-col-recipient',132],
+        ['tracking-col-status',124],
+        ['tracking-col-order',138],
+        ['tracking-col-cod',80],
+      ]
+      for(const [column,minWidth] of priorities){
+        if(surplus<=0)break
+        const index=ths.findIndex(th=>th.classList.contains(column))
+        if(index<0)continue
+        const cut=Math.min(surplus,Math.max(0,fitted[index]-minWidth))
+        fitted[index]-=cut
+        surplus-=cut
+      }
+      return fitted
+    }
+    const trackingDefaults:Record<string,number>={
+      'tracking-col-order':166,'tracking-col-product':250,
+      'tracking-col-cod':94,'tracking-col-recipient':245,
+      'tracking-col-status':178,'tracking-col-actions':44,
+    }
+    const trackingLayout=new WeakMap<HTMLTableElement,string>()
     // Only take control of fixed widths once a user has customized this table.
     const freezeWidths = (table:HTMLTableElement, overrides:Record<string,number>) => {
       const ths = headerCells(table)
       if (!ths.length) return
       const visibleWidths = ths.map(headerWidth)
-      const assigned = ths.map((th,i) => overrides[headerName(th)] || visibleWidths[i])
+      const isTracking=table.classList.contains('tracking-hub-table-v2')
+      const preferred = ths.map((th,i) => overrides[headerName(th)]
+        || (isTracking ? Object.entries(trackingDefaults).find(([name])=>th.classList.contains(name))?.[1] : undefined)
+        || visibleWidths[i])
+      const assigned = isTracking ? fitTrackingPanel(table,ths,preferred) : preferred
       let total = 0
       ths.forEach((th,i) => {
         const width = th.classList.contains('tracking-action-head') ? 44 :
@@ -87,7 +122,16 @@ export function DesktopTableColumnResize() {
       const ths = headerCells(table)
       if (ths.length < 2) return
       const saved = readSaved(table)
-      if (Object.keys(saved).length) freezeWidths(table,saved)
+      const tracking=table.classList.contains('tracking-hub-table-v2')
+      const pane=table.closest('.tracking-hub-table-wrap-v2') as HTMLElement|null
+      const token=tracking
+        ? (table.closest('.tracking-content-workspace.with-panel')?'panel:':'full:')+Math.round(pane?.clientWidth??0)
+        : 'general'
+      if (Object.keys(saved).length && trackingLayout.get(table)!==token) {
+        clearInlineWidths(table)
+        freezeWidths(table,saved)
+      }
+      trackingLayout.set(table,token)
       ths.forEach(th => {
         if (th.querySelector(':scope > .mynh-column-resize-grip')) return
         if (th.matches('.bulk-select-col, .select-col, .row-actions-head, .checkbox-col')) return
@@ -178,13 +222,17 @@ export function DesktopTableColumnResize() {
       if(!scheduled)scheduled=window.requestAnimationFrame(scan)
     }
     const observer=new MutationObserver(records=>{
-      if(records.some(rec=>Array.from(rec.addedNodes).some(node=>{
-        if(node.nodeType!==Node.ELEMENT_NODE)return false
-        const el=node as Element
-        return el.matches('table,thead,tr,th')||Boolean(el.querySelector('table,thead,tr,th'))
-      })))queue()
+      if(records.some(rec=>{
+        if(rec.type==='attributes')
+          return (rec.target as Element).matches('.tracking-content-workspace')
+        return Array.from(rec.addedNodes).some(node=>{
+          if(node.nodeType!==Node.ELEMENT_NODE)return false
+          const el=node as Element
+          return el.matches('table,thead,tr,th')||Boolean(el.querySelector('table,thead,tr,th'))
+        })
+      }))queue()
     })
-    observer.observe(main,{childList:true,subtree:true})
+    observer.observe(main,{childList:true,subtree:true,attributes:true,attributeFilter:['class']})
     const onChange=()=>{if(mq.matches)queue()}
     mq.addEventListener('change',onChange)
     const sync=(event:Event)=>{

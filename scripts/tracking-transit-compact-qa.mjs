@@ -148,3 +148,11 @@ check(group,"className={'tracking-colgroup-'+col}",'managed columns and colgroup
 check(css,'table-layout:fixed!important','fixed desktop widths prevent stretched actions')
 check(css,'col.tracking-colgroup-actions','action width fixed at large viewport')
 check(css,'width:44px!important','locked action column via colgroup')
+
+check(css,'.tracking-content-workspace.with-panel','context-aware compact table CSS')
+check(css,'min-width:680px!important','compact readable 1280px lane')
+check(resizer,'fitTrackingPanel','saved resized widths adapt to right panel')
+check(resizer,".matches('.tracking-content-workspace')",'recompute saved widths on right panel toggle')
+const layoutQa=fs.readFileSync('scripts/tracking-slidebars-qa.mjs','utf8')
+check(layoutQa,'right open shrinks table','browser test actual column adjustment')
+check(layoutQa,'custom product width restored','browser test stored user preference')
