@@ -70,4 +70,31 @@ assert.ok(css.includes('.neo-soft-header-tools .neo-soft-tool'), 'Header icons n
 assert.ok(view.includes('disabled={pending||unread===0'), 'Read-all must be disabled when no unread alerts')
 assert.ok(view.includes('aria-pressed={notificationsEnabled===true}'), 'Toggle must expose on/off state')
 
-console.log('PASS: Compact MVD under order, clear enterprise details, icon-only top actions, HUB and polling contracts')
+
+// Readability acceptance contract: keep a neutral palette and text above
+// WCAG AA contrast 4.5:1 on white; no teal-dominant walls of UI chrome.
+function luminance(hex){
+  const [r,g,b]=hex.slice(1).match(/../g).map(v=>parseInt(v,16)/255)
+    .map(v=>v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4))
+  return r*.2126+g*.7152+b*.0722
+}
+function contrast(hex1,hex2){
+  const a=luminance(hex1),b=luminance(hex2)
+  return (Math.max(a,b)+.05)/(Math.min(a,b)+.05)
+}
+for(const color of ['#253746','#35495a','#596b7b','#5c6e7c',
+  '#647583','#266c50','#8b612d','#385e7c','#a34f4e','#24485c']){
+  assert.ok(contrast(color,'#ffffff')>=4.5,
+    'Insufficient contrast on white: '+color+' '+contrast(color,'#ffffff').toFixed(2))
+  assert.ok(css.includes(color),'Accessible palette missing: '+color)
+}
+for(const token of ['Neo Soft A · Readability remediation',
+  '--notice-ink:#253746','--notice-background:#f7f8fa',
+  '.neo-soft-notice-tracking>strong',
+  '.neo-soft-detail-sheet .neo-soft-kv dt',
+  '.neo-soft-detail-sheet .neo-soft-product strong',
+  '.neo-soft-detail-sheet .neo-soft-timeline time',
+  '.neo-soft-header-tools .neo-soft-tool']){
+  assert.ok(css.includes(token),'Readability CSS contract missing: '+token)
+}
+console.log('PASS: compact layout + WCAG AA charcoal text + restrained semantic colors + clear MVD and detail typography')
