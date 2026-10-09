@@ -62,3 +62,26 @@ jobs:
           if(r.status!==200)throw Error('Production health is not 200')
           })().catch(error=>{console.error(error);process.exit(1)})
           NODE
+
+      - name: Disable one-off audit workflow
+        if: always()
+        run: |
+          node <<'NODE'
+          ;(async()=>{
+            const base='https://api.github.com/repos/'+process.env.GITHUB_REPOSITORY+'/actions/workflows'
+            const headers={Authorization:'Bearer '+process.env.GH_TOKEN,Accept:'application/vnd.github+json'}
+            const all=await fetch(base+'?per_page=100',{headers})
+            if(!all.ok)throw Error('Could not list workflows')
+            const entries=(await all.json()).workflows??[]
+            const item=entries.find(x=>x.name==='Audit legacy mynh-erp Worker (read only)')
+            if(!item)throw Error('One-off audit workflow not found')
+            const url=base+'/'+item.id
+            const result=await fetch(url+'/disable',{method:'PUT',headers})
+            if(result.status!==204)throw Error('Failed to disable audit workflow: '+result.status)
+            const response=await fetch(url,{headers})
+            if(!response.ok||(await response.json()).state!=='disabled_manually'){
+              throw Error('Audit workflow not disabled')
+            }
+            console.log('ONEOFF_LEGACY_WORKER_AUDIT_DISABLED')
+          })().catch(e=>{console.error(e);process.exit(1)})
+          NODE
