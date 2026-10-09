@@ -172,3 +172,18 @@
     width:44px!important;
   }
 }
+
+/* Reserve fixed widths for the operational columns. ONLY Product and Recipient
+   are fluid in the unmodified table, so spare desktop width cannot inflate
+   the 44px action column. Resizable tables have their own persisted widths. */
+@media(min-width:901px){
+  .brand-shell-v1 .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-order{width:166px!important}
+  .brand-shell-v1 .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-cod{width:94px!important}
+  .brand-shell-v1 .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-status{width:178px!important}
+  .brand-shell-v1 .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-product,
+  .brand-shell-v1 .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-recipient{
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+  }
+}
