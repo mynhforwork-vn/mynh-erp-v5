@@ -202,7 +202,7 @@ export function TrackingHubGroup({
                 if(col==='cod')return <td key={col} className="money">{formatMoney(r.cod)}</td>
                 if(col==='recipient')return <td key={col}><div className="tracking-recipient tracking-recipient-v2"><b>{r.recipient_name??'—'} <small>{formatPhone(r.recipient_phone)}</small></b><span title={r.recipient_address??''}>{r.recipient_address??'Chưa có địa chỉ'}</span></div></td>
                 if(col==='status')return <td key={col}><div className="order-state-cell tracking-state-cell-v2"><span className={'status-pill status-'+String(r.tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(r.tracking_status)}</span>{r.receive_status!=='NOT_READY'&&<span className={'status-pill '+(r.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(r.receive_status)}</span>}</div></td>
-                return <td key={col}><div className="tracking-row-actions">{r.shipment_id&&!['DELIVERED','CANCELLED','RETURNED'].includes(String(r.tracking_status))&&<ManualSyncButton shipmentId={r.shipment_id}/>}<Link className="button small" href={orderHref(r.id)}>Chi tiết</Link></div></td>
+                return <td key={col}><div className="tracking-row-actions">{r.shipment_id&&!['DELIVERED','CANCELLED','RETURNED'].includes(String(r.tracking_status))&&<ManualSyncButton shipmentId={r.shipment_id} iconOnly/>}</div></td>
               }
               return <tr key={r.id} className={canReceive?'tracking-row-waiting':''}>
                 <td className="select-col">
