@@ -50,7 +50,7 @@ const css=fs.readFileSync('app/styles/tracking-compact-actions-v1.css','utf8')
 const globals=fs.readFileSync('app/globals.css','utf8')
 const check=(s,key,where)=>assert.ok(s.includes(key),'Missing '+where+' '+key)
 
-check(page,"import { isPreDestinationTransit }", 'KPI helper')
+check(page,"import { isDeliveredAwaitingReceipt, isPreDestinationTransit }", 'KPI helpers')
 check(page,"const transit=scopeRows.filter", 'KPI count')
 check(page,"const waitingRows=scopeRows.filter((r:any)=>isDeliveredAwaitingReceipt(r.tracking_status,r.receive_status))", 'waiting status guard')
 check(page,"if(sp.receive)rows=rows.filter((r:any)=>r.receive_status===sp.receive)", 'waiting quick filter second guard')
