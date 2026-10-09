@@ -4,6 +4,7 @@ import { formatDateTime, formatMoney, sourceLabel, statusLabel } from '@/lib/for
 import { TrackingHubGroup } from '@/components/tracking-hub-group'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import { ContextOrderPanel } from '@/components/context-order-panel'
+import { isPreDestinationTransit } from '@/lib/tracking/status-groups'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
 type SP={
@@ -205,6 +206,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     ? dueRows.filter((r:any)=>localDate(r.last_status_change_at)===sp.receiveDate)
     : dueRows
 
+  const transit=scopeRows.filter((r:any)=>isPreDestinationTransit(r.tracking_number,r.tracking_status)).length
   const atHub=scopeRows.filter((r:any)=>r.tracking_status==='ARRIVED_DESTINATION_HUB').length
   const outForDelivery=scopeRows.filter((r:any)=>r.tracking_status==='OUT_FOR_DELIVERY').length
   const delivered=scopeRows.filter((r:any)=>r.tracking_status==='DELIVERED').length
@@ -215,7 +217,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
   const waitingHubCount=new Set(waitingRows.map((r:any)=>r.destination_hub).filter(Boolean)).size
 
   let rows=[...scopeRows]
-  if(sp.status)rows=rows.filter((r:any)=>r.tracking_status===sp.status)
+  if(sp.status==='PRE_DESTINATION')rows=rows.filter((r:any)=>isPreDestinationTransit(r.tracking_number,r.tracking_status))
+  else if(sp.status)rows=rows.filter((r:any)=>r.tracking_status===sp.status)
   if(sp.receive)rows=rows.filter((r:any)=>r.receive_status===sp.receive)
 
   function trackingHref(extra:Record<string,string|null|undefined>={}){
@@ -375,6 +378,13 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
           <small>{formatMoney(waitingCod)} · {waitingHubCount} HUB</small>
         </Link>
         <Link
+          href={trackingHref({status:'PRE_DESTINATION',receive:null})}
+          className={'tracking-status-metric info '+(sp.status==='PRE_DESTINATION'?'active':'')}
+          title="Có mã vận đơn, đang ở giai đoạn trước HUB kho đích"
+        >
+          <span>Đang trung chuyển</span><b>{transit}</b><small>Có MVD · Chưa đến HUB</small>
+        </Link>
+        <Link
           href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null})}
           className={'tracking-status-metric amber '+(sp.status==='ARRIVED_DESTINATION_HUB'?'active':'')}
         >
@@ -409,6 +419,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
         <div className="tracking-filter-segments tracking-filter-segments-v2">
           <Link className={!sp.status&&!sp.receive?'active':''} href={trackingHref({status:null,receive:null})}>Tất cả</Link>
           <Link className={sp.receive==='WAITING_RECEIVE'?'active':''} href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE'})}>Chờ nhận</Link>
+          <Link className={sp.status==='PRE_DESTINATION'?'active':''} href={trackingHref({status:'PRE_DESTINATION',receive:null})}>Trung chuyển</Link>
           <Link className={sp.status==='ARRIVED_DESTINATION_HUB'?'active':''} href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null})}>Đến HUB</Link>
           <Link className={sp.status==='OUT_FOR_DELIVERY'?'active':''} href={trackingHref({status:'OUT_FOR_DELIVERY',receive:null})}>Đang giao</Link>
           <Link className={sp.status==='DELIVERY_FAILED'?'active':''} href={trackingHref({status:'DELIVERY_FAILED',receive:null})}>Giao lỗi</Link>
@@ -441,7 +452,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
         : grouped.map(([hub,groupRows])=>{
             const groupUrgent=groupRows.some((x:any)=>
               x.receive_status==='WAITING_RECEIVE'||
-              ['DELIVERY_FAILED','ARRIVED_DESTINATION_HUB','OUT_FOR_DELIVERY'].includes(String(x.tracking_status))
+              ['DELIVERY_FAILED','ARRIVED_DESTINATION_HUB','OUT_FOR_DELIVERY'].includes(String(x.tracking_status))||
+              isPreDestinationTransit(x.tracking_number,x.tracking_status)
             )
             return <TrackingHubGroup
               key={hub}
