@@ -5,7 +5,7 @@
   justify-content:flex-start;
   align-items:center;
   gap:4px;
-  min-height:26px;
+  min-height:24px;
 }
 .tracking-screen-v2 .tracking-sync-icon-wrap{
   position:relative;
@@ -17,8 +17,8 @@
 .tracking-screen-v2 .tracking-sync-icon-button{
   display:inline-grid;
   place-items:center;
-  width:29px;
-  height:29px;
+  width:24px;
+  height:24px;
   padding:0;
   border-radius:7px;
   border:1px solid #d6e1e8;
@@ -97,4 +97,61 @@
 .tracking-screen-v2 .tracking-status-strip-v2 > .tracking-status-metric{
   flex:1 0 116px;
   min-width:116px;
+}
+
+/* Tracking action only: do not spend 150px for a single sync icon.
+   Semantic column classes survive hide/show and drag-reordering of table columns. */
+.tracking-screen-v2 .tracking-hub-table-v2 th.tracking-col-actions,
+.tracking-screen-v2 .tracking-hub-table-v2 td.tracking-col-actions{
+  box-sizing:border-box!important;
+  width:44px!important;
+  min-width:44px!important;
+  max-width:44px!important;
+  padding-left:5px!important;
+  padding-right:5px!important;
+  text-align:center!important;
+}
+.tracking-screen-v2 .tracking-hub-table-v2 .tracking-row-actions{
+  min-height:24px!important;
+  gap:0!important;
+  justify-content:center!important;
+}
+.tracking-screen-v2 .tracking-hub-table-v2 .tracking-sync-icon-wrap{
+  min-width:0!important;
+}
+.tracking-screen-v2 .tracking-hub-table-v2 .tracking-sync-icon-button{
+  box-sizing:border-box!important;
+  width:24px!important;
+  min-width:24px!important;
+  max-width:24px!important;
+  height:24px!important;
+  min-height:24px!important;
+  max-height:24px!important;
+  border-radius:5px!important;
+}
+/* Preserve intuitive starting widths after user reorders the columns.
+   Inline resize widths take priority once customized. */
+.tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-order{width:166px}
+.tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-product{width:250px}
+.tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-cod{width:94px}
+.tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-recipient{width:245px}
+.tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-status{width:178px}
+/* The pane owns horizontal scrolling; the page shell and right slidebar stay fixed. */
+@media(min-width:901px){
+  .brand-shell-v1 .tracking-content-workspace,
+  .brand-shell-v1 .tracking-content-workspace.with-panel,
+  .brand-shell-v1 .tracking-content-workspace>.tracking-hub-stack-v2{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  .brand-shell-v1 .tracking-hub-card-v2.open>.tracking-hub-table-wrap-v2{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace>.system-slidebar-v1.context-order-panel{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow-x:hidden!important;
+  }
 }

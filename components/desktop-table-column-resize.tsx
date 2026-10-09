@@ -18,6 +18,7 @@ export function DesktopTableColumnResize() {
     const compactCol = (th:HTMLTableCellElement) =>
       th.matches('.bulk-select-col, .select-col, .row-actions-head, .checkbox-col')
     const headerWidth = (th:HTMLTableCellElement) =>
+      th.classList.contains('tracking-action-head') ? 44 :
       compactCol(th)
         ? Math.max(24, Math.min(140, Math.round(th.getBoundingClientRect().width)))
         : clamp(th.getBoundingClientRect().width)
@@ -68,7 +69,8 @@ export function DesktopTableColumnResize() {
       const assigned = ths.map((th,i) => overrides[headerName(th)] || visibleWidths[i])
       let total = 0
       ths.forEach((th,i) => {
-        const width = compactCol(th) ? Math.max(24, Math.min(140, assigned[i])) : clamp(assigned[i])
+        const width = th.classList.contains('tracking-action-head') ? 44 :
+          compactCol(th) ? Math.max(24, Math.min(140, assigned[i])) : clamp(assigned[i])
         total += width
         th.style.setProperty('width', width+'px', 'important')
         th.style.setProperty('min-width', width+'px', 'important')
@@ -197,10 +199,13 @@ export function DesktopTableColumnResize() {
       })
     }
     window.addEventListener('mynh-table-column-width-changed',sync)
+    // Left sidebar collapse/expand changes available table space without a React remount.
+    window.addEventListener('mynh-sidebar-resized',queue)
     queue()
     return ()=>{
       observer.disconnect()
       window.removeEventListener('mynh-table-column-width-changed',sync)
+      window.removeEventListener('mynh-sidebar-resized',queue)
       mq.removeEventListener('change',onChange)
       if(scheduled)window.cancelAnimationFrame(scheduled)
     }
