@@ -1,0 +1,93 @@
+name: MYNH Integrated QA Preview (Isolated Worker)
+on:
+  push:
+    branches:
+      - preview/integrated-qa-20261009
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mynh-integrated-stage-v1
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PREVIEW_URL: https://mynh-erp-stage-v1.mynh-forwork.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Confirm Cloudflare access
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Desktop static QA
+        run: node scripts/remediation-static-qa.mjs
+      - name: Verify Tracking hours
+        run: node --experimental-strip-types scripts/notification-quiet-hours-qa.mjs
+      - name: QA grouped order events, R00 and separate read/action flags
+        run: node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+      - name: Verify prepared changes are integrated
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict'
+          import fs from 'node:fs'
+          const layout=fs.readFileSync('app/(erp)/layout.tsx','utf8')
+          const component=fs.readFileSync('components/in-app-alert-center.tsx','utf8')
+          const tracking=fs.readFileSync('components/tracking-settings.tsx','utf8')
+          const error=fs.readFileSync('app/(erp)/purchase/accounts/error.tsx','utf8')
+          assert.ok(layout.includes('quietStart={quietStart} quietEnd={quietEnd}'),'Tracking runtime missing in layout')
+          assert.ok(component.includes('NOTIFICATION_POLL_MS'),'5-minute polling contract missing')
+          assert.ok(component.includes('isTrackingQuietNow'),'Tracking quiet-hour gate missing')
+          assert.ok(component.includes("if(notificationsEnabled!==true||trackingEnabled!==true)"),'Notifications off gate missing')
+          assert.ok(tracking.includes('saveRuntimeAndNotify'),'Tracking switch synchronization missing')
+          const api=fs.readFileSync('app/api/alerts/in-app/route.ts','utf8')
+          assert.ok(error.includes('Hãy kiểm tra danh sách trước khi gửi lại'),'Account error recovery missing')
+          assert.ok(api.includes("buildOrderNotices"),'PR53 grouping API missing')
+          assert.ok(component.includes('app-alert-panel app-alert-panel-v2'),'Original right-hand slidebar lost')
+          assert.ok(!component.includes('notification-center-v1'),'V1 restyling would replace approved slidebar')
+          assert.ok(component.includes("filter==='action'"),'Separate action view missing')
+          assert.ok(component.includes("Xem lịch sử vận chuyển"),'Expandable history missing')
+          assert.ok(component.includes("feed.unread_total")&&component.includes("feed.action_total"),'Unread and action stats not distinct')
+          console.log('PASS: PR54 quota + PR55 recovery + verified PR53 logic; drawer design preserved')
+          NODE
+      - name: OpenNext Cloudflare build
+        run: npx opennextjs-cloudflare build
+      - name: Deploy isolated staging Worker (NOT Production or desktop-polish)
+        run: npx wrangler deploy --config wrangler.stage-v1.jsonc
+      - name: Smoke staging URL (no business data writes)
+        run: |
+          # New workers.dev hostnames may return a brief 404 during propagation.
+          health_code=$(curl -sS --retry 15 --retry-all-errors --retry-delay 5 --max-time 18 -o health.json -w '%{http_code}' "$PREVIEW_URL/api/health")
+          echo "HEALTH_HTTP $health_code"
+          test "$health_code" = "200"
+          grep -q '"ok":true' health.json
+          login_code=$(curl -sS --max-time 18 -o login.html -w '%{http_code}' "$PREVIEW_URL/login")
+          echo "LOGIN_HTTP $login_code"
+          test "$login_code" = "200"
+          grep -q 'MYNH ERP' login.html
+          accounts_code=$(curl -sS --max-time 18 -o /dev/null -w '%{http_code}' "$PREVIEW_URL/purchase/accounts?mode=create")
+          echo "ACCOUNT_UNAUTH_HTTP $accounts_code"
+          test "$accounts_code" = "307" -o "$accounts_code" = "302"
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Integrated MYNH ERP Preview — PR #54 + PR #55"
+            echo ""
+            echo "- Preview: $PREVIEW_URL"
+            echo "- Commit: $GITHUB_SHA"
+            echo "- Worker: mynh-erp-stage-v1 (separate from Production and Desktop Preview)"
+            echo "- Supabase changes: NONE"
+            echo "- Notification Center V1 remains separate at PR #53"
+          } >> "$GITHUB_STEP_SUMMARY"
