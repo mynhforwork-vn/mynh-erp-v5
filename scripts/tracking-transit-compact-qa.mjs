@@ -15,23 +15,23 @@ for(const value of ['',null,undefined,'   ']){
 assert.equal(PRE_DESTINATION_TRANSIT_STATUSES.length,4)
 assert.equal(isPreDestinationTransit(code,'in_transit'),false,'Require canonical provider status')
 
-// Six operational KPI groups: primary transport stages must be disjoint.
-// "Chờ nhận" is intentionally a subset of delivered, not an additional transport stage.
+// Five operational KPI groups: "Giao thành công" means DELIVERED and WAITING_RECEIVE.
+// No separate "Chờ nhận" KPI or quick filter; all five groups must be disjoint.
 const stages=['READY_TO_SHIP','PICKED_UP','IN_TRANSIT','ARRIVED_TRANSIT_HUB','ARRIVED_DESTINATION_HUB','OUT_FOR_DELIVERY','DELIVERED','DELIVERY_FAILED','CANCELLED','RETURNED','UNKNOWN']
 const counters={
   transit:stages.filter(s=>isPreDestinationTransit(code,s)).length,
   atHub:stages.filter(s=>s==='ARRIVED_DESTINATION_HUB').length,
   delivering:stages.filter(s=>s==='OUT_FOR_DELIVERY').length,
-  delivered:stages.filter(s=>s==='DELIVERED').length,
+  deliveredAwaitingReceipt:stages.filter(s=>isDeliveredAwaitingReceipt(s,'WAITING_RECEIVE')).length,
   failed:stages.filter(s=>s==='DELIVERY_FAILED').length,
 }
-assert.deepEqual(counters,{transit:4,atHub:1,delivering:1,delivered:1,failed:1})
+assert.deepEqual(counters,{transit:4,atHub:1,delivering:1,deliveredAwaitingReceipt:1,failed:1})
 for(const status of stages){
   const groups=[
     isPreDestinationTransit(code,status),
     status==='ARRIVED_DESTINATION_HUB',
     status==='OUT_FOR_DELIVERY',
-    status==='DELIVERED',
+    isDeliveredAwaitingReceipt(status,'WAITING_RECEIVE'),
     status==='DELIVERY_FAILED',
   ]
   assert.ok(groups.filter(Boolean).length<=1,'Disjoint transport stages: '+status)
@@ -54,7 +54,10 @@ check(page,"import { isDeliveredAwaitingReceipt, isPreDestinationTransit }", 'KP
 check(page,"const transit=scopeRows.filter", 'KPI count')
 check(page,"const waitingRows=scopeRows.filter((r:any)=>isDeliveredAwaitingReceipt(r.tracking_status,r.receive_status))", 'waiting status guard')
 check(page,"if(sp.receive)rows=rows.filter((r:any)=>r.receive_status===sp.receive)", 'waiting quick filter second guard')
-check(page,"href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE'})}", 'waiting KPI and filter links')
+check(page,"href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE'})}", 'merged KPI and filter links')
+check(page,"<span>Giao thành công</span><b>{waiting}</b><small>Chờ nhận", 'merged card counts waiting only')
+check(page,"sp.status==='DELIVERED'&&sp.receive==='WAITING_RECEIVE'", 'merged active state')
+assert.equal((page.match(/href=\{trackingHref\(\{status:'DELIVERED',receive:'WAITING_RECEIVE'\}\)\}/g)||[]).length,2,'Exactly one merged KPI link and one matching quick filter')
 check(page,"const rangeRows=operationalRows.filter", 'preserve date filter')
 check(page,"const hubRows=sp.hub?rangeRows.filter", 'preserve HUB filter')
 check(page,"if(r.receive_status==='RECEIVED')return false", 'preserve received exclusions')
@@ -68,8 +71,8 @@ check(page,"href={trackingHref({status:'PRE_DESTINATION',receive:null})}>Đang v
 const start=page.indexOf('<div className="tracking-status-strip-v2">')
 const end=page.indexOf('</div>',start)
 const strip=page.slice(start,end)
-assert.equal((strip.match(/tracking-status-metric/g)||[]).length,6,'Exactly six tracking KPIs')
-const requiredKpiOrder=['Đang vận chuyển','Đến HUB','Đang giao','Giao thành công','Giao lỗi','Chờ nhận']
+assert.equal((strip.match(/tracking-status-metric/g)||[]).length,5,'Exactly five tracking KPIs')
+const requiredKpiOrder=['Đang vận chuyển','Đến HUB','Đang giao','Giao thành công','Giao lỗi']
 const seenKpiOrder=[...strip.matchAll(/<span>(Đang vận chuyển|Đến HUB|Đang giao|Giao thành công|Giao lỗi|Chờ nhận)<\/span>/g)].map(match=>match[1])
 assert.deepEqual(seenKpiOrder,requiredKpiOrder,'KPI order must exactly match user-approved workflow')
 const quickStart=page.indexOf('<div className="tracking-filter-segments tracking-filter-segments-v2">')
@@ -78,6 +81,29 @@ const quick=page.slice(quickStart,quickEnd)
 const quickOrder=[...quick.matchAll(/>(Đang vận chuyển|Đến HUB|Đang giao|Giao thành công|Giao lỗi|Chờ nhận)<\/Link>/g)].map(match=>match[1])
 assert.deepEqual(quickOrder,requiredKpiOrder,'Quick filter order should mirror the KPI order')
 assert.ok(!strip.includes('Đang trung chuyển'),'Legacy KPI label must be removed')
+assert.ok(!strip.includes('<span>Chờ nhận</span>'),'Chờ nhận must not have a separate KPI')
+assert.ok(!quick.includes('>Chờ nhận</Link>'),'Chờ nhận must not have a separate quick filter')
+assert.equal((quick.match(/<\/Link>/g)||[]).length,6,'All + exactly five quick filters')
+const demo=[
+  {id:'in-transit',tracking_status:'IN_TRANSIT',tracking_number:code,receive_status:'NOT_READY'},
+  {id:'hub',tracking_status:'ARRIVED_DESTINATION_HUB',tracking_number:code,receive_status:'NOT_READY'},
+  {id:'out',tracking_status:'OUT_FOR_DELIVERY',tracking_number:code,receive_status:'NOT_READY'},
+  {id:'waiting',tracking_status:'DELIVERED',tracking_number:code,receive_status:'WAITING_RECEIVE'},
+  {id:'already-received',tracking_status:'DELIVERED',tracking_number:code,receive_status:'RECEIVED'},
+  {id:'misflagged',tracking_status:'OUT_FOR_DELIVERY',tracking_number:code,receive_status:'WAITING_RECEIVE'},
+  {id:'failed',tracking_status:'DELIVERY_FAILED',tracking_number:code,receive_status:'NOT_READY'},
+]
+const visible=demo.filter(row=>row.receive_status!=='RECEIVED')
+const byKpi=[
+  visible.filter(row=>isPreDestinationTransit(row.tracking_number,row.tracking_status)),
+  visible.filter(row=>row.tracking_status==='ARRIVED_DESTINATION_HUB'),
+  visible.filter(row=>row.tracking_status==='OUT_FOR_DELIVERY'),
+  visible.filter(row=>isDeliveredAwaitingReceipt(row.tracking_status,row.receive_status)),
+  visible.filter(row=>row.tracking_status==='DELIVERY_FAILED'),
+]
+assert.deepEqual(byKpi.map(group=>group.map(row=>row.id)),[['in-transit'],['hub'],['out','misflagged'],['waiting'],['failed']])
+assert.equal(new Set(byKpi.flat().map(row=>row.id)).size,byKpi.flat().length,'Five KPIs cannot count the same order twice')
+assert.equal(visible.filter(row=>row.tracking_status==='DELIVERED'&&row.receive_status==='WAITING_RECEIVE').length,byKpi[3].length,'Quick filter must return merged KPI count')
 
 check(group,'<Link className="table-link" href={orderHref(r.id)}>', 'order code navigation remains')
 check(group,'<ManualSyncButton shipmentId={r.shipment_id} iconOnly/>', 'icon-only sync')
@@ -94,4 +120,4 @@ check(css,'width:29px','icon density')
 check(css,'prefers-reduced-motion:reduce','motion accessibility')
 check(globals,"@import './styles/tracking-compact-actions-v1.css';",'import')
 
-console.log('PASS: transit KPI+filter excludes post-HUB/terminal/unknown and requires MVD; icon sync accessible, no duplicate Details, six compact KPI')
+console.log('PASS: transit KPI+filter excludes post-HUB/terminal/unknown and requires MVD; icon sync accessible, no duplicate Details, five compact KPI')

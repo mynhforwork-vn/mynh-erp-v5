@@ -86,7 +86,7 @@
   scrollbar-width:thin;
 }
 
-/* Keep all six tracking KPIs in one horizontal strip at every viewport. */
+/* Keep all five tracking KPIs in one horizontal strip at every viewport. */
 .tracking-screen-v2 .tracking-status-strip-v2{
   display:flex;
   flex-wrap:nowrap;
