@@ -275,6 +275,7 @@ export function InAppAlertCenter({
   },[notificationsEnabled,trackingEnabled,quietStart,quietEnd,load])
 
   function toggleNotifications(){
+    if(receivePending)return
     const next=notificationsEnabled!==true
     enabledRef.current=next&&trackingEnabled
     if(!next){pendingRequest.current?.abort();setFeed(empty);setLoading(false)}
@@ -287,13 +288,13 @@ export function InAppAlertCenter({
   useEffect(()=>{
     if(!open)return
     const close=(event:KeyboardEvent)=>{
-      if(event.key!=='Escape'||pending)return
+      if(event.key!=='Escape'||pending||receivePending)return
       if(selectedId)setSelectedId(null)
       else setOpen(false)
     }
     window.addEventListener('keydown',close)
     return()=>window.removeEventListener('keydown',close)
-  },[open,pending,selectedId])
+  },[open,pending,receivePending,selectedId])
 
   const unread=notificationsEnabled&&trackingEnabled?feed.unread_total:0
   const actionCount=notificationsEnabled&&trackingEnabled?feed.action_total:0
@@ -499,6 +500,7 @@ export function InAppAlertCenter({
     finally{setPending(false)}
   }
   async function openAlert(row:Notice){
+    if(receivePending)return
     const destination=safeTarget(row)
     if(!destination){setError('Chưa có trang chi tiết cho thông báo này.');return}
     // Navigation remains available in quiet hours; only alert API calls pause.
@@ -519,7 +521,7 @@ export function InAppAlertCenter({
 
     {open&&<>
       <button type="button" className="app-alert-backdrop app-alert-backdrop-v2"
-        aria-label="Đóng thông báo" onClick={()=>{if(!pending)setOpen(false)}}/>
+        aria-label="Đóng thông báo" onClick={()=>{if(!pending&&!receivePending)setOpen(false)}}/>
       {/* Existing Desktop Preview slidebar geometry and CSS classes unchanged. */}
       <aside className="app-alert-panel app-alert-panel-v2 neo-soft-v1" aria-label="Thông báo trong ứng dụng">
         <header className="app-alert-panel-head-v2">
@@ -544,7 +546,8 @@ export function InAppAlertCenter({
               <TrackingIcon/>
             </button>
             <button type="button" className="app-alert-close-v2 neo-soft-tool"
-              onClick={()=>setOpen(false)} disabled={pending} title="Đóng thông báo" aria-label="Đóng thông báo">
+              onClick={()=>{if(!receivePending){clearBatchSelection();setOpen(false)}}}
+              disabled={pending||receivePending} title="Đóng thông báo" aria-label="Đóng thông báo">
               <CloseIcon/>
             </button>
           </div>
@@ -722,7 +725,7 @@ export function InAppAlertCenter({
                         </li>)}</ol>
                       :<p className="neo-soft-inline-empty">Chưa có lịch sử vận chuyển.</p>}
                   </section>
-                  {receiptEligible(row)&&<>
+                  {receiptEligible(row)&&!batchMode&&<>
                     {receiveFor!==row.id
                       ?<button type="button" className="neo-soft-receive-trigger"
                         onClick={()=>beginReceive(row)}>Xác nhận đã nhận hàng</button>
