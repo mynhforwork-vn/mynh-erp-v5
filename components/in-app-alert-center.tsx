@@ -9,7 +9,7 @@ type Step={id:string;type:string;label:string;created_at:string;is_read:boolean;
 type ProductSummary={product_name:string;variant:string|null;quantity:number}
 type ReceivingWarehouse={id:string;code?:string|null;name?:string|null;address?:string|null}
 type Notice={
-  id:string;source:'tracking'|'system';category:string;severity:'info'|'warning'|'critical';
+  id:string;source:'tracking'|'system'|'work';category:string;work_type?:'tracking_missing'|'warehouse_intake';warehouse_status?:string;severity:'info'|'warning'|'critical';
   title:string;message:string;event_type:string;created_at:string;is_read:boolean;
   requires_action:boolean;is_resolved:boolean;legacy_ids:string[];notification_id:string|null;
   order_id:string|null;order_code?:string;destination_hub:string;group_count:number;
@@ -23,6 +23,7 @@ type Feed={
   migration_pending?:boolean;receiving_warehouses?:ReceivingWarehouse[]
 }
 type Filter='unread'|'action'|'all'
+type ActionGroup='all'|'mvd'|'receive'|'intake'|'other'
 const empty:Feed={items:[],total:0,unread_total:0,action_total:0,receiving_warehouses:[]}
 const preference='mynh-erp-in-app-notifications-enabled'
 const runtimeKey='mynh-erp-tracking-runtime'
@@ -75,6 +76,8 @@ function NotificationSwitchIcon({enabled}:{enabled:boolean}){
 
 function tone(row:Notice){
   if(row.severity==='critical')return 'danger'
+  if(row.work_type==='tracking_missing')return 'warning'
+  if(row.work_type==='warehouse_intake')return 'success'
   if(row.event_type==='DELIVERED')return 'success'
   if(row.event_type==='OUT_FOR_DELIVERY'||row.severity==='info')return 'info'
   return 'warning'
@@ -86,7 +89,7 @@ function when(value:string){
   }).format(new Date(value))}catch{return value}
 }
 function safeTarget(row:Notice){
-  if(row.source==='system'){
+  if(row.source==='system'||row.source==='work'){
     const path=row.target_path??''
     return path.startsWith('/')&&!path.startsWith('//')&&!path.includes('\\')&&!path.includes('\n')
       &&!path.includes('\r')?path:null
@@ -104,6 +107,7 @@ export function InAppAlertCenter({
   const router=useRouter()
   const [open,setOpen]=useState(false)
   const [filter,setFilter]=useState<Filter>('all')
+  const [actionGroup,setActionGroup]=useState<ActionGroup>('all')
   const [hub,setHub]=useState('all')
   const [selectedId,setSelectedId]=useState<string|null>(null)
   const [batchMode,setBatchMode]=useState(false)
@@ -298,17 +302,30 @@ export function InAppAlertCenter({
 
   const unread=notificationsEnabled&&trackingEnabled?feed.unread_total:0
   const actionCount=notificationsEnabled&&trackingEnabled?feed.action_total:0
+  const taskGroup=(row:Notice):ActionGroup=>{
+    if(row.work_type==='tracking_missing')return 'mvd'
+    if(row.work_type==='warehouse_intake')return 'intake'
+    if(row.event_type==='DELIVERED'&&row.receive_status==='WAITING_RECEIVE')return 'receive'
+    return 'other'
+  }
+  const actionGroups=useMemo(()=>({
+    mvd:feed.items.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='mvd').length,
+    receive:feed.items.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='receive').length,
+    intake:feed.items.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='intake').length,
+    other:feed.items.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='other').length,
+  }),[feed.items])
   const hubs=useMemo(()=>[...new Set(feed.items
     .filter(row=>row.source==='tracking'&&row.receive_status!=='RECEIVED')
     .map(row=>row.destination_hub.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi')),
     [feed.items])
   const visible=useMemo(()=>feed.items.filter(row=>
     (filter==='all'||(filter==='unread'&&!row.is_read)||
-      (filter==='action'&&row.requires_action&&!row.is_resolved))&&
+      (filter==='action'&&row.requires_action&&!row.is_resolved&&
+       (actionGroup==='all'||taskGroup(row)===actionGroup)))&&
     (hub==='all'||(hub==='unknown'
       ?row.source==='tracking'&&row.receive_status!=='RECEIVED'&&!row.destination_hub
       :row.source==='tracking'&&row.receive_status!=='RECEIVED'&&row.destination_hub===hub))
-  ),[feed.items,filter,hub])
+  ),[feed.items,filter,hub,actionGroup])
   // Only same-HUB, delivered and unreceived orders can be included in one batch.
   const batchSelected=feed.items.filter(row=>row.order_id&&
     selectedOrderIds.includes(row.order_id)&&receiptEligible(row)&&Boolean(row.destination_hub))
@@ -563,6 +580,20 @@ export function InAppAlertCenter({
             <button type="button" className={filter==='unread'?'active':''}
               onClick={()=>{setFilter('unread');clearBatchSelection();setSelectedId(null)}}>Chưa đọc <span>{unread}</span></button>
           </div>
+          {filter==='action'&&<div className="neo-soft-task-tabs" aria-label="Loại công việc cần xử lý">
+            {([
+              ['all','Tất cả',actionCount],
+              ['mvd','Cập nhật MVD',actionGroups.mvd],
+              ['receive','Chờ nhận',actionGroups.receive],
+              ['intake','Nhập kho',actionGroups.intake],
+              ['other','Giao lỗi/Khác',actionGroups.other],
+            ] as const).map(([kind,label,count])=>
+              <button type="button" key={kind}
+                className={actionGroup===kind?'active':''}
+                onClick={()=>{setActionGroup(kind);setSelectedId(null);clearBatchSelection()}}>
+                {label} <span>{count}</span>
+              </button>)}
+          </div>}
           <div className="neo-soft-hub-line">
             <label htmlFor="neo-soft-hub-select">Lọc HUB</label>
             <select id="neo-soft-hub-select" value={hub}
@@ -674,15 +705,16 @@ export function InAppAlertCenter({
                     <strong className="neo-soft-notice-code">{row.order_code??row.message??'Thông báo hệ thống'}</strong>
                     {row.cod!==null&&row.cod!==undefined&&<span className="neo-soft-notice-cod">{money(row.cod)}</span>}
                   </div>
-                  {row.source==='tracking'&&<div className="neo-soft-notice-tracking">
+                  {row.source!=='system'&&<div className="neo-soft-notice-tracking">
                     <span>MVD</span>
                     <strong title={row.tracking_number||'Chưa có mã vận đơn'}>
                       {row.tracking_number||'Chưa có mã vận đơn'}
                     </strong>
                   </div>}
                   <div className="neo-soft-notice-secondary">
-                    <span className="neo-soft-notice-hub">{row.receive_status==='RECEIVED'
-                      ?'Đã nhận · Lịch sử':row.destination_hub||'Chưa xác định HUB'}</span>
+                    <span className="neo-soft-notice-hub">{row.work_type==='warehouse_intake'
+                      ?'Đã nhận · Chờ nhập kho':row.receive_status==='RECEIVED'
+                      ?'Đã nhận · Lịch sử':row.destination_hub||(row.work_type==='tracking_missing'?'Chưa có HUB · Chờ Tracking':'Chưa xác định HUB')}</span>
                     {row.source==='tracking'&&row.group_count>1&&
                       <small>{row.group_count} cập nhật</small>}
                     {row.requires_action&&!row.is_resolved&&
@@ -699,7 +731,7 @@ export function InAppAlertCenter({
                     {row.receive_status&&<div><span>Nhận hàng</span><span>{row.receive_status==='WAITING_RECEIVE'
                       ?'Chờ xác nhận':row.receive_status==='RECEIVED'?'Đã nhận':'Chưa nhận'}</span></div>}
                   </div>
-                  {row.source==='tracking'&&<section className="neo-soft-expanded-section">
+                  {row.source!=='system'&&<section className="neo-soft-expanded-section">
                     <h3>Sản phẩm <span>{row.products?.length??0}</span></h3>
                     {row.products?.length
                       ?row.products.map((item,i)=><div key={i} className="neo-soft-inline-product">
@@ -715,7 +747,7 @@ export function InAppAlertCenter({
                     </p>
                     {row.recipient_address&&<p className="neo-soft-inline-address">{row.recipient_address}</p>}
                   </section>}
-                  <section className="neo-soft-expanded-section">
+                  {row.source!=='work'&&<section className="neo-soft-expanded-section">
                     <h3>Hành trình <span>{row.timeline?.length??0} cập nhật</span></h3>
                     {row.timeline?.length
                       ?<ol className="neo-soft-inline-timeline">{row.timeline.map(step=>
@@ -724,7 +756,12 @@ export function InAppAlertCenter({
                           {step.reason&&<small>{step.reason}</small>}
                         </li>)}</ol>
                       :<p className="neo-soft-inline-empty">Chưa có lịch sử vận chuyển.</p>}
-                  </section>
+                  </section>}
+                  {row.source==='work'&&<p className="neo-soft-task-explainer">
+                    {row.work_type==='tracking_missing'
+                      ?'Đơn mới chưa có mã vận đơn. Thêm mã để bắt đầu theo dõi; HUB chỉ được gán khi dữ liệu hành trình khớp cấu hình.'
+                      :'Đơn đã nhận về kho. Cần bóc tách SKU và xác nhận nhập tồn tại tab Nhập kho.'}
+                  </p>}
                   {receiptEligible(row)&&!batchMode&&<>
                     {receiveFor!==row.id
                       ?<button type="button" className="neo-soft-receive-trigger"
@@ -778,7 +815,8 @@ export function InAppAlertCenter({
                     {!row.is_read&&<button type="button" disabled={pending}
                       onClick={()=>void mark(row)}>Đánh dấu đã đọc</button>}
                     {safeTarget(row)&&<button type="button" onClick={()=>void openAlert(row)}>
-                      Mở đơn trong ERP ↗</button>}
+                      {row.work_type==='tracking_missing'?'Cập nhật MVD ↗':
+                       row.work_type==='warehouse_intake'?'Đến Nhập kho ↗':'Mở đơn trong ERP ↗'}</button>}
                   </div>
                 </div>}
               </article>
