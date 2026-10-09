@@ -1,3 +1,4 @@
+import {suggestDestinationHub} from '@/lib/destination-hub-resolution'
 'use client'
 
 import { useMemo, useState } from 'react'
@@ -318,7 +319,10 @@ export function OrderEditorForm({
       .filter(x=>x.eligible)
       .sort((a,b)=>b.score-a.score)
 
-    const bestHub=wardMatches[0]?.hub??null
+    // Use the same ambiguity-safe routing rule as quick-MVD and backend.
+    // The unique Bắc Giang/Bắc Ninh province configuration is allowed,
+    // while multiple Hà Nội HUBs require a matching ward/district.
+    const bestHub=suggestDestinationHub(address,sortedHubs,'SPX')
     const bestArea=bestHub??provinceMatches[0]??null
 
     setDerivedArea(bestArea?.area??'')
