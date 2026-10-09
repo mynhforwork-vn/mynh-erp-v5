@@ -24,42 +24,52 @@ export async function POST(request:Request){
     input=raw as Record<string,unknown>
   }catch{return response('Yêu cầu không hợp lệ',400)}
 
-  const orderId=String(input.order_id??'')
+  const submittedIds=input.order_ids??(input.order_id?[input.order_id]:[])
+  if(!Array.isArray(submittedIds)||submittedIds.length<1||submittedIds.length>40||
+     submittedIds.some(id=>typeof id!=='string'||!uuid.test(id))||
+     new Set(submittedIds).size!==submittedIds.length){
+    return response('Danh sách đơn không hợp lệ, trùng hoặc quá 40 đơn',400)
+  }
+  const orderIds=submittedIds as string[]
   const warehouseId=String(input.warehouse_id??'')
   const mode=String(input.payment_mode??'')
   const note=typeof input.note==='string'?input.note.trim():''
 
-  if(!uuid.test(orderId)||!uuid.test(warehouseId))return response('Mã đơn hoặc kho không hợp lệ',400)
+  if(!uuid.test(warehouseId))return response('Mã kho không hợp lệ',400)
   if(!['receive_only','with_payment'].includes(mode))return response('Chưa chọn hình thức xác nhận',400)
   if(note.length>240)return response('Ghi chú tối đa 240 ký tự',400)
 
-  const [{data:order,error:orderError},{data:warehouse,error:warehouseError}]=await Promise.all([
+  const [{data:orders,error:ordersError},{data:warehouse,error:warehouseError}]=await Promise.all([
     supabase.from('orders')
       .select('id,shopee_order_id,receive_status,shipping_service,order_status,destination_hub,cod,archived_at,shipments(current_tracking_status)')
-      .eq('id',orderId).maybeSingle(),
+      .in('id',orderIds),
     supabase.from('warehouses').select('id,code,is_active')
       .eq('id',warehouseId).eq('is_active',true).maybeSingle(),
   ])
-  if(orderError||warehouseError)return response('Không thể kiểm tra thông tin nhận hàng',503)
+  if(ordersError||warehouseError)return response('Không thể kiểm tra thông tin nhận hàng',503)
   if(!warehouse)return response('Kho nhận không tồn tại hoặc ngừng hoạt động',400)
-  if(!order||order.archived_at)return response('Đơn không tồn tại hoặc đã lưu trữ',404)
-  if(order.receive_status!=='WAITING_RECEIVE'){
-    return response('Đơn không còn ở trạng thái chờ xác nhận. Hãy tải lại thông báo.',409)
+  if(!orders||orders.length!==orderIds.length)return response('Một hoặc nhiều đơn không tồn tại',404)
+  if(orders.some(o=>o.archived_at||
+      o.receive_status!=='WAITING_RECEIVE'||
+      o.shipping_service==='EXPRESS'||
+      ['CANCELLED','RETURNED'].includes(String(o.order_status??'').toUpperCase())||
+      !Array.isArray(o.shipments)||
+      !o.shipments.some((shipment:{current_tracking_status?:string})=>
+        shipment.current_tracking_status==='DELIVERED'))){
+    return response('Có đơn chưa giao thành công, không chờ nhận hoặc đã nhận. Hãy kiểm tra lại.',409)
   }
-  if(order.shipping_service==='EXPRESS')return response('Đơn Hỏa tốc cần xác nhận ở luồng riêng',409)
-  if(['CANCELLED','RETURNED'].includes(String(order.order_status??'').toUpperCase())){
-    return response('Không thể xác nhận đơn hủy/hoàn',409)
+  const hubs=[...new Set(orders.map(o=>String(o.destination_hub??'').trim()))]
+  if(hubs.length!==1||!hubs[0]){
+    return response('Chỉ nhận hàng loạt các đơn cùng một HUB kho đích có cấu hình.',409)
   }
-  const shipments=Array.isArray(order.shipments)?order.shipments:[]
-  if(!shipments.some(x=>x.current_tracking_status==='DELIVERED')){
-    return response('Chỉ xác nhận khi vận đơn đã giao thành công',409)
-  }
+  const totalCod=orders.reduce((sum,o)=>sum+Number(o.cod??0),0)
+  if(!Number.isFinite(totalCod)||totalCod<0)return response('COD không hợp lệ',409)
 
   let result
   if(mode==='with_payment'){
     const actual=input.actual_transferred
     const amount=typeof actual==='number'?actual:Number(actual)
-    const cod=Number(order.cod??0)
+    const cod=totalCod
     if(actual===null||actual===undefined||actual===''||
        !Number.isSafeInteger(amount)||amount<0||amount>1_000_000_000_000){
       return response('Số tiền thực chuyển không hợp lệ',400)
@@ -67,15 +77,14 @@ export async function POST(request:Request){
     if(!Number.isFinite(cod)||amount<cod){
       return response('Tiền thực chuyển không được thấp hơn COD',400)
     }
-    const hub=String(order.destination_hub??'').trim()
-    if(!hub)return response('Đơn chưa có HUB kho đích để đối soát',409)
+    const hub=hubs[0]
     const {data:hubConfig,error:hubError}=await supabase
       .from('destination_hub_configs').select('id')
       .eq('hub_code',hub).eq('is_active',true).maybeSingle()
     if(hubError)return response('Không kiểm tra được cấu hình HUB',503)
     if(!hubConfig)return response('HUB kho đích chưa có cấu hình hoạt động',409)
     result=await supabase.rpc('confirm_receive_and_pay_hub',{
-      p_order_ids:[orderId],
+      p_order_ids:orderIds,
       p_warehouse_id:warehouseId,
       p_destination_hub:hub,
       p_actual_transferred:amount,
@@ -83,7 +92,7 @@ export async function POST(request:Request){
     })
   }else{
     result=await supabase.rpc('confirm_receive_orders',{
-      p_order_ids:[orderId],
+      p_order_ids:orderIds,
       p_warehouse_id:warehouseId,
       p_note:note||null,
     })
@@ -97,7 +106,8 @@ export async function POST(request:Request){
     revalidatePath(path)
   }
   return NextResponse.json({
-    ok:true,order_id:orderId,receive_status:'RECEIVED',
+    ok:true,order_ids:orderIds,order_count:orderIds.length,total_cod:totalCod,
+    receive_status:'RECEIVED',
     receive_batch_id:result.data?.receive_batch_id??null,
     shipper_payment_id:result.data?.shipper_payment_id??null,
     tip:result.data?.tip??null,
