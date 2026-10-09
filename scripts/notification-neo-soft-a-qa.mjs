@@ -88,7 +88,7 @@ for(const color of ['#303e4c','#5a6875','#526573','#293d4d','#335266','#647784']
 const receipt=fs.readFileSync('app/api/alerts/receive/route.ts','utf8')
 for(const t of [
  "['admin','operator']","receive_status!=='WAITING_RECEIVE'",
- "o.shipping_service==='EXPRESS'","x.current_tracking_status==='DELIVERED'",
+ "o.shipping_service==='EXPRESS'","shipment.current_tracking_status==='DELIVERED'",
  "from('warehouses')","eq('is_active',true)",
  "confirm_receive_orders","confirm_receive_and_pay_hub",
  "confirm_receive_and_pay_hub","destination_hub",
