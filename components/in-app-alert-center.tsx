@@ -529,11 +529,13 @@ export function InAppAlertCenter({
   }
 
   return <>
-    <button type="button" className={'sidebar-alert-trigger'+(unread?' has-unread':'')}
-      aria-label={'Thông báo'+(unread?' · '+unread+' chưa đọc':'')}
+    <button type="button" className={'sidebar-alert-trigger'+(unread?' has-unread':actionCount?' has-action':'')}
+      aria-label={'Thông báo'+(unread?' · '+unread+' chưa đọc':actionCount?' · '+actionCount+' việc cần xử lý':'')}
       onClick={()=>setOpen(true)}>
       <BellIcon/>
-      {unread>0&&<span className="sidebar-alert-badge">{unread>99?'99+':unread}</span>}
+      {(unread>0||actionCount>0)&&<span className="sidebar-alert-badge">
+        {unread>0?(unread>99?'99+':unread):(actionCount>99?'99+':actionCount)}
+      </span>}
     </button>
 
     {open&&<>
@@ -590,7 +592,7 @@ export function InAppAlertCenter({
             ] as const).map(([kind,label,count])=>
               <button type="button" key={kind}
                 className={actionGroup===kind?'active':''}
-                onClick={()=>{setActionGroup(kind);setSelectedId(null);clearBatchSelection()}}>
+                onClick={()=>{setActionGroup(kind);setHub('all');setSelectedId(null);clearBatchSelection()}}>
                 {label} <span>{count}</span>
               </button>)}
           </div>}
