@@ -334,3 +334,52 @@
 .neo-soft-v1 .neo-soft-receive-success button{
   flex:none;border:0;background:none;color:inherit;cursor:pointer;font-size:16px;
 }
+
+
+/* Bulk receipt: compact selection controls, no second modal. */
+.neo-soft-v1 .neo-soft-bulk-toolbar{
+  display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+  font-size:10.5px;color:#5a6d7a;min-height:27px;
+}
+.neo-soft-v1 .neo-soft-bulk-toolbar button{
+  min-height:27px;border-radius:7px;border:1px solid #d3e2e6;
+  background:#fff;color:#366576;padding:4px 8px;
+  font-size:10.5px;font-weight:450;cursor:pointer;
+}
+.neo-soft-v1 .neo-soft-bulk-toolbar button.active{
+  background:#edf6f6;border-color:#c5dcde;color:#2f6a6c;
+}
+.neo-soft-v1 .neo-soft-bulk-toolbar button:last-child{
+  margin-left:auto;
+}
+.neo-soft-v1 .neo-soft-bulk-summary{
+  display:flex;justify-content:space-between;align-items:center;
+  gap:8px;background:#eef6f5;border:1px solid #d5e6e2;
+  padding:7px 9px;border-radius:9px;
+  font-size:11px;color:#385a57;
+}
+.neo-soft-v1 .neo-soft-bulk-summary button{
+  padding:6px 9px;border-radius:7px;border:0;background:#377e73;
+  color:#fff;font-weight:500;font-size:10.5px;cursor:pointer;
+}
+.neo-soft-v1 .neo-soft-notice.bulk-mode{position:relative}
+.neo-soft-v1 .neo-soft-notice.bulk-mode .neo-soft-notice-main{
+  padding-left:38px!important;
+}
+.neo-soft-v1 .neo-soft-select-checkbox{
+  position:absolute;z-index:2;top:12px;left:12px;
+  display:grid;place-items:center;width:18px;height:20px;cursor:pointer;
+}
+.neo-soft-v1 .neo-soft-select-checkbox input{
+  width:14px;height:14px;accent-color:#438b82;cursor:pointer;margin:0;
+}
+.neo-soft-v1 .neo-soft-select-checkbox input:disabled{
+  cursor:not-allowed;opacity:.3;
+}
+.neo-soft-v1 .neo-soft-batch-form{
+  margin:8px 9px 12px!important;
+  border-radius:10px!important;
+  padding:12px!important;
+}
+.neo-soft-v1 .neo-soft-bulk-toolbar button:disabled,
+.neo-soft-v1 .neo-soft-bulk-summary button:disabled{opacity:.5;cursor:not-allowed}
