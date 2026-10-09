@@ -43,7 +43,8 @@ export async function GET(request:Request){
     const userAccount=Array.isArray(order.erp_users)?order.erp_users[0]:order.erp_users
     const shipment=shipments.find((x:Record<string,unknown>)=>x.tracking_number)??shipments[0]
     return {...row,
-      destination_hub:String(order.destination_hub??row.destination_hub??''),
+      receive_status:String(order.receive_status??''),
+      destination_hub:order.receive_status==='RECEIVED'?'':String(order.destination_hub??row.destination_hub??''),
       username:typeof userAccount?.username==='string'?userAccount.username:null,
       cod:order.cod===null?null:Number(order.cod),
       recipient_name:canViewRecipient?order.recipient_name:null,
