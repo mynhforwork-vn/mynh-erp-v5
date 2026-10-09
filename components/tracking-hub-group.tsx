@@ -187,6 +187,10 @@ export function TrackingHubGroup({
 
       <div className="tracking-hub-table-wrap tracking-hub-table-wrap-v2">
         <table className="table tracking-hub-table tracking-hub-table-v2">
+          <colgroup>
+            <col className="tracking-colgroup-select"/>
+            {columns.visible.map(col=><col key={col} className={'tracking-colgroup-'+col}/>)}
+          </colgroup>
           <thead><tr>
             <th className="select-col">
               <input type="checkbox" aria-label="Chọn tất cả đơn chờ nhận" checked={allSelected} onChange={toggleAll} disabled={!eligible.length}/>
