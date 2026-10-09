@@ -1,0 +1,115 @@
+name: Authorized MYNH Preview Cleanup 20261009
+on:
+  push:
+    branches:
+      - audit/cloudflare-requests-20261009
+permissions:
+  contents: read
+  actions: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Guard, disable stale Preview workflows, delete exact Preview Workers
+        run: |
+          node <<'NODE'
+          const token=process.env.CLOUDFLARE_API_TOKEN
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID
+          const ghToken=process.env.GH_TOKEN
+          const repo=process.env.GITHUB_REPOSITORY
+          if(!token||!account||!ghToken||repo!=='mynhforwork-vn/mynh-erp-v5')throw Error('Missing authorization or wrong repository')
+          const cfbase='https://api.cloudflare.com/client/v4'
+          const baseGH='https://api.github.com/repos/'+repo
+          const headersCF={Authorization:'Bearer '+token}
+          const headersGH={Authorization:'Bearer '+ghToken,Accept:'application/vnd.github+json'}
+          const allowedWorkers=[
+            'mynh-erp-neo-soft-a',
+            'mynh-erp-stage-v1',
+            'mynh-erp-notify-v1',
+          ]
+          const protectedWorkers=new Set(['mynh-erp-v5','erp-auto-tracking','ghn-proxy','mynh-erp'])
+          const disableWorkflows=[
+            [378409392,'Cloudflare Notification V1 Preview (Independent Worker)'],
+            [375613478,'Cloudflare Remediation Preview'],
+            [379214226,'Desktop Account Recovery Preview (Isolated Version)'],
+            [379215292,'MYNH Integrated QA Preview (Isolated Worker)'],
+            [379234791,'MYNH Notification Neo Soft A Preview'],
+            [377727691,'Desktop Slidebar QA'],
+            [375648340,'Preview Browser QA'],
+            [378824322,'Desktop Account Detail Read-Only QA'],
+            [378762898,'Cloudflare Quota Hotfix QA'],
+          ]
+          async function cf(path,method='GET'){
+            const response=await fetch(cfbase+path,{method,headers:headersCF,signal:AbortSignal.timeout(18000)})
+            let json={}
+            try{json=await response.json()}catch{}
+            return {status:response.status,ok:response.ok&&json.success!==false,result:json.result,errors:json.errors?.map(x=>({code:x.code,message:x.message}))??[]}
+          }
+          async function gh(path,method='GET'){
+            const response=await fetch(baseGH+path,{method,headers:headersGH,signal:AbortSignal.timeout(18000)})
+            let json={}
+            if(response.status!==204)try{json=await response.json()}catch{}
+            return {status:response.status,ok:response.ok,result:json}
+          }
+          const main=await gh('/branches/main')
+          if(!main.ok)throw Error('Cannot resolve Production main')
+          const mainSHA=main.result?.commit?.sha
+          if(!mainSHA||mainSHA!=='3051f646a1e56e5ed802267871e0eb4a821410d0')throw Error('Main has changed; STOP to protect current Production')
+          const prodRun=await gh('/actions/runs?branch=main&per_page=10')
+          const productionPass=prodRun.result?.workflow_runs?.some(x=>x.head_sha===mainSHA&&x.name==='Cloudflare Production'&&x.conclusion==='success')
+          if(!productionPass)throw Error('No matching successful Production deploy')
+          const productionURL='https://mynh-erp-v5.mynh-forwork.workers.dev/api/health'
+          const health=await fetch(productionURL,{signal:AbortSignal.timeout(20000)})
+          console.log('PRECHECK_PRODUCTION '+JSON.stringify({mainSHA,status:health.status}))
+          if(health.status!==200)throw Error('Production health failed BEFORE cleanup')
+          const inventory=await cf('/accounts/'+account+'/workers/scripts?per_page=100')
+          if(!inventory.ok)throw Error('Unable to inventory scripts')
+          const existing=new Set((inventory.result??[]).map(w=>w.id))
+          for(const name of protectedWorkers)if(!existing.has(name))throw Error('Protected Worker missing: '+name)
+          for(const name of allowedWorkers){
+            if(protectedWorkers.has(name))throw Error('Whitelist overlaps a protected Worker')
+            if(!existing.has(name))throw Error('Preview Worker missing in inventory: '+name)
+            const schedule=await cf('/accounts/'+account+'/workers/scripts/'+encodeURIComponent(name)+'/schedules')
+            if(!schedule.ok||!Array.isArray(schedule.result?.schedules)||schedule.result.schedules.length){
+              throw Error('Preview Worker has active/unknown schedule; refuse deletion: '+name)
+            }
+          }
+          const domains=await cf('/accounts/'+account+'/workers/domains')
+          if(!domains.ok)throw Error('Cannot check custom Worker domains')
+          if((domains.result??[]).some(d=>allowedWorkers.includes(d.service))){
+            throw Error('Preview Worker has custom domain; refuse deletion')
+          }
+          // First prevent automated redeploy, validating workflow name and ID.
+          for(const [id,name] of disableWorkflows){
+            const details=await gh('/actions/workflows/'+id)
+            if(!details.ok||details.result.name!==name)throw Error('Workflow identity mismatch: '+id)
+          }
+          let disableFailures=0
+          for(const [id,name] of disableWorkflows){
+            const action=await gh('/actions/workflows/'+id+'/disable','PUT')
+            const verify=await gh('/actions/workflows/'+id)
+            const ok=action.status===204&&verify.ok&&verify.result.state==='disabled_manually'
+            console.log('DISABLE_WORKFLOW '+JSON.stringify({id,name,ok,status:action.status,state:verify.result?.state??null}))
+            if(!ok)disableFailures++
+          }
+          if(disableFailures)throw Error('Some Preview workflows were not disabled: '+disableFailures+'; Worker deletion paused')
+          for(const name of allowedWorkers){
+            const result=await cf('/accounts/'+account+'/workers/scripts/'+encodeURIComponent(name),'DELETE')
+            console.log('DELETE_PREVIEW '+JSON.stringify({name,status:result.status,ok:result.ok,errors:result.errors}))
+            if(!result.ok)throw Error('Failed to delete Preview Worker '+name)
+          }
+          const after=await cf('/accounts/'+account+'/workers/scripts?per_page=100')
+          if(!after.ok)throw Error('Cannot verify post-cleanup Worker inventory')
+          const afterNames=new Set((after.result??[]).map(w=>w.id))
+          for(const name of allowedWorkers)if(afterNames.has(name))throw Error('Preview Worker still active: '+name)
+          for(const name of protectedWorkers)if(!afterNames.has(name))throw Error('Protected Worker unexpectedly absent: '+name)
+          const healthAfter=await fetch(productionURL,{signal:AbortSignal.timeout(20000)})
+          console.log('POSTCHECK_PRODUCTION '+JSON.stringify({status:healthAfter.status,mainSHA,protected:[...protectedWorkers],deleted:allowedWorkers}))
+          if(healthAfter.status!==200)throw Error('Production health unexpectedly failed after cleanup')
+          console.log('CLEANUP_SUCCESS '+JSON.stringify({deletedPreviewWorkers:allowedWorkers,disabledPreviewWorkflows:disableWorkflows.map(x=>x[1]),productionStable:true}))
+          NODE
