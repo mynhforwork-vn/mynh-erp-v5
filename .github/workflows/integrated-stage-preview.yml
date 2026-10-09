@@ -35,6 +35,8 @@ jobs:
         run: node scripts/remediation-static-qa.mjs
       - name: Verify Tracking hours
         run: node --experimental-strip-types scripts/notification-quiet-hours-qa.mjs
+      - name: QA grouped order events, R00 and separate read/action flags
+        run: node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
       - name: Verify prepared changes are integrated
         run: |
           node --input-type=module <<'NODE'
@@ -49,8 +51,15 @@ jobs:
           assert.ok(component.includes('isTrackingQuietNow'),'Tracking quiet-hour gate missing')
           assert.ok(component.includes("if(notificationsEnabled!==true||trackingEnabled!==true)"),'Notifications off gate missing')
           assert.ok(tracking.includes('saveRuntimeAndNotify'),'Tracking switch synchronization missing')
+          const api=fs.readFileSync('app/api/alerts/in-app/route.ts','utf8')
           assert.ok(error.includes('Hãy kiểm tra danh sách trước khi gửi lại'),'Account error recovery missing')
-          console.log('PASS: PR54 quota + PR55 account error recovery')
+          assert.ok(api.includes("buildOrderNotices"),'PR53 grouping API missing')
+          assert.ok(component.includes('app-alert-panel app-alert-panel-v2'),'Original right-hand slidebar lost')
+          assert.ok(!component.includes('notification-center-v1'),'V1 restyling would replace approved slidebar')
+          assert.ok(component.includes("filter==='action'"),'Separate action view missing')
+          assert.ok(component.includes("Xem lịch sử vận chuyển"),'Expandable history missing')
+          assert.ok(component.includes("feed.unread_total")&&component.includes("feed.action_total"),'Unread and action stats not distinct')
+          console.log('PASS: PR54 quota + PR55 recovery + verified PR53 logic; drawer design preserved')
           NODE
       - name: OpenNext Cloudflare build
         run: npx opennextjs-cloudflare build
