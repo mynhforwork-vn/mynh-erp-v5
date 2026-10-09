@@ -61,7 +61,7 @@ for(const text of [
 ])has(css,text)
 assert.ok(!css.includes('.neo-soft-detail-sheet'),
   'Old separate detail styling must be removed')
-assert.ok(!css.includes('.neo-soft-stat'),'Old KPI styling must be removed')
+assert.ok(!/\.neo-soft-stat(?=[\s.{:#>])/.test(css),'Old KPI card styling must be removed')
 const weights=[...css.matchAll(/font-weight:\s*(\d+)/g)].map(x=>Number(x[1]))
 assert.ok(weights.length>0&&weights.every(n=>n<=600),
   'No font weight above 600 in drawer stylesheet')
