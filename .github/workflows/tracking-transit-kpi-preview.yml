@@ -1,0 +1,55 @@
+name: Tracking Transit KPI Preview QA
+on:
+  push:
+    branches:
+      - fix/tracking-transit-kpi-compact-actions-20261009
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tracking-transit-kpi-preview
+  cancel-in-progress: true
+
+jobs:
+  tracking-kpi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Tracking transit KPI and icon-only actions QA
+        run: node --experimental-strip-types scripts/tracking-transit-compact-qa.mjs
+      - name: Full static QA
+        run: node scripts/remediation-static-qa.mjs
+      - name: Cloudflare OpenNext build
+        run: npx opennextjs-cloudflare build
+      - name: Publish isolated NAMED preview version (not Production)
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx wrangler preview --name tracking-kpi-v1 --worker-name mynh-erp-v5 --message "Tracking KPI + icon QA $GITHUB_SHA" --json > named-preview.json
+          echo "ISOLATED_PREVIEW=https://tracking-kpi-v1-mynh-erp-v5.mynh-forwork.workers.dev"
+      - name: Smoke named preview
+        shell: bash
+        run: |
+          URL="https://tracking-kpi-v1-mynh-erp-v5.mynh-forwork.workers.dev"
+          code=$(curl --silent --show-error --max-time 20 -o health.json -w '%{http_code}' "$URL/api/health")
+          echo "TRACKING_PREVIEW_HEALTH_HTTP $code"
+          test "$code" = "200"
+          grep -q '"ok":true' health.json
+          code=$(curl --silent --show-error --max-time 20 -o login.html -w '%{http_code}' "$URL/login")
+          echo "TRACKING_PREVIEW_LOGIN_HTTP $code"
+          test "$code" = "200"
+          grep -q 'MYNH ERP' login.html
+          prod=$(curl --silent --show-error --max-time 20 -o /dev/null -w '%{http_code}' "https://mynh-erp-v5.mynh-forwork.workers.dev/api/health")
+          echo "PRODUCTION_UNCHANGED_HEALTH_HTTP $prod"
+          test "$prod" = "200"
