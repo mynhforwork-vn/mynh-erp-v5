@@ -45,7 +45,13 @@ jobs:
         run: npx wrangler deploy --config wrangler.neo-soft-a.jsonc
       - name: Smoke test new Preview without data mutation
         run: |
-          code=$(curl -sS --retry 12 --retry-all-errors --retry-delay 5 --max-time 18 -o health.json -w '%{http_code}' "$PREVIEW_URL/api/health")
+          code=000
+          for attempt in $(seq 1 16); do
+            code=$(curl -sS --max-time 18 -o health.json -w '%{http_code}' "$PREVIEW_URL/api/health") || code=000
+            echo "NEO_SOFT_HEALTH_ATTEMPT_${attempt} $code"
+            if test "$code" = "200"; then break; fi
+            sleep 5
+          done
           echo "NEO_SOFT_HEALTH_HTTP $code"
           test "$code" = "200"
           grep -q '"ok":true' health.json
