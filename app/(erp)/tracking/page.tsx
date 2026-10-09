@@ -4,7 +4,7 @@ import { formatDateTime, formatMoney, sourceLabel, statusLabel } from '@/lib/for
 import { TrackingHubGroup } from '@/components/tracking-hub-group'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import { ContextOrderPanel } from '@/components/context-order-panel'
-import { isPreDestinationTransit } from '@/lib/tracking/status-groups'
+import { isDeliveredAwaitingReceipt, isPreDestinationTransit } from '@/lib/tracking/status-groups'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
 type SP={
@@ -211,7 +211,7 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
   const outForDelivery=scopeRows.filter((r:any)=>r.tracking_status==='OUT_FOR_DELIVERY').length
   const delivered=scopeRows.filter((r:any)=>r.tracking_status==='DELIVERED').length
   const failed=scopeRows.filter((r:any)=>r.tracking_status==='DELIVERY_FAILED').length
-  const waitingRows=scopeRows.filter((r:any)=>r.receive_status==='WAITING_RECEIVE')
+  const waitingRows=scopeRows.filter((r:any)=>isDeliveredAwaitingReceipt(r.tracking_status,r.receive_status))
   const waiting=waitingRows.length
   const waitingCod=waitingRows.reduce((sum:number,r:any)=>sum+Number(r.cod??0),0)
   const waitingHubCount=new Set(waitingRows.map((r:any)=>r.destination_hub).filter(Boolean)).size

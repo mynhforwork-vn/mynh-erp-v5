@@ -85,3 +85,16 @@
   overflow-x:auto;
   scrollbar-width:thin;
 }
+
+/* Keep all six tracking KPIs in one horizontal strip at every viewport. */
+.tracking-screen-v2 .tracking-status-strip-v2{
+  display:flex;
+  flex-wrap:nowrap;
+  max-width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+}
+.tracking-screen-v2 .tracking-status-strip-v2 > .tracking-status-metric{
+  flex:1 0 116px;
+  min-width:116px;
+}

@@ -34,3 +34,8 @@ export function isPreDestinationTransit(trackingNumber:unknown,status:unknown){
     && trackingNumber.trim().length>0
     && PRE_DESTINATION_TRANSIT_SET.has(String(status??''))
 }
+
+/** Chờ nhận chỉ áp dụng cho đơn đã giao thành công, chưa xác nhận nhận hàng. */
+export function isDeliveredAwaitingReceipt(trackingStatus:unknown,receiveStatus:unknown){
+  return trackingStatus==='DELIVERED' && receiveStatus==='WAITING_RECEIVE'
+}
