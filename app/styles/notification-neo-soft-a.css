@@ -230,3 +230,158 @@
 @media(prefers-reduced-motion:reduce){
   .neo-soft-v1 .neo-soft-notice{transition:none}
 }
+
+
+/* Notification Compact V2 — align with MYNH ERP's plain operational panels.
+   One cohesive detail sheet; no nested decorative cards. */
+.neo-soft-v1.app-alert-panel-v2{
+  grid-template-rows:auto auto minmax(0,1fr)!important;
+  background:#f7f9fb!important;
+}
+.neo-soft-v1 .neo-soft-header-tools{
+  display:flex!important;align-items:center!important;gap:4px!important;
+  flex:none!important;
+}
+.neo-soft-v1 .neo-soft-header-tools .neo-soft-tool{
+  display:inline-grid!important;place-items:center!important;
+  padding:0!important;width:29px!important;height:29px!important;
+  min-width:29px!important;min-height:29px!important;
+  background:transparent!important;border:1px solid transparent!important;
+  border-radius:7px!important;color:#4b687c!important;
+  cursor:pointer!important;transition:background-color .12s ease,border-color .12s ease;
+}
+.neo-soft-v1 .neo-soft-header-tools .neo-soft-tool:hover:not(:disabled){
+  background:#eef4f7!important;border-color:#e3ebf0!important;
+  color:#236989!important;
+}
+.neo-soft-v1 .neo-soft-header-tools .neo-soft-tool:disabled{
+  opacity:.32!important;cursor:not-allowed!important;
+}
+.neo-soft-v1 .neo-soft-header-tools .neo-soft-tool[aria-pressed="false"]{
+  color:#ba735e!important;background:#fbf1ec!important;
+}
+.neo-soft-v1 .neo-soft-header-tools .neo-soft-tool:last-child{
+  margin-left:2px!important;
+  border-left:1px solid #e7edf0!important;border-radius:0 7px 7px 0!important;
+}
+.neo-soft-v1 .neo-soft-notice-main{gap:5px!important;padding:9px 11px!important}
+.neo-soft-v1 .neo-soft-notice{
+  border-radius:8px!important;box-shadow:none!important;
+  border-color:#e5ebf0!important;
+}
+.neo-soft-v1 .neo-soft-notice:hover{
+  background:#fbfdfe!important;box-shadow:none!important;border-color:#bfd5e0!important;
+}
+.neo-soft-v1 .neo-soft-notice-first{gap:6px!important}
+.neo-soft-v1 .neo-soft-notice-code{font-size:12px!important;color:#2c506d!important}
+.neo-soft-v1 .neo-soft-notice-cod{font-size:12px!important;color:#2c536a!important}
+.neo-soft-v1 .neo-soft-notice-tracking{
+  display:flex;align-items:baseline;gap:7px;min-width:0;
+  font-size:10.5px;line-height:1.3;
+}
+.neo-soft-v1 .neo-soft-notice-tracking>span{
+  flex:none;font-size:9px;font-weight:740;color:#8ba0ad;
+}
+.neo-soft-v1 .neo-soft-notice-tracking>strong{
+  color:#187e83;font-size:11.5px;font-weight:820;
+  font-variant-numeric:tabular-nums;letter-spacing:.015em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.neo-soft-v1 .neo-soft-notice-secondary{margin-top:1px!important}
+.neo-soft-v1 .neo-soft-notice-hub{font-size:10px!important;color:#8095a3!important}
+.neo-soft-v1 .neo-soft-detail{
+  display:grid!important;align-content:start!important;gap:8px!important;
+}
+.neo-soft-v1 .neo-soft-detail-summary{
+  border:1px solid #e1e8ed;background:#fff;
+  border-radius:9px;padding:12px 13px;
+}
+.neo-soft-v1 .neo-soft-detail-status{
+  display:flex;justify-content:space-between;align-items:center;
+  gap:8px;margin-bottom:9px;
+}
+.neo-soft-v1 .neo-soft-detail-status>time{
+  font-size:10px;color:#8497a5;
+}
+.neo-soft-v1 .neo-soft-detail-identifiers{
+  display:flex;justify-content:space-between;align-items:baseline;gap:8px;min-width:0;
+}
+.neo-soft-v1 .neo-soft-detail-identifiers>strong{
+  min-width:0;font-size:14px;color:#2a4d67;
+  letter-spacing:.01em;font-weight:820;overflow-wrap:anywhere;
+}
+.neo-soft-v1 .neo-soft-detail-identifiers>b{
+  flex:none;font-size:13px;font-weight:820;color:#28777e;
+  font-variant-numeric:tabular-nums;
+}
+.neo-soft-v1 .neo-soft-detail-mvd{
+  display:flex;gap:8px;align-items:baseline;
+  margin:8px 0 0;padding:7px 9px;border-radius:6px;
+  background:#f0f7f8;border:1px solid #e3eef1;min-width:0;
+}
+.neo-soft-v1 .neo-soft-detail-mvd>span{
+  flex:none;font-size:9px;font-weight:800;color:#76909f;
+}
+.neo-soft-v1 .neo-soft-detail-mvd>strong{
+  font-size:12px;color:#197982;font-weight:840;
+  font-variant-numeric:tabular-nums;overflow-wrap:anywhere;
+}
+.neo-soft-v1 .neo-soft-detail-hub{
+  margin-top:9px;color:#708697;font-size:11px;line-height:1.4;
+}
+.neo-soft-v1 .neo-soft-detail-sheet{
+  background:#fff;border:1px solid #e2eaf0;border-radius:9px;
+  overflow:hidden;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-detail-section{
+  background:#fff!important;border:0!important;border-radius:0!important;
+  box-shadow:none!important;
+  padding:12px 13px!important;margin:0!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-detail-section + .neo-soft-detail-section{
+  border-top:1px solid #edf1f4!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-section-title{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  margin:0 0 9px!important;padding:0!important;
+  font-size:11px!important;font-weight:800!important;
+  color:#335a72!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-section-title::before{display:none!important}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-section-title span{
+  color:#9baab5;font-size:10px;font-weight:640;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-kv{
+  display:grid!important;gap:7px!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-kv>div{
+  display:grid!important;grid-template-columns:105px minmax(0,1fr)!important;
+  font-size:11px!important;gap:12px!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-kv dt{color:#8093a3!important}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-kv dd{
+  color:#35566f!important;font-size:11px!important;font-weight:690!important;
+  text-align:right!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-product{
+  padding:8px 0!important;border-bottom:1px solid #f0f2f4!important;
+  line-height:1.45!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-product:last-child{
+  border-bottom:0!important;padding-bottom:0!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-product strong{color:#375a70!important}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-product b{color:#365d74!important}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-recipient{
+  font-size:11px!important;font-weight:720!important;color:#3d6077!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-timeline{border-left:1px solid #d7e6ea!important}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-timeline li{margin-bottom:11px!important}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-timeline strong{font-size:11px!important;color:#4a6c81!important}
+.neo-soft-v1 .neo-soft-detail-actions{display:flex!important;gap:7px!important}
+.neo-soft-v1 .neo-soft-detail-actions button{border-radius:7px!important;font-size:10.5px!important}
+@media(max-width:420px){
+  .neo-soft-v1 .app-alert-panel-head-v2{padding-left:9px!important;padding-right:9px!important}
+  .neo-soft-v1 .app-alert-panel-title-v2 p{max-width:135px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .neo-soft-v1 .neo-soft-header-tools{gap:1px!important}
+}
