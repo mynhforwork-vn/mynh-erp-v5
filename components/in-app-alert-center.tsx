@@ -10,7 +10,8 @@ type Notice={
  id:string;source:'tracking'|'system';category:Category;severity:'info'|'warning'|'critical';
  title:string;message:string;event_type:string;created_at:string;is_read:boolean;
  requires_action:boolean;is_resolved:boolean;legacy_ids:string[];notification_id:string|null;
- order_id:string|null;destination_hub:string;group_count:number;target_path:string|null
+ order_id:string|null;destination_hub:string;group_count:number;target_path:string|null;
+ order_code?:string;timeline?:{id:string;type:string;label:string;created_at:string;is_read:boolean;reason:string|null}[]
 }
 type Feed={items:Notice[];total:number;unread_total:number;action_total:number;migration_pending?:boolean}
 const empty:Feed={items:[],total:0,unread_total:0,action_total:0}
@@ -52,7 +53,7 @@ function target(row:Notice){
    if(!p.startsWith('/')||p.startsWith('//')||p.includes('\\')||p.includes('\n')||p.includes('\r'))return null
    return p
  }
- if(row.group_count===1&&row.order_id)return '/purchase/orders?order='+encodeURIComponent(row.order_id)
+ if(row.order_id)return '/purchase/orders?order='+encodeURIComponent(row.order_id)
  const qs=new URLSearchParams({status:row.event_type})
  if(row.destination_hub)qs.set('hub',row.destination_hub)
  return '/purchase/tracking?'+qs.toString()
@@ -60,6 +61,7 @@ function target(row:Notice){
 export function InAppAlertCenter({role='viewer',trackingEnabled:initialTrackingEnabled,quietStart:initialQuietStart,quietEnd:initialQuietEnd}:{role?:string;trackingEnabled:boolean;quietStart:string;quietEnd:string}){
  const router=useRouter()
  const [open,setOpen]=useState(false)
+ const [expanded,setExpanded]=useState<string[]>([])
  const [view,setView]=useState<View>('all')
  const [category,setCategory]=useState<Category>('all')
  const [page,setPage]=useState(0)
@@ -336,12 +338,26 @@ export function InAppAlertCenter({role='viewer',trackingEnabled:initialTrackingE
           <p className="notification-center-message">{row.message}</p>
           <div className="notification-center-tags">
             <span>{categories.find(x=>x.id===row.category)?.label??'Hệ thống'}</span>
-            {row.group_count>1&&<span>{row.group_count} đơn hàng</span>}
+            {row.source==='tracking'&&row.group_count>1&&<span>{row.group_count} cập nhật</span>}
+            {row.source==='tracking'&&row.requires_action&&<span className="needs-action">Cần xử lý nghiệp vụ</span>}
             {row.requires_action&&<span className={row.is_resolved?'resolved':'needs-action'}>
              {row.is_resolved?'Đã xử lý':'Cần xử lý'}
             </span>}
             {!row.is_read&&<span className="new">Mới</span>}
           </div>
+          {row.source==='tracking'&&Array.isArray(row.timeline)&&row.timeline.length>1&&
+            <button type="button" className="notification-center-history-toggle"
+              aria-expanded={expanded.includes(row.id)}
+              onClick={()=>setExpanded(current=>current.includes(row.id)?current.filter(v=>v!==row.id):[...current,row.id])}>
+              {expanded.includes(row.id)?'Ẩn lịch sử':'Xem lịch sử'} ({row.timeline.length})
+            </button>}
+          {row.source==='tracking'&&expanded.includes(row.id)&&row.timeline&&
+            <ol className="notification-center-order-history">
+              {row.timeline.map(step=><li key={step.id}>
+                <strong>{step.label}</strong> <time>{dateVN(step.created_at)}</time>
+                {step.reason&&<small>{step.reason}</small>}
+              </li>)}
+            </ol>}
           <div className="notification-center-rowbuttons">
             <button type="button" disabled={pending} onClick={()=>void openRow(row)}>Xem chi tiết →</button>
             {!row.is_read&&<button type="button" disabled={pending} onClick={()=>void mark(row)}>Đã đọc</button>}
@@ -361,7 +377,7 @@ export function InAppAlertCenter({role='viewer',trackingEnabled:initialTrackingE
            <button type="button" disabled={(page+1)*size>=feed.total||pending||busy} onClick={()=>setPage(v=>v+1)}>Sau</button>
           </div>
         </div>
-        <small>Đã đọc không đồng nghĩa đã xử lý.</small>
+        <small>Đã đọc ≠ cần xử lý. Lịch sử theo từng đơn, không xóa sự kiện.</small>
       </footer>
     </aside>
    </>}
