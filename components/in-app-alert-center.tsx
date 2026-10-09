@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect,useMemo,useRef,useState } from 'react'
+import { useCallback,useEffect,useMemo,useRef,useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {isTrackingQuietNow,msToQuietBoundary,NOTIFICATION_POLL_MS} from '@/lib/notification-quiet-hours'
 
 type AlertGroup={
   alert_ids:string[]
@@ -17,6 +18,8 @@ type AlertGroup={
   is_read:boolean
 }
 type Filter='unread'|'all'
+const NOTIFICATION_PREFERENCE_KEY='mynh-erp-in-app-notifications-enabled'
+const TRACKING_RUNTIME_KEY='mynh-erp-tracking-runtime'
 
 function BellIcon(){
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -52,30 +55,160 @@ function when(value:string){
   }catch{return value}
 }
 
-export function InAppAlertCenter(){
+export function InAppAlertCenter({trackingEnabled:initialTrackingEnabled,quietStart:initialQuietStart,quietEnd:initialQuietEnd}:{trackingEnabled:boolean;quietStart:string;quietEnd:string}){
   const router=useRouter()
   const [open,setOpen]=useState(false)
   const [filter,setFilter]=useState<Filter>('unread')
   const [alerts,setAlerts]=useState<AlertGroup[]>([])
   const [loading,setLoading]=useState(true)
-  const timer=useRef<ReturnType<typeof setInterval>|null>(null)
+  // null until browser preference has loaded; avoid an unwanted first request.
+  const [notificationsEnabled,setNotificationsEnabled]=useState<boolean|null>(null)
+  const [trackingEnabled,setTrackingEnabled]=useState(initialTrackingEnabled)
+  const [quietStart,setQuietStart]=useState(initialQuietStart)
+  const [quietEnd,setQuietEnd]=useState(initialQuietEnd)
+  const quietRef=useRef({start:quietStart,end:quietEnd})
+  quietRef.current={start:quietStart,end:quietEnd}
+  const enabledRef=useRef(false)
+  enabledRef.current=notificationsEnabled===true&&trackingEnabled===true
+  const timer=useRef<ReturnType<typeof setTimeout>|null>(null)
+  const lastRequestAt=useRef(0)
+  const nextAllowedAt=useRef(0)
+  const requestInFlight=useRef(false)
+  const pendingRequest=useRef<AbortController|null>(null)
 
-  async function load(){
+  const load=useCallback(async()=>{
+    if(!enabledRef.current||requestInFlight.current)return
+    const {start,end}=quietRef.current
+    if(isTrackingQuietNow(new Date(),start,end))return
+    const now=Date.now()
+    const interval=NOTIFICATION_POLL_MS
+    if(now<nextAllowedAt.current||now-lastRequestAt.current<interval)return
+    requestInFlight.current=true
+    lastRequestAt.current=now
+    const controller=new AbortController()
+    pendingRequest.current=controller
     try{
-      const res=await fetch('/api/alerts/in-app',{cache:'no-store'})
+      const res=await fetch('/api/alerts/in-app',{cache:'no-store',signal:controller.signal})
+      if(!enabledRef.current||isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end))return
+      if(res.status===429||res.status===503){
+        nextAllowedAt.current=Date.now()+900000
+        return
+      }
       if(!res.ok)return
       const body=await res.json()
-      setAlerts(Array.isArray(body.alerts)?body.alerts:[])
+      if(enabledRef.current)setAlerts(Array.isArray(body.alerts)?body.alerts:[])
+    }catch{
+      if(!controller.signal.aborted)nextAllowedAt.current=Date.now()+300000
     }finally{
-      setLoading(false)
+      if(pendingRequest.current===controller)pendingRequest.current=null
+      requestInFlight.current=false
+      if(enabledRef.current)setLoading(false)
     }
-  }
+  },[])
+
+  // Read the current runtime from Supabase on page load, then follow verified admin saves.
+  useEffect(()=>{
+    setTrackingEnabled(initialTrackingEnabled)
+    setQuietStart(initialQuietStart)
+    setQuietEnd(initialQuietEnd)
+  },[initialTrackingEnabled,initialQuietStart,initialQuietEnd])
 
   useEffect(()=>{
-    load()
-    timer.current=setInterval(load,30000)
-    return()=>{if(timer.current)clearInterval(timer.current)}
+    const apply=(payload:unknown)=>{
+      if(!payload||typeof payload!=='object')return
+      const value=payload as {enabled?:boolean;quietStart?:string;quietEnd?:string}
+      const start=value.quietStart??quietRef.current.start
+      const end=value.quietEnd??quietRef.current.end
+      setTrackingEnabled(value.enabled===true)
+      setQuietStart(start)
+      setQuietEnd(end)
+      if(value.enabled!==true||isTrackingQuietNow(new Date(),start,end))pendingRequest.current?.abort()
+    }
+    const changed=(event:Event)=>apply((event as CustomEvent).detail)
+    const stored=(event:StorageEvent)=>{
+      if(event.key!==TRACKING_RUNTIME_KEY||!event.newValue)return
+      try{apply(JSON.parse(event.newValue))}catch{/* ignore invalid data */}
+    }
+    window.addEventListener('mynh-erp-tracking-changed',changed)
+    window.addEventListener('storage',stored)
+    return()=>{
+      window.removeEventListener('mynh-erp-tracking-changed',changed)
+      window.removeEventListener('storage',stored)
+    }
   },[])
+
+  // Preference is local to this browser; changes propagate to other ERP tabs.
+  useEffect(()=>{
+    try{setNotificationsEnabled(window.localStorage.getItem(NOTIFICATION_PREFERENCE_KEY)!=='off')}
+    catch{setNotificationsEnabled(true)}
+    const syncPreference=(event:StorageEvent)=>{
+      if(event.key===NOTIFICATION_PREFERENCE_KEY){
+        setNotificationsEnabled(event.newValue!=='off')
+        if(event.newValue==='off')pendingRequest.current?.abort()
+      }
+    }
+    window.addEventListener('storage',syncPreference)
+    return()=>window.removeEventListener('storage',syncPreference)
+  },[])
+
+  useEffect(()=>{
+    if(timer.current){clearTimeout(timer.current);timer.current=null}
+    if(notificationsEnabled!==true||trackingEnabled!==true){
+      pendingRequest.current?.abort()
+      setLoading(false)
+      return
+    }
+    lastRequestAt.current=0
+    nextAllowedAt.current=0
+    let stopped=false
+    const schedule=()=>{
+      if(timer.current)clearTimeout(timer.current)
+      if(stopped||!enabledRef.current)return
+      const at=new Date()
+      const {start,end}=quietRef.current
+      if(isTrackingQuietNow(at,start,end)){
+        pendingRequest.current?.abort()
+        timer.current=setTimeout(()=>void tick(),msToQuietBoundary(at,'end',start,end))
+        return
+      }
+      const next=Math.max(lastRequestAt.current+NOTIFICATION_POLL_MS,nextAllowedAt.current)
+      const wait=Math.max(0,next-at.getTime(),requestInFlight.current?1000:0)
+      timer.current=setTimeout(()=>void tick(),Math.min(wait,msToQuietBoundary(at,'start',start,end)))
+    }
+    const tick=async()=>{
+      if(stopped||!enabledRef.current)return
+      if(isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end)){
+        pendingRequest.current?.abort()
+        schedule()
+        return
+      }
+      await load()
+      schedule()
+    }
+    const onVisibility=()=>void tick()
+    document.addEventListener('visibilitychange',onVisibility)
+    void tick()
+    return()=>{
+      stopped=true
+      if(timer.current){clearTimeout(timer.current);timer.current=null}
+      document.removeEventListener('visibilitychange',onVisibility)
+    }
+  },[notificationsEnabled,trackingEnabled,quietStart,quietEnd,load])
+
+  function toggleNotifications(){
+    const next=notificationsEnabled!==true
+    enabledRef.current=next&&trackingEnabled
+    if(!next){
+      pendingRequest.current?.abort()
+      setAlerts([])
+      setLoading(false)
+    }else{
+      setLoading(true)
+    }
+    try{window.localStorage.setItem(NOTIFICATION_PREFERENCE_KEY,next?'on':'off')}
+    catch{/* Browsers with storage restrictions keep the state for this session. */}
+    setNotificationsEnabled(next)
+  }
 
   useEffect(()=>{
     if(!open)return
@@ -84,14 +217,14 @@ export function InAppAlertCenter(){
     return()=>window.removeEventListener('keydown',onKey)
   },[open])
 
-  const unread=useMemo(()=>alerts.filter(x=>!x.is_read).length,[alerts])
+  const unread=useMemo(()=>notificationsEnabled&&trackingEnabled?alerts.filter(x=>!x.is_read).length:0,[alerts,notificationsEnabled,trackingEnabled])
   const visible=useMemo(
-    ()=>filter==='unread'?alerts.filter(x=>!x.is_read):alerts,
-    [alerts,filter],
+    ()=>!notificationsEnabled||!trackingEnabled?[]:filter==='unread'?alerts.filter(x=>!x.is_read):alerts,
+    [alerts,filter,notificationsEnabled,trackingEnabled],
   )
 
   async function mark(ids:string[]){
-    if(!ids.length)return
+    if(!ids.length||!enabledRef.current||isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end))return
     setAlerts(current=>current.map(x=>x.alert_ids.some(id=>ids.includes(id))?{...x,is_read:true}:x))
     await fetch('/api/alerts/in-app',{
       method:'POST',
@@ -101,6 +234,7 @@ export function InAppAlertCenter(){
   }
 
   async function markAll(){
+    if(!enabledRef.current||isTrackingQuietNow(new Date(),quietRef.current.start,quietRef.current.end))return
     setAlerts(current=>current.map(x=>({...x,is_read:true})))
     await fetch('/api/alerts/in-app',{
       method:'POST',
@@ -162,7 +296,11 @@ export function InAppAlertCenter(){
         </div>
 
         <div className="app-alert-list app-alert-list-v2">
-          {loading
+          {!trackingEnabled
+            ? <div className="app-alert-empty app-alert-empty-v2">Auto Tracking đang tắt. Hệ thống không gọi API thông báo.</div>
+            : notificationsEnabled===false
+            ? <div className="app-alert-empty app-alert-empty-v2">Thông báo đã tắt. Hệ thống không gửi yêu cầu cập nhật thông báo từ trình duyệt.</div>
+            : loading
             ? <div className="app-alert-empty app-alert-empty-v2">Đang tải thông báo…</div>
             : !visible.length
               ? <div className="app-alert-empty app-alert-empty-v2">
@@ -196,7 +334,9 @@ export function InAppAlertCenter(){
                 </button>)}
         </div>
 
-        <footer className="app-alert-panel-foot-v2">
+        <footer className="app-alert-panel-foot-v2" style={{display:'grid',gap:5}}>
+          <button type="button" aria-pressed={notificationsEnabled===true}
+            onClick={toggleNotifications}>{notificationsEnabled===false?'Bật thông báo':'Tắt thông báo'}</button>
           <button type="button" onClick={()=>{
             setOpen(false)
             router.push('/purchase/tracking')
