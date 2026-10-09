@@ -37,6 +37,8 @@ jobs:
         run: node --experimental-strip-types scripts/notification-quiet-hours-qa.mjs
       - name: QA grouped alerts, R00 hidden and action/read separation
         run: node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+      - name: QA address-based destination HUB resolution and carrier code consistency
+        run: node --experimental-strip-types scripts/destination-hub-routing-qa.mjs
       - name: QA missing MVD and post-receipt intake action groups
         run: node --experimental-strip-types scripts/notification-order-tasks-qa.mjs
       - name: QA Neo Soft A HUB filter, details, isolated styling
