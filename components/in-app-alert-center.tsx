@@ -105,7 +105,6 @@ export function InAppAlertCenter({
   const [hub,setHub]=useState('all')
   const [selectedId,setSelectedId]=useState<string|null>(null)
   const listRef=useRef<HTMLDivElement|null>(null)
-  const listScroll=useRef(0)
   const [expanded,setExpanded]=useState<string[]>([])
   const [feed,setFeed]=useState<Feed>(empty)
   const [loading,setLoading]=useState(true)
@@ -273,10 +272,14 @@ export function InAppAlertCenter({
 
   useEffect(()=>{
     if(!open)return
-    const close=(event:KeyboardEvent)=>{if(event.key==='Escape'&&!pending)setOpen(false)}
+    const close=(event:KeyboardEvent)=>{
+      if(event.key!=='Escape'||pending)return
+      if(selectedId)setSelectedId(null)
+      else setOpen(false)
+    }
     window.addEventListener('keydown',close)
     return()=>window.removeEventListener('keydown',close)
-  },[open,pending])
+  },[open,pending,selectedId])
 
   const unread=notificationsEnabled&&trackingEnabled?feed.unread_total:0
   const actionCount=notificationsEnabled&&trackingEnabled?feed.action_total:0
@@ -291,15 +294,9 @@ export function InAppAlertCenter({
       ?row.source==='tracking'&&row.receive_status!=='RECEIVED'&&!row.destination_hub
       :row.source==='tracking'&&row.receive_status!=='RECEIVED'&&row.destination_hub===hub))
   ),[feed.items,filter,hub])
-  const selectedNotice=feed.items.find(row=>row.id===selectedId)??null
-  useEffect(()=>{
-    if(!selectedId&&listRef.current)listRef.current.scrollTop=listScroll.current
-  },[selectedId])
-  function openDetail(row:Notice){
-    listScroll.current=listRef.current?.scrollTop??0
-    setSelectedId(row.id)
+  function toggleOrder(id:string){
+    setSelectedId(current=>current===id?null:id)
   }
-  function backToList(){setSelectedId(null)}
   const money=(v:number|null|undefined)=>v===null||v===undefined||!Number.isFinite(v)
     ?'Chưa có':new Intl.NumberFormat('vi-VN').format(v)+'₫'
 
@@ -406,30 +403,24 @@ export function InAppAlertCenter({
 
 
         <div className="neo-soft-topzone">
-          {selectedNotice? <div className="neo-soft-detail-nav">
-            <button type="button" onClick={backToList} aria-label="Quay lại thông báo">
-              <span aria-hidden="true">←</span> Danh sách thông báo
-            </button>
-            <span>Chi tiết đơn</span>
-          </div>:<>
-            <div className="app-alert-tabs-v2 neo-soft-tabs" aria-label="Lọc trạng thái thông báo">
-              <button type="button" className={filter==='all'?'active':''}
-                onClick={()=>setFilter('all')}>Tất cả <span>{feed.total}</span></button>
-              <button type="button" className={filter==='action'?'active':''}
-                onClick={()=>setFilter('action')}>Cần xử lý <span>{actionCount}</span></button>
-              <button type="button" className={filter==='unread'?'active':''}
-                onClick={()=>setFilter('unread')}>Chưa đọc <span>{unread}</span></button>
-            </div>
-            <div className="neo-soft-hub-line">
-              <label htmlFor="neo-soft-hub-select">Lọc HUB</label>
-              <select id="neo-soft-hub-select" value={hub} onChange={e=>setHub(e.target.value)}>
-                <option value="all">Tất cả HUB</option>
-                {hubs.map(x=><option key={x} value={x}>{x}</option>)}
-                <option value="unknown">Chưa xác định HUB</option>
-              </select>
-              <span className="neo-soft-result-count">{visible.length} đơn</span>
-            </div>
-          </>}
+          <div className="app-alert-tabs-v2 neo-soft-tabs" aria-label="Lọc trạng thái thông báo">
+            <button type="button" className={filter==='all'?'active':''}
+              onClick={()=>{setFilter('all');setSelectedId(null)}}>Tất cả <span>{feed.total}</span></button>
+            <button type="button" className={filter==='action'?'active':''}
+              onClick={()=>{setFilter('action');setSelectedId(null)}}>Cần xử lý <span>{actionCount}</span></button>
+            <button type="button" className={filter==='unread'?'active':''}
+              onClick={()=>{setFilter('unread');setSelectedId(null)}}>Chưa đọc <span>{unread}</span></button>
+          </div>
+          <div className="neo-soft-hub-line">
+            <label htmlFor="neo-soft-hub-select">Lọc HUB</label>
+            <select id="neo-soft-hub-select" value={hub}
+              onChange={e=>{setHub(e.target.value);setSelectedId(null)}}>
+              <option value="all">Tất cả HUB</option>
+              {hubs.map(x=><option key={x} value={x}>{x}</option>)}
+              <option value="unknown">Chưa xác định HUB</option>
+            </select>
+            <span className="neo-soft-result-count">{visible.length} đơn</span>
+          </div>
         </div>
 
         <div ref={listRef} className="app-alert-list app-alert-list-v2 neo-soft-content">
@@ -440,71 +431,6 @@ export function InAppAlertCenter({
             ?<div className="app-alert-empty app-alert-empty-v2">Thông báo đã tắt. Không gửi yêu cầu cập nhật.</div>
             :loading
             ?<div className="app-alert-empty app-alert-empty-v2">Đang tải thông báo…</div>
-            :selectedNotice
-            ?<div className="neo-soft-detail">
-              <div className="neo-soft-detail-summary">
-                <div className="neo-soft-detail-status">
-                  <span className={'neo-soft-status neo-soft-status-'+tone(selectedNotice)}>{selectedNotice.title}</span>
-                  <time>{when(selectedNotice.created_at)}</time>
-                </div>
-                <div className="neo-soft-detail-identifiers">
-                  <strong>{selectedNotice.order_code??selectedNotice.message??'Thông báo hệ thống'}</strong>
-                  {selectedNotice.cod!==null&&selectedNotice.cod!==undefined&&
-                    <b>{money(selectedNotice.cod)}</b>}
-                </div>
-                {selectedNotice.source==='tracking'&&<div className="neo-soft-detail-mvd">
-                  <span>MVD</span><strong>{selectedNotice.tracking_number||'Chưa có mã vận đơn'}</strong>
-                </div>}
-                <div className="neo-soft-detail-hub">
-                  {selectedNotice.receive_status==='RECEIVED'
-                    ?'Đã nhận · Lịch sử'
-                    :selectedNotice.destination_hub||'Chưa xác định HUB'}
-                </div>
-              </div>
-              <div className="neo-soft-detail-sheet">
-                <section className="neo-soft-detail-section" aria-label="Thông tin đơn">
-                  <h3 className="neo-soft-section-title">Thông tin đơn</h3>
-                  <dl className="neo-soft-kv">
-                    <div><dt>Username</dt><dd>{selectedNotice.username||'Chưa có'}</dd></div>
-                    <div><dt>Đơn vị vận chuyển</dt><dd>{selectedNotice.carrier||'Chưa có'}</dd></div>
-                    <div><dt>Nhận hàng</dt><dd>{selectedNotice.receive_status==='WAITING_RECEIVE'
-                      ?'Chờ xác nhận':selectedNotice.receive_status==='RECEIVED'?'Đã nhận':'Chưa nhận hàng'}</dd></div>
-                  </dl>
-                </section>
-                {selectedNotice.source==='tracking'&&<section className="neo-soft-detail-section">
-                  <h3 className="neo-soft-section-title">Sản phẩm <span>{selectedNotice.products?.length??0}</span></h3>
-                  {selectedNotice.products?.length
-                    ?selectedNotice.products.map((item,i)=><div key={i} className="neo-soft-product">
-                      <div><strong>{item.product_name}</strong>
-                        {item.variant&&<span>{item.variant}</span>}</div>
-                      <b>×{item.quantity}</b>
-                    </div>)
-                    :<p className="neo-soft-muted">Chưa có chi tiết sản phẩm.</p>}
-                </section>}
-                {selectedNotice.recipient_name&&<section className="neo-soft-detail-section">
-                  <h3 className="neo-soft-section-title">Người nhận</h3>
-                  <p className="neo-soft-recipient">{selectedNotice.recipient_name}
-                    {selectedNotice.recipient_phone&&<span> · {selectedNotice.recipient_phone}</span>}</p>
-                  {selectedNotice.recipient_address&&<p className="neo-soft-muted">{selectedNotice.recipient_address}</p>}
-                </section>}
-                <section className="neo-soft-detail-section">
-                  <h3 className="neo-soft-section-title">Hành trình <span>{selectedNotice.timeline?.length??0} cập nhật</span></h3>
-                  {selectedNotice.timeline?.length
-                    ?<ol className="neo-soft-timeline">{selectedNotice.timeline.map(step=>
-                      <li key={step.id}>
-                        <strong>{step.label}</strong><time>{when(step.created_at)}</time>
-                        {step.reason&&<small>{step.reason}</small>}
-                      </li>)}</ol>
-                    :<p className="neo-soft-muted">Chưa có lịch sử vận chuyển.</p>}
-                </section>
-              </div>
-              <div className="neo-soft-detail-actions">
-                {!selectedNotice.is_read&&<button type="button" disabled={pending}
-                  onClick={()=>void mark(selectedNotice)}>Đánh dấu đã đọc</button>}
-                {safeTarget(selectedNotice)&&<button type="button" className="primary"
-                  onClick={()=>void openAlert(selectedNotice)}>Mở đơn trong ERP <span>↗</span></button>}
-              </div>
-            </div>
             :!visible.length
             ?<div className="app-alert-empty app-alert-empty-v2">
                <span className="app-alert-empty-icon-v2"><CheckIcon/></span>
@@ -512,9 +438,12 @@ export function InAppAlertCenter({
                <small>Thử chọn HUB khác hoặc thay đổi bộ lọc trạng thái.</small>
              </div>
             :<div className="neo-soft-notice-list">{visible.map(row=>
-              <article key={row.id} className={'neo-soft-notice neo-soft-'+tone(row)+(row.is_read?' read':' unread')}>
-                <button type="button" className="neo-soft-notice-main" onClick={()=>openDetail(row)}
-                  aria-label={'Xem chi tiết đơn '+(row.order_code??row.title)}>
+              <article key={row.id} className={'neo-soft-notice neo-soft-'+tone(row)+(row.is_read?' read':' unread')+(selectedId===row.id?' expanded':'')}>
+                <button type="button" className="neo-soft-notice-main"
+                  onClick={()=>toggleOrder(row.id)}
+                  aria-label={(selectedId===row.id?'Thu gọn':'Xem chi tiết')+' đơn '+(row.order_code??row.title)}
+                  aria-expanded={selectedId===row.id}
+                  aria-controls={'neo-soft-inline-'+row.id}>
                   <div className="neo-soft-notice-first">
                     <span className={'neo-soft-status neo-soft-status-'+tone(row)}>
                       <span className="neo-soft-status-dot" aria-hidden="true"/>
@@ -540,9 +469,50 @@ export function InAppAlertCenter({
                     {row.requires_action&&!row.is_resolved&&
                       <span className="neo-soft-action-mark" title="Cần xử lý" aria-label="Cần xử lý">!</span>}
                     {!row.is_read&&<span className="neo-soft-unread-mark" title="Chưa đọc" aria-label="Chưa đọc"/>}
-                    <span className="neo-soft-chevron" aria-hidden="true">›</span>
+                    <span className="neo-soft-chevron" aria-hidden="true">{selectedId===row.id?'⌃':'⌄'}</span>
                   </div>
                 </button>
+                {selectedId===row.id&&<div className="neo-soft-expanded" id={'neo-soft-inline-'+row.id}
+                  role="region" aria-label={'Thông tin chi tiết đơn '+(row.order_code??row.title)}>
+                  <div className="neo-soft-expanded-kv">
+                    {row.username&&<div><span>Username</span><span>{row.username}</span></div>}
+                    {row.carrier&&<div><span>ĐVVC</span><span>{row.carrier}</span></div>}
+                    {row.receive_status&&<div><span>Nhận hàng</span><span>{row.receive_status==='WAITING_RECEIVE'
+                      ?'Chờ xác nhận':row.receive_status==='RECEIVED'?'Đã nhận':'Chưa nhận'}</span></div>}
+                  </div>
+                  {row.source==='tracking'&&<section className="neo-soft-expanded-section">
+                    <h3>Sản phẩm <span>{row.products?.length??0}</span></h3>
+                    {row.products?.length
+                      ?row.products.map((item,i)=><div key={i} className="neo-soft-inline-product">
+                        <span>{item.product_name}{item.variant?' · '+item.variant:''}</span>
+                        <span>×{item.quantity}</span>
+                      </div>)
+                      :<p className="neo-soft-inline-empty">Chưa có chi tiết sản phẩm.</p>}
+                  </section>}
+                  {row.recipient_name&&<section className="neo-soft-expanded-section">
+                    <h3>Người nhận</h3>
+                    <p className="neo-soft-inline-recipient">
+                      {row.recipient_name}{row.recipient_phone?' · '+row.recipient_phone:''}
+                    </p>
+                    {row.recipient_address&&<p className="neo-soft-inline-address">{row.recipient_address}</p>}
+                  </section>}
+                  <section className="neo-soft-expanded-section">
+                    <h3>Hành trình <span>{row.timeline?.length??0} cập nhật</span></h3>
+                    {row.timeline?.length
+                      ?<ol className="neo-soft-inline-timeline">{row.timeline.map(step=>
+                        <li key={step.id}>
+                          <span>{step.label}</span><time>{when(step.created_at)}</time>
+                          {step.reason&&<small>{step.reason}</small>}
+                        </li>)}</ol>
+                      :<p className="neo-soft-inline-empty">Chưa có lịch sử vận chuyển.</p>}
+                  </section>
+                  <div className="neo-soft-expanded-actions">
+                    {!row.is_read&&<button type="button" disabled={pending}
+                      onClick={()=>void mark(row)}>Đánh dấu đã đọc</button>}
+                    {safeTarget(row)&&<button type="button" onClick={()=>void openAlert(row)}>
+                      Mở đơn trong ERP ↗</button>}
+                  </div>
+                </div>}
               </article>
             )}</div>}
         </div>
