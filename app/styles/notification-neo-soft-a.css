@@ -385,3 +385,254 @@
   .neo-soft-v1 .app-alert-panel-title-v2 p{max-width:135px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .neo-soft-v1 .neo-soft-header-tools{gap:1px!important}
 }
+
+
+/* =======================================================================
+   Neo Soft A · Readability remediation based on actual 1536×960 screenshots
+   Palette contract: neutral surfaces, charcoal content, color only for
+   semantic alert state. Targets 11-13px operational text at normal zoom.
+   Scoped ONLY to notification drawer.
+   ======================================================================= */
+.neo-soft-v1.app-alert-panel-v2{
+  --notice-ink:#253746;
+  --notice-body:#35495a;
+  --notice-muted:#596b7b;
+  --notice-border:#e2e8ed;
+  --notice-surface:#ffffff;
+  --notice-background:#f7f8fa;
+  --notice-accent:#276a6c;
+  width:min(408px,94vw)!important;
+  background:var(--notice-background)!important;
+  color:var(--notice-ink)!important;
+  font-family:inherit!important;
+}
+.neo-soft-v1 .app-alert-panel-head-v2{
+  background:#fff!important;
+  border-bottom:1px solid var(--notice-border)!important;
+}
+.neo-soft-v1 .app-alert-panel-icon-v2{
+  background:#f1f4f5!important;
+  border-color:#e2e8ec!important;
+  color:#4b6170!important;
+}
+.neo-soft-v1 .app-alert-panel-title-v2 h2{
+  color:var(--notice-ink)!important;font-size:14px!important;font-weight:800!important;
+}
+.neo-soft-v1 .app-alert-panel-title-v2 p{
+  color:var(--notice-muted)!important;font-size:10.5px!important;
+}
+.neo-soft-v1 .neo-soft-header-tools .neo-soft-tool{
+  color:#516373!important;
+}
+.neo-soft-v1 .neo-soft-header-tools .neo-soft-tool:hover:not(:disabled){
+  background:#f2f4f6!important;color:#284357!important;border-color:#dce4e9!important;
+}
+.neo-soft-v1 .neo-soft-header-tools .neo-soft-tool[aria-pressed="false"]{
+  color:#995b48!important;background:#f9f0ec!important;
+}
+.neo-soft-v1 .neo-soft-topzone{
+  background:#fafbfc!important;
+  border-bottom:1px solid var(--notice-border)!important;
+}
+.neo-soft-v1 .app-alert-tabs-v2.neo-soft-tabs{
+  background:#f0f2f4!important;
+  border-color:#e2e7eb!important;
+}
+.neo-soft-v1 .neo-soft-tabs button{
+  color:#576979!important;font-size:10.5px!important;font-weight:680!important;
+}
+.neo-soft-v1 .neo-soft-tabs button.active{
+  color:#253746!important;font-weight:800!important;
+  background:#fff!important;box-shadow:0 1px 2px rgba(24,40,52,.07)!important;
+}
+.neo-soft-v1 .neo-soft-tabs button>span{
+  color:inherit!important;background:#e9edf0!important;
+}
+.neo-soft-v1 .neo-soft-tabs button.active>span{
+  background:#e8edf0!important;color:#253746!important;
+}
+.neo-soft-v1 .neo-soft-hub-line label,
+.neo-soft-v1 .neo-soft-result-count{
+  color:#596b7b!important;font-size:10.5px!important;
+}
+.neo-soft-v1 .neo-soft-hub-line select{
+  background:#fff!important;
+  border-color:#dfe6eb!important;
+  color:#35495a!important;
+  font-size:11px!important;font-weight:690!important;
+}
+.neo-soft-v1 .app-alert-list-v2.neo-soft-content{
+  background:var(--notice-background)!important;
+  padding:7px 8px 12px!important;
+}
+.neo-soft-v1 .neo-soft-notice-list{gap:5px!important}
+.neo-soft-v1 .neo-soft-notice{
+  background:#fff!important;
+  border:1px solid #e2e8ed!important;
+  box-shadow:none!important;border-radius:8px!important;
+}
+.neo-soft-v1 .neo-soft-notice:hover{
+  background:#fafcfd!important;border-color:#bccbd4!important;
+  box-shadow:none!important;
+}
+.neo-soft-v1 .neo-soft-notice.unread{
+  border-left:2px solid #8baaa8!important;
+}
+.neo-soft-v1 .neo-soft-notice-main{padding:10px 12px!important;gap:6px!important}
+.neo-soft-v1 .neo-soft-status{
+  font-size:11.5px!important;font-weight:740!important;
+  color:#425766!important;background:transparent!important;
+  line-height:1.35!important;
+}
+.neo-soft-v1 .neo-soft-status-dot{width:6px;height:6px}
+.neo-soft-v1 .neo-soft-status-success{color:#266c50!important}
+.neo-soft-v1 .neo-soft-status-warning{color:#8b612d!important}
+.neo-soft-v1 .neo-soft-status-info{color:#385e7c!important}
+.neo-soft-v1 .neo-soft-status-danger{color:#a34f4e!important}
+.neo-soft-v1 .neo-soft-notice-first time{
+  color:#637383!important;font-size:10px!important;font-weight:550!important;
+}
+.neo-soft-v1 .neo-soft-notice-code{
+  color:#283d4f!important;font-size:13px!important;font-weight:810!important;
+}
+.neo-soft-v1 .neo-soft-notice-cod{
+  color:#283d4f!important;font-size:12px!important;font-weight:800!important;
+}
+.neo-soft-v1 .neo-soft-notice-tracking{gap:7px!important}
+.neo-soft-v1 .neo-soft-notice-tracking>span{
+  color:#586d7b!important;font-size:10px!important;font-weight:680!important;
+}
+.neo-soft-v1 .neo-soft-notice-tracking>strong{
+  color:#24485c!important;font-size:12px!important;font-weight:790!important;
+  letter-spacing:0!important;
+}
+.neo-soft-v1 .neo-soft-notice-secondary{
+  color:#5c6e7c!important;
+  font-size:10.5px!important;
+}
+.neo-soft-v1 .neo-soft-notice-hub{
+  color:#5c6e7c!important;font-size:10.5px!important;
+}
+.neo-soft-v1 .neo-soft-notice-secondary small{
+  color:#647583!important;font-size:10px!important;
+}
+.neo-soft-v1 .neo-soft-chevron{
+  color:#617482!important;
+}
+.neo-soft-v1 .neo-soft-action-mark{
+  color:#8b602b!important;background:#f7f0e7!important;
+  border-radius:4px!important;
+}
+.neo-soft-v1 .neo-soft-unread-mark{
+  background:#427d79!important;
+}
+.neo-soft-v1 .neo-soft-detail-nav button{
+  color:#305770!important;font-size:11.5px!important;
+}
+.neo-soft-v1 .neo-soft-detail-nav span{
+  color:#5c6d7b!important;font-size:11px!important;
+}
+.neo-soft-v1 .neo-soft-detail-summary{
+  background:#fff!important;
+  border:1px solid var(--notice-border)!important;
+  border-radius:8px!important;padding:12px 13px!important;
+}
+.neo-soft-v1 .neo-soft-detail-status time{
+  color:#5d707f!important;font-size:10px!important;
+}
+.neo-soft-v1 .neo-soft-detail-identifiers>strong{
+  color:#253746!important;font-size:15px!important;font-weight:820!important;
+}
+.neo-soft-v1 .neo-soft-detail-identifiers>b{
+  color:#253746!important;font-size:13px!important;
+}
+.neo-soft-v1 .neo-soft-detail-mvd{
+  background:#f4f6f7!important;
+  border:1px solid #e7ecef!important;
+  border-radius:5px!important;
+  padding:8px 9px!important;
+}
+.neo-soft-v1 .neo-soft-detail-mvd>span{
+  color:#586b7a!important;font-size:10px!important;
+}
+.neo-soft-v1 .neo-soft-detail-mvd>strong{
+  color:#24485c!important;font-size:12.5px!important;font-weight:800!important;
+}
+.neo-soft-v1 .neo-soft-detail-hub{
+  color:#566a79!important;font-size:11.5px!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet{
+  background:#fff!important;border-color:var(--notice-border)!important;
+  border-radius:8px!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-detail-section{
+  padding:13px!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-detail-section + .neo-soft-detail-section{
+  border-top:1px solid #e9edf0!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-section-title{
+  font-size:12px!important;color:#253746!important;
+  font-weight:800!important;margin-bottom:11px!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-section-title span{
+  color:#687a88!important;font-size:10.5px!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-kv{gap:9px!important}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-kv>div{
+  font-size:11.5px!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-kv dt{
+  font-size:11px!important;color:#5d7080!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-kv dd{
+  color:#283d4f!important;font-size:11.5px!important;font-weight:710!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-product{
+  font-size:11.5px!important;line-height:1.5!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-product strong{
+  color:#2c4354!important;font-size:11.5px!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-product span{
+  color:#5c6f7f!important;font-size:10.5px!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-product b{
+  color:#354f61!important;font-size:11px!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-recipient{
+  color:#2f4656!important;font-size:11.5px!important;line-height:1.5!important;
+}
+.neo-soft-v1 .neo-soft-muted{
+  color:#596d7d!important;font-size:10.5px!important;line-height:1.55!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-timeline{
+  border-left-color:#d9e1e6!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-timeline li::before{
+  background:#829b9a!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-timeline strong{
+  color:#304658!important;font-size:11.5px!important;
+}
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-timeline time,
+.neo-soft-v1 .neo-soft-detail-sheet .neo-soft-timeline small{
+  color:#617382!important;font-size:10.5px!important;
+}
+.neo-soft-v1 .neo-soft-detail-actions button{
+  color:#2c5368!important;
+  background:#fff!important;
+  border-color:#d4dfe5!important;
+  font-size:11px!important;font-weight:740!important;
+}
+.neo-soft-v1 .neo-soft-detail-actions button.primary{
+  background:#305d69!important;border-color:#305d69!important;
+  color:#fff!important;
+}
+.neo-soft-v1 .neo-soft-error{
+  background:#fcf4f2!important;color:#8f4b3f!important;
+}
+.neo-soft-v1 .app-alert-empty-v2,
+.neo-soft-v1 .app-alert-empty-v2 small{
+  color:#526878!important;font-size:11px!important;
+}
