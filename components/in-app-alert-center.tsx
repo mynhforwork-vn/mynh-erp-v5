@@ -45,6 +45,32 @@ function CheckIcon(){
     stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"
     strokeLinejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
 }
+
+function ReadAllIcon(){
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
+    strokeLinejoin="round" aria-hidden="true">
+    <path d="m2.5 12 4 4L14 8"/>
+    <path d="m10 12 4 4 7.5-8"/>
+  </svg>
+}
+function TrackingIcon(){
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
+    strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 6h11v11H3zM14 10h4l3 4v3h-7"/>
+    <circle cx="7.5" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>
+  </svg>
+}
+function NotificationSwitchIcon({enabled}:{enabled:boolean}){
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
+    strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 3a6 6 0 0 0-6 6v4l-2 3h16l-2-3V9a6 6 0 0 0-6-6ZM10 20h4"/>
+    {!enabled&&<path d="M3 3 21 21"/>}
+  </svg>
+}
+
 function tone(row:Notice){
   if(row.severity==='critical')return 'danger'
   if(row.event_type==='DELIVERED')return 'success'
@@ -355,13 +381,26 @@ export function InAppAlertCenter({
             <span className="app-alert-panel-icon-v2"><BellIcon/></span>
             <div><h2>Thông báo</h2><p>Cập nhật đơn hàng theo HUB</p></div>
           </div>
-          <div className="app-alert-panel-actions-v2">
-            {unread>0&&<button type="button" className="app-alert-mark-all-v2"
-              disabled={pending} onClick={()=>void markAll()}>
-              <CheckIcon/><span>Đọc tất cả</span>
-            </button>}
-            <button type="button" className="app-alert-close-v2"
-              onClick={()=>setOpen(false)} disabled={pending} aria-label="Đóng"><CloseIcon/></button>
+          <div className="app-alert-panel-actions-v2 neo-soft-header-tools" role="group" aria-label="Thao tác thông báo">
+            <button type="button" className="neo-soft-tool" disabled={pending||unread===0||!trackingEnabled||notificationsEnabled!==true}
+              onClick={()=>void markAll()} title="Đánh dấu đã đọc tất cả" aria-label="Đánh dấu đã đọc tất cả">
+              <ReadAllIcon/>
+            </button>
+            <button type="button" className={'neo-soft-tool'+(notificationsEnabled===false?' is-off':'')}
+              onClick={toggleNotifications} title={notificationsEnabled===false?'Bật thông báo':'Tắt thông báo'}
+              aria-label={notificationsEnabled===false?'Bật thông báo':'Tắt thông báo'}
+              aria-pressed={notificationsEnabled===true}>
+              <NotificationSwitchIcon enabled={notificationsEnabled===true}/>
+            </button>
+            <button type="button" className="neo-soft-tool"
+              onClick={()=>{setOpen(false);router.push('/purchase/tracking')}}
+              title="Mở Cảnh báo vận chuyển" aria-label="Mở Cảnh báo vận chuyển">
+              <TrackingIcon/>
+            </button>
+            <button type="button" className="app-alert-close-v2 neo-soft-tool"
+              onClick={()=>setOpen(false)} disabled={pending} title="Đóng thông báo" aria-label="Đóng thông báo">
+              <CloseIcon/>
+            </button>
           </div>
         </header>
 
@@ -403,51 +442,62 @@ export function InAppAlertCenter({
             ?<div className="app-alert-empty app-alert-empty-v2">Đang tải thông báo…</div>
             :selectedNotice
             ?<div className="neo-soft-detail">
-              <div className="neo-soft-detail-intro">
-                <span className={'neo-soft-status neo-soft-status-'+tone(selectedNotice)}>{selectedNotice.title}</span>
-                <h3>{selectedNotice.order_code??selectedNotice.message??'Thông báo hệ thống'}</h3>
-                <p>{selectedNotice.receive_status==='RECEIVED'
-                  ?'Đã nhận — không nhóm theo HUB'
-                  :selectedNotice.destination_hub||'Chưa xác định HUB'}</p>
+              <div className="neo-soft-detail-summary">
+                <div className="neo-soft-detail-status">
+                  <span className={'neo-soft-status neo-soft-status-'+tone(selectedNotice)}>{selectedNotice.title}</span>
+                  <time>{when(selectedNotice.created_at)}</time>
+                </div>
+                <div className="neo-soft-detail-identifiers">
+                  <strong>{selectedNotice.order_code??selectedNotice.message??'Thông báo hệ thống'}</strong>
+                  {selectedNotice.cod!==null&&selectedNotice.cod!==undefined&&
+                    <b>{money(selectedNotice.cod)}</b>}
+                </div>
+                {selectedNotice.source==='tracking'&&<div className="neo-soft-detail-mvd">
+                  <span>MVD</span><strong>{selectedNotice.tracking_number||'Chưa có mã vận đơn'}</strong>
+                </div>}
+                <div className="neo-soft-detail-hub">
+                  {selectedNotice.receive_status==='RECEIVED'
+                    ?'Đã nhận · Lịch sử'
+                    :selectedNotice.destination_hub||'Chưa xác định HUB'}
+                </div>
               </div>
-              <section className="neo-soft-detail-section" aria-label="Tổng quan đơn hàng">
-                <div className="neo-soft-section-title">Thông tin đơn hàng</div>
-                <dl className="neo-soft-kv">
-                  <div><dt>Username</dt><dd>{selectedNotice.username||'Chưa có'}</dd></div>
-                  <div><dt>COD</dt><dd className="neo-soft-money">{money(selectedNotice.cod)}</dd></div>
-                  <div><dt>ĐVVC</dt><dd>{selectedNotice.carrier||'Chưa có'}</dd></div>
-                  <div><dt>Mã vận đơn</dt><dd>{selectedNotice.tracking_number||'Chưa có'}</dd></div>
-                  <div><dt>Trạng thái nhận</dt><dd>{selectedNotice.receive_status==='WAITING_RECEIVE'
-                    ?'Chờ xác nhận nhận hàng':selectedNotice.receive_status==='RECEIVED'
-                    ?'Đã nhận':'Chưa nhận hàng'}</dd></div>
-                </dl>
-              </section>
-              {selectedNotice.source==='tracking'&&<section className="neo-soft-detail-section">
-                <div className="neo-soft-section-title">Sản phẩm</div>
-                {selectedNotice.products?.length
-                  ?selectedNotice.products.map((item,i)=><div key={i} className="neo-soft-product">
-                    <div><strong>{item.product_name}</strong>
-                      {item.variant&&<span>{item.variant}</span>}</div>
-                    <b>×{item.quantity}</b>
-                  </div>)
-                  :<p className="neo-soft-muted">Chưa có chi tiết sản phẩm.</p>}
-              </section>}
-              {selectedNotice.recipient_name&&<section className="neo-soft-detail-section">
-                <div className="neo-soft-section-title">Người nhận</div>
-                <p className="neo-soft-recipient">{selectedNotice.recipient_name}
-                  {selectedNotice.recipient_phone&&<span> · {selectedNotice.recipient_phone}</span>}</p>
-                {selectedNotice.recipient_address&&<p className="neo-soft-muted">{selectedNotice.recipient_address}</p>}
-              </section>}
-              <section className="neo-soft-detail-section">
-                <div className="neo-soft-section-title">Lịch sử vận chuyển</div>
-                {selectedNotice.timeline?.length
-                  ?<ol className="neo-soft-timeline">{selectedNotice.timeline.map(step=>
-                    <li key={step.id}>
-                      <strong>{step.label}</strong><time>{when(step.created_at)}</time>
-                      {step.reason&&<small>{step.reason}</small>}
-                    </li>)}</ol>
-                  :<p className="neo-soft-muted">Chưa có lịch sử vận chuyển.</p>}
-              </section>
+              <div className="neo-soft-detail-sheet">
+                <section className="neo-soft-detail-section" aria-label="Thông tin đơn">
+                  <h3 className="neo-soft-section-title">Thông tin đơn</h3>
+                  <dl className="neo-soft-kv">
+                    <div><dt>Username</dt><dd>{selectedNotice.username||'Chưa có'}</dd></div>
+                    <div><dt>Đơn vị vận chuyển</dt><dd>{selectedNotice.carrier||'Chưa có'}</dd></div>
+                    <div><dt>Nhận hàng</dt><dd>{selectedNotice.receive_status==='WAITING_RECEIVE'
+                      ?'Chờ xác nhận':selectedNotice.receive_status==='RECEIVED'?'Đã nhận':'Chưa nhận hàng'}</dd></div>
+                  </dl>
+                </section>
+                {selectedNotice.source==='tracking'&&<section className="neo-soft-detail-section">
+                  <h3 className="neo-soft-section-title">Sản phẩm <span>{selectedNotice.products?.length??0}</span></h3>
+                  {selectedNotice.products?.length
+                    ?selectedNotice.products.map((item,i)=><div key={i} className="neo-soft-product">
+                      <div><strong>{item.product_name}</strong>
+                        {item.variant&&<span>{item.variant}</span>}</div>
+                      <b>×{item.quantity}</b>
+                    </div>)
+                    :<p className="neo-soft-muted">Chưa có chi tiết sản phẩm.</p>}
+                </section>}
+                {selectedNotice.recipient_name&&<section className="neo-soft-detail-section">
+                  <h3 className="neo-soft-section-title">Người nhận</h3>
+                  <p className="neo-soft-recipient">{selectedNotice.recipient_name}
+                    {selectedNotice.recipient_phone&&<span> · {selectedNotice.recipient_phone}</span>}</p>
+                  {selectedNotice.recipient_address&&<p className="neo-soft-muted">{selectedNotice.recipient_address}</p>}
+                </section>}
+                <section className="neo-soft-detail-section">
+                  <h3 className="neo-soft-section-title">Hành trình <span>{selectedNotice.timeline?.length??0} cập nhật</span></h3>
+                  {selectedNotice.timeline?.length
+                    ?<ol className="neo-soft-timeline">{selectedNotice.timeline.map(step=>
+                      <li key={step.id}>
+                        <strong>{step.label}</strong><time>{when(step.created_at)}</time>
+                        {step.reason&&<small>{step.reason}</small>}
+                      </li>)}</ol>
+                    :<p className="neo-soft-muted">Chưa có lịch sử vận chuyển.</p>}
+                </section>
+              </div>
               <div className="neo-soft-detail-actions">
                 {!selectedNotice.is_read&&<button type="button" disabled={pending}
                   onClick={()=>void mark(selectedNotice)}>Đánh dấu đã đọc</button>}
@@ -474,8 +524,14 @@ export function InAppAlertCenter({
                   </div>
                   <div className="neo-soft-notice-primary">
                     <strong className="neo-soft-notice-code">{row.order_code??row.message??'Thông báo hệ thống'}</strong>
-                    <strong className="neo-soft-notice-cod">{money(row.cod)}</strong>
+                    {row.cod!==null&&row.cod!==undefined&&<span className="neo-soft-notice-cod">{money(row.cod)}</span>}
                   </div>
+                  {row.source==='tracking'&&<div className="neo-soft-notice-tracking">
+                    <span>MVD</span>
+                    <strong title={row.tracking_number||'Chưa có mã vận đơn'}>
+                      {row.tracking_number||'Chưa có mã vận đơn'}
+                    </strong>
+                  </div>}
                   <div className="neo-soft-notice-secondary">
                     <span className="neo-soft-notice-hub">{row.receive_status==='RECEIVED'
                       ?'Đã nhận · Lịch sử':row.destination_hub||'Chưa xác định HUB'}</span>
@@ -491,14 +547,7 @@ export function InAppAlertCenter({
             )}</div>}
         </div>
 
-        <footer className="app-alert-panel-foot-v2 neo-soft-footer">
-          <button type="button" aria-pressed={notificationsEnabled===true}
-            onClick={toggleNotifications}>{notificationsEnabled===false?'Bật thông báo':'Tắt thông báo'}</button>
-          <button type="button" onClick={()=>{
-            setOpen(false);router.push('/purchase/tracking')
-          }}>Cảnh báo vận chuyển ↗</button>
-          {feed.migration_pending&&<small>Thông báo phân hệ khác đang chờ kích hoạt.</small>}
-        </footer>
+
       </aside>
     </>}
   </>
