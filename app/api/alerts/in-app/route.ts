@@ -27,10 +27,37 @@ export async function GET(request:Request){
   const legacyRows=(legacy.data??[]) as LegacyAlert[]
   const orderCodes=[...new Set(legacyRows.flatMap(row=>row.order_codes??[]).filter(Boolean))]
   const orderResult=orderCodes.length
-    ?await supabase.from('orders').select('id,shopee_order_id,receive_status')
+    ?await supabase.from('orders').select('id,shopee_order_id,receive_status,destination_hub,cod,recipient_name,recipient_phone,recipient_address,order_status,erp_users(username),order_items(product_name,variant,quantity),shipments(tracking_number,carrier)')
       .in('shopee_order_id',orderCodes).is('archived_at',null)
     :{data:[],error:null}
   const tracking=buildOrderNotices(legacyRows,orderResult.error?[]:(orderResult.data??[]))
+  // Detail fields are attached to the *same* GET response. Switching HUB, opening
+  // an order or viewing its timeline does not create additional Cloudflare calls.
+  const canViewRecipient=['admin','operator'].includes(String(user.app_metadata?.role??'viewer'))
+  const details=new Map((orderResult.data??[]).map((o:Record<string,unknown>)=>[o.shopee_order_id,o]))
+  const enriched=tracking.map(row=>{
+    const order=details.get(row.order_code)
+    if(!order)return row
+    const items=Array.isArray(order.order_items)?order.order_items:[]
+    const shipments=Array.isArray(order.shipments)?order.shipments:[]
+    const userAccount=Array.isArray(order.erp_users)?order.erp_users[0]:order.erp_users
+    const shipment=shipments.find((x:Record<string,unknown>)=>x.tracking_number)??shipments[0]
+    return {...row,
+      destination_hub:String(order.destination_hub??row.destination_hub??''),
+      username:typeof userAccount?.username==='string'?userAccount.username:null,
+      cod:order.cod===null?null:Number(order.cod),
+      recipient_name:canViewRecipient?order.recipient_name:null,
+      recipient_phone:canViewRecipient?order.recipient_phone:null,
+      recipient_address:canViewRecipient?order.recipient_address:null,
+      tracking_number:typeof shipment?.tracking_number==='string'?shipment.tracking_number:null,
+      carrier:typeof shipment?.carrier==='string'?shipment.carrier:null,
+      products:items.map((item:Record<string,unknown>)=>({
+        product_name:String(item.product_name??'Sản phẩm'),
+        variant:typeof item.variant==='string'?item.variant:null,
+        quantity:Number(item.quantity)||1,
+      })),
+    }
+  })
 
   // Migration 0068 is additive. Pull system notices only when its RPC exists.
   // Ignore its legacy tracking rows; they group by alert type rather than order.
@@ -42,7 +69,7 @@ export async function GET(request:Request){
   const systems=(!newer.error&&Array.isArray(newer.data?.items)
     ?newer.data.items.filter((x:Record<string,unknown>)=>x.source==='system')
     :[]) as SystemNotice[]
-  const combined:(TrackingOrderNotice|SystemNotice)[]=[...tracking,...systems]
+  const combined:(TrackingOrderNotice|SystemNotice)[]=[...enriched,...systems]
   const newest=combined.sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))
   const relevant=newest.filter(x=>category==='all'||x.category===category)
     .filter(x=>view==='all'||(view==='unread'&&!x.is_read)||
