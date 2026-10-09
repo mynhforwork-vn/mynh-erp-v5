@@ -22,7 +22,7 @@ jobs:
       - name: Validate exact Production base Worker, GitHub SHA and preview URLs
         run: |
           node <<'NODE'
-          const fs=require('fs')
+          const fs=await import('node:fs')
           const wrangler=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'))
           if(wrangler.name!=='mynh-erp-v5')throw Error('Incorrect Wrangler Worker target')
           const hdr={Authorization:'Bearer '+process.env.GH_TOKEN,Accept:'application/vnd.github+json'}
