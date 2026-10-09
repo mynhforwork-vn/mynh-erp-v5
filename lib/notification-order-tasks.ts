@@ -52,7 +52,7 @@ export function buildOrderWorkNotices(orders:TaskOrder[]):OrderWorkNotice[]{
    created_at:order.order_date,is_read:true,requires_action:true,is_resolved:false,
    legacy_ids:[],notification_id:null,order_id:order.id,
    order_code:order.shopee_order_id||order.id,destination_hub:missing?String(order.destination_hub??''):'',
-   group_count:0,target_path:missing?'/purchase/orders?order='+encodeURIComponent(order.id):
+   group_count:0,target_path:missing?'/purchase/orders?range=all&order='+encodeURIComponent(order.id)+'&mode=edit':
      '/warehouse/receive?state=all',receive_status:String(order.receive_status??''),
    warehouse_status:String(order.warehouse_status??''),shipping_service:String(order.shipping_service??'STANDARD'),
    username:username??null,cod:order.cod===null?null:Number(order.cod),
