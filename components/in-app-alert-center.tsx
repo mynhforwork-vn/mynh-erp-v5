@@ -397,8 +397,8 @@ export function InAppAlertCenter({
           </>}
         </div>
 
-        {error&&<div role="alert" className="neo-soft-error">{error}</div>}
         <div ref={listRef} className="app-alert-list app-alert-list-v2 neo-soft-content">
+          {error&&<div role="alert" className="neo-soft-error">{error}</div>}
           {!trackingEnabled
             ?<div className="app-alert-empty app-alert-empty-v2">Auto Tracking đang tắt. Không gọi API thông báo.</div>
             :notificationsEnabled===false
