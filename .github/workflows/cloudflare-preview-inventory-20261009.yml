@@ -1,0 +1,52 @@
+name: Inventory MYNH Preview Workers (read only)
+on:
+  push:
+    branches:
+      - audit/cloudflare-requests-20261009
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Inventory Workers, routes, deploy workflows
+        run: |
+          node <<'NODE'
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID, token=process.env.CLOUDFLARE_API_TOKEN
+          if(!account||!token)throw Error('Missing existing Cloudflare API credentials')
+          const base='https://api.cloudflare.com/client/v4'
+          async function cf(path){
+            const resp=await fetch(base+path,{headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(15000)})
+            const data=await resp.json()
+            return {status:resp.status,success:data.success??false,errors:(data.errors??[]).map(e=>({code:e.code,message:e.message})),result:data.result}
+          }
+          const scripts=await cf('/accounts/'+account+'/workers/scripts?per_page=100')
+          if(!scripts.success){console.log('LIST_WORKERS_ERROR '+JSON.stringify({status:scripts.status,errors:scripts.errors}));process.exit(2)}
+          const workers=Array.isArray(scripts.result)?scripts.result:[]
+          console.log('WORKERS '+JSON.stringify(workers.map(w=>({id:w.id,created_on:w.created_on,modified_on:w.modified_on,deployments:w.deployments,usage_model:w.usage_model}))))
+          const subdomain=await cf('/accounts/'+account+'/workers/subdomain')
+          console.log('WORKERS_SUBDOMAIN '+JSON.stringify({status:subdomain.status,subdomain:subdomain.result?.subdomain??null}))
+          const domains=await cf('/accounts/'+account+'/workers/domains')
+          console.log('WORKERS_DOMAINS '+JSON.stringify({status:domains.status,success:domains.success,domains:Array.isArray(domains.result)?domains.result.map(x=>({hostname:x.hostname,service:x.service,environment:x.environment,zone_id:x.zone_id})):[],errors:domains.errors}))
+          for(const w of workers){
+            const name=w.id??''
+            if(name==='mynh-erp-v5'||name==='erp-auto-tracking')continue
+            if(!/mynh|erp|desktop|stage|notify|polish/i.test(name))continue
+            const schedules=await cf('/accounts/'+account+'/workers/scripts/'+encodeURIComponent(name)+'/schedules')
+            console.log('WORKER_SCHEDULE '+JSON.stringify({name,status:schedules.status,crons:schedules.result?.schedules??[],errors:schedules.errors}))
+          }
+          const gh=await fetch('https://api.github.com/repos/'+process.env.GITHUB_REPOSITORY+'/actions/workflows?per_page=100',{
+            headers:{Authorization:'Bearer '+process.env.GH_TOKEN,Accept:'application/vnd.github+json'},
+            signal:AbortSignal.timeout(15000),
+          })
+          if(gh.ok){
+            const r=await gh.json()
+            console.log('DEPLOY_WORKFLOWS '+JSON.stringify((r.workflows??[]).map(x=>({id:x.id,name:x.name,path:x.path,state:x.state}))))
+          }else console.log('GITHUB_WORKFLOWS_HTTP '+gh.status)
+          NODE
