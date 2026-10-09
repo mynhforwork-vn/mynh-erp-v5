@@ -1,0 +1,87 @@
+/* Tracking V3.4 — compact, accessible icon-only manual synchronization.
+   Scoped to the tracking module; no changes to tables in other modules. */
+.tracking-screen-v2 .tracking-row-actions{
+  display:flex;
+  justify-content:flex-start;
+  align-items:center;
+  gap:4px;
+  min-height:26px;
+}
+.tracking-screen-v2 .tracking-sync-icon-wrap{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+}
+.tracking-screen-v2 .tracking-sync-icon-button{
+  display:inline-grid;
+  place-items:center;
+  width:29px;
+  height:29px;
+  padding:0;
+  border-radius:7px;
+  border:1px solid #d6e1e8;
+  background:#fff;
+  color:#41677d;
+  font:inherit;
+  cursor:pointer;
+  transition:background-color .15s ease,border-color .15s ease;
+}
+.tracking-screen-v2 .tracking-sync-icon-button:hover:not(:disabled){
+  background:#edf5f8;
+  border-color:#a7c6d2;
+  color:#245b76;
+}
+.tracking-screen-v2 .tracking-sync-icon-button:disabled{
+  opacity:.58;
+  cursor:progress;
+}
+.tracking-screen-v2 .tracking-sync-icon-button:focus-visible{
+  outline:2px solid #2877a9;
+  outline-offset:2px;
+}
+.tracking-screen-v2 .tracking-sync-icon{
+  display:block;
+  transform-origin:50% 50%;
+}
+.tracking-screen-v2 .tracking-sync-icon.rotating{
+  animation:tracking-icon-rotate .8s linear infinite;
+}
+@keyframes tracking-icon-rotate{
+  to{transform:rotate(360deg)}
+}
+@media(prefers-reduced-motion:reduce){
+  .tracking-screen-v2 .tracking-sync-icon.rotating{animation:none}
+}
+.tracking-screen-v2 .tracking-sync-feedback{
+  position:absolute;
+  right:0;
+  top:calc(100% + 4px);
+  z-index:20;
+  max-width:210px;
+  width:max-content;
+  border-radius:7px;
+  padding:5px 8px;
+  border:1px solid #d5e1e7;
+  background:#fff;
+  box-shadow:0 3px 12px rgba(40,63,79,.12);
+  font-size:10px;
+  line-height:1.45;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+.tracking-screen-v2 .tracking-status-strip-v2 .tracking-status-metric{
+  min-width:116px;
+}
+.tracking-screen-v2 .tracking-status-strip-v2 .tracking-status-metric > span{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.tracking-screen-v2 .tracking-filter-segments-v2{
+  min-width:0;
+  max-width:100%;
+  overflow-x:auto;
+  scrollbar-width:thin;
+}
