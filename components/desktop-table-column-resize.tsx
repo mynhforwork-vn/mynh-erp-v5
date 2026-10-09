@@ -15,13 +15,17 @@ export function DesktopTableColumnResize() {
 
     const mq = window.matchMedia('(min-width: 901px)')
     const clamp = (v:number) => Math.max(76, Math.min(680, Math.round(v)))
+    const clampForHeader = (th:HTMLTableCellElement,v:number) =>
+      th.closest('table.tracking-hub-table-v2')
+        ? Math.max(76,Math.min(2400,Math.round(v)))
+        : clamp(v)
     const compactCol = (th:HTMLTableCellElement) =>
       th.matches('.bulk-select-col, .select-col, .row-actions-head, .checkbox-col')
     const headerWidth = (th:HTMLTableCellElement) =>
       th.classList.contains('tracking-action-head') ? 44 :
       compactCol(th)
         ? Math.max(24, Math.min(140, Math.round(th.getBoundingClientRect().width)))
-        : clamp(th.getBoundingClientRect().width)
+        : clampForHeader(th,th.getBoundingClientRect().width)
     const headerName = (th:HTMLTableCellElement) => {
       const clone = th.cloneNode(true) as HTMLElement
       clone.querySelectorAll('.mynh-column-resize-grip').forEach(x => x.remove())
@@ -41,8 +45,9 @@ export function DesktopTableColumnResize() {
         const raw = window.localStorage.getItem(tableId(table))
         const obj = raw ? JSON.parse(raw) : null
         if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return {}
+        const ceiling=table.classList.contains('tracking-hub-table-v2')?2400:680
         return Object.fromEntries(Object.entries(obj).filter(([k,v]) =>
-          k.length < 160 && typeof v === 'number' && Number.isFinite(v) && v >= 76 && v <= 680
+          k.length < 160 && typeof v === 'number' && Number.isFinite(v) && v >= 76 && v <= ceiling
         )) as Record<string,number>
       } catch { return {} }
     }
@@ -63,26 +68,59 @@ export function DesktopTableColumnResize() {
     }
     // Tracking panes need responsive widths even when manual widths were saved.
     // Saved preferences remain untouched: panel-fit widths are presentation only.
-    const fitTrackingPanel = (table:HTMLTableElement, ths:HTMLTableCellElement[], widths:number[]) => {
-      if(!table.closest('.tracking-content-workspace.with-panel'))return widths
+    const fitTrackingPanel = (
+      table:HTMLTableElement,ths:HTMLTableCellElement[],
+      preferred:number[],overrides:Record<string,number>
+    ) => {
       const lane=table.closest('.tracking-hub-table-wrap-v2') as HTMLElement|null
-      const target=Math.max(680,Math.floor(lane?.clientWidth??0)-2)
-      const fitted=[...widths]
-      let surplus=fitted.reduce((sum,v)=>sum+v,0)-target
-      const priorities:[string,number][]=[
-        ['tracking-col-product',112],
-        ['tracking-col-recipient',132],
-        ['tracking-col-status',124],
-        ['tracking-col-order',138],
-        ['tracking-col-cod',80],
-      ]
-      for(const [column,minWidth] of priorities){
-        if(surplus<=0)break
-        const index=ths.findIndex(th=>th.classList.contains(column))
-        if(index<0)continue
-        const cut=Math.min(surplus,Math.max(0,fitted[index]-minWidth))
-        fitted[index]-=cut
-        surplus-=cut
+      if(!lane)return preferred
+      const withPanel=Boolean(table.closest('.tracking-content-workspace.with-panel'))
+      // Reserve an internal scroll only when a right panel leaves <680px.
+      const target=Math.max(withPanel?680:0,Math.floor(lane.clientWidth)-2)
+      const fitted=[...preferred]
+      const columnIndex=(key:string)=>ths.findIndex(th=>th.classList.contains('tracking-col-'+key))
+      let excess=fitted.reduce((sum,v)=>sum+v,0)-target
+      if(excess>0){
+        const minByColumn:Record<string,number>=withPanel
+          ? {product:112,recipient:132,status:124,order:138,cod:80}
+          : {product:146,recipient:168,status:150,order:146,cod:84}
+        // Compress uncustomized cells first; only shrink a custom width as needed.
+        const priority=['product','recipient','status','order','cod']
+        for(const custom of [false,true]){
+          for(const name of priority){
+            if(excess<=0)break
+            const index=columnIndex(name)
+            if(index<0)continue
+            const saved=Boolean(overrides[headerName(ths[index])])
+            if(saved!==custom)continue
+            const reduction=Math.min(excess,Math.max(0,fitted[index]-minByColumn[name]))
+            fitted[index]-=reduction
+            excess-=reduction
+          }
+        }
+      }else if(excess<0){
+        let remainder=-excess
+        const flex=['product','recipient'].map(columnIndex).filter(i=>i>=0)
+        const uncustomized=flex.filter(i=>!overrides[headerName(ths[i])])
+        // At typical laptop widths a hand-resized column stays exact.
+        // Ultra-wide spare space is shared to avoid a single giant column.
+        if(uncustomized.length && remainder<=300){
+          const each=Math.floor(remainder/uncustomized.length)
+          uncustomized.forEach((index,i)=>{
+            const addition=i===uncustomized.length-1?remainder-each*i:each
+            fitted[index]+=addition
+          })
+        }else if(flex.length){
+          const each=Math.floor(remainder/flex.length)
+          flex.forEach((index,i)=>{
+            fitted[index]+=i===flex.length-1?remainder-each*i:each
+          })
+        }else{
+          // Column visibility can hide both flexible fields: fill the largest
+          // remaining information column, never Selection or Xử lý.
+          const available=['order','status','cod'].map(columnIndex).find(i=>i>=0)
+          if(available!==undefined)fitted[available]+=remainder
+        }
       }
       return fitted
     }
@@ -106,11 +144,11 @@ export function DesktopTableColumnResize() {
           ? Object.entries(trackingDefaults).find(([name])=>th.classList.contains(name))?.[1]
           : undefined)
         || visibleWidths[i])
-      const assigned = isTracking ? fitTrackingPanel(table,ths,preferred) : preferred
+      const assigned = isTracking ? fitTrackingPanel(table,ths,preferred,overrides) : preferred
       let total = 0
       ths.forEach((th,i) => {
         const width = th.classList.contains('tracking-action-head') ? 44 :
-          compactCol(th) ? Math.max(24, Math.min(140, assigned[i])) : clamp(assigned[i])
+          compactCol(th) ? Math.max(24, Math.min(140, assigned[i])) : clampForHeader(th,assigned[i])
         total += width
         th.style.setProperty('width', width+'px', 'important')
         th.style.setProperty('min-width', width+'px', 'important')
@@ -169,7 +207,7 @@ export function DesktopTableColumnResize() {
           document.body.style.userSelect='none'
           grip.classList.add('resizing')
           const move = (event:PointerEvent) => {
-            const colWidth = clamp(before+event.clientX-startX)
+            const colWidth = clampForHeader(th,before+event.clientX-startX)
             const ths = headerCells(table)
             const old = baseline.reduce((sum,x) => sum+x,0)
             table.style.setProperty('width', (old-before+colWidth)+'px','important')
@@ -184,7 +222,7 @@ export function DesktopTableColumnResize() {
             window.removeEventListener('pointercancel',finish,true)
             grip.classList.remove('resizing')
             document.body.style.userSelect=originalSelection
-            const next=clamp(before+event.clientX-startX)
+            const next=clampForHeader(th,before+event.clientX-startX)
             const widths=readSaved(table)
             widths[label]=next
             save(table,widths)
@@ -210,9 +248,9 @@ export function DesktopTableColumnResize() {
           e.preventDefault();e.stopPropagation()
           const table=th.closest('table') as HTMLTableElement | null
           if(!table)return
-          const current=clamp(th.getBoundingClientRect().width)
+          const current=clampForHeader(th,th.getBoundingClientRect().width)
           const widths=readSaved(table)
-          widths[label]=clamp(current+(e.key==='ArrowRight'?1:-1)*(e.shiftKey?24:12))
+          widths[label]=clampForHeader(th,current+(e.key==='ArrowRight'?1:-1)*(e.shiftKey?24:12))
           save(table,widths);freezeWidths(table,widths)
         })
       })

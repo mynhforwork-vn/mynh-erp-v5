@@ -93,11 +93,12 @@ try{
       const compactOK=Boolean(v.action&&v.action.width<=50)
         &&(!v.icon||v.icon.width<=25&&v.icon.height<=25)
       const tableFits=Boolean(v.table&&v.tableWrap)
-        &&v.table.width<=Math.max(expectedPanel?680:1050,v.tableWrap.width)+12
-      // On a narrow desktop an internal <= 70px scroll protects cell readability.
+        &&v.table.width<=Math.max(expectedPanel?680:0,v.tableWrap.width)+8
+      // With right panel closed, the table must actually FILL its lane.
+      // A narrow 1280px right-panel case may use a limited local scrollbar.
       const adaptive=expectedPanel
-        ? tableFits&&v.table.width<=Math.max(680,v.tableWrap.width)+12
-        :Boolean(v.table)
+        ?tableFits
+        :tableFits&&Math.abs(v.table.width-v.tableWrap.width)<=8
       check(viewport.width+' '+name,Boolean(panelOK&&leftOK&&layoutOK&&compactOK&&v.resizerPresent&&adaptive),v)
       await page.screenshot({path:output+'/'+viewport.width+'-'+name+'.png',fullPage:false})
       return v
@@ -131,8 +132,23 @@ try{
         }else check('1440 drag product column',false,{reason:'Resize grip has no bounding box'})
       }else check('1440 drag product column',false,{reason:'Resize grip missing'})
     }
+    if(draggedProduct!==null){
+      const afterDrag=await measuring('left-open_right-closed_after-manual-resize',false,false)
+      check('1440 manual drag still fits full lane',
+        Math.abs(afterDrag.table.width-afterDrag.tableWrap.width)<=8,
+        {table:afterDrag.table.width,available:afterDrag.tableWrap.width})
+    }
     await ensureLeft(true)
-    await measuring('left-closed_right-closed',true,false)
+    const leftCollapsed=await measuring('left-closed_right-closed',true,false)
+    check(viewport.width+' left toggle expands table into free space',
+      leftCollapsed.table.width>initial.table.width+95,
+      {leftOpen:initial.table.width,leftCollapsed:leftCollapsed.table.width})
+    await ensureLeft(false)
+    const leftReopened=await measuring('left-reopened_right-closed',false,false)
+    check(viewport.width+' reopen left restores fitted width',
+      Math.abs(leftReopened.table.width-initial.table.width)<=8,
+      {initial:initial.table.width,afterReopen:leftReopened.table.width})
+    await ensureLeft(true)
     check(viewport.width+' QA order link available',await orderLink.count()>0)
     if(await orderLink.count()){
       await orderLink.click()
@@ -163,6 +179,9 @@ try{
         check(viewport.width+' right close restores table width',
           Boolean(initial.table&&restored.table&&restored.table.width>panelWide.table.width+60),
           {initial:initial.table?.width,restored:restored.table?.width,opened:panelWide.table?.width})
+        check(viewport.width+' right closed table fills available lane',
+          Math.abs(restored.table.width-restored.tableWrap.width)<=8,
+          {table:restored.table.width,available:restored.tableWrap.width})
         if(draggedProduct!==null){
           check('1440 custom product width restored',Math.abs((restored.columns.product??0)-draggedProduct)<=6,
             {saved:draggedProduct,restored:restored.columns.product})

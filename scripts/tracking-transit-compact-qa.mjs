@@ -156,3 +156,12 @@ check(resizer,".matches('.tracking-content-workspace')",'recompute saved widths 
 const layoutQa=fs.readFileSync('scripts/tracking-slidebars-qa.mjs','utf8')
 check(layoutQa,'right open shrinks table','browser test actual column adjustment')
 check(layoutQa,'custom product width restored','browser test stored user preference')
+
+// Regression: when both panes are closed the table fills the left content lane;
+// saved desktop widths must not cause unused white space or horizontal overflow.
+check(css,'min-width:min(950px,100%)!important','fit full Tracking workspace on 1280 desktop')
+check(resizer,'const target=Math.max(withPanel?680:0','fit both panel-open and panel-closed widths')
+check(resizer,'const uncustomized=flex.filter','preserve manually adjusted columns where possible')
+check(resizer,'clampForHeader','allow wide flex cells without 680px truncation')
+check(layoutQa,'reopen left restores fitted width','verify both-closed/left-only layouts')
+check(layoutQa,'right closed table fills available lane','verify fit after right slidebar close')
