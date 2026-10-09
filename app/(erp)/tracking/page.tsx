@@ -370,19 +370,11 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     <section className="tracking-command-center-v2">
       <div className="tracking-status-strip-v2">
         <Link
-          href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE'})}
-          className={'tracking-status-metric warning '+(sp.receive==='WAITING_RECEIVE'?'active':'')}
-        >
-          <span>Chờ nhận</span>
-          <b>{waiting}</b>
-          <small>{formatMoney(waitingCod)} · {waitingHubCount} HUB</small>
-        </Link>
-        <Link
           href={trackingHref({status:'PRE_DESTINATION',receive:null})}
           className={'tracking-status-metric info '+(sp.status==='PRE_DESTINATION'?'active':'')}
-          title="Có mã vận đơn, đang ở giai đoạn trước HUB kho đích"
+          title="Có mã vận đơn, đang vận chuyển nhưng chưa đến HUB kho đích"
         >
-          <span>Đang trung chuyển</span><b>{transit}</b><small>Có MVD · Chưa đến HUB</small>
+          <span>Đang vận chuyển</span><b>{transit}</b><small>Có MVD · Chưa đến HUB</small>
         </Link>
         <Link
           href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null})}
@@ -400,13 +392,21 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
           href={trackingHref({status:'DELIVERED',receive:null})}
           className={'tracking-status-metric success '+(sp.status==='DELIVERED'&&!sp.receive?'active':'')}
         >
-          <span>Giao TC</span><b>{delivered}</b><small>{waiting} chưa nhận</small>
+          <span>Giao thành công</span><b>{delivered}</b><small>{waiting} chưa nhận</small>
         </Link>
         <Link
           href={trackingHref({status:'DELIVERY_FAILED',receive:null})}
           className={'tracking-status-metric danger '+(sp.status==='DELIVERY_FAILED'?'active':'')}
         >
           <span>Giao lỗi</span><b>{failed}</b><small>Cần xử lý</small>
+        </Link>
+        <Link
+          href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE'})}
+          className={'tracking-status-metric warning '+(sp.receive==='WAITING_RECEIVE'?'active':'')}
+        >
+          <span>Chờ nhận</span>
+          <b>{waiting}</b>
+          <small>{formatMoney(waitingCod)} · {waitingHubCount} HUB</small>
         </Link>
       </div>
 
@@ -418,11 +418,12 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
 
         <div className="tracking-filter-segments tracking-filter-segments-v2">
           <Link className={!sp.status&&!sp.receive?'active':''} href={trackingHref({status:null,receive:null})}>Tất cả</Link>
-          <Link className={sp.receive==='WAITING_RECEIVE'?'active':''} href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE'})}>Chờ nhận</Link>
-          <Link className={sp.status==='PRE_DESTINATION'?'active':''} href={trackingHref({status:'PRE_DESTINATION',receive:null})}>Trung chuyển</Link>
+          <Link className={sp.status==='PRE_DESTINATION'?'active':''} href={trackingHref({status:'PRE_DESTINATION',receive:null})}>Đang vận chuyển</Link>
           <Link className={sp.status==='ARRIVED_DESTINATION_HUB'?'active':''} href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null})}>Đến HUB</Link>
           <Link className={sp.status==='OUT_FOR_DELIVERY'?'active':''} href={trackingHref({status:'OUT_FOR_DELIVERY',receive:null})}>Đang giao</Link>
+          <Link className={sp.status==='DELIVERED'&&!sp.receive?'active':''} href={trackingHref({status:'DELIVERED',receive:null})}>Giao thành công</Link>
           <Link className={sp.status==='DELIVERY_FAILED'?'active':''} href={trackingHref({status:'DELIVERY_FAILED',receive:null})}>Giao lỗi</Link>
+          <Link className={sp.receive==='WAITING_RECEIVE'?'active':''} href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE'})}>Chờ nhận</Link>
         </div>
 
         <form action="/purchase/tracking" className="tracking-date-filter tracking-date-filter-v2">
