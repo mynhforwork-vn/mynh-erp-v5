@@ -113,3 +113,57 @@ table.table.order-table:not(.mynh-resizable-table){
     -webkit-overflow-scrolling:touch;
   }
 }
+
+
+/* Fixed-layout tables must constrain actual cell contents as well as columns.
+   A long Username must NEVER paint over the platform cell or intercept clicks. */
+.brand-shell-v1 table.user-table th.p1-user-identity-head{width:148px!important}
+.brand-shell-v1 table.user-table th.p1-user-device-head{width:108px!important}
+.brand-shell-v1 table.user-table th.p1-user-voucher-head{width:132px!important}
+.brand-shell-v1 table.order-table th.p1-order-identity-head{width:148px!important}
+.brand-shell-v1 table.order-table th.p1-order-tracking-head{width:135px!important}
+.brand-shell-v1 table.order-table th.p1-order-product-head{width:145px!important}
+.brand-shell-v1 table.user-table td.p1-user-identity-cell,
+.brand-shell-v1 table.user-table td.p1-user-platform-cell,
+.brand-shell-v1 table.order-table td.p1-order-identity-cell,
+.brand-shell-v1 table.order-table td.p1-order-user-cell{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis;
+}
+.brand-shell-v1 table.user-table td.p1-user-identity-cell .user-name-actions{
+  display:flex!important;
+  align-items:center;
+  flex-wrap:nowrap!important;
+  width:100%;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  gap:4px;
+}
+.brand-shell-v1 table.user-table td.p1-user-identity-cell .table-link,
+.brand-shell-v1 table.order-table td.p1-order-identity-cell .table-link{
+  display:block!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.brand-shell-v1 table.user-table td.p1-user-identity-cell .table-link{
+  flex:1 1 auto!important;
+}
+.brand-shell-v1 table.user-table td.p1-user-identity-cell .quick-order-link{
+  flex:0 0 auto!important;
+}
+.brand-shell-v1 table.user-table td.p1-user-platform-cell .platform-cell{
+  display:inline-flex!important;
+  max-width:100%!important;
+  box-sizing:border-box;
+  overflow:hidden!important;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.brand-shell-v1 table.order-table td.p1-order-user-cell{
+  white-space:nowrap;
+}
