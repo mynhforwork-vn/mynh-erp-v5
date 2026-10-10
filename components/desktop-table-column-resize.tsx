@@ -53,7 +53,9 @@ export function DesktopTableColumnResize() {
     }
     const save = (table:HTMLTableElement, values:Record<string,number>) => {
       try { window.localStorage.setItem(tableId(table), JSON.stringify(values)) } catch { /* storage disabled */ }
-      window.dispatchEvent(new CustomEvent('mynh-table-column-width-changed',{detail:{key:tableId(table)}}))
+      // The source is already fitted. Other HUB tables mirror its exact widths
+      // instead of independently redistributing columns at mouse release.
+      window.dispatchEvent(new CustomEvent('mynh-table-column-width-changed',{detail:{key:tableId(table),source:table}}))
     }
     const clearInlineWidths = (table:HTMLTableElement) => {
       table.style.removeProperty('table-layout')
@@ -167,6 +169,35 @@ export function DesktopTableColumnResize() {
       table.classList.add('mynh-resizable-table')
     }
 
+    // Synchronize all currently rendered HUB tables in the SAME route/tab.
+    // Semantic column IDs make this safe even if users reorder the columns.
+    // Collapsed HUB tables remount with the same persisted tableId on reopen.
+    const trackingColumnId=(th:HTMLTableCellElement) =>
+      [...th.classList].find(name=>name.startsWith('tracking-col-'))
+      ?? (th.classList.contains('select-col')?'select-col':headerName(th))
+    const mirrorTrackingWidths=(source:HTMLTableElement)=>{
+      if(!source.isConnected||!source.classList.contains('tracking-hub-table-v2'))return
+      const sourceColumns=headerCells(source)
+      if(!sourceColumns.length)return
+      const widths=new Map(sourceColumns.map(th=>[trackingColumnId(th),Math.round(th.getBoundingClientRect().width)]))
+      const total=Math.round(source.getBoundingClientRect().width)
+      main.querySelectorAll<HTMLTableElement>('table.tracking-hub-table-v2').forEach(peer=>{
+        if(peer===source||tableId(peer)!==tableId(source))return
+        const headers=headerCells(peer)
+        if(headers.length!==sourceColumns.length||headers.some(th=>!widths.has(trackingColumnId(th))))return
+        headers.forEach(th=>{
+          const width=widths.get(trackingColumnId(th))!
+          th.style.setProperty('width',width+'px','important')
+          th.style.setProperty('min-width',width+'px','important')
+          th.style.setProperty('max-width',width+'px','important')
+        })
+        peer.style.setProperty('table-layout','fixed','important')
+        peer.style.setProperty('width',total+'px','important')
+        peer.style.setProperty('min-width',total+'px','important')
+        peer.classList.add('mynh-resizable-table')
+      })
+    }
+
     const enhance = (table:HTMLTableElement) => {
       if (table.closest('.system-slidebar-v1, .system-slidebar, .context-panel, .side-panel, .finance-panel, .receive-confirm-modal')) return
       const ths = headerCells(table)
@@ -204,6 +235,14 @@ export function DesktopTableColumnResize() {
           const table = th.closest('table') as HTMLTableElement | null
           if (!table) return
           const startX = e.clientX
+          let previewFrame=0
+          const previewPeers=()=>{
+            if(!table.classList.contains('tracking-hub-table-v2')||previewFrame)return
+            previewFrame=window.requestAnimationFrame(()=>{
+              previewFrame=0
+              mirrorTrackingWidths(table)
+            })
+          }
           const initial = th.getBoundingClientRect().width
           freezeWidths(table,{})
           const baseline = headerCells(table).map(headerWidth)
@@ -222,18 +261,20 @@ export function DesktopTableColumnResize() {
             th.style.setProperty('width',colWidth+'px','important')
             th.style.setProperty('min-width',colWidth+'px','important')
             th.style.setProperty('max-width',colWidth+'px','important')
+            previewPeers()
           }
           const finish = (event:PointerEvent) => {
             window.removeEventListener('pointermove',move,true)
             window.removeEventListener('pointerup',finish,true)
             window.removeEventListener('pointercancel',finish,true)
             grip.classList.remove('resizing')
+            if(previewFrame)window.cancelAnimationFrame(previewFrame)
             document.body.style.userSelect=originalSelection
             const next=clampForHeader(th,before+event.clientX-startX)
             const widths=readSaved(table)
             widths[label]=next
-            save(table,widths)
             freezeWidths(table,widths)
+            save(table,widths)
           }
           window.addEventListener('pointermove',move,true)
           window.addEventListener('pointerup',finish,true)
@@ -247,8 +288,8 @@ export function DesktopTableColumnResize() {
           delete widths[label]
           // Measure the natural width again before re-applying any other custom widths.
           clearInlineWidths(table)
-          save(table,widths)
           if(Object.keys(widths).length)freezeWidths(table,widths)
+          save(table,widths)
         })
         grip.addEventListener('keydown',e=>{
           if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return
@@ -258,7 +299,7 @@ export function DesktopTableColumnResize() {
           const current=clampForHeader(th,th.getBoundingClientRect().width)
           const widths=readSaved(table)
           widths[label]=clampForHeader(th,current+(e.key==='ArrowRight'?1:-1)*(e.shiftKey?24:12))
-          save(table,widths);freezeWidths(table,widths)
+          freezeWidths(table,widths);save(table,widths)
         })
       })
     }
@@ -286,11 +327,20 @@ export function DesktopTableColumnResize() {
     const onChange=()=>{if(mq.matches)queue()}
     mq.addEventListener('change',onChange)
     const sync=(event:Event)=>{
-      const key=(event as CustomEvent<{key?:string}>).detail?.key
-      if(!key || !mq.matches)return
+      const detail=(event as CustomEvent<{key?:string,source?:HTMLTableElement}>).detail
+      if(!detail?.key||!mq.matches)return
+      const source=detail.source
+      if(source?.isConnected&&source.classList.contains('tracking-hub-table-v2')){
+        const widths=readSaved(source)
+        if(Object.keys(widths).length){
+          mirrorTrackingWidths(source)
+          return
+        }
+      }
       main.querySelectorAll('table.table').forEach(el=>{
         const table=el as HTMLTableElement
-        if(tableId(table)!==key)return
+        if(tableId(table)!==detail.key)return
+        if(table===source)return
         const widths=readSaved(table)
         clearInlineWidths(table)
         if(Object.keys(widths).length)freezeWidths(table,widths)
