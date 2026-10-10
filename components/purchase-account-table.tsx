@@ -353,7 +353,7 @@ export function PurchaseAccountTable({
     
 
     <div className="card table-card account-table-card">
-      <table className="table user-table p1-purchase-data-table">
+      <table className="table user-table">
         <thead><tr>
           {canManage&&<th className="bulk-select-col">
             <input type="checkbox" aria-label="Chọn tối đa 200 User" checked={allSelected} onChange={toggleSelectAll} disabled={!rows.length}/>
