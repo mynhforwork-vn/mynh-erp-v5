@@ -156,8 +156,14 @@ export function DesktopTableColumnResize() {
       const assigned = isTracking ? fitTrackingPanel(table,ths,preferred,overrides) : preferred
       let total = 0
       ths.forEach((th,i) => {
-        const width = th.classList.contains('tracking-action-head') ? 44 :
-          compactCol(th) ? Math.max(24, Math.min(140, assigned[i])) : clampForHeader(th,assigned[i])
+        // The account sequence number, order count and voucher tags are
+        // compact by business contract. Old stored widths must not resurrect
+        // oversized cells whenever a User detail slidebar is toggled.
+        const accountCompact:Record<string,number>={number:33,orders:58,voucher:96}
+        const accountWidth=table.classList.contains('user-table')
+          ?accountCompact[th.dataset.accountCol??'']:undefined
+        const width = accountWidth??(th.classList.contains('tracking-action-head') ? 44 :
+          compactCol(th) ? Math.max(24, Math.min(140, assigned[i])) : clampForHeader(th,assigned[i]))
         total += width
         th.style.setProperty('width', width+'px', 'important')
         th.style.setProperty('min-width', width+'px', 'important')
@@ -216,6 +222,8 @@ export function DesktopTableColumnResize() {
       ths.forEach(th => {
         if (th.querySelector(':scope > .mynh-column-resize-grip')) return
         if (th.matches('.bulk-select-col, .select-col, .row-actions-head, .checkbox-col')) return
+        if (table.classList.contains('user-table')
+          &&['number','orders','voucher'].includes(th.dataset.accountCol??''))return
         const label = headerName(th)
         if (label === 'blank') return
         th.classList.add('mynh-column-resize-head')
