@@ -165,14 +165,14 @@ check(css,'min-width:680px!important','compact readable 1280px lane')
 check(resizer,'fitTrackingPanel','saved resized widths adapt to right panel')
 check(resizer,".matches('.tracking-content-workspace')",'recompute saved widths on right panel toggle')
 const layoutQa=fs.readFileSync('scripts/tracking-slidebars-qa.mjs','utf8')
-check(layoutQa,'right open shrinks table','browser test actual column adjustment')
+check(layoutQa,'right open narrows pane without squeezing table','browser test panel-safe scrolling')
 check(layoutQa,'custom product width restored','browser test stored user preference')
 
-// Regression: when both panes are closed the table fills the left content lane;
-// saved desktop widths must not cause unused white space or horizontal overflow.
+// Regression: wide panes fill their lane; narrow panes preserve the readable
+// column minimum and provide an internal scrollbar, without body overflow.
 check(css,'min-width:min(950px,100%)!important','fit full Tracking workspace on 1280 desktop')
 check(resizer,'const target=Math.max(1120,','fit both panel-open and panel-closed widths')
 check(resizer,'const uncustomized=flex.filter','preserve manually adjusted columns where possible')
 check(resizer,'clampForHeader','allow wide flex cells without 680px truncation')
 check(layoutQa,'reopen left restores fitted width','verify both-closed/left-only layouts')
-check(layoutQa,'right closed table fills available lane','verify fit after right slidebar close')
+check(layoutQa,'right closed table fits or scrolls in lane','verify adaptive scroll after panel close')
