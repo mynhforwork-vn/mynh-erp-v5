@@ -803,3 +803,159 @@
   overscroll-behavior-x:contain;
   scrollbar-width:thin;
 }
+
+
+/* PR #59 — Tracking HUB header must respond to the actual right slidebar.
+   Preserve the left caret (expand/collapse); remove only the redundant
+   text action. The KPI chips wrap instead of being clipped or hidden. */
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-head-v2{
+  display:grid!important;
+  grid-template-columns:26px minmax(150px,215px) minmax(0,1fr) auto!important;
+  grid-template-rows:auto!important;
+  align-items:center!important;
+  gap:5px 8px!important;
+  padding:5px 8px 5px 4px!important;
+  min-width:0!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-identity{
+  min-width:0!important;
+  align-self:center!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-identity > div{
+  min-width:0!important;
+  overflow:hidden!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-metrics-v2{
+  min-width:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  flex-wrap:wrap!important;
+  gap:4px!important;
+  overflow:visible!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-metrics-v2 > span{
+  display:inline-flex!important;
+  flex:0 0 auto!important;
+  min-height:24px;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-metrics-v2 > span.money{
+  margin-left:0!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-summary-state{
+  display:flex!important;
+  grid-column:auto!important;
+  grid-row:auto!important;
+  justify-self:end!important;
+  align-self:center!important;
+  gap:5px!important;
+  min-width:0!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-summary-state .managed-column-wrap{
+  position:relative;
+}
+/* The right-hand drawer shrinks the table independently from the viewport:
+   put the HUB metrics on a dedicated second line rather than squeezing them. */
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-head-v2{
+  grid-template-columns:26px minmax(0,1fr) auto!important;
+  grid-template-rows:auto auto!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-identity{
+  grid-column:2!important;
+  grid-row:1!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-metrics-v2{
+  grid-column:2/-1!important;
+  grid-row:2!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-summary-state{
+  grid-column:3!important;
+  grid-row:1!important;
+}
+@media(max-width:1100px){
+  .brand-shell-v1 .tracking-screen-v2 .tracking-hub-head-v2{
+    grid-template-columns:26px minmax(0,1fr) auto!important;
+    grid-template-rows:auto auto!important;
+  }
+  .brand-shell-v1 .tracking-screen-v2 .tracking-hub-identity{
+    grid-column:2!important;
+    grid-row:1!important;
+  }
+  .brand-shell-v1 .tracking-screen-v2 .tracking-hub-metrics-v2{
+    grid-column:2/-1!important;
+    grid-row:2!important;
+  }
+  .brand-shell-v1 .tracking-screen-v2 .tracking-hub-summary-state{
+    grid-column:3!important;
+    grid-row:1!important;
+  }
+}
+
+/* Latest carrier event is displayed directly after the canonical status.
+   Keep the entire explanation in the title and a legible two-line preview
+   plus its real timestamp in the table. */
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2
+th.tracking-col-detail{
+  min-width:0!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2
+td.tracking-col-detail-cell{
+  min-width:0!important;
+  max-width:100%;
+  vertical-align:middle!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-detail-cell-v1{
+  display:flex;
+  min-width:0;
+  width:100%;
+  flex-direction:column;
+  gap:3px;
+  color:#314c65;
+  font-size:11px;
+  line-height:1.35;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-detail-cell-v1 > span{
+  display:-webkit-box;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  line-clamp:2;
+  overflow-wrap:anywhere;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-detail-cell-v1 > small{
+  display:block;
+  color:#788c9d;
+  font-size:10px;
+  line-height:1.2;
+  white-space:nowrap;
+}
+@media(min-width:901px){
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table)
+  col.tracking-colgroup-detail{
+    width:188px!important;
+  }
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table){
+    min-width:850px!important;
+  }
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table)
+  col.tracking-colgroup-detail{
+    width:165px!important;
+  }
+}
+@media(max-width:900px){
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table){
+    min-width:1160px!important;
+  }
+}
