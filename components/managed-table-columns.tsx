@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect,useMemo,useRef,useState } from 'react'
+import { normalizeTableColumnPreferences } from '@/lib/table-column-preferences'
 
 export function useManagedColumns<K extends string>(storageKey:string,all:readonly K[],locked:readonly K[]=[],insertNewAfter:Partial<Record<K,K>>={}){
   const [order,setOrder]=useState<K[]>([...all])
@@ -8,43 +9,32 @@ export function useManagedColumns<K extends string>(storageKey:string,all:readon
   const [open,setOpen]=useState(false)
   const [dragging,setDragging]=useState<K|null>(null)
   const [dragOver,setDragOver]=useState<K|null>(null)
+  const [readyKey,setReadyKey]=useState<string|null>(null)
   const ref=useRef<HTMLDivElement|null>(null)
 
   useEffect(()=>{
     try{
       const raw=localStorage.getItem(storageKey)
-      if(!raw)return
-      const parsed=JSON.parse(raw)
-      if(Array.isArray(parsed.order)){
-        const valid=parsed.order.filter((x:any)=>all.includes(x))
-        const missing=all.filter(x=>!valid.includes(x))
-        if(valid.length){
-          // Insert newly introduced columns beside their intended existing neighbor;
-          // keep all user-reordered existing columns and hidden preferences intact.
-          const merged=[...valid]
-          for(const col of missing){
-            const anchor=insertNewAfter[col]
-            const position=anchor?merged.indexOf(anchor):-1
-            if(position>=0)merged.splice(position+1,0,col)
-            else merged.push(col)
-          }
-          setOrder(merged)
-        }
+      if(raw){
+        const next=normalizeTableColumnPreferences<K>(JSON.parse(raw),all,locked,insertNewAfter)
+        setOrder(next.order)
+        setHidden(next.hidden)
       }
-      if(Array.isArray(parsed.hidden)){
-        const valid=parsed.hidden.filter((x:any)=>all.includes(x)&&!locked.includes(x))
-        setHidden(valid)
-      }
-    }catch{}
+    }catch{/* Keep safe defaults when preferences are unavailable or corrupt. */}
+    // Never write defaults before existing preferences have been restored.
+    setReadyKey(storageKey)
   },[storageKey])
 
   useEffect(()=>{
+    if(readyKey!==storageKey)return
     try{
       const value=JSON.stringify({order,hidden})
-      localStorage.setItem(storageKey,value)
-      window.dispatchEvent(new CustomEvent('mynh-managed-columns',{detail:{storageKey,value}}))
+      if(localStorage.getItem(storageKey)!==value){
+        localStorage.setItem(storageKey,value)
+        window.dispatchEvent(new CustomEvent('mynh-managed-columns',{detail:{storageKey,value}}))
+      }
     }catch{}
-  },[storageKey,order,hidden])
+  },[storageKey,order,hidden,readyKey])
 
   useEffect(()=>{
     const sync=(event:Event)=>{
@@ -53,9 +43,9 @@ export function useManagedColumns<K extends string>(storageKey:string,all:readon
       const current=JSON.stringify({order,hidden})
       if(detail.value===current)return
       try{
-        const parsed=JSON.parse(detail.value)
-        if(Array.isArray(parsed.order))setOrder(parsed.order)
-        if(Array.isArray(parsed.hidden))setHidden(parsed.hidden)
+        const next=normalizeTableColumnPreferences<K>(JSON.parse(detail.value),all,locked,insertNewAfter)
+        setOrder(next.order)
+        setHidden(next.hidden)
       }catch{}
     }
     window.addEventListener('mynh-managed-columns',sync)
@@ -143,20 +133,27 @@ export function ManagedColumnsMenu<K extends string>({
 export function useManagedSort<K extends string>(storageKey:string,defaultKey:K,defaultDir:'asc'|'desc'='asc'){
   const [key,setKey]=useState<K>(defaultKey)
   const [dir,setDir]=useState<'asc'|'desc'>(defaultDir)
+  const [sortReadyKey,setSortReadyKey]=useState<string|null>(null)
 
   useEffect(()=>{
     try{
       const raw=localStorage.getItem(storageKey)
-      if(!raw)return
-      const parsed=JSON.parse(raw)
-      if(parsed?.key)setKey(parsed.key)
-      if(parsed?.dir==='asc'||parsed?.dir==='desc')setDir(parsed.dir)
+      if(raw){
+        const parsed=JSON.parse(raw)
+        if(parsed?.key)setKey(parsed.key)
+        if(parsed?.dir==='asc'||parsed?.dir==='desc')setDir(parsed.dir)
+      }
     }catch{}
+    setSortReadyKey(storageKey)
   },[storageKey])
 
   useEffect(()=>{
-    try{localStorage.setItem(storageKey,JSON.stringify({key,dir}))}catch{}
-  },[storageKey,key,dir])
+    if(sortReadyKey!==storageKey)return
+    try{
+      const next=JSON.stringify({key,dir})
+      if(localStorage.getItem(storageKey)!==next)localStorage.setItem(storageKey,next)
+    }catch{}
+  },[storageKey,key,dir,sortReadyKey])
 
   function toggle(next:K){
     if(next===key)setDir(value=>value==='asc'?'desc':'asc')
