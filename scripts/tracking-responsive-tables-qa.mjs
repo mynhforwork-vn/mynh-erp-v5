@@ -263,14 +263,20 @@ try{
         oneRow,hubHeader??{})
       const cols=hubHeader?.lastColumns
       check(view.width+' Tracking status, detail, actions do not overlap',
-        Boolean(cols&&cols.status.width>=166&&cols.detail.width>=196
+        Boolean(cols&&cols.status.width>=130&&cols.detail.width>=158
           &&cols.action.width>=42
           &&cols.status.right<=cols.detail.left+2
           &&cols.detail.right<=cols.action.left+2
           &&hubHeader.tableScrollX!=='hidden'
-          &&hubHeader.tableWidth>=1110
+          &&hubHeader.tableWidth>=750
           &&hubHeader.tableScrollWidth>=hubHeader.tableLaneWidth),
         cols??{reason:'missing table columns'})
+      check(view.width+' Tracking fits lane instead of wasting 1120px',
+        Boolean(hubHeader&&hubHeader.tableWidth<=Math.max(760,hubHeader.tableLaneWidth)+15
+          &&(hubHeader.tableLaneWidth>=760
+            ?hubHeader.tableWidth<=hubHeader.tableLaneWidth+12
+            :hubHeader.tableWidth-hubHeader.tableLaneWidth<=760-hubHeader.tableLaneWidth+15)),
+        {table:hubHeader?.tableWidth,lane:hubHeader?.tableLaneWidth})
       if(visible){
         if([320,390,768,1024,1440].includes(view.width)){
           await page.screenshot({path:output+'/table-'+view.width+'-panel.png',fullPage:false})
