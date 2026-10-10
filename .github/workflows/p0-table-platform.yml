@@ -1,0 +1,37 @@
+name: P0 Table Platform Contract QA
+
+on:
+  push:
+    branches:
+      - chore/p0-table-contract-20261011
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p0-table-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  table-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: P0 preference and inventory contract QA
+        run: node --experimental-strip-types scripts/table-platform-p0-qa.mjs
+      - name: TypeScript typecheck
+        run: npm run typecheck
+      - name: Upload audit and test result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: table-platform-p0-${{ github.sha }}
+          path: qa-table-platform-p0-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
