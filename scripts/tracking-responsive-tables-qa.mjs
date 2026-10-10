@@ -425,6 +425,14 @@ try{
     })).catch(()=>null)
     check('Tracking mapping grid legible',
       Boolean(font&&font.font>=9.5&&font.rows>0),font??{})
+    const unknown=await page.locator('.tracking-unknown-panel-v7').first().evaluate(el=>({
+      height:Math.round(el.getBoundingClientRect().height),
+      scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,
+      overflow:getComputedStyle(el).overflowY
+    })).catch(()=>null)
+    if(unknown)check('Tracking unmapped SPX status queue not clipped',
+      unknown.height>=99&&(unknown.scrollHeight<=unknown.clientHeight+3||unknown.overflow==='auto'),
+      unknown)
   }else check('Tracking settings route accessible',false)
 
   if(await nav('/finance/shipper-payments')){
@@ -434,6 +442,13 @@ try{
     }))
     check('Shipper settlement list fits viewport',
       frame.docWidth<=frame.view+4&&frame.viewHubButtons>0,frame)
+    const metric=await page.locator('.shipper-payment-batch-metrics').first().evaluate(el=>{
+      const n=el.querySelector('b'),label=el.querySelector('span')
+      return{numberFont:n?parseFloat(getComputedStyle(n).fontSize):0,
+        labelFont:label?parseFloat(getComputedStyle(label).fontSize):0}
+    }).catch(()=>null)
+    if(metric)check('Shipper settlement amounts legible',
+      metric.numberFont>=10.5&&metric.labelFont>=9.5,metric)
   }else check('Shipper settlement route accessible',false)
   await context.close()
 }finally{
