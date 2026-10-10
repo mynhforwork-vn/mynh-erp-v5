@@ -124,6 +124,11 @@ try {
       await page.waitForTimeout(80)
       const m=await measure(spec)
       check(spec.name+' fit '+view.width+'x'+view.height,fits(m,view),m??{})
+      if(view.width===1440){
+        check(spec.name+' Desktop 1440 table fits without unnecessary horizontal scroll',
+          Boolean(m&&m.table.width<=m.wrap.width+9),
+          {table:m?.table.width,lane:m?.wrap.width})
+      }
       if([390,1440].includes(view.width))
         await page.screenshot({path:output+'/'+(spec.name==='User'?'accounts':'orders')+'-'+view.width+'.png',fullPage:false})
     }
@@ -141,7 +146,7 @@ try {
     const restored=await page.locator(spec.table+' thead th').allTextContents()
     check(spec.name+' restores required column and rejects corrupt duplicate preferences',
       restored.some(x=>x.includes(spec.required))
-      &&restored.filter(x=>x.trim()===(spec.name==='User'?'Trạng thái':'COD')).length===1,
+      &&restored.filter(x=>x.includes(spec.name==='User'?'Trạng thái':'COD')).length===1,
       {headers:restored})
     // Return to the full column layout for panel fit and resize.
     await page.evaluate(({storage,order})=>{
@@ -177,8 +182,9 @@ try {
   const tracking=await page.evaluate(()=>{
     const first=document.querySelector('.tracking-hub-head-v2')
     const r=first?.getBoundingClientRect()
-    const cells=[...document.querySelectorAll('.tracking-hub-table-v2 thead th')].map(x=>x.textContent?.trim())
-    return{exists:!!first,height:r?.height,detailIndex:cells.indexOf('Trạng thái chi tiết'),statusIndex:cells.indexOf('Trạng thái')}
+    const cells=[...document.querySelectorAll('.tracking-hub-table-v2 thead th')]
+      .map(x=>x.textContent?.replace(/[↑↓↕⇅]/g,'').trim()??'')
+    return{exists:!!first,height:r?.height,detailIndex:cells.indexOf('Trạng thái chi tiết'),statusIndex:cells.indexOf('Trạng thái'),labels:cells}
   })
   check('Tracking HUB one-row and detail column retained',
     tracking.exists&&tracking.height<=53
