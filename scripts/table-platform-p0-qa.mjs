@@ -79,7 +79,7 @@ const groups=[
   {phase:'P3',label:'Khách hàng',file:'components/sales-customer-table.tsx',selector:'.customer-demo-table',engine:'managed',group:'sales-customers'},
   {phase:'P3',label:'Công nợ',file:'components/sales-debt-table.tsx',selector:'.debt-demo-table',engine:'managed',group:'sales-debt'},
   {phase:'P4',label:'Thu/Chi',file:'components/finance-cashflow-workspace.tsx',selector:'.finance-table',engine:'legacy',group:'finance-cashflow'},
-  {phase:'P4',label:'Đối soát khách hàng',file:'components/finance-customer-settlement-table.tsx',selector:'.finance-customer-settlement .table',engine:'managed',group:'finance-customer-payments'},
+  {phase:'P4',label:'Đối soát khách hàng',file:'components/finance-customer-settlement-table.tsx',selector:'.compact-table-wrap .table',engine:'managed',group:'finance-customer-payments'},
   {phase:'P4',label:'Báo cáo theo ngày',file:'components/finance-report-day-table.tsx',selector:'.finance-report-day-table-wrap .table',engine:'managed',group:'finance-report-day'},
   {phase:'P5',label:'Cài đặt Mapping SPX',file:'components/tracking-settings.tsx',selector:'.tracking-mapping-table-v7',engine:'css-grid',group:'settings-spx-mapping'},
   {phase:'P5',label:'Tổng quan mua hàng',file:'app/(erp)/purchase/page.tsx',selector:'.compact-summary-table',engine:'static',group:'purchase-summary'},
