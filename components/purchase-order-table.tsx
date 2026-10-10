@@ -540,7 +540,7 @@ export function PurchaseOrderTable({
     
 
     <div className="card table-card order-table-card" ref={tableWrapRef}>
-      <table className="table order-table p1-purchase-data-table">
+      <table className="table order-table">
         <thead><tr>
           {canEdit&&<th className="bulk-select-col">
             <input
