@@ -76,6 +76,27 @@ jobs:
           SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
           SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
         run: node scripts/p1-purchase-tables-qa.mjs
+      # P1 is stacked on P0 (#60) and Tracking (#59).
+      # Only replace the old Tracking Named Preview AFTER P1 Chrome QA passes.
+      # No Production route/Worker is deployed or altered.
+      - name: Publish QA-verified P1 to original PR59 Tracking Preview URL
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx wrangler preview --name tracking-kpi-v1 --worker-name mynh-erp-v5 --message "PR61 P1 on PR60/PR59 $GITHUB_SHA" --json > p1-tracking-preview.json
+          echo "P1_ON_ORIGINAL_TRACKING_PREVIEW=https://tracking-kpi-v1-mynh-erp-v5.mynh-forwork.workers.dev"
+      - name: Verify P1 is serving on original PR59 Tracking Preview
+        shell: bash
+        run: |
+          BASE="https://tracking-kpi-v1-mynh-erp-v5.mynh-forwork.workers.dev"
+          code=$(curl --silent --show-error --max-time 25 -o p1-tracking-health.json -w '%{http_code}' "$BASE/api/health")
+          echo "P1_TRACKING_HEALTH_HTTP=$code"
+          test "$code" = "200"
+          grep -q '"ok":true' p1-tracking-health.json
+          code=$(curl --silent --show-error --max-time 25 -o p1-tracking-login.html -w '%{http_code}' "$BASE/login")
+          echo "P1_TRACKING_LOGIN_HTTP=$code"
+          test "$code" = "200"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
