@@ -151,7 +151,7 @@ check(group,"detail:'Trạng thái chi tiết'",'detail heading')
 check(group,'tracking-detail-cell-v1','provider description cell')
 check(group,"{detail:'status'}",'old saved managed columns migration')
 assert.ok(!group.includes("{open?'Thu gọn':'Xem đơn'}"),'Remove redundant HUB collapse text')
-check(resizer,"'tracking-col-detail':188",'resizer default for added detail')
+check(resizer,"'tracking-col-detail':200",'resizer default for added detail')
 
 
 check(group,'<colgroup>','semantic colgroup for wide screen')
