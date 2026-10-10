@@ -143,6 +143,17 @@ check(contract,'.tracking-content-workspace.with-panel','two-column tracking wor
 assert.ok(!css.includes('width:29px'),'No old oversized icon dimensions')
 console.log('PASS: Tracking column resizers, compact 44px action column/24px sync, left and right slidebar contracts')
 
+// Latest carrier event must be shown next to the existing canonical status.
+check(page,'tracking_events(event_time,raw_description,raw_status_name,raw_status,reason_description)','nested shipment events')
+check(page,".limit(1,{referencedTable:'tracking_events'})",'latest event bounded per shipment')
+check(group,"'status','detail','actions'",'status then detail then actions')
+check(group,"detail:'Trạng thái chi tiết'",'detail heading')
+check(group,'tracking-detail-cell-v1','provider description cell')
+check(group,"{detail:'status'}",'old saved managed columns migration')
+assert.ok(!group.includes("{open?'Thu gọn':'Xem đơn'}"),'Remove redundant HUB collapse text')
+check(resizer,"'tracking-col-detail':188",'resizer default for added detail')
+
+
 check(group,'<colgroup>','semantic colgroup for wide screen')
 check(group,"className={'tracking-colgroup-'+col}",'managed columns and colgroup reorder together')
 check(css,'table-layout:fixed!important','fixed desktop widths prevent stretched actions')
@@ -160,7 +171,7 @@ check(layoutQa,'custom product width restored','browser test stored user prefere
 // Regression: when both panes are closed the table fills the left content lane;
 // saved desktop widths must not cause unused white space or horizontal overflow.
 check(css,'min-width:min(950px,100%)!important','fit full Tracking workspace on 1280 desktop')
-check(resizer,'const target=Math.max(withPanel?680:0','fit both panel-open and panel-closed widths')
+check(resizer,'const target=Math.max(withPanel?850:0','fit both panel-open and panel-closed widths')
 check(resizer,'const uncustomized=flex.filter','preserve manually adjusted columns where possible')
 check(resizer,'clampForHeader','allow wide flex cells without 680px truncation')
 check(layoutQa,'reopen left restores fitted width','verify both-closed/left-only layouts')
