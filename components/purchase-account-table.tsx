@@ -257,13 +257,13 @@ export function PurchaseAccountTable({
 
   function renderHeader(key:ColKey){
     if(key==='number')return <th key={key}>#</th>
-    if(key==='username')return <th key={key}><Link className="sortable-head" href={sortHref(detailQuery,nameNext)}>Username <span>{sort==='name_asc'?'↑':sort==='name_desc'?'↓':'↕'}</span></Link></th>
+    if(key==='username')return <th key={key} className="p1-user-identity-head"><Link className="sortable-head" href={sortHref(detailQuery,nameNext)}>Username <span>{sort==='name_asc'?'↑':sort==='name_desc'?'↓':'↕'}</span></Link></th>
     if(key==='platform')return <th key={key}>Nền tảng</th>
     if(key==='phone')return <th key={key}>SĐT</th>
     if(key==='email')return <th key={key}>Email</th>
     if(key==='status')return <th key={key}>Trạng thái</th>
-    if(key==='device')return <th key={key}>Thiết bị</th>
-    if(key==='voucher')return <th key={key}>Voucher đã dùng</th>
+    if(key==='device')return <th key={key} className="p1-user-device-head">Thiết bị</th>
+    if(key==='voucher')return <th key={key} className="p1-user-voucher-head">Voucher đã dùng</th>
     if(key==='orders')return <th key={key}>Số đơn</th>
     if(key==='createdAt')return <th key={key}><Link className="sortable-head" href={sortHref(detailQuery,timeNext)}>Thời gian tạo <span>{sort==='newest'?'↓':sort==='oldest'?'↑':'↕'}</span></Link></th>
     return <th key={key}>Ghi chú</th>
@@ -271,13 +271,13 @@ export function PurchaseAccountTable({
 
   function renderCell(key:ColKey,u:any,i:number){
     if(key==='number')return <td key={key}>{i+1}</td>
-    if(key==='username')return <td key={key}>
+    if(key==='username')return <td key={key} className="p1-user-identity-cell">
       <div className="user-name-actions">
         <Link className="table-link" prefetch={false} href={hrefFor(u.id)} title={u.username}>{u.username}</Link>
         {!u.archived_at&&u.status!=='Blocked'&&<Link className="quick-order-link" href={createOrderHref(u.id)} title="Tạo đơn từ User">+ Đơn</Link>}
       </div>
     </td>
-    if(key==='platform')return <td key={key}><span className="platform-cell">{u.platform??'SHOPEE'}</span></td>
+    if(key==='platform')return <td key={key} className="p1-user-platform-cell"><span className="platform-cell">{u.platform??'SHOPEE'}</span></td>
     if(key==='phone')return <td key={key}>{formatPhone(u.phone)}</td>
     if(key==='email')return <td key={key} title={u.email??undefined} className="p1-table-long-text">{u.email??'—'}</td>
     if(key==='status')return <td key={key}>{u.archived_at
