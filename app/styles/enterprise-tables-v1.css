@@ -790,3 +790,16 @@
     margin-left:0;
   }
 }
+
+
+/* Unknown-provider forms can be wider than a phone. Scroll the action row
+   horizontally inside its own panel rather than clipping the save controls. */
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9
+.tracking-unknown-list-v7[aria-hidden="false"]{
+  box-sizing:border-box;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+  overscroll-behavior-x:contain;
+  scrollbar-width:thin;
+}
