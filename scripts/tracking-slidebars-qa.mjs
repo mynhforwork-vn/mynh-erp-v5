@@ -159,8 +159,11 @@ try{
             peerFinal!==null&&Math.abs(peerFinal-after)<=3,
             {source:after,peer:peerFinal})
           // An unmounted/collapsed HUB must use the same saved width on reopen.
-          const peerCard=page.locator('.tracking-hub-card-v2.open').nth(1)
-          if(await peerCard.count()){
+          const openPeer=page.locator('.tracking-hub-card-v2.open').nth(1)
+          const peerIndex=await openPeer.count()?await openPeer.evaluate(el=>
+            [...document.querySelectorAll('.tracking-hub-card-v2')].indexOf(el)):-1
+          const peerCard=peerIndex>=0?page.locator('.tracking-hub-card-v2').nth(peerIndex):null
+          if(peerCard){
             const peerToggle=peerCard.locator('.tracking-hub-toggle')
             await peerToggle.click()
             await peerToggle.click()
