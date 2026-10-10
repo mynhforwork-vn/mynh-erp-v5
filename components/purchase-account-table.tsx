@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { formatDateTime, formatPhone, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
+import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
 import { archiveERPUser, archiveERPUsersBulk, restoreERPUser, restoreERPUsersBulk } from '@/lib/actions/core'
 
 type Row=Record<string,any>
@@ -135,17 +136,14 @@ export function PurchaseAccountTable({
       if(raw){
         const parsed=JSON.parse(raw)
         if(Array.isArray(parsed)){
-          const valid=parsed.filter((x:any)=>ALL.includes(x))
-          if(valid.length)setVisible(valid)
+          setVisible(normalizeLegacyVisibleColumns<ColKey>(parsed,ALL,['username']))
         }
       }
       const rawOrder=localStorage.getItem(STORAGE_ORDER_KEY)
       if(rawOrder){
         const parsedOrder=JSON.parse(rawOrder)
         if(Array.isArray(parsedOrder)){
-          const validOrder=parsedOrder.filter((x:any)=>ALL.includes(x))
-          const missing=ALL.filter(x=>!validOrder.includes(x))
-          if(validOrder.length)setColumnOrder([...validOrder,...missing])
+          setColumnOrder(normalizeLegacyColumnOrder<ColKey>(parsedOrder,ALL))
         }
       }
     }catch{}
@@ -275,13 +273,13 @@ export function PurchaseAccountTable({
     if(key==='number')return <td key={key}>{i+1}</td>
     if(key==='username')return <td key={key}>
       <div className="user-name-actions">
-        <Link className="table-link" prefetch={false} href={hrefFor(u.id)}>{u.username}</Link>
+        <Link className="table-link" prefetch={false} href={hrefFor(u.id)} title={u.username}>{u.username}</Link>
         {!u.archived_at&&u.status!=='Blocked'&&<Link className="quick-order-link" href={createOrderHref(u.id)} title="Tạo đơn từ User">+ Đơn</Link>}
       </div>
     </td>
     if(key==='platform')return <td key={key}><span className="platform-cell">{u.platform??'SHOPEE'}</span></td>
     if(key==='phone')return <td key={key}>{formatPhone(u.phone)}</td>
-    if(key==='email')return <td key={key}>{u.email??'—'}</td>
+    if(key==='email')return <td key={key} title={u.email??undefined} className="p1-table-long-text">{u.email??'—'}</td>
     if(key==='status')return <td key={key}>{u.archived_at
       ? <span className="status-pill archived">Lưu trữ</span>
       : <span className={'status-pill '+statusClass(u.status)}>{statusLabel(u.status)}</span>}</td>
@@ -289,7 +287,7 @@ export function PurchaseAccountTable({
     if(key==='voucher')return <td key={key} className="voucher-cell"><VoucherTags value={u.voucher_used_summary} compact maxVisible={2}/></td>
     if(key==='orders')return <td key={key} className="count-cell">{u.order_count??0}</td>
     if(key==='createdAt')return <td key={key}>{formatDateTime(u.created_at)}</td>
-    return <td key={key} className="truncate">{u.note??'—'}</td>
+    return <td key={key} className="truncate p1-table-long-text" title={u.note??undefined}>{u.note??'—'}</td>
   }
 
   return <div className="account-table-shell">
@@ -355,7 +353,7 @@ export function PurchaseAccountTable({
     
 
     <div className="card table-card account-table-card">
-      <table className="table user-table">
+      <table className="table user-table p1-purchase-data-table">
         <thead><tr>
           {canManage&&<th className="bulk-select-col">
             <input type="checkbox" aria-label="Chọn tối đa 200 User" checked={allSelected} onChange={toggleSelectAll} disabled={!rows.length}/>
