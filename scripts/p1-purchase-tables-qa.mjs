@@ -96,6 +96,15 @@ try {
       actionHead:last?{width:last.width,right:last.right}:null,
       panel:pr?{left:pr.left,right:pr.right,width:pr.width}:null,
       columns:[...table.querySelectorAll('thead th')].map(el=>el.textContent.trim()),
+      accountCols:[...table.querySelectorAll('thead th[data-account-col]')].map(el=>{
+        const r=el.getBoundingClientRect()
+        return {id:el.getAttribute('data-account-col'),left:r.left,right:r.right,width:r.width}
+      }),
+      columnButton:(()=>{
+        const btn=document.querySelector('.account-table-shell .managed-column-button')
+        const r=btn?.getBoundingClientRect()
+        return r?{left:r.left,right:r.right,top:r.top,bottom:r.bottom}:null
+      })(),
     }
   },spec)
   const fits=(m,view)=>{
@@ -114,6 +123,25 @@ try {
     check(spec.name+' valid identifier column',
       (await page.locator(spec.table+' thead').innerText()).includes(spec.required))
     const menu=page.locator((spec.name==='User'?'.account-table-shell':'.order-table-shell')+' .managed-column-button').first()
+    if(spec.name==='User'){
+      check('User device filter removed',await page.locator('.account-filter-bar [name="device"]').count()===0)
+      check('User bulk archive hidden until checkbox selection',await page.locator('.user-bulk-bar').count()===0)
+      const filterMenu=page.locator('.p1-filter-dropdown').filter({has:page.locator('input[name="orders"]')})
+      await filterMenu.locator('.p1-filter-trigger').click()
+      check('User exact order-count preset options',await filterMenu.getByRole('option',{name:'2 đơn'}).count()===1)
+      await filterMenu.getByRole('option',{name:'2 đơn'}).click()
+      check('User order filter captures exact selection',await filterMenu.locator('input[name="orders"]').inputValue()==='2')
+      const voucherMenu=page.locator('.p1-filter-dropdown').filter({has:page.locator('input[name="voucher"]')})
+      await voucherMenu.locator('.p1-filter-trigger').click()
+      check('User voucher filter displays real tags',await voucherMenu.getByRole('option',{name:'SHHD'}).count()===1)
+      await page.keyboard.press('Escape')
+      check('User themed dropdown closes with Escape',!(await voucherMenu.getByRole('listbox').isVisible().catch(()=>false)))
+      const checkBox=page.locator('.user-table tbody input[type="checkbox"]').first()
+      await checkBox.check()
+      check('User selected-only archive toolbar visible',await page.locator('.user-bulk-bar').isVisible())
+      await checkBox.uncheck()
+      check('User archive toolbar disappears when selection clears',await page.locator('.user-bulk-bar').count()===0)
+    }
     await menu.click()
     const menuPanel=page.locator((spec.name==='User'?'.account-table-shell':'.order-table-shell')+' .column-manager-menu')
     check(spec.name+' column manager opens',await menuPanel.isVisible())
@@ -124,6 +152,18 @@ try {
       await page.waitForTimeout(80)
       const m=await measure(spec)
       check(spec.name+' fit '+view.width+'x'+view.height,fits(m,view),m??{})
+      if(spec.name==='User'&&[390,768,1024,1440].includes(view.width)){
+        const compact=['number','voucher','orders'].map(id=>m?.accountCols?.find(c=>c.id===id))
+        check('User semantic narrow columns '+view.width,
+          compact.every((c,i)=>c&&c.width<=[43,106,69][i]),{compact})
+        check('User adjacent columns never overlap '+view.width,
+          Boolean(m?.accountCols?.every((c,i,all)=>i===0||all[i-1].right<=c.left+2)),
+          {cols:m?.accountCols})
+        check('User column manager stays in table lane '+view.width,
+          Boolean(m?.columnButton&&m.columnButton.left>=m.wrap.left-2
+            &&m.columnButton.right<=m.wrap.right+2),
+          {button:m?.columnButton,lane:m?.wrap})
+      }
       if(view.width===1440){
         check(spec.name+' Desktop 1440 table fits without unnecessary horizontal scroll',
           Boolean(m&&m.table.width<=m.wrap.width+9),
@@ -163,8 +203,10 @@ try {
       const m=await measure(spec)
       check(spec.name+' remains contained when right slidebar opens',
         fits(m,{width:1440})&&Boolean(m.panel&&m.panel.right<=1444
-          &&m.lastAction&&m.lastAction.width>=26&&m.lastAction.width<=60
-          &&m.actionHead&&m.actionHead.width>=26&&m.actionHead.width<=60),m??{})
+          &&(spec.name==='User'
+            ?!m.lastAction&&m.columnButton&&m.columnButton.right<=m.wrap.right+2
+            :m.lastAction&&m.lastAction.width>=26&&m.lastAction.width<=60
+              &&m.actionHead&&m.actionHead.width>=26&&m.actionHead.width<=60)),m??{})
       await page.screenshot({path:output+'/'+(spec.name==='User'?'accounts':'orders')+'-panel-1440.png',fullPage:false})
       await page.setViewportSize({width:390,height:844})
       await page.waitForTimeout(100)
