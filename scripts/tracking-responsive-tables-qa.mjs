@@ -248,6 +248,10 @@ try{
       }
     }
   }
+  // PR #59 focused regression after a full cross-module run already passed.
+  // Avoid reloading unrelated heavy modules when the Worker reports 1102.
+  // To restore broad regression, unset QA_TRACKING_FOCUS in the workflow.
+  if(process.env.QA_TRACKING_FOCUS!=='1'){
   // Visit each operational module only once, then resize in-place. This
   // avoids multiplying Cloudflare/Supabase requests by the number of viewports.
   for(const [path,selector,label] of paths){
@@ -578,12 +582,13 @@ try{
     if(metric)check('Shipper settlement amounts legible',
       metric.numberFont>=10.5&&metric.labelFont>=9.5,metric)
   }else check('Shipper settlement route accessible',false)
+  }
   await context.close()
 }finally{
   await browser.close()
 }
 const failures=results.filter(x=>!x.pass)
-const report={commit:process.env.GITHUB_SHA??'unknown',
+const report={scope:process.env.QA_TRACKING_FOCUS==='1'?'tracking-focused':'all-modules',commit:process.env.GITHUB_SHA??'unknown',
   preview:base,checks:results.length,failed:failures.length,
   passed:results.length-failures.length,results}
 fs.writeFileSync(output+'/responsive-summary.json',JSON.stringify(report,null,2))
