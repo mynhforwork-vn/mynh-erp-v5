@@ -20,3 +20,6 @@
 @import './styles/notification-neo-soft-a.css';
 
 @import './styles/tracking-compact-actions-v1.css';
+
+/* Shared table presentation wins over module-specific legacy typography. */
+@import './styles/enterprise-tables-v1.css';
