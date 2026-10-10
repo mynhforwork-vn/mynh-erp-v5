@@ -899,63 +899,117 @@
   }
 }
 
-/* Table width does not collapse to the remaining panel lane. Protect status,
-   detail and actions and allow horizontal scrolling inside each HUB. */
+/* Tracking table fit-to-lane policy (PR #59).
+   Desktop full lane: show all columns without a forced 1120px scroll.
+   Right drawer: compress only text-preview columns to a readable 760px floor.
+   On extremely narrow panes, scroll ONLY this table rather than the page.
+   Every rule below is restricted to this Tracking table; saved drag widths
+   retain their own .mynh-resizable-table presentation path. */
 .brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-wrap-v2{
+  box-sizing:border-box;
   min-width:0!important;
   max-width:100%!important;
   overflow-x:auto!important;
   overscroll-behavior-x:contain;
   scrollbar-width:thin;
+  scrollbar-color:#a9bdcd #f0f4f7;
 }
-.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table),
-.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel .tracking-hub-table-v2:not(.mynh-resizable-table){
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table){
   table-layout:fixed!important;
-  width:max(100%,1120px)!important;
-  min-width:1120px!important;
+  width:100%!important;
+  min-width:900px!important;
 }
-.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table)
-col.tracking-colgroup-status,
 .brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
-.tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-status{
-  width:178px!important;
+.tracking-hub-table-v2:not(.mynh-resizable-table){
+  table-layout:fixed!important;
+  width:100%!important;
+  min-width:760px!important;
 }
-.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table)
-col.tracking-colgroup-detail{
-  width:200px!important;
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-select{width:25px!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-order{width:150px!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-cod{width:86px!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-status{width:150px!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-detail{width:180px!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-actions{width:44px!important}
+/* Remaining width is shared by product summary and recipient details. */
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-product,
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-recipient{width:auto!important}
+
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-order{width:150px!important;min-width:0!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-cod{width:86px!important;min-width:0!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-status{width:150px!important;min-width:0!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-detail{width:180px!important;min-width:0!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-product,
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-recipient{
+  width:auto!important;min-width:0!important;max-width:none!important
 }
-.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table)
-col.tracking-colgroup-actions{
-  width:44px!important;
-}
-/* Override legacy panel-specific 134px TH width. The <col> alone is not
-   sufficient in fixed-layout tables because the header width wins. */
-.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table)
-th.tracking-col-status,
+
+/* Shrink only under a right-side order detail panel. At 1440px, a ~778px
+   table lane can show all seven columns. At 1280px, use a short local scroll. */
 .brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
-.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-status{
-  box-sizing:border-box!important;
-  width:178px!important;
-  min-width:178px!important;
-  max-width:178px!important;
-}
-.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table)
-th.tracking-col-detail,
+.tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-order{width:120px!important}
 .brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
-.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-detail{
-  box-sizing:border-box!important;
-  width:200px!important;
-  min-width:200px!important;
-  max-width:200px!important;
+.tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-cod{width:70px!important}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-status{width:135px!important}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-detail{width:165px!important}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-order{width:120px!important}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-cod{width:70px!important}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-status{width:135px!important}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-detail{width:165px!important}
+
+@media(max-width:900px){
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table){min-width:760px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-order{width:120px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-cod{width:70px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-status{width:135px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-detail{width:165px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-order{width:120px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-cod{width:70px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-status{width:135px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-detail{width:165px!important}
 }
+
 .brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2 thead th{
   overflow:hidden!important;
   text-overflow:ellipsis!important;
   white-space:nowrap!important;
-}
-.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2 thead th.tracking-col-detail,
-.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2 thead th.tracking-col-status{
-  min-width:0!important;
 }
 .brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2 th.tracking-action-head{
   box-sizing:border-box!important;
@@ -964,11 +1018,7 @@ th.tracking-col-detail,
   max-width:44px!important;
   padding-left:2px!important;
   padding-right:2px!important;
-}
-/* The action column is the LAST data column, not a floating overlay. Preserve
-   the sticky vertical header, but disable legacy right-sticky positioning so
-   its text/icon cannot cover the description while horizontally scrolling. */
-.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2 th.tracking-action-head{
+  /* The action is the last column, not a floating overlay. */
   right:auto!important;
   left:auto!important;
   inset-inline-end:auto!important;
