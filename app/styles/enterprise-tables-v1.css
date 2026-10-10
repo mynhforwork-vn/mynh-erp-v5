@@ -569,3 +569,70 @@
   overflow-x:hidden!important;
   scrollbar-width:thin;
 }
+
+/* Mobile shell repair: brand-responsive's unguarded 218px desktop rail comes
+   after option1's 58px mobile rail, winning its !important declaration.
+   Restore a genuine icon rail so tables do not get only 66–136px. */
+@media(max-width:900px){
+  .brand-shell-v1.shell{
+    box-sizing:border-box!important;
+    width:100%!important;
+    max-width:100vw!important;
+    min-width:0!important;
+    grid-template-columns:58px minmax(0,1fr)!important;
+    gap:0!important;
+  }
+  .brand-shell-v1.shell > .sidebar{
+    box-sizing:border-box!important;
+    width:58px!important;
+    min-width:58px!important;
+    max-width:58px!important;
+    padding:9px 5px!important;
+    overflow-x:hidden!important;
+  }
+  .brand-shell-v1.shell > .main{
+    box-sizing:border-box!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    padding:10px 8px 18px!important;
+    overflow-x:hidden!important;
+  }
+  .brand-shell-v1.shell .brand{
+    justify-content:center!important;
+    padding:4px 0 9px!important;
+  }
+  .brand-shell-v1.shell .brand > span:last-child,
+  .brand-shell-v1.shell .nav-section-label,
+  .brand-shell-v1.shell .nav a > span:last-child,
+  .brand-shell-v1.shell .sidebar-user-copy,
+  .brand-shell-v1.shell .sidebar-user-more{
+    display:none!important;
+  }
+  .brand-shell-v1.shell .nav,
+  .brand-shell-v1.shell .nav-group,
+  .brand-shell-v1.shell .nav-group-items{
+    min-width:0!important;
+    width:100%!important;
+  }
+  .brand-shell-v1.shell .nav a{
+    box-sizing:border-box!important;
+    width:44px!important;
+    min-width:44px!important;
+    max-width:44px!important;
+    min-height:38px!important;
+    padding:0!important;
+    margin:0 auto!important;
+    justify-content:center!important;
+  }
+  .brand-shell-v1.shell .nav-icon{
+    flex:0 0 26px!important;
+    width:26px!important;
+    height:26px!important;
+  }
+  .brand-shell-v1.shell .sidebar-foot{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow:visible!important;
+  }
+}
