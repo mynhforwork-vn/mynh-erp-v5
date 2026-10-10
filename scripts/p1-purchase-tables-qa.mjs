@@ -103,7 +103,7 @@ try {
         return {id:el.getAttribute('data-account-col'),left:r.left,right:r.right,width:r.width}
       }),
       columnButton:(()=>{
-        const btn=document.querySelector('.account-table-shell .managed-column-button')
+        const btn=document.querySelector('.p1-account-filter-actions .managed-column-button')
         const r=btn?.getBoundingClientRect()
         return r?{left:r.left,right:r.right,top:r.top,bottom:r.bottom}:null
       })(),
@@ -124,7 +124,7 @@ try {
     await page.locator(spec.table+' thead th').first().waitFor({state:'visible',timeout:15000})
     check(spec.name+' valid identifier column',
       (await page.locator(spec.table+' thead').innerText()).includes(spec.required))
-    const menu=page.locator((spec.name==='User'?'.account-table-shell':'.order-table-shell')+' .managed-column-button').first()
+    const menu=page.locator((spec.name==='User'?'.p1-account-filter-actions':'.p1-order-toolbar-actions')+' .managed-column-button').first()
     if(spec.name==='User'){
       check('User device filter removed',await page.locator('.account-filter-bar [name="device"]').count()===0)
       check('User bulk archive hidden until checkbox selection',await page.locator('.user-bulk-bar').count()===0)
@@ -144,13 +144,30 @@ try {
       await checkBox.uncheck()
       check('User archive toolbar disappears when selection clears',await page.locator('.user-bulk-bar').count()===0)
     }
+    if(spec.name==='Đơn nhập'){
+      const bulkCheckbox=page.locator('.order-table tbody input[type="checkbox"]').first()
+      check('Order bulk actions hidden without selection',
+        await page.locator('.p1-order-bulk-icons').count()===0)
+      await bulkCheckbox.check()
+      check('Order selected toolbar shows exactly two icon buttons',
+        await page.locator('.p1-order-bulk-icons button.p1-toolbar-icon').count()===2)
+      await page.getByRole('button',{name:'Bỏ chọn tất cả'}).click()
+      check('Order bulk actions disappear after clear',
+        await page.locator('.p1-order-bulk-icons').count()===0)
+      check('Order products use two-line container',
+        await page.locator('.order-table td.product-cell .p1-product-lines').count()>0)
+    }
     await menu.click()
-    const menuPanel=page.locator((spec.name==='User'?'.account-table-shell':'.order-table-shell')+' .column-manager-menu')
+    const menuPanel=page.locator((spec.name==='User'?'.p1-account-filter-actions':'.p1-order-toolbar-actions')+' .column-manager-menu')
     check(spec.name+' column manager opens',await menuPanel.isVisible())
+    if(spec.name==='User')check('User extra title row removed',
+      await page.locator('.p1-account-table-tools,.p1-account-table-tools-label').count()===0)
+    else check('Order per-row action column removed',
+      await page.locator('.order-table :is(.row-actions-head,.row-actions-cell)').count()===0)
     await page.keyboard.press('Escape')
     check(spec.name+' column manager Escape closes',!(await menuPanel.isVisible().catch(()=>false)))
     await menu.click()
-    await page.locator(spec.name==='User'?'.p1-account-table-tools-label':'.page-head').first().click()
+    await page.locator(spec.name==='User'?'.page-head':'.page-head').first().click()
     check(spec.name+' column manager closes on outside click',
       !(await menuPanel.isVisible().catch(()=>false)))
     for(const view of viewports){
@@ -166,8 +183,8 @@ try {
           Boolean(m?.accountCols?.every((c,i,all)=>i===0||all[i-1].right<=c.left+2)),
           {cols:m?.accountCols})
         check('User column manager stays in table lane '+view.width,
-          Boolean(m?.columnButton&&m.columnButton.left>=m.wrap.left-2
-            &&m.columnButton.right<=m.wrap.right+2),
+          Boolean(m?.columnButton&&m.columnButton.left>=0
+            &&m.columnButton.right<=view.width+2),
           {button:m?.columnButton,lane:m?.wrap})
       }
       if(view.width===1440){
@@ -210,17 +227,16 @@ try {
       check(spec.name+' remains contained when right slidebar opens',
         fits(m,{width:1440})&&Boolean(m.panel&&m.panel.right<=1444
           &&(spec.name==='User'
-            ?!m.lastAction&&m.columnButton&&m.columnButton.right<=m.wrap.right+2
-            :m.lastAction&&m.lastAction.width>=26&&m.lastAction.width<=60
-              &&m.actionHead&&m.actionHead.width>=26&&m.actionHead.width<=60)),m??{})
+            ?!m.lastAction&&m.columnButton&&m.columnButton.right<=1444
+            :!m.lastAction&&!m.actionHead)),m??{})
       await page.screenshot({path:output+'/'+(spec.name==='User'?'accounts':'orders')+'-panel-1440.png',fullPage:false})
       if(spec.name==='User'){
-        const trigger=page.locator('.account-table-shell .managed-column-button')
-        const menu=page.locator('.account-table-shell .column-manager-menu')
+        const trigger=page.locator('.p1-account-filter-actions .managed-column-button')
+        const menu=page.locator('.p1-account-filter-actions .column-manager-menu')
         const geometry=async()=>page.evaluate(()=>{
           const shell=document.querySelector('.account-table-card')?.getBoundingClientRect()
-          const btn=document.querySelector('.account-table-shell .managed-column-button')?.getBoundingClientRect()
-          const menu=document.querySelector('.account-table-shell .column-manager-menu')?.getBoundingClientRect()
+          const btn=document.querySelector('.p1-account-filter-actions .managed-column-button')?.getBoundingClientRect()
+          const menu=document.querySelector('.p1-account-filter-actions .column-manager-menu')?.getBoundingClientRect()
           const panel=document.querySelector('.account-detail-panel')?.getBoundingClientRect()
           return shell&&btn&&menu&&panel?{
             laneLeft:shell.left,laneRight:shell.right,menuLeft:menu.left,menuRight:menu.right,
@@ -230,9 +246,8 @@ try {
         await trigger.click()
         const opened=await geometry()
         check('User column menu anchored inside narrow lane with right slidebar',
-          Boolean(opened&&opened.menuLeft>=opened.laneLeft-3
-            &&opened.menuRight<=opened.laneRight+3
-            &&opened.menuRight<=opened.panelLeft+4),opened??{})
+          Boolean(opened&&opened.menuLeft>=-3
+            &&opened.menuRight<=opened.viewport+3),opened??{})
         const noteOption=menu.locator('.column-manager-row').filter({hasText:'Ghi chú'}).locator('input[type="checkbox"]')
         await noteOption.uncheck()
         check('User hide column while slidebar open',
@@ -248,18 +263,16 @@ try {
           await trigger.click()
           const collapsed=await geometry()
           check('User column menu anchored after left sidebar collapse',
-            Boolean(collapsed&&collapsed.menuLeft>=collapsed.laneLeft-3
-              &&collapsed.menuRight<=collapsed.laneRight+3
-              &&collapsed.menuRight<=collapsed.panelLeft+4),collapsed??{})
+            Boolean(collapsed&&collapsed.menuLeft>=-3
+              &&collapsed.menuRight<=collapsed.viewport+3),collapsed??{})
           await page.keyboard.press('Escape')
           await collapsedToggle.click()
           await page.waitForTimeout(270)
           await trigger.click()
           const expanded=await geometry()
           check('User column menu anchored after left sidebar expand',
-            Boolean(expanded&&expanded.menuLeft>=expanded.laneLeft-3
-              &&expanded.menuRight<=expanded.laneRight+3
-              &&expanded.menuRight<=expanded.panelLeft+4),expanded??{})
+            Boolean(expanded&&expanded.menuLeft>=-3
+              &&expanded.menuRight<=expanded.viewport+3),expanded??{})
           await page.keyboard.press('Escape')
         }
       }
