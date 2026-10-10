@@ -81,6 +81,9 @@ jobs:
         run: node scripts/tracking-slidebars-qa.mjs
       - name: Read-only responsive tables, long text, scrolling and slidebar QA
         env:
+          # Focus only Tracking for the new column/HUB layout; broad matrix was verified at dc212c9.
+          # Remove this flag when validating the next system-wide table styling change.
+          QA_TRACKING_FOCUS: '1'
           PREVIEW_URL: https://tracking-kpi-v1-mynh-erp-v5.mynh-forwork.workers.dev
           SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
           SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
