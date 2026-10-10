@@ -556,3 +556,16 @@
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
   }
 }
+
+/* The unmapped SPX status queue belongs above the Mapping list. The fixed-height
+   Settings layout must not squeeze its rows into a cropped 60px strip. */
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9 >
+.tracking-unknown-panel-v7{
+  box-sizing:border-box!important;
+  flex:0 0 auto!important;
+  min-height:100px!important;
+  max-height:min(220px,28vh)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  scrollbar-width:thin;
+}
