@@ -123,8 +123,12 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     {data:warehouseSettings},
   ]=await Promise.all([
     supabase.from('shipments').select(
-      'id,order_id,tracking_number,carrier,is_active,tracking_enabled,current_tracking_status,last_track_at,next_track_at,last_status_change_at,tracking_fail_count,queue_status,orders(id,shopee_order_id,destination_hub,cod,recipient_name,recipient_phone,recipient_address,receive_status,warehouse_status,order_date,shipping_service,order_status,archived_at,order_items(product_name,variant,quantity))'
-    ).eq('is_active',true).order('last_status_change_at',{ascending:false,nullsFirst:false}).limit(2000),
+      'id,order_id,tracking_number,carrier,is_active,tracking_enabled,current_tracking_status,last_track_at,next_track_at,last_status_change_at,tracking_fail_count,queue_status,tracking_events(event_time,raw_description,raw_status_name,raw_status,reason_description),orders(id,shopee_order_id,destination_hub,cod,recipient_name,recipient_phone,recipient_address,receive_status,warehouse_status,order_date,shipping_service,order_status,archived_at,order_items(product_name,variant,quantity))'
+    ).eq('is_active',true)
+      .order('last_status_change_at',{ascending:false,nullsFirst:false})
+      .order('event_time',{referencedTable:'tracking_events',ascending:false})
+      .limit(1,{referencedTable:'tracking_events'})
+      .limit(2000),
     supabase.from('warehouses').select('id,code,name,address,is_active').eq('is_active',true).order('code'),
     supabase.from('tracking_provider_configs').select('carrier,enabled').order('carrier'),
     supabase.from('tracking_sync_logs').select('id,shipment_id,source,started_at,result,new_event_count,error_code,error_message').order('started_at',{ascending:false}).limit(8),
@@ -156,6 +160,10 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
 
   const allRows=(shipmentData??[]).filter((s:any)=>!s.orders?.archived_at).map((s:any)=>{
     const o=s.orders??{}
+    const event=(s.tracking_events??[])[0]??null
+    const detail=[event?.raw_description,event?.raw_status_name,event?.reason_description,event?.raw_status]
+      .map(value=>typeof value==='string'?value.trim():'')
+      .find(Boolean)??null
     return {
       id:o.id??s.order_id,
       shopee_order_id:o.shopee_order_id,
@@ -174,6 +182,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       tracking_number:s.tracking_number,
       carrier:s.carrier,
       tracking_status:s.current_tracking_status,
+      tracking_detail:detail,
+      tracking_event_time:event?.event_time??null,
       tracking_enabled:s.tracking_enabled,
       last_track_at:s.last_track_at,
       next_track_at:s.next_track_at,
