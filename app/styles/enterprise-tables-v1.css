@@ -925,6 +925,26 @@ col.tracking-colgroup-detail{
 col.tracking-colgroup-actions{
   width:44px!important;
 }
+/* Override legacy panel-specific 134px TH width. The <col> alone is not
+   sufficient in fixed-layout tables because the header width wins. */
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table)
+th.tracking-col-status,
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-status{
+  box-sizing:border-box!important;
+  width:178px!important;
+  min-width:178px!important;
+  max-width:178px!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table)
+th.tracking-col-detail,
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-detail{
+  box-sizing:border-box!important;
+  width:200px!important;
+  min-width:200px!important;
+  max-width:200px!important;
+}
 .brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2 thead th{
   overflow:hidden!important;
   text-overflow:ellipsis!important;
