@@ -914,7 +914,9 @@
   min-width:1120px!important;
 }
 .brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table)
-col.tracking-colgroup-status{
+col.tracking-colgroup-status,
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-status{
   width:178px!important;
 }
 .brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table)
