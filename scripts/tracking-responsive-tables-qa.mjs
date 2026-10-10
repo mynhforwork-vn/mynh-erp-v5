@@ -133,7 +133,10 @@ try{
     return m
   },wrapSelector)
   const verify=(label,view,m)=>{
+    const mobileLaneUsable=view.width>900||Boolean(m
+      &&m.wrapLeft<=100&&m.wrapWidth>=Math.max(170,view.width-135))
     const fits=Boolean(m)
+      &&mobileLaneUsable
       &&m.docScrollWidth<=view.width+4
       &&m.wrapLeft>=-3&&m.wrapRight<=view.width+4
       &&m.headerFont>=9.2
