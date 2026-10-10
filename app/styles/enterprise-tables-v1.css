@@ -512,3 +512,47 @@
 ){
   font-size:10.5px!important;
 }
+
+/* Shipper settlement text should be readable; the current compact batch cards
+   use 6.7px labels and 8.2px currency, unlike all other operational lists. */
+.brand-shell-v1 .shipper-payment-batch-head{
+  min-height:72px!important;
+  gap:12px!important;
+  padding:10px 12px!important;
+}
+.brand-shell-v1 .shipper-payment-batch-head h2{
+  font-size:12px!important;
+  line-height:1.35!important;
+}
+.brand-shell-v1 .shipper-payment-batch-head small{
+  font-size:10px!important;
+  line-height:1.35!important;
+  overflow-wrap:anywhere;
+}
+.brand-shell-v1 .shipper-payment-batch-metrics > div{
+  min-width:0!important;
+  padding:6px 8px!important;
+}
+.brand-shell-v1 .shipper-payment-batch-metrics span,
+.brand-shell-v1 .shipper-payment-note span{
+  font-size:10px!important;
+  line-height:1.25!important;
+}
+.brand-shell-v1 .shipper-payment-batch-metrics b,
+.brand-shell-v1 .shipper-payment-note b{
+  font-size:11px!important;
+  line-height:1.35!important;
+}
+@media(max-width:1180px){
+  .brand-shell-v1 .shipper-payment-batch-head{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  .brand-shell-v1 .shipper-payment-batch-metrics{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:600px){
+  .brand-shell-v1 .shipper-payment-batch-metrics{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
