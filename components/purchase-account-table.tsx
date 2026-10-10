@@ -223,7 +223,7 @@ export function PurchaseAccountTable({
       ? <span className="status-pill archived">Lưu trữ</span>
       : <span className={'status-pill '+statusClass(u.status)}>{statusLabel(u.status)}</span>}</td>
     if(key==='device')return <td key={key} className="device-icon-cell"><DeviceIcons row={u}/></td>
-    if(key==='voucher')return <td key={key} className="voucher-cell"><VoucherTags value={u.voucher_used_summary} compact maxVisible={2}/></td>
+    if(key==='voucher')return <td key={key} className="voucher-cell"><VoucherTags value={u.voucher_used_summary} compact maxVisible={1}/></td>
     if(key==='orders')return <td key={key} className="count-cell">{u.order_count??0}</td>
     if(key==='createdAt')return <td key={key} title={formatDateTime(u.effective_created_at??u.created_at)}>{formatDateTime(u.effective_created_at??u.created_at)}</td>
     return <td key={key} className="truncate p1-table-long-text" title={u.note??undefined}>{u.note??'—'}</td>
