@@ -280,9 +280,16 @@ try {
         const found=await withOrder.count()>0
         check('User regression: at least one account has an order',found)
         if(found){
-          await withOrder.locator('a.table-link').first().click()
+          const targetLink=withOrder.locator('a.table-link').first()
+          const targetHref=await targetLink.getAttribute('href')
+          const targetUserId=new URL(targetHref,base).searchParams.get('user')
+          const targetUsername=(await targetLink.innerText()).trim()
+          assert.ok(targetUserId&&targetUsername,'Expected a valid User link')
+          await targetLink.click()
+          await page.waitForURL(url=>url.searchParams.get('user')===targetUserId,{timeout:15000})
+          await page.locator('.account-detail-panel .panel-head h2').getByText(targetUsername,{exact:true}).waitFor({state:'visible',timeout:15000})
           await page.locator('.user-panel-tabs').getByRole('link',{name:/Đơn hàng/}).click()
-          await page.waitForURL(url=>url.searchParams.get('tab')==='orders',{timeout:15000})
+          await page.waitForURL(url=>url.searchParams.get('user')===targetUserId&&url.searchParams.get('tab')==='orders',{timeout:15000})
           const orderDiagnostics=await page.evaluate(()=>({
             url:location.href,
             listCount:document.querySelectorAll('.user-order-card.detailed').length,
