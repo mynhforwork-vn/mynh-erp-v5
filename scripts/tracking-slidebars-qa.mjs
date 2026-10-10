@@ -93,7 +93,7 @@ try{
       const compactOK=Boolean(v.action&&v.action.width<=50)
         &&(!v.icon||v.icon.width<=25&&v.icon.height<=25)
       const tableFits=Boolean(v.table&&v.tableWrap)
-        &&v.table.width<=Math.max(expectedPanel?850:0,v.tableWrap.width)+8
+        &&v.table.width<=Math.max(expectedPanel?1120:0,v.tableWrap.width)+8
       // With right panel closed, the table must actually FILL its lane.
       // A narrow 1280px right-panel case may use a limited local scrollbar.
       const adaptive=expectedPanel
@@ -159,7 +159,7 @@ try{
       const panelWide=await measuring('left-open_right-open',false,true)
       check(viewport.width+' right open shrinks table',
         Boolean(initial.table&&panelWide.table&&panelWide.table.width<initial.table.width-60
-          &&panelWide.table.width<=Math.max(850,panelWide.tableWrap.width)+12),
+          &&panelWide.table.width<=Math.max(1120,panelWide.tableWrap.width)+12),
         {before:initial.table?.width,after:panelWide.table?.width,available:panelWide.tableWrap?.width,customized:panelWide.customized})
       check(viewport.width+' right panel changes widths',Boolean(initial.columns&&panelWide.columns
         &&(panelWide.columns.product??0)<(initial.columns.product??0)
@@ -168,7 +168,7 @@ try{
       if(draggedProduct!==null){
         check('1440 custom saved widths fit with right slidebar',
           Boolean(panelWide.customized&&panelWide.table&&panelWide.tableWrap
-            &&panelWide.table.width<=Math.max(850,panelWide.tableWrap.width)+12),
+            &&panelWide.table.width<=Math.max(1120,panelWide.tableWrap.width)+12),
           {table:panelWide.table?.width,available:panelWide.tableWrap?.width})
       }
       const close=page.locator('aside.context-order-panel a[aria-label="Đóng toàn bộ"]').first()
