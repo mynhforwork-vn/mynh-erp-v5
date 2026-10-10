@@ -205,7 +205,7 @@ try{
       await first.click()
       await sleep(250)
       const fm=await page.evaluate(()=>{
-        const workspace=document.querySelector('.finance-live-workspace.has-slidebar,.finance-preview-workspace.has-slidebar')
+        const workspace=document.querySelector('.finance-ledger-layout.with-panel,.finance-live-workspace.has-slidebar,.finance-preview-workspace.has-slidebar')
         const table=workspace?.querySelector('table.finance-table')
         const wrap=workspace?.querySelector('.finance-table-card')
         if(!workspace||!table||!wrap)return null
