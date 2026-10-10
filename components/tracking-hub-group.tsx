@@ -162,24 +162,24 @@ export function TrackingHubGroup({
       <div className="tracking-hub-identity">
         <span className={'tracking-hub-priority-dot '+(urgentCount?'attention':'')} aria-hidden="true"/>
         <div>
-          <b>{hub}</b>
+          <b title={hub}>{hub}</b>
           <small>{assignedShippers.length
             ? assignedShippers.map(s=>s.name).join(' · ')
             : 'Chưa cấu hình Shipper'}</small>
         </div>
       </div>
 
-      <div className="tracking-hub-metrics-v2">
+      <div className="tracking-hub-metrics-v2" tabIndex={0} role="region" aria-label={'Thống kê HUB '+hub}>
         <span><b>{rows.length}</b> đơn</span>
         <span className={eligible.length?'warning':''}><b>{eligible.length}</b> chờ nhận</span>
         <span className={atHub?'info':''}><b>{atHub}</b> đến HUB</span>
         <span className={outForDelivery?'info':''}><b>{outForDelivery}</b> đang giao</span>
         <span className={failed?'danger':''}><b>{failed}</b> giao lỗi</span>
         <span className="money"><b>{formatMoney(totalCod)}</b> COD</span>
+        {delivered>0&&<span className="success">{delivered} giao TC</span>}
       </div>
 
       <div className="tracking-hub-summary-state">
-        {delivered>0&&<span className="success">{delivered} giao TC</span>}
         {open&&<ManagedColumnsMenu labels={COLUMN_LABELS} manager={columns}/>}
       </div>
     </div>
