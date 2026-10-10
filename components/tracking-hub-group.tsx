@@ -21,11 +21,13 @@ type OrderRow={
   receive_status?:string|null
   tracking_status?:string|null
   shipment_id?:string|null
+  tracking_detail?:string|null
+  tracking_event_time?:string|null
 }
-type ColKey='order'|'product'|'cod'|'recipient'|'status'|'actions'
-const ALL_COLUMNS:ColKey[]=['order','product','cod','recipient','status','actions']
+type ColKey='order'|'product'|'cod'|'recipient'|'status'|'detail'|'actions'
+const ALL_COLUMNS:ColKey[]=['order','product','cod','recipient','status','detail','actions']
 const COLUMN_LABELS:Record<ColKey,string>={
-  order:'Mã đơn / MVĐ',product:'Sản phẩm',cod:'COD',recipient:'Người nhận / Địa chỉ',status:'Trạng thái',actions:'Xử lý',
+  order:'Mã đơn / MVĐ',product:'Sản phẩm',cod:'COD',recipient:'Người nhận / Địa chỉ',status:'Trạng thái',detail:'Trạng thái chi tiết',actions:'Xử lý',
 }
 type Warehouse={id:string,code?:string|null,name?:string|null,address?:string|null}
 type AssignedShipper={id:string,name:string,phone?:string|null}
@@ -58,7 +60,7 @@ export function TrackingHubGroup({
   const urgentCount=eligible.length+failed+atHub+outForDelivery
 
   const [open,setOpen]=useState(defaultOpen??urgentCount>0)
-  const columns=useManagedColumns<ColKey>('mynh-tracking-hub-columns-v2',ALL_COLUMNS,['order'])
+  const columns=useManagedColumns<ColKey>('mynh-tracking-hub-columns-v2',ALL_COLUMNS,['order'],{detail:'status'})
   const sort=useManagedSort<ColKey>('mynh-tracking-hub-sort-v2','order','asc')
   const sortedRows=useMemo(()=>{
     const next=[...rows]
@@ -68,6 +70,7 @@ export function TrackingHubGroup({
       if(key==='cod')return Number(row.cod??0)
       if(key==='recipient')return String(row.recipient_name??'')+' '+String(row.recipient_address??'')
       if(key==='status')return String(row.tracking_status??'')+' '+String(row.receive_status??'')
+      if(key==='detail')return String(row.tracking_detail??'')
       return String(row.shipment_id??'')
     }
     next.sort((a,b)=>{
@@ -177,7 +180,6 @@ export function TrackingHubGroup({
 
       <div className="tracking-hub-summary-state">
         {delivered>0&&<span className="success">{delivered} giao TC</span>}
-        <span>{open?'Thu gọn':'Xem đơn'}</span>
         {open&&<ManagedColumnsMenu labels={COLUMN_LABELS} manager={columns}/>}
       </div>
     </div>
@@ -206,6 +208,7 @@ export function TrackingHubGroup({
                 if(col==='cod')return <td key={col} className="money">{formatMoney(r.cod)}</td>
                 if(col==='recipient')return <td key={col}><div className="tracking-recipient tracking-recipient-v2"><b>{r.recipient_name??'—'} <small>{formatPhone(r.recipient_phone)}</small></b><span title={r.recipient_address??''}>{r.recipient_address??'Chưa có địa chỉ'}</span></div></td>
                 if(col==='status')return <td key={col}><div className="order-state-cell tracking-state-cell-v2"><span className={'status-pill status-'+String(r.tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(r.tracking_status)}</span>{r.receive_status!=='NOT_READY'&&<span className={'status-pill '+(r.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(r.receive_status)}</span>}</div></td>
+                if(col==='detail')return <td key={col} className="tracking-col-detail-cell"><div className="tracking-detail-cell-v1" title={r.tracking_detail??'Chưa có nội dung Tracking'}><span>{r.tracking_detail??'Chưa có nội dung Tracking'}</span>{r.tracking_event_time&&<small>{new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric',hour12:false}).format(new Date(r.tracking_event_time))}</small>}</div></td>
                 return <td key={col} className="tracking-col-actions tracking-action-cell"><div className="tracking-row-actions">{r.shipment_id&&!['DELIVERED','CANCELLED','RETURNED'].includes(String(r.tracking_status))&&<ManualSyncButton shipmentId={r.shipment_id} iconOnly/>}</div></td>
               }
               return <tr key={r.id} className={canReceive?'tracking-row-waiting':''}>
