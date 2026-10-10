@@ -208,6 +208,55 @@ try {
             :m.lastAction&&m.lastAction.width>=26&&m.lastAction.width<=60
               &&m.actionHead&&m.actionHead.width>=26&&m.actionHead.width<=60)),m??{})
       await page.screenshot({path:output+'/'+(spec.name==='User'?'accounts':'orders')+'-panel-1440.png',fullPage:false})
+      if(spec.name==='User'){
+        const trigger=page.locator('.account-table-shell .managed-column-button')
+        const menu=page.locator('.account-table-shell .column-manager-menu')
+        const geometry=async()=>page.evaluate(()=>{
+          const shell=document.querySelector('.account-table-card')?.getBoundingClientRect()
+          const btn=document.querySelector('.account-table-shell .managed-column-button')?.getBoundingClientRect()
+          const menu=document.querySelector('.account-table-shell .column-manager-menu')?.getBoundingClientRect()
+          const panel=document.querySelector('.account-detail-panel')?.getBoundingClientRect()
+          return shell&&btn&&menu&&panel?{
+            laneLeft:shell.left,laneRight:shell.right,menuLeft:menu.left,menuRight:menu.right,
+            buttonRight:btn.right,panelLeft:panel.left,viewport:innerWidth,
+          }:null
+        })
+        await trigger.click()
+        const opened=await geometry()
+        check('User column menu anchored inside narrow lane with right slidebar',
+          Boolean(opened&&opened.menuLeft>=opened.laneLeft-3
+            &&opened.menuRight<=opened.laneRight+3
+            &&opened.menuRight<=opened.panelLeft+4),opened??{})
+        const noteOption=menu.locator('.column-manager-row').filter({hasText:'Ghi chú'}).locator('input[type="checkbox"]')
+        await noteOption.uncheck()
+        check('User hide column while slidebar open',
+          await page.locator('.user-table th[data-account-col="note"]').count()===0)
+        await noteOption.check()
+        check('User show column restores geometry',
+          await page.locator('.user-table th[data-account-col="note"]').count()===1)
+        await page.keyboard.press('Escape')
+        const collapsedToggle=page.locator('.sidebar-collapse-toggle')
+        if(await collapsedToggle.count()){
+          await collapsedToggle.click()
+          await page.waitForTimeout(270)
+          await trigger.click()
+          const collapsed=await geometry()
+          check('User column menu anchored after left sidebar collapse',
+            Boolean(collapsed&&collapsed.menuLeft>=collapsed.laneLeft-3
+              &&collapsed.menuRight<=collapsed.laneRight+3
+              &&collapsed.menuRight<=collapsed.panelLeft+4),collapsed??{})
+          await page.keyboard.press('Escape')
+          await collapsedToggle.click()
+          await page.waitForTimeout(270)
+          await trigger.click()
+          const expanded=await geometry()
+          check('User column menu anchored after left sidebar expand',
+            Boolean(expanded&&expanded.menuLeft>=expanded.laneLeft-3
+              &&expanded.menuRight<=expanded.laneRight+3
+              &&expanded.menuRight<=expanded.panelLeft+4),expanded??{})
+          await page.keyboard.press('Escape')
+        }
+      }
       await page.setViewportSize({width:390,height:844})
       await page.waitForTimeout(100)
       const mobile=await page.evaluate(s=>{
