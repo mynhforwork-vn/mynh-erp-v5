@@ -23,7 +23,10 @@
    Only tables not currently controlled by a user's saved manual drag
    receive these defaults; never overwrite an explicitly resized table. */
 .brand-shell-v1 table.table:is(.user-table,.order-table):not(.mynh-resizable-table){
-  table-layout:auto;
+  /* Fixed column allocation uses the visible header schema, rather than
+     letting a long username/email/recipient force the entire table wider
+     than the Desktop lane. Full text remains in title/detail slidebar. */
+  table-layout:fixed!important;
   box-sizing:border-box;
   width:100%!important;
 }
