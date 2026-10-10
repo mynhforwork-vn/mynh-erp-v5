@@ -43,7 +43,18 @@ try{
     const page=await context.newPage()
     await page.goto(PREVIEW_URL+'/purchase/tracking?range=all',{waitUntil:'domcontentloaded',timeout:35000})
     await page.locator('.tracking-content-workspace').waitFor({state:'visible',timeout:15000})
-    await page.waitForTimeout(550)
+    // Initial DOMContentLoaded precedes Next.js CSS/chunk readiness on busy Preview.
+    // Do not measure an unstyled server shell or click before React hydrates.
+    await page.waitForLoadState('load',{timeout:35000})
+    await page.waitForFunction(()=>{
+      const action=document.querySelector('.tracking-hub-table-v2 th.tracking-action-head')
+      const table=document.querySelector('.tracking-hub-table-v2')
+      const workspace=document.querySelector('.tracking-content-workspace')
+      return Boolean(action&&table&&workspace)
+        &&Math.abs(action.getBoundingClientRect().width-44)<=3
+        &&table.getBoundingClientRect().width>=1110
+    },null,{timeout:25000})
+    await page.waitForTimeout(650)
     const toggle=page.locator('.desktop-sidebar-seam-handle .sidebar-collapse-toggle')
     const orderLink=page.locator('.tracking-hub-table a.table-link').filter({hasText:session.fixtures.hub_order_code}).first()
     const measuring=async(name,expectedLeftCollapsed,expectedPanel)=>{
