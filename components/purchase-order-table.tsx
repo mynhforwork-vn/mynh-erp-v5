@@ -7,6 +7,7 @@ import { ConfirmOperationDialog } from '@/components/confirm-operation-dialog'
 import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
+import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
 import {
   archiveOrder,
   archiveOrdersBulk,
@@ -254,17 +255,14 @@ export function PurchaseOrderTable({
       if(raw){
         const parsed=JSON.parse(raw)
         if(Array.isArray(parsed)){
-          const valid=parsed.filter((x:any)=>ALL.includes(x))
-          if(valid.length)setVisible(valid)
+          setVisible(normalizeLegacyVisibleColumns<ColKey>(parsed,ALL,['order']))
         }
       }
       const rawOrder=localStorage.getItem(STORAGE_COLUMN_ORDER)
       if(rawOrder){
         const parsedOrder=JSON.parse(rawOrder)
         if(Array.isArray(parsedOrder)){
-          const validOrder=parsedOrder.filter((x:any)=>ALL.includes(x))
-          const missing=ALL.filter(x=>!validOrder.includes(x))
-          if(validOrder.length)setColumnOrder([...validOrder,...missing])
+          setColumnOrder(normalizeLegacyColumnOrder<ColKey>(parsedOrder,ALL))
         }
       }
       const savedSort=localStorage.getItem(STORAGE_SORT) as SortKey|null
@@ -426,11 +424,11 @@ export function PurchaseOrderTable({
     if(key==='order')return <td key={key}><Link className="table-link" prefetch={false} href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
     if(key==='username')return <td key={key}>{o.erp_users?.username??'—'}</td>
     if(key==='time')return <td key={key} className="order-time-cell">{formatDateTime(o.order_date)}</td>
-    if(key==='product')return <td key={key} className="truncate product-cell">{productSummary(o.order_items??[])}</td>
+    if(key==='product')return <td key={key} className="truncate product-cell p1-table-long-text" title={productSummary(o.order_items??[])}>{productSummary(o.order_items??[])}</td>
     if(key==='cod')return <td key={key} className="money">{formatMoney(o.cod)}</td>
     if(key==='tracking')return <td key={key} className="tracking-number-cell">
       {s?.tracking_number
-        ? <span className="tracking-number-value">{s.tracking_number}</span>
+        ? <span className="tracking-number-value" title={s.tracking_number}>{s.tracking_number}</span>
         : canEdit&&!o.archived_at
           ? <QuickTrackingEditor
               orderId={o.id}
@@ -542,7 +540,7 @@ export function PurchaseOrderTable({
     
 
     <div className="card table-card order-table-card" ref={tableWrapRef}>
-      <table className="table order-table">
+      <table className="table order-table p1-purchase-data-table">
         <thead><tr>
           {canEdit&&<th className="bulk-select-col">
             <input
