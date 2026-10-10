@@ -64,16 +64,35 @@ try{
     sameSite:c.options?.sameSite==='strict'?'Strict':c.options?.sameSite==='none'?'None':'Lax'
   })))
   const page=await context.newPage()
+  let consecutiveNavigationFailures=0
   const nav=async(path)=>{
-    for(let attempt=0;attempt<3;attempt++){
-      const response=await page.goto(base+path,{waitUntil:'domcontentloaded',timeout:35000}).catch(()=>null)
+    const probes=[]
+    for(let attempt=0;attempt<4;attempt++){
+      const response=await page.goto(base+path,{waitUntil:'domcontentloaded',timeout:35000}).catch(error=>{
+        probes.push({attempt:attempt+1,error:String(error?.message??error).slice(0,180)})
+        return null
+      })
       const status=response?.status()??0
-      if(status>=200&&status<400&&!page.url().includes('/login')){
+      const finalUrl=page.url()
+      if(status>=200&&status<400&&!new URL(finalUrl).pathname.startsWith('/login')){
+        consecutiveNavigationFailures=0
         await sleep(200)
         return true
       }
-      if(attempt<2)await sleep((attempt+1)*900)
+      const body=(await page.locator('body').innerText().catch(()=>'' )).slice(0,160)
+      probes.push({attempt:attempt+1,status,url:new URL(finalUrl).pathname,
+        ray:response?.headers()['cf-ray']??null,body})
+      // Do not hammer rate-limited or temporarily unavailable environments.
+      if(attempt<3)await sleep(status===429||status===503||status===1027
+        ?[1800,3500,7000][attempt]:[800,1500,2500][attempt])
     }
+    consecutiveNavigationFailures++
+    console.warn('PREVIEW_QA_NAVIGATION_FAILED '+JSON.stringify({
+      path,consecutiveNavigationFailures,probes
+    }))
+    if(consecutiveNavigationFailures>=2)throw new Error(
+      'Preview navigation unavailable twice in a row; stop QA to protect infrastructure. route='+path
+    )
     return false
   }
   const inspect=async(wrapSelector)=>page.evaluate(selector=>{
