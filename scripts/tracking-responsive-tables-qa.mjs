@@ -195,6 +195,69 @@ try{
       }
     }
   }
+
+  // Regressions reported from Desktop screenshots: Finance concealed columns and
+  // Warehouse compressed both tables of each receiving location into a strip.
+  await page.setViewportSize({width:1440,height:900})
+  if(await nav('/finance/cashflow')){
+    const first=page.locator('table.finance-table tbody tr').first()
+    if(await first.count()){
+      await first.click()
+      await sleep(250)
+      const fm=await page.evaluate(()=>{
+        const workspace=document.querySelector('.finance-live-workspace.has-slidebar,.finance-preview-workspace.has-slidebar')
+        const table=workspace?.querySelector('table.finance-table')
+        const wrap=workspace?.querySelector('.finance-table-card')
+        if(!workspace||!table||!wrap)return null
+        const cells=[...table.querySelectorAll('thead th')]
+        const style=getComputedStyle(wrap)
+        const initial=wrap.scrollLeft
+        wrap.scrollLeft=wrap.scrollWidth
+        const moved=wrap.scrollLeft
+        wrap.scrollLeft=initial
+        return {
+          totalHeaders:cells.length,
+          hiddenHeaders:cells.filter(el=>getComputedStyle(el).display==='none').length,
+          wrapClient:wrap.clientWidth,wrapScroll:wrap.scrollWidth,
+          overflowX:style.overflowX,
+          horizontalScrollWorks:wrap.scrollWidth<=wrap.clientWidth+4||moved>0,
+          docScrollWidth:document.documentElement.scrollWidth,
+          viewport:innerWidth,
+        }
+      })
+      check('1440 Finance panel retains all columns and internal scroll',
+        Boolean(fm&&fm.totalHeaders>=7&&fm.hiddenHeaders===0
+          &&fm.overflowX!=='hidden'&&fm.horizontalScrollWorks
+          &&fm.docScrollWidth<=1444),fm??{reason:'finance panel not found'})
+    }else check('1440 Finance detail row exists',false)
+  }else check('1440 Finance route available',false)
+  if(await nav('/warehouse/receive')){
+    const wm=await page.evaluate(()=>{
+      const card=document.querySelector('.warehouse-receive-card.open')
+      const split=card?.querySelector('.warehouse-split-table')?.parentElement
+      const ready=card?.querySelector('.warehouse-ready-table')?.parentElement
+      const heading=card?.querySelector('.warehouse-intake-section-head.ready')
+      const list=document.querySelector('.whx-intake-main')
+      if(!card||!split||!ready||!heading||!list)return null
+      const sp=split.getBoundingClientRect(),rp=ready.getBoundingClientRect(),h=heading.getBoundingClientRect()
+      const style=getComputedStyle(split)
+      const before=list.scrollTop
+      list.scrollTop=list.scrollHeight
+      const scrolled=list.scrollTop
+      list.scrollTop=before
+      return{splitHeight:sp.height,readyHeight:rp.height,
+        splitBottom:sp.bottom,readyHeadingTop:h.top,readyTop:rp.top,
+        wrapOverflow:style.overflowY,groupScrollHeight:list.scrollHeight,
+        groupClientHeight:list.clientHeight,groupScrollWorks:
+          list.scrollHeight<=list.clientHeight+4||scrolled>0,
+        docScrollWidth:document.documentElement.scrollWidth}
+    })
+    check('1440 Warehouse receiving sections remain separated',
+      Boolean(wm&&wm.splitHeight>=70&&wm.readyHeight>=70
+        &&wm.readyHeadingTop>=wm.splitBottom-3
+        &&wm.wrapOverflow!=='visible'&&wm.groupScrollWorks
+        &&wm.docScrollWidth<=1444),wm??{reason:'warehouse receiving groups missing'})
+  }else check('1440 Warehouse receive route available',false)
   await context.close()
 }finally{
   await browser.close()
