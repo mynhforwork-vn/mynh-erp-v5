@@ -75,16 +75,16 @@ export function DesktopTableColumnResize() {
       const lane=table.closest('.tracking-hub-table-wrap-v2') as HTMLElement|null
       if(!lane)return preferred
       const withPanel=Boolean(table.closest('.tracking-content-workspace.with-panel'))
-      // A detail-description column needs an 850px readable minimum beside the panel.
-      // Smaller lanes scroll inside the table, never hide or squeeze the new column.
-      const target=Math.max(withPanel?850:0,Math.floor(lane.clientWidth)-2)
+      // Keep every operational column readable; the HUB's own scroll pane
+      // absorbs any missing width, never force status/detail/actions to overlap.
+      const target=Math.max(1120,Math.floor(lane.clientWidth)-2)
       const fitted=[...preferred]
       const columnIndex=(key:string)=>ths.findIndex(th=>th.classList.contains('tracking-col-'+key))
       let excess=fitted.reduce((sum,v)=>sum+v,0)-target
       if(excess>0){
         const minByColumn:Record<string,number>=withPanel
-          ? {product:112,recipient:132,status:124,detail:150,order:138,cod:80}
-          : {product:146,recipient:168,status:150,detail:168,order:146,cod:84}
+          ? {product:160,recipient:185,status:168,detail:198,order:150,cod:90}
+          : {product:160,recipient:185,status:168,detail:198,order:150,cod:90}
         // Compress uncustomized cells first; only shrink a custom width as needed.
         const priority=['product','recipient','detail','status','order','cod']
         for(const custom of [false,true]){
@@ -128,7 +128,7 @@ export function DesktopTableColumnResize() {
     const trackingDefaults:Record<string,number>={
       'tracking-col-order':166,'tracking-col-product':250,
       'tracking-col-cod':94,'tracking-col-recipient':245,
-      'tracking-col-status':178,'tracking-col-detail':188,'tracking-col-actions':44,
+      'tracking-col-status':178,'tracking-col-detail':200,'tracking-col-actions':44,
     }
     const trackingLayout=new WeakMap<HTMLTableElement,string>()
     // Only take control of fixed widths once a user has customized this table.
