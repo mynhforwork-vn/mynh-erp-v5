@@ -78,8 +78,14 @@ export function DesktopTableColumnResize() {
       // Keep every operational column readable; the HUB's own scroll pane
       // absorbs any missing width, never force status/detail/actions to overlap.
       const target=Math.max(1120,Math.floor(lane.clientWidth)-2)
-      const fitted=[...preferred]
       const columnIndex=(key:string)=>ths.findIndex(th=>th.classList.contains('tracking-col-'+key))
+      // Older per-user saved widths can predate the detail column. Protect the
+      // status/detail headers even when those legacy preferences are restored.
+      const fitted=preferred.map((value,i)=>ths[i].classList.contains('tracking-col-status')
+        ? Math.max(168,value)
+        : ths[i].classList.contains('tracking-col-detail')
+          ? Math.max(198,value)
+          : value)
       let excess=fitted.reduce((sum,v)=>sum+v,0)-target
       if(excess>0){
         const minByColumn:Record<string,number>=withPanel
