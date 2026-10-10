@@ -219,22 +219,58 @@ try{
       const hubHeader=await page.evaluate(()=>{
         const h=document.querySelector('.tracking-hub-card-v2 .tracking-hub-head-v2')
         const metrics=h?.querySelector('.tracking-hub-metrics-v2')
-        if(!h||!metrics)return null
-        const a=h.getBoundingClientRect(),b=metrics.getBoundingClientRect()
-        const chips=[...metrics.querySelectorAll(':scope > span')].map(el=>{
+        const identity=h?.querySelector('.tracking-hub-identity')
+        const controls=h?.querySelector('.tracking-hub-summary-state')
+        const table=h?.closest('.tracking-hub-card-v2')?.querySelector('.tracking-hub-table-v2')
+        const lane=table?.closest('.tracking-hub-table-wrap-v2')
+        if(!h||!metrics||!identity||!controls||!table||!lane)return null
+        const rect=el=>{
           const r=el.getBoundingClientRect()
-          return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width}
-        })
-        return{head:{left:a.left,right:a.right,top:a.top,bottom:a.bottom},
-          metrics:{left:b.left,right:b.right,top:b.top,bottom:b.bottom},
-          chips,scrollWidth:h.scrollWidth,clientWidth:h.clientWidth}
+          return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,height:r.height,width:r.width}
+        }
+        const head=rect(h),title=rect(identity),stats=rect(metrics),actions=rect(controls)
+        const chips=[...metrics.querySelectorAll(':scope > span')].map(rect)
+        const oldScroll=metrics.scrollLeft
+        const overflow=metrics.scrollWidth>metrics.clientWidth+3
+        if(overflow)metrics.scrollLeft=metrics.scrollWidth
+        const scrollWorks=!overflow||metrics.scrollLeft>oldScroll+1
+        metrics.scrollLeft=oldScroll
+        const ths=[...table.querySelectorAll('thead th')]
+        const status=ths.find(x=>x.classList.contains('tracking-col-status'))
+        const detail=ths.find(x=>x.classList.contains('tracking-col-detail'))
+        const action=ths.find(x=>x.classList.contains('tracking-action-head'))
+        const right=status&&detail&&action?
+          {status:rect(status),detail:rect(detail),action:rect(action)}:null
+        return{head,title,stats,actions,chips,overflow,scrollWorks,
+          rowHeight:head.height,
+          scrollWidth:metrics.scrollWidth,clientWidth:metrics.clientWidth,
+          tableWidth:table.getBoundingClientRect().width,
+          tableLaneWidth:lane.clientWidth,
+          tableScrollWidth:lane.scrollWidth,
+          tableScrollX:getComputedStyle(lane).overflowX,
+          lastColumns:right}
       })
-      check(view.width+' HUB header metrics fit with right slidebar',
-        Boolean(hubHeader&&hubHeader.chips.length>=5
-          &&hubHeader.chips.every(chip=>
-            chip.left>=hubHeader.head.left-3&&chip.right<=hubHeader.head.right+3
-            &&chip.bottom<=hubHeader.head.bottom+3)
-          &&hubHeader.scrollWidth<=hubHeader.clientWidth+4),hubHeader??{})
+      const oneRow=Boolean(hubHeader
+        &&hubHeader.rowHeight<=53
+        &&[hubHeader.title,hubHeader.stats,hubHeader.actions].every(part=>
+          part.top>=hubHeader.head.top-2&&part.bottom<=hubHeader.head.bottom+2)
+        &&hubHeader.chips.length>=5
+        &&hubHeader.chips.every(c=>Math.abs(c.top-hubHeader.chips[0].top)<=2)
+        &&hubHeader.scrollWorks
+        &&hubHeader.stats.right<=hubHeader.actions.left+3
+        &&hubHeader.head.right>=hubHeader.actions.right-3)
+      check(view.width+' HUB always one row, metrics scroll inside',
+        oneRow,hubHeader??{})
+      const cols=hubHeader?.lastColumns
+      check(view.width+' Tracking status, detail, actions do not overlap',
+        Boolean(cols&&cols.status.width>=166&&cols.detail.width>=196
+          &&cols.action.width>=42
+          &&cols.status.right<=cols.detail.left+2
+          &&cols.detail.right<=cols.action.left+2
+          &&hubHeader.tableScrollX!=='hidden'
+          &&hubHeader.tableWidth>=1110
+          &&hubHeader.tableScrollWidth>=hubHeader.tableLaneWidth),
+        cols??{reason:'missing table columns'})
       if(visible){
         if([320,390,768,1024,1440].includes(view.width)){
           await page.screenshot({path:output+'/table-'+view.width+'-panel.png',fullPage:false})
