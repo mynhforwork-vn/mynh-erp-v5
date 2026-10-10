@@ -174,6 +174,21 @@ try {
       await page.setViewportSize(view)
       await page.waitForTimeout(80)
       const m=await measure(spec)
+      if(spec.name==='User'&&view.width===1024){
+        const filterDiag=await page.evaluate(()=>{
+          const form=document.querySelector('.account-filter-bar.entity-user-command')
+          const parent=form?.parentElement
+          const action=document.querySelector('.p1-account-filter-actions')
+          const a=(node)=>{const r=node?.getBoundingClientRect();return r?{
+            left:r.left,right:r.right,width:r.width,scrollWidth:node.scrollWidth,
+            computed:{display:getComputedStyle(node).display,flexWrap:getComputedStyle(node).flexWrap,
+            overflowX:getComputedStyle(node).overflowX,minWidth:getComputedStyle(node).minWidth,
+            maxWidth:getComputedStyle(node).maxWidth,position:getComputedStyle(node).position}
+          }:null}
+          return {viewport:innerWidth,form:a(form),parent:a(parent),action:a(action)}
+        })
+        console.log('P1_ACCOUNT_FILTER_GEOMETRY '+JSON.stringify(filterDiag))
+      }
       check(spec.name+' fit '+view.width+'x'+view.height,fits(m,view),m??{})
       if(spec.name==='User'&&[390,768,1024,1440,1920,2560].includes(view.width)){
         const compact=['number','voucher','orders'].map(id=>m?.accountCols?.find(c=>c.id===id))
