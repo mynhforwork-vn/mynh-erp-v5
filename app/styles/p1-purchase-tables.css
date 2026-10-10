@@ -295,6 +295,20 @@ table.table.order-table:not(.mynh-resizable-table){
 }
 .brand-shell-v1 .order-toolbar.entity-command-bar .toolbar-note{min-width:0}
 .brand-shell-v1 .p1-order-toolbar-actions{z-index:32}
+/* Stable command-row slots: filters may scroll, the column icon never does. */
+.brand-shell-v1 .p1-account-command-row{
+  display:flex;align-items:stretch;gap:5px;
+  width:100%;min-width:0;max-width:100%;
+  box-sizing:border-box;position:relative;
+}
+.brand-shell-v1 .p1-account-command-row>form.account-filter-bar{
+  flex:1 1 0!important;width:0!important;
+  min-width:0!important;max-width:none!important;
+}
+.brand-shell-v1 .p1-account-command-row>.p1-account-filter-actions{
+  flex:0 0 29px!important;min-width:29px!important;
+  margin-left:0!important;align-self:center;
+}
 /* Available width is the content lane, not the combined minimum widths
    of legacy filter children. The filter must wrap rather than overflow. */
 .brand-shell-v1 .account-screen form.account-filter-bar.one-line.entity-user-command{
