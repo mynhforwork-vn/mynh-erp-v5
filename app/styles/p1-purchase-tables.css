@@ -221,7 +221,7 @@ table.table.order-table:not(.mynh-resizable-table){
   flex:0 0 auto;min-width:29px;margin-left:auto;z-index:24;
 }
 .brand-shell-v1 .p1-account-filter-actions .column-manager,
-.brand-shell-v1 .p1-order-toolbar-actions .order-column-manager{
+.brand-shell-v1  .p1-order-toolbar-actions .p1-order-column-manager{
   display:block!important;position:relative!important;
   top:0!important;right:auto!important;bottom:auto!important;left:auto!important;
   transform:none!important;flex:0 0 auto!important;z-index:45!important;
@@ -295,6 +295,12 @@ table.table.order-table:not(.mynh-resizable-table){
 }
 .brand-shell-v1 .order-toolbar.entity-command-bar .toolbar-note{min-width:0}
 .brand-shell-v1 .p1-order-toolbar-actions{z-index:32}
+/* Available width is the content lane, not the combined minimum widths
+   of legacy filter children. The filter must wrap rather than overflow. */
+.brand-shell-v1 .account-screen form.account-filter-bar.one-line.entity-user-command{
+  box-sizing:border-box!important;
+  width:100%!important;min-width:0!important;max-width:100%!important;
+}
 /* Account filter lane must wrap before the icon can leave the viewport. */
 @media(min-width:901px) and (max-width:1280px){
   .brand-shell-v1 form.account-filter-bar.one-line.entity-user-command{
