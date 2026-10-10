@@ -82,6 +82,10 @@ try{
       const body=(await page.locator('body').innerText().catch(()=>'' )).slice(0,160)
       probes.push({attempt:attempt+1,status,url:new URL(finalUrl).pathname,
         ray:response?.headers()['cf-ray']??null,body})
+      // Cloudflare 1102 is a Worker resource ceiling, not a transient page failure.
+      // Stop immediately rather than spending the user's Worker quota on retries.
+      if(status===503&&/1102|exceeded resource limits/i.test(body))
+        throw new Error('Cloudflare Worker 1102 on Named Preview; abort browser QA without retries. route='+path)
       // Do not hammer rate-limited or temporarily unavailable environments.
       if(attempt<3)await sleep(status===429||status===503||status===1027
         ?[1800,3500,7000][attempt]:[800,1500,2500][attempt])
@@ -140,10 +144,12 @@ try{
       &&(m.tableWidth<=m.wrapWidth+8||m.scrollWidth>m.clientWidth+8)
     check(view.width+'x'+view.height+' '+label,fits,m??{reason:'table or wrapper not found'})
   }
+  // Only one HTTP navigation for the whole responsive Tracking matrix.
+  // Resizing the existing authenticated page tests CSS without repeating costly RSC/DB loads.
+  if(!await nav('/purchase/tracking?range=all'))throw new Error('Tracking Preview unavailable')
   for(const view of widths){
     await page.setViewportSize(view)
-    const ok=await nav('/purchase/tracking?range=all')
-    if(!ok){check(view.width+' Tracking route',false,{url:page.url()});continue}
+    await page.waitForTimeout(90)
     const wrap='.tracking-hub-table-wrap-v2'
     const m=await inspect(wrap)
     verify('Tracking table',view,m)
@@ -170,7 +176,7 @@ try{
         &&long.cellWidth>0&&long.cellWidth<=Math.max(long.tableWidth??0,long.wrapWidth??0)+3
         &&(long.tableWidth<=long.wrapWidth+8||long.scrollWidth>long.wrapWidth+8)),long??{})
     }
-    if([320,390,600,768,1024,1180,1280,1440,1920].includes(view.width)
+    if([320,390,768,1024,1440].includes(view.width)
       &&await orderLink.count()){
       await orderLink.click()
       const panel=page.locator('aside.context-order-panel')
@@ -196,25 +202,23 @@ try{
       }
     }
   }
-  // Screen-wide table regression samples across the other operational modules.
-  for(const view of [
-    {width:390,height:844},{width:768,height:1024},{width:1440,height:900}
-  ]){
-    await page.setViewportSize(view)
-    const subset=view.width===768
-      ?paths.filter(([path])=>['/purchase/orders?range=all','/warehouse/inventory',
-          '/sales/history','/finance/cashflow'].includes(path))
-      :paths
-    for(const [path,selector,label] of subset){
-      const ok=await nav(path)
-      if(!ok){check(view.width+' '+label+' route',false,{url:page.url()});continue}
+  // Visit each operational module only once, then resize in-place. This
+  // avoids multiplying Cloudflare/Supabase requests by the number of viewports.
+  for(const [path,selector,label] of paths){
+    const ready=await nav(path)
+    if(!ready){check('Module route '+label,false,{path,url:page.url()});continue}
+    for(const view of [
+      {width:390,height:844},{width:768,height:1024},{width:1440,height:900}
+    ]){
+      if(view.width===768&&!['Đơn nhập','Tồn kho','Lịch sử POS','Thu Chi'].includes(label))continue
+      await page.setViewportSize(view)
+      await page.waitForTimeout(70)
       verify(label,view,await inspect(selector))
       if(view.width===390&&['Đơn nhập','Tồn kho','Công nợ'].includes(label)){
         await page.screenshot({path:output+'/table-'+view.width+'-'+label.replaceAll(' ','_')+'.png',fullPage:false})
       }
     }
   }
-
   // Regressions reported from Desktop screenshots: Finance concealed columns and
   // Warehouse compressed both tables of each receiving location into a strip.
   await page.setViewportSize({width:1440,height:900})
