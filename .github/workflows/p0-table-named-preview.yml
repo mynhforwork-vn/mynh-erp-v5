@@ -45,6 +45,28 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           npx wrangler preview --name table-platform-p0-v1 --worker-name mynh-erp-v5 --message "PR60 P0 table platform $GITHUB_SHA" --json > p0-named-preview.json
           echo "P0_PREVIEW=https://table-platform-p0-v1-mynh-erp-v5.mynh-forwork.workers.dev"
+      # User-requested: PR60 is stacked on PR59. Publish the P0 build to
+      # PR59's existing NAMED Preview alias, not the production Worker route.
+      # This intentionally replaces the version shown by tracking-kpi-v1,
+      # while preserving all existing /purchase/tracking query parameters.
+      - name: Publish PR60 onto existing PR59 Tracking Named Preview
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx wrangler preview --name tracking-kpi-v1 --worker-name mynh-erp-v5 --message "PR60 P0 based on PR59 $GITHUB_SHA" --json > tracking-kpi-pr60-preview.json
+          echo "PR60_ON_PR59_PREVIEW=https://tracking-kpi-v1-mynh-erp-v5.mynh-forwork.workers.dev"
+      - name: Verify PR60 on original Tracking Preview URL
+        shell: bash
+        run: |
+          BASE="https://tracking-kpi-v1-mynh-erp-v5.mynh-forwork.workers.dev"
+          code=$(curl --silent --show-error --max-time 25 -o tracking-health.json -w '%{http_code}' "$BASE/api/health")
+          echo "PR60_TRACKING_PREVIEW_HEALTH_HTTP=$code"
+          test "$code" = "200"
+          grep -q '"ok":true' tracking-health.json
+          code=$(curl --silent --show-error --max-time 25 -o tracking-login.html -w '%{http_code}' "$BASE/login")
+          echo "PR60_TRACKING_PREVIEW_LOGIN_HTTP=$code"
+          test "$code" = "200"
       - name: P0 health and login smoke
         shell: bash
         run: |
