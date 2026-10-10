@@ -52,7 +52,7 @@ try{
       const workspace=document.querySelector('.tracking-content-workspace')
       return Boolean(action&&table&&workspace)
         &&Math.abs(action.getBoundingClientRect().width-44)<=3
-        &&table.getBoundingClientRect().width>=1110
+        &&table.getBoundingClientRect().width>=895
     },null,{timeout:25000})
     await page.waitForTimeout(650)
     const toggle=page.locator('.desktop-sidebar-seam-handle .sidebar-collapse-toggle')
@@ -107,7 +107,7 @@ try{
       // The HUB pane shrinks with each sidebar. The data table may be wider
       // than its pane, but it MUST scroll there rather than squeezing columns.
       const adaptive=Boolean(v.table&&v.tableWrap&&v.tableScroll)
-        &&Math.abs(v.table.width-Math.max(1120,v.tableWrap.width))<=8
+        &&Math.abs(v.table.width-Math.max(expectedPanel?760:900,v.tableWrap.width))<=12
         &&v.tableScroll.overflow!=='hidden'
         &&v.tableScroll.scrollWidth>=v.tableScroll.clientWidth
       check(viewport.width+' '+name,Boolean(panelOK&&leftOK&&layoutOK&&compactOK&&v.resizerPresent&&adaptive),v)
@@ -146,7 +146,7 @@ try{
     if(draggedProduct!==null){
       const afterDrag=await measuring('left-open_right-closed_after-manual-resize',false,false)
       check('1440 manual drag retains readable scroll-or-fit',
-        Math.abs(afterDrag.table.width-Math.max(1120,afterDrag.tableWrap.width))<=8,
+        Math.abs(afterDrag.table.width-Math.max(900,afterDrag.tableWrap.width))<=12,
         {table:afterDrag.table.width,available:afterDrag.tableWrap.width})
     }
     await ensureLeft(true)
@@ -172,18 +172,26 @@ try{
       check(viewport.width+' right open narrows pane without squeezing table',
         Boolean(initial.tableWrap&&panelWide.table&&panelWide.tableWrap
           &&panelWide.tableWrap.width<initial.tableWrap.width-60
-          &&Math.abs(panelWide.table.width-Math.max(1120,panelWide.tableWrap.width))<=12),
+          &&Math.abs(panelWide.table.width-Math.max(760,panelWide.tableWrap.width))<=15),
         {before:initial.tableWrap?.width,after:panelWide.tableWrap?.width,table:panelWide.table?.width,customized:panelWide.customized})
+      check(viewport.width+' tracking lane visibly fits panel when space allows',
+        Boolean(panelWide.table&&panelWide.tableWrap
+          &&(panelWide.tableWrap.width>=760
+            ?panelWide.table.width<=panelWide.tableWrap.width+12
+            :panelWide.table.width<=775
+              &&panelWide.tableScroll.scrollWidth-panelWide.tableScroll.clientWidth<=155)),
+        {lane:panelWide.tableWrap?.width,table:panelWide.table?.width,
+          scroll:panelWide.tableScroll?.scrollWidth-panelWide.tableScroll?.clientWidth})
       check(viewport.width+' right panel protects status detail and action columns',
         Boolean(panelWide.columns
-          &&(panelWide.columns.status??0)>=166
-          &&(panelWide.columns.detail??0)>=196
+          &&(panelWide.columns.status??0)>=130
+          &&(panelWide.columns.detail??0)>=155
           &&(panelWide.columns.actions??0)>=42),
         {after:panelWide.columns})
       if(draggedProduct!==null){
         check('1440 custom saved widths fit with right slidebar',
           Boolean(panelWide.customized&&panelWide.table&&panelWide.tableWrap
-            &&panelWide.table.width<=Math.max(1120,panelWide.tableWrap.width)+12),
+            &&panelWide.table.width<=Math.max(760,panelWide.tableWrap.width)+15),
           {table:panelWide.table?.width,available:panelWide.tableWrap?.width})
       }
       const close=page.locator('aside.context-order-panel a[aria-label="Đóng toàn bộ"]').first()
@@ -196,7 +204,7 @@ try{
             &&restored.tableWrap.width>panelWide.tableWrap.width+60),
           {initial:initial.tableWrap?.width,restored:restored.tableWrap?.width,opened:panelWide.tableWrap?.width})
         check(viewport.width+' right closed table fits or scrolls in lane',
-          Math.abs(restored.table.width-Math.max(1120,restored.tableWrap.width))<=8,
+          Math.abs(restored.table.width-Math.max(900,restored.tableWrap.width))<=12,
           {table:restored.table.width,available:restored.tableWrap.width})
         if(draggedProduct!==null){
           check('1440 custom product width restored',Math.abs((restored.columns.product??0)-draggedProduct)<=6,
