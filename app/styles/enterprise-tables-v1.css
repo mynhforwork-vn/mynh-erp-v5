@@ -259,3 +259,62 @@
     background:#f4f8fa!important;
   }
 }
+
+/* Financial ledger must preserve every user-selected column even when a
+   detail slidebar is open. The old Finance rules hid columns 6–8 and clipped
+   the rest; the table now scrolls only within its own left workspace. */
+@media(min-width:901px){
+  .brand-shell-v1 :is(
+    .finance-preview-workspace.has-slidebar,
+    .finance-live-workspace.has-slidebar
+  ) .finance-table-card{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overscroll-behavior-x:contain;
+  }
+  .brand-shell-v1 :is(
+    .finance-preview-workspace.has-slidebar,
+    .finance-live-workspace.has-slidebar
+  ) table.finance-table:not(.mynh-resizable-table){
+    width:max-content!important;
+    min-width:100%!important;
+    table-layout:auto!important;
+  }
+  .brand-shell-v1 :is(
+    .finance-preview-workspace.has-slidebar,
+    .finance-live-workspace.has-slidebar
+  ) table.finance-table th,
+  .brand-shell-v1 :is(
+    .finance-preview-workspace.has-slidebar,
+    .finance-live-workspace.has-slidebar
+  ) table.finance-table td{
+    display:table-cell!important;
+  }
+
+  /* Action menus in the two purchase lists remain reachable while the user
+     scrolls horizontally across a wide table beside an open detail panel. */
+  .brand-shell-v1 :is(.order-table-card,.account-table-card){
+    overflow-x:auto!important;
+  }
+  .brand-shell-v1 :is(.order-table,.user-table) thead th.row-actions-head{
+    position:sticky!important;
+    right:0!important;
+    z-index:7!important;
+    background:var(--erp-table-head-bg)!important;
+    box-shadow:-1px 0 0 #e0e8ef;
+  }
+  .brand-shell-v1 :is(.order-table,.user-table) tbody td.row-actions-cell{
+    position:sticky!important;
+    right:0!important;
+    z-index:3!important;
+    background:#fff!important;
+    box-shadow:-1px 0 0 #e0e8ef;
+  }
+  .brand-shell-v1 :is(.order-table,.user-table) tbody tr:hover td.row-actions-cell{
+    background:var(--erp-table-hover)!important;
+  }
+  .brand-shell-v1 :is(.order-table,.user-table) tbody tr:is(.selected,.selected-row) td.row-actions-cell{
+    background:var(--erp-table-selected)!important;
+  }
+}
