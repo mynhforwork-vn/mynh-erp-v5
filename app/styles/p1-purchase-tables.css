@@ -176,9 +176,15 @@ table.table.order-table:not(.mynh-resizable-table){
 .brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-voucher{width:76px!important}
 .brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-orders{width:52px!important}
 .brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-createdAt{width:135px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) :is(
-  col.p1-account-col-username,col.p1-account-col-email,col.p1-account-col-note
-){width:auto!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-username{width:154px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-email{width:155px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-note{width:auto!important}
+@media(min-width:1800px){
+  .brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-username,
+  .brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-email{
+    width:25%!important;
+  }
+}
 .brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="number"]{width:32px!important}
 .brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="voucher"]{width:76px!important}
 .brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="orders"]{width:52px!important}
@@ -216,8 +222,9 @@ table.table.order-table:not(.mynh-resizable-table){
 }
 .brand-shell-v1 .p1-account-filter-actions .column-manager,
 .brand-shell-v1 .p1-order-toolbar-actions .order-column-manager{
-  display:block!important;position:relative!important;inset:auto!important;
-  flex:0 0 auto!important;z-index:25!important;
+  display:block!important;position:relative!important;
+  top:0!important;right:auto!important;bottom:auto!important;left:auto!important;
+  transform:none!important;flex:0 0 auto!important;z-index:45!important;
 }
 .brand-shell-v1 .p1-account-filter-actions .managed-column-button,
 .brand-shell-v1 .p1-order-toolbar-actions .managed-column-button{
@@ -284,9 +291,23 @@ table.table.order-table:not(.mynh-resizable-table){
 }
 .brand-shell-v1 .order-toolbar.entity-command-bar{
   display:flex;align-items:center;flex-wrap:wrap;gap:5px;
+  position:relative;overflow:visible!important;
 }
 .brand-shell-v1 .order-toolbar.entity-command-bar .toolbar-note{min-width:0}
 .brand-shell-v1 .p1-order-toolbar-actions{z-index:32}
+/* Account filter lane must wrap before the icon can leave the viewport. */
+@media(min-width:901px) and (max-width:1280px){
+  .brand-shell-v1 form.account-filter-bar.one-line.entity-user-command{
+    display:flex!important;flex-wrap:wrap!important;
+    height:auto!important;min-height:36px!important;
+    gap:5px!important;padding-block:5px!important;
+  }
+  .brand-shell-v1 .entity-user-command .search{flex:1 1 190px!important;min-width:130px!important}
+  .brand-shell-v1 .entity-user-command .p1-filter-dropdown{
+    flex:0 1 122px!important;min-width:100px!important;
+  }
+  .brand-shell-v1 .p1-account-filter-actions{margin-left:auto}
+}
 /* Custom filters: one language across trigger and list, no OS-native grey menu.
    Preserve HTML form submission using the dropdown's hidden input. */
 .brand-shell-v1 form.account-filter-bar.one-line.entity-user-command{
