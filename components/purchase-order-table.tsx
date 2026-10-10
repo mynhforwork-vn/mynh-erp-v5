@@ -368,7 +368,7 @@ export function PurchaseOrderTable({
           <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>}
-    <div className="order-column-manager managed-column-wrap" ref={columnManagerRef}>
+    <div className="p1-order-column-manager managed-column-wrap" ref={columnManagerRef}>
       <button className="icon-button managed-column-button" type="button" onClick={()=>setOpen(v=>!v)} title="Cột & thứ tự" aria-expanded={open}>
         <ColumnIcon/>
       </button>
