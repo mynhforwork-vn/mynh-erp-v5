@@ -1,0 +1,176 @@
+/* MYNH ERP V5 — Enterprise data-table contract.
+   Shared presentation only. Keep every table's columns, sorting, resizing,
+   contextual slidebars and per-module scroll-height calculations intact.
+   Deliberately scoped to ERP screens, excluding print invoices. */
+
+.brand-shell-v1{
+  --erp-table-head-bg:#f4f7fa;
+  --erp-table-head-ink:#52677b;
+  --erp-table-ink:#31465a;
+  --erp-table-rule:#e8eef3;
+  --erp-table-hover:#f5f9fc;
+  --erp-table-selected:#eaf3fb;
+  --erp-table-link:#235e92;
+}
+
+/* Data tables in Purchase, Tracking, Warehouse, Sales, Customers, Debt and Finance. */
+.brand-shell-v1 table.table{
+  border-collapse:separate;
+  border-spacing:0;
+  color:var(--erp-table-ink)!important;
+  font-size:11.5px!important;
+  line-height:1.4;
+  font-variant-numeric:tabular-nums;
+}
+
+.brand-shell-v1 table.table > thead > tr > th{
+  height:36px!important;
+  padding:0 10px!important;
+  background:var(--erp-table-head-bg)!important;
+  color:var(--erp-table-head-ink)!important;
+  border-bottom:1px solid #d9e3ec!important;
+  font-size:10px!important;
+  font-weight:750!important;
+  line-height:1.3!important;
+  letter-spacing:.012em!important;
+  text-transform:none!important;
+  vertical-align:middle;
+  white-space:nowrap;
+}
+
+.brand-shell-v1 table.table > tbody > tr > td{
+  height:40px!important;
+  padding:5px 10px!important;
+  background:#fff!important;
+  color:var(--erp-table-ink);
+  border-bottom:1px solid var(--erp-table-rule)!important;
+  font-size:11.5px!important;
+  line-height:1.4!important;
+  vertical-align:middle;
+}
+
+.brand-shell-v1 table.table > tbody > tr:last-child > td{
+  border-bottom-color:transparent!important;
+}
+
+.brand-shell-v1 table.table > tbody > tr:hover > td,
+.brand-shell-v1 table.table > tbody > tr:focus-within > td{
+  background:var(--erp-table-hover)!important;
+}
+
+.brand-shell-v1 table.table > tbody > tr:is(
+  .selected,.selected-row,.bulk-selected,.active-row
+) > td{
+  background:var(--erp-table-selected)!important;
+}
+
+.brand-shell-v1 table.table > thead > tr > th :is(button,a){
+  color:inherit;
+  letter-spacing:inherit;
+  text-transform:inherit;
+}
+
+.brand-shell-v1 table.table .table-link{
+  color:var(--erp-table-link)!important;
+  font-weight:720!important;
+  text-underline-offset:2px;
+}
+
+.brand-shell-v1 table.table .table-link:focus-visible,
+.brand-shell-v1 table.table :is(button,a,input):focus-visible{
+  outline:2px solid #3979b4;
+  outline-offset:2px;
+}
+
+.brand-shell-v1 table.table > tbody > tr > td small{
+  font-size:10px!important;
+  line-height:1.35!important;
+}
+
+.brand-shell-v1 table.table > tbody > tr > td .status-pill{
+  min-height:21px;
+  font-size:9.5px!important;
+  font-weight:700;
+}
+
+.brand-shell-v1 table.table td.empty,
+.brand-shell-v1 table.table td .empty{
+  font-size:11px!important;
+  line-height:1.45!important;
+}
+
+/* Tables already scroll inside their own module panes.
+   Preserve the existing widths, flex heights and resizable column grips. */
+.brand-shell-v1 :is(
+  .order-table-card,
+  .account-table-card,
+  .tracking-hub-table-wrap-v2,
+  .whx-table-scroll,
+  .sales-history-table-wrap,
+  .customer-demo-table-wrap,
+  .debt-demo-table-wrap,
+  .finance-table-card,
+  .compact-table-wrap
+){
+  scrollbar-width:thin;
+  scrollbar-color:#bdcbd8 transparent;
+  overscroll-behavior-x:contain;
+}
+
+/* Tracking configuration uses grid rows rather than native <table>.
+   Give those table-like rows the same legible typographic scale. */
+.brand-shell-v1 :is(.tracking-table-head-v6,.tracking-mapping-head-v6){
+  min-height:34px!important;
+  color:var(--erp-table-head-ink)!important;
+  background:var(--erp-table-head-bg)!important;
+  border-bottom-color:#d9e3ec!important;
+  font-size:10px!important;
+  letter-spacing:.012em!important;
+}
+
+.brand-shell-v1 :is(.tracking-table-row-v6,.mapping-row-v6){
+  min-height:42px!important;
+  background:#fff!important;
+  border-bottom-color:var(--erp-table-rule)!important;
+  color:var(--erp-table-ink)!important;
+  font-size:11px!important;
+}
+
+.brand-shell-v1 .tracking-table-row-v6 .tracking-status-cell-v6 > b{
+  font-size:11px!important;
+}
+
+.brand-shell-v1 .tracking-table-row-v6 .tracking-status-cell-v6 > code{
+  font-size:9.5px!important;
+}
+
+/* Phone and tablet layouts retain native horizontal table scrolling rather
+   than squeezing the desktop columns or clipping the last action column. */
+@media(max-width:900px){
+  .brand-shell-v1 :is(
+    .order-table-card,
+    .account-table-card,
+    .tracking-hub-table-wrap-v2,
+    .whx-table-scroll,
+    .sales-history-table-wrap,
+    .customer-demo-table-wrap,
+    .debt-demo-table-wrap,
+    .finance-table-card,
+    .compact-table-wrap
+  ){
+    min-width:0!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  .brand-shell-v1 table.table > thead > tr > th{
+    height:34px!important;
+    padding:0 9px!important;
+    font-size:9.5px!important;
+  }
+  .brand-shell-v1 table.table > tbody > tr > td{
+    height:42px!important;
+    padding:6px 9px!important;
+    font-size:11px!important;
+  }
+}
