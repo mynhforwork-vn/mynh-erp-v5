@@ -125,6 +125,14 @@ try{
     const initial=await measuring('left-open_right-closed',false,false)
     let draggedProduct=null
     if(viewport.width===1440){
+      // HUBs share a managed column scheme. Dragging in the first table must
+      // update a second HUB BEFORE mouse release, even if it was just expanded.
+      if(await page.locator('.tracking-hub-card-v2.open .tracking-hub-table-v2').count()<2){
+        const closed=page.locator('.tracking-hub-card-v2.collapsed .tracking-hub-toggle').first()
+        if(await closed.count())await closed.click()
+      }
+      const otherProduct=page.locator('.tracking-hub-card-v2.open .tracking-hub-table-v2 th.tracking-col-product').nth(1)
+      check('1440 two HUB tables available for linked resize',await otherProduct.count()===1)
       const grip=page.locator('.tracking-hub-table-v2 th.tracking-col-product .mynh-column-resize-grip').first()
       if(await grip.count()){
         await grip.scrollIntoViewIfNeeded()
@@ -135,11 +143,32 @@ try{
           await page.mouse.move(box.x+box.width/2,box.y+box.height/2)
           await page.mouse.down()
           await page.mouse.move(box.x+box.width/2+42,box.y+box.height/2,{steps:5})
+          await page.waitForTimeout(120)
+          const beforeRelease=await th.evaluate(el=>el.getBoundingClientRect().width)
+          const peerPreview=await otherProduct.count()?await otherProduct.evaluate(el=>el.getBoundingClientRect().width):null
+          check('1440 live HUB width sync before mouse release',
+            peerPreview!==null&&Math.abs(peerPreview-beforeRelease)<=3,
+            {source:beforeRelease,peer:peerPreview})
           await page.mouse.up()
           await page.waitForTimeout(250)
           const after=await th.evaluate(el=>el.getBoundingClientRect().width)
+          const peerFinal=await otherProduct.count()?await otherProduct.evaluate(el=>el.getBoundingClientRect().width):null
           draggedProduct=after
           check('1440 drag product column',after>=before+20&&after<=before+60,{before,after})
+          check('1440 HUB sibling retains identical width after release',
+            peerFinal!==null&&Math.abs(peerFinal-after)<=3,
+            {source:after,peer:peerFinal})
+          // An unmounted/collapsed HUB must use the same saved width on reopen.
+          const peerCard=page.locator('.tracking-hub-card-v2.open').nth(1)
+          if(await peerCard.count()){
+            const peerToggle=peerCard.locator('.tracking-hub-toggle')
+            await peerToggle.click()
+            await peerToggle.click()
+            await page.waitForTimeout(250)
+            const reopened=await peerCard.locator('.tracking-hub-table-v2 th.tracking-col-product').evaluate(el=>el.getBoundingClientRect().width)
+            check('1440 collapsed HUB restores shared column width',
+              Math.abs(reopened-after)<=3,{source:after,reopened})
+          }
         }else check('1440 drag product column',false,{reason:'Resize grip has no bounding box'})
       }else check('1440 drag product column',false,{reason:'Resize grip missing'})
     }
@@ -211,6 +240,17 @@ try{
             {saved:draggedProduct,restored:restored.columns.product})
         }
       }else check(viewport.width+' right panel closes',false,{reason:'Missing close action'})
+    }
+    if(viewport.width===1440&&draggedProduct!==null){
+      // One reload is enough to prove persistence across the route, without
+      // multiplying Cloudflare preview loads for all viewports.
+      await page.reload({waitUntil:'load',timeout:35000})
+      await page.locator('.tracking-hub-table-v2 th.tracking-col-product').first().waitFor({state:'visible',timeout:15000})
+      await page.waitForTimeout(450)
+      const afterReload=await page.locator('.tracking-hub-table-v2 th.tracking-col-product').first().evaluate(el=>el.getBoundingClientRect().width)
+      check('1440 HUB shared column width persists after reload',
+        Math.abs(afterReload-draggedProduct)<=6,
+        {saved:draggedProduct,afterReload})
     }
     await context.close()
   }
