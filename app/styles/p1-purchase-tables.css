@@ -30,15 +30,8 @@
   box-sizing:border-box;
   width:100%!important;
 }
-.brand-shell-v1 table.table.user-table:not(.mynh-resizable-table){
-  min-width:1030px!important;
-}
 .brand-shell-v1 table.table.order-table:not(.mynh-resizable-table){
   min-width:980px!important;
-}
-.brand-shell-v1 :is(.account-workspace,.order-workspace):is(.with-panel,.has-slidebar)
-table.table.user-table:not(.mynh-resizable-table){
-  min-width:940px!important;
 }
 .brand-shell-v1 :is(.account-workspace,.order-workspace):is(.with-panel,.has-slidebar)
 table.table.order-table:not(.mynh-resizable-table){
@@ -103,7 +96,7 @@ table.table.order-table:not(.mynh-resizable-table){
   }
 }
 @media(max-width:900px){
-  .brand-shell-v1 table.table:is(.user-table,.order-table):not(.mynh-resizable-table){
+  .brand-shell-v1 table.table.order-table:not(.mynh-resizable-table){
     min-width:890px!important;
   }
   .brand-shell-v1 table.table:is(.user-table,.order-table) .p1-table-long-text{
@@ -117,9 +110,6 @@ table.table.order-table:not(.mynh-resizable-table){
 
 /* Fixed-layout tables must constrain actual cell contents as well as columns.
    A long Username must NEVER paint over the platform cell or intercept clicks. */
-.brand-shell-v1 table.user-table th.p1-user-identity-head{width:148px!important}
-.brand-shell-v1 table.user-table th.p1-user-device-head{width:108px!important}
-.brand-shell-v1 table.user-table th.p1-user-voucher-head{width:132px!important}
 .brand-shell-v1 table.order-table th.p1-order-identity-head{width:148px!important}
 .brand-shell-v1 table.order-table th.p1-order-tracking-head{width:135px!important}
 .brand-shell-v1 table.order-table th.p1-order-product-head{width:145px!important}
@@ -169,168 +159,134 @@ table.table.order-table:not(.mynh-resizable-table){
 }
 
 
-/* P1 account table: semantic column identities. Legacy nth-child selectors
-   elsewhere are positional and cannot be used when users hide/reorder fields. */
+
+/* P1 — fit theo cột định danh thực tế, không dùng nth-child.
+   Width tối thiểu tính từ các cột đang hiển thị tại component.
+   Không can thiệp bảng đang dùng resize lưu trong localStorage. */
 .brand-shell-v1 .account-table-card table.user-table:not(.mynh-resizable-table){
-  table-layout:fixed!important;
   width:100%!important;
-  min-width:1125px!important;
+  table-layout:fixed!important;
 }
-.brand-shell-v1 .account-workspace.with-panel .account-table-card
-table.user-table:not(.mynh-resizable-table){min-width:1125px!important}
-
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-select{width:32px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-number{width:32px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-platform{width:64px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-phone{width:108px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-status{width:89px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-device{width:102px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-voucher{width:76px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-orders{width:52px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-createdAt{width:135px!important}
 .brand-shell-v1 table.user-table:not(.mynh-resizable-table) :is(
-  col.p1-account-col-select){width:32px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-number{width:33px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-username{width:148px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-platform{width:80px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-phone{width:112px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-email{width:145px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-status{width:102px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-device{width:115px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-voucher{width:96px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-orders{width:58px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-createdAt{width:139px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-note{width:92px!important}
-
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="number"]{width:33px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="username"]{width:148px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="platform"]{width:80px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="phone"]{width:112px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="email"]{width:145px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="status"]{width:102px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="device"]{width:115px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="voucher"]{width:96px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="orders"]{width:58px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="createdAt"]{width:139px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="note"]{width:92px!important}
-
-/* At wide desktop widths only informational columns consume surplus space.
-   Numeric/control columns stay compact instead of growing with table width.
-   Colgroup and headers share semantic IDs; saved manual widths still win. */
-@media(min-width:1800px){
-  .brand-shell-v1 table.user-table:not(.mynh-resizable-table) :is(
-    col.p1-account-col-username,col.p1-account-col-email,col.p1-account-col-note,
-    th[data-account-col="username"],th[data-account-col="email"],th[data-account-col="note"]
-  ){width:auto!important}
-}
-
+  col.p1-account-col-username,col.p1-account-col-email,col.p1-account-col-note
+){width:auto!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="number"]{width:32px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="voucher"]{width:76px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="orders"]{width:52px!important}
 .brand-shell-v1 .account-table-card table.user-table :is(th,td){
   overflow:hidden!important;
   text-overflow:ellipsis;
   white-space:nowrap!important;
   vertical-align:middle;
-  padding-inline:5px!important;
+  padding-inline:4px!important;
 }
-.brand-shell-v1 .account-table-card table.user-table td[data-account-col="number"],
-.brand-shell-v1 .account-table-card table.user-table th[data-account-col="number"],
+.brand-shell-v1 .account-table-card table.user-table :is(th,td)[data-account-col="number"],
 .brand-shell-v1 .account-table-card table.user-table td.count-cell{
   text-align:center!important;
   font-variant-numeric:tabular-nums;
 }
-.brand-shell-v1 .account-table-card table.user-table :is(th,td)[data-account-col="voucher"]{
-  min-width:0!important;
-  max-width:none!important;
-  padding-inline:3px!important;
-}
 .brand-shell-v1 .account-table-card table.user-table .voucher-cell .voucher-tags{
-  flex-wrap:nowrap!important;
-  gap:3px!important;
-  max-width:100%!important;
-  overflow:hidden!important;
+  flex-wrap:nowrap!important;gap:2px!important;max-width:100%!important;overflow:hidden!important;
 }
 .brand-shell-v1 .account-table-card table.user-table .voucher-cell :is(.voucher-tag,.voucher-tag-compact){
-  max-width:100%!important;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap!important;
+  max-width:100%!important;min-width:0!important;overflow:hidden!important;
+  text-overflow:ellipsis;white-space:nowrap!important;
 }
 .brand-shell-v1 .account-table-card table.user-table td.p1-user-identity-cell .quick-order-link{
-  display:inline-grid!important;
-  place-items:center!important;
-  box-sizing:border-box;
-  width:25px!important;
-  height:24px!important;
-  min-width:25px!important;
-  padding:0!important;
-  border-radius:6px!important;
-  font-size:17px!important;
-  font-weight:500!important;
-  line-height:1!important;
+  display:inline-grid!important;place-items:center!important;
+  box-sizing:border-box;width:22px!important;height:22px!important;
+  min-width:22px!important;padding:0!important;border-radius:5px!important;
+  font-size:16px!important;line-height:1!important;
 }
-/* A true toolbar in normal layout, never a negative-position floating icon.
-   The column menu anchors to its button and stays inside the content lane. */
-.brand-shell-v1 .p1-account-table-shell{
-  display:flex!important;
-  flex-direction:column!important;
-  min-width:0!important;
-  gap:0!important;
+
+/* Icon Cột đặt cuối hàng filter, không thêm thanh tiêu đề phụ. */
+.brand-shell-v1 .p1-account-filter-actions,
+.brand-shell-v1 .p1-order-toolbar-actions{
+  position:relative;display:flex;align-items:center;justify-content:flex-end;
+  flex:0 0 auto;min-width:29px;margin-left:auto;z-index:24;
 }
-.brand-shell-v1 .p1-account-table-shell .p1-account-table-tools{
-  position:relative!important;
-  z-index:12!important;
-  display:flex!important;
-  flex:0 0 35px!important;
-  width:100%!important;
-  min-width:0!important;
-  align-items:center!important;
-  justify-content:space-between!important;
-  padding:2px 4px 3px 8px!important;
-  background:#fff!important;
-  border:1px solid #e2e9ef;
-  border-bottom:0;
-  border-radius:8px 8px 0 0;
+.brand-shell-v1 .p1-account-filter-actions .column-manager,
+.brand-shell-v1 .p1-order-toolbar-actions .order-column-manager{
+  display:block!important;position:relative!important;inset:auto!important;
+  flex:0 0 auto!important;z-index:25!important;
 }
-.brand-shell-v1 .p1-account-table-tools-label{
-  color:#566a78;font-size:11px;font-weight:550;white-space:nowrap;
-  min-width:0;overflow:hidden;text-overflow:ellipsis;
+.brand-shell-v1 .p1-account-filter-actions .managed-column-button,
+.brand-shell-v1 .p1-order-toolbar-actions .managed-column-button{
+  display:inline-flex!important;align-items:center;justify-content:center;
+  width:29px!important;min-width:29px!important;height:29px!important;
+  padding:0!important;position:static!important;border-radius:6px!important;
+  border:1px solid #d7e2eb!important;background:#fff!important;color:#456073!important;
 }
-.brand-shell-v1 .p1-account-table-shell .column-manager.managed-column-wrap{
-  display:block!important;
-  flex:0 0 auto!important;
-  position:relative!important;
-  top:auto!important;
-  left:auto!important;
-  right:auto!important;
-  bottom:auto!important;
-  z-index:15!important;
+.brand-shell-v1 .p1-account-filter-actions .managed-column-button>span{display:none!important}
+.brand-shell-v1 .p1-account-filter-actions .column-manager-menu,
+.brand-shell-v1 .p1-order-toolbar-actions .column-manager-menu{
+  position:absolute!important;top:calc(100% + 5px)!important;
+  right:0!important;left:auto!important;bottom:auto!important;z-index:80!important;
+  box-sizing:border-box;width:min(244px,calc(100vw - 32px))!important;
+  max-height:min(430px,70vh)!important;overflow-y:auto!important;
+  padding:7px!important;border:1px solid #dae4ed!important;
+  border-radius:8px!important;background:#fff!important;
+  box-shadow:0 12px 28px rgba(32,52,72,.16)!important;
 }
-.brand-shell-v1 .p1-account-table-shell .column-manager>.managed-column-button{
-  box-sizing:border-box;
-  width:auto!important;
-  min-width:58px!important;
-  height:28px!important;
-  display:inline-flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:5px!important;
-  padding:0 9px!important;
-  background:#f7fafc!important;
-  border:1px solid #dce6ed!important;
-  border-radius:6px!important;
-  color:#43596a!important;
+.brand-shell-v1 .p1-account-filter-actions .column-manager-menu :is(.column-manager-row label,.column-manager-head b){
   font-size:11px!important;
 }
-.brand-shell-v1 .p1-account-table-shell .column-manager-menu{
-  box-sizing:border-box;
-  position:absolute!important;
-  top:calc(100% + 5px)!important;
-  right:0!important;
-  left:auto!important;
-  bottom:auto!important;
-  z-index:40!important;
-  width:min(252px,calc(100vw - 28px))!important;
-  max-height:min(450px,70vh)!important;
-  overflow-y:auto!important;
-  padding:8px!important;
-  border:1px solid #dfe7ef!important;
-  border-radius:9px!important;
-  box-shadow:0 12px 32px rgba(30,49,68,.13)!important;
-  background:#fff!important;
+/* Thanh hành động đơn theo checkbox, chỉ 2 icon, không cột action cuối dòng. */
+.brand-shell-v1 .p1-order-table-actions{display:flex;align-items:center;gap:5px}
+.brand-shell-v1 .p1-order-bulk-icons{display:inline-flex;align-items:center;gap:4px}
+.brand-shell-v1 .p1-order-bulk-icons .order-bulk-form{display:inline-flex;margin:0;padding:0}
+.brand-shell-v1 .p1-order-selected-count{
+  display:inline-grid;place-items:center;min-width:19px;height:21px;
+  font-size:11px;color:#265983;font-variant-numeric:tabular-nums;font-weight:650;
 }
-.brand-shell-v1 .p1-account-table-shell .column-manager-menu :is(.column-manager-head b,.column-manager-row label){
-  font-size:11px!important;
+.brand-shell-v1 .p1-order-table-actions .p1-toolbar-icon{
+  display:inline-grid;place-items:center;box-sizing:border-box;
+  width:29px;height:29px;min-width:29px;padding:0;
+  color:#365d7b;background:#fff;border:1px solid #d7e2eb;
+  border-radius:6px;cursor:pointer;
 }
+.brand-shell-v1 .p1-order-table-actions .p1-toolbar-icon:is(:hover,:focus-visible){
+  background:#eef5fa;border-color:#87abc5;outline-offset:2px;
+}
+/* Tag/chip không được mở rộng cột theo nội dung. */
+.brand-shell-v1 table.table:is(.user-table,.order-table) :is(
+  .status-pill,.voucher-tag,.voucher-tag-compact,.device-state-chip,.platform-cell){
+  box-sizing:border-box;min-width:0!important;max-width:100%!important;
+  padding:2px 5px!important;font-size:9px!important;line-height:1.25!important;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.brand-shell-v1 table.table.user-table .device-state-set{
+  display:flex;min-width:0;max-width:100%;gap:2px;flex-wrap:nowrap;
+}
+.brand-shell-v1 table.table.user-table .device-state-chip{flex:0 1 auto;padding:2px 3px!important}
+.brand-shell-v1 table.table.order-table .order-state-cell{min-width:0;max-width:100%;gap:3px!important}
+.brand-shell-v1 table.table.order-table .order-state-cell .status-pill{max-width:100%!important}
+/* Tối đa 2 dòng sản phẩm, tên dài cắt tại chính ô sản phẩm. */
+.brand-shell-v1 table.table.order-table td.product-cell{
+  white-space:normal!important;vertical-align:middle!important;
+  min-width:0;max-width:none!important;overflow:hidden!important;
+}
+.brand-shell-v1 table.table.order-table .p1-product-lines{
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  line-clamp:2;overflow:hidden;max-width:100%;line-height:1.4;white-space:normal;
+}
+.brand-shell-v1 table.table.order-table .p1-product-lines>span{
+  display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.brand-shell-v1 .order-toolbar.entity-command-bar{
+  display:flex;align-items:center;flex-wrap:wrap;gap:5px;
+}
+.brand-shell-v1 .order-toolbar.entity-command-bar .toolbar-note{min-width:0}
+.brand-shell-v1 .p1-order-toolbar-actions{z-index:32}
 /* Custom filters: one language across trigger and list, no OS-native grey menu.
    Preserve HTML form submission using the dropdown's hidden input. */
 .brand-shell-v1 form.account-filter-bar.one-line.entity-user-command{
@@ -419,5 +375,4 @@ table.user-table:not(.mynh-resizable-table){min-width:1125px!important}
   }
   .brand-shell-v1 .entity-user-command .search{flex:1 1 100%!important;min-width:0!important}
   .brand-shell-v1 .entity-user-command .p1-filter-dropdown{flex:1 1 42%!important;max-width:none!important}
-  .brand-shell-v1 .p1-account-table-shell .p1-account-table-tools{flex-basis:35px!important}
 }
