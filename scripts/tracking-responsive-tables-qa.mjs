@@ -258,6 +258,69 @@ try{
         &&wm.wrapOverflow!=='visible'&&wm.groupScrollWorks
         &&wm.docScrollWidth<=1444),wm??{reason:'warehouse receiving groups missing'})
   }else check('1440 Warehouse receive route available',false)
+
+  // PR #59 screenshot set: verify detail panels do not make their data tables
+  // inaccessible. All navigation and measurements are read-only.
+  const splitCases=[
+    {path:'/purchase/accounts',label:'User',link:'.user-table tbody a.table-link',
+      wrap:'.account-table-card',table:'.user-table',panel:'.account-workspace .system-slidebar-v1'},
+    {path:'/purchase/orders?range=all',label:'Đơn nhập',link:'.order-table tbody a.table-link',
+      wrap:'.order-table-card',table:'.order-table',panel:'.order-workspace .system-slidebar-v1'},
+    {path:'/warehouse/inventory',label:'Tồn kho',link:'.whx-table tbody tr',
+      wrap:'.whx-table-scroll',table:'.whx-table',panel:'.whx-stock-layout.with-panel .whx-detail-panel-v2'},
+    {path:'/sales/history',label:'Lịch sử POS',link:'.sales-history-table tbody a.table-link',
+      wrap:'.sales-history-table-wrap',table:'.sales-history-table',panel:'.sales-history-workspace .system-slidebar-v1'},
+    {path:'/sales/customers',label:'Khách hàng',link:'.customer-demo-table tbody a.table-link',
+      wrap:'.customer-demo-table-wrap',table:'.customer-demo-table',panel:'.customer-demo-workspace .system-slidebar-v1'},
+    {path:'/sales/debt',label:'Công nợ',link:'.debt-demo-table tbody a.table-link',
+      wrap:'.debt-demo-table-wrap',table:'.debt-demo-table',panel:'.debt-demo-workspace .system-slidebar-v1'},
+  ]
+  for(const spec of splitCases){
+    const ready=await nav(spec.path)
+    if(!ready){check('1440 '+spec.label+' panel route',false,{url:page.url()});continue}
+    const opener=page.locator(spec.link).first()
+    if(!await opener.count()){
+      check('1440 '+spec.label+' has a selectable row',false)
+      continue
+    }
+    await opener.click()
+    const shown=await page.locator(spec.panel).first().waitFor({state:'visible',timeout:15000})
+      .then(()=>true).catch(()=>false)
+    const m=await page.evaluate(spec=>{
+      const wrap=document.querySelector(spec.wrap)
+      const table=document.querySelector(spec.table)
+      const panel=document.querySelector(spec.panel)
+      if(!wrap||!table||!panel)return null
+      const panelRect=panel.getBoundingClientRect()
+      const before=wrap.scrollLeft
+      wrap.scrollLeft=wrap.scrollWidth
+      const after=wrap.scrollLeft
+      wrap.scrollLeft=before
+      const action=table.querySelector('tbody td.row-actions-cell')
+        ||(spec.label==='Công nợ'?table.querySelector('tbody tr td:last-child'):null)
+      const style=getComputedStyle(wrap)
+      return{
+        viewport:innerWidth,
+        docScroll:document.documentElement.scrollWidth,
+        tableWidth:Math.round(table.getBoundingClientRect().width),
+        wrapWidth:Math.round(wrap.getBoundingClientRect().width),
+        scrollWidth:wrap.scrollWidth,clientWidth:wrap.clientWidth,
+        overflowX:style.overflowX,
+        horizontalScrollWorks:wrap.scrollWidth<=wrap.clientWidth+4||after>0,
+        panelLeft:panelRect.left,panelRight:panelRect.right,
+        panelWidth:Math.round(panelRect.width),panelTop:panelRect.top,
+        actionSticky:action?getComputedStyle(action).position==='sticky':null,
+      }
+    },spec)
+    check('1440 '+spec.label+' panel retains accessible table',
+      Boolean(shown&&m&&m.docScroll<=1444
+        &&m.wrapWidth>150
+        &&m.panelWidth>=350&&m.panelRight<=1444&&m.panelLeft>=-2
+        &&m.overflowX!=='hidden'&&m.horizontalScrollWorks
+        &&(m.tableWidth<=m.wrapWidth+8||m.scrollWidth>m.clientWidth+4)
+        &&(!['User','Đơn nhập','Công nợ'].includes(spec.label)||m.actionSticky)),
+      m??{visible:shown})
+  }
   await context.close()
 }finally{
   await browser.close()
