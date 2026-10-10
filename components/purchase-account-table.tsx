@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { createPortal } from 'react-dom'
 import { formatDateTime, formatPhone, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
 import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
@@ -86,6 +87,8 @@ export function PurchaseAccountTable({
   const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
   const [dragOverColumn,setDragOverColumn]=useState<ColKey|null>(null)
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
+  const [toolbarRoot,setToolbarRoot]=useState<HTMLElement|null>(null)
+  useEffect(()=>{setToolbarRoot(document.getElementById('p1-account-filter-actions'))},[])
 
   useEffect(()=>{
     try{
@@ -159,6 +162,12 @@ export function PurchaseAccountTable({
   const selectedArchived=selectedRows.length>0&&selectedRows.every((row:any)=>Boolean(row.archived_at))
   const allSelected=rows.length>0&&rows.slice(0,200).every((row:any)=>selectedSet.has(String(row.id)))
   const colSpan=useMemo(()=>visible.length+(canManage?1:0),[visible,canManage])
+  const columnMinimums:Record<ColKey,number>={
+    number:32,username:154,platform:64,phone:108,email:155,
+    status:89,device:102,voucher:76,orders:52,createdAt:135,note:90
+  }
+  const minimumWidth=(canManage?32:0)+columnOrder
+    .filter(key=>visible.includes(key)).reduce((sum,key)=>sum+columnMinimums[key],0)
 
   function hrefFor(id:string){
     const p=new URLSearchParams(detailQuery)
@@ -249,7 +258,7 @@ export function PurchaseAccountTable({
           </form>}
     </div>}
 
-    <div className="p1-account-table-tools"><div className="p1-account-table-tools-label">Danh sách tài khoản</div><div className="column-manager managed-column-wrap" ref={columnManagerRef}>
+    {toolbarRoot&&createPortal(<div className="column-manager managed-column-wrap" ref={columnManagerRef}>
       <button className="icon-button managed-column-button" type="button" onClick={()=>setOpen(v=>!v)} aria-expanded={open} title="Cột & thứ tự">
         <ColumnIcon/><span>Cột</span>
       </button>
@@ -287,10 +296,10 @@ export function PurchaseAccountTable({
           </label>
         </div>)}
       </div>}
-    </div></div>
+    </div>,toolbarRoot)}
 
     <div className="card table-card account-table-card">
-      <table className="table user-table">
+      <table className="table user-table" style={{minWidth:minimumWidth}}>
         <colgroup>
           {canManage&&<col className="p1-account-col p1-account-col-select"/>}
           {columnOrder.filter(isVisible).map(k=><col key={k} className={'p1-account-col p1-account-col-'+k}/>)}
