@@ -869,6 +869,7 @@
   -webkit-overflow-scrolling:touch;
 }
 .brand-shell-v1 .tracking-screen-v2 .tracking-hub-metrics-v2 > span{
+  display:inline-flex!important;
   flex:0 0 auto!important;
   white-space:nowrap!important;
   min-height:24px!important;
@@ -964,6 +965,23 @@ th.tracking-col-detail,
   padding-left:2px!important;
   padding-right:2px!important;
 }
+/* The action column is the LAST data column, not a floating overlay. Preserve
+   the sticky vertical header, but disable legacy right-sticky positioning so
+   its text/icon cannot cover the description while horizontally scrolling. */
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2 th.tracking-action-head{
+  right:auto!important;
+  left:auto!important;
+  inset-inline-end:auto!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2 td.tracking-col-actions{
+  position:static!important;
+  right:auto!important;
+  left:auto!important;
+  inset-inline-end:auto!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+
 /* Latest carrier event is displayed directly after the canonical status.
    Keep the entire explanation in the title and a legible two-line preview
    plus its real timestamp in the table. */
