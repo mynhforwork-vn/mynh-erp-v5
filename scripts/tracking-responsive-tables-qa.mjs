@@ -340,6 +340,97 @@ try{
         &&(!['User','Đơn nhập','Công nợ'].includes(spec.label)||m.actionSticky)),
       m??{visible:shown})
   }
+  // Regression checks for screenshot-reported operational screens.
+  // All checks inspect DOM/layout only; no form submissions or DB updates.
+  await page.setViewportSize({width:1440,height:900})
+  if(await nav('/warehouse/receive')){
+    const group=page.locator('.warehouse-receive-card.open').first()
+    const measure=await group.evaluate(el=>{
+      const first=el.querySelector('.tracking-hub-table-wrap-v2')
+      const next=el.querySelector('.warehouse-intake-section-head.ready')
+      const wraps=[...el.querySelectorAll('.tracking-hub-table-wrap-v2')]
+      if(!first||!next||wraps.length<2)return null
+      const a=first.getBoundingClientRect(),b=next.getBoundingClientRect()
+      return{firstTableBottom:a.bottom,nextTitleTop:b.top,
+        overlapping:a.bottom>b.top+2,
+        wraps:wraps.map(w=>({
+          clientHeight:w.clientHeight,scrollHeight:w.scrollHeight,
+          clientWidth:w.clientWidth,scrollWidth:w.scrollWidth,
+          overflowY:getComputedStyle(w).overflowY
+        }))}
+    }).catch(()=>null)
+    check('Warehouse receive two queues do not overlap',
+      Boolean(measure&&!measure.overlapping&&measure.wraps.every(w=>w.clientHeight>0&&w.overflowY!=='visible')),
+      measure??{reason:'queues absent'})
+    const row=page.locator('.warehouse-split-table tbody tr')
+      .filter({hasText:session.fixtures.warehouse_order_code}).first()
+    if(await row.count()){
+      await row.click()
+      const panel=page.locator('aside.warehouse-intake-panel')
+      const rect=await panel.evaluate(el=>{
+        const r=el.getBoundingClientRect()
+        return{left:r.left,right:r.right,width:r.width,viewport:innerWidth}
+      }).catch(()=>null)
+      check('Warehouse receive slidebar fits viewport',
+        Boolean(rect&&rect.width>=350&&rect.left>=-3&&rect.right<=1444),rect??{})
+      const next=await group.evaluate(el=>{
+        const a=el.querySelector('.tracking-hub-table-wrap-v2')?.getBoundingClientRect()
+        const b=el.querySelector('.warehouse-intake-section-head.ready')?.getBoundingClientRect()
+        return a&&b?{bottom:a.bottom,top:b.top}:null
+      }).catch(()=>null)
+      check('Warehouse receive queues do not overlap beside slidebar',
+        Boolean(next&&next.bottom<=next.top+2),next??{})
+      await page.screenshot({path:output+'/warehouse-1440-panel.png',fullPage:false})
+    }
+  }else check('Warehouse receive route accessible',false)
+
+  if(await nav('/finance/cashflow')){
+    const ledger=page.locator('table.finance-table').first()
+    const test=await ledger.evaluate(el=>{
+      const scroll=el.closest('.finance-table-card')
+      const last=el.querySelector('tbody tr td:last-child')
+      const r=last?.getBoundingClientRect(),w=scroll?.getBoundingClientRect()
+      return{columnWidth:r?.width,scrollRight:w?.right,lastRight:r?.right,
+        sticky:last?getComputedStyle(last).position:null,
+        scrollable:scroll?scroll.scrollWidth>scroll.clientWidth:false}
+    }).catch(()=>null)
+    check('Finance last status remains visible',Boolean(test&&test.columnWidth>=108
+      &&test.sticky==='sticky'&&test.lastRight<=test.scrollRight+4),test??{})
+    const first=page.locator('table.finance-table tbody tr').first()
+    if(await first.count()){
+      await first.click()
+      const pane=page.locator('.finance-table-card').first()
+      const m=await pane.evaluate(el=>{
+        const r=el.getBoundingClientRect()
+        return{width:r.width,clientWidth:el.clientWidth,scrollWidth:el.scrollWidth,
+          overflow:getComputedStyle(el).overflowX}
+      }).catch(()=>null)
+      check('Finance keeps horizontal scroll with right panel',
+        Boolean(m&&m.width>=300&&m.overflow!=='hidden'&&m.scrollWidth>=m.clientWidth),m??{})
+      await page.screenshot({path:output+'/cashflow-1440-panel.png',fullPage:false})
+    }
+  }else check('Finance cashflow route accessible',false)
+
+  if(await nav('/settings?section=tracking')){
+    const tab=page.getByRole('button',{name:/Mapping SPX/}).first()
+    if(await tab.count())await tab.click()
+    const head=page.locator('.tracking-mapping-head-v7')
+    const font=await head.evaluate(el=>({
+      font:parseFloat(getComputedStyle(el).fontSize),
+      rows:el.closest('.tracking-mapping-panel-v7')?.querySelectorAll('.tracking-mapping-row-v7').length??0
+    })).catch(()=>null)
+    check('Tracking mapping grid legible',
+      Boolean(font&&font.font>=9.5&&font.rows>0),font??{})
+  }else check('Tracking settings route accessible',false)
+
+  if(await nav('/finance/shipper-payments')){
+    const frame=await page.evaluate(()=>({
+      docWidth:document.documentElement.scrollWidth,view:innerWidth,
+      viewHubButtons:[...document.querySelectorAll('button,a')].filter(el=>el.textContent?.includes('Xem HUB')).length
+    }))
+    check('Shipper settlement list fits viewport',
+      frame.docWidth<=frame.view+4&&frame.viewHubButtons>0,frame)
+  }else check('Shipper settlement route accessible',false)
   await context.close()
 }finally{
   await browser.close()
