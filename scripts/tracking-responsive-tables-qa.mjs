@@ -150,6 +150,30 @@ try{
   // Only one HTTP navigation for the whole responsive Tracking matrix.
   // Resizing the existing authenticated page tests CSS without repeating costly RSC/DB loads.
   if(!await nav('/purchase/tracking?range=all'))throw new Error('Tracking Preview unavailable')
+  const providerDetail=await page.evaluate(()=>{
+    const firstTable=document.querySelector('table.tracking-hub-table-v2')
+    const labels=[...firstTable?.querySelectorAll('thead th')??[]]
+      .map(h=>h.textContent?.replace(/[↑↓↕⇅]/g,'').trim()??'')
+    const status=labels.indexOf('Trạng thái')
+    const detail=labels.indexOf('Trạng thái chi tiết')
+    const action=labels.indexOf('Xử lý')
+    const cells=[...document.querySelectorAll('.tracking-hub-table-v2 td.tracking-col-detail-cell')]
+    const populated=cells.filter(el=>!el.textContent?.includes('Chưa có nội dung Tracking'))
+    return {status,detail,action,cells:cells.length,populated:populated.length,
+      dateShown:populated.some(el=>Boolean(el.querySelector('small'))),
+      labelExists:document.querySelectorAll('.tracking-hub-summary-state')
+        .length>0,
+      redundantLabel:[...document.querySelectorAll('.tracking-hub-summary-state')]
+        .some(el=>/Thu gọn|Xem đơn/.test(el.textContent??''))}
+  })
+  check('Tracking real-event detail placed after status',
+    providerDetail.status>=0&&providerDetail.detail===providerDetail.status+1
+    &&providerDetail.action===providerDetail.detail+1
+    &&providerDetail.cells>0
+    &&providerDetail.populated>0&&providerDetail.dateShown,providerDetail)
+  check('Tracking redundant HUB collapse label removed',
+    providerDetail.labelExists&&!providerDetail.redundantLabel,providerDetail)
+
   for(const view of widths){
     await page.setViewportSize(view)
     await page.waitForTimeout(90)
@@ -192,6 +216,25 @@ try{
       check(view.width+' right slidebar visible in viewport',
         Boolean(measure&&measure.left>=-3&&measure.right<=view.width+4
           &&measure.width>Math.min(240,view.width*.6)),measure??{visible})
+      const hubHeader=await page.evaluate(()=>{
+        const h=document.querySelector('.tracking-hub-card-v2 .tracking-hub-head-v2')
+        const metrics=h?.querySelector('.tracking-hub-metrics-v2')
+        if(!h||!metrics)return null
+        const a=h.getBoundingClientRect(),b=metrics.getBoundingClientRect()
+        const chips=[...metrics.querySelectorAll(':scope > span')].map(el=>{
+          const r=el.getBoundingClientRect()
+          return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width}
+        })
+        return{head:{left:a.left,right:a.right,top:a.top,bottom:a.bottom},
+          metrics:{left:b.left,right:b.right,top:b.top,bottom:b.bottom},
+          chips,scrollWidth:h.scrollWidth,clientWidth:h.clientWidth}
+      })
+      check(view.width+' HUB header metrics fit with right slidebar',
+        Boolean(hubHeader&&hubHeader.chips.length>=5
+          &&hubHeader.chips.every(chip=>
+            chip.left>=hubHeader.head.left-3&&chip.right<=hubHeader.head.right+3
+            &&chip.bottom<=hubHeader.head.bottom+3)
+          &&hubHeader.scrollWidth<=hubHeader.clientWidth+4),hubHeader??{})
       if(visible){
         if([320,390,768,1024,1440].includes(view.width)){
           await page.screenshot({path:output+'/table-'+view.width+'-panel.png',fullPage:false})
