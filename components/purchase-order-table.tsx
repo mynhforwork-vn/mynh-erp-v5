@@ -407,12 +407,12 @@ export function PurchaseOrderTable({
 
   function renderHeader(key:ColKey){
     if(key==='number')return <th key={key}>#</th>
-    if(key==='order')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('order_asc','order_desc')}>Mã đơn <span>{sortIndicator(sort,'order_asc','order_desc')}</span></button></th>
+    if(key==='order')return <th key={key} className="p1-order-identity-head"><button className="sort-head" type="button" onClick={()=>toggleSort('order_asc','order_desc')}>Mã đơn <span>{sortIndicator(sort,'order_asc','order_desc')}</span></button></th>
     if(key==='username')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('username_asc','username_desc')}>Username <span>{sortIndicator(sort,'username_asc','username_desc')}</span></button></th>
     if(key==='time')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('time_old','time_new')}>Thời gian đặt <span>{sort==='time_new'?'↓':sort==='time_old'?'↑':'↕'}</span></button></th>
-    if(key==='product')return <th key={key}>Sản phẩm</th>
+    if(key==='product')return <th key={key} className="p1-order-product-head">Sản phẩm</th>
     if(key==='cod')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('cod_asc','cod_desc')}>COD <span>{sortIndicator(sort,'cod_asc','cod_desc')}</span></button></th>
-    if(key==='tracking')return <th key={key}>Mã vận đơn</th>
+    if(key==='tracking')return <th key={key} className="p1-order-tracking-head">Mã vận đơn</th>
     if(key==='carrier')return <th key={key}>ĐVVC</th>
     if(key==='voucher')return <th key={key}>Voucher</th>
     return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('status_asc','status_desc')}>Xử lý <span>{sortIndicator(sort,'status_asc','status_desc')}</span></button></th>
@@ -421,8 +421,8 @@ export function PurchaseOrderTable({
   function renderCell(key:ColKey,o:any,i:number){
     const s=activeShipment(o)
     if(key==='number')return <td key={key}>{i+1}</td>
-    if(key==='order')return <td key={key}><Link className="table-link" prefetch={false} href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
-    if(key==='username')return <td key={key}>{o.erp_users?.username??'—'}</td>
+    if(key==='order')return <td key={key} className="p1-order-identity-cell"><Link className="table-link" prefetch={false} href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
+    if(key==='username')return <td key={key} className="p1-order-user-cell" title={o.erp_users?.username??undefined}>{o.erp_users?.username??'—'}</td>
     if(key==='time')return <td key={key} className="order-time-cell">{formatDateTime(o.order_date)}</td>
     if(key==='product')return <td key={key} className="truncate product-cell p1-table-long-text" title={productSummary(o.order_items??[])}>{productSummary(o.order_items??[])}</td>
     if(key==='cod')return <td key={key} className="money">{formatMoney(o.cod)}</td>
