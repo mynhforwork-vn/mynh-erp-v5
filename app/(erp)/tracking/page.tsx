@@ -4,6 +4,7 @@ import { formatDateTime, formatMoney, sourceLabel, statusLabel } from '@/lib/for
 import { TrackingHubGroup } from '@/components/tracking-hub-group'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import { ContextOrderPanel } from '@/components/context-order-panel'
+import { isDeliveredAwaitingReceipt, isPreDestinationTransit } from '@/lib/tracking/status-groups'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
 type SP={
@@ -122,8 +123,12 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     {data:warehouseSettings},
   ]=await Promise.all([
     supabase.from('shipments').select(
-      'id,order_id,tracking_number,carrier,is_active,tracking_enabled,current_tracking_status,last_track_at,next_track_at,last_status_change_at,tracking_fail_count,queue_status,orders(id,shopee_order_id,destination_hub,cod,recipient_name,recipient_phone,recipient_address,receive_status,warehouse_status,order_date,shipping_service,order_status,archived_at,order_items(product_name,variant,quantity))'
-    ).eq('is_active',true).order('last_status_change_at',{ascending:false,nullsFirst:false}).limit(2000),
+      'id,order_id,tracking_number,carrier,is_active,tracking_enabled,current_tracking_status,last_track_at,next_track_at,last_status_change_at,tracking_fail_count,queue_status,tracking_events(event_time,raw_description,raw_status_name,raw_status,reason_description),orders(id,shopee_order_id,destination_hub,cod,recipient_name,recipient_phone,recipient_address,receive_status,warehouse_status,order_date,shipping_service,order_status,archived_at,order_items(product_name,variant,quantity))'
+    ).eq('is_active',true)
+      .order('last_status_change_at',{ascending:false,nullsFirst:false})
+      .order('event_time',{referencedTable:'tracking_events',ascending:false})
+      .limit(1,{referencedTable:'tracking_events'})
+      .limit(2000),
     supabase.from('warehouses').select('id,code,name,address,is_active').eq('is_active',true).order('code'),
     supabase.from('tracking_provider_configs').select('carrier,enabled').order('carrier'),
     supabase.from('tracking_sync_logs').select('id,shipment_id,source,started_at,result,new_event_count,error_code,error_message').order('started_at',{ascending:false}).limit(8),
@@ -155,6 +160,10 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
 
   const allRows=(shipmentData??[]).filter((s:any)=>!s.orders?.archived_at).map((s:any)=>{
     const o=s.orders??{}
+    const event=(s.tracking_events??[])[0]??null
+    const detail=[event?.raw_description,event?.raw_status_name,event?.reason_description,event?.raw_status]
+      .map(value=>typeof value==='string'?value.trim():'')
+      .find(Boolean)??null
     return {
       id:o.id??s.order_id,
       shopee_order_id:o.shopee_order_id,
@@ -173,6 +182,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       tracking_number:s.tracking_number,
       carrier:s.carrier,
       tracking_status:s.current_tracking_status,
+      tracking_detail:detail,
+      tracking_event_time:event?.event_time??null,
       tracking_enabled:s.tracking_enabled,
       last_track_at:s.last_track_at,
       next_track_at:s.next_track_at,
@@ -205,17 +216,18 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     ? dueRows.filter((r:any)=>localDate(r.last_status_change_at)===sp.receiveDate)
     : dueRows
 
+  const transit=scopeRows.filter((r:any)=>isPreDestinationTransit(r.tracking_number,r.tracking_status)).length
   const atHub=scopeRows.filter((r:any)=>r.tracking_status==='ARRIVED_DESTINATION_HUB').length
   const outForDelivery=scopeRows.filter((r:any)=>r.tracking_status==='OUT_FOR_DELIVERY').length
-  const delivered=scopeRows.filter((r:any)=>r.tracking_status==='DELIVERED').length
   const failed=scopeRows.filter((r:any)=>r.tracking_status==='DELIVERY_FAILED').length
-  const waitingRows=scopeRows.filter((r:any)=>r.receive_status==='WAITING_RECEIVE')
+  const waitingRows=scopeRows.filter((r:any)=>isDeliveredAwaitingReceipt(r.tracking_status,r.receive_status))
   const waiting=waitingRows.length
   const waitingCod=waitingRows.reduce((sum:number,r:any)=>sum+Number(r.cod??0),0)
   const waitingHubCount=new Set(waitingRows.map((r:any)=>r.destination_hub).filter(Boolean)).size
 
   let rows=[...scopeRows]
-  if(sp.status)rows=rows.filter((r:any)=>r.tracking_status===sp.status)
+  if(sp.status==='PRE_DESTINATION')rows=rows.filter((r:any)=>isPreDestinationTransit(r.tracking_number,r.tracking_status))
+  else if(sp.status)rows=rows.filter((r:any)=>r.tracking_status===sp.status)
   if(sp.receive)rows=rows.filter((r:any)=>r.receive_status===sp.receive)
 
   function trackingHref(extra:Record<string,string|null|undefined>={}){
@@ -367,12 +379,11 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     <section className="tracking-command-center-v2">
       <div className="tracking-status-strip-v2">
         <Link
-          href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE'})}
-          className={'tracking-status-metric warning '+(sp.receive==='WAITING_RECEIVE'?'active':'')}
+          href={trackingHref({status:'PRE_DESTINATION',receive:null})}
+          className={'tracking-status-metric info '+(sp.status==='PRE_DESTINATION'?'active':'')}
+          title="Có mã vận đơn, đang vận chuyển nhưng chưa đến HUB kho đích"
         >
-          <span>Chờ nhận</span>
-          <b>{waiting}</b>
-          <small>{formatMoney(waitingCod)} · {waitingHubCount} HUB</small>
+          <span>Đang vận chuyển</span><b>{transit}</b><small>Có MVD · Chưa đến HUB</small>
         </Link>
         <Link
           href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null})}
@@ -387,10 +398,11 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
           <span>Đang giao</span><b>{outForDelivery}</b><small>Shipper đang xử lý</small>
         </Link>
         <Link
-          href={trackingHref({status:'DELIVERED',receive:null})}
-          className={'tracking-status-metric success '+(sp.status==='DELIVERED'&&!sp.receive?'active':'')}
+          href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE'})}
+          className={'tracking-status-metric success '+(sp.status==='DELIVERED'&&sp.receive==='WAITING_RECEIVE'?'active':'')}
+          title={`Đã giao thành công, chờ xác nhận nhận hàng · COD ${formatMoney(waitingCod)} · ${waitingHubCount} HUB`}
         >
-          <span>Giao TC</span><b>{delivered}</b><small>{waiting} chưa nhận</small>
+          <span>Giao thành công</span><b>{waiting}</b><small>Chờ nhận · {formatMoney(waitingCod)} · {waitingHubCount} HUB</small>
         </Link>
         <Link
           href={trackingHref({status:'DELIVERY_FAILED',receive:null})}
@@ -408,9 +420,10 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
 
         <div className="tracking-filter-segments tracking-filter-segments-v2">
           <Link className={!sp.status&&!sp.receive?'active':''} href={trackingHref({status:null,receive:null})}>Tất cả</Link>
-          <Link className={sp.receive==='WAITING_RECEIVE'?'active':''} href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE'})}>Chờ nhận</Link>
+          <Link className={sp.status==='PRE_DESTINATION'?'active':''} href={trackingHref({status:'PRE_DESTINATION',receive:null})}>Đang vận chuyển</Link>
           <Link className={sp.status==='ARRIVED_DESTINATION_HUB'?'active':''} href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null})}>Đến HUB</Link>
           <Link className={sp.status==='OUT_FOR_DELIVERY'?'active':''} href={trackingHref({status:'OUT_FOR_DELIVERY',receive:null})}>Đang giao</Link>
+          <Link className={sp.status==='DELIVERED'&&sp.receive==='WAITING_RECEIVE'?'active':''} href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE'})}>Giao thành công</Link>
           <Link className={sp.status==='DELIVERY_FAILED'?'active':''} href={trackingHref({status:'DELIVERY_FAILED',receive:null})}>Giao lỗi</Link>
         </div>
 
@@ -441,7 +454,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
         : grouped.map(([hub,groupRows])=>{
             const groupUrgent=groupRows.some((x:any)=>
               x.receive_status==='WAITING_RECEIVE'||
-              ['DELIVERY_FAILED','ARRIVED_DESTINATION_HUB','OUT_FOR_DELIVERY'].includes(String(x.tracking_status))
+              ['DELIVERY_FAILED','ARRIVED_DESTINATION_HUB','OUT_FOR_DELIVERY'].includes(String(x.tracking_status))||
+              isPreDestinationTransit(x.tracking_number,x.tracking_status)
             )
             return <TrackingHubGroup
               key={hub}

@@ -2,7 +2,7 @@
 
 import { useEffect,useMemo,useRef,useState } from 'react'
 
-export function useManagedColumns<K extends string>(storageKey:string,all:readonly K[],locked:readonly K[]=[]){
+export function useManagedColumns<K extends string>(storageKey:string,all:readonly K[],locked:readonly K[]=[],insertNewAfter:Partial<Record<K,K>>={}){
   const [order,setOrder]=useState<K[]>([...all])
   const [hidden,setHidden]=useState<K[]>([])
   const [open,setOpen]=useState(false)
@@ -18,7 +18,18 @@ export function useManagedColumns<K extends string>(storageKey:string,all:readon
       if(Array.isArray(parsed.order)){
         const valid=parsed.order.filter((x:any)=>all.includes(x))
         const missing=all.filter(x=>!valid.includes(x))
-        if(valid.length)setOrder([...valid,...missing])
+        if(valid.length){
+          // Insert newly introduced columns beside their intended existing neighbor;
+          // keep all user-reordered existing columns and hidden preferences intact.
+          const merged=[...valid]
+          for(const col of missing){
+            const anchor=insertNewAfter[col]
+            const position=anchor?merged.indexOf(anchor):-1
+            if(position>=0)merged.splice(position+1,0,col)
+            else merged.push(col)
+          }
+          setOrder(merged)
+        }
       }
       if(Array.isArray(parsed.hidden)){
         const valid=parsed.hidden.filter((x:any)=>all.includes(x)&&!locked.includes(x))

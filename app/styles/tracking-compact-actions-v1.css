@@ -1,0 +1,240 @@
+/* Tracking V3.4 — compact, accessible icon-only manual synchronization.
+   Scoped to the tracking module; no changes to tables in other modules. */
+.tracking-screen-v2 .tracking-row-actions{
+  display:flex;
+  justify-content:flex-start;
+  align-items:center;
+  gap:4px;
+  min-height:24px;
+}
+.tracking-screen-v2 .tracking-sync-icon-wrap{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+}
+.tracking-screen-v2 .tracking-sync-icon-button{
+  display:inline-grid;
+  place-items:center;
+  width:24px;
+  height:24px;
+  padding:0;
+  border-radius:7px;
+  border:1px solid #d6e1e8;
+  background:#fff;
+  color:#41677d;
+  font:inherit;
+  cursor:pointer;
+  transition:background-color .15s ease,border-color .15s ease;
+}
+.tracking-screen-v2 .tracking-sync-icon-button:hover:not(:disabled){
+  background:#edf5f8;
+  border-color:#a7c6d2;
+  color:#245b76;
+}
+.tracking-screen-v2 .tracking-sync-icon-button:disabled{
+  opacity:.58;
+  cursor:progress;
+}
+.tracking-screen-v2 .tracking-sync-icon-button:focus-visible{
+  outline:2px solid #2877a9;
+  outline-offset:2px;
+}
+.tracking-screen-v2 .tracking-sync-icon{
+  display:block;
+  transform-origin:50% 50%;
+}
+.tracking-screen-v2 .tracking-sync-icon.rotating{
+  animation:tracking-icon-rotate .8s linear infinite;
+}
+@keyframes tracking-icon-rotate{
+  to{transform:rotate(360deg)}
+}
+@media(prefers-reduced-motion:reduce){
+  .tracking-screen-v2 .tracking-sync-icon.rotating{animation:none}
+}
+.tracking-screen-v2 .tracking-sync-feedback{
+  position:absolute;
+  right:0;
+  top:calc(100% + 4px);
+  z-index:20;
+  max-width:210px;
+  width:max-content;
+  border-radius:7px;
+  padding:5px 8px;
+  border:1px solid #d5e1e7;
+  background:#fff;
+  box-shadow:0 3px 12px rgba(40,63,79,.12);
+  font-size:10px;
+  line-height:1.45;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+.tracking-screen-v2 .tracking-status-strip-v2 .tracking-status-metric{
+  min-width:116px;
+}
+.tracking-screen-v2 .tracking-status-strip-v2 .tracking-status-metric > span{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.tracking-screen-v2 .tracking-filter-segments-v2{
+  min-width:0;
+  max-width:100%;
+  overflow-x:auto;
+  scrollbar-width:thin;
+}
+
+/* Keep all five tracking KPIs in one horizontal strip at every viewport. */
+.tracking-screen-v2 .tracking-status-strip-v2{
+  display:flex;
+  flex-wrap:nowrap;
+  max-width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+}
+.tracking-screen-v2 .tracking-status-strip-v2 > .tracking-status-metric{
+  flex:1 0 116px;
+  min-width:116px;
+}
+
+/* Tracking action only: do not spend 150px for a single sync icon.
+   Semantic column classes survive hide/show and drag-reordering of table columns. */
+.tracking-screen-v2 .tracking-hub-table-v2 th.tracking-col-actions,
+.tracking-screen-v2 .tracking-hub-table-v2 td.tracking-col-actions{
+  box-sizing:border-box!important;
+  width:44px!important;
+  min-width:44px!important;
+  max-width:44px!important;
+  padding-left:5px!important;
+  padding-right:5px!important;
+  text-align:center!important;
+}
+.tracking-screen-v2 .tracking-hub-table-v2 .tracking-row-actions{
+  min-height:24px!important;
+  gap:0!important;
+  justify-content:center!important;
+}
+.tracking-screen-v2 .tracking-hub-table-v2 .tracking-sync-icon-wrap{
+  min-width:0!important;
+}
+.tracking-screen-v2 .tracking-hub-table-v2 .tracking-sync-icon-button{
+  box-sizing:border-box!important;
+  width:24px!important;
+  min-width:24px!important;
+  max-width:24px!important;
+  height:24px!important;
+  min-height:24px!important;
+  max-height:24px!important;
+  border-radius:5px!important;
+}
+/* Preserve intuitive starting widths after user reorders the columns.
+   Inline resize widths take priority once customized. */
+.tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-order{width:166px}
+.tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-product{width:250px}
+.tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-cod{width:94px}
+.tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-recipient{width:245px}
+.tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-status{width:178px}
+/* The pane owns horizontal scrolling; the page shell and right slidebar stay fixed. */
+@media(min-width:901px){
+  .brand-shell-v1 .tracking-content-workspace,
+  .brand-shell-v1 .tracking-content-workspace.with-panel,
+  .brand-shell-v1 .tracking-content-workspace>.tracking-hub-stack-v2{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  .brand-shell-v1 .tracking-hub-card-v2.open>.tracking-hub-table-wrap-v2{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace>.system-slidebar-v1.context-order-panel{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow-x:hidden!important;
+  }
+}
+
+/* Fixed layout + semantic colgroup keeps a true 44px action column even at
+   2560px, where the browser would otherwise stretch it along with all cells.
+   All other visible columns remain available to the desktop resize grip. */
+@media(min-width:901px){
+  .brand-shell-v1 .tracking-hub-table-v2:not(.mynh-resizable-table){
+    table-layout:fixed!important;
+    width:100%!important;
+    min-width:min(950px,100%)!important;
+  }
+  .brand-shell-v1 .tracking-hub-table-v2 col.tracking-colgroup-select{
+    width:25px!important;
+  }
+  .brand-shell-v1 .tracking-hub-table-v2 col.tracking-colgroup-actions{
+    width:44px!important;
+  }
+}
+
+/* Reserve fixed widths for the operational columns. ONLY Product and Recipient
+   are fluid in the unmodified table, so spare desktop width cannot inflate
+   the 44px action column. Resizable tables have their own persisted widths. */
+@media(min-width:901px){
+  .brand-shell-v1 .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-order{width:166px!important}
+  .brand-shell-v1 .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-cod{width:94px!important}
+  .brand-shell-v1 .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-status{width:178px!important}
+  .brand-shell-v1 .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-product,
+  .brand-shell-v1 .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-recipient{
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+  }
+}
+
+/* Context-aware table sizing: when the right slidebar opens, distribute its
+   reduced lane across the information columns instead of retaining 1050px.
+   Narrow 1280px desktop retains a short internal scroll to protect readability.
+   Widths return to the normal desktop contract when the panel closes. */
+@media(min-width:901px){
+  .brand-shell-v1 .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table){
+    width:100%!important;
+    min-width:680px!important;
+    table-layout:fixed!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-order{
+    width:140px!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-cod{
+    width:84px!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-status{
+    width:134px!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-order{
+    width:140px!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-cod{
+    width:84px!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel
+  .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-status{
+    width:134px!important;
+  }
+  .brand-shell-v1 .tracking-hub-table-v2 .tracking-recipient-v2,
+  .brand-shell-v1 .tracking-hub-table-v2 .tracking-order-id{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  .brand-shell-v1 .tracking-hub-table-v2 .tracking-recipient-v2 > span,
+  .brand-shell-v1 .tracking-hub-table-v2 .tracking-recipient-v2 > b,
+  .brand-shell-v1 .tracking-hub-table-v2 .tracking-order-id > span{
+    display:block;
+    max-width:100%;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+}

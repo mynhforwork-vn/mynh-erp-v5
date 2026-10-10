@@ -84,6 +84,9 @@ export function TrackingSettings({
 
   const [tab,setTab]=useState<Tab>('operation')
   const [editingMapping,setEditingMapping]=useState<string|null>(null)
+  // Keep the pending-provider codes visible; open the mapping catalogue on demand.
+  const [unknownExpanded,setUnknownExpanded]=useState(true)
+  const [mappingExpanded,setMappingExpanded]=useState(false)
 
   const canonicalOptions=rules.filter(x=>x.is_active)
   const canonicalMap=useMemo(()=>new Map(rules.map(x=>[x.status_code,x])),[rules])
@@ -215,15 +218,23 @@ export function TrackingSettings({
     </div>}
 
     {tab==='mapping'&&<div className="settings-subtab-body-v6 tracking-mapping-body-v9">
-      {unknownRaw.length>0&&<section className="tracking-unknown-panel-v7">
+      {unknownRaw.length>0&&<section className={'tracking-unknown-panel-v7 tracking-collapsible-panel-v9 '+(unknownExpanded?'is-expanded':'is-collapsed')}>
         <div className="tracking-table-title-v7">
           <div>
             <h3>Raw status chưa nhận diện</h3>
             <p>Chỉ xuất hiện khi SPX trả về mã mới chưa có mapping.</p>
           </div>
-          <span>{unknownRaw.length} cần xử lý</span>
+          <div className="tracking-section-actions-v9">
+            <span className="tracking-section-count-v9">{unknownRaw.length} cần xử lý</span>
+            <button type="button" className="tracking-section-toggle-v9"
+              aria-expanded={unknownExpanded} aria-controls="tracking-unknown-content-v9"
+              onClick={()=>setUnknownExpanded(v=>!v)}>
+              <span aria-hidden="true" className="tracking-section-chevron-v9">{unknownExpanded?'⌃':'⌄'}</span>
+              {unknownExpanded?'Thu gọn':'Mở rộng'}
+            </button>
+          </div>
         </div>
-        <div className="tracking-unknown-list-v7">
+        <div id="tracking-unknown-content-v9" className="tracking-unknown-list-v7" aria-hidden={!unknownExpanded}>
           {unknownRaw.map(row=><form action={saveCarrierStatusMapping} className="tracking-unknown-row-v7" key={row.carrier+'-'+row.raw_code}>
             <input type="hidden" name="carrier" value={row.carrier}/>
             <input type="hidden" name="raw_code" value={row.raw_code}/>
@@ -241,16 +252,24 @@ export function TrackingSettings({
         </div>
       </section>}
 
-      <section className="tracking-mapping-panel-v7 tracking-full-panel-v9">
+      <section className={'tracking-mapping-panel-v7 tracking-full-panel-v9 tracking-collapsible-panel-v9 '+(mappingExpanded?'is-expanded':'is-collapsed')}>
         <div className="tracking-table-title-v7">
           <div>
             <h3>Mapping SPX → MYNH ERP</h3>
             <p>Đọc trước, chỉ dòng bấm Sửa mới chuyển sang form chỉnh sửa.</p>
           </div>
-          <span>{mappings.length} mapping</span>
+          <div className="tracking-section-actions-v9">
+            <span className="tracking-section-count-v9">{mappings.length} mapping</span>
+            <button type="button" className="tracking-section-toggle-v9"
+              aria-expanded={mappingExpanded} aria-controls="tracking-mapping-content-v9"
+              onClick={()=>setMappingExpanded(v=>!v)}>
+              <span aria-hidden="true" className="tracking-section-chevron-v9">{mappingExpanded?'⌃':'⌄'}</span>
+              {mappingExpanded?'Thu gọn':'Mở rộng'}
+            </button>
+          </div>
         </div>
 
-        <div className="tracking-mapping-scroll-v7 tracking-mapping-scroll-full-v9">
+        <div id="tracking-mapping-content-v9" className="tracking-mapping-scroll-v7 tracking-mapping-scroll-full-v9" aria-hidden={!mappingExpanded}>
           <div className="tracking-mapping-table-v7">
             <div className="tracking-mapping-head-v7">
               <span>Raw code</span>

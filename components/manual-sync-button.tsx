@@ -8,7 +8,7 @@ type SyncPayload={
   result?:{event_count?:number;ok?:boolean}
 }
 
-export function ManualSyncButton({shipmentId}:{shipmentId:string}){
+export function ManualSyncButton({shipmentId,iconOnly=false}:{shipmentId:string,iconOnly?:boolean}){
   const [state,setState]=useState<'idle'|'busy'|'ok'|'error'>('idle')
   const [msg,setMsg]=useState('')
 
@@ -43,10 +43,30 @@ export function ManualSyncButton({shipmentId}:{shipmentId:string}){
     }
   }
 
-  return <div className="inline-action">
-    <button className="button small" onClick={sync} disabled={state==='busy'}>
-      {state==='busy'?'Đang đồng bộ…':'↻ Đồng bộ vận chuyển'}
+  const busy=state==='busy'
+  const label=busy?'Đang đồng bộ vận chuyển':state==='error'?'Thử đồng bộ vận chuyển lại':'Đồng bộ vận chuyển'
+  return <div className={'inline-action'+(iconOnly?' tracking-sync-icon-wrap':'')}>
+    <button
+      type="button"
+      className={iconOnly?'tracking-sync-icon-button':'button small'}
+      onClick={sync}
+      disabled={busy}
+      aria-label={label}
+      title={state==='error'&&msg?label+' — '+msg:label}
+    >
+      {iconOnly
+        ?<svg className={busy?'tracking-sync-icon rotating':'tracking-sync-icon'}
+          width="15" height="15" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
+          aria-hidden="true">
+          <path d="M20 7v5h-5"/>
+          <path d="M4 17v-5h5"/>
+          <path d="M5.7 9A7.5 7.5 0 0 1 18.6 6.7L20 12"/>
+          <path d="M4 12l1.4 5.3A7.5 7.5 0 0 0 18.3 15"/>
+        </svg>
+        :busy?'Đang đồng bộ…':'↻ Đồng bộ vận chuyển'}
     </button>
-    {msg&&<span className={state==='error'?'error-text':'success-text'}>{msg}</span>}
+    {msg&&<span role={state==='error'?'alert':'status'}
+      className={(state==='error'?'error-text':'success-text')+(iconOnly?' tracking-sync-feedback':'')}>{msg}</span>}
   </div>
 }

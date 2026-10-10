@@ -1,0 +1,1075 @@
+/* MYNH ERP V5 — Enterprise data-table contract.
+   Shared presentation only. Keep every table's columns, sorting, resizing,
+   contextual slidebars and per-module scroll-height calculations intact.
+   Deliberately scoped to ERP screens, excluding print invoices. */
+
+.brand-shell-v1{
+  --erp-table-head-bg:#f4f7fa;
+  --erp-table-head-ink:#52677b;
+  --erp-table-ink:#31465a;
+  --erp-table-rule:#e8eef3;
+  --erp-table-hover:#f5f9fc;
+  --erp-table-selected:#eaf3fb;
+  --erp-table-link:#235e92;
+}
+
+/* Data tables in Purchase, Tracking, Warehouse, Sales, Customers, Debt and Finance. */
+.brand-shell-v1 table.table{
+  border-collapse:separate;
+  border-spacing:0;
+  color:var(--erp-table-ink)!important;
+  font-size:11.5px!important;
+  line-height:1.4;
+  font-variant-numeric:tabular-nums;
+}
+
+.brand-shell-v1 table.table > thead > tr > th{
+  height:36px!important;
+  padding:0 7px!important;
+  background:var(--erp-table-head-bg)!important;
+  color:var(--erp-table-head-ink)!important;
+  border-bottom:1px solid #d9e3ec!important;
+  font-size:10px!important;
+  font-weight:750!important;
+  line-height:1.3!important;
+  letter-spacing:.012em!important;
+  text-transform:none!important;
+  vertical-align:middle;
+  white-space:nowrap;
+}
+
+.brand-shell-v1 table.table > tbody > tr > td{
+  height:40px!important;
+  padding:5px 7px!important;
+  background:#fff!important;
+  color:var(--erp-table-ink);
+  border-bottom:1px solid var(--erp-table-rule)!important;
+  font-size:11px!important;
+  line-height:1.4!important;
+  vertical-align:middle;
+}
+
+.brand-shell-v1 table.table > tbody > tr:last-child > td{
+  border-bottom-color:transparent!important;
+}
+
+.brand-shell-v1 table.table > tbody > tr:hover > td,
+.brand-shell-v1 table.table > tbody > tr:focus-within > td{
+  background:var(--erp-table-hover)!important;
+}
+
+.brand-shell-v1 table.table > tbody > tr:is(
+  .selected,.selected-row,.bulk-selected,.active-row
+) > td{
+  background:var(--erp-table-selected)!important;
+}
+
+.brand-shell-v1 table.table > thead > tr > th :is(button,a){
+  color:inherit;
+  letter-spacing:inherit;
+  text-transform:inherit;
+}
+
+.brand-shell-v1 table.table .table-link{
+  color:var(--erp-table-link)!important;
+  font-weight:720!important;
+  text-underline-offset:2px;
+}
+
+.brand-shell-v1 table.table .table-link:focus-visible,
+.brand-shell-v1 table.table :is(button,a,input):focus-visible{
+  outline:2px solid #3979b4;
+  outline-offset:2px;
+}
+
+.brand-shell-v1 table.table > tbody > tr > td small{
+  font-size:10px!important;
+  line-height:1.35!important;
+}
+
+.brand-shell-v1 table.table > tbody > tr > td .status-pill{
+  min-height:21px;
+  font-size:9.5px!important;
+  font-weight:700;
+}
+
+.brand-shell-v1 table.table td.empty,
+.brand-shell-v1 table.table td .empty{
+  font-size:11px!important;
+  line-height:1.45!important;
+}
+
+/* Tables already scroll inside their own module panes.
+   Preserve the existing widths, flex heights and resizable column grips. */
+.brand-shell-v1 :is(
+  .order-table-card,
+  .account-table-card,
+  .tracking-hub-table-wrap-v2,
+  .whx-table-scroll,
+  .sales-history-table-wrap,
+  .customer-demo-table-wrap,
+  .debt-demo-table-wrap,
+  .finance-table-card,
+  .compact-table-wrap
+){
+  scrollbar-width:thin;
+  scrollbar-color:#bdcbd8 transparent;
+  overscroll-behavior-x:contain;
+}
+
+/* Tracking configuration uses grid rows rather than native <table>.
+   Give those table-like rows the same legible typographic scale. */
+.brand-shell-v1 :is(.tracking-table-head-v6,.tracking-mapping-head-v6){
+  min-height:34px!important;
+  color:var(--erp-table-head-ink)!important;
+  background:var(--erp-table-head-bg)!important;
+  border-bottom-color:#d9e3ec!important;
+  font-size:10px!important;
+  letter-spacing:.012em!important;
+}
+
+.brand-shell-v1 :is(.tracking-table-row-v6,.mapping-row-v6){
+  min-height:42px!important;
+  background:#fff!important;
+  border-bottom-color:var(--erp-table-rule)!important;
+  color:var(--erp-table-ink)!important;
+  font-size:11px!important;
+}
+
+.brand-shell-v1 .tracking-table-row-v6 .tracking-status-cell-v6 > b{
+  font-size:11px!important;
+}
+
+.brand-shell-v1 .tracking-table-row-v6 .tracking-status-cell-v6 > code{
+  font-size:9.5px!important;
+}
+
+/* Phone and tablet layouts retain native horizontal table scrolling rather
+   than squeezing the desktop columns or clipping the last action column. */
+@media(max-width:900px){
+  .brand-shell-v1 :is(
+    .order-table-card,
+    .account-table-card,
+    .tracking-hub-table-wrap-v2,
+    .whx-table-scroll,
+    .sales-history-table-wrap,
+    .customer-demo-table-wrap,
+    .debt-demo-table-wrap,
+    .finance-table-card,
+    .compact-table-wrap
+  ){
+    min-width:0!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  .brand-shell-v1 table.table > thead > tr > th{
+    height:34px!important;
+    padding:0 9px!important;
+    font-size:9.5px!important;
+  }
+  .brand-shell-v1 table.table > tbody > tr > td{
+    height:42px!important;
+    padding:6px 9px!important;
+    font-size:11px!important;
+  }
+}
+
+/* PR #59 regression fix: right panels must not consume a narrow mobile grid
+   column. They replace the list visually on small screens, with their own
+   scrollable body and a reachable close/back control. */
+@media(max-width:900px){
+  .brand-shell-v1 .tracking-content-workspace.with-panel{
+    display:block!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel>.tracking-hub-stack-v2{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  .brand-shell-v1 .system-slidebar-v1,
+  .brand-shell-v1 .mynh-slide-panel{
+    box-sizing:border-box!important;
+    position:fixed!important;
+    inset:0!important;
+    top:0!important;
+    right:0!important;
+    bottom:0!important;
+    left:0!important;
+    z-index:1100!important;
+    display:flex!important;
+    flex-direction:column!important;
+    width:100vw!important;
+    min-width:0!important;
+    max-width:100vw!important;
+    height:100dvh!important;
+    min-height:0!important;
+    max-height:100dvh!important;
+    margin:0!important;
+    overflow:hidden!important;
+    border-radius:0!important;
+    background:#fff!important;
+    box-shadow:none!important;
+  }
+  .brand-shell-v1 .system-slidebar-v1 :is(
+    .panel-scroll,.whx-panel-scroll,.context-stack-scroll,.system-slidebar-scroll
+  ),
+  .brand-shell-v1 .mynh-slide-panel :is(
+    .panel-scroll,.whx-panel-scroll,.context-stack-scroll,.system-slidebar-scroll
+  ){
+    min-width:0!important;
+    min-height:0!important;
+    max-width:100%!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+  }
+}
+
+/* Receive groups contain two tables per warehouse. They must grow with their
+   content and scroll within the warehouse lane instead of forcing both tables
+   into half of the available viewport height. */
+@media(min-width:901px){
+  .brand-shell-v1 .warehouse-intake-layout>.whx-intake-main,
+  .brand-shell-v1 .warehouse-intake-layout .warehouse-receive-groups{
+    overflow-y:auto!important;
+    min-height:0!important;
+  }
+  .brand-shell-v1 .warehouse-receive-groups>.warehouse-receive-card.open{
+    flex:0 0 auto!important;
+    min-height:0!important;
+    height:auto!important;
+    overflow:visible!important;
+  }
+  .brand-shell-v1 .warehouse-receive-card.open>.tracking-hub-table-wrap-v2{
+    box-sizing:border-box!important;
+    flex:0 1 auto!important;
+    min-height:70px!important;
+    height:auto!important;
+    max-height:clamp(170px,30vh,330px)!important;
+    overflow:auto!important;
+    overscroll-behavior:contain;
+  }
+  .brand-shell-v1 .warehouse-receive-card.open>.warehouse-intake-section-head{
+    position:relative;
+    z-index:1;
+    flex:0 0 auto!important;
+    background:#f4f8fa!important;
+  }
+}
+
+/* Financial ledger must preserve every user-selected column even when a
+   detail slidebar is open. The old Finance rules hid columns 6–8 and clipped
+   the rest; the table now scrolls only within its own left workspace. */
+@media(min-width:901px){
+  .brand-shell-v1 :is(
+    .finance-preview-workspace.has-slidebar,
+    .finance-live-workspace.has-slidebar,
+    .finance-ledger-layout.with-panel
+  ) .finance-table-card{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overscroll-behavior-x:contain;
+  }
+  .brand-shell-v1 :is(
+    .finance-preview-workspace.has-slidebar,
+    .finance-live-workspace.has-slidebar,
+    .finance-ledger-layout.with-panel
+  ) table.finance-table:not(.mynh-resizable-table){
+    width:max-content!important;
+    min-width:100%!important;
+    table-layout:auto!important;
+  }
+  .brand-shell-v1 :is(
+    .finance-preview-workspace.has-slidebar,
+    .finance-live-workspace.has-slidebar,
+    .finance-ledger-layout.with-panel
+  ) table.finance-table th,
+  .brand-shell-v1 :is(
+    .finance-preview-workspace.has-slidebar,
+    .finance-live-workspace.has-slidebar,
+    .finance-ledger-layout.with-panel
+  ) table.finance-table td{
+    display:table-cell!important;
+  }
+
+  /* Action menus in the two purchase lists remain reachable while the user
+     scrolls horizontally across a wide table beside an open detail panel. */
+  .brand-shell-v1 :is(.order-table-card,.account-table-card){
+    overflow-x:auto!important;
+  }
+  .brand-shell-v1 :is(.order-table,.user-table) thead th.row-actions-head{
+    position:sticky!important;
+    right:0!important;
+    z-index:7!important;
+    background:var(--erp-table-head-bg)!important;
+    box-shadow:-1px 0 0 #e0e8ef;
+  }
+  .brand-shell-v1 :is(.order-table,.user-table) tbody td.row-actions-cell{
+    position:sticky!important;
+    right:0!important;
+    z-index:3!important;
+    background:#fff!important;
+    box-shadow:-1px 0 0 #e0e8ef;
+  }
+  .brand-shell-v1 :is(.order-table,.user-table) tbody tr:hover td.row-actions-cell{
+    background:var(--erp-table-hover)!important;
+  }
+  .brand-shell-v1 :is(.order-table,.user-table) tbody tr:is(.selected,.selected-row) td.row-actions-cell{
+    background:var(--erp-table-selected)!important;
+  }
+}
+
+/* The debt collection action is operational, not an optional data field.
+   Keep it reachable beside a narrow right-hand customer slidebar. */
+@media(min-width:901px){
+  .brand-shell-v1 .debt-demo-table-wrap{
+    overflow-x:auto!important;
+  }
+  .brand-shell-v1 table.debt-demo-table thead th:last-child{
+    position:sticky!important;
+    right:0!important;
+    z-index:7!important;
+    background:var(--erp-table-head-bg)!important;
+    box-shadow:-1px 0 0 #e0e8ef;
+  }
+  .brand-shell-v1 table.debt-demo-table tbody td:last-child{
+    position:sticky!important;
+    right:0!important;
+    z-index:3!important;
+    background:#fff!important;
+    box-shadow:-1px 0 0 #e0e8ef;
+  }
+  .brand-shell-v1 table.debt-demo-table tbody tr:hover td:last-child{
+    background:var(--erp-table-hover)!important;
+  }
+  .brand-shell-v1 table.debt-demo-table tbody tr:is(.selected,.selected-row) td:last-child{
+    background:var(--erp-table-selected)!important;
+  }
+}
+
+
+/* =====================================================================
+   PR #59 visual repair V2 — preserve scrolling and prevent inter-section
+   paint collisions. Scoped to known failures captured on Named Preview.
+   ===================================================================== */
+
+/* The previous mobile slidebar selector could lose to the more specific
+   Tracking workspace grid contract. A detail view must never occupy a
+   66–136px grid track on a phone. */
+@media(max-width:900px){
+  .brand-shell-v1 .tracking-content-workspace.with-panel >
+  aside.system-slidebar-v1.context-order-panel,
+  .brand-shell-v1 .tracking-screen-v2.with-context-order-panel
+  aside.system-slidebar-v1.context-order-panel{
+    box-sizing:border-box!important;
+    position:fixed!important;
+    inset:0!important;
+    top:0!important;
+    left:0!important;
+    right:0!important;
+    bottom:0!important;
+    width:100vw!important;
+    min-width:100vw!important;
+    max-width:100vw!important;
+    height:100dvh!important;
+    min-height:100dvh!important;
+    max-height:100dvh!important;
+    margin:0!important;
+    z-index:2000!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+    border-radius:0!important;
+    transform:none!important;
+  }
+  .brand-shell-v1 .tracking-content-workspace.with-panel{
+    display:block!important;
+    min-width:0!important;
+    width:100%!important;
+  }
+}
+
+/* Two receive queues can appear inside each warehouse. The next queue title
+   must never be obscured by rows from the previous queue (or sticky headers).
+   Keep each queue bounded and independently scrollable. */
+@media(min-width:901px){
+  .brand-shell-v1 .warehouse-receive-groups > .warehouse-receive-card.open{
+    box-sizing:border-box!important;
+    position:relative!important;
+    isolation:isolate!important;
+    display:flex!important;
+    flex-direction:column!important;
+    flex:0 0 auto!important;
+    min-height:0!important;
+    height:auto!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1 .warehouse-receive-card.open > .tracking-hub-head-v2,
+  .brand-shell-v1 .warehouse-receive-card.open > .warehouse-intake-section-head,
+  .brand-shell-v1 .warehouse-receive-card.open > .managed-table-toolbar,
+  .brand-shell-v1 .warehouse-receive-card.open > .warehouse-confirm-stock-bar{
+    flex:0 0 auto!important;
+    position:relative!important;
+  }
+  .brand-shell-v1 .warehouse-receive-card.open > .warehouse-intake-section-head{
+    z-index:2!important;
+    background:#f4f8fa!important;
+  }
+  .brand-shell-v1 .warehouse-receive-card.open > .tracking-hub-table-wrap-v2{
+    box-sizing:border-box!important;
+    position:relative!important;
+    isolation:isolate!important;
+    display:block!important;
+    flex:0 0 auto!important;
+    min-height:0!important;
+    height:auto!important;
+    max-height:clamp(160px,27vh,290px)!important;
+    overflow:auto!important;
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+  }
+  .brand-shell-v1 .warehouse-receive-card.open table.warehouse-split-table,
+  .brand-shell-v1 .warehouse-receive-card.open table.warehouse-ready-table{
+    width:max-content!important;
+    min-width:100%!important;
+    max-width:none!important;
+  }
+  .brand-shell-v1 .warehouse-receive-card.open .tracking-order-id{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  .brand-shell-v1 .warehouse-receive-card.open .tracking-order-id > b{
+    display:block!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    max-width:100%!important;
+  }
+}
+
+/* Financial ledger: retain all configured data columns. Its own scroll pane
+   owns horizontal movement; the right panel must not mask half the table.
+   Pin only the final status column while content scrolls. */
+@media(min-width:901px){
+  .brand-shell-v1 .finance-table-card{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    scrollbar-width:thin;
+    overscroll-behavior-x:contain;
+  }
+  .brand-shell-v1 table.finance-table:not(.mynh-resizable-table){
+    min-width:100%!important;
+    width:max-content!important;
+    table-layout:auto!important;
+  }
+  .brand-shell-v1 table.finance-table > thead > tr > th:last-child{
+    position:sticky!important;
+    top:0!important;
+    right:0!important;
+    z-index:8!important;
+    min-width:112px!important;
+    background:var(--erp-table-head-bg)!important;
+    box-shadow:-1px 0 0 #d9e3ec;
+  }
+  .brand-shell-v1 table.finance-table > tbody > tr > td:last-child{
+    position:sticky!important;
+    right:0!important;
+    z-index:4!important;
+    min-width:112px!important;
+    background:#fff!important;
+    box-shadow:-1px 0 0 #e8eef3;
+  }
+  .brand-shell-v1 table.finance-table > tbody > tr:hover > td:last-child{
+    background:var(--erp-table-hover)!important;
+  }
+  .brand-shell-v1 table.finance-table > tbody > tr:is(.selected,.selected-row) > td:last-child{
+    background:var(--erp-table-selected)!important;
+  }
+}
+
+/* Mapping in Settings is a CSS grid rather than a native data table.
+   Apply matching readable type without modifying the mapping/saving logic. */
+.brand-shell-v1 .tracking-mapping-head-v7{
+  min-height:36px!important;
+  font-size:10px!important;
+  line-height:1.25!important;
+  letter-spacing:.012em!important;
+  text-transform:none!important;
+}
+.brand-shell-v1 .tracking-mapping-row-v7{
+  min-height:52px!important;
+  font-size:11px!important;
+  line-height:1.4!important;
+}
+.brand-shell-v1 .tracking-mapping-row-v7 :is(
+  .tracking-raw-code-v7 b,.tracking-raw-name-v7,
+  .tracking-canonical-v7 b,.tracking-canonical-v7 span
+){
+  font-size:10.5px!important;
+}
+
+/* Shipper settlement text should be readable; the current compact batch cards
+   use 6.7px labels and 8.2px currency, unlike all other operational lists. */
+.brand-shell-v1 .shipper-payment-batch-head{
+  min-height:72px!important;
+  gap:12px!important;
+  padding:10px 12px!important;
+}
+.brand-shell-v1 .shipper-payment-batch-head h2{
+  font-size:12px!important;
+  line-height:1.35!important;
+}
+.brand-shell-v1 .shipper-payment-batch-head small{
+  font-size:10px!important;
+  line-height:1.35!important;
+  overflow-wrap:anywhere;
+}
+.brand-shell-v1 .shipper-payment-batch-metrics > div{
+  min-width:0!important;
+  padding:6px 8px!important;
+}
+.brand-shell-v1 .shipper-payment-batch-metrics span,
+.brand-shell-v1 .shipper-payment-note span{
+  font-size:10px!important;
+  line-height:1.25!important;
+}
+.brand-shell-v1 .shipper-payment-batch-metrics b,
+.brand-shell-v1 .shipper-payment-note b{
+  font-size:11px!important;
+  line-height:1.35!important;
+}
+@media(max-width:1180px){
+  .brand-shell-v1 .shipper-payment-batch-head{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  .brand-shell-v1 .shipper-payment-batch-metrics{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:600px){
+  .brand-shell-v1 .shipper-payment-batch-metrics{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+
+/* The unmapped SPX status queue belongs above the Mapping list. The fixed-height
+   Settings layout must not squeeze its rows into a cropped 60px strip. */
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9 >
+.tracking-unknown-panel-v7{
+  box-sizing:border-box!important;
+  flex:0 0 auto!important;
+  min-height:100px!important;
+  max-height:min(220px,28vh)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  scrollbar-width:thin;
+}
+
+/* Mobile shell repair: brand-responsive's unguarded 218px desktop rail comes
+   after option1's 58px mobile rail, winning its !important declaration.
+   Restore a genuine icon rail so tables do not get only 66–136px. */
+@media(max-width:900px){
+  .brand-shell-v1.shell{
+    box-sizing:border-box!important;
+    width:100%!important;
+    max-width:100vw!important;
+    min-width:0!important;
+    grid-template-columns:58px minmax(0,1fr)!important;
+    gap:0!important;
+  }
+  .brand-shell-v1.shell > .sidebar{
+    box-sizing:border-box!important;
+    width:58px!important;
+    min-width:58px!important;
+    max-width:58px!important;
+    padding:9px 5px!important;
+    overflow-x:hidden!important;
+  }
+  .brand-shell-v1.shell > .main{
+    box-sizing:border-box!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    padding:10px 8px 18px!important;
+    overflow-x:hidden!important;
+  }
+  .brand-shell-v1.shell .brand{
+    justify-content:center!important;
+    padding:4px 0 9px!important;
+  }
+  .brand-shell-v1.shell .brand > span:last-child,
+  .brand-shell-v1.shell .nav-section-label,
+  .brand-shell-v1.shell .nav a > span:last-child,
+  .brand-shell-v1.shell .sidebar-user-copy,
+  .brand-shell-v1.shell .sidebar-user-more{
+    display:none!important;
+  }
+  .brand-shell-v1.shell .nav,
+  .brand-shell-v1.shell .nav-group,
+  .brand-shell-v1.shell .nav-group-items{
+    min-width:0!important;
+    width:100%!important;
+  }
+  .brand-shell-v1.shell .nav a{
+    box-sizing:border-box!important;
+    width:44px!important;
+    min-width:44px!important;
+    max-width:44px!important;
+    min-height:38px!important;
+    padding:0!important;
+    margin:0 auto!important;
+    justify-content:center!important;
+  }
+  .brand-shell-v1.shell .nav-icon{
+    flex:0 0 26px!important;
+    width:26px!important;
+    height:26px!important;
+  }
+  .brand-shell-v1.shell .sidebar-foot{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow:visible!important;
+  }
+}
+
+
+/* PR #59 — SPX settings accordions and readable data-grid typography.
+   Two controls are independent. Hiding a panel does not unmount its forms,
+   reset edits, mutate mappings, or modify other ERP table layouts. */
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9 .tracking-table-title-v7{
+  gap:10px!important;
+  flex-wrap:wrap;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9 .tracking-table-title-v7>div:first-child{
+  min-width:0;
+  flex:1 1 240px;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9 .tracking-table-title-v7 h3{
+  font-size:12px!important;
+  line-height:1.35!important;
+  font-weight:750!important;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9 .tracking-table-title-v7 p{
+  font-size:10.5px!important;
+  line-height:1.4!important;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-section-actions-v9{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  flex:0 0 auto;
+  gap:7px;
+  margin-left:auto;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-section-count-v9{
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;
+  padding:0 8px;
+  border:1px solid #d8e3eb;
+  border-radius:5px;
+  background:#f6f9fc;
+  color:#516a7e;
+  font-size:10px;
+  font-weight:700;
+  white-space:nowrap;
+}
+.brand-shell-v1 .settings-screen-v8 button.tracking-section-toggle-v9{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:32px;
+  gap:6px;
+  padding:0 11px;
+  border:1px solid #cbd9e5;
+  border-radius:5px;
+  background:#fff;
+  color:#24527a;
+  font-family:inherit;
+  font-size:11px;
+  line-height:1.3;
+  font-weight:730;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.brand-shell-v1 .settings-screen-v8 button.tracking-section-toggle-v9:hover{
+  background:#eef5fb;
+  border-color:#adc5db;
+}
+.brand-shell-v1 .settings-screen-v8 button.tracking-section-toggle-v9:focus-visible{
+  outline:2px solid #367ab6;
+  outline-offset:2px;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-section-chevron-v9{
+  display:inline-block;
+  min-width:12px;
+  font-size:16px;
+  line-height:1;
+  font-weight:650;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9
+.tracking-collapsible-panel-v9.is-collapsed{
+  box-sizing:border-box!important;
+  flex:0 0 auto!important;
+  min-height:0!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:hidden!important;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9
+.tracking-unknown-panel-v7.is-collapsed{
+  min-height:0!important;
+  max-height:none!important;
+  overflow:hidden!important;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9
+:is(.tracking-unknown-list-v7,.tracking-mapping-scroll-v7)[aria-hidden="true"]{
+  display:none!important;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9
+.tracking-mapping-scroll-v7[aria-hidden="false"]{
+  min-height:0!important;
+  overflow:auto!important;
+}
+
+/* Match the 11–12px ERP table text hierarchy; keep technical codes
+   monospaced but no smaller than the supporting text. */
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9 .tracking-mapping-head-v7{
+  min-height:36px!important;
+  font-size:10.5px!important;
+  line-height:1.35!important;
+  text-transform:none!important;
+  letter-spacing:.012em!important;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9
+:is(.tracking-mapping-row-v7,.tracking-unknown-row-v7){
+  min-height:54px!important;
+  font-size:11.5px!important;
+  line-height:1.4!important;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9
+:is(.tracking-mapping-row-v7,.tracking-unknown-row-v7)
+:is(.tracking-state-name-v7 b,.tracking-raw-code-v7 b,.tracking-raw-name-v7,.tracking-canonical-v7 b){
+  font-size:11px!important;
+  line-height:1.35!important;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9
+:is(.tracking-mapping-row-v7,.tracking-unknown-row-v7)
+:is(.tracking-state-name-v7 span,.tracking-raw-code-v7 small,.tracking-canonical-v7 code){
+  font-size:10px!important;
+  line-height:1.35!important;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9 .tracking-active-chip-v7{
+  min-height:23px!important;
+  font-size:9.5px!important;
+  line-height:1.3!important;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9
+:is(.tracking-inline-input-v7,.tracking-inline-select-v7,.tracking-unknown-row-v7 select){
+  font-size:11px!important;
+  min-height:32px!important;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9
+:is(.tracking-mapping-actions-v7 button,.tracking-unknown-row-v7 button){
+  font-size:10.5px!important;
+  min-height:30px;
+}
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-note-v7{
+  font-size:10.5px!important;
+  line-height:1.45!important;
+}
+@media(max-width:600px){
+  .brand-shell-v1 .settings-screen-v8 .tracking-section-actions-v9{
+    width:100%;
+    justify-content:space-between;
+    margin-left:0;
+  }
+}
+
+
+/* Unknown-provider forms can be wider than a phone. Scroll the action row
+   horizontally inside its own panel rather than clipping the save controls. */
+.brand-shell-v1 .settings-screen-v8 .tracking-mapping-body-v9
+.tracking-unknown-list-v7[aria-hidden="false"]{
+  box-sizing:border-box;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+  overscroll-behavior-x:contain;
+  scrollbar-width:thin;
+}
+
+
+/* Tracking HUB header: ALWAYS ONE ROW, including when the right slidebar opens.
+   Keep HUB identity, KPI strip and the column action on the same grid row.
+   KPI chips are horizontally scrollable inside their own lane, never wrap. */
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-head-v2,
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel .tracking-hub-head-v2{
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-columns:26px clamp(84px,22%,195px) minmax(0,1fr) auto!important;
+  grid-template-rows:minmax(40px,auto)!important;
+  align-items:center!important;
+  column-gap:6px!important;
+  row-gap:0!important;
+  min-width:0!important;
+  min-height:45px!important;
+  max-height:52px!important;
+  padding:4px 7px 4px 3px!important;
+  overflow:visible!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-head-v2 > .tracking-hub-toggle,
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-head-v2 > .tracking-hub-identity,
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-head-v2 > .tracking-hub-metrics-v2,
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-head-v2 > .tracking-hub-summary-state{
+  grid-row:1!important;
+  align-self:center!important;
+  min-width:0!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-head-v2 > .tracking-hub-toggle{
+  grid-column:1!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-head-v2 > .tracking-hub-identity{
+  grid-column:2!important;
+  overflow:hidden!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-identity > div{
+  min-width:0!important;
+  overflow:hidden!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-identity :is(b,small){
+  display:block!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  white-space:nowrap!important;
+  text-overflow:ellipsis!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-head-v2 > .tracking-hub-metrics-v2{
+  grid-column:3!important;
+  box-sizing:border-box!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  flex-wrap:nowrap!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  overscroll-behavior-x:contain;
+  scrollbar-width:thin;
+  scrollbar-color:#bdcbd8 transparent;
+  white-space:nowrap!important;
+  gap:4px!important;
+  padding:2px 0!important;
+  -webkit-overflow-scrolling:touch;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-metrics-v2 > span{
+  display:inline-flex!important;
+  flex:0 0 auto!important;
+  white-space:nowrap!important;
+  min-height:24px!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-metrics-v2 > span.money{
+  margin-left:0!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-head-v2 > .tracking-hub-summary-state{
+  grid-column:4!important;
+  grid-row:1!important;
+  display:flex!important;
+  align-items:center!important;
+  flex:0 0 auto!important;
+  justify-self:end!important;
+  gap:4px!important;
+  white-space:nowrap!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-summary-state .managed-column-wrap{
+  position:relative;
+}
+@media(max-width:600px){
+  .brand-shell-v1 .tracking-screen-v2 .tracking-hub-head-v2,
+  .brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel .tracking-hub-head-v2{
+    grid-template-columns:24px minmax(72px,26%) minmax(0,1fr) auto!important;
+    column-gap:4px!important;
+    padding-inline:2px 4px!important;
+  }
+}
+
+/* Tracking table fit-to-lane policy (PR #59).
+   Desktop full lane: show all columns without a forced 1120px scroll.
+   Right drawer: compress only text-preview columns to a readable 760px floor.
+   On extremely narrow panes, scroll ONLY this table rather than the page.
+   Every rule below is restricted to this Tracking table; saved drag widths
+   retain their own .mynh-resizable-table presentation path. */
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-wrap-v2{
+  box-sizing:border-box;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+  overscroll-behavior-x:contain;
+  scrollbar-width:thin;
+  scrollbar-color:#a9bdcd #f0f4f7;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table){
+  table-layout:fixed!important;
+  width:100%!important;
+  min-width:900px!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table){
+  table-layout:fixed!important;
+  width:100%!important;
+  min-width:760px!important;
+}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-select{width:25px!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-order{width:150px!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-cod{width:86px!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-status{width:150px!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-detail{width:180px!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-actions{width:44px!important}
+/* Remaining width is shared by product summary and recipient details. */
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-product,
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table)
+col.tracking-colgroup-recipient{width:auto!important}
+
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-order{width:150px!important;min-width:0!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-cod{width:86px!important;min-width:0!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-status{width:150px!important;min-width:0!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-detail{width:180px!important;min-width:0!important}
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-product,
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-recipient{
+  width:auto!important;min-width:0!important;max-width:none!important
+}
+
+/* Shrink only under a right-side order detail panel. At 1440px, a ~778px
+   table lane can show all seven columns. At 1280px, use a short local scroll. */
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-order{width:120px!important}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-cod{width:70px!important}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-status{width:135px!important}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-detail{width:165px!important}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-order{width:120px!important}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-cod{width:70px!important}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-status{width:135px!important}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-detail{width:165px!important}
+
+@media(max-width:900px){
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table){min-width:760px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-order{width:120px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-cod{width:70px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-status{width:135px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-detail{width:165px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-order{width:120px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-cod{width:70px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-status{width:135px!important}
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-detail{width:165px!important}
+}
+
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2 thead th{
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2 th.tracking-action-head{
+  box-sizing:border-box!important;
+  width:44px!important;
+  min-width:44px!important;
+  max-width:44px!important;
+  padding-left:2px!important;
+  padding-right:2px!important;
+  /* The action is the last column, not a floating overlay. */
+  right:auto!important;
+  left:auto!important;
+  inset-inline-end:auto!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2 td.tracking-col-actions{
+  position:static!important;
+  right:auto!important;
+  left:auto!important;
+  inset-inline-end:auto!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+
+/* Latest carrier event is displayed directly after the canonical status.
+   Keep the entire explanation in the title and a legible two-line preview
+   plus its real timestamp in the table. */
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2
+th.tracking-col-detail{
+  min-width:0!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2
+td.tracking-col-detail-cell{
+  min-width:0!important;
+  max-width:100%;
+  vertical-align:middle!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-detail-cell-v1{
+  display:flex;
+  min-width:0;
+  width:100%;
+  flex-direction:column;
+  gap:3px;
+  color:#314c65;
+  font-size:11px;
+  line-height:1.35;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-detail-cell-v1 > span{
+  display:-webkit-box;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  line-clamp:2;
+  overflow-wrap:anywhere;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-detail-cell-v1 > small{
+  display:block;
+  color:#788c9d;
+  font-size:10px;
+  line-height:1.2;
+  white-space:nowrap;
+}
+
