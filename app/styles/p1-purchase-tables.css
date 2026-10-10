@@ -205,6 +205,16 @@ table.user-table:not(.mynh-resizable-table){min-width:1125px!important}
 .brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="createdAt"]{width:139px!important}
 .brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="note"]{width:92px!important}
 
+/* At wide desktop widths only informational columns consume surplus space.
+   Numeric/control columns stay compact instead of growing with table width.
+   Colgroup and headers share semantic IDs; saved manual widths still win. */
+@media(min-width:1800px){
+  .brand-shell-v1 table.user-table:not(.mynh-resizable-table) :is(
+    col.p1-account-col-username,col.p1-account-col-email,col.p1-account-col-note,
+    th[data-account-col="username"],th[data-account-col="email"],th[data-account-col="note"]
+  ){width:auto!important}
+}
+
 .brand-shell-v1 .account-table-card table.user-table :is(th,td){
   overflow:hidden!important;
   text-overflow:ellipsis;

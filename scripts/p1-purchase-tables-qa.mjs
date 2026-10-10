@@ -34,9 +34,11 @@ const check=(name,pass,details={})=>{
   console.log((pass?'PASS ':'FAIL ')+name+' '+JSON.stringify(details))
 }
 const viewports=[
-  {width:320,height:568},{width:390,height:844},{width:768,height:1024},
-  {width:844,height:390},{width:1024,height:768},{width:1280,height:720},
-  {width:1440,height:900},{width:1920,height:1080},
+  {width:320,height:568},{width:360,height:800},{width:390,height:844},
+  {width:414,height:896},{width:600,height:960},{width:768,height:1024},
+  {width:820,height:1180},{width:844,height:390},{width:1024,height:768},
+  {width:1280,height:720},{width:1366,height:768},{width:1440,height:900},
+  {width:1536,height:864},{width:1920,height:1080},{width:2560,height:1600},
 ]
 try {
   const context=await browser.newContext({viewport:{width:1440,height:900}})
@@ -147,12 +149,16 @@ try {
     check(spec.name+' column manager opens',await menuPanel.isVisible())
     await page.keyboard.press('Escape')
     check(spec.name+' column manager Escape closes',!(await menuPanel.isVisible().catch(()=>false)))
+    await menu.click()
+    await page.locator(spec.name==='User'?'.p1-account-table-tools-label':'.page-head').first().click()
+    check(spec.name+' column manager closes on outside click',
+      !(await menuPanel.isVisible().catch(()=>false)))
     for(const view of viewports){
       await page.setViewportSize(view)
       await page.waitForTimeout(80)
       const m=await measure(spec)
       check(spec.name+' fit '+view.width+'x'+view.height,fits(m,view),m??{})
-      if(spec.name==='User'&&[390,768,1024,1440].includes(view.width)){
+      if(spec.name==='User'&&[390,768,1024,1440,1920,2560].includes(view.width)){
         const compact=['number','voucher','orders'].map(id=>m?.accountCols?.find(c=>c.id===id))
         check('User semantic narrow columns '+view.width,
           compact.every((c,i)=>c&&c.width<=[43,106,69][i]),{compact})
@@ -266,6 +272,38 @@ try {
       },spec)
       check(spec.name+' detail slidebar fits mobile',
         mobile.panel&&mobile.left>=-3&&mobile.right<=394&&mobile.bodyWidth<=394,mobile)
+      if(spec.name==='User'){
+        await page.setViewportSize({width:1440,height:900})
+        const withOrder=page.locator('.user-table tbody tr').filter({
+          has:page.locator('td.count-cell').filter({hasText:/^[1-9][0-9]*$/})
+        }).first()
+        const found=await withOrder.count()>0
+        check('User regression: at least one account has an order',found)
+        if(found){
+          await withOrder.locator('a.table-link').first().click()
+          await page.locator('.user-panel-tabs').getByRole('link',{name:/Đơn hàng/}).click()
+          await page.locator('.user-order-card.detailed').first().waitFor({state:'visible',timeout:15000})
+          await page.locator('.user-order-card.detailed').first().click()
+          await page.locator('.context-order-panel').waitFor({state:'visible',timeout:15000})
+          check('User → Orders → Order detail remains in Purchase Accounts',
+            new URL(page.url()).pathname==='/purchase/accounts'&&Boolean(new URL(page.url()).searchParams.get('order')))
+          const trackingTab=page.locator('.context-order-tabs').getByRole('link',{name:'Tracking'})
+          if(await trackingTab.count()){
+            await trackingTab.click()
+            await page.waitForURL(url=>url.searchParams.get('orderTab')==='tracking')
+            check('User → Order → Tracking opens without switching module',
+              new URL(page.url()).pathname==='/purchase/accounts')
+            await page.locator('.context-stack-back').click()
+            await page.waitForURL(url=>url.searchParams.get('orderTab')==='info')
+            check('Tracking Back returns to same order',
+              Boolean(new URL(page.url()).searchParams.get('order')))
+          }
+          await page.locator('.context-stack-back').click()
+          await page.waitForURL(url=>!url.searchParams.get('order')&&url.searchParams.get('tab')==='orders')
+          check('Order Back returns to User orders, not another module',
+            new URL(page.url()).pathname==='/purchase/accounts')
+        }
+      }
     }
   }
 
