@@ -349,7 +349,7 @@ table.user-table:not(.mynh-resizable-table){min-width:1125px!important}
   background:#fff!important;
   color:#344b5e!important;
   box-shadow:none!important;
-  font:500 11px/1.3 inherit!important;
+  font-family:inherit!important;font-size:11px!important;font-weight:500!important;line-height:1.3!important;
   cursor:pointer;
 }
 .brand-shell-v1 .p1-filter-dropdown .p1-filter-trigger>span{
@@ -390,7 +390,7 @@ table.user-table:not(.mynh-resizable-table){min-width:1125px!important}
   color:#405464!important;
   text-align:left!important;
   white-space:nowrap!important;
-  font:500 11px/1.35 inherit!important;
+  font-family:inherit!important;font-size:11px!important;font-weight:500!important;line-height:1.35!important;
   cursor:pointer;
 }
 .brand-shell-v1 .p1-filter-menu .p1-filter-option:is(.focused,:hover){background:#f1f6fa!important}
