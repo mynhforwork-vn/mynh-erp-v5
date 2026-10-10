@@ -1,19 +1,14 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
-import { DeleteOrderConfirmForm } from '@/components/delete-order-confirm-form'
-import { ConfirmOperationDialog } from '@/components/confirm-operation-dialog'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
 import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
 import {
-  archiveOrder,
   archiveOrdersBulk,
-  deleteOrdersBulkPermanent,
   quickAddTrackingNumber,
-  restoreOrder,
   restoreOrdersBulk,
 } from '@/lib/actions/core'
 
@@ -79,67 +74,6 @@ function ColumnIcon(){
 }
 
 
-function OrderLifecycleCell({
-  row,
-  returnQuery,
-  canManage,
-  canDeletePermanent,
-  open,
-  onToggle
-}:{
-  row:Row
-  returnQuery:string
-  canManage:boolean
-  canDeletePermanent:boolean
-  open:boolean
-  onToggle:()=>void
-}){
-  const [deleteOpen,setDeleteOpen]=useState(false)
-
-  useEffect(()=>{
-    if(!open)setDeleteOpen(false)
-  },[open])
-
-  if(!canManage)return <span className="row-action-readonly">—</span>
-
-  return <div className="row-action-menu-wrap">
-    <button
-      type="button"
-      className="row-action-kebab"
-      aria-label="Mở thao tác"
-      aria-expanded={open}
-      onClick={onToggle}
-    ><span aria-hidden="true">⋮</span></button>
-
-    {open&&<div className="row-action-menu">
-      {row.archived_at
-        ? <form action={restoreOrder} className="row-action-menu-form">
-            <input type="hidden" name="order_id" value={row.id}/>
-            <input type="hidden" name="return_query" value={returnQuery}/>
-            <input type="hidden" name="table_action" value="1"/>
-            <button className="row-action-menu-item restore" type="submit">Khôi phục</button>
-          </form>
-        : <form action={archiveOrder} className="row-action-menu-form">
-            <input type="hidden" name="order_id" value={row.id}/>
-            <input type="hidden" name="return_query" value={returnQuery}/>
-            <input type="hidden" name="table_action" value="1"/>
-            <button className="row-action-menu-item archive" type="submit">Lưu trữ</button>
-          </form>}
-
-      {canDeletePermanent&&<>
-        <button
-          type="button"
-          className="row-action-menu-item delete"
-          onClick={()=>setDeleteOpen(true)}
-        >Xóa đơn</button>
-
-        {deleteOpen&&<DeleteOrderConfirmForm compact orderId={String(row.id)} confirmCode={String(row.shopee_order_id??row.id.slice(0,8))} returnQuery={returnQuery} onCancel={()=>setDeleteOpen(false)}/>}
-
-      </>}
-    </div>}
-  </div>
-}
-
 function QuickTrackingEditor({
   orderId,
   returnQuery,
@@ -203,14 +137,12 @@ export function PurchaseOrderTable({
   selectedId,
   baseQuery='',
   canEdit=false,
-  canDeletePermanent=false,
   carrierConfigs=[],
 }:{
   rows:Row[]
   selectedId?:string|null
   baseQuery?:string
   canEdit?:boolean
-  canDeletePermanent?:boolean
   carrierConfigs?:CarrierConfig[]
 }){
   const [visible,setVisible]=useState<ColKey[]>(ALL)
@@ -218,36 +150,12 @@ export function PurchaseOrderTable({
   const [open,setOpen]=useState(false)
   const [sort,setSort]=useState<SortKey>('time_new')
   const [selected,setSelected]=useState<string[]>([])
-  const [bulkDeleteOpen,setBulkDeleteOpen]=useState(false)
-  const [bulkDeleteError,setBulkDeleteError]=useState('')
-  const [bulkDeleteReason,setBulkDeleteReason]=useState('')
-  const [bulkDeletePending,startBulkDelete]=useTransition()
-  const router=useRouter()
-  function submitBulkDelete(){
-    const formData=new FormData()
-    formData.set('return_query',baseQuery)
-    for(const id of selected)formData.append('order_ids',id)
-    formData.set('reason',bulkDeleteReason)
-    setBulkDeleteError('')
-    startBulkDelete(async()=>{
-      try{
-        const result=await deleteOrdersBulkPermanent(formData)
-        if(!result.ok){setBulkDeleteError(result.error);return}
-        setBulkDeleteOpen(false)
-        setBulkDeleteReason('')
-        router.replace(result.href)
-        router.refresh()
-      }catch{
-        setBulkDeleteError('Không kết nối được máy chủ. Hãy tải lại trang và kiểm tra đơn trước khi thử tiếp.')
-      }
-    })
-  }
-  const [openActionId,setOpenActionId]=useState<string|null>(null)
   const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
   const [dragOverColumn,setDragOverColumn]=useState<ColKey|null>(null)
   const tableWrapRef=useRef<HTMLDivElement|null>(null)
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
-  const bulkDeleteRef=useRef<HTMLDivElement|null>(null)
+  const [toolbarRoot,setToolbarRoot]=useState<HTMLElement|null>(null)
+  useEffect(()=>{setToolbarRoot(document.getElementById('p1-order-toolbar-actions'))},[])
 
   useEffect(()=>{
     try{
@@ -280,43 +188,18 @@ export function PurchaseOrderTable({
   },[selectedId,sort,visible])
 
   useEffect(()=>{
-    if(!openActionId)return
-    function onPointerDown(event:PointerEvent){
-      const target=event.target as HTMLElement|null
-      if(target?.closest('.row-action-menu-wrap')||target?.closest('.erp-confirm-overlay'))return
-      setOpenActionId(null)
+    if(!open)return
+    const onPointerDown=(event:PointerEvent)=>{
+      if(event.target instanceof Node&&!columnManagerRef.current?.contains(event.target))setOpen(false)
     }
-    function onKeyDown(event:KeyboardEvent){
-      if(event.key==='Escape'&&!document.querySelector('.erp-confirm-overlay'))setOpenActionId(null)
-    }
+    const onKeyDown=(event:KeyboardEvent)=>{if(event.key==='Escape')setOpen(false)}
     document.addEventListener('pointerdown',onPointerDown)
     document.addEventListener('keydown',onKeyDown)
     return ()=>{
       document.removeEventListener('pointerdown',onPointerDown)
       document.removeEventListener('keydown',onKeyDown)
     }
-  },[openActionId])
-
-  useEffect(()=>{
-    if(!open&&!bulkDeleteOpen)return
-    function onPointerDown(event:PointerEvent){
-      const target=event.target as Node|null
-      if(open&&target&&!columnManagerRef.current?.contains(target))setOpen(false)
-      if(bulkDeleteOpen&&target&&!bulkDeleteRef.current?.contains(target)&&!(target instanceof Element&&target.closest('.erp-confirm-overlay')))setBulkDeleteOpen(false)
-    }
-    function onKeyDown(event:KeyboardEvent){
-      if(event.key!=='Escape')return
-      setOpen(false)
-      if(!document.querySelector('.erp-confirm-overlay'))setBulkDeleteOpen(false)
-    }
-    document.addEventListener('pointerdown',onPointerDown)
-    document.addEventListener('keydown',onKeyDown)
-    return ()=>{
-      document.removeEventListener('pointerdown',onPointerDown)
-      document.removeEventListener('keydown',onKeyDown)
-    }
-  },[open,bulkDeleteOpen])
-
+  },[open])
 
   function persistColumns(next:ColKey[]){
     setVisible(next)
@@ -402,7 +285,7 @@ export function PurchaseOrderTable({
     setSelected(sorted.slice(0,200).map((row:any)=>String(row.id)))
   }
 
-  const colSpan=visible.length+1+(canEdit?1:0)
+  const colSpan=visible.length+(canEdit?1:0)
   const toggleSort=(a:SortKey,b:SortKey)=>changeSort(sort===a?b:a)
 
   function renderHeader(key:ColKey){
@@ -424,7 +307,16 @@ export function PurchaseOrderTable({
     if(key==='order')return <td key={key} className="p1-order-identity-cell"><Link className="table-link" prefetch={false} href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
     if(key==='username')return <td key={key} className="p1-order-user-cell" title={o.erp_users?.username??undefined}>{o.erp_users?.username??'—'}</td>
     if(key==='time')return <td key={key} className="order-time-cell">{formatDateTime(o.order_date)}</td>
-    if(key==='product')return <td key={key} className="truncate product-cell p1-table-long-text" title={productSummary(o.order_items??[])}>{productSummary(o.order_items??[])}</td>
+    if(key==='product')return <td key={key} className="product-cell" title={(o.order_items??[]).map((it:any)=>[it.product_name,it.variant].filter(Boolean).join(' · ')).join(' | ')||'—'}>
+      <span className="p1-product-lines">
+        {(o.order_items??[]).length
+          ? (o.order_items??[]).slice(0,2).map((it:any,index:number)=><span key={it.id??index}>
+              {[it.product_name,it.variant].filter(Boolean).join(' · ')||'Sản phẩm'}
+              {index===1&&(o.order_items??[]).length>2?' +'+((o.order_items??[]).length-2):''}
+            </span>)
+          : <span>—</span>}
+      </span>
+    </td>
     if(key==='cod')return <td key={key} className="money">{formatMoney(o.cod)}</td>
     if(key==='tracking')return <td key={key} className="tracking-number-cell">
       {s?.tracking_number
@@ -454,46 +346,28 @@ export function PurchaseOrderTable({
   }
 
   return <div className="order-table-shell">
-    {canEdit&&selected.length>0&&<div className="order-bulk-bar">
-      <div className="order-bulk-summary">
-        <b>{selected.length}</b>
-        <span>đơn đã chọn{sorted.length>200?' · tối đa 200/lần':''}</span>
-        <button type="button" onClick={()=>setSelected([])}>Bỏ chọn</button>
-      </div>
-
-      {selectedArchived
-        ? <form action={restoreOrdersBulk} className="order-bulk-form">
-            <input type="hidden" name="return_query" value={baseQuery}/>
-            {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
-            <button className="button small primary" type="submit">Khôi phục đã chọn</button>
-          </form>
-        : <form action={archiveOrdersBulk} className="order-bulk-form">
-            <input type="hidden" name="return_query" value={baseQuery}/>
-            {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
-            <button className="button small archive-button" type="submit">Lưu trữ đã chọn</button>
-          </form>}
-
-      {canDeletePermanent&&<div className="order-bulk-delete" ref={bulkDeleteRef}>
-        <button
-          type="button"
-          className="button small danger"
-          onClick={()=>setBulkDeleteOpen(v=>!v)}
-          aria-expanded={bulkDeleteOpen}
-        >Xóa đã chọn</button>
-        {bulkDeleteOpen&&<ConfirmOperationDialog
-          title={'Xóa vĩnh viễn '+selected.length+' đơn hàng'}
-          kind="XÁC NHẬN XÓA NHIỀU ĐƠN"
-          target={selected.map(id=>String(rows.find(row=>String(row.id)===id)?.shopee_order_id??id.slice(0,8))).slice(0,4).join(' · ')+(selected.length>4?' và '+(selected.length-4)+' đơn khác':'')}
-          description={'Đã chọn '+selected.length+' đơn. Hãy kiểm tra danh sách trước khi xác nhận.'}
-          notice="Không thể hoàn tác. Những đơn phát sinh giao dịch không thể đảo ngược sẽ bị chặn xóa."
-          reason={bulkDeleteReason} onReasonChange={setBulkDeleteReason}
-          pending={bulkDeletePending} error={bulkDeleteError}
-          onClose={()=>{if(!bulkDeletePending){setBulkDeleteOpen(false);setBulkDeleteError('');setBulkDeleteReason('')}}}
-          onConfirm={submitBulkDelete} confirmLabel="Xác nhận xóa"
-        />}
+    {toolbarRoot&&createPortal(<div className="p1-order-table-actions">
+      {canEdit&&selected.length>0&&<div className="p1-order-bulk-icons" aria-label={selected.length+' đơn đã chọn'}>
+        <span className="p1-order-selected-count" title={selected.length+' đơn đã chọn'}>{selected.length}</span>
+        {selectedArchived
+          ? <form action={restoreOrdersBulk} className="order-bulk-form">
+              <input type="hidden" name="return_query" value={baseQuery}/>
+              {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
+              <button type="submit" className="p1-toolbar-icon" title="Khôi phục đơn đã chọn" aria-label="Khôi phục đơn đã chọn">
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11a9 9 0 1 1 2.6 6.4M3 4v7h7"/><path d="M12 7v5l3 2"/></svg>
+              </button>
+            </form>
+          : <form action={archiveOrdersBulk} className="order-bulk-form">
+              <input type="hidden" name="return_query" value={baseQuery}/>
+              {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
+              <button type="submit" className="p1-toolbar-icon" title="Lưu trữ đơn đã chọn" aria-label="Lưu trữ đơn đã chọn">
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v12h14V8M10 12h4"/></svg>
+              </button>
+            </form>}
+        <button type="button" className="p1-toolbar-icon" title="Bỏ chọn tất cả" aria-label="Bỏ chọn tất cả" onClick={()=>setSelected([])}>
+          <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
       </div>}
-    </div>}
-
     <div className="order-column-manager managed-column-wrap" ref={columnManagerRef}>
       <button className="icon-button managed-column-button" type="button" onClick={()=>setOpen(v=>!v)} title="Cột & thứ tự" aria-expanded={open}>
         <ColumnIcon/>
@@ -535,9 +409,7 @@ export function PurchaseOrderTable({
           </label>
         </div>)}
       </div>}
-    </div>
-
-    
+    </div></div>,toolbarRoot)}
 
     <div className="card table-card order-table-card" ref={tableWrapRef}>
       <table className="table order-table">
@@ -552,7 +424,6 @@ export function PurchaseOrderTable({
             />
           </th>}
           {columnOrder.filter(isVisible).map(renderHeader)}
-          <th className="row-actions-head" aria-label="Thao tác"></th>
         </tr></thead>
         <tbody>
           {!sorted.length
@@ -568,16 +439,6 @@ export function PurchaseOrderTable({
                     />
                   </td>}
                   {columnOrder.filter(isVisible).map(k=>renderCell(k,o,i))}
-                  <td className="row-actions-cell">
-                    <OrderLifecycleCell
-                      row={o}
-                      returnQuery={baseQuery}
-                      canManage={canEdit}
-                      canDeletePermanent={canDeletePermanent}
-                      open={openActionId===String(o.id)}
-                      onToggle={()=>setOpenActionId(prev=>prev===String(o.id)?null:String(o.id))}
-                    />
-                  </td>
                 </tr>
               })}
         </tbody>
