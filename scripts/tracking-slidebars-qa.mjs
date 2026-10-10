@@ -64,7 +64,7 @@ try{
           panel:rect('.tracking-content-workspace>.context-order-panel'),
           table:rect('.tracking-hub-table-v2'),
           tableWrap:rect('.tracking-hub-table-wrap-v2'),
-          columns:Object.fromEntries(['order','product','cod','recipient','status','actions'].map(name=>{
+          columns:Object.fromEntries(['order','product','cod','recipient','status','detail','actions'].map(name=>{
             const cell=document.querySelector('.tracking-hub-table-v2 th.tracking-col-'+name)
             return [name,cell?Math.round(cell.getBoundingClientRect().width):null]
           })),
@@ -73,6 +73,7 @@ try{
           icon:button?{width:button.getBoundingClientRect().width,height:button.getBoundingClientRect().height}:null,
           resizerPresent:Boolean(grip),
           tableScrollElement:Boolean(document.querySelector('.tracking-hub-table-wrap-v2')),
+          tableScroll:{scrollWidth:document.querySelector('.tracking-hub-table-wrap-v2')?.scrollWidth??0,clientWidth:document.querySelector('.tracking-hub-table-wrap-v2')?.clientWidth??0,overflow:getComputedStyle(document.querySelector('.tracking-hub-table-wrap-v2')).overflowX},
         }
       })
       const panelOK=expectedPanel
@@ -92,13 +93,12 @@ try{
         &&!v.bodyOverflowX
       const compactOK=Boolean(v.action&&v.action.width<=50)
         &&(!v.icon||v.icon.width<=25&&v.icon.height<=25)
-      const tableFits=Boolean(v.table&&v.tableWrap)
-        &&v.table.width<=Math.max(expectedPanel?1120:0,v.tableWrap.width)+8
-      // With right panel closed, the table must actually FILL its lane.
-      // A narrow 1280px right-panel case may use a limited local scrollbar.
-      const adaptive=expectedPanel
-        ?tableFits
-        :tableFits&&Math.abs(v.table.width-v.tableWrap.width)<=8
+      // The HUB pane shrinks with each sidebar. The data table may be wider
+      // than its pane, but it MUST scroll there rather than squeezing columns.
+      const adaptive=Boolean(v.table&&v.tableWrap&&v.tableScroll)
+        &&Math.abs(v.table.width-Math.max(1120,v.tableWrap.width))<=8
+        &&v.tableScroll.overflow!=='hidden'
+        &&v.tableScroll.scrollWidth>=v.tableScroll.clientWidth
       check(viewport.width+' '+name,Boolean(panelOK&&leftOK&&layoutOK&&compactOK&&v.resizerPresent&&adaptive),v)
       await page.screenshot({path:output+'/'+viewport.width+'-'+name+'.png',fullPage:false})
       return v
@@ -134,14 +134,15 @@ try{
     }
     if(draggedProduct!==null){
       const afterDrag=await measuring('left-open_right-closed_after-manual-resize',false,false)
-      check('1440 manual drag still fits full lane',
-        Math.abs(afterDrag.table.width-afterDrag.tableWrap.width)<=8,
+      check('1440 manual drag retains readable scroll-or-fit',
+        Math.abs(afterDrag.table.width-Math.max(1120,afterDrag.tableWrap.width))<=8,
         {table:afterDrag.table.width,available:afterDrag.tableWrap.width})
     }
     await ensureLeft(true)
     const leftCollapsed=await measuring('left-closed_right-closed',true,false)
-    check(viewport.width+' left toggle expands table into free space',
-      leftCollapsed.table.width>initial.table.width+95,
+    check(viewport.width+' left toggle expands available HUB pane',
+      leftCollapsed.tableWrap.width>initial.tableWrap.width+95
+        &&leftCollapsed.table.width>=initial.table.width-8,
       {leftOpen:initial.table.width,leftCollapsed:leftCollapsed.table.width})
     await ensureLeft(false)
     const leftReopened=await measuring('left-reopened_right-closed',false,false)
@@ -157,14 +158,17 @@ try{
       const panelNarrow=await measuring('left-closed_right-open',true,true)
       await ensureLeft(false)
       const panelWide=await measuring('left-open_right-open',false,true)
-      check(viewport.width+' right open shrinks table',
-        Boolean(initial.table&&panelWide.table&&panelWide.table.width<initial.table.width-60
-          &&panelWide.table.width<=Math.max(1120,panelWide.tableWrap.width)+12),
-        {before:initial.table?.width,after:panelWide.table?.width,available:panelWide.tableWrap?.width,customized:panelWide.customized})
-      check(viewport.width+' right panel changes widths',Boolean(initial.columns&&panelWide.columns
-        &&(panelWide.columns.product??0)<(initial.columns.product??0)
-        &&(panelWide.columns.recipient??0)<(initial.columns.recipient??0)),
-        {before:initial.columns,after:panelWide.columns})
+      check(viewport.width+' right open narrows pane without squeezing table',
+        Boolean(initial.tableWrap&&panelWide.table&&panelWide.tableWrap
+          &&panelWide.tableWrap.width<initial.tableWrap.width-60
+          &&Math.abs(panelWide.table.width-Math.max(1120,panelWide.tableWrap.width))<=12),
+        {before:initial.tableWrap?.width,after:panelWide.tableWrap?.width,table:panelWide.table?.width,customized:panelWide.customized})
+      check(viewport.width+' right panel protects status detail and action columns',
+        Boolean(panelWide.columns
+          &&(panelWide.columns.status??0)>=166
+          &&(panelWide.columns.detail??0)>=196
+          &&(panelWide.columns.actions??0)>=42),
+        {after:panelWide.columns})
       if(draggedProduct!==null){
         check('1440 custom saved widths fit with right slidebar',
           Boolean(panelWide.customized&&panelWide.table&&panelWide.tableWrap
@@ -176,11 +180,12 @@ try{
         await close.click()
         await page.locator('aside.context-order-panel').waitFor({state:'detached',timeout:12000})
         const restored=await measuring('left-open_right-reclosed',false,false)
-        check(viewport.width+' right close restores table width',
-          Boolean(initial.table&&restored.table&&restored.table.width>panelWide.table.width+60),
-          {initial:initial.table?.width,restored:restored.table?.width,opened:panelWide.table?.width})
-        check(viewport.width+' right closed table fills available lane',
-          Math.abs(restored.table.width-restored.tableWrap.width)<=8,
+        check(viewport.width+' right close restores usable table lane',
+          Boolean(restored.tableWrap&&panelWide.tableWrap
+            &&restored.tableWrap.width>panelWide.tableWrap.width+60),
+          {initial:initial.tableWrap?.width,restored:restored.tableWrap?.width,opened:panelWide.tableWrap?.width})
+        check(viewport.width+' right closed table fits or scrolls in lane',
+          Math.abs(restored.table.width-Math.max(1120,restored.tableWrap.width))<=8,
           {table:restored.table.width,available:restored.tableWrap.width})
         if(draggedProduct!==null){
           check('1440 custom product width restored',Math.abs((restored.columns.product??0)-draggedProduct)<=6,
