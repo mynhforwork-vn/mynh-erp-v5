@@ -282,7 +282,17 @@ try {
         if(found){
           await withOrder.locator('a.table-link').first().click()
           await page.locator('.user-panel-tabs').getByRole('link',{name:/Đơn hàng/}).click()
-          await page.locator('.user-order-card.detailed').first().waitFor({state:'visible',timeout:15000})
+          await page.waitForURL(url=>url.searchParams.get('tab')==='orders',{timeout:15000})
+          const orderDiagnostics=await page.evaluate(()=>({
+            url:location.href,
+            listCount:document.querySelectorAll('.user-order-card.detailed').length,
+            panelText:document.querySelector('.account-detail-panel')?.textContent?.slice(0,650),
+            errors:[...document.querySelectorAll('.error-box')].map(el=>el.textContent?.slice(0,250)),
+          }))
+          console.log('P1_USER_ORDER_DIAGNOSTICS '+JSON.stringify(orderDiagnostics))
+          check('User order list actually renders after opening Orders',
+            orderDiagnostics.listCount>0,orderDiagnostics)
+          if(orderDiagnostics.listCount){
           await page.locator('.user-order-card.detailed').first().click()
           await page.locator('.context-order-panel').waitFor({state:'visible',timeout:15000})
           check('User → Orders → Order detail remains in Purchase Accounts',
@@ -302,6 +312,7 @@ try {
           await page.waitForURL(url=>!url.searchParams.get('order')&&url.searchParams.get('tab')==='orders')
           check('Order Back returns to User orders, not another module',
             new URL(page.url()).pathname==='/purchase/accounts')
+          }
         }
       }
     }
