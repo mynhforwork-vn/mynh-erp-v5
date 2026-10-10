@@ -418,6 +418,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         <Link className={archiveView?'active':''} href={filterHref({archive:'archived',user:null,mode:null,tab:null})}>Đã lưu trữ</Link>
       </div>
       <div className="entity-result-meta"><b>{rows.length}</b><span>/ {counts.all} User{selectedOutsideFilter?' · +1 đang mở':''}</span></div>
+      <div id="p1-account-filter-actions" className="p1-account-filter-actions"/>
     </form>
 
     <div className={`split-view account-workspace ${panelOpen?'with-panel':''}`}>
