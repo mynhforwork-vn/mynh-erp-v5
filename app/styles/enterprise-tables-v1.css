@@ -322,3 +322,31 @@
     background:var(--erp-table-selected)!important;
   }
 }
+
+/* The debt collection action is operational, not an optional data field.
+   Keep it reachable beside a narrow right-hand customer slidebar. */
+@media(min-width:901px){
+  .brand-shell-v1 .debt-demo-table-wrap{
+    overflow-x:auto!important;
+  }
+  .brand-shell-v1 table.debt-demo-table thead th:last-child{
+    position:sticky!important;
+    right:0!important;
+    z-index:7!important;
+    background:var(--erp-table-head-bg)!important;
+    box-shadow:-1px 0 0 #e0e8ef;
+  }
+  .brand-shell-v1 table.debt-demo-table tbody td:last-child{
+    position:sticky!important;
+    right:0!important;
+    z-index:3!important;
+    background:#fff!important;
+    box-shadow:-1px 0 0 #e0e8ef;
+  }
+  .brand-shell-v1 table.debt-demo-table tbody tr:hover td:last-child{
+    background:var(--erp-table-hover)!important;
+  }
+  .brand-shell-v1 table.debt-demo-table tbody tr:is(.selected,.selected-row) td:last-child{
+    background:var(--erp-table-selected)!important;
+  }
+}
