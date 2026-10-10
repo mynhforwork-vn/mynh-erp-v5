@@ -421,21 +421,103 @@ try{
   if(await nav('/settings?section=tracking')){
     const tab=page.getByRole('button',{name:/Mapping SPX/}).first()
     if(await tab.count())await tab.click()
+    const unknownPanel=page.locator('.tracking-unknown-panel-v7')
+    const unknownToggle=unknownPanel.locator('button.tracking-section-toggle-v9')
+    const mappingPanel=page.locator('.tracking-mapping-panel-v7')
+    const mappingToggle=mappingPanel.locator('button.tracking-section-toggle-v9')
+    const mappingBody=page.locator('#tracking-mapping-content-v9')
+    check('Tracking Mapping has independent expand control',
+      await mappingToggle.count()===1)
+    check('Tracking Mapping initially collapsed',
+      await mappingToggle.getAttribute('aria-expanded')==='false'
+      &&await mappingBody.getAttribute('aria-hidden')==='true'
+      &&!await mappingBody.isVisible())
+    if(await unknownPanel.count()){
+      const unknownBody=page.locator('#tracking-unknown-content-v9')
+      check('Tracking unknown SPX panel initially expanded',
+        await unknownToggle.getAttribute('aria-expanded')==='true'
+        &&await unknownBody.isVisible())
+      const unknown=await unknownPanel.first().evaluate(el=>({
+        height:Math.round(el.getBoundingClientRect().height),
+        scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,
+        overflow:getComputedStyle(el).overflowY
+      })).catch(()=>null)
+      check('Tracking unmapped SPX status queue not clipped',
+        Boolean(unknown&&unknown.height>=99
+          &&(unknown.scrollHeight<=unknown.clientHeight+3||unknown.overflow==='auto')),
+        unknown??{})
+      await unknownToggle.click()
+      check('Tracking unknown SPX collapses without removing its forms',
+        await unknownToggle.getAttribute('aria-expanded')==='false'
+        &&!await unknownBody.isVisible()
+        &&await unknownBody.locator('form').count()>0)
+      await unknownToggle.click()
+      check('Tracking unknown SPX reopens',
+        await unknownBody.isVisible()
+        &&await unknownToggle.getAttribute('aria-expanded')==='true')
+    }
+    await mappingToggle.click()
+    check('Tracking Mapping expands on demand',
+      await mappingToggle.getAttribute('aria-expanded')==='true'
+      &&await mappingBody.isVisible())
     const head=page.locator('.tracking-mapping-head-v7')
     const font=await head.evaluate(el=>({
       font:parseFloat(getComputedStyle(el).fontSize),
-      rows:el.closest('.tracking-mapping-panel-v7')?.querySelectorAll('.tracking-mapping-row-v7').length??0
+      rows:el.closest('.tracking-mapping-panel-v7')?.querySelectorAll('.tracking-mapping-row-v7').length??0,
+      rawCode:parseFloat(getComputedStyle(document.querySelector('.tracking-raw-code-v7 b')??el).fontSize),
+      rawName:parseFloat(getComputedStyle(document.querySelector('.tracking-raw-name-v7')??el).fontSize),
+      canonical:parseFloat(getComputedStyle(document.querySelector('.tracking-canonical-v7 b')??el).fontSize)
     })).catch(()=>null)
-    check('Tracking mapping grid legible',
-      Boolean(font&&font.font>=9.5&&font.rows>0),font??{})
-    const unknown=await page.locator('.tracking-unknown-panel-v7').first().evaluate(el=>({
-      height:Math.round(el.getBoundingClientRect().height),
-      scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,
-      overflow:getComputedStyle(el).overflowY
-    })).catch(()=>null)
-    if(unknown)check('Tracking unmapped SPX status queue not clipped',
-      unknown.height>=99&&(unknown.scrollHeight<=unknown.clientHeight+3||unknown.overflow==='auto'),
-      unknown)
+    check('Tracking mapping grid typography consistent',
+      Boolean(font&&font.font>=10&&font.rows>0
+        &&Math.abs(font.rawCode-font.rawName)<=1
+        &&Math.abs(font.rawName-font.canonical)<=1),font??{})
+    await page.screenshot({path:output+'/mapping-desktop-expanded.png',fullPage:false})
+    const editButton=page.locator('.tracking-mapping-row-v7:not(.editing) .tracking-mapping-actions-v7 button').first()
+    if(await editButton.count()){
+      await editButton.click()
+      const editForm=page.locator('form.tracking-mapping-row-v7.editing').first()
+      check('Tracking mapping local edit form opens',await editForm.isVisible())
+      await mappingToggle.click()
+      check('Tracking mapping collapse retains unsaved edit form',
+        await editForm.count()===1&&!await editForm.isVisible()
+        &&await mappingToggle.getAttribute('aria-expanded')==='false')
+      await mappingToggle.click()
+      check('Tracking mapping expand restores local edit form',
+        await editForm.isVisible())
+      await editForm.getByRole('button',{name:'Huỷ'}).click()
+    }else{
+      await mappingToggle.click()
+      check('Tracking Mapping collapses',!await mappingBody.isVisible())
+      await mappingToggle.click()
+    }
+    await page.setViewportSize({width:390,height:844})
+    await page.waitForTimeout(100)
+    const mobile=await page.evaluate(()=>{
+      const unknown=document.querySelector('.tracking-unknown-list-v7[aria-hidden="false"]')
+      const mapping=document.querySelector('#tracking-mapping-content-v9')
+      const toggle=document.querySelector('.tracking-mapping-panel-v7 .tracking-section-toggle-v9')
+      const rect=toggle?.getBoundingClientRect()
+      return{
+        documentWidth:document.documentElement.scrollWidth,
+        viewport:innerWidth,
+        actionRight:rect?.right,
+        unknownClient:unknown?.clientWidth,
+        unknownScroll:unknown?.scrollWidth,
+        unknownOverflow:unknown?getComputedStyle(unknown).overflowX:null,
+        mappingClient:mapping?.clientWidth,
+        mappingScroll:mapping?.scrollWidth,
+        mappingOverflow:mapping?getComputedStyle(mapping).overflowX:null
+      }
+    })
+    check('Tracking SPX accordions fit mobile and retain inner horizontal scroll',
+      mobile.documentWidth<=mobile.viewport+4
+      &&Boolean(mobile.actionRight&&mobile.actionRight<=mobile.viewport+3)
+      &&Boolean(mobile.mappingClient&&mobile.mappingScroll>mobile.mappingClient)
+      &&mobile.mappingOverflow!=='hidden'
+      &&(!mobile.unknownClient||mobile.unknownOverflow!=='hidden'),mobile)
+    await page.screenshot({path:output+'/mapping-mobile-390-expanded.png',fullPage:false})
+    await page.setViewportSize({width:1440,height:900})
   }else check('Tracking settings route accessible',false)
 
   if(await nav('/finance/shipper-payments')){
