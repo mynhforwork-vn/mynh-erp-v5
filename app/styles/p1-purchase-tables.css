@@ -1,0 +1,112 @@
+/* MYNH ERP V5 — P1 Purchase data tables.
+   Scoped to two operational purchase lists. No global resize policy.
+   The existing Desktop resize manager retains saved width preferences. */
+
+.brand-shell-v1 :is(.order-list-pane,.account-list-pane,.order-table-shell,.account-table-shell){
+  box-sizing:border-box;
+  min-width:0!important;
+  max-width:100%!important;
+}
+.brand-shell-v1 :is(.order-table-card,.account-table-card){
+  box-sizing:border-box;
+  width:100%;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-color:#afbecb transparent;
+}
+/* Adapt natural table widths to the workspace, without trying to fit long
+   recipient/product data into 40px columns beside an order slidebar.
+   Only tables not currently controlled by a user's saved manual drag
+   receive these defaults; never overwrite an explicitly resized table. */
+.brand-shell-v1 table.table:is(.user-table,.order-table):not(.mynh-resizable-table){
+  table-layout:auto;
+  box-sizing:border-box;
+  width:100%!important;
+}
+.brand-shell-v1 table.table.user-table:not(.mynh-resizable-table){
+  min-width:1030px!important;
+}
+.brand-shell-v1 table.table.order-table:not(.mynh-resizable-table){
+  min-width:980px!important;
+}
+.brand-shell-v1 :is(.account-workspace,.order-workspace):is(.with-panel,.has-slidebar)
+table.table.user-table:not(.mynh-resizable-table){
+  min-width:940px!important;
+}
+.brand-shell-v1 :is(.account-workspace,.order-workspace):is(.with-panel,.has-slidebar)
+table.table.order-table:not(.mynh-resizable-table){
+  min-width:910px!important;
+}
+/* Keep IDs, money and controls meaningful. The table can scroll locally if
+   the remaining space is smaller than the readable minimum. */
+.brand-shell-v1 table.table:is(.user-table,.order-table) > thead > tr > th,
+.brand-shell-v1 table.table:is(.user-table,.order-table) > tbody > tr > td{
+  min-width:0;
+  box-sizing:border-box;
+}
+.brand-shell-v1 table.table:is(.user-table,.order-table) > thead > tr > th:first-child{
+  white-space:nowrap!important;
+}
+.brand-shell-v1 table.table:is(.user-table,.order-table) :is(.p1-table-long-text,.product-cell,.tracking-number-cell){
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.brand-shell-v1 table.table:is(.user-table,.order-table) .p1-table-long-text{
+  white-space:nowrap;
+  max-width:260px;
+}
+.brand-shell-v1 table.table.order-table .product-cell{
+  max-width:285px!important;
+}
+.brand-shell-v1 table.table:is(.user-table,.order-table) .table-link{
+  white-space:nowrap;
+}
+.brand-shell-v1 table.table:is(.user-table,.order-table) td.money,
+.brand-shell-v1 table.table:is(.user-table,.order-table) td.count-cell{
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.brand-shell-v1 table.table:is(.user-table,.order-table) .row-actions-head,
+.brand-shell-v1 table.table:is(.user-table,.order-table) .row-actions-cell{
+  box-sizing:border-box;
+  width:44px!important;
+  min-width:44px!important;
+  max-width:44px!important;
+  padding-inline:5px!important;
+  overflow:visible;
+}
+/* Anchor fixed actions only in the scrollable table lane; the opaque cell
+   avoids text bleeding through from the penultimate column. */
+@media(min-width:901px){
+  .brand-shell-v1 :is(.account-table-card,.order-table-card)
+  :is(th.row-actions-head,td.row-actions-cell){
+    position:sticky!important;
+    right:0!important;
+    background:var(--erp-table-head-bg)!important;
+    box-shadow:-1px 0 0 #d8e3ec!important;
+  }
+  .brand-shell-v1 :is(.account-table-card,.order-table-card) td.row-actions-cell{
+    background:#fff!important;
+  }
+  .brand-shell-v1 :is(.account-table-card,.order-table-card) tr:hover td.row-actions-cell{
+    background:var(--erp-table-hover)!important;
+  }
+  .brand-shell-v1 :is(.account-table-card,.order-table-card) tr.selected-row td.row-actions-cell{
+    background:var(--erp-table-selected)!important;
+  }
+}
+@media(max-width:900px){
+  .brand-shell-v1 table.table:is(.user-table,.order-table):not(.mynh-resizable-table){
+    min-width:890px!important;
+  }
+  .brand-shell-v1 table.table:is(.user-table,.order-table) .p1-table-long-text{
+    max-width:170px;
+  }
+  .brand-shell-v1 :is(.order-table-card,.account-table-card){
+    -webkit-overflow-scrolling:touch;
+  }
+}
