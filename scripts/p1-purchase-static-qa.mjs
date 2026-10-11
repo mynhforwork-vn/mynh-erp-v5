@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import assert from 'node:assert/strict'
 import {normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder} from '../lib/table-column-preferences.ts'
 import {accountDeviceFields} from '../lib/purchase-account-device-fields.ts'
-const cols=['number','order','username','time','product','cod','tracking','carrier','voucher','status']
+const cols=['number','order','username','device','time','product','cod','tracking','carrier','voucher','status']
 const tests=[
 ['Legacy Order preserves required ID',()=>{
  assert.deepEqual(normalizeLegacyVisibleColumns(['status','status','missing'],cols,['order']),['order','status'])
