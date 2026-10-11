@@ -175,7 +175,10 @@ try{
   const paidNow=await verify(client,id,275000,'BANK_ACCOUNT','MB Bank',0,'PAID')
   check('Lưu sửa Đã thanh toán ghi COD 0 vào Supabase',paidNow.ok,{data:paidNow.data,error:paidNow.error})
   // Verify the reported Hỏa tốc payment regression against the real DB.
-  await go('/purchase/orders?range=all&order='+encodeURIComponent(id)+'&mode=edit')
+  // Use the existing order's edit link (App Router soft navigation), not
+  // another heavy full-page fetch through a rate-limited Preview Worker.
+  await page.getByRole('link',{name:'Sửa đơn'}).click()
+  await page.waitForURL(u=>u.searchParams.get('mode')==='edit',{timeout:20000})
   const express=page.locator('form.order-editor')
   await express.locator('select[name="payment_status"]').selectOption('PARTIAL')
   await express.locator('input[name="cod"]').fill('14000')
