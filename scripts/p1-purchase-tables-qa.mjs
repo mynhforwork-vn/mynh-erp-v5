@@ -262,6 +262,40 @@ try {
         await page.screenshot({path:output+'/'+(spec.name==='User'?'accounts':'orders')+'-'+view.width+'.png',fullPage:false})
     }
     await page.setViewportSize({width:1440,height:900})
+    if(spec.name==='User'){
+      // Mirror the provided screenshot: collapsed sidebar, Mobile/Browser visible,
+      // secondary Nền tảng and Thời gian tạo hidden by the user.
+      await page.evaluate(({storage,order})=>{
+        const shown=['number','username','phone','email','status','mobile','browser','voucher','orders','note']
+        localStorage.setItem(storage,JSON.stringify(shown))
+        localStorage.setItem(order,JSON.stringify(shown))
+      },spec)
+      await page.reload({waitUntil:'load',timeout:35000})
+      const toggle=page.locator('.sidebar-collapse-toggle').first()
+      const hasToggle=await toggle.count()>0
+      if(hasToggle){await toggle.click();await page.waitForTimeout(260)}
+      await page.waitForTimeout(160)
+      const compact=await measure(spec)
+      const widths=Object.fromEntries(compact?.accountCols?.map(({id,width})=>[id,width])??[])
+      const tableGeometry={
+        widths,lane:compact?.clientWidth,scroll:compact?.scrollWidth,
+        table:compact?.table.width,viewport:compact?.viewport,
+      }
+      check('User screenshot layout allocates useful widths without oversized text columns',
+        Boolean(compact&&compact.table.width<=compact.clientWidth+6
+          &&widths.number<=44&&widths.orders<=70&&widths.voucher<=105
+          &&widths.phone<=133&&widths.status<=109
+          &&widths.username>=130&&widths.username<=248
+          &&widths.email>=190&&widths.email<=330
+          &&widths.mobile>=112&&widths.browser>=91
+          &&widths.note<=247),tableGeometry)
+      await page.screenshot({path:output+'/accounts-collapsed-sidebar-balanced-1440.png',fullPage:false})
+      await page.evaluate(({storage,order})=>{
+        localStorage.removeItem(storage);localStorage.removeItem(order)
+      },spec)
+      if(hasToggle){await toggle.click();await page.waitForTimeout(260)}
+      await page.reload({waitUntil:'load',timeout:35000})
+    }
     // Interaction with saved legacy preferences, without overwriting real users'
     // storage (this browser context belongs only to the temporary QA user).
     await page.evaluate(({storage,order,required})=>{
