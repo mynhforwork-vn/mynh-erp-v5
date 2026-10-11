@@ -16,6 +16,12 @@ export function TrackingSuccessToast({received=false,payment=false}:{received?:b
     ...(payment?['payment' as const]:[]),
   ])
   useEffect(()=>{
+    // The same Tracking page can receive a new success redirect without a
+    // full reload; update the toast stack whenever the flags change.
+    setVisible([
+      ...(received?['received' as const]:[]),
+      ...(payment?['payment' as const]:[]),
+    ])
     if(!received&&!payment)return
     // A one-time acknowledgement must not reappear after a reload/back navigation.
     const url=new URL(window.location.href)
