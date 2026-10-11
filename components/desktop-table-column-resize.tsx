@@ -140,7 +140,7 @@ export function DesktopTableColumnResize() {
       account:{number:22,username:102,platform:53,phone:90,email:98,
         status:72,mobile:81,browser:72,voucher:65,orders:40,createdAt:106,note:76},
       order:{number:20,order:108,username:73,device:118,time:103,product:121,
-        cod:60,tracking:104,carrier:65,voucher:58,status:91},
+        cod:60,tracking:145,voucher:57,status:91},
     }
     const purchasePanelContext=(table:HTMLTableElement)=>{
       if(window.innerWidth<1100)return null
