@@ -371,6 +371,12 @@ try {
           Boolean(m&&m.table.width<=m.wrap.width+9),
           {table:m?.table.width,lane:m?.wrap.width})
       }
+      if(spec.name==='Đơn nhập'&&[1280,2560].includes(view.width)){
+        check('Order auto-fills usable Desktop width '+view.width,
+          Boolean(m&&Math.abs(m.table.width-m.clientWidth)<=8),{
+            table:m?.table.width,lane:m?.clientWidth,
+          })
+      }
       if([390,1440].includes(view.width))
         await page.screenshot({path:output+'/'+(spec.name==='User'?'accounts':'orders')+'-'+view.width+'.png',fullPage:false})
     }
