@@ -152,6 +152,13 @@ try {
     if(spec.name==='Đơn nhập'){
       check('Order displays account device column by default',
         await page.locator('.order-table thead th[data-order-col="device"]').count()===1)
+      check('Shipping field combines tracking and carrier into two lines',
+        await page.locator('.order-table thead th[data-order-col="tracking"]').innerText()==='Vận chuyển'
+        &&await page.locator('.order-table th[data-order-col="carrier"]').count()===0
+        &&await page.locator('.order-table tbody .p1-shipping-lines').count()>0)
+      const labelText=await page.locator('.order-table tbody .p1-order-device-cell').first().innerText()
+      check('Device labels are compact M and B',
+        labelText.includes('M:')&&labelText.includes('B:')&&!labelText.includes('Mobile'),{labelText})
       const qaOrder=page.locator('.order-table tbody tr').filter({
         has:page.locator('a.table-link',{hasText:session.fixtures.warehouse_order_code}),
       }).first()
@@ -190,11 +197,40 @@ try {
           .includes('iPhone QA 15')
         &&(await page.locator('.order-account-detail-panel .purchase-device-detail-grid').innerText())
           .includes('Chrome QA'))
+      const editorButton=page.locator('.order-account-detail-panel').getByRole('link',{name:'Sửa tài khoản'})
+      check('Operator can edit User without switching away from Orders',
+        await editorButton.count()===1)
+      await editorButton.click()
+      await page.waitForURL(url=>url.searchParams.get('accountMode')==='edit',{timeout:15000})
+      const editor=page.locator('.order-account-detail-panel form')
+      check('Context User editor has Mobile Browser and status fields',
+        await editor.locator('[name="mobile_device_type"]').count()===1
+        &&await editor.locator('[name="browser_name"]').count()===1
+        &&await editor.locator('select[name="status"]').count()===1)
+      await editor.locator('textarea[name="note"]').fill('QA User updated from Orders')
+      await editor.getByRole('button',{name:'Lưu thay đổi'}).click()
+      await page.waitForURL(url=>url.pathname==='/purchase/orders'
+        &&url.searchParams.get('account')===session.fixtures.erp_user_id
+        &&!url.searchParams.has('accountMode'),{timeout:20000})
+      const updatedNote=await page.locator('.order-account-detail-panel .panel-note-row').innerText()
+      check('User update persists and returns to original Orders slidebar',
+        updatedNote.includes('QA User updated from Orders'),{updatedNote})
+      const userRow=await client.from('erp_users').select('note').eq('id',session.fixtures.erp_user_id).single()
+      check('User update persisted in Supabase',userRow.data?.note==='QA User updated from Orders',
+        {error:userRow.error?.message})
+      await page.reload({waitUntil:'load',timeout:35000})
+      check('Updated User details survive reload',
+        (await page.locator('.order-account-detail-panel .panel-note-row').innerText())
+          .includes('QA User updated from Orders'))
       await page.locator('.order-account-detail-panel .user-panel-tabs').getByRole('link',{name:/Đơn hàng/}).click()
       await page.waitForURL(url=>url.searchParams.get('accountTab')==='orders',{timeout:15000})
       check('User orders tab keeps Purchase Orders location',
         new URL(page.url()).pathname==='/purchase/orders'
         &&await page.locator('.order-account-detail-panel .user-order-card.detailed').count()>0)
+      const actualDelivered=page.locator('.order-account-detail-panel .user-order-card.detailed')
+        .filter({hasText:session.fixtures.hub_order_code})
+      check('User order summary uses actual DELIVERED tracking status',
+        (await actualDelivered.innerText()).includes('Giao hàng thành công'))
       await page.locator('.order-account-detail-panel .user-order-card.detailed').first().click()
       await page.waitForURL(url=>url.searchParams.has('order')&&!url.searchParams.has('account')
         &&url.searchParams.get('backUser')===session.fixtures.erp_user_id,{timeout:15000})
