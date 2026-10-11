@@ -298,7 +298,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   }
   if(selected&&sp.tab==='orders'){
     const o=await supabase.from('orders').select(
-      'id,shopee_order_id,order_date,area,destination_hub,cod,receive_status,warehouse_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,source,archived_at,order_items(sku,product_name,variant,quantity,original_price,final_price),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active)'
+      'id,shopee_order_id,order_date,area,destination_hub,cod,receive_status,warehouse_status,order_status,payment_status,prepaid_amount,prepaid_source_type,prepaid_source_label,recipient_name,recipient_phone,recipient_address,source,archived_at,order_items(sku,product_name,variant,quantity,original_price,final_price),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active)'
     ).eq('erp_user_id',selected.id).order('order_date',{ascending:false}).limit(100)
     userOrders=(o.data??[]) as any[]
   }
@@ -306,7 +306,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   if(selected&&sp.order){
     const [od,it,vo]=await Promise.all([
       supabase.from('orders').select(
-        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,last_track_at,next_track_at,replaced_at)'
+        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,order_status,payment_status,prepaid_amount,prepaid_source_type,prepaid_source_label,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,last_track_at,next_track_at,replaced_at)'
       ).eq('id',sp.order).eq('erp_user_id',selected.id).maybeSingle(),
       supabase.from('order_items').select('*').eq('order_id',sp.order).order('created_at'),
       supabase.from('order_vouchers').select('*').eq('order_id',sp.order).order('created_at'),

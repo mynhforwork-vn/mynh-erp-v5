@@ -7,6 +7,7 @@ import { archiveOrder, confirmReceiveOrders, markExpressDelivered, markExpressDe
 import { DeleteOrderConfirmForm } from '@/components/delete-order-confirm-form'
 import { CopyOrderButton } from '@/components/copy-order-button'
 import { OrderEditorForm } from '@/components/order-editor-form'
+import { prepaidSourceLabel } from '@/lib/order-prepaid'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import { isShippingTrackingStatus } from '@/lib/tracking/status-groups'
 import { PurchaseOrderTable } from '@/components/purchase-order-table'
@@ -108,7 +109,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const archiveView=sp.archive==='archived'
 
   let orderListQuery=supabase.from('orders').select(
-    'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,archived_at,archived_by,erp_users(username,browser_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
+    'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,prepaid_amount,prepaid_source_type,prepaid_source_label,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,archived_at,archived_by,erp_users(username,browser_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
   ).gte('order_date',range.start).lte('order_date',range.end)
   orderListQuery=archiveView
     ? orderListQuery.not('archived_at','is',null)
@@ -311,7 +312,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   if(sp.order){
     const [od,it,vo]=await Promise.all([
       supabase.from('orders').select(
-        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,archived_by,erp_users(username,browser_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)'
+        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,prepaid_amount,prepaid_source_type,prepaid_source_label,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,archived_by,erp_users(username,browser_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)'
       ).eq('id',sp.order).maybeSingle(),
       supabase.from('order_items')
         .select('*,product_variants(id,variant_name,sale_price,products(id,sku,name))')
@@ -403,7 +404,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     if(openedAccount){
       const [accountOrderResult,accountDeviceResult,firstOrderResult]=await Promise.all([
         supabase.from('orders')
-          .select('id,shopee_order_id,order_date,area,cod,order_status,payment_status,receive_status,recipient_name,recipient_phone,recipient_address,destination_hub,archived_at,shipments(tracking_number,carrier,current_tracking_status,is_active),order_items(product_name,variant,sku,quantity,final_price,original_price),order_vouchers(voucher_tag,voucher_type,voucher_name,voucher_code)')
+          .select('id,shopee_order_id,order_date,area,cod,order_status,payment_status,prepaid_amount,prepaid_source_type,prepaid_source_label,receive_status,recipient_name,recipient_phone,recipient_address,destination_hub,archived_at,shipments(tracking_number,carrier,current_tracking_status,is_active),order_items(product_name,variant,sku,quantity,final_price,original_price),order_vouchers(voucher_tag,voucher_type,voucher_name,voucher_code)')
           .eq('erp_user_id',openedAccount.id)
           .order('order_date',{ascending:false}).limit(100),
         supabase.from('purchase_account_devices')
@@ -596,6 +597,9 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               cod:detail.cod,
               order_status:detail.order_status,
               payment_status:detail.payment_status,
+              prepaid_amount:detail.prepaid_amount,
+              prepaid_source_type:detail.prepaid_source_type,
+              prepaid_source_label:detail.prepaid_source_label,
               shipping_service:detail.shipping_service,
               express_shipper_name:detail.express_shipper_name,
               express_shipper_phone:detail.express_shipper_phone,
@@ -660,6 +664,11 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                         ? statusLabel(currentShip.current_tracking_status)
                         : 'Đang chờ duyệt · Chờ mã vận đơn'}</b></div>
                 <div><span>Thanh toán</span><b>{statusLabel(detail.payment_status)}</b></div>
+                {detail.prepaid_amount!=null&&<>
+                  <div><span>Đã thanh toán trước</span><b>{formatMoney(detail.prepaid_amount)}</b></div>
+                  <div><span>Loại tài khoản/thẻ</span><b>{prepaidSourceLabel(detail.prepaid_source_type)}</b></div>
+                  {detail.prepaid_source_label&&<div className="full"><span>Tài khoản/thẻ sử dụng</span><b>{detail.prepaid_source_label}</b></div>}
+                </>}
                 <div><span>COD</span><b>{formatMoney(detail.cod)}</b></div>
                 <div><span>Tổng giá gốc</span><b>{formatMoney(detailTotalOriginal)}</b></div>
                 <div><span>Dịch vụ</span><b>{detail.shipping_service==='EXPRESS'?'Hỏa tốc':'Tiêu chuẩn'}</b></div>

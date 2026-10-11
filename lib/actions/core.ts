@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/supabase/auth'
 import {suggestDestinationHub,type AddressHub} from '@/lib/destination-hub-resolution'
 import { trackingNumberMeansCancelled } from '@/lib/purchase-order-cancellation'
+import { parsePrepaidMetadata } from '@/lib/order-prepaid'
 
 function text(v:FormDataEntryValue|null){return String(v??'').trim()}
 
@@ -447,6 +448,13 @@ export async function createOrder(formData:FormData){
     ?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''): ''
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
   const orderStatus=cancelledByMarker?'CANCELLED':isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
+  const prepaid=parsePrepaidMetadata({
+    paymentStatus:text(formData.get('payment_status'))||'UNPAID',
+    amount:formData.get('prepaid_amount'),
+    sourceType:formData.get('prepaid_source_type'),
+    sourceLabel:formData.get('prepaid_source_label'),
+    isCreate:true,
+  })
 
   const {data,error}=await supabase.rpc('create_order_full_v2',{
     p_shopee_order_id:text(formData.get('shopee_order_id'))||null,
@@ -471,6 +479,7 @@ export async function createOrder(formData:FormData){
     const {error:orderMetaError}=await supabase.from('orders').update({
       area:derivedArea,
       destination_hub:effectiveHub||null,
+      ...prepaid,
       express_shipper_name:isExpress?(text(formData.get('express_shipper_name'))||null):null,
       express_shipper_phone:isExpress?(text(formData.get('express_shipper_phone'))||null):null,
       express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
@@ -519,6 +528,13 @@ export async function updateOrder(formData:FormData){
     ?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''): ''
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
   const orderStatus=cancelledByMarker?'CANCELLED':isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
+  const prepaid=parsePrepaidMetadata({
+    paymentStatus:text(formData.get('payment_status'))||'UNPAID',
+    amount:formData.get('prepaid_amount'),
+    sourceType:formData.get('prepaid_source_type'),
+    sourceLabel:formData.get('prepaid_source_label'),
+    isCreate:false,
+  })
 
   const {data,error}=await supabase.rpc('update_order_full_v2',{
     p_order_id:orderId,
@@ -543,6 +559,7 @@ export async function updateOrder(formData:FormData){
   const {error:orderMetaError}=await supabase.from('orders').update({
     area:derivedArea,
     destination_hub:effectiveHub||null,
+    ...prepaid,
     express_shipper_name:isExpress?(text(formData.get('express_shipper_name'))||null):null,
     express_shipper_phone:isExpress?(text(formData.get('express_shipper_phone'))||null):null,
     express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,

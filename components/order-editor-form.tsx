@@ -5,6 +5,7 @@ import {suggestDestinationHub} from '@/lib/destination-hub-resolution'
 import { useMemo, useState } from 'react'
 import { createOrder, updateOrder } from '@/lib/actions/core'
 import { formatParsedOrderSummary, parseShopeeOrderText } from '@/lib/shopee-order-text-parser'
+import { PREPAID_SOURCE_OPTIONS } from '@/lib/order-prepaid'
 
 type UserOption={
   id:string
@@ -64,6 +65,9 @@ type Values={
   cod?:number|string|null
   order_status?:string|null
   payment_status?:string|null
+  prepaid_amount?:number|string|null
+  prepaid_source_type?:string|null
+  prepaid_source_label?:string|null
   recipient_name?:string|null
   recipient_phone?:string|null
   recipient_address?:string|null
@@ -162,6 +166,10 @@ export function OrderEditorForm({
   const [shopeeOrderId,setShopeeOrderId]=useState(String(values.shopee_order_id??''))
   const [orderDateLocal,setOrderDateLocal]=useState(String(values.order_date_local??''))
   const [paymentStatus,setPaymentStatus]=useState(String(values.payment_status??'UNPAID'))
+  const [prepaidAmount,setPrepaidAmount]=useState(String(values.prepaid_amount??''))
+  const [prepaidSourceType,setPrepaidSourceType]=useState(String(values.prepaid_source_type??''))
+  const [prepaidSourceLabel,setPrepaidSourceLabel]=useState(String(values.prepaid_source_label??''))
+  const showPrepaid=['PAID','PARTIAL','REFUNDED'].includes(paymentStatus)
   const [recipientName,setRecipientName]=useState(String(values.recipient_name??''))
   const [recipientPhone,setRecipientPhone]=useState(String(
     values.recipient_phone??(mode==='create'?initialUser?.phone??'':'')
@@ -494,6 +502,34 @@ export function OrderEditorForm({
             : trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ':'Chờ mã vận đơn'}</small>
         </div>
       </div>
+      {showPrepaid&&<div className="order-prepaid-fields">
+        <div className="form-section-head">
+          <div><h3>Đã thanh toán bằng tài khoản/thẻ</h3>
+            <small>Lưu riêng tiền đã trả trước. COD là tiền thu khi giao hàng, không tự cộng hoặc trừ.</small></div>
+        </div>
+        <div className="form-grid">
+          <label>Số tiền đã thanh toán (₫)
+            <input name="prepaid_amount" type="number" inputMode="numeric" min="1" step="1"
+              required={mode==='create'&&paymentStatus!=='REFUNDED'}
+              value={prepaidAmount} onChange={e=>setPrepaidAmount(e.target.value)}
+              placeholder="Ví dụ: 250000"/>
+          </label>
+          <label>Loại tài khoản/thẻ
+            <select name="prepaid_source_type" value={prepaidSourceType}
+              required={mode==='create'&&paymentStatus!=='REFUNDED'}
+              onChange={e=>setPrepaidSourceType(e.target.value)}>
+              <option value="">Chọn loại đã dùng</option>
+              {PREPAID_SOURCE_OPTIONS.map(option=><option value={option.value} key={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+        </div>
+        <label>Tên tài khoản/thẻ (không bắt buộc)
+          <input name="prepaid_source_label" value={prepaidSourceLabel}
+            onChange={e=>setPrepaidSourceLabel(e.target.value)} maxLength={120}
+            placeholder="Ví dụ: MB Bank · Visa ****1234" autoComplete="off"/>
+          <small className="field-help">Chỉ ghi tên nguồn tiền và tối đa 4 số cuối; không nhập số thẻ đầy đủ, CVV hoặc mật khẩu.</small>
+        </label>
+      </div>}
     </section>
 
     <section className="form-section">
