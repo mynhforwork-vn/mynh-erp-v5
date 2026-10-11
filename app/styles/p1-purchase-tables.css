@@ -268,6 +268,53 @@
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-voucher{width:70px!important}
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-status{width:108px!important}
 }
+/* Desktop + right slidebar: show every enabled column without horizontal scrolling.
+   Shares are computed from actual visible IDs in the component; no positional CSS.
+   When a lane is genuinely mobile-sized, preserve the existing local table scroll. */
+@media(min-width:1100px){
+  .brand-shell-v1 .account-workspace.with-panel .account-table-card
+  table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table),
+  .brand-shell-v1 .order-workspace.with-panel .order-table-card
+  table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table){
+    width:100%!important;min-width:0!important;max-width:100%!important;
+    table-layout:fixed!important;
+  }
+  .brand-shell-v1 .account-workspace.with-panel .account-table-card
+  table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col[class*="p1-account-col-"],
+  .brand-shell-v1 .order-workspace.with-panel .order-table-card
+  table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col[class*="p1-order-col-"]{
+    width:var(--p1-panel-col-width)!important;
+  }
+  .brand-shell-v1 .account-workspace.with-panel .account-table-card,
+  .brand-shell-v1 .order-workspace.with-panel .order-table-card{
+    overflow-x:hidden!important;
+  }
+  .brand-shell-v1 .account-workspace.with-panel table.user-table
+  :is(th,td),
+  .brand-shell-v1 .order-workspace.with-panel table.order-table
+  :is(th,td){
+    padding-inline:2px!important;min-width:0!important;
+    overflow:hidden!important;text-overflow:ellipsis;
+  }
+  .brand-shell-v1 .order-workspace.with-panel table.order-table
+  :is(td.order-time-cell,td.tracking-number-cell,td.money){
+    white-space:nowrap!important;
+  }
+}
+/* Compact coloured pills throughout the two Purchase tables.
+   Title and full values remain available in detail panes/tooltips. */
+.brand-shell-v1 :is(.account-table-card,.order-table-card) :is(
+  .status-pill,.voucher-tag,.voucher-tag-compact,.platform-cell,
+  .device-state-chip,.source-badge,.order-status-badge){
+  font-size:8px!important;font-weight:600!important;
+  padding:1px 3px!important;line-height:1.18!important;
+  min-height:0!important;min-width:0!important;
+  max-width:100%!important;border-radius:4px!important;
+  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+.brand-shell-v1 .account-table-card .device-state-set{gap:1px!important}
+.brand-shell-v1 .account-table-card .device-state-chip{padding:1px 2px!important}
+.brand-shell-v1 :is(.account-table-card,.order-table-card) .voucher-tags{gap:2px!important}
 /* Explicit header widths cannot override colgroup on reordered tables. */
 .brand-shell-v1 table.mynh-p1-semantic-table:not(.mynh-resizable-table) th[data-order-col],
 .brand-shell-v1 table.mynh-p1-semantic-table:not(.mynh-resizable-table) th[data-account-col]{
