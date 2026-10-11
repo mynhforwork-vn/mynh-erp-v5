@@ -249,6 +249,15 @@ export function PurchaseOrderTable({
     next.splice(targetIndex,0,source)
     persistColumnOrder(next)
   }
+  function moveColumn(key:ColKey,delta:-1|1){
+    const i=columnOrder.indexOf(key)
+    const target=i+delta
+    if(i<0||target<0||target>=columnOrder.length)return
+    const next=[...columnOrder]
+    next.splice(i,1)
+    next.splice(target,0,key)
+    persistColumnOrder(next)
+  }
   function resetColumns(){
     persistColumns(ALL)
     persistColumnOrder(ALL)
@@ -514,10 +523,10 @@ export function PurchaseOrderTable({
           <div className="column-order-buttons" aria-label={'Đổi thứ tự '+LABELS[k]}>
             <button type="button" title={'Chuyển '+LABELS[k]+' lên'} aria-label={'Chuyển '+LABELS[k]+' lên'}
               disabled={columnOrder.indexOf(k)===0}
-              onClick={()=>reorderColumn(k,columnOrder[columnOrder.indexOf(k)-1])}>↑</button>
+              onClick={()=>moveColumn(k,-1)}>↑</button>
             <button type="button" title={'Chuyển '+LABELS[k]+' xuống'} aria-label={'Chuyển '+LABELS[k]+' xuống'}
               disabled={columnOrder.indexOf(k)===columnOrder.length-1}
-              onClick={()=>reorderColumn(k,columnOrder[columnOrder.indexOf(k)+1])}>↓</button>
+              onClick={()=>moveColumn(k,1)}>↓</button>
           </div>
         </div>)}
       </div>}
