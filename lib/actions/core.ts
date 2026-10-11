@@ -63,21 +63,49 @@ async function queueFirstTracking(supabase:any,orderId:string){
   if(error)throw new Error('Đã lưu MVD nhưng chưa lên lịch đồng bộ đầu tiên: '+error.message)
 }
 
+// Two manual entries, never mistaken for provider-reported activity.
+async function saveAccountDeviceFields(supabase:any,userId:string,mobileType:string,browserName:string,updating:boolean){
+  const now=new Date().toISOString()
+  for(const [key,name,type] of [
+    ['manual-mobile',mobileType,'MOBILE'],
+    ['manual-browser',browserName,'BROWSER_PROFILE'],
+  ] as const){
+    if(name){
+      const {error}=await supabase.from('purchase_account_devices').upsert({
+        erp_user_id:userId,device_key:key,device_name:name,device_type:type,
+        browser_name:type==='BROWSER_PROFILE'?name:null,
+        browser_profile:null,is_active:true,source:'MANUAL',updated_at:now,
+      },{onConflict:'erp_user_id,device_key'})
+      if(error)throw new Error('Không lưu được '+(type==='MOBILE'?'Mobile':'Browser')+': '+error.message)
+    }else if(updating){
+      const {error}=await supabase.from('purchase_account_devices')
+        .update({is_active:false,updated_at:now})
+        .eq('erp_user_id',userId).eq('device_key',key).eq('source','MANUAL')
+      if(error)throw new Error(error.message)
+    }
+  }
+  if(updating){
+    // Preserve legacy manual-primary row for history, but avoid a third active slot.
+    const {error}=await supabase.from('purchase_account_devices')
+      .update({is_active:false,updated_at:now})
+      .eq('erp_user_id',userId).eq('device_key','manual-primary').eq('source','MANUAL')
+    if(error)throw new Error(error.message)
+  }
+}
+
 export async function createERPUser(formData:FormData){
   const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
-  const deviceName=text(formData.get('device_name'))
-  const deviceType=text(formData.get('device_type'))||'DESKTOP'
-  const browserName=text(formData.get('browser_name'))||null
-  const browserProfile=text(formData.get('browser_profile'))||null
+  const mobileType=text(formData.get('mobile_device_type'))
+  const browserName=text(formData.get('browser_name'))
 
   const {data,error}=await supabase.rpc('create_erp_user_full',{
     p_username:text(formData.get('username')),
     p_phone:text(formData.get('phone'))||null,
     p_email:text(formData.get('email'))||null,
     p_status:text(formData.get('status'))||'Active',
-    p_mobile:deviceType==='MOBILE',
-    p_web:deviceType!=='MOBILE'&&Boolean(deviceName||browserName),
+    p_mobile:Boolean(mobileType),
+    p_web:Boolean(browserName),
     p_voucher_summary:null,
     p_note:text(formData.get('note'))||null,
     p_password:text(formData.get('password'))||null,
@@ -86,24 +114,9 @@ export async function createERPUser(formData:FormData){
   })
   if(error)throw new Error(error.message)
 
-  const {error:browserError}=await supabase.from('erp_users').update({browser_name:browserName}).eq('id',data)
+  const {error:browserError}=await supabase.from('erp_users').update({browser_name:browserName||null}).eq('id',data)
   if(browserError)throw new Error(browserError.message)
-
-  if(deviceName){
-    const {error:deviceError}=await supabase.from('purchase_account_devices').upsert({
-      erp_user_id:data,
-      device_key:'manual-primary',
-      device_name:deviceName,
-      device_type:deviceType,
-      browser_name:browserName,
-      browser_profile:browserProfile,
-      is_active:true,
-      last_seen_at:new Date().toISOString(),
-      source:'MANUAL',
-      updated_at:new Date().toISOString(),
-    },{onConflict:'erp_user_id,device_key'})
-    if(deviceError)throw new Error(deviceError.message)
-  }
+  await saveAccountDeviceFields(supabase,String(data),mobileType,browserName,false)
 
   revalidatePath('/purchase/accounts')
   redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data),mode:null,tab:'info'}))
@@ -115,10 +128,8 @@ export async function updateERPUser(formData:FormData){
   const userId=text(formData.get('user_id'))
   if(!userId)throw new Error('Thiếu tài khoản cần cập nhật')
 
-  const deviceName=text(formData.get('device_name'))
-  const deviceType=text(formData.get('device_type'))||'DESKTOP'
-  const browserName=text(formData.get('browser_name'))||null
-  const browserProfile=text(formData.get('browser_profile'))||null
+  const mobileType=text(formData.get('mobile_device_type'))
+  const browserName=text(formData.get('browser_name'))
 
   const {data,error}=await supabase.rpc('update_erp_user_full',{
     p_user_id:userId,
@@ -126,8 +137,8 @@ export async function updateERPUser(formData:FormData){
     p_phone:text(formData.get('phone'))||null,
     p_email:text(formData.get('email'))||null,
     p_status:text(formData.get('status'))||'Active',
-    p_mobile:deviceType==='MOBILE',
-    p_web:deviceType!=='MOBILE'&&Boolean(deviceName||browserName),
+    p_mobile:Boolean(mobileType),
+    p_web:Boolean(browserName),
     p_voucher_summary:null,
     p_note:text(formData.get('note'))||null,
     p_password:text(formData.get('password'))||null,
@@ -136,24 +147,9 @@ export async function updateERPUser(formData:FormData){
   })
   if(error)throw new Error(error.message)
 
-  const {error:browserError}=await supabase.from('erp_users').update({browser_name:browserName}).eq('id',userId)
+  const {error:browserError}=await supabase.from('erp_users').update({browser_name:browserName||null}).eq('id',userId)
   if(browserError)throw new Error(browserError.message)
-
-  if(deviceName){
-    const {error:deviceError}=await supabase.from('purchase_account_devices').upsert({
-      erp_user_id:userId,
-      device_key:'manual-primary',
-      device_name:deviceName,
-      device_type:deviceType,
-      browser_name:browserName,
-      browser_profile:browserProfile,
-      is_active:true,
-      last_seen_at:new Date().toISOString(),
-      source:'MANUAL',
-      updated_at:new Date().toISOString(),
-    },{onConflict:'erp_user_id,device_key'})
-    if(deviceError)throw new Error(deviceError.message)
-  }
+  await saveAccountDeviceFields(supabase,userId,mobileType,browserName,true)
 
   revalidatePath('/purchase/accounts')
   redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data),mode:null,tab:'info'}))
