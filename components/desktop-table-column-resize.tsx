@@ -230,6 +230,17 @@ export function DesktopTableColumnResize() {
           const gain=Math.min(spare,Math.max(0,(max[key]??300)-result[i]))
           result[i]+=gain;spare-=gain
         }
+        if(spare>0){
+          // Beyond the normal column caps (e.g. 2560px), spread unused
+          // width across text columns instead of leaving a blank table tail.
+          const flexible=['product','tracking','order','username','time','status']
+            .map(key=>keys.indexOf(key)).filter(index=>index>=0)
+          const each=Math.floor(spare/Math.max(1,flexible.length))
+          flexible.forEach((index,i)=>{
+            const extra=i===flexible.length-1?spare-each*i:each
+            result[index]+=extra
+          })
+        }
       }
       return result
     }
