@@ -126,6 +126,11 @@ try {
       (await page.locator(spec.table+' thead').innerText()).includes(spec.required))
     const menu=page.locator((spec.name==='User'?'.p1-account-filter-actions':'.p1-order-toolbar-actions')+' .managed-column-button').first()
     if(spec.name==='User'){
+      const accountHeaders=await page.locator('.user-table thead th[data-account-col]').allTextContents()
+      check('User has separate Mobile and Browser data columns',
+        accountHeaders.some(x=>x.trim()==='Mobile')
+        &&accountHeaders.some(x=>x.trim()==='Browser')
+        &&await page.locator('.user-table .device-state-set,.user-table .device-icon-cell').count()===0)
       check('User device filter removed',await page.locator('.account-filter-bar [name="device"]').count()===0)
       check('User bulk archive hidden until checkbox selection',await page.locator('.user-bulk-bar').count()===0)
       const filterMenu=page.locator('.p1-filter-dropdown').filter({has:page.locator('input[name="orders"]')})
@@ -272,6 +277,51 @@ try {
       restored.some(x=>x.includes(spec.required))
       &&restored.filter(x=>x.includes(spec.name==='User'?'Trạng thái':'COD')).length===1,
       {headers:restored})
+    if(spec.name==='User'){
+      // E2E performs writes exclusively to the isolated QA fixture User,
+      // which the workflow removes together with its device rows after QA.
+      const fixture=session.fixtures
+      const fixtureLink=page.locator('.user-table tbody a.table-link')
+        .filter({hasText:fixture.erp_username}).first()
+      const target=await fixtureLink.count()
+      check('Account test User exists for device E2E',target===1)
+      if(target){
+        await fixtureLink.click()
+        await page.waitForURL(url=>url.searchParams.get('user')===fixture.erp_user_id,{timeout:15000})
+        const editLink=page.locator('.account-detail-panel').getByRole('link',{name:'Sửa tài khoản'})
+        await editLink.click()
+        await page.waitForURL(url=>url.searchParams.get('mode')==='edit',{timeout:15000})
+        check('User edit slidebar contains only two device fields',
+          await page.locator('.account-detail-panel input[name="mobile_device_type"]').count()===1
+          &&await page.locator('.account-detail-panel input[name="browser_name"]').count()===1
+          &&await page.locator('.account-detail-panel [name="device_name"],.account-detail-panel [name="device_type"],.account-detail-panel [name="browser_profile"]').count()===0)
+        await page.locator('input[name="mobile_device_type"]').fill('iPhone QA 15')
+        await page.locator('input[name="browser_name"]').fill('Chrome QA')
+        await page.locator('.account-detail-panel form button.primary').click()
+        await page.waitForURL(url=>url.searchParams.get('user')===fixture.erp_user_id&&!url.searchParams.get('mode'),{timeout:20000})
+        await page.locator('.purchase-device-detail-grid').waitFor({state:'visible',timeout:15000})
+        const detail=await page.locator('.purchase-device-detail-grid').innerText()
+        check('User device details show Mobile type and Browser name',
+          detail.includes('iPhone QA 15')&&detail.includes('Chrome QA')&&!detail.includes('Profile'),{detail})
+        const saved=await client.from('purchase_account_devices')
+          .select('device_key,device_type,device_name,browser_name,is_active')
+          .eq('erp_user_id',fixture.erp_user_id)
+        check('Two independent device records persisted via server action',
+          !saved.error&&saved.data?.length===2
+          &&saved.data?.some(d=>d.device_key==='manual-mobile'&&d.device_type==='MOBILE'&&d.device_name==='iPhone QA 15'&&d.is_active)
+          &&saved.data?.some(d=>d.device_key==='manual-browser'&&d.device_type==='BROWSER_PROFILE'&&d.browser_name==='Chrome QA'&&d.is_active),
+          {count:saved.data?.length,error:saved.error?.message})
+        await page.reload({waitUntil:'load',timeout:35000})
+        const after=await page.locator('.purchase-device-detail-grid').innerText()
+        check('Both Mobile and Browser survive reload',
+          after.includes('iPhone QA 15')&&after.includes('Chrome QA'),{after})
+        await nav('/purchase/accounts?range=all&mode=create')
+        check('User create slidebar contains the same two fields',
+          await page.locator('.account-detail-panel input[name="mobile_device_type"]').count()===1
+          &&await page.locator('.account-detail-panel input[name="browser_name"]').count()===1)
+        await nav(spec.path)
+      }
+    }
     // Return to the full column layout for panel fit and resize.
     await page.evaluate(({storage,order})=>{
       localStorage.removeItem(storage);localStorage.removeItem(order)
