@@ -223,23 +223,23 @@ export function PurchaseAccountTable({
 
   function renderCell(key:ColKey,u:any,i:number){
     if(key==='number')return <td key={key} data-account-col={key}>{i+1}</td>
-    if(key==='username')return <td key={key} className="p1-user-identity-cell">
+    if(key==='username')return <td key={key} data-account-col={key} className="p1-user-identity-cell">
       <div className="user-name-actions">
         <Link className="table-link" prefetch={false} href={hrefFor(u.id)} title={u.username}>{u.username}</Link>
         {!u.archived_at&&u.status!=='Blocked'&&<Link className="quick-order-link" href={createOrderHref(u.id)} title="Tạo đơn từ User" aria-label={'Tạo đơn từ '+u.username}>+</Link>}
       </div>
     </td>
-    if(key==='platform')return <td key={key} className="p1-user-platform-cell"><span className="platform-cell">{u.platform??'SHOPEE'}</span></td>
-    if(key==='phone')return <td key={key}>{formatPhone(u.phone)}</td>
-    if(key==='email')return <td key={key} title={u.email??undefined} className="p1-table-long-text">{u.email??'—'}</td>
-    if(key==='status')return <td key={key}>{u.archived_at
+    if(key==='platform')return <td key={key} data-account-col={key} className="p1-user-platform-cell"><span className="platform-cell">{u.platform??'SHOPEE'}</span></td>
+    if(key==='phone')return <td key={key} data-account-col={key}>{formatPhone(u.phone)}</td>
+    if(key==='email')return <td key={key} data-account-col={key} title={u.email??undefined} className="p1-table-long-text">{u.email??'—'}</td>
+    if(key==='status')return <td key={key} data-account-col={key}>{u.archived_at
       ? <span className="status-pill archived">Lưu trữ</span>
       : <span className={'status-pill '+statusClass(u.status)}>{statusLabel(u.status)}</span>}</td>
-    if(key==='device')return <td key={key} className="device-icon-cell"><DeviceIcons row={u}/></td>
-    if(key==='voucher')return <td key={key} className="voucher-cell"><VoucherTags value={u.voucher_used_summary} compact maxVisible={1}/></td>
-    if(key==='orders')return <td key={key} className="count-cell">{u.order_count??0}</td>
-    if(key==='createdAt')return <td key={key} title={formatDateTime(u.effective_created_at??u.created_at)}>{formatDateTime(u.effective_created_at??u.created_at)}</td>
-    return <td key={key} className="truncate p1-table-long-text" title={u.note??undefined}>{u.note??'—'}</td>
+    if(key==='device')return <td key={key} data-account-col={key} className="device-icon-cell"><DeviceIcons row={u}/></td>
+    if(key==='voucher')return <td key={key} data-account-col={key} className="voucher-cell"><VoucherTags value={u.voucher_used_summary} compact maxVisible={1}/></td>
+    if(key==='orders')return <td key={key} data-account-col={key} className="count-cell">{u.order_count??0}</td>
+    if(key==='createdAt')return <td key={key} data-account-col={key} title={formatDateTime(u.effective_created_at??u.created_at)}>{formatDateTime(u.effective_created_at??u.created_at)}</td>
+    return <td key={key} data-account-col={key} className="truncate p1-table-long-text" title={u.note??undefined}>{u.note??'—'}</td>
   }
 
   return <div className="account-table-shell p1-account-table-shell">
