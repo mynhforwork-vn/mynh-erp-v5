@@ -662,3 +662,19 @@
   .brand-shell-v1 .entity-user-command .search{flex:1 1 100%!important;min-width:0!important}
   .brand-shell-v1 .entity-user-command .p1-filter-dropdown{flex:1 1 42%!important;max-width:none!important}
 }
+
+/* Mobile: the order-column menu must not extend beyond the left screen edge.
+   Right-align it to the viewport, not the narrow toolbar icon lane. */
+@media(max-width:600px){
+  .brand-shell-v1 .p1-order-toolbar-actions .p1-order-column-manager .column-manager-menu{
+    position:fixed!important;
+    top:var(--p1-order-menu-top,64px)!important;
+    left:auto!important;
+    right:8px!important;
+    width:min(280px,calc(100vw - 16px))!important;
+    min-width:0!important;
+    max-height:calc(100dvh - var(--p1-order-menu-top,64px) - 8px)!important;
+    overflow-y:auto!important;
+    z-index:120!important;
+  }
+}

@@ -153,6 +153,7 @@ export function PurchaseOrderTable({
   const [visible,setVisible]=useState<ColKey[]>(ALL)
   const [columnOrder,setColumnOrder]=useState<ColKey[]>(ALL)
   const [open,setOpen]=useState(false)
+  const [mobileMenuTop,setMobileMenuTop]=useState(64)
   const [sort,setSort]=useState<SortKey>('time_new')
   const [selected,setSelected]=useState<string[]>([])
 
@@ -461,13 +462,20 @@ export function PurchaseOrderTable({
       </div>}
     <div className="p1-order-column-manager managed-column-wrap" ref={columnManagerRef}>
       <button className="icon-button managed-column-button" type="button"
-        onClick={()=>setOpen(value=>!value)}
+        onClick={event=>{
+          const rect=event.currentTarget.getBoundingClientRect()
+          // Mobile menu is viewport-fixed; keep its top within the visible area.
+          setMobileMenuTop(Math.max(8,Math.min(rect.bottom+5,window.innerHeight-240)))
+          setOpen(value=>!value)
+        }}
         title="Sắp xếp, ẩn và hiện cột đơn nhập"
         aria-label="Sắp xếp cột đơn nhập"
         aria-haspopup="dialog" aria-expanded={open}>
         <ColumnIcon/>
       </button>
-      {open&&<div className="column-manager-menu" role="dialog" aria-label="Sắp xếp, ẩn và hiện cột đơn nhập">
+      {open&&<div className="column-manager-menu" role="dialog"
+        aria-label="Sắp xếp, ẩn và hiện cột đơn nhập"
+        style={{'--p1-order-menu-top':mobileMenuTop+'px'} as CSSProperties}>
         <div className="column-manager-head">
           <b>Cột & thứ tự</b>
           <button type="button" onClick={resetColumns}>↺ Mặc định</button>
