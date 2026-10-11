@@ -156,6 +156,7 @@ export function PurchaseOrderTable({
   const [selected,setSelected]=useState<string[]>([])
   const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
   const [dragOverColumn,setDragOverColumn]=useState<ColKey|null>(null)
+  const draggingRef=useRef<ColKey|null>(null)
   const tableWrapRef=useRef<HTMLDivElement|null>(null)
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
   const [toolbarRoot,setToolbarRoot]=useState<HTMLElement|null>(null)
@@ -462,12 +463,23 @@ export function PurchaseOrderTable({
         {columnOrder.map(k=><div
           key={k}
           className={'column-manager-row draggable '+(k==='order'?'locked ':'')+(draggingColumn===k?'dragging ':'')+(dragOverColumn===k&&draggingColumn!==k?'drop-target':'')}
-          onDragOver={e=>{e.preventDefault();setDragOverColumn(k)}}
+          onDragEnter={()=>setDragOverColumn(k)}
+          onDragOver={e=>{e.preventDefault();e.dataTransfer.dropEffect='move'}}
           onDragLeave={()=>{if(dragOverColumn===k)setDragOverColumn(null)}}
+          onPointerUp={()=>{
+            // Fallback for browsers where the native HTML5 drop is suppressed
+            // by a portal or a pointer gesture on the drag handle.
+            const source=draggingRef.current
+            if(source&&source!==k)reorderColumn(source,k)
+            draggingRef.current=null
+            setDraggingColumn(null)
+            setDragOverColumn(null)
+          }}
           onDrop={e=>{
             e.preventDefault()
-            const source=(e.dataTransfer.getData('text/plain')||draggingColumn) as ColKey|null
+            const source=(e.dataTransfer.getData('text/plain')||draggingRef.current||draggingColumn) as ColKey|null
             if(source&&ALL.includes(source))reorderColumn(source,k)
+            draggingRef.current=null
             setDraggingColumn(null)
             setDragOverColumn(null)
           }}
@@ -478,17 +490,27 @@ export function PurchaseOrderTable({
             draggable
             title="Kéo để đổi thứ tự cột"
             aria-label={'Kéo '+LABELS[k]}
+            onPointerDown={()=>{draggingRef.current=k}}
             onDragStart={e=>{
+              draggingRef.current=k
               setDraggingColumn(k)
               e.dataTransfer.effectAllowed='move'
               e.dataTransfer.setData('text/plain',k)
             }}
-            onDragEnd={()=>{setDraggingColumn(null);setDragOverColumn(null)}}
+            onDragEnd={()=>{draggingRef.current=null;setDraggingColumn(null);setDragOverColumn(null)}}
           >⠿</button>
           <label>
             <input type="checkbox" checked={visible.includes(k)} disabled={k==='order'} onChange={()=>toggleColumn(k)}/>
             <span>{LABELS[k]}</span>
           </label>
+          <div className="column-order-buttons" aria-label={'Đổi thứ tự '+LABELS[k]}>
+            <button type="button" title={'Chuyển '+LABELS[k]+' lên'} aria-label={'Chuyển '+LABELS[k]+' lên'}
+              disabled={columnOrder.indexOf(k)===0}
+              onClick={()=>reorderColumn(k,columnOrder[columnOrder.indexOf(k)-1])}>↑</button>
+            <button type="button" title={'Chuyển '+LABELS[k]+' xuống'} aria-label={'Chuyển '+LABELS[k]+' xuống'}
+              disabled={columnOrder.indexOf(k)===columnOrder.length-1}
+              onClick={()=>reorderColumn(k,columnOrder[columnOrder.indexOf(k)+1])}>↓</button>
+          </div>
         </div>)}
       </div>}
     </div></div>,toolbarRoot)}
