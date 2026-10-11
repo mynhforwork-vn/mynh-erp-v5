@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
@@ -285,29 +285,39 @@ export function PurchaseOrderTable({
     setSelected(sorted.slice(0,200).map((row:any)=>String(row.id)))
   }
 
+  // Tracking/HUB sizing: minimum follows visible semantic IDs, not positions.
+  const columnMinimums:Record<ColKey,number>={"number":30,"order":150,"username":105,"time":134,"product":165,"cod":90,"tracking":155,"carrier":95,"voucher":85,"status":120}
+  const panelMinimums:Record<ColKey,number>={"number":28,"order":135,"username":85,"time":120,"product":130,"cod":75,"tracking":140,"carrier":78,"voucher":70,"status":108}
+  const shownColumns=columnOrder.filter(isVisible)
+  const fullFloor=(canEdit?30:0)+shownColumns.reduce((sum,k)=>sum+columnMinimums[k],0)
+  const panelFloor=(canEdit?28:0)+shownColumns.reduce((sum,k)=>sum+panelMinimums[k],0)
+  const tableWidths={
+    '--p1-order-min-width':fullFloor+'px',
+    '--p1-order-panel-min-width':panelFloor+'px',
+  } as CSSProperties
   const colSpan=visible.length+(canEdit?1:0)
   const toggleSort=(a:SortKey,b:SortKey)=>changeSort(sort===a?b:a)
 
   function renderHeader(key:ColKey){
-    if(key==='number')return <th key={key}>#</th>
-    if(key==='order')return <th key={key} className="p1-order-identity-head"><button className="sort-head" type="button" onClick={()=>toggleSort('order_asc','order_desc')}>Mã đơn <span>{sortIndicator(sort,'order_asc','order_desc')}</span></button></th>
-    if(key==='username')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('username_asc','username_desc')}>Username <span>{sortIndicator(sort,'username_asc','username_desc')}</span></button></th>
-    if(key==='time')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('time_old','time_new')}>Thời gian đặt <span>{sort==='time_new'?'↓':sort==='time_old'?'↑':'↕'}</span></button></th>
-    if(key==='product')return <th key={key} className="p1-order-product-head">Sản phẩm</th>
-    if(key==='cod')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('cod_asc','cod_desc')}>COD <span>{sortIndicator(sort,'cod_asc','cod_desc')}</span></button></th>
-    if(key==='tracking')return <th key={key} className="p1-order-tracking-head">Mã vận đơn</th>
-    if(key==='carrier')return <th key={key}>ĐVVC</th>
-    if(key==='voucher')return <th key={key}>Voucher</th>
-    return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('status_asc','status_desc')}>Xử lý <span>{sortIndicator(sort,'status_asc','status_desc')}</span></button></th>
+    if(key==='number')return <th key={key} data-order-col={key}>#</th>
+    if(key==='order')return <th key={key} data-order-col={key} className="p1-order-identity-head"><button className="sort-head" type="button" onClick={()=>toggleSort('order_asc','order_desc')}>Mã đơn <span>{sortIndicator(sort,'order_asc','order_desc')}</span></button></th>
+    if(key==='username')return <th key={key} data-order-col={key}><button className="sort-head" type="button" onClick={()=>toggleSort('username_asc','username_desc')}>Username <span>{sortIndicator(sort,'username_asc','username_desc')}</span></button></th>
+    if(key==='time')return <th key={key} data-order-col={key}><button className="sort-head" type="button" onClick={()=>toggleSort('time_old','time_new')}>Thời gian đặt <span>{sort==='time_new'?'↓':sort==='time_old'?'↑':'↕'}</span></button></th>
+    if(key==='product')return <th key={key} data-order-col={key} className="p1-order-product-head">Sản phẩm</th>
+    if(key==='cod')return <th key={key} data-order-col={key}><button className="sort-head" type="button" onClick={()=>toggleSort('cod_asc','cod_desc')}>COD <span>{sortIndicator(sort,'cod_asc','cod_desc')}</span></button></th>
+    if(key==='tracking')return <th key={key} data-order-col={key} className="p1-order-tracking-head">Mã vận đơn</th>
+    if(key==='carrier')return <th key={key} data-order-col={key}>ĐVVC</th>
+    if(key==='voucher')return <th key={key} data-order-col={key}>Voucher</th>
+    return <th key={key} data-order-col={key}><button className="sort-head" type="button" onClick={()=>toggleSort('status_asc','status_desc')}>Xử lý <span>{sortIndicator(sort,'status_asc','status_desc')}</span></button></th>
   }
 
   function renderCell(key:ColKey,o:any,i:number){
     const s=activeShipment(o)
-    if(key==='number')return <td key={key}>{i+1}</td>
-    if(key==='order')return <td key={key} className="p1-order-identity-cell"><Link className="table-link" prefetch={false} href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
-    if(key==='username')return <td key={key} className="p1-order-user-cell" title={o.erp_users?.username??undefined}>{o.erp_users?.username??'—'}</td>
-    if(key==='time')return <td key={key} className="order-time-cell">{formatDateTime(o.order_date)}</td>
-    if(key==='product')return <td key={key} className="product-cell" title={(o.order_items??[]).map((it:any)=>[it.product_name,it.variant].filter(Boolean).join(' · ')).join(' | ')||'—'}>
+    if(key==='number')return <td key={key} data-order-col={key}>{i+1}</td>
+    if(key==='order')return <td key={key} data-order-col={key} className="p1-order-identity-cell"><Link className="table-link" prefetch={false} href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
+    if(key==='username')return <td key={key} data-order-col={key} className="p1-order-user-cell" title={o.erp_users?.username??undefined}>{o.erp_users?.username??'—'}</td>
+    if(key==='time')return <td key={key} data-order-col={key} className="order-time-cell">{formatDateTime(o.order_date)}</td>
+    if(key==='product')return <td key={key} data-order-col={key} className="product-cell" title={(o.order_items??[]).map((it:any)=>[it.product_name,it.variant].filter(Boolean).join(' · ')).join(' | ')||'—'}>
       <span className="p1-product-lines">
         {(o.order_items??[]).length
           ? (o.order_items??[]).slice(0,2).map((it:any,index:number)=><span key={it.id??index}>
@@ -317,8 +327,8 @@ export function PurchaseOrderTable({
           : <span>—</span>}
       </span>
     </td>
-    if(key==='cod')return <td key={key} className="money">{formatMoney(o.cod)}</td>
-    if(key==='tracking')return <td key={key} className="tracking-number-cell">
+    if(key==='cod')return <td key={key} data-order-col={key} className="money">{formatMoney(o.cod)}</td>
+    if(key==='tracking')return <td key={key} data-order-col={key} className="tracking-number-cell">
       {s?.tracking_number
         ? <span className="tracking-number-value" title={s.tracking_number}>{s.tracking_number}</span>
         : canEdit&&!o.archived_at
@@ -330,9 +340,9 @@ export function PurchaseOrderTable({
             />
           : <span className="tracking-missing-text">Chưa có</span>}
     </td>
-    if(key==='carrier')return <td key={key}>{o.shipping_service==='EXPRESS'?'Hỏa tốc':s?.carrier??'—'}</td>
-    if(key==='voucher')return <td key={key} className="voucher-cell"><VoucherTags value={voucherSummary(o.order_vouchers??[])} compact maxVisible={2}/></td>
-    return <td key={key}>
+    if(key==='carrier')return <td key={key} data-order-col={key}>{o.shipping_service==='EXPRESS'?'Hỏa tốc':s?.carrier??'—'}</td>
+    if(key==='voucher')return <td key={key} data-order-col={key} className="voucher-cell"><VoucherTags value={voucherSummary(o.order_vouchers??[])} compact maxVisible={2}/></td>
+    return <td key={key} data-order-col={key}>
       <div className="order-state-cell">
         {o.shipping_service==='EXPRESS'
           ? <span className="status-pill orange">Hỏa tốc</span>
@@ -412,7 +422,11 @@ export function PurchaseOrderTable({
     </div></div>,toolbarRoot)}
 
     <div className="card table-card order-table-card" ref={tableWrapRef}>
-      <table className="table order-table">
+      <table className="table order-table mynh-p1-semantic-table" style={tableWidths}>
+        <colgroup>
+          {canEdit&&<col className="p1-order-col-select"/>}
+          {shownColumns.map(k=><col key={k} className={'p1-order-col-'+k}/>)}
+        </colgroup>
         <thead><tr>
           {canEdit&&<th className="bulk-select-col">
             <input

@@ -698,10 +698,10 @@ a{text-decoration:none}
 
 
 /* User module */
-.user-table th:nth-child(1),.user-table td:nth-child(1){width:34px}
-.user-table th:nth-child(6),.user-table td:nth-child(6){width:112px}
-.user-table th:nth-child(8),.user-table td:nth-child(8){width:58px;text-align:center}
-.user-table th:nth-child(9),.user-table td:nth-child(9){width:126px}
+.user-table:not(.mynh-p1-semantic-table) th:nth-child(1),.user-table:not(.mynh-p1-semantic-table) td:nth-child(1){width:34px}
+.user-table:not(.mynh-p1-semantic-table) th:nth-child(6),.user-table:not(.mynh-p1-semantic-table) td:nth-child(6){width:112px}
+.user-table:not(.mynh-p1-semantic-table) th:nth-child(8),.user-table:not(.mynh-p1-semantic-table) td:nth-child(8){width:58px;text-align:center}
+.user-table:not(.mynh-p1-semantic-table) th:nth-child(9),.user-table:not(.mynh-p1-semantic-table) td:nth-child(9){width:126px}
 .user-table .voucher-cell{max-width:170px}
 .device-set{display:inline-flex;align-items:center;gap:3px}
 .device-set span{
@@ -768,14 +768,14 @@ a{text-decoration:none}
 
 
 /* Order module */
-.order-table th:nth-child(1),.order-table td:nth-child(1){width:34px}
-.order-table th:nth-child(2),.order-table td:nth-child(2){width:112px}
-.order-table th:nth-child(3),.order-table td:nth-child(3){width:116px}
+.order-table:not(.mynh-p1-semantic-table) th:nth-child(1),.order-table:not(.mynh-p1-semantic-table) td:nth-child(1){width:34px}
+.order-table:not(.mynh-p1-semantic-table) th:nth-child(2),.order-table:not(.mynh-p1-semantic-table) td:nth-child(2){width:112px}
+.order-table:not(.mynh-p1-semantic-table) th:nth-child(3),.order-table:not(.mynh-p1-semantic-table) td:nth-child(3){width:116px}
 .order-table .product-cell{max-width:220px}
 .order-table .voucher-cell{max-width:190px}
-.order-table th:nth-child(5),.order-table td:nth-child(5){width:92px}
-.order-table th:nth-child(6),.order-table td:nth-child(6){width:126px}
-.order-table th:nth-child(7),.order-table td:nth-child(7){width:112px}
+.order-table:not(.mynh-p1-semantic-table) th:nth-child(5),.order-table:not(.mynh-p1-semantic-table) td:nth-child(5){width:92px}
+.order-table:not(.mynh-p1-semantic-table) th:nth-child(6),.order-table:not(.mynh-p1-semantic-table) td:nth-child(6){width:126px}
+.order-table:not(.mynh-p1-semantic-table) th:nth-child(7),.order-table:not(.mynh-p1-semantic-table) td:nth-child(7){width:112px}
 .order-state-cell{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .order-panel .panel-form{gap:8px}
 .form-grid.three{grid-template-columns:.55fr 1fr 1fr}
@@ -1197,10 +1197,10 @@ a{text-decoration:none}
 .account-toolbar{justify-content:space-between}
 .account-search-form{display:flex;align-items:center;gap:5px;min-width:0}
 .account-search-form .search{min-width:260px}
-.user-table th:nth-child(3),.user-table td:nth-child(3){width:74px}
-.user-table th:nth-child(7),.user-table td:nth-child(7){width:112px}
-.user-table th:nth-child(9),.user-table td:nth-child(9){width:58px;text-align:center}
-.user-table th:nth-child(10),.user-table td:nth-child(10){width:126px}
+.user-table:not(.mynh-p1-semantic-table) th:nth-child(3),.user-table:not(.mynh-p1-semantic-table) td:nth-child(3){width:74px}
+.user-table:not(.mynh-p1-semantic-table) th:nth-child(7),.user-table:not(.mynh-p1-semantic-table) td:nth-child(7){width:112px}
+.user-table:not(.mynh-p1-semantic-table) th:nth-child(9),.user-table:not(.mynh-p1-semantic-table) td:nth-child(9){width:58px;text-align:center}
+.user-table:not(.mynh-p1-semantic-table) th:nth-child(10),.user-table:not(.mynh-p1-semantic-table) td:nth-child(10){width:126px}
 @media(max-width:1180px){
   .account-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
   .account-search-form .search{min-width:210px}
@@ -2209,8 +2209,8 @@ a{text-decoration:none}
   color:#315D8A;
   box-shadow:0 0 0 1px rgba(49,93,138,.03) inset;
 }
-.user-table th:nth-child(7),
-.user-table td:nth-child(7){width:112px}
+.user-table:not(.mynh-p1-semantic-table) th:nth-child(7),
+.user-table:not(.mynh-p1-semantic-table) td:nth-child(7){width:112px}
 
 
 /* Account table visual repair + density polish */

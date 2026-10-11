@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import { formatDateTime, formatPhone, statusLabel } from '@/lib/format'
@@ -162,12 +162,16 @@ export function PurchaseAccountTable({
   const selectedArchived=selectedRows.length>0&&selectedRows.every((row:any)=>Boolean(row.archived_at))
   const allSelected=rows.length>0&&rows.slice(0,200).every((row:any)=>selectedSet.has(String(row.id)))
   const colSpan=useMemo(()=>visible.length+(canManage?1:0),[visible,canManage])
-  const columnMinimums:Record<ColKey,number>={
-    number:32,username:154,platform:64,phone:108,email:155,
-    status:89,device:102,voucher:76,orders:52,createdAt:135,note:90
-  }
-  const minimumWidth=(canManage?32:0)+columnOrder
-    .filter(key=>visible.includes(key)).reduce((sum,key)=>sum+columnMinimums[key],0)
+  // Same visible-column full/panel width policy as Tracking/HUB.
+  const columnMinimums:Record<ColKey,number>={"number":32,"username":154,"platform":64,"phone":108,"email":155,"status":89,"device":102,"voucher":76,"orders":52,"createdAt":135,"note":90}
+  const panelMinimums:Record<ColKey,number>={"number":28,"username":125,"platform":58,"phone":96,"email":130,"status":80,"device":90,"voucher":70,"orders":44,"createdAt":125,"note":72}
+  const shownColumns=columnOrder.filter(isVisible)
+  const fullFloor=(canManage?32:0)+shownColumns.reduce((sum,k)=>sum+columnMinimums[k],0)
+  const panelFloor=(canManage?28:0)+shownColumns.reduce((sum,k)=>sum+panelMinimums[k],0)
+  const tableWidths={
+    '--p1-account-min-width':fullFloor+'px',
+    '--p1-account-panel-min-width':panelFloor+'px',
+  } as CSSProperties
 
   function hrefFor(id:string){
     const p=new URLSearchParams(detailQuery)
@@ -299,7 +303,7 @@ export function PurchaseAccountTable({
     </div>,toolbarRoot)}
 
     <div className="card table-card account-table-card">
-      <table className="table user-table" style={{minWidth:minimumWidth}}>
+      <table className="table user-table mynh-p1-semantic-table" style={tableWidths}>
         <colgroup>
           {canManage&&<col className="p1-account-col p1-account-col-select"/>}
           {columnOrder.filter(isVisible).map(k=><col key={k} className={'p1-account-col p1-account-col-'+k}/>)}

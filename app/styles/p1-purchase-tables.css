@@ -30,12 +30,18 @@
   box-sizing:border-box;
   width:100%!important;
 }
-.brand-shell-v1 table.table.order-table:not(.mynh-resizable-table){
-  min-width:980px!important;
+/* Full/panel responsive widths match the Tracking/HUB semantic contract. */
+.brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table){
+  min-width:var(--p1-account-min-width,1089px)!important;
 }
-.brand-shell-v1 :is(.account-workspace,.order-workspace):is(.with-panel,.has-slidebar)
-table.table.order-table:not(.mynh-resizable-table){
-  min-width:910px!important;
+.brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table){
+  min-width:var(--p1-account-panel-min-width,940px)!important;
+}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table){
+  min-width:var(--p1-order-min-width,1129px)!important;
+}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table){
+  min-width:var(--p1-order-panel-min-width,1000px)!important;
 }
 /* Keep IDs, money and controls meaningful. The table can scroll locally if
    the remaining space is smaller than the readable minimum. */
@@ -96,8 +102,11 @@ table.table.order-table:not(.mynh-resizable-table){
   }
 }
 @media(max-width:900px){
-  .brand-shell-v1 table.table.order-table:not(.mynh-resizable-table){
-    min-width:890px!important;
+  .brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table){
+    min-width:var(--p1-account-panel-min-width,940px)!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table){
+    min-width:var(--p1-order-panel-min-width,1000px)!important;
   }
   .brand-shell-v1 table.table:is(.user-table,.order-table) .p1-table-long-text{
     max-width:170px;
@@ -110,9 +119,6 @@ table.table.order-table:not(.mynh-resizable-table){
 
 /* Fixed-layout tables must constrain actual cell contents as well as columns.
    A long Username must NEVER paint over the platform cell or intercept clicks. */
-.brand-shell-v1 table.order-table th.p1-order-identity-head{width:148px!important}
-.brand-shell-v1 table.order-table th.p1-order-tracking-head{width:135px!important}
-.brand-shell-v1 table.order-table th.p1-order-product-head{width:145px!important}
 .brand-shell-v1 table.user-table td.p1-user-identity-cell,
 .brand-shell-v1 table.user-table td.p1-user-platform-cell,
 .brand-shell-v1 table.order-table td.p1-order-identity-cell,
@@ -167,27 +173,67 @@ table.table.order-table:not(.mynh-resizable-table){
   width:100%!important;
   table-layout:fixed!important;
 }
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-select{width:32px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-number{width:32px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-platform{width:64px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-phone{width:108px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-status{width:89px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-device{width:102px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-voucher{width:76px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-orders{width:52px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-createdAt{width:135px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-username{width:154px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-email{width:155px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-note{width:auto!important}
-@media(min-width:1800px){
-  .brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-username,
-  .brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-email{
-    width:25%!important;
-  }
+.brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-select{width:32px!important}
+.brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-number{width:32px!important}
+.brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-platform{width:64px!important}
+.brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-phone{width:108px!important}
+.brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-status{width:89px!important}
+.brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-device{width:102px!important}
+.brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-voucher{width:76px!important}
+.brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-orders{width:52px!important}
+.brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-createdAt{width:135px!important}
+.brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-username{width:auto!important}
+.brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-email{width:auto!important}
+.brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-note{width:auto!important}
+.brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-select{width:28px!important}
+.brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-number{width:28px!important}
+.brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-platform{width:58px!important}
+.brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-phone{width:96px!important}
+.brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-status{width:80px!important}
+.brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-device{width:90px!important}
+.brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-voucher{width:70px!important}
+.brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-orders{width:44px!important}
+.brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-createdAt{width:125px!important}
+.brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-username{width:auto!important}
+.brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-email{width:auto!important}
+.brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-note{width:auto!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-select{width:30px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-number{width:30px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-order{width:150px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-time{width:134px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-cod{width:90px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-tracking{width:155px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-carrier{width:95px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-voucher{width:85px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-status{width:120px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-username{width:auto!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-product{width:auto!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-select{width:28px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-number{width:28px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-order{width:135px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-time{width:120px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-cod{width:75px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-tracking{width:140px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-carrier{width:78px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-voucher{width:70px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-status{width:108px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-username{width:auto!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-product{width:auto!important}
+/* Explicit header widths cannot override colgroup on reordered tables. */
+.brand-shell-v1 table.mynh-p1-semantic-table:not(.mynh-resizable-table) th[data-order-col],
+.brand-shell-v1 table.mynh-p1-semantic-table:not(.mynh-resizable-table) th[data-account-col]{
+  width:auto!important;max-width:none!important;min-width:0!important;
 }
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="number"]{width:32px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="voucher"]{width:76px!important}
-.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="orders"]{width:52px!important}
+.brand-shell-v1 table.mynh-p1-semantic-table td[data-order-col],
+.brand-shell-v1 table.mynh-p1-semantic-table td[data-account-col]{min-width:0!important;overflow:hidden;text-overflow:ellipsis}
+@media(min-width:1800px){
+  /* Three flexible account text columns divide surplus space; note never takes it all. */
+  .brand-shell-v1 .account-workspace:not(.with-panel) .account-table-card
+  table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-username{width:clamp(154px,22%,460px)!important}
+  .brand-shell-v1 .account-workspace:not(.with-panel) .account-table-card
+  table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-email{width:clamp(155px,25%,560px)!important}
+}
+
 .brand-shell-v1 .account-table-card table.user-table :is(th,td){
   overflow:hidden!important;
   text-overflow:ellipsis;
