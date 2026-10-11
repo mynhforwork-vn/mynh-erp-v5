@@ -133,6 +133,39 @@ export function DesktopTableColumnResize() {
       }
       return fitted
     }
+    // P1 drawer presentation is fitted to the real lane even when a user
+    // previously dragged columns wider. Preferences are never overwritten:
+    // leaving the slidebar restores the manually saved full-table widths.
+    const purchasePanelWeights={
+      account:{number:22,username:102,platform:53,phone:90,email:98,
+        status:72,device:79,voucher:65,orders:40,createdAt:106,note:76},
+      order:{number:22,order:116,username:76,time:111,product:123,
+        cod:62,tracking:113,carrier:70,voucher:61,status:94},
+    }
+    const purchasePanelContext=(table:HTMLTableElement)=>{
+      if(window.innerWidth<1100)return null
+      if(!table.closest('.account-workspace.with-panel,.order-workspace.with-panel'))return null
+      if(!table.matches('.mynh-p1-semantic-table.user-table,.mynh-p1-semantic-table.order-table'))return null
+      return table.closest('.account-table-card,.order-table-card') as HTMLElement|null
+    }
+    const fitPurchasePanel=(table:HTMLTableElement,ths:HTMLTableCellElement[])=>{
+      const pane=purchasePanelContext(table)
+      if(!pane)return null
+      const weights=table.classList.contains('user-table')
+        ?purchasePanelWeights.account:purchasePanelWeights.order
+      const list=ths.map(th=>{
+        if(th.matches('.bulk-select-col'))return 24
+        const key=th.dataset.accountCol??th.dataset.orderCol??''
+        return (weights as Record<string,number>)[key]??70
+      })
+      const totalWeight=list.reduce((sum,w)=>sum+w,0)
+      const target=Math.max(100,Math.floor(pane.clientWidth)-2)
+      const result=list.map(w=>Math.max(16,Math.floor(target*w/totalWeight)))
+      const left=target-result.reduce((sum,w)=>sum+w,0)
+      if(result.length)result[result.length-1]+=left
+      return result
+    }
+
     const trackingDefaults:Record<string,number>={
       'tracking-col-order':166,'tracking-col-product':250,
       'tracking-col-cod':94,'tracking-col-recipient':245,
@@ -153,7 +186,8 @@ export function DesktopTableColumnResize() {
           ? Object.entries(trackingDefaults).find(([name])=>th.classList.contains(name))?.[1]
           : undefined)
         || visibleWidths[i])
-      const assigned = isTracking ? fitTrackingPanel(table,ths,preferred,overrides) : preferred
+      const panelWidths=fitPurchasePanel(table,ths)
+      const assigned = isTracking ? fitTrackingPanel(table,ths,preferred,overrides) : panelWidths??preferred
       let total = 0
       ths.forEach((th,i) => {
         // The account sequence number, order count and voucher tags are
@@ -162,7 +196,7 @@ export function DesktopTableColumnResize() {
         const accountCompact:Record<string,number>={number:33,orders:58,voucher:96}
         const accountWidth=table.classList.contains('user-table')
           ?accountCompact[th.dataset.accountCol??'']:undefined
-        const width = accountWidth??(th.classList.contains('tracking-action-head') ? 44 :
+        const width = panelWidths ? assigned[i] : accountWidth??(th.classList.contains('tracking-action-head') ? 44 :
           compactCol(th) ? Math.max(24, Math.min(140, assigned[i])) : clampForHeader(th,assigned[i]))
         total += width
         th.style.setProperty('width', width+'px', 'important')
@@ -211,8 +245,11 @@ export function DesktopTableColumnResize() {
       const saved = readSaved(table)
       const tracking=table.classList.contains('tracking-hub-table-v2')
       const pane=table.closest('.tracking-hub-table-wrap-v2') as HTMLElement|null
+      const purchase=table.matches('.mynh-p1-semantic-table.user-table,.mynh-p1-semantic-table.order-table')
+      const purchasePane=table.closest('.account-table-card,.order-table-card') as HTMLElement|null
       const token=tracking
         ? (table.closest('.tracking-content-workspace.with-panel')?'panel:':'full:')+Math.round(pane?.clientWidth??0)
+        : purchase ? (purchasePanelContext(table)?'panel:':'full:')+Math.round(purchasePane?.clientWidth??0)
         : 'general'
       if (Object.keys(saved).length && trackingLayout.get(table)!==token) {
         clearInlineWidths(table)
@@ -323,7 +360,7 @@ export function DesktopTableColumnResize() {
     const observer=new MutationObserver(records=>{
       if(records.some(rec=>{
         if(rec.type==='attributes')
-          return (rec.target as Element).matches('.tracking-content-workspace')
+          return (rec.target as Element).matches('.tracking-content-workspace,.account-workspace,.order-workspace')
         return Array.from(rec.addedNodes).some(node=>{
           if(node.nodeType!==Node.ELEMENT_NODE)return false
           const el=node as Element
