@@ -271,6 +271,23 @@
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-voucher{width:63px!important}
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-status{width:94px!important}
 }
+/* The Username text is the User detail entry point, not a new action icon. */
+.brand-shell-v1 table.order-table .p1-order-username-link,
+.brand-shell-v1 .order-panel .p1-order-username-link{
+  display:inline-block;max-width:100%;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:var(--blue-600,#2563a4);font-weight:650;
+  text-decoration:none;vertical-align:middle;
+}
+.brand-shell-v1 :is(table.order-table,.order-panel) .p1-order-username-link:hover{
+  text-decoration:underline;
+}
+.brand-shell-v1 :is(table.order-table,.order-panel) .p1-order-username-link:focus-visible{
+  outline:2px solid #2563a4;outline-offset:2px;border-radius:2px;
+}
+.brand-shell-v1 .order-account-detail-panel .panel-head .context-stack-back{
+  display:inline-flex;margin-top:4px;
+}
 /* Purchase order device details: two readable lines in a single narrow
    semantic column, so Mobile and Browser do not require extra table scrolling. */
 .brand-shell-v1 table.order-table td.p1-order-device-cell{

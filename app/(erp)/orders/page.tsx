@@ -10,12 +10,13 @@ import { OrderEditorForm } from '@/components/order-editor-form'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import { isShippingTrackingStatus } from '@/lib/tracking/status-groups'
 import { PurchaseOrderTable } from '@/components/purchase-order-table'
+import { OrderAccountDetailPanel } from '@/components/order-account-detail-panel'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { DestinationHubConfigModal } from '@/components/destination-hub-config-panel'
 import { suggestReceivingWarehouseId } from '@/lib/warehouse-routing'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
-type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,user?:string,settings?:string,archive?:string}
+type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,user?:string,settings?:string,archive?:string,account?:string,accountTab?:string,backUser?:string}
 
 const HOUR=60*60*1000
 const DAY=24*HOUR
@@ -282,6 +283,9 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     if(sp.settings)p.set('settings',sp.settings)
     if(sp.user)p.set('user',sp.user)
     if(sp.archive)p.set('archive',sp.archive)
+    if(sp.account)p.set('account',sp.account)
+    if(sp.accountTab)p.set('accountTab',sp.accountTab)
+    if(sp.backUser)p.set('backUser',sp.backUser)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v==='')p.delete(k)
       else p.set(k,v)
@@ -377,10 +381,48 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     }),
   }))
 
+  // Context User panel stays inside /purchase/orders. Queries are scoped to
+  // the clicked account; no account secrets or unrelated users are fetched.
+  let openedAccount:any=null
+  let openedAccountOrders:any[]=[]
+  let openedAccountHistory:any[]=[]
+  let openedAccountDevices:any[]=[]
+  let earliestAccountOrderDate:string|null=null
+  const accountTab=['info','orders','history'].includes(sp.accountTab??'')
+    ?String(sp.accountTab):'info'
+  if(sp.account){
+    const accountResult=await supabase.from('erp_users')
+      .select('id,username,phone,email,status,platform,note,created_at,archived_at,order_count,browser_name,spc_st_secret_id,spc_f_secret_id,spc_st_encrypted,spc_f_encrypted')
+      .eq('id',sp.account).maybeSingle()
+    openedAccount=accountResult.data
+    if(openedAccount){
+      const [accountOrderResult,accountDeviceResult,firstOrderResult]=await Promise.all([
+        supabase.from('orders')
+          .select('id,shopee_order_id,order_date,cod,order_status,order_items(product_name,variant),order_vouchers(voucher_tag,voucher_type,voucher_name,voucher_code)')
+          .eq('erp_user_id',openedAccount.id)
+          .order('order_date',{ascending:false}).limit(100),
+        supabase.from('purchase_account_devices')
+          .select('device_key,device_type,device_name,browser_name,is_active')
+          .eq('erp_user_id',openedAccount.id).limit(100),
+        supabase.from('orders').select('order_date').eq('erp_user_id',openedAccount.id)
+          .not('order_date','is',null).order('order_date',{ascending:true}).limit(1),
+      ])
+      openedAccountOrders=accountOrderResult.data??[]
+      openedAccountDevices=accountDeviceResult.data??[]
+      earliestAccountOrderDate=firstOrderResult.data?.[0]?.order_date??null
+      if(accountTab==='history'){
+        const historyResult=await supabase.from('audit_logs')
+          .select('id,action,source,created_at').eq('module','USERS')
+          .eq('entity_id',openedAccount.id).order('created_at',{ascending:false}).limit(100)
+        openedAccountHistory=historyResult.data??[]
+      }
+    }
+  }
+
   const createMode=canOperate&&sp.mode==='create'
   const editMode=Boolean(canOperate&&detail&&sp.mode==='edit'&&!detail.archived_at)
   const destinationSettingsMode=sp.settings==='destination-hubs'
-  const panelOpen=createMode||Boolean(detail)
+  const panelOpen=createMode||Boolean(detail)||Boolean(sp.account)
   const currentShip=activeShipment(detail)
   const detailHubConfig=detail?destinationHubs.find((x:any)=>x.hub_code===detail.destination_hub):null
   const detailTotalOriginal=items.reduce(
@@ -487,7 +529,25 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
       </section>
 
-      {createMode&&!destinationSettingsMode&&
+      {sp.account&&
+        <OrderAccountDetailPanel
+          account={openedAccount}
+          devices={openedAccountDevices}
+          orders={openedAccountOrders.map(o=>({
+            ...o,
+            href:listHref({account:null,accountTab:null,order:o.id,tab:'info',backUser:openedAccount.id,mode:null}),
+          }))}
+          history={openedAccountHistory}
+          earliestDate={earliestAccountOrderDate}
+          tab={accountTab}
+          closeHref={listHref({account:null,accountTab:null})}
+          infoHref={listHref({accountTab:'info'})}
+          ordersHref={listHref({accountTab:'orders'})}
+          historyHref={listHref({accountTab:'history'})}
+        />
+      }
+
+      {createMode&&!sp.account&&!destinationSettingsMode&&
         <SystemSlidebar className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Tạo đơn mới</h2></div>
@@ -508,7 +568,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         </SystemSlidebar>
       }
 
-      {detail&&editMode&&!destinationSettingsMode&&
+      {detail&&editMode&&!sp.account&&!destinationSettingsMode&&
         <SystemSlidebar className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Sửa {detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
@@ -550,10 +610,12 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         </SystemSlidebar>
       }
 
-      {detail&&!editMode&&!destinationSettingsMode&&
+      {detail&&!editMode&&!sp.account&&!destinationSettingsMode&&
         <SystemSlidebar className="detail-panel">
           <div className="panel-head">
-            <div><span className="eyebrow">CHI TIẾT ĐƠN</span><h2>{detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
+            <div><span className="eyebrow">CHI TIẾT ĐƠN</span><h2>{detail.shopee_order_id??detail.id.slice(0,8)}</h2>
+              {sp.backUser&&<Link className="context-stack-back" href={listHref({account:sp.backUser,accountTab:'orders',backUser:null,order:null,tab:null})}>← Trở lại User</Link>}
+            </div>
             <Link className="close" href={listHref({order:null,tab:null,mode:null})}>×</Link>
           </div>
 
@@ -567,7 +629,9 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
           <div className="panel-scroll">
             {(!sp.tab||sp.tab==='info'||(detail.shipping_service==='EXPRESS'&&sp.tab==='tracking'))&&<>
               <div className="detail-grid">
-                <div><span>Username</span><b>{detail.erp_users?.username??'—'}</b></div>
+                <div><span>Username</span><b>{detail.erp_user_id&&detail.erp_users?.username
+                  ?<Link className="p1-order-username-link" href={listHref({account:detail.erp_user_id,accountTab:'info',backUser:null})}>{detail.erp_users.username}</Link>
+                  :'—'}</b></div>
                 <div><span>Ngày đặt</span><b>{formatDateTime(detail.order_date)}</b></div>
                 {detail.archived_at&&<div><span>Lưu trữ lúc</span><b>{formatDateTime(detail.archived_at)}</b></div>}
                 <div><span>Trạng thái đơn</span><b>{detail.archived_at

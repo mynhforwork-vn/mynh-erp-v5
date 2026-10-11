@@ -249,12 +249,24 @@ export function PurchaseOrderTable({
     setSort(next)
     try{localStorage.setItem(STORAGE_SORT,next)}catch{}
   }
+  function hrefForUser(id:string){
+    const p=new URLSearchParams(baseQuery)
+    p.set('account',id)
+    p.set('accountTab','info')
+    p.delete('backUser')
+    p.delete('mode')
+    p.delete('settings')
+    return '/purchase/orders?'+p.toString()
+  }
   function hrefFor(id:string){
     const p=new URLSearchParams(baseQuery)
     p.set('order',id)
     p.delete('mode')
     p.delete('settings')
     p.delete('user')
+    p.delete('account')
+    p.delete('accountTab')
+    p.delete('backUser')
     return '/purchase/orders?'+p.toString()
   }
   function isVisible(key:ColKey){return visible.includes(key)}
@@ -341,7 +353,12 @@ export function PurchaseOrderTable({
     const s=activeShipment(o)
     if(key==='number')return <td key={key} data-order-col={key}>{i+1}</td>
     if(key==='order')return <td key={key} data-order-col={key} className="p1-order-identity-cell"><Link className="table-link" prefetch={false} href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
-    if(key==='username')return <td key={key} data-order-col={key} className="p1-order-user-cell" title={o.erp_users?.username??undefined}>{o.erp_users?.username??'—'}</td>
+    if(key==='username')return <td key={key} data-order-col={key} className="p1-order-user-cell" title={o.erp_users?.username??undefined}>
+      {o.erp_user_id&&o.erp_users?.username
+        ? <Link className="p1-order-username-link" prefetch={false} href={hrefForUser(String(o.erp_user_id))}
+            title={'Xem chi tiết User '+o.erp_users.username}>{o.erp_users.username}</Link>
+        : '—'}
+    </td>
     if(key==='device'){
       const mobile=String(o.account_device_info?.mobileType??'')
       const browser=String(o.account_device_info?.browserName??'')
