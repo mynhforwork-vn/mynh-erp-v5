@@ -190,6 +190,38 @@ try {
         console.log('P1_ACCOUNT_FILTER_GEOMETRY '+JSON.stringify(filterDiag))
       }
       check(spec.name+' fit '+view.width+'x'+view.height,fits(m,view),m??{})
+      const semantic=await page.evaluate(selector=>{
+        const table=document.querySelector(selector)
+        const heads=[...table.querySelectorAll('thead th')]
+        const cols=[...table.querySelectorAll('colgroup col')]
+        const firstCells=[...table.querySelectorAll('tbody tr:first-child td')]
+        const ids=heads.map(el=>el.getAttribute(selector.includes('user')?'data-account-col':'data-order-col')).filter(Boolean)
+        const tableRect=table.getBoundingClientRect()
+        const expectedMin=parseFloat(table.style.getPropertyValue(selector.includes('user')?'--p1-account-min-width':'--p1-order-min-width'))
+        return {
+          semantic:table.classList.contains('mynh-p1-semantic-table'),
+          headers:heads.length,cols:cols.length,cells:firstCells.length,
+          ids,expectedMin,
+          width:tableRect.width,
+          aligned:heads.every((h,i)=>{
+            const cell=firstCells[i];if(!cell)return false
+            const hr=h.getBoundingClientRect(),cr=cell.getBoundingClientRect()
+            return Math.abs(hr.left-cr.left)<3&&Math.abs(hr.right-cr.right)<3
+          }),
+          widths:heads.map(h=>({label:h.textContent?.trim().slice(0,15),width:h.getBoundingClientRect().width}))
+        }
+      },spec.table)
+      check(spec.name+' semantic colgroup and header/body alignment '+view.width,
+        semantic.semantic&&semantic.headers===semantic.cols&&semantic.cols===semantic.cells
+        &&semantic.aligned&&Number.isFinite(semantic.expectedMin)
+        &&semantic.width+2>=Math.min(semantic.expectedMin,semantic.width),
+        semantic)
+      if(spec.name==='User'&&view.width===2560){
+        const note=semantic.widths.find(x=>x.label==='Ghi chú')
+        check('User wide-desktop note cannot absorb all extra width',
+          Boolean(note&&note.width<760),{note,widths:semantic.widths})
+      }
+
       if(spec.name==='User'&&[390,768,1024,1440,1920,2560].includes(view.width)){
         const compact=['number','voucher','orders'].map(id=>m?.accountCols?.find(c=>c.id===id))
         check('User semantic narrow columns '+view.width,
