@@ -442,6 +442,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               <label>Username<input name="username" required/></label>
               <div className="form-grid"><label>Số điện thoại<input name="phone"/></label><label>Email<input name="email" type="email"/></label></div>
               <label>Trạng thái<select name="status" defaultValue="Active">{['Active','M01','M02','M03','M04','Captcha','Auto Hủy','Blocked','Không xác định'].map(s=><option key={s} value={s}>{statusLabel(s)}</option>)}</select></label>
+              <label>Ghi chú<textarea name="note" rows={2}/></label>
             </section>
             <section className="form-section">
               <h3>Đăng nhập & phiên</h3>
@@ -455,7 +456,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                 <label>Mobile — Loại thiết bị<input name="mobile_device_type" maxLength={120} placeholder="Ví dụ: iPhone 15"/></label>
                 <label>Browser — Tên<input name="browser_name" maxLength={120} placeholder="Ví dụ: Chrome"/></label>
               </div>
-              <label>Ghi chú<textarea name="note" rows={2}/></label>
+
             </section>
             <div className="form-actions"><Link className="button" href={filterHref({mode:null,user:null,tab:null})}>Hủy</Link><button className="button primary">Tạo tài khoản</button></div>
           </form>
@@ -621,6 +622,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               <label>Username<input name="username" required defaultValue={selected.username}/></label>
               <div className="form-grid"><label>Số điện thoại<input name="phone" defaultValue={selected.phone??''}/></label><label>Email<input name="email" type="email" defaultValue={selected.email??''}/></label></div>
               <label>Trạng thái<select name="status" defaultValue={selected.status}>{['Active','M01','M02','M03','M04','Captcha','Auto Hủy','Blocked','Không xác định'].map(s=><option key={s} value={s}>{statusLabel(s)}</option>)}</select></label>
+              <label>Ghi chú<textarea name="note" rows={2} defaultValue={selected.note??''}/></label>
             </section>
             <section className="form-section">
               <h3>Đăng nhập & phiên</h3>
@@ -635,7 +637,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                 <label>Mobile — Loại thiết bị<input name="mobile_device_type" maxLength={120} defaultValue={selectedDeviceFields.mobileType} placeholder="Ví dụ: iPhone 15"/></label>
                 <label>Browser — Tên<input name="browser_name" maxLength={120} defaultValue={selectedDeviceFields.browserName} placeholder="Ví dụ: Chrome"/></label>
               </div>
-              <label>Ghi chú<textarea name="note" rows={2} defaultValue={selected.note??''}/></label>
+
             </section>
             <div className="form-actions"><Link className="button" href={detailHref({user:selected.id,mode:null})}>Hủy</Link><button className="button primary">Lưu thay đổi</button></div>
           </form>
