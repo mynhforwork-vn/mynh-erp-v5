@@ -573,8 +573,9 @@
   }
   .brand-shell-v1 .p1-account-filter-actions{margin-left:auto}
 }
-/* Custom filters: one language across trigger and list, no OS-native grey menu.
-   Preserve HTML form submission using the dropdown's hidden input. */
+/* Native account filters remain selectable while React is hydrating.
+   Keep consistent Neo Enterprise styling without a JS-dependent popup,
+   stacking context, or menu that can be clipped under the table. */
 .brand-shell-v1 form.account-filter-bar.one-line.entity-user-command{
   overflow:visible!important;
   align-items:center!important;
@@ -585,72 +586,36 @@
   flex:0 1 130px!important;
   min-width:97px!important;
   max-width:180px!important;
-  z-index:18;
+  min-height:29px!important;
 }
-.brand-shell-v1 .entity-user-command .p1-filter-dropdown.is-open{z-index:80!important}
-.brand-shell-v1 .p1-filter-dropdown .p1-filter-trigger{
-  display:flex!important;
-  align-items:center!important;
-  justify-content:space-between!important;
-  gap:6px!important;
+.brand-shell-v1 .p1-filter-dropdown select.p1-filter-native{
+  box-sizing:border-box!important;
+  display:block!important;
   width:100%!important;
-  height:29px!important;
-  padding:0 9px!important;
+  max-width:none!important;
+  height:29px!important;min-height:29px!important;
+  margin:0!important;
+  padding:0 26px 0 9px!important;
+  appearance:none!important;-webkit-appearance:none!important;
   border:1px solid #dbe4eb!important;
   border-radius:7px!important;
   background:#fff!important;
   color:#344b5e!important;
-  box-shadow:none!important;
-  font-family:inherit!important;font-size:11px!important;font-weight:500!important;line-height:1.3!important;
-  cursor:pointer;
+  font:500 11px/1.3 inherit!important;
+  font-family:inherit!important;
+  font-size:11px!important;font-weight:500!important;line-height:1.3!important;
+  cursor:pointer!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
 }
-.brand-shell-v1 .p1-filter-dropdown .p1-filter-trigger>span{
-  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-}
-.brand-shell-v1 .p1-filter-dropdown .p1-filter-trigger svg{flex:none;color:#647789}
-.brand-shell-v1 .p1-filter-dropdown .p1-filter-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
+.brand-shell-v1 .p1-filter-dropdown select.p1-filter-native:is(:hover,:focus-visible){
   border-color:#8bafc7!important;
   outline:0!important;
   box-shadow:0 0 0 2px rgba(65,118,154,.10)!important;
 }
-.brand-shell-v1 .p1-filter-dropdown .p1-filter-menu{
-  box-sizing:border-box;
-  position:absolute!important;
-  top:calc(100% + 5px)!important;
-  left:0!important;
-  min-width:max(100%,160px)!important;
-  max-width:min(230px,calc(100vw - 30px))!important;
-  width:max-content!important;
-  padding:5px!important;
-  max-height:260px!important;
-  overflow-y:auto!important;
-  background:#fff!important;
-  border:1px solid #dbe6ef!important;
-  border-radius:9px!important;
-  box-shadow:0 12px 26px rgba(30,50,70,.16)!important;
-}
-.brand-shell-v1 .p1-filter-menu .p1-filter-option{
-  display:flex!important;
-  align-items:center!important;
-  gap:7px!important;
-  width:100%!important;
-  min-height:31px!important;
-  padding:4px 9px 4px 5px!important;
-  border:0!important;
-  border-radius:5px!important;
-  background:#fff!important;
-  color:#405464!important;
-  text-align:left!important;
-  white-space:nowrap!important;
-  font-family:inherit!important;font-size:11px!important;font-weight:500!important;line-height:1.35!important;
-  cursor:pointer;
-}
-.brand-shell-v1 .p1-filter-menu .p1-filter-option:is(.focused,:hover){background:#f1f6fa!important}
-.brand-shell-v1 .p1-filter-menu .p1-filter-option.selected{
-  background:#e8f2f9!important;color:#255a82!important;font-weight:650!important;
-}
-.brand-shell-v1 .p1-filter-option .p1-filter-check{
-  flex:0 0 16px;text-align:center;color:#3275aa;font-size:13px;
+.brand-shell-v1 .p1-filter-dropdown .p1-filter-chevron{
+  position:absolute!important;right:8px!important;top:8px!important;
+  pointer-events:none!important;color:#647789!important;
 }
 @media(max-width:900px){
   .brand-shell-v1 form.account-filter-bar.one-line.entity-user-command{

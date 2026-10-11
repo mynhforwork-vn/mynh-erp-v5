@@ -94,7 +94,6 @@ jobs:
           test "$(curl --silent --show-error --max-time 25 -o integrated-login.html -w '%{http_code}' "$URL/login")" = "200"
       - name: Chrome QA — column controls on deployed MAIN Preview
         env:
-          QA_ORDER_COLUMNS_ONLY: '1'
           PREVIEW_URL: https://tracking-kpi-v1-mynh-erp-v5.mynh-forwork.workers.dev
           SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
           SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS

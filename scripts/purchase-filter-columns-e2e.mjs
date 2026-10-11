@@ -46,30 +46,54 @@ try {
   if(!onlyOrderColumns){
   await go('/purchase/accounts?range=all')
   const filter=page.locator('form.account-filter-bar')
-  await filter.locator('.p1-filter-trigger[aria-label^="Browser:"]').click()
-  check('Browser dropdown opens on account filter bar',
-    await filter.getByRole('listbox',{name:'Browser'}).isVisible())
-  await filter.getByRole('option',{name:'Chrome',exact:true}).click()
-  await page.waitForURL(u=>u.pathname==='/purchase/accounts'&&u.searchParams.get('browser')==='chrome',{timeout:20000})
-  check('Browser filter applies immediately and URL persists selection',
-    new URL(page.url()).searchParams.get('browser')==='chrome'
-    &&await filter.locator('input[name="browser"]').inputValue()==='chrome')
-  await filter.locator('.p1-filter-trigger[aria-label^="SPC:"]').click()
-  await filter.getByRole('option',{name:'Có SPC_ST'}).click()
-  await page.waitForURL(u=>u.searchParams.get('session')==='st',{timeout:20000})
-  check('SPC selection preserves Browser selection',
-    new URL(page.url()).searchParams.get('browser')==='chrome'
+  const combobox=name=>filter.getByRole('combobox',{name})
+  check('Cả bốn bộ lọc là select thực, sử dụng được trước và sau hydration',
+    await filter.locator('select.p1-filter-native').count()===4
+    &&await combobox('Browser').count()===1
+    &&await combobox('SPC').count()===1
+    &&await combobox('Số đơn').count()===1
+    &&await combobox('Tag voucher').count()===1)
+  const nativeHit=await combobox('SPC').evaluate(el=>{
+    const rect=el.getBoundingClientRect()
+    const hit=document.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2)
+    return {hit:hit?.tagName??'',canClick:hit===el,
+      options:el.options?.length??0,width:rect.width}
+  })
+  check('SPC nằm trên vùng có thể nhấp thật và có các lựa chọn',
+    nativeHit.canClick&&nativeHit.options>=5,nativeHit)
+  await combobox('Browser').selectOption('chrome')
+  await page.waitForURL(u=>u.pathname==='/purchase/accounts'&&u.searchParams.get('browser')==='chrome',{timeout:25000})
+  check('Browser chọn Chrome và lọc ngay',await combobox('Browser').inputValue()==='chrome')
+  await combobox('SPC').selectOption('st')
+  await page.waitForURL(u=>u.searchParams.get('session')==='st',{timeout:25000})
+  check('SPC chọn được và giữ lọc Browser',
+    await combobox('SPC').inputValue()==='st'
+    &&new URL(page.url()).searchParams.get('browser')==='chrome')
+  await combobox('Số đơn').selectOption('0')
+  await page.waitForURL(u=>u.searchParams.get('orders')==='0',{timeout:25000})
+  check('Số đơn chọn được, bảo toàn các điều kiện cũ',
+    await combobox('Số đơn').inputValue()==='0'
     &&new URL(page.url()).searchParams.get('session')==='st')
-  await filter.locator('.p1-filter-trigger[aria-label^="SPC:"]').click()
-  await page.keyboard.press('Escape')
-  check('Account filter Escape closes the dropdown',
-    await filter.getByRole('listbox',{name:'SPC'}).count()===0)
-  await filter.locator('.p1-filter-trigger[aria-label^="Số đơn:"]').click()
-  await filter.getByRole('option',{name:'0 đơn'}).click()
-  await page.waitForURL(u=>u.searchParams.get('orders')==='0',{timeout:20000})
-  check('Account order-count filter works and preserves other active filters',
-    new URL(page.url()).searchParams.get('orders')==='0'
-    &&new URL(page.url()).searchParams.get('session')==='st')
+  await combobox('Tag voucher').selectOption('none')
+  await page.waitForURL(u=>u.searchParams.get('voucher')==='none',{timeout:25000})
+  check('Tag voucher chọn được và lọc đúng URL',
+    await combobox('Tag voucher').inputValue()==='none'
+    &&new URL(page.url()).searchParams.get('orders')==='0')
+  await page.reload({waitUntil:'load'})
+  check('Bốn lựa chọn vẫn được giữ sau reload',
+    await combobox('Browser').inputValue()==='chrome'
+    &&await combobox('SPC').inputValue()==='st'
+    &&await combobox('Số đơn').inputValue()==='0'
+    &&await combobox('Tag voucher').inputValue()==='none')
+  for(const [w,h] of [[320,568],[390,844],[768,1024],[1440,900]]){
+    await page.setViewportSize({width:w,height:h})
+    const visible=await combobox('SPC').evaluate(el=>{
+      const r=el.getBoundingClientRect()
+      return r.width>=90&&r.width<=innerWidth&&r.left>=-1&&r.right<=innerWidth+2
+    })
+    check('SPC hiển thị và chọn được theo viewport '+w,visible,{width:w})
+  }
+  await page.setViewportSize({width:1440,height:900})
   await page.screenshot({path:'qa-purchase-filter-columns-artifacts/accounts-filter-1440.png',fullPage:false})
   const userColumnButton=page.locator('.p1-account-filter-actions .column-manager .managed-column-button')
   await userColumnButton.click()
