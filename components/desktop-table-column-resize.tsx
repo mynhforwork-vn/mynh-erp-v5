@@ -181,14 +181,15 @@ export function DesktopTableColumnResize() {
       const panel=Boolean(table.closest('.order-workspace.with-panel'))
       const laneWidth=Math.floor(pane?.clientWidth??table.parentElement?.clientWidth??0)
       const tight=panel&&laneWidth<950
+      const condensed=!panel&&laneWidth<1120&&window.innerWidth>=1100
       const min:Record<string,number>=tight
         ?{select:22,number:20,order:90,username:66,device:98,time:86,product:95,cod:54,tracking:125,voucher:48,status:64}
-        :panel
+        :(panel||condensed)
           ?{select:26,number:24,order:109,username:82,device:109,time:105,product:117,cod:63,tracking:143,voucher:60,status:91}
           :{select:28,number:26,order:130,username:106,device:124,time:118,product:145,cod:67,tracking:159,voucher:65,status:101}
       const base:Record<string,number>=tight
         ?{select:23,number:20,order:94,username:70,device:104,time:89,product:101,cod:56,tracking:128,voucher:49,status:66}
-        :panel
+        :(panel||condensed)
           ?{select:28,number:26,order:124,username:94,device:132,time:112,product:138,cod:66,tracking:166,voucher:65,status:98}
           :{select:28,number:28,order:155,username:128,device:151,time:134,product:203,cod:78,tracking:193,voucher:72,status:119}
       const max:Record<string,number>={select:32,number:38,order:240,username:235,device:174,time:163,product:480,cod:110,tracking:330,voucher:105,status:168}
