@@ -8241,7 +8241,7 @@ a{text-decoration:none}
   right:5px!important;
   z-index:15;
 }
-.account-table-card .user-table thead th:last-child{
+.account-table-card .user-table:not(.mynh-p1-semantic-table) thead th:last-child{
   padding-right:38px!important;
 }
 .order-column-manager .icon-button,
