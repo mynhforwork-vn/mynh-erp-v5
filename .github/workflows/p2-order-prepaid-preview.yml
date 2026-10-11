@@ -73,6 +73,25 @@ jobs:
           SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
           SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
         run: node scripts/order-prepaid-e2e.mjs
+      - name: Chrome QA — purchase account filters and order column manager
+        env:
+          PREVIEW_URL: https://order-prepaid-p2-v1-mynh-erp-v5.mynh-forwork.workers.dev
+          SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+          SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
+        run: node scripts/purchase-filter-columns-e2e.mjs
+      # The main shared QA Preview from PR59/PR60/PR61 is updated only after
+      # the payment and both purchase UI Chrome suites pass. Production is untouched.
+      - name: Publish verified build to main Tracking/Purchase Preview
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx wrangler preview --name tracking-kpi-v1 --worker-name mynh-erp-v5 --message "Purchase P2 integrated main preview $GITHUB_SHA" --json > integrated-preview.json
+      - name: Smoke main Tracking/Purchase Preview
+        run: |
+          URL="https://tracking-kpi-v1-mynh-erp-v5.mynh-forwork.workers.dev"
+          test "$(curl --silent --show-error --max-time 25 -o integrated-health.json -w '%{http_code}' "$URL/api/health")" = "200"
+          grep -q '"ok":true' integrated-health.json
+          test "$(curl --silent --show-error --max-time 25 -o integrated-login.html -w '%{http_code}' "$URL/login")" = "200"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -80,6 +99,7 @@ jobs:
           path: |
             qa-p1-purchase-artifacts/
             qa-order-prepaid-artifacts/
+            qa-purchase-filter-columns-artifacts/
           if-no-files-found: ignore
           retention-days: 7
       - name: Cleanup isolated QA fixtures

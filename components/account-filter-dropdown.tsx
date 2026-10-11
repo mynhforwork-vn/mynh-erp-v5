@@ -10,6 +10,7 @@ export function AccountFilterDropdown({
   const [current,setCurrent]=useState(value)
   const [focused,setFocused]=useState(0)
   const ref=useRef<HTMLDivElement|null>(null)
+  const valueRef=useRef<HTMLInputElement|null>(null)
   const listId=useId()
 
   useEffect(()=>{setCurrent(value);setOpen(false)},[value])
@@ -32,10 +33,14 @@ export function AccountFilterDropdown({
     if(!option)return
     setCurrent(option.value)
     setOpen(false)
-    ref.current?.querySelector<HTMLButtonElement>('.p1-filter-trigger')?.focus()
+    // This is a server-filtered table. Apply the selection immediately.
+    // Update the actual hidden DOM field before requestSubmit; otherwise
+    // React's asynchronous state commit can submit the previous choice.
+    if(valueRef.current)valueRef.current.value=option.value
+    ref.current?.closest('form')?.requestSubmit()
   }
   return <div className={'p1-filter-dropdown'+(open?' is-open':'')} ref={ref}>
-    <input type="hidden" name={name} value={current}/>
+    <input type="hidden" name={name} value={current} ref={valueRef}/>
     <button type="button" className="p1-filter-trigger"
       aria-label={label+': '+(active?.label??'Tất cả')}
       aria-haspopup="listbox" aria-controls={listId} aria-expanded={open}

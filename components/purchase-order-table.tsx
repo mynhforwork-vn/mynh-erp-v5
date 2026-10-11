@@ -460,10 +460,14 @@ export function PurchaseOrderTable({
         </button>
       </div>}
     <div className="p1-order-column-manager managed-column-wrap" ref={columnManagerRef}>
-      <button className="icon-button managed-column-button" type="button" onClick={()=>setOpen(v=>!v)} title="Cột & thứ tự" aria-expanded={open}>
+      <button className="icon-button managed-column-button" type="button"
+        onClick={()=>setOpen(value=>!value)}
+        title="Sắp xếp, ẩn và hiện cột đơn nhập"
+        aria-label="Sắp xếp cột đơn nhập"
+        aria-haspopup="dialog" aria-expanded={open}>
         <ColumnIcon/>
       </button>
-      {open&&<div className="column-manager-menu">
+      {open&&<div className="column-manager-menu" role="dialog" aria-label="Sắp xếp, ẩn và hiện cột đơn nhập">
         <div className="column-manager-head">
           <b>Cột & thứ tự</b>
           <button type="button" onClick={resetColumns}>↺ Mặc định</button>
