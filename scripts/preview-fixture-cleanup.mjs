@@ -136,7 +136,7 @@ await del('audit_logs','entity_id',f.erp_user_id)
 // Discover by the fixture code, never delete arbitrary business records.
 if(f.prepaid_order_code){
   const created=await rows('/rest/v1/orders?select=id&shopee_order_id=eq.'+
-    encodeURIComponent(f.prepaid_order_code))
+    encodeURIComponent(String(f.prepaid_order_code).toUpperCase()))
   for(const order of created){
     await del('audit_logs','entity_id',order.id)
     await del('shipments','order_id',order.id)
