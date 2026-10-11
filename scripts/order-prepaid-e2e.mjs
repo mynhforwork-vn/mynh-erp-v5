@@ -50,7 +50,13 @@ try{
   })))
   const page=await context.newPage()
   async function go(route){
-    const response=await page.goto(base+route,{waitUntil:'load',timeout:35000})
+    let response
+    for(let attempt=0;attempt<2;attempt++){
+      response=await page.goto(base+route,{waitUntil:'load',timeout:35000})
+      if(![502,503,504].includes(response?.status()??0))break
+      // A transient edge 503 should not falsely fail payment persistence.
+      if(attempt===0)await page.waitForTimeout(2000)
+    }
     assert.ok(response?.status()===200,'Preview route '+route+' HTTP '+response?.status())
     assert.ok(!new URL(page.url()).pathname.includes('/login'),'QA login required')
   }
