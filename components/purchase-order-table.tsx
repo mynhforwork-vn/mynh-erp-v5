@@ -495,7 +495,7 @@ export function PurchaseOrderTable({
                 row?.classList.remove('dragging')
                 menu?.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'))
                 const target=document.elementFromPoint(event.clientX,event.clientY)?.closest('.column-manager-row')
-                const destination=menu?.contains(target)?target?.getAttribute('data-column-key'):null
+                const destination=target&&menu?.contains(target)?target.getAttribute('data-column-key'):null
                 const source=draggingRef.current
                 draggingRef.current=null
                 if(source&&destination&&ALL.includes(destination as ColKey)&&source!==destination){
