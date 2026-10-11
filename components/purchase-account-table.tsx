@@ -166,6 +166,14 @@ export function PurchaseAccountTable({
   const columnMinimums:Record<ColKey,number>={"number":32,"username":154,"platform":64,"phone":108,"email":155,"status":89,"device":102,"voucher":76,"orders":52,"createdAt":135,"note":90}
   const panelMinimums:Record<ColKey,number>={"number":28,"username":125,"platform":58,"phone":96,"email":130,"status":80,"device":90,"voucher":70,"orders":44,"createdAt":125,"note":72}
   const shownColumns=columnOrder.filter(isVisible)
+  // Compact panel sizing is relative to the real table lane. Every visible
+  // column receives an explicit share, including when users hide/reorder.
+  const panelFitWeights:Record<ColKey,number>={
+    number:22,username:102,platform:53,phone:90,email:98,
+    status:72,device:79,voucher:65,orders:40,createdAt:106,note:76
+  }
+  const panelFitTotal=(canManage?24:0)+shownColumns.reduce((sum,key)=>sum+panelFitWeights[key],0)
+  const panelShare=(weight:number)=>({ '--p1-panel-col-width':(weight/panelFitTotal*100)+'%' }) as CSSProperties
   const fullFloor=(canManage?32:0)+shownColumns.reduce((sum,k)=>sum+columnMinimums[k],0)
   const panelFloor=(canManage?28:0)+shownColumns.reduce((sum,k)=>sum+panelMinimums[k],0)
   const tableWidths={
@@ -305,8 +313,8 @@ export function PurchaseAccountTable({
     <div className="card table-card account-table-card">
       <table className="table user-table mynh-p1-semantic-table" style={tableWidths}>
         <colgroup>
-          {canManage&&<col className="p1-account-col p1-account-col-select"/>}
-          {columnOrder.filter(isVisible).map(k=><col key={k} className={'p1-account-col p1-account-col-'+k}/>)}
+          {canManage&&<col className="p1-account-col p1-account-col-select" style={panelShare(24)}/>}
+          {shownColumns.map(k=><col key={k} className={'p1-account-col p1-account-col-'+k} style={panelShare(panelFitWeights[k])}/>)}
         </colgroup>
         <thead><tr>
           {canManage&&<th className="bulk-select-col">
