@@ -510,8 +510,12 @@ try {
       }).locator('input[type="checkbox"]').uncheck()
       await page.keyboard.press('Escape')
       await page.reload({waitUntil:'load',timeout:35000})
+      // The server first paints default columns, then the client restores
+      // localStorage preferences. Assert after hydration, not at first paint.
+      const deviceColumn=page.locator('.order-table th[data-order-col="device"]')
+      await deviceColumn.waitFor({state:'detached',timeout:15000}).catch(()=>{})
       check('Explicitly hidden Device column stays hidden after reload',
-        await page.locator('.order-table th[data-order-col="device"]').count()===0)
+        await deviceColumn.count()===0)
       await page.evaluate(({storage,order})=>{
         localStorage.removeItem(storage);localStorage.removeItem(order)
         localStorage.removeItem('mynh-v5-purchase-order-device-v1')
