@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/supabase/auth'
 import {suggestDestinationHub,type AddressHub} from '@/lib/destination-hub-resolution'
+import { trackingNumberMeansCancelled } from '@/lib/purchase-order-cancellation'
 
 function text(v:FormDataEntryValue|null){return String(v??'').trim()}
 
@@ -435,16 +436,17 @@ export async function createOrder(formData:FormData){
   const shippingService=text(formData.get('shipping_service'))==='EXPRESS'?'EXPRESS':'STANDARD'
   const isExpress=shippingService==='EXPRESS'
   const trackingNumber=text(formData.get('tracking_number'))
-  const carrier=isExpress
+  const cancelledByMarker=trackingNumberMeansCancelled(trackingNumber)
+  const carrier=cancelledByMarker?null:isExpress
     ? (trackingNumber?'Hỏa tốc':null)
     : await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
-  const usesDestinationHub=!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
+  const usesDestinationHub=!cancelledByMarker&&!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const matchedHub=usesDestinationHub?await destinationHubFromAddress(
     supabase,text(formData.get('recipient_address')),carrier):null
   const effectiveHub=usesDestinationHub
     ?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''): ''
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
-  const orderStatus=isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
+  const orderStatus=cancelledByMarker?'CANCELLED':isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
 
   const {data,error}=await supabase.rpc('create_order_full_v2',{
     p_shopee_order_id:text(formData.get('shopee_order_id'))||null,
@@ -474,7 +476,13 @@ export async function createOrder(formData:FormData){
       express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
     }).eq('id',data)
     if(orderMetaError)throw new Error(orderMetaError.message)
-    if(isExpress&&trackingNumber){
+    if(cancelledByMarker){
+      const {error:cancelError}=await supabase.from('shipments').update({
+        current_tracking_status:'CANCELLED',tracking_enabled:false,next_track_at:null,locked_until:null,
+      }).eq('order_id',data).eq('is_active',true)
+      if(cancelError)throw new Error(cancelError.message)
+    }
+    if(isExpress&&trackingNumber&&!cancelledByMarker){
       const {error:shipmentError}=await supabase.from('shipments').update({
         carrier:'Hỏa tốc',
         is_active:true,
@@ -486,7 +494,7 @@ export async function createOrder(formData:FormData){
       if(shipmentError)throw new Error(shipmentError.message)
     }
   }
-  if(data&&trackingNumber&&!isExpress)await queueFirstTracking(supabase,String(data))
+  if(data&&trackingNumber&&!isExpress&&!cancelledByMarker)await queueFirstTracking(supabase,String(data))
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
 }
@@ -500,16 +508,17 @@ export async function updateOrder(formData:FormData){
   const shippingService=text(formData.get('shipping_service'))==='EXPRESS'?'EXPRESS':'STANDARD'
   const isExpress=shippingService==='EXPRESS'
   const trackingNumber=text(formData.get('tracking_number'))
-  const carrier=isExpress
+  const cancelledByMarker=trackingNumberMeansCancelled(trackingNumber)
+  const carrier=cancelledByMarker?null:isExpress
     ? (trackingNumber?'Hỏa tốc':null)
     : await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
-  const usesDestinationHub=!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
+  const usesDestinationHub=!cancelledByMarker&&!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const matchedHub=usesDestinationHub?await destinationHubFromAddress(
     supabase,text(formData.get('recipient_address')),carrier):null
   const effectiveHub=usesDestinationHub
     ?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''): ''
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
-  const orderStatus=isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
+  const orderStatus=cancelledByMarker?'CANCELLED':isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
 
   const {data,error}=await supabase.rpc('update_order_full_v2',{
     p_order_id:orderId,
@@ -559,7 +568,13 @@ export async function updateOrder(formData:FormData){
         }).eq('order_id',orderId).eq('is_active',true)
     if(shipmentError)throw new Error(shipmentError.message)
   }
-  if(trackingNumber&&!isExpress)await queueFirstTracking(supabase,orderId)
+  if(cancelledByMarker){
+    const {error:cancelError}=await supabase.from('shipments').update({
+      current_tracking_status:'CANCELLED',tracking_enabled:false,next_track_at:null,locked_until:null,
+    }).eq('order_id',orderId).eq('is_active',true)
+    if(cancelError)throw new Error(cancelError.message)
+  }
+  if(trackingNumber&&!isExpress&&!cancelledByMarker)await queueFirstTracking(supabase,orderId)
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
 }
@@ -1422,6 +1437,8 @@ export async function quickAddTrackingNumber(formData:FormData){
   const trackingNumber=text(formData.get('tracking_number'))
   const carrierConfigId=text(formData.get('carrier_config_id'))
   if(!orderId||!trackingNumber)throw new Error('Thiếu đơn hàng hoặc mã vận đơn')
+  if(trackingNumberMeansCancelled(trackingNumber))
+    throw new Error('Mã KHÔNG CÓ nghĩa là đơn bị huỷ. Hãy dùng Sửa đơn để xác nhận huỷ.')
 
   const {data:order,error:orderError}=await supabase
     .from('orders')
@@ -1526,6 +1543,8 @@ export async function replaceShipment(formData:FormData){
   const orderId=text(formData.get('order_id'))
   const trackingNumber=text(formData.get('tracking_number'))
   if(!orderId||!trackingNumber)throw new Error('Thiếu đơn hàng hoặc mã vận đơn')
+  if(trackingNumberMeansCancelled(trackingNumber))
+    throw new Error('Mã KHÔNG CÓ nghĩa là đơn bị huỷ. Hãy dùng Sửa đơn để xác nhận huỷ.')
 
   const {data:order,error:orderError}=await supabase
     .from('orders')
