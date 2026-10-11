@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
+import { orderIsCancelled } from '@/lib/purchase-order-cancellation'
 import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
 import {
   archiveOrdersBulk,
@@ -19,10 +20,10 @@ type CarrierConfig={
   display_name:string
   tracking_prefixes?:string[]|null
 }
-type ColKey='number'|'order'|'username'|'device'|'time'|'product'|'cod'|'tracking'|'carrier'|'voucher'|'status'
+type ColKey='number'|'order'|'username'|'device'|'time'|'product'|'cod'|'tracking'|'voucher'|'status'
 type SortKey='order_asc'|'order_desc'|'username_asc'|'username_desc'|'time_new'|'time_old'|'cod_desc'|'cod_asc'|'status_asc'|'status_desc'
 
-const ALL:ColKey[]=['number','order','username','device','time','product','cod','tracking','carrier','voucher','status']
+const ALL:ColKey[]=['number','order','username','device','time','product','cod','tracking','voucher','status']
 const LABELS:Record<ColKey,string>={
   number:'#',
   order:'Mã đơn',
@@ -31,8 +32,7 @@ const LABELS:Record<ColKey,string>={
   time:'Thời gian đặt',
   product:'Sản phẩm',
   cod:'COD',
-  tracking:'Mã vận đơn',
-  carrier:'ĐVVC',
+  tracking:'Vận chuyển',
   voucher:'Voucher',
   status:'Xử lý',
 }
@@ -40,6 +40,7 @@ const STORAGE_COLUMNS='mynh-v5-purchase-order-columns'
 const STORAGE_COLUMN_ORDER='mynh-v5-purchase-order-column-order'
 const STORAGE_SORT='mynh-v5-purchase-order-sort'
 const STORAGE_DEVICE_MIGRATION='mynh-v5-purchase-order-device-v1'
+const STORAGE_SHIPPING_MIGRATION='mynh-v5-purchase-order-shipping-v2'
 
 function activeShipment(order:Row){
   return (order?.shipments??[]).find((x:any)=>x.is_active)??order?.shipments?.[0]??null
@@ -59,6 +60,7 @@ function voucherSummary(vouchers:any[]){
   )].join(' · ')
 }
 function statusKey(row:Row){
+  if(orderIsCancelled(row))return 'CANCELLED'
   if(row.shipping_service==='EXPRESS')return ['EXPRESS',row.receive_status??''].join(' ')
   const s=activeShipment(row)?.current_tracking_status??''
   return [s,row.receive_status??''].join(' ')
@@ -164,6 +166,16 @@ export function PurchaseOrderTable({
       // Introduce Device once into existing saved column preferences.
       // Afterwards users can hide it permanently without the migration undoing it.
       const needsMigration=!localStorage.getItem(STORAGE_DEVICE_MIGRATION)
+      const needsShippingMigration=!localStorage.getItem(STORAGE_SHIPPING_MIGRATION)
+      const mergedShipping=(keys:string[])=>{
+        if(!needsShippingMigration||!keys.includes('carrier'))return keys
+        const next=keys.filter(k=>k!=='carrier')
+        if(!next.includes('tracking')){
+          const i=keys.indexOf('carrier')
+          next.splice(Math.min(i,next.length),0,'tracking')
+        }
+        return next
+      }
       const withDevice=(keys:string[])=>{
         if(keys.includes('device'))return keys
         const next=[...keys]
@@ -176,7 +188,7 @@ export function PurchaseOrderTable({
         const parsed=JSON.parse(raw)
         if(Array.isArray(parsed)){
           const columns=normalizeLegacyVisibleColumns<ColKey>(
-            needsMigration?withDevice(parsed):parsed,ALL,['order'])
+            needsMigration?withDevice(mergedShipping(parsed)):mergedShipping(parsed),ALL,['order'])
           setVisible(columns)
           if(needsMigration)localStorage.setItem(STORAGE_COLUMNS,JSON.stringify(columns))
         }
@@ -186,12 +198,13 @@ export function PurchaseOrderTable({
         const parsedOrder=JSON.parse(rawOrder)
         if(Array.isArray(parsedOrder)){
           const columns=normalizeLegacyColumnOrder<ColKey>(
-            needsMigration?withDevice(parsedOrder):parsedOrder,ALL)
+            needsMigration?withDevice(mergedShipping(parsedOrder)):mergedShipping(parsedOrder),ALL)
           setColumnOrder(columns)
           if(needsMigration)localStorage.setItem(STORAGE_COLUMN_ORDER,JSON.stringify(columns))
         }
       }
       if(needsMigration)localStorage.setItem(STORAGE_DEVICE_MIGRATION,'1')
+      if(needsShippingMigration)localStorage.setItem(STORAGE_SHIPPING_MIGRATION,'1')
       const savedSort=localStorage.getItem(STORAGE_SORT) as SortKey|null
       if(savedSort)setSort(savedSort)
     }catch{}
@@ -317,12 +330,12 @@ export function PurchaseOrderTable({
   }
 
   // Tracking/HUB sizing: minimum follows visible semantic IDs, not positions.
-  const columnMinimums:Record<ColKey,number>={"number":28,"order":134,"username":90,"device":139,"time":116,"product":148,"cod":76,"tracking":146,"carrier":77,"voucher":75,"status":105}
-  const panelMinimums:Record<ColKey,number>={"number":26,"order":118,"username":84,"device":113,"time":106,"product":115,"cod":65,"tracking":123,"carrier":68,"voucher":63,"status":94}
+  const columnMinimums:Record<ColKey,number>={"number":28,"order":134,"username":94,"device":128,"time":116,"product":149,"cod":76,"tracking":177,"voucher":69,"status":104}
+  const panelMinimums:Record<ColKey,number>={"number":26,"order":116,"username":84,"device":112,"time":106,"product":118,"cod":65,"tracking":150,"voucher":61,"status":92}
   const shownColumns=columnOrder.filter(isVisible)
   const panelFitWeights:Record<ColKey,number>={
-    number:20,order:108,username:73,device:118,time:103,product:121,
-    cod:60,tracking:104,carrier:65,voucher:58,status:91
+    number:20,order:108,username:80,device:106,time:103,product:121,
+    cod:60,tracking:145,voucher:57,status:91
   }
   const panelFitTotal=(canEdit?24:0)+shownColumns.reduce((sum,key)=>sum+panelFitWeights[key],0)
   const panelShare=(weight:number)=>({ '--p1-panel-col-width':(weight/panelFitTotal*100)+'%' }) as CSSProperties
@@ -343,8 +356,7 @@ export function PurchaseOrderTable({
     if(key==='time')return <th key={key} data-order-col={key}><button className="sort-head" type="button" onClick={()=>toggleSort('time_old','time_new')}>Thời gian đặt <span>{sort==='time_new'?'↓':sort==='time_old'?'↑':'↕'}</span></button></th>
     if(key==='product')return <th key={key} data-order-col={key} className="p1-order-product-head">Sản phẩm</th>
     if(key==='cod')return <th key={key} data-order-col={key}><button className="sort-head" type="button" onClick={()=>toggleSort('cod_asc','cod_desc')}>COD <span>{sortIndicator(sort,'cod_asc','cod_desc')}</span></button></th>
-    if(key==='tracking')return <th key={key} data-order-col={key} className="p1-order-tracking-head">Mã vận đơn</th>
-    if(key==='carrier')return <th key={key} data-order-col={key}>ĐVVC</th>
+    if(key==='tracking')return <th key={key} data-order-col={key} className="p1-order-tracking-head">Vận chuyển</th>
     if(key==='voucher')return <th key={key} data-order-col={key}>Voucher</th>
     return <th key={key} data-order-col={key}><button className="sort-head" type="button" onClick={()=>toggleSort('status_asc','status_desc')}>Xử lý <span>{sortIndicator(sort,'status_asc','status_desc')}</span></button></th>
   }
@@ -365,8 +377,8 @@ export function PurchaseOrderTable({
       return <td key={key} data-order-col={key} className="p1-order-device-cell"
         title={'Mobile: '+(mobile||'—')+' · Browser: '+(browser||'—')}>
         <span className="p1-order-device-lines">
-          <span><small>Mobile</small><b>{mobile||'—'}</b></span>
-          <span><small>Browser</small><b>{browser||'—'}</b></span>
+          <span><small>M:</small><b>{mobile||'—'}</b></span>
+          <span><small>B:</small><b>{browser||'—'}</b></span>
         </span>
       </td>
     }
@@ -382,28 +394,34 @@ export function PurchaseOrderTable({
       </span>
     </td>
     if(key==='cod')return <td key={key} data-order-col={key} className="money">{formatMoney(o.cod)}</td>
-    if(key==='tracking')return <td key={key} data-order-col={key} className="tracking-number-cell">
-      {s?.tracking_number
-        ? <span className="tracking-number-value" title={s.tracking_number}>{s.tracking_number}</span>
-        : canEdit&&!o.archived_at
-          ? <QuickTrackingEditor
-              orderId={o.id}
-              returnQuery={baseQuery}
-              carrierConfigs={carrierConfigs}
-              isExpress={o.shipping_service==='EXPRESS'}
-            />
-          : <span className="tracking-missing-text">Chưa có</span>}
-    </td>
-    if(key==='carrier')return <td key={key} data-order-col={key}>{o.shipping_service==='EXPRESS'?'Hỏa tốc':s?.carrier??'—'}</td>
+    if(key==='tracking'){
+      const cancelled=orderIsCancelled(o)
+      const value=String(s?.tracking_number??'')
+      const carrier=o.shipping_service==='EXPRESS'?'Hỏa tốc':String(s?.carrier??'')
+      return <td key={key} data-order-col={key} className="tracking-number-cell p1-shipping-cell"
+        title={'MVĐ: '+(value||'Chưa có')+' · ĐVVC: '+(carrier||'Chưa rõ')}>
+        <span className="p1-shipping-lines">
+          <span className="p1-shipping-number">
+            {value?<b title={value}>{value}</b>:canEdit&&!o.archived_at&&!cancelled
+              ?<QuickTrackingEditor orderId={o.id} returnQuery={baseQuery}
+                carrierConfigs={carrierConfigs} isExpress={o.shipping_service==='EXPRESS'}/>
+              :<b>Chưa có</b>}
+          </span>
+          <span className="p1-shipping-carrier">{cancelled?'Đơn bị huỷ':carrier||'Chưa rõ ĐVVC'}</span>
+        </span>
+      </td>
+    }
     if(key==='voucher')return <td key={key} data-order-col={key} className="voucher-cell"><VoucherTags value={voucherSummary(o.order_vouchers??[])} compact maxVisible={2}/></td>
     return <td key={key} data-order-col={key}>
       <div className="order-state-cell">
-        {o.shipping_service==='EXPRESS'
+        {orderIsCancelled(o)
+          ? <span className="status-pill status-cancelled">Đơn bị huỷ</span>
+          :o.shipping_service==='EXPRESS'
           ? <span className="status-pill orange">Hỏa tốc</span>
           : s?.tracking_number
             ? <span className={'status-pill status-'+String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(s?.current_tracking_status)}</span>
             : <span className="status-pill orange">Chờ mã vận đơn</span>}
-        {o.receive_status!=='NOT_READY'&&<span className={'status-pill '+(o.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(o.receive_status)}</span>}
+        {!orderIsCancelled(o)&&o.receive_status!=='NOT_READY'&&<span className={'status-pill '+(o.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(o.receive_status)}</span>}
         {o.archived_at&&<span className="status-pill archived">Lưu trữ</span>}
       </div>
     </td>
