@@ -290,6 +290,27 @@ try {
           &&(spec.name==='User'
             ?!m.lastAction&&m.columnButton&&m.columnButton.right<=1444
             :!m.lastAction&&!m.actionHead)),m??{})
+      // The requested desktop drawer behavior is FIT, not merely scrollable.
+      // Verify that the last visible header is within the table container.
+      const panelFit=await page.evaluate(({selector,wrapSelector})=>{
+        const table=document.querySelector(selector)
+        const wrap=document.querySelector(wrapSelector)
+        const last=table?.querySelector('thead tr th:last-child')?.getBoundingClientRect()
+        const card=wrap?.getBoundingClientRect()
+        return {scrollWidth:wrap?.scrollWidth,clientWidth:wrap?.clientWidth,
+          lastRight:last?.right,cardRight:card?.right,
+          tableWidth:table?.getBoundingClientRect().width}
+      },{selector:spec.table,wrapSelector:spec.wrap})
+      check(spec.name+' panel 1440 shows all enabled columns without horizontal scroll',
+        Boolean(panelFit.scrollWidth<=panelFit.clientWidth+4
+          &&panelFit.lastRight<=panelFit.cardRight+3
+          &&panelFit.tableWidth<=panelFit.clientWidth+4),panelFit)
+      const colouredTag=await page.evaluate(selector=>{
+        const tag=document.querySelector(selector+' tbody :is(.status-pill,.voucher-tag,.platform-cell)')
+        return tag?{font:parseFloat(getComputedStyle(tag).fontSize),
+          padding:parseFloat(getComputedStyle(tag).paddingLeft)}:null
+      },spec.table)
+      check(spec.name+' compact colour pills',Boolean(colouredTag&&colouredTag.font<=8.5&&colouredTag.padding<=4),colouredTag??{})
       await page.screenshot({path:output+'/'+(spec.name==='User'?'accounts':'orders')+'-panel-1440.png',fullPage:false})
       if(spec.name==='User'){
         const trigger=page.locator('.p1-account-filter-actions .managed-column-button')
