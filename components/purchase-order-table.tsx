@@ -289,6 +289,12 @@ export function PurchaseOrderTable({
   const columnMinimums:Record<ColKey,number>={"number":30,"order":150,"username":105,"time":134,"product":165,"cod":90,"tracking":155,"carrier":95,"voucher":85,"status":120}
   const panelMinimums:Record<ColKey,number>={"number":28,"order":135,"username":85,"time":120,"product":130,"cod":75,"tracking":140,"carrier":78,"voucher":70,"status":108}
   const shownColumns=columnOrder.filter(isVisible)
+  const panelFitWeights:Record<ColKey,number>={
+    number:22,order:116,username:76,time:111,product:123,
+    cod:62,tracking:113,carrier:70,voucher:61,status:94
+  }
+  const panelFitTotal=(canEdit?24:0)+shownColumns.reduce((sum,key)=>sum+panelFitWeights[key],0)
+  const panelShare=(weight:number)=>({ '--p1-panel-col-width':(weight/panelFitTotal*100)+'%' }) as CSSProperties
   const fullFloor=(canEdit?30:0)+shownColumns.reduce((sum,k)=>sum+columnMinimums[k],0)
   const panelFloor=(canEdit?28:0)+shownColumns.reduce((sum,k)=>sum+panelMinimums[k],0)
   const tableWidths={
@@ -424,8 +430,8 @@ export function PurchaseOrderTable({
     <div className="card table-card order-table-card" ref={tableWrapRef}>
       <table className="table order-table mynh-p1-semantic-table" style={tableWidths}>
         <colgroup>
-          {canEdit&&<col className="p1-order-col-select"/>}
-          {shownColumns.map(k=><col key={k} className={'p1-order-col-'+k}/>)}
+          {canEdit&&<col className="p1-order-col-select" style={panelShare(24)}/>}
+          {shownColumns.map(k=><col key={k} className={'p1-order-col-'+k} style={panelShare(panelFitWeights[k])}/>)}
         </colgroup>
         <thead><tr>
           {canEdit&&<th className="bulk-select-col">
