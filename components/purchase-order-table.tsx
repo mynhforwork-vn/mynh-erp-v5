@@ -462,48 +462,50 @@ export function PurchaseOrderTable({
         </div>
         {columnOrder.map(k=><div
           key={k}
+          data-column-key={k}
           className={'column-manager-row draggable '+(k==='order'?'locked ':'')}
-          onDragEnter={e=>e.currentTarget.classList.add('drop-target')}
-          onDragOver={e=>{e.preventDefault();e.dataTransfer.dropEffect='move'}}
-          onDragLeave={e=>e.currentTarget.classList.remove('drop-target')}
-          onPointerUp={()=>{
-            // Fallback for browsers where the native HTML5 drop is suppressed
-            // by a portal or a pointer gesture on the drag handle.
-            const source=draggingRef.current
-            if(source&&source!==k)reorderColumn(source,k)
-            draggingRef.current=null
-            setDraggingColumn(null)
-            setDragOverColumn(null)
+          onPointerEnter={e=>{
+            if(draggingRef.current&&draggingRef.current!==k)e.currentTarget.classList.add('drop-target')
           }}
-          onDrop={e=>{
-            e.preventDefault()
-            e.currentTarget.classList.remove('drop-target')
-            const source=(e.dataTransfer.getData('text/plain')||draggingRef.current||draggingColumn) as ColKey|null
-            if(source&&ALL.includes(source))reorderColumn(source,k)
-            draggingRef.current=null
-            setDraggingColumn(null)
-            setDragOverColumn(null)
-          }}
+          onPointerLeave={e=>e.currentTarget.classList.remove('drop-target')}
         >
           <button
             type="button"
             className="column-drag-handle"
-            draggable
             title="Kéo để đổi thứ tự cột"
             aria-label={'Kéo '+LABELS[k]}
-            onPointerDown={()=>{draggingRef.current=k}}
-            onDragStart={e=>{
+            onPointerDown={e=>{
+              if(e.button!==0)return
+              e.preventDefault()
               draggingRef.current=k
-              // Keep the source DOM stable through dragstart/dragover/drop.
-              // React rerenders here can cancel native HTML5 DnD in Chromium.
-              e.currentTarget.closest('.column-manager-row')?.classList.add('dragging')
-              e.dataTransfer.effectAllowed='move'
-              e.dataTransfer.setData('text/plain',k)
-            }}
-            onDragEnd={e=>{
-              e.currentTarget.closest('.column-manager-row')?.classList.remove('dragging')
-              draggingRef.current=null
-              setDraggingColumn(null);setDragOverColumn(null)
+              const handle=e.currentTarget
+              const row=handle.closest('.column-manager-row')
+              const menu=handle.closest('.column-manager-menu')
+              row?.classList.add('dragging')
+              const initialY=e.clientY
+              const onMove=(event:PointerEvent)=>{
+                if(Math.abs(event.clientY-initialY)<3)return
+                menu?.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'))
+                const target=document.elementFromPoint(event.clientX,event.clientY)?.closest('.column-manager-row')
+                if(target&&menu?.contains(target)&&target!==row)target.classList.add('drop-target')
+              }
+              const onUp=(event:PointerEvent)=>{
+                window.removeEventListener('pointermove',onMove,true)
+                window.removeEventListener('pointerup',onUp,true)
+                window.removeEventListener('pointercancel',onUp,true)
+                row?.classList.remove('dragging')
+                menu?.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'))
+                const target=document.elementFromPoint(event.clientX,event.clientY)?.closest('.column-manager-row')
+                const destination=menu?.contains(target)?target?.getAttribute('data-column-key'):null
+                const source=draggingRef.current
+                draggingRef.current=null
+                if(source&&destination&&ALL.includes(destination as ColKey)&&source!==destination){
+                  reorderColumn(source,destination as ColKey)
+                }
+              }
+              window.addEventListener('pointermove',onMove,true)
+              window.addEventListener('pointerup',onUp,true)
+              window.addEventListener('pointercancel',onUp,true)
             }}
           >⠿</button>
           <label>
