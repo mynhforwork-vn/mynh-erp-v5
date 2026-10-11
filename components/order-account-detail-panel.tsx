@@ -46,9 +46,9 @@ export function OrderAccountDetailPanel({
   const statusOf=(order:UserOrder)=>{
     const shipment=order.shipments?.find(s=>s.is_active)??order.shipments?.[0]
     if(orderIsCancelled(order))return 'Đã huỷ'
-    if(order.receive_status==='RECEIVED')return 'Đã nhận'
     if(shipment?.current_tracking_status&&shipment.current_tracking_status!=='UNKNOWN')
       return statusLabel(shipment.current_tracking_status)
+    if(order.receive_status==='RECEIVED')return 'Đã nhận'
     return statusLabel(order.order_status)
   }
   const effectiveDate=earliestDate&&account.created_at&&Date.parse(earliestDate)<Date.parse(account.created_at)
