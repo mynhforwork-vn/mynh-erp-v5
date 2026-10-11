@@ -835,6 +835,17 @@ try {
     &&await page.locator('.tracking-success-toast-stack').evaluate(el=>
       getComputedStyle(el).position==='fixed'
       &&el.getBoundingClientRect().top<45))
+  for(const width of [1440,390,320]){
+    await page.setViewportSize({width,height:width===1440?900:width===390?844:568})
+    const geometry=await page.locator('.tracking-success-toast-stack').evaluate(stack=>{
+      const main=document.querySelector('.main')?.getBoundingClientRect()
+      const toast=stack.getBoundingClientRect()
+      return {mainLeft:main?.left??0,left:toast.left,right:toast.right,viewport:innerWidth}
+    })
+    check('Tracking toast stays outside left sidebar at '+width,
+      geometry.left>=geometry.mainLeft+4&&geometry.right<=geometry.viewport-4,geometry)
+  }
+  await page.setViewportSize({width:1440,height:900})
   check('Tracking toast parameters are cleared after acknowledgement',
     !new URL(page.url()).searchParams.has('received')
     &&!new URL(page.url()).searchParams.has('payment'))

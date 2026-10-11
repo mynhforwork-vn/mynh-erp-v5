@@ -197,8 +197,8 @@ Deno.serve(async(req)=>{
       .select("order_id,product_name,variant,quantity")
       .in("order_id",orderIds),
     db.from("shipments")
-      .select("id,tracking_number")
-      .in("id",shipmentIds),
+      .select("id,order_id,tracking_number,is_active")
+      .in("order_id",orderIds),
     db.from("telegram_alert_destinations")
       .select("destination_hub,chat_id,alert_types,is_active")
       .eq("is_active",true),
@@ -214,13 +214,17 @@ Deno.serve(async(req)=>{
 
   const orderMap=new Map((orders??[]).map((x:any)=>[String(x.id),x]));
   const shipmentMap=new Map((shipments??[]).map((x:any)=>[String(x.id),x]));
+  const cancelledOrderIds=new Set((shipments??[])
+    .filter((x:any)=>x.is_active&&cancelledPlaceholder(x.tracking_number))
+    .map((x:any)=>String(x.order_id)));
   // Never send an old alert whose order was cancelled by the no-MVĐ marker.
   // Mark delivery as suppressed (retain the event and historical audit data),
   // rather than retrying indefinitely or silently sending it to Telegram.
   const excludedIds=alerts.filter(alert=>{
     const order:any=orderMap.get(alert.order_id);
     const shipment:any=shipmentMap.get(alert.shipment_id);
-    return cancelledPlaceholder(shipment?.tracking_number)
+    return cancelledOrderIds.has(alert.order_id)
+      ||cancelledPlaceholder(shipment?.tracking_number)
       ||["CANCELLED","CANCELED"].includes(String(order?.order_status??"").toUpperCase());
   }).map(alert=>alert.id);
   if(excludedIds.length){

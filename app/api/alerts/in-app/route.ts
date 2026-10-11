@@ -29,7 +29,7 @@ export async function GET(request:Request){
   const legacyRows=(legacy.data??[]) as LegacyAlert[]
   const orderCodes=[...new Set(legacyRows.flatMap(row=>row.order_codes??[]).filter(Boolean))]
   const orderResult=orderCodes.length
-    ?await supabase.from('orders').select('id,shopee_order_id,receive_status,shipping_service,destination_hub,cod,recipient_name,recipient_phone,recipient_address,order_status,erp_users(username),order_items(product_name,variant,quantity),shipments(tracking_number,carrier)')
+    ?await supabase.from('orders').select('id,shopee_order_id,receive_status,shipping_service,destination_hub,cod,recipient_name,recipient_phone,recipient_address,order_status,erp_users(username),order_items(product_name,variant,quantity),shipments(tracking_number,carrier,is_active)')
       .in('shopee_order_id',orderCodes).is('archived_at',null)
     :{data:[],error:null}
   const role=String(user.app_metadata?.role??'viewer')
