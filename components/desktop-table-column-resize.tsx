@@ -139,8 +139,8 @@ export function DesktopTableColumnResize() {
     const purchasePanelWeights={
       account:{number:22,username:102,platform:53,phone:90,email:98,
         status:72,mobile:81,browser:72,voucher:65,orders:40,createdAt:106,note:76},
-      order:{number:22,order:116,username:76,time:111,product:123,
-        cod:62,tracking:113,carrier:70,voucher:61,status:94},
+      order:{number:20,order:108,username:73,device:118,time:103,product:121,
+        cod:60,tracking:104,carrier:65,voucher:58,status:91},
     }
     const purchasePanelContext=(table:HTMLTableElement)=>{
       if(window.innerWidth<1100)return null
