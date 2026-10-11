@@ -150,6 +150,27 @@ try {
       check('User archive toolbar disappears when selection clears',await page.locator('.user-bulk-bar').count()===0)
     }
     if(spec.name==='Đơn nhập'){
+      check('Order displays account device column by default',
+        await page.locator('.order-table thead th[data-order-col="device"]').count()===1)
+      const qaOrder=page.locator('.order-table tbody tr').filter({
+        has:page.locator('a.table-link',{hasText:session.fixtures.warehouse_order_code}),
+      }).first()
+      check('Order QA fixture visible',await qaOrder.count()===1)
+      if(await qaOrder.count()){
+        const deviceCell=qaOrder.locator('td[data-order-col="device"]')
+        const deviceText=await deviceCell.innerText()
+        check('Order uses linked QA account Mobile/Browser',
+          deviceText.includes('iPhone QA 15')&&deviceText.includes('Chrome QA'),{deviceText})
+        const tooltip=await deviceCell.getAttribute('title')
+        check('Full device values available in title',
+          Boolean(tooltip?.includes('iPhone QA 15')&&tooltip.includes('Chrome QA')),{tooltip})
+        await page.reload({waitUntil:'load',timeout:35000})
+        const reloaded=await page.locator('.order-table tbody tr').filter({
+          has:page.locator('a.table-link',{hasText:session.fixtures.warehouse_order_code}),
+        }).locator('td[data-order-col="device"]').innerText()
+        check('Order device values survive reload',
+          reloaded.includes('iPhone QA 15')&&reloaded.includes('Chrome QA'),{reloaded})
+      }
       const bulkCheckbox=page.locator('.order-table tbody input[type="checkbox"]').first()
       check('Order bulk actions hidden without selection',
         await page.locator('.p1-order-bulk-icons').count()===0)
@@ -294,6 +315,30 @@ try {
         localStorage.removeItem(storage);localStorage.removeItem(order)
       },spec)
       if(hasToggle){await toggle.click();await page.waitForTimeout(260)}
+      await page.reload({waitUntil:'load',timeout:35000})
+    }
+    if(spec.name==='Đơn nhập'){
+      await page.evaluate(({storage,order})=>{
+        const old=['number','order','username','time','product','cod','tracking','carrier','voucher','status']
+        localStorage.removeItem('mynh-v5-purchase-order-device-v1')
+        localStorage.setItem(storage,JSON.stringify(old))
+        localStorage.setItem(order,JSON.stringify(old))
+      },spec)
+      await page.reload({waitUntil:'load',timeout:35000})
+      check('Old order column preferences receive new Device column once',
+        await page.locator('.order-table th[data-order-col="device"]').count()===1)
+      await page.locator('.p1-order-toolbar-actions .managed-column-button').click()
+      await page.locator('.p1-order-toolbar-actions .column-manager-row').filter({
+        hasText:'Thiết bị',
+      }).locator('input[type="checkbox"]').uncheck()
+      await page.keyboard.press('Escape')
+      await page.reload({waitUntil:'load',timeout:35000})
+      check('Explicitly hidden Device column stays hidden after reload',
+        await page.locator('.order-table th[data-order-col="device"]').count()===0)
+      await page.evaluate(({storage,order})=>{
+        localStorage.removeItem(storage);localStorage.removeItem(order)
+        localStorage.removeItem('mynh-v5-purchase-order-device-v1')
+      },spec)
       await page.reload({waitUntil:'load',timeout:35000})
     }
     // Interaction with saved legacy preferences, without overwriting real users'
