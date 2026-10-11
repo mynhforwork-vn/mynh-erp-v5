@@ -62,6 +62,17 @@ export function PurchaseAccountTable({
   const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
   const [dragOverColumn,setDragOverColumn]=useState<ColKey|null>(null)
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
+  const tableCardRef=useRef<HTMLDivElement|null>(null)
+  const [tableLaneWidth,setTableLaneWidth]=useState(0)
+  useEffect(()=>{
+    const card=tableCardRef.current
+    if(!card)return
+    const measure=()=>setTableLaneWidth(w=>Math.abs(w-card.clientWidth)<1?w:card.clientWidth)
+    measure()
+    const observer=new ResizeObserver(measure)
+    observer.observe(card)
+    return ()=>observer.disconnect()
+  },[])
   const [toolbarRoot,setToolbarRoot]=useState<HTMLElement|null>(null)
   useEffect(()=>{setToolbarRoot(document.getElementById('p1-account-filter-actions'))},[])
 
@@ -151,6 +162,47 @@ export function PurchaseAccountTable({
     number:22,username:102,platform:53,phone:90,email:98,
     status:72,mobile:81,browser:72,voucher:65,orders:40,createdAt:106,note:76
   }
+  // Content-informed desktop widths. Narrow metadata columns do not expand
+  // merely because Username / Email / Note were previously set to auto.
+  // Only displayed column IDs participate, so hidden/reordered columns are safe.
+  const maxLength=(read:(row:Row)=>string)=>{
+    let max=0
+    for(const row of rows.slice(0,150)){
+      max=Math.max(max,read(row).trim().length)
+    }
+    return max
+  }
+  const range=(n:number,low:number,high:number)=>Math.min(high,Math.max(low,n))
+  const contentWeights:Record<ColKey,number>={
+    number:32,
+    username:range(48+maxLength(r=>String(r.username??''))*6.5,148,194),
+    platform:66,
+    phone:119,
+    email:range(18+maxLength(r=>String(r.email??''))*6.2,196,276),
+    status:88,
+    mobile:range(17+maxLength(r=>accountDeviceFields(r).mobileType)*6.1,118,175),
+    browser:range(16+maxLength(r=>accountDeviceFields(r).browserName)*6.1,101,140),
+    voucher:84,
+    orders:52,
+    createdAt:139,
+    note:range(20+maxLength(r=>String(r.note??''))*4,146,190),
+  }
+  const flexKeys=new Set<ColKey>(['username','email','mobile','browser','note'])
+  const fixedWidth=(canManage?32:0)+shownColumns.filter(k=>!flexKeys.has(k))
+    .reduce((sum,key)=>sum+contentWeights[key],0)
+  const flexible=shownColumns.filter(k=>flexKeys.has(k))
+  const flexibleWeights=flexible.reduce((sum,key)=>sum+contentWeights[key],0)
+  const widthBudget=Math.max(flexibleWeights,tableLaneWidth-fixedWidth)
+  const tableTarget=fixedWidth+widthBudget
+  const computedFullWidths:Record<ColKey,number>={...contentWeights}
+  for(const key of flexible){
+    computedFullWidths[key]=widthBudget*contentWeights[key]/Math.max(1,flexibleWeights)
+  }
+  // The full-width table uses fixed pixels for counts/tags/metadata.
+  // Only long meaningful text fields share remaining space.
+  const fullColumnStyle=(width:number)=>({
+    '--p1-full-col-width':Math.round(width*100)/100+'px',
+  }) as CSSProperties
   const panelFitTotal=(canManage?24:0)+shownColumns.reduce((sum,key)=>sum+panelFitWeights[key],0)
   const panelShare=(weight:number)=>({ '--p1-panel-col-width':(weight/panelFitTotal*100)+'%' }) as CSSProperties
   const fullFloor=(canManage?32:0)+shownColumns.reduce((sum,k)=>sum+columnMinimums[k],0)
@@ -158,6 +210,7 @@ export function PurchaseAccountTable({
   const tableWidths={
     '--p1-account-min-width':fullFloor+'px',
     '--p1-account-panel-min-width':panelFloor+'px',
+    '--p1-account-computed-table-width':Math.max(fullFloor,tableTarget)+'px',
   } as CSSProperties
 
   function hrefFor(id:string){
@@ -294,11 +347,12 @@ export function PurchaseAccountTable({
       </div>}
     </div>,toolbarRoot)}
 
-    <div className="card table-card account-table-card">
+    <div className="card table-card account-table-card" ref={tableCardRef}>
       <table className="table user-table mynh-p1-semantic-table" style={tableWidths}>
         <colgroup>
-          {canManage&&<col className="p1-account-col p1-account-col-select" style={panelShare(24)}/>}
-          {shownColumns.map(k=><col key={k} className={'p1-account-col p1-account-col-'+k} style={panelShare(panelFitWeights[k])}/>)}
+          {canManage&&<col className="p1-account-col p1-account-col-select" style={{...panelShare(24),...fullColumnStyle(32)}}/>}
+          {shownColumns.map(k=><col key={k} className={'p1-account-col p1-account-col-'+k}
+            style={{...panelShare(panelFitWeights[k]),...fullColumnStyle(computedFullWidths[k])}}/>)}
         </colgroup>
         <thead><tr>
           {canManage&&<th className="bulk-select-col">
