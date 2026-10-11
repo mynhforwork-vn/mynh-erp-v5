@@ -118,6 +118,10 @@ try {
     await button.click()
     check('Nút cột vẫn mở được sau reload có slidebar',await menu.isVisible())
     await page.keyboard.press('Escape')
+    // On Mobile the detail slidebar intentionally covers its background list.
+    // Close it before testing the toolbar at narrow viewports.
+    await page.getByRole('link',{name:'Đóng chi tiết đơn'}).click()
+    await page.waitForURL(u=>!u.searchParams.has('order'),{timeout:20000})
   }
   for(const [width,height] of [[320,568],[390,844],[768,1024],[1440,900]]){
     await page.setViewportSize({width,height})
