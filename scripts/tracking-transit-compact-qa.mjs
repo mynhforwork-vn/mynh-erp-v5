@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import {isPreDestinationTransit,isDeliveredAwaitingReceipt,PRE_DESTINATION_TRANSIT_STATUSES} from '../lib/tracking/status-groups.ts'
+import {trackingNumberMeansCancelled} from '../lib/purchase-order-cancellation.ts'
 
 const code='SPXVN06543070497A'
+assert.equal(trackingNumberMeansCancelled('  không   có  '),true)
+assert.equal(trackingNumberMeansCancelled('SPXVN06543070497A'),false)
 for(const status of ['READY_TO_SHIP','PICKED_UP','IN_TRANSIT','ARRIVED_TRANSIT_HUB']){
   assert.equal(isPreDestinationTransit(code,status),true,'Transit before destination must include '+status)
 }
@@ -176,3 +179,11 @@ check(resizer,'const uncustomized=flex.filter','preserve manually adjusted colum
 check(resizer,'clampForHeader','allow wide flex cells without 680px truncation')
 check(layoutQa,'reopen left restores fitted width','verify both-closed/left-only layouts')
 check(layoutQa,'right closed table fits or scrolls in lane','verify adaptive scroll after panel close')
+
+const manualApi=fs.readFileSync('app/api/tracking/manual/route.ts','utf8')
+const toast=fs.readFileSync('components/tracking-success-toast.tsx','utf8')
+check(page,"if(trackingNumberMeansCancelled(r.tracking_number))return false",'cancelled shipment scope')
+check(page,"<TrackingSuccessToast received={Boolean(sp.received)} payment={Boolean(sp.payment)}/>",'floating toast')
+check(manualApi,"if(trackingNumberMeansCancelled(shipment.tracking_number)",'manual sync cancellation guard')
+check(toast,"window.setTimeout(()=>setVisible([]),5000)",'5 second dismissal')
+check(toast,"window.history.replaceState", 'clear sticky success flag on reload')

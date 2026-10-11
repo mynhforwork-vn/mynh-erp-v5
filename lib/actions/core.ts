@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/supabase/auth'
 import {suggestDestinationHub,type AddressHub} from '@/lib/destination-hub-resolution'
+import { trackingNumberMeansCancelled } from '@/lib/purchase-order-cancellation'
 
 function text(v:FormDataEntryValue|null){return String(v??'').trim()}
 
@@ -63,21 +64,49 @@ async function queueFirstTracking(supabase:any,orderId:string){
   if(error)throw new Error('Đã lưu MVD nhưng chưa lên lịch đồng bộ đầu tiên: '+error.message)
 }
 
+// Two manual entries, never mistaken for provider-reported activity.
+async function saveAccountDeviceFields(supabase:any,userId:string,mobileType:string,browserName:string,updating:boolean){
+  const now=new Date().toISOString()
+  for(const [key,name,type] of [
+    ['manual-mobile',mobileType,'MOBILE'],
+    ['manual-browser',browserName,'BROWSER_PROFILE'],
+  ] as const){
+    if(name){
+      const {error}=await supabase.from('purchase_account_devices').upsert({
+        erp_user_id:userId,device_key:key,device_name:name,device_type:type,
+        browser_name:type==='BROWSER_PROFILE'?name:null,
+        browser_profile:null,is_active:true,source:'MANUAL',updated_at:now,
+      },{onConflict:'erp_user_id,device_key'})
+      if(error)throw new Error('Không lưu được '+(type==='MOBILE'?'Mobile':'Browser')+': '+error.message)
+    }else if(updating){
+      const {error}=await supabase.from('purchase_account_devices')
+        .update({is_active:false,updated_at:now})
+        .eq('erp_user_id',userId).eq('device_key',key).eq('source','MANUAL')
+      if(error)throw new Error(error.message)
+    }
+  }
+  if(updating){
+    // Preserve legacy manual-primary row for history, but avoid a third active slot.
+    const {error}=await supabase.from('purchase_account_devices')
+      .update({is_active:false,updated_at:now})
+      .eq('erp_user_id',userId).eq('device_key','manual-primary').eq('source','MANUAL')
+    if(error)throw new Error(error.message)
+  }
+}
+
 export async function createERPUser(formData:FormData){
   const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
-  const deviceName=text(formData.get('device_name'))
-  const deviceType=text(formData.get('device_type'))||'DESKTOP'
-  const browserName=text(formData.get('browser_name'))||null
-  const browserProfile=text(formData.get('browser_profile'))||null
+  const mobileType=text(formData.get('mobile_device_type'))
+  const browserName=text(formData.get('browser_name'))
 
   const {data,error}=await supabase.rpc('create_erp_user_full',{
     p_username:text(formData.get('username')),
     p_phone:text(formData.get('phone'))||null,
     p_email:text(formData.get('email'))||null,
     p_status:text(formData.get('status'))||'Active',
-    p_mobile:deviceType==='MOBILE',
-    p_web:deviceType!=='MOBILE'&&Boolean(deviceName||browserName),
+    p_mobile:Boolean(mobileType),
+    p_web:Boolean(browserName),
     p_voucher_summary:null,
     p_note:text(formData.get('note'))||null,
     p_password:text(formData.get('password'))||null,
@@ -86,24 +115,9 @@ export async function createERPUser(formData:FormData){
   })
   if(error)throw new Error(error.message)
 
-  const {error:browserError}=await supabase.from('erp_users').update({browser_name:browserName}).eq('id',data)
+  const {error:browserError}=await supabase.from('erp_users').update({browser_name:browserName||null}).eq('id',data)
   if(browserError)throw new Error(browserError.message)
-
-  if(deviceName){
-    const {error:deviceError}=await supabase.from('purchase_account_devices').upsert({
-      erp_user_id:data,
-      device_key:'manual-primary',
-      device_name:deviceName,
-      device_type:deviceType,
-      browser_name:browserName,
-      browser_profile:browserProfile,
-      is_active:true,
-      last_seen_at:new Date().toISOString(),
-      source:'MANUAL',
-      updated_at:new Date().toISOString(),
-    },{onConflict:'erp_user_id,device_key'})
-    if(deviceError)throw new Error(deviceError.message)
-  }
+  await saveAccountDeviceFields(supabase,String(data),mobileType,browserName,false)
 
   revalidatePath('/purchase/accounts')
   redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data),mode:null,tab:'info'}))
@@ -112,13 +126,12 @@ export async function createERPUser(formData:FormData){
 export async function updateERPUser(formData:FormData){
   const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
+  const returnToOrders=text(formData.get('return_path'))==='orders'
   const userId=text(formData.get('user_id'))
   if(!userId)throw new Error('Thiếu tài khoản cần cập nhật')
 
-  const deviceName=text(formData.get('device_name'))
-  const deviceType=text(formData.get('device_type'))||'DESKTOP'
-  const browserName=text(formData.get('browser_name'))||null
-  const browserProfile=text(formData.get('browser_profile'))||null
+  const mobileType=text(formData.get('mobile_device_type'))
+  const browserName=text(formData.get('browser_name'))
 
   const {data,error}=await supabase.rpc('update_erp_user_full',{
     p_user_id:userId,
@@ -126,8 +139,8 @@ export async function updateERPUser(formData:FormData){
     p_phone:text(formData.get('phone'))||null,
     p_email:text(formData.get('email'))||null,
     p_status:text(formData.get('status'))||'Active',
-    p_mobile:deviceType==='MOBILE',
-    p_web:deviceType!=='MOBILE'&&Boolean(deviceName||browserName),
+    p_mobile:Boolean(mobileType),
+    p_web:Boolean(browserName),
     p_voucher_summary:null,
     p_note:text(formData.get('note'))||null,
     p_password:text(formData.get('password'))||null,
@@ -136,27 +149,15 @@ export async function updateERPUser(formData:FormData){
   })
   if(error)throw new Error(error.message)
 
-  const {error:browserError}=await supabase.from('erp_users').update({browser_name:browserName}).eq('id',userId)
+  const {error:browserError}=await supabase.from('erp_users').update({browser_name:browserName||null}).eq('id',userId)
   if(browserError)throw new Error(browserError.message)
-
-  if(deviceName){
-    const {error:deviceError}=await supabase.from('purchase_account_devices').upsert({
-      erp_user_id:userId,
-      device_key:'manual-primary',
-      device_name:deviceName,
-      device_type:deviceType,
-      browser_name:browserName,
-      browser_profile:browserProfile,
-      is_active:true,
-      last_seen_at:new Date().toISOString(),
-      source:'MANUAL',
-      updated_at:new Date().toISOString(),
-    },{onConflict:'erp_user_id,device_key'})
-    if(deviceError)throw new Error(deviceError.message)
-  }
+  await saveAccountDeviceFields(supabase,userId,mobileType,browserName,true)
 
   revalidatePath('/purchase/accounts')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data),mode:null,tab:'info'}))
+  revalidatePath('/purchase/orders')
+  redirect(returnToOrders
+    ?returnHref('/purchase/orders',returnQuery,{account:userId,accountTab:'info',accountMode:null})
+    :returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info'}))
 }
 
 
@@ -435,16 +436,17 @@ export async function createOrder(formData:FormData){
   const shippingService=text(formData.get('shipping_service'))==='EXPRESS'?'EXPRESS':'STANDARD'
   const isExpress=shippingService==='EXPRESS'
   const trackingNumber=text(formData.get('tracking_number'))
-  const carrier=isExpress
+  const cancelledByMarker=trackingNumberMeansCancelled(trackingNumber)
+  const carrier=cancelledByMarker?null:isExpress
     ? (trackingNumber?'Hỏa tốc':null)
     : await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
-  const usesDestinationHub=!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
+  const usesDestinationHub=!cancelledByMarker&&!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const matchedHub=usesDestinationHub?await destinationHubFromAddress(
     supabase,text(formData.get('recipient_address')),carrier):null
   const effectiveHub=usesDestinationHub
     ?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''): ''
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
-  const orderStatus=isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
+  const orderStatus=cancelledByMarker?'CANCELLED':isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
 
   const {data,error}=await supabase.rpc('create_order_full_v2',{
     p_shopee_order_id:text(formData.get('shopee_order_id'))||null,
@@ -474,7 +476,13 @@ export async function createOrder(formData:FormData){
       express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
     }).eq('id',data)
     if(orderMetaError)throw new Error(orderMetaError.message)
-    if(isExpress&&trackingNumber){
+    if(cancelledByMarker){
+      const {error:cancelError}=await supabase.from('shipments').update({
+        current_tracking_status:'CANCELLED',tracking_enabled:false,next_track_at:null,locked_until:null,
+      }).eq('order_id',data).eq('is_active',true)
+      if(cancelError)throw new Error(cancelError.message)
+    }
+    if(isExpress&&trackingNumber&&!cancelledByMarker){
       const {error:shipmentError}=await supabase.from('shipments').update({
         carrier:'Hỏa tốc',
         is_active:true,
@@ -486,7 +494,7 @@ export async function createOrder(formData:FormData){
       if(shipmentError)throw new Error(shipmentError.message)
     }
   }
-  if(data&&trackingNumber&&!isExpress)await queueFirstTracking(supabase,String(data))
+  if(data&&trackingNumber&&!isExpress&&!cancelledByMarker)await queueFirstTracking(supabase,String(data))
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
 }
@@ -500,16 +508,17 @@ export async function updateOrder(formData:FormData){
   const shippingService=text(formData.get('shipping_service'))==='EXPRESS'?'EXPRESS':'STANDARD'
   const isExpress=shippingService==='EXPRESS'
   const trackingNumber=text(formData.get('tracking_number'))
-  const carrier=isExpress
+  const cancelledByMarker=trackingNumberMeansCancelled(trackingNumber)
+  const carrier=cancelledByMarker?null:isExpress
     ? (trackingNumber?'Hỏa tốc':null)
     : await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
-  const usesDestinationHub=!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
+  const usesDestinationHub=!cancelledByMarker&&!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const matchedHub=usesDestinationHub?await destinationHubFromAddress(
     supabase,text(formData.get('recipient_address')),carrier):null
   const effectiveHub=usesDestinationHub
     ?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''): ''
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
-  const orderStatus=isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
+  const orderStatus=cancelledByMarker?'CANCELLED':isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
 
   const {data,error}=await supabase.rpc('update_order_full_v2',{
     p_order_id:orderId,
@@ -559,7 +568,13 @@ export async function updateOrder(formData:FormData){
         }).eq('order_id',orderId).eq('is_active',true)
     if(shipmentError)throw new Error(shipmentError.message)
   }
-  if(trackingNumber&&!isExpress)await queueFirstTracking(supabase,orderId)
+  if(cancelledByMarker){
+    const {error:cancelError}=await supabase.from('shipments').update({
+      current_tracking_status:'CANCELLED',tracking_enabled:false,next_track_at:null,locked_until:null,
+    }).eq('order_id',orderId).eq('is_active',true)
+    if(cancelError)throw new Error(cancelError.message)
+  }
+  if(trackingNumber&&!isExpress&&!cancelledByMarker)await queueFirstTracking(supabase,orderId)
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
 }
@@ -1422,6 +1437,8 @@ export async function quickAddTrackingNumber(formData:FormData){
   const trackingNumber=text(formData.get('tracking_number'))
   const carrierConfigId=text(formData.get('carrier_config_id'))
   if(!orderId||!trackingNumber)throw new Error('Thiếu đơn hàng hoặc mã vận đơn')
+  if(trackingNumberMeansCancelled(trackingNumber))
+    throw new Error('Mã KHÔNG CÓ nghĩa là đơn bị huỷ. Hãy dùng Sửa đơn để xác nhận huỷ.')
 
   const {data:order,error:orderError}=await supabase
     .from('orders')
@@ -1526,6 +1543,8 @@ export async function replaceShipment(formData:FormData){
   const orderId=text(formData.get('order_id'))
   const trackingNumber=text(formData.get('tracking_number'))
   if(!orderId||!trackingNumber)throw new Error('Thiếu đơn hàng hoặc mã vận đơn')
+  if(trackingNumberMeansCancelled(trackingNumber))
+    throw new Error('Mã KHÔNG CÓ nghĩa là đơn bị huỷ. Hãy dùng Sửa đơn để xác nhận huỷ.')
 
   const {data:order,error:orderError}=await supabase
     .from('orders')

@@ -249,7 +249,16 @@ async function fetchProvider(config:ProviderConfig,job:Job){
   return fetchNormalizedJson(config,job);
 }
 
+function cancelledPlaceholder(value:unknown):boolean{
+  return String(value??"").trim().replace(/\s+/g," ").toLocaleUpperCase("vi-VN")==="KHÔNG CÓ";
+}
+
 async function processJob(job:Job,syncSource:RequestMode){
+  // Defence in depth after claim_due_shipments/claim_manual_shipment:
+  // NEVER create a sync log, queue retry or call SPX/GHN for a fake MVĐ.
+  if(cancelledPlaceholder(job.tracking_number)){
+    return {shipment_id:job.shipment_id,ok:true,skipped:true,reason:"CANCELLED_NO_MVD"};
+  }
   const startedAt=new Date().toISOString();
   const{data:logRow,error:logError}=await db.from("tracking_sync_logs")
     .insert({shipment_id:job.shipment_id,source:syncSource,started_at:startedAt})
@@ -342,6 +351,7 @@ Deno.serve(async(req)=>{
 
   // Non-mutating provider probe for authenticated Admin/Operator or trusted cron callers.
   if(body.test_tracking_number){
+    if(cancelledPlaceholder(body.test_tracking_number))return json({error:"Đơn huỷ không cần kiểm tra vận đơn"},409);
     const carrier=String(body.carrier??"SPX").trim()||"SPX";
     try{
       const config=await loadProvider(carrier);

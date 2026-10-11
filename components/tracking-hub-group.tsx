@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { confirmReceiveOrders } from '@/lib/actions/core'
 import { ManualSyncButton } from '@/components/manual-sync-button'
@@ -62,6 +62,18 @@ export function TrackingHubGroup({
   const [open,setOpen]=useState(defaultOpen??urgentCount>0)
   const columns=useManagedColumns<ColKey>('mynh-tracking-hub-columns-v2',ALL_COLUMNS,['order'],{detail:'status'})
   const sort=useManagedSort<ColKey>('mynh-tracking-hub-sort-v2','order','asc')
+  // Derive the table's readable floor from actual visible column identities.
+  // The floor changes immediately after hide/show/reorder, never from nth-child.
+  const minWidth=25+columns.visible.reduce((sum,key)=>sum+({
+    order:155,product:150,cod:85,recipient:180,status:150,detail:175,actions:44
+  } satisfies Record<ColKey,number>)[key],0)
+  const panelMinWidth=25+columns.visible.reduce((sum,key)=>sum+({
+    order:125,product:115,cod:70,recipient:130,status:130,detail:155,actions:44
+  } satisfies Record<ColKey,number>)[key],0)
+  const tableWidthVars={
+    '--tracking-table-min-width':minWidth+'px',
+    '--tracking-table-panel-min-width':panelMinWidth+'px'
+  } as CSSProperties
   const sortedRows=useMemo(()=>{
     const next=[...rows]
     const value=(row:OrderRow,key:ColKey)=>{
@@ -188,7 +200,7 @@ export function TrackingHubGroup({
       
 
       <div className="tracking-hub-table-wrap tracking-hub-table-wrap-v2">
-        <table className="table tracking-hub-table tracking-hub-table-v2">
+        <table className="table tracking-hub-table tracking-hub-table-v2 mynh-tracking-semantic-table" style={tableWidthVars}>
           <colgroup>
             <col className="tracking-colgroup-select"/>
             {columns.visible.map(col=><col key={col} className={'tracking-colgroup-'+col}/>)}
@@ -203,13 +215,13 @@ export function TrackingHubGroup({
             {sortedRows.map(r=>{
               const canReceive=r.receive_status==='WAITING_RECEIVE'&&r.tracking_status==='DELIVERED'
               const cell=(col:ColKey)=>{
-                if(col==='order')return <td key={col}><div className="tracking-order-id"><Link className="table-link" href={orderHref(r.id)}>{r.shopee_order_id??r.id.slice(0,8)}</Link><span>{r.tracking_number??'Chưa có MVĐ'}{r.carrier?' · '+r.carrier:''}</span></div></td>
-                if(col==='product')return <td key={col} className="truncate tracking-product-cell" title={r.product_summary??''}>{r.product_summary??'—'}</td>
-                if(col==='cod')return <td key={col} className="money">{formatMoney(r.cod)}</td>
-                if(col==='recipient')return <td key={col}><div className="tracking-recipient tracking-recipient-v2"><b>{r.recipient_name??'—'} <small>{formatPhone(r.recipient_phone)}</small></b><span title={r.recipient_address??''}>{r.recipient_address??'Chưa có địa chỉ'}</span></div></td>
-                if(col==='status')return <td key={col}><div className="order-state-cell tracking-state-cell-v2"><span className={'status-pill status-'+String(r.tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(r.tracking_status)}</span>{r.receive_status!=='NOT_READY'&&<span className={'status-pill '+(r.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(r.receive_status)}</span>}</div></td>
-                if(col==='detail')return <td key={col} className="tracking-col-detail-cell"><div className="tracking-detail-cell-v1" title={r.tracking_detail??'Chưa có nội dung Tracking'}><span>{r.tracking_detail??'Chưa có nội dung Tracking'}</span>{r.tracking_event_time&&<small>{new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric',hour12:false}).format(new Date(r.tracking_event_time))}</small>}</div></td>
-                return <td key={col} className="tracking-col-actions tracking-action-cell"><div className="tracking-row-actions">{r.shipment_id&&!['DELIVERED','CANCELLED','RETURNED'].includes(String(r.tracking_status))&&<ManualSyncButton shipmentId={r.shipment_id} iconOnly/>}</div></td>
+                if(col==='order')return <td key={col} className="tracking-data-col-order"><div className="tracking-order-id"><Link className="table-link" href={orderHref(r.id)}>{r.shopee_order_id??r.id.slice(0,8)}</Link><span>{r.tracking_number??'Chưa có MVĐ'}{r.carrier?' · '+r.carrier:''}</span></div></td>
+                if(col==='product')return <td key={col} className="tracking-data-col-product tracking-product-cell" title={r.product_summary??''}><span className="tracking-product-lines">{r.product_summary??'—'}</span></td>
+                if(col==='cod')return <td key={col} className="money tracking-data-col-cod">{formatMoney(r.cod)}</td>
+                if(col==='recipient')return <td key={col} className="tracking-data-col-recipient"><div className="tracking-recipient tracking-recipient-v2"><b>{r.recipient_name??'—'} <small>{formatPhone(r.recipient_phone)}</small></b><span title={r.recipient_address??''}>{r.recipient_address??'Chưa có địa chỉ'}</span></div></td>
+                if(col==='status')return <td key={col} className="tracking-data-col-status"><div className="order-state-cell tracking-state-cell-v2"><span className={'status-pill status-'+String(r.tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(r.tracking_status)}</span>{r.receive_status!=='NOT_READY'&&<span className={'status-pill '+(r.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(r.receive_status)}</span>}</div></td>
+                if(col==='detail')return <td key={col} className="tracking-col-detail-cell tracking-data-col-detail"><div className="tracking-detail-cell-v1" title={r.tracking_detail??'Chưa có nội dung Tracking'}><span>{r.tracking_detail??'Chưa có nội dung Tracking'}</span>{r.tracking_event_time&&<small>{new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric',hour12:false}).format(new Date(r.tracking_event_time))}</small>}</div></td>
+                return <td key={col} className="tracking-col-actions tracking-action-cell tracking-data-col-actions"><div className="tracking-row-actions">{r.shipment_id&&!['DELIVERED','CANCELLED','RETURNED'].includes(String(r.tracking_status))&&<ManualSyncButton shipmentId={r.shipment_id} iconOnly/>}</div></td>
               }
               return <tr key={r.id} className={canReceive?'tracking-row-waiting':''}>
                 <td className="select-col">

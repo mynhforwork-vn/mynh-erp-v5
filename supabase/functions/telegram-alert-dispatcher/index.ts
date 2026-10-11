@@ -32,6 +32,10 @@ if(!supabaseUrl||!serviceRoleKey)throw new Error("Missing Supabase runtime varia
 
 const db=createClient(supabaseUrl,serviceRoleKey,{auth:{persistSession:false,autoRefreshToken:false}});
 
+function cancelledPlaceholder(value:unknown):boolean{
+  return String(value??"").trim().replace(/\s+/g," ").toLocaleUpperCase("vi-VN")==="KHÔNG CÓ";
+}
+
 function json(data:unknown,status=200){
   return new Response(JSON.stringify(data),{
     status,
@@ -187,14 +191,14 @@ Deno.serve(async(req)=>{
     {data:destinations,error:destError},
   ]=await Promise.all([
     db.from("orders")
-      .select("id,shopee_order_id,cod,recipient_address,recipient_name,recipient_phone,destination_hub")
+      .select("id,shopee_order_id,order_status,cod,recipient_address,recipient_name,recipient_phone,destination_hub")
       .in("id",orderIds),
     db.from("order_items")
       .select("order_id,product_name,variant,quantity")
       .in("order_id",orderIds),
     db.from("shipments")
-      .select("id,tracking_number")
-      .in("id",shipmentIds),
+      .select("id,order_id,tracking_number,is_active")
+      .in("order_id",orderIds),
     db.from("telegram_alert_destinations")
       .select("destination_hub,chat_id,alert_types,is_active")
       .eq("is_active",true),
@@ -210,6 +214,29 @@ Deno.serve(async(req)=>{
 
   const orderMap=new Map((orders??[]).map((x:any)=>[String(x.id),x]));
   const shipmentMap=new Map((shipments??[]).map((x:any)=>[String(x.id),x]));
+  const cancelledOrderIds=new Set((shipments??[])
+    .filter((x:any)=>x.is_active&&cancelledPlaceholder(x.tracking_number))
+    .map((x:any)=>String(x.order_id)));
+  // Never send an old alert whose order was cancelled by the no-MVĐ marker.
+  // Mark delivery as suppressed (retain the event and historical audit data),
+  // rather than retrying indefinitely or silently sending it to Telegram.
+  const excludedIds=alerts.filter(alert=>{
+    const order:any=orderMap.get(alert.order_id);
+    const shipment:any=shipmentMap.get(alert.shipment_id);
+    return cancelledOrderIds.has(alert.order_id)
+      ||cancelledPlaceholder(shipment?.tracking_number)
+      ||["CANCELLED","CANCELED"].includes(String(order?.order_status??"").toUpperCase());
+  }).map(alert=>alert.id);
+  if(excludedIds.length){
+    const {error:suppressError}=await db.from("alert_events").update({
+      telegram_suppressed_at:new Date().toISOString(),
+      telegram_suppressed_reason:"CANCELLED_OR_NO_MVD",
+      locked_until:null,
+    }).in("id",excludedIds);
+    if(suppressError)return json({error:"Cannot suppress cancelled tracking alerts"},500);
+  }
+  const excludedSet=new Set(excludedIds);
+  const eligibleAlerts=alerts.filter(alert=>!excludedSet.has(alert.id));
   const itemMap=new Map<string,any[]>();
 
   for(const item of (items??[]) as any[]){
@@ -221,9 +248,9 @@ Deno.serve(async(req)=>{
 
   const destRows=(destinations??[]) as Destination[];
   const groups=new Map<string,{chatId:string;hub:string;type:string;alerts:AlertRow[]}>();
-  const results:any[]=[];
+  const results:any[]=excludedIds.length?[{ok:true,skipped:excludedIds.length,reason:"CANCELLED_OR_NO_MVD"}]:[];
 
-  for(const alert of alerts){
+  for(const alert of eligibleAlerts){
     const hub=String(alert.destination_hub??"").trim();
     const override=destRows.find(x=>
       x.destination_hub===hub&&

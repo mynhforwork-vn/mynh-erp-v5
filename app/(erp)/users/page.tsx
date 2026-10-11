@@ -1,8 +1,10 @@
 import { requireUser } from '@/lib/supabase/auth'
 import { SystemSlidebar } from '@/components/system-slidebar'
+import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
 import { archiveERPUser, createERPUser, deleteERPUserPermanent, restoreERPUser, updateERPUser } from '@/lib/actions/core'
 import { PurchaseAccountTable } from '@/components/purchase-account-table'
+import { AccountFilterDropdown } from '@/components/account-filter-dropdown'
 import { VoucherTags } from '@/components/voucher-tags'
 import { UserBulkImport } from '@/components/user-bulk-import'
 import { ContextOrderPanel } from '@/components/context-order-panel'
@@ -38,12 +40,6 @@ function deviceBrowserBucket(value?:string|null){
   if(!v)return 'none'
   return 'other'
 }
-function deviceTypeLabel(type?:string|null){
-  if(type==='MOBILE')return 'Điện thoại'
-  if(type==='TABLET')return 'Máy tính bảng'
-  if(type==='BROWSER_PROFILE')return 'Browser Profile'
-  return 'Máy tính'
-}
 
 const actionLabels:Record<string,string>={
   CREATE:'Tạo tài khoản',
@@ -68,7 +64,6 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const fields='id,username,phone,email,status,platform,browser_name,note,created_at,updated_at,mobile,web,order_count,created_at_source,password_secret_id,spc_st_secret_id,spc_f_secret_id,password_encrypted,spc_st_encrypted,spc_f_encrypted,archived_at,archived_by'
   const platform=sp.platform??'SHOPEE'
   const state=sp.state??'all'
-  const device=sp.device??'all'
   const session=sp.session??'all'
   const voucher=sp.voucher??'all'
   const orders=sp.orders??'all'
@@ -89,7 +84,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       .order('last_seen_at',{ascending:false,nullsFirst:false})
       .limit(5000),
     supabase.from('orders')
-      .select('erp_user_id,order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)')
+      .select('erp_user_id,order_date,order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)')
       .not('erp_user_id','is',null)
       .limit(5000),
   ])
@@ -106,7 +101,12 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   }
 
   const voucherMap=new Map<string,any[]>()
+  const firstOrderDate=new Map<string,string>()
   for(const o of voucherOrders){
+    if(o.order_date&&Number.isFinite(Date.parse(o.order_date))){
+      const prev=firstOrderDate.get(o.erp_user_id)
+      if(!prev||Date.parse(o.order_date)<Date.parse(prev))firstOrderDate.set(o.erp_user_id,o.order_date)
+    }
     if(!o.erp_user_id)continue
     const arr=voucherMap.get(o.erp_user_id)??[]
     for(const v of (o.order_vouchers??[]))arr.push(v)
@@ -123,19 +123,15 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       all_devices:deviceMap.get(u.id)??[],
       voucher_used_rows:voucherRows,
       voucher_used_summary:uniqueVoucherLabels.join(' · '),
+      voucher_tags:uniqueVoucherLabels,
+      effective_created_at:(firstOrderDate.get(u.id)&&Date.parse(firstOrderDate.get(u.id)!)<Date.parse(u.created_at))
+        ?firstOrderDate.get(u.id):u.created_at,
     }
   })
 
   function matchesAccountScope(u:any){
     const activeDevices=u.active_devices??[]
     const allDevices=u.all_devices??[]
-    if(device==='active'&&!activeDevices.length)return false
-    if(device==='desktop'&&!activeDevices.some((d:any)=>d.device_type==='DESKTOP'||d.device_type==='BROWSER_PROFILE'))return false
-    if(device==='mobile'&&!activeDevices.some((d:any)=>d.device_type==='MOBILE'))return false
-    if(device==='multi'&&activeDevices.length<2)return false
-    if(device==='inactive'&&!allDevices.some((d:any)=>!d.is_active))return false
-    if(device==='none'&&allDevices.length)return false
-
     if(browser!=='all'&&!activeDevices.some((d:any)=>deviceBrowserBucket(d.browser_name)===browser))return false
 
     const st=hasST(u),sf=hasF(u)
@@ -152,12 +148,15 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     if(voucher==='freeship'&&!voucherText.includes('free'))return false
     if(voucher==='discount'&&!voucherText.includes('giảm'))return false
     if(voucher==='cashback'&&!(voucherText.includes('hoàn')||voucherText.includes('xu')))return false
+    if(voucher.startsWith('tag:')&&!voucherLabels.includes(voucher.slice(4)))return false
 
     const n=Number(u.order_count??0)
     if(orders==='0'&&n!==0)return false
     if(orders==='1-5'&&(n<1||n>5))return false
     if(orders==='6-10'&&(n<6||n>10))return false
     if(orders==='11+'&&n<11)return false
+    if(/^\d+$/.test(orders)&&orders!=='0'&&n!==Number(orders))return false
+    if(orders==='21+'&&n<21)return false
 
     if(queryText){
       const deviceSearch=allDevices.flatMap((d:any)=>[d.device_name,d.browser_name,d.browser_profile]).filter(Boolean)
@@ -166,6 +165,12 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     }
     return true
   }
+
+  const voucherOptions=[...new Set(enriched.flatMap((u:any)=>u.voucher_tags as string[]))]
+    .sort((a,b)=>a.localeCompare(b,'vi')).map(tag=>({value:'tag:'+tag,label:tag}))
+  const maxOrders=Math.max(5,...enriched.map((u:any)=>Number(u.order_count??0)))
+  const orderOptions=Array.from({length:Math.min(20,maxOrders)+1},(_,i)=>({value:String(i),label:i+' đơn'}))
+  if(maxOrders>20)orderOptions.push({value:'21+',label:'21+ đơn'})
 
   const scopeRows=enriched.filter(matchesAccountScope)
   const counts={
@@ -187,14 +192,14 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   rows=[...rows].sort((a:any,b:any)=>{
     if(sort==='name_asc')return String(a.username).localeCompare(String(b.username),'vi')
     if(sort==='name_desc')return String(b.username).localeCompare(String(a.username),'vi')
-    if(sort==='oldest')return new Date(a.created_at).getTime()-new Date(b.created_at).getTime()
-    return new Date(b.created_at).getTime()-new Date(a.created_at).getTime()
+    if(sort==='oldest')return new Date(a.effective_created_at).getTime()-new Date(b.effective_created_at).getTime()
+    return new Date(b.effective_created_at).getTime()-new Date(a.effective_created_at).getTime()
   })
 
   function filterHref(overrides:Record<string,string|null|undefined>={}){
     const p=new URLSearchParams()
     const current:Record<string,string|undefined>={
-      q:sp.q,state:state!=='all'?state:undefined,device:device!=='all'?device:undefined,
+      q:sp.q,state:state!=='all'?state:undefined,
       session:session!=='all'?session:undefined,voucher:voucher!=='all'?voucher:undefined,
       orders:orders!=='all'?orders:undefined,browser:browser!=='all'?browser:undefined,
       sort:sort!=='newest'?sort:undefined,platform:platform!=='SHOPEE'?platform:undefined,
@@ -214,7 +219,6 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const detailParams=new URLSearchParams()
   if(sp.q)detailParams.set('q',sp.q)
   if(state!=='all')detailParams.set('state',state)
-  if(device!=='all')detailParams.set('device',device)
   if(session!=='all')detailParams.set('session',session)
   if(voucher!=='all')detailParams.set('voucher',voucher)
   if(orders!=='all')detailParams.set('orders',orders)
@@ -330,8 +334,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     }
   }
 
-  const selectedDevices=selected?.all_devices??[]
-  const primaryDevice=selectedDevices.find((d:any)=>d.device_key==='manual-primary')??selectedDevices.find((d:any)=>d.is_active)??null
+  const selectedDeviceFields=selected?accountDeviceFields(selected):{mobileType:'',browserName:''}
   const selectedVoucherRows=selected?.voucher_used_rows??[]
   const voucherCounts=new Map<string,number>()
   for(const v of selectedVoucherRows){
@@ -342,7 +345,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
   const panelOpen=(canOperate&&sp.mode==='create')||Boolean(selected)
   const isEdit=Boolean(canOperate&&selected&&sp.mode==='edit'&&!selected.archived_at)
-  const filtersActive=Boolean(queryText||state!=='all'||device!=='all'||session!=='all'||voucher!=='all'||orders!=='all'||browser!=='all'||sort!=='newest')
+  const filtersActive=Boolean(queryText||state!=='all'||session!=='all'||voucher!=='all'||orders!=='all'||browser!=='all'||sort!=='newest')
 
   return <div className="account-screen">
     <header className="page-head entity-page-head">
@@ -366,48 +369,30 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       <Link className={`account-kpi entity-status-metric ${state==='unknown'?'active':''}`} href={kpiHref('unknown')}><span>Không xác định</span><b>{counts.unknown}</b></Link>
     </section>
 
+    <div className="p1-account-command-row">
     <form className="account-filter-bar one-line entity-command-bar entity-user-command" action="/purchase/accounts">
       <input className="search" name="q" defaultValue={sp.q??''} placeholder="Tìm User / SĐT / Email / máy / voucher"/>
-      <select name="device" defaultValue={device}>
-        <option value="all">Thiết bị: Tất cả</option>
-        <option value="active">Có máy đang hoạt động</option>
-        <option value="desktop">Máy tính</option>
-        <option value="mobile">Điện thoại</option>
-        <option value="multi">Nhiều máy active</option>
-        <option value="inactive">Có máy ngừng hoạt động</option>
-        <option value="none">Chưa có thiết bị</option>
-      </select>
-      <select name="browser" defaultValue={browser}>
-        <option value="all">Browser: Tất cả</option>
-        <option value="chrome">Chrome</option>
-        <option value="safari">Safari</option>
-        <option value="edge">Edge</option>
-        <option value="app">Shopee App</option>
-        <option value="other">Khác</option>
-      </select>
-      <select name="session" defaultValue={session}>
-        <option value="all">SPC: Tất cả</option>
-        <option value="full">Đủ ST + F</option>
-        <option value="st">Có SPC_ST</option>
-        <option value="f">Có SPC_F</option>
-        <option value="missing">Thiếu SPC</option>
-        <option value="none">Không SPC</option>
-      </select>
-      <select name="voucher" defaultValue={voucher}>
-        <option value="all">Voucher: Tất cả</option>
-        <option value="has">Đã dùng Voucher</option>
-        <option value="none">Chưa dùng Voucher</option>
-        <option value="freeship">Freeship</option>
-        <option value="discount">Giảm giá</option>
-        <option value="cashback">Hoàn xu</option>
-      </select>
-      <select name="orders" defaultValue={orders}>
-        <option value="all">Đơn: Tất cả</option>
-        <option value="0">0 đơn</option>
-        <option value="1-5">1–5 đơn</option>
-        <option value="6-10">6–10 đơn</option>
-        <option value="11+">11+ đơn</option>
-      </select>
+      <AccountFilterDropdown name="browser" value={browser} label="Browser" options={[
+        {value:'all',label:'Browser: Tất cả'},
+        {value:'chrome',label:'Chrome'},{value:'safari',label:'Safari'},
+        {value:'edge',label:'Edge'},{value:'app',label:'Shopee App'},
+        {value:'other',label:'Khác'},
+      ]}/>
+      <AccountFilterDropdown name="session" value={session} label="SPC" options={[
+        {value:'all',label:'SPC: Tất cả'},
+        {value:'full',label:'Đủ ST + F'},{value:'st',label:'Có SPC_ST'},
+        {value:'f',label:'Có SPC_F'},{value:'missing',label:'Thiếu SPC'},
+        {value:'none',label:'Không SPC'},
+      ]}/>
+      <AccountFilterDropdown name="orders" value={orders} label="Số đơn" options={[
+        {value:'all',label:'Số đơn: Tất cả'},
+        ...orderOptions,
+      ]}/>
+      <AccountFilterDropdown name="voucher" value={voucher} label="Tag voucher" options={[
+        {value:'all',label:'Tag: Tất cả'},
+        {value:'none',label:'Chưa dùng voucher'},
+        ...voucherOptions,
+      ]}/>
       {state!=='all'&&<input type="hidden" name="state" value={state}/>}
       {sort!=='newest'&&<input type="hidden" name="sort" value={sort}/>}
       {sp.range&&<input type="hidden" name="range" value={sp.range}/>}
@@ -429,6 +414,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       </div>
       <div className="entity-result-meta"><b>{rows.length}</b><span>/ {counts.all} User{selectedOutsideFilter?' · +1 đang mở':''}</span></div>
     </form>
+      <div id="p1-account-filter-actions" className="p1-account-filter-actions"/>
+    </div>
 
     <div className={`split-view account-workspace ${panelOpen?'with-panel':''}`}>
       <section className="account-list-pane">
@@ -455,6 +442,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               <label>Username<input name="username" required/></label>
               <div className="form-grid"><label>Số điện thoại<input name="phone"/></label><label>Email<input name="email" type="email"/></label></div>
               <label>Trạng thái<select name="status" defaultValue="Active">{['Active','M01','M02','M03','M04','Captcha','Auto Hủy','Blocked','Không xác định'].map(s=><option key={s} value={s}>{statusLabel(s)}</option>)}</select></label>
+              <label>Ghi chú<textarea name="note" rows={2}/></label>
             </section>
             <section className="form-section">
               <h3>Đăng nhập & phiên</h3>
@@ -463,14 +451,12 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               <label>SPC_F<textarea name="spc_f" rows={2}/></label>
             </section>
             <section className="form-section">
-              <h3>Thiết bị đang hoạt động</h3>
-              <label>Tên máy<input name="device_name" placeholder="Ví dụ: MacBook M1 · Máy mua 01"/></label>
-              <div className="form-grid">
-                <label>Loại<select name="device_type" defaultValue="DESKTOP"><option value="DESKTOP">Máy tính</option><option value="MOBILE">Điện thoại</option><option value="BROWSER_PROFILE">Browser Profile</option></select></label>
-                <label>Browser<input name="browser_name" placeholder="Chrome"/></label>
+              <h3>Thiết bị</h3>
+              <div className="form-grid purchase-two-device-fields">
+                <label>Mobile — Loại thiết bị<input name="mobile_device_type" maxLength={120} placeholder="Ví dụ: iPhone 15"/></label>
+                <label>Browser — Tên<input name="browser_name" maxLength={120} placeholder="Ví dụ: Chrome"/></label>
               </div>
-              <label>Profile<input name="browser_profile" placeholder="Profile A / NST Profile..."/></label>
-              <label>Ghi chú<textarea name="note" rows={2}/></label>
+
             </section>
             <div className="form-actions"><Link className="button" href={filterHref({mode:null,user:null,tab:null})}>Hủy</Link><button className="button primary">Tạo tài khoản</button></div>
           </form>
@@ -521,25 +507,14 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                 <div><span>SPC_ST</span><b>{hasST(selected)?'Đã có':'Chưa có'}</b></div>
                 <div><span>SPC_F</span><b>{hasF(selected)?'Đã có':'Chưa có'}</b></div>
                 <div><span>Số đơn</span><b>{selected.order_count??0} đơn</b></div>
-                <div><span>Ngày tạo</span><b>{formatDateTime(selected.created_at)}</b></div>
+                <div><span>Ngày tạo</span><b title="Lấy thời gian đặt đơn sớm hơn khi có đơn trước ngày nhập tài khoản">{formatDateTime(selected.effective_created_at??selected.created_at)}</b></div>
                 {selected.archived_at&&<div><span>Lưu trữ lúc</span><b>{formatDateTime(selected.archived_at)}</b></div>}
               </div>
 
-              <div className="panel-section-head"><div><h3>Thiết bị hoạt động</h3><span>{selectedDevices.filter((d:any)=>d.is_active).length} active / {selectedDevices.length} đã ghi nhận</span></div></div>
-              <div className="device-card-scroll">
-                {!selectedDevices.length
-                  ? <div className="empty compact">Chưa ghi nhận thiết bị.</div>
-                  : selectedDevices.map((d:any)=><div className={`device-activity-card ${d.is_active?'active':''}`} key={d.id}>
-                      <div className="device-activity-main">
-                        <div><b>{d.device_name}</b><span>{deviceTypeLabel(d.device_type)}</span></div>
-                        <span className={`device-live-dot ${d.is_active?'on':''}`}>{d.is_active?'Đang hoạt động':'Ngừng hoạt động'}</span>
-                      </div>
-                      <div className="device-activity-meta">
-                        <span>Browser <b>{d.browser_name??'—'}</b></span>
-                        <span>Profile <b>{d.browser_profile??'—'}</b></span>
-                        <span>Hoạt động gần nhất <b>{formatDateTime(d.last_seen_at)}</b></span>
-                      </div>
-                    </div>)}
+              <div className="panel-section-head"><div><h3>Thiết bị</h3></div></div>
+              <div className="detail-grid compact-detail-grid purchase-device-detail-grid">
+                <div><span>Mobile · Loại thiết bị</span><b title={selectedDeviceFields.mobileType||undefined}>{selectedDeviceFields.mobileType||'—'}</b></div>
+                <div><span>Browser · Tên</span><b title={selectedDeviceFields.browserName||undefined}>{selectedDeviceFields.browserName||'—'}</b></div>
               </div>
 
               <div className="panel-section-head voucher-section-title"><div><h3>Voucher đã dùng</h3><span>Tự tổng hợp từ đơn hàng của User</span></div></div>
@@ -647,6 +622,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               <label>Username<input name="username" required defaultValue={selected.username}/></label>
               <div className="form-grid"><label>Số điện thoại<input name="phone" defaultValue={selected.phone??''}/></label><label>Email<input name="email" type="email" defaultValue={selected.email??''}/></label></div>
               <label>Trạng thái<select name="status" defaultValue={selected.status}>{['Active','M01','M02','M03','M04','Captcha','Auto Hủy','Blocked','Không xác định'].map(s=><option key={s} value={s}>{statusLabel(s)}</option>)}</select></label>
+              <label>Ghi chú<textarea name="note" rows={2} defaultValue={selected.note??''}/></label>
             </section>
             <section className="form-section">
               <h3>Đăng nhập & phiên</h3>
@@ -656,14 +632,12 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               <label>SPC_F mới<textarea name="spc_f" rows={2} placeholder="Để trống nếu không đổi"/></label>
             </section>
             <section className="form-section">
-              <h3>Thiết bị chính</h3>
-              <label>Tên máy<input name="device_name" defaultValue={primaryDevice?.device_name??''} placeholder="MacBook M1 · Máy mua 01"/></label>
-              <div className="form-grid">
-                <label>Loại<select name="device_type" defaultValue={primaryDevice?.device_type??'DESKTOP'}><option value="DESKTOP">Máy tính</option><option value="MOBILE">Điện thoại</option><option value="BROWSER_PROFILE">Browser Profile</option></select></label>
-                <label>Browser<input name="browser_name" defaultValue={primaryDevice?.browser_name??selected.browser_name??''}/></label>
+              <h3>Thiết bị</h3>
+              <div className="form-grid purchase-two-device-fields">
+                <label>Mobile — Loại thiết bị<input name="mobile_device_type" maxLength={120} defaultValue={selectedDeviceFields.mobileType} placeholder="Ví dụ: iPhone 15"/></label>
+                <label>Browser — Tên<input name="browser_name" maxLength={120} defaultValue={selectedDeviceFields.browserName} placeholder="Ví dụ: Chrome"/></label>
               </div>
-              <label>Profile<input name="browser_profile" defaultValue={primaryDevice?.browser_profile??''}/></label>
-              <label>Ghi chú<textarea name="note" rows={2} defaultValue={selected.note??''}/></label>
+
             </section>
             <div className="form-actions"><Link className="button" href={detailHref({user:selected.id,mode:null})}>Hủy</Link><button className="button primary">Lưu thay đổi</button></div>
           </form>

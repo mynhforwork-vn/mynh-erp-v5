@@ -5,6 +5,8 @@ import { TrackingHubGroup } from '@/components/tracking-hub-group'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import { ContextOrderPanel } from '@/components/context-order-panel'
 import { isDeliveredAwaitingReceipt, isPreDestinationTransit } from '@/lib/tracking/status-groups'
+import { trackingNumberMeansCancelled } from '@/lib/purchase-order-cancellation'
+import { TrackingSuccessToast } from '@/components/tracking-success-toast'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
 type SP={
@@ -197,6 +199,9 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     const orderStatus=String(r.order_status??'').toUpperCase()
     if(r.shipping_service==='EXPRESS')return false
     if(r.receive_status==='RECEIVED')return false
+    // Some historical orders still have PROCESSING / READY_TO_SHIP despite
+    // a literal "KHÔNG CÓ" MVĐ. Do not count, display or sync them.
+    if(trackingNumberMeansCancelled(r.tracking_number))return false
     if(r.tracking_status==='CANCELLED')return false
     if(orderStatus==='CANCELLED'||orderStatus==='CANCELED')return false
     return true
@@ -370,11 +375,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
       />
     </div>
 
-    {(sp.received||sp.payment||error)&&<div className="tracking-flash-row">
-      {sp.received&&<div className="notice success"><b>Đã xác nhận nhận hàng.</b><span>Đơn sẵn sàng cho luồng kho.</span></div>}
-      {sp.payment&&<div className="notice success"><b>Đã ghi nhận đối soát HUB.</b><span>Tip đã được tính tự động.</span></div>}
-      {error&&<div className="error-box">Không thể tải dữ liệu vận chuyển: {error.message}</div>}
-    </div>}
+    <TrackingSuccessToast received={Boolean(sp.received)} payment={Boolean(sp.payment)}/>
+    {error&&<div className="error-box" role="alert">Không thể tải dữ liệu vận chuyển: {error.message}</div>}
 
     <section className="tracking-command-center-v2">
       <div className="tracking-status-strip-v2">

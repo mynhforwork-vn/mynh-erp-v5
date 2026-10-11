@@ -10,11 +10,14 @@ import { OrderEditorForm } from '@/components/order-editor-form'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import { isShippingTrackingStatus } from '@/lib/tracking/status-groups'
 import { PurchaseOrderTable } from '@/components/purchase-order-table'
+import { OrderAccountDetailPanel } from '@/components/order-account-detail-panel'
+import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
+import { orderIsCancelled } from '@/lib/purchase-order-cancellation'
 import { DestinationHubConfigModal } from '@/components/destination-hub-config-panel'
 import { suggestReceivingWarehouseId } from '@/lib/warehouse-routing'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
-type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,user?:string,settings?:string,archive?:string}
+type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,user?:string,settings?:string,archive?:string,account?:string,accountTab?:string,accountMode?:string,backUser?:string}
 
 const HOUR=60*60*1000
 const DAY=24*HOUR
@@ -105,7 +108,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const archiveView=sp.archive==='archived'
 
   let orderListQuery=supabase.from('orders').select(
-    'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,archived_at,archived_by,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
+    'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,archived_at,archived_by,erp_users(username,browser_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
   ).gte('order_date',range.start).lte('order_date',range.end)
   orderListQuery=archiveView
     ? orderListQuery.not('archived_at','is',null)
@@ -220,13 +223,13 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       )return false
     }else if(sp.tracking==='shipping'){
       const status=shipment?.current_tracking_status
-      if(!isShippingTrackingStatus(status))return false
+      if(orderIsCancelled(o)||!isShippingTrackingStatus(status))return false
     }else if(sp.tracking==='missing'){
       if(shipment?.tracking_number)return false
     }else if(sp.tracking==='cancelled'){
       const orderStatus=String(o.order_status??'').toUpperCase()
-      if(shipment?.current_tracking_status!=='CANCELLED'&&orderStatus!=='CANCELLED'&&orderStatus!=='CANCELED')return false
-    }else if(sp.tracking&&shipment?.current_tracking_status!==sp.tracking){
+      if(!orderIsCancelled(o))return false
+    }else if(sp.tracking&&(orderIsCancelled(o)||shipment?.current_tracking_status!==sp.tracking)){
       return false
     }
     return true
@@ -235,17 +238,13 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const totalOrders=scopeRows.length
   const shipping=scopeRows.filter((o:any)=>{
     const s=activeShipment(o)?.current_tracking_status
-    return isShippingTrackingStatus(s)
+    return !orderIsCancelled(o)&&isShippingTrackingStatus(s)
   }).length
-  const arrivedHub=scopeRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='ARRIVED_DESTINATION_HUB').length
-  const delivered=scopeRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='DELIVERED').length
-  const waiting=scopeRows.filter((o:any)=>o.receive_status==='WAITING_RECEIVE').length
+  const arrivedHub=scopeRows.filter((o:any)=>!orderIsCancelled(o)&&activeShipment(o)?.current_tracking_status==='ARRIVED_DESTINATION_HUB').length
+  const delivered=scopeRows.filter((o:any)=>!orderIsCancelled(o)&&activeShipment(o)?.current_tracking_status==='DELIVERED').length
+  const waiting=scopeRows.filter((o:any)=>!orderIsCancelled(o)&&o.receive_status==='WAITING_RECEIVE').length
   const missingTracking=scopeRows.filter((o:any)=>!activeShipment(o)?.tracking_number).length
-  const cancelled=scopeRows.filter((o:any)=>{
-    const status=activeShipment(o)?.current_tracking_status
-    const orderStatus=String(o.order_status??'').toUpperCase()
-    return status==='CANCELLED'||orderStatus==='CANCELLED'||orderStatus==='CANCELED'
-  }).length
+  const cancelled=scopeRows.filter((o:any)=>orderIsCancelled(o)).length
 
   const expressCount=scopeRows.filter((o:any)=>o.shipping_service==='EXPRESS').length
   const expressAttentionRows=scopeRows.filter((o:any)=>{
@@ -281,9 +280,20 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     if(sp.settings)p.set('settings',sp.settings)
     if(sp.user)p.set('user',sp.user)
     if(sp.archive)p.set('archive',sp.archive)
+    if(sp.account)p.set('account',sp.account)
+    if(sp.accountTab)p.set('accountTab',sp.accountTab)
+    if(sp.accountMode)p.set('accountMode',sp.accountMode)
+    if(sp.backUser)p.set('backUser',sp.backUser)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v==='')p.delete(k)
       else p.set(k,v)
+    }
+    // A single slidebar context owns the URL. Opening an Order clears User
+    // context and vice versa, including links created from old bookmarks.
+    if(extra.account){
+      p.delete('order');p.delete('tab');p.delete('backUser');p.delete('mode')
+    }else if(extra.order){
+      p.delete('account');p.delete('accountTab');p.delete('accountMode')
     }
     const qs=p.toString()
     return `/purchase/orders${qs?`?${qs}`:''}`
@@ -301,7 +311,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   if(sp.order){
     const [od,it,vo]=await Promise.all([
       supabase.from('orders').select(
-        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,archived_by,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)'
+        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,archived_by,erp_users(username,browser_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)'
       ).eq('id',sp.order).maybeSingle(),
       supabase.from('order_items')
         .select('*,product_variants(id,variant_name,sale_price,products(id,sku,name))')
@@ -351,10 +361,73 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     ? [{...detail,order_items:items,order_vouchers:vouchers},...rows]
     : rows
 
+  // Only fetch device records belonging to accounts on this order page.
+  const accountIds=[...new Set(displayRows.map((o:any)=>String(o.erp_user_id??'')).filter(Boolean))]
+  const batches=Array.from({length:Math.ceil(accountIds.length/200)},(_,i)=>accountIds.slice(i*200,(i+1)*200))
+  const deviceResults=await Promise.all(batches.map(ids=>
+    supabase.from('purchase_account_devices')
+      .select('erp_user_id,device_key,device_name,device_type,browser_name,is_active')
+      .in('erp_user_id',ids).limit(2000)
+  ))
+  const deviceFetchError=deviceResults.some(x=>Boolean(x.error))
+  const devicesByAccount=new Map<string,any[]>()
+  for(const result of deviceResults){
+    for(const device of result.data??[]){
+      const devices=devicesByAccount.get(device.erp_user_id)??[]
+      devices.push(device)
+      devicesByAccount.set(device.erp_user_id,devices)
+    }
+  }
+  const displayRowsWithDevices=displayRows.map((o:any)=>({
+    ...o,
+    account_device_info:accountDeviceFields({
+      all_devices:devicesByAccount.get(String(o.erp_user_id??''))??[],
+      browser_name:o.erp_users?.browser_name??null,
+    }),
+  }))
+
+  // Context User panel stays inside /purchase/orders. Queries are scoped to
+  // the clicked account; no account secrets or unrelated users are fetched.
+  let openedAccount:any=null
+  let openedAccountOrders:any[]=[]
+  let openedAccountHistory:any[]=[]
+  let openedAccountDevices:any[]=[]
+  let earliestAccountOrderDate:string|null=null
+  const accountTab=['info','orders','history'].includes(sp.accountTab??'')
+    ?String(sp.accountTab):'info'
+  if(sp.account&&!sp.order){
+    const accountResult=await supabase.from('erp_users')
+      .select('id,username,phone,email,status,platform,note,created_at,archived_at,order_count,browser_name,spc_st_secret_id,spc_f_secret_id,spc_st_encrypted,spc_f_encrypted')
+      .eq('id',sp.account).maybeSingle()
+    openedAccount=accountResult.data
+    if(openedAccount){
+      const [accountOrderResult,accountDeviceResult,firstOrderResult]=await Promise.all([
+        supabase.from('orders')
+          .select('id,shopee_order_id,order_date,area,cod,order_status,payment_status,receive_status,recipient_name,recipient_phone,recipient_address,destination_hub,archived_at,shipments(tracking_number,carrier,current_tracking_status,is_active),order_items(product_name,variant,sku,quantity,final_price,original_price),order_vouchers(voucher_tag,voucher_type,voucher_name,voucher_code)')
+          .eq('erp_user_id',openedAccount.id)
+          .order('order_date',{ascending:false}).limit(100),
+        supabase.from('purchase_account_devices')
+          .select('device_key,device_type,device_name,browser_name,is_active')
+          .eq('erp_user_id',openedAccount.id).limit(100),
+        supabase.from('orders').select('order_date').eq('erp_user_id',openedAccount.id)
+          .not('order_date','is',null).order('order_date',{ascending:true}).limit(1),
+      ])
+      openedAccountOrders=accountOrderResult.data??[]
+      openedAccountDevices=accountDeviceResult.data??[]
+      earliestAccountOrderDate=firstOrderResult.data?.[0]?.order_date??null
+      if(accountTab==='history'){
+        const historyResult=await supabase.from('audit_logs')
+          .select('id,action,source,created_at').eq('module','USERS')
+          .eq('entity_id',openedAccount.id).order('created_at',{ascending:false}).limit(100)
+        openedAccountHistory=historyResult.data??[]
+      }
+    }
+  }
+
   const createMode=canOperate&&sp.mode==='create'
   const editMode=Boolean(canOperate&&detail&&sp.mode==='edit'&&!detail.archived_at)
   const destinationSettingsMode=sp.settings==='destination-hubs'
-  const panelOpen=createMode||Boolean(detail)
+  const panelOpen=createMode||Boolean(detail)||Boolean(sp.account)
   const currentShip=activeShipment(detail)
   const detailHubConfig=detail?destinationHubs.find((x:any)=>x.hub_code===detail.destination_hub):null
   const detailTotalOriginal=items.reduce(
@@ -445,22 +518,45 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               ? `${rows.length} / ${totalOrders} đơn · +1 đơn đang mở ngoài bộ lọc`
               : `${rows.length} / ${totalOrders} đơn`}
           </span>
+          <div id="p1-order-toolbar-actions" className="p1-order-toolbar-actions"/>
         </div>
 
+        {deviceFetchError&&<p role="alert" className="error-text">Không thể tải thông tin thiết bị tài khoản. Vui lòng thử tải lại.</p>}
         {error
           ? <div className="card table-card order-table-card"><div className="error-text order-table-error">{error.message}</div></div>
           : <PurchaseOrderTable
-              rows={displayRows}
+              rows={displayRowsWithDevices}
               selectedId={sp.order}
               baseQuery={returnQuery}
               canEdit={canOperate}
-              canDeletePermanent={role==='admin'}
               carrierConfigs={carrierConfigs}
             />}
 
       </section>
 
-      {createMode&&!destinationSettingsMode&&
+      {sp.account&&!sp.order&&
+        <OrderAccountDetailPanel
+          account={openedAccount}
+          devices={openedAccountDevices}
+          orders={openedAccountOrders.map(o=>({
+            ...o,
+            href:listHref({account:null,accountTab:null,accountMode:null,order:o.id,tab:'info',backUser:openedAccount.id,mode:null}),
+          }))}
+          history={openedAccountHistory}
+          earliestDate={earliestAccountOrderDate}
+          tab={accountTab}
+          canEdit={canOperate}
+          editMode={sp.accountMode==='edit'}
+          editHref={listHref({accountTab:'info',accountMode:'edit'})}
+          returnQuery={listHref({accountTab:'info',accountMode:null}).split('?')[1]??''}
+          closeHref={listHref({account:null,accountTab:null,accountMode:null,order:null,tab:null,backUser:null})}
+          infoHref={listHref({accountTab:'info',accountMode:null})}
+          ordersHref={listHref({accountTab:'orders',accountMode:null})}
+          historyHref={listHref({accountTab:'history',accountMode:null})}
+        />
+      }
+
+      {createMode&&!sp.account&&!sp.order&&!destinationSettingsMode&&
         <SystemSlidebar className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Tạo đơn mới</h2></div>
@@ -524,10 +620,13 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       }
 
       {detail&&!editMode&&!destinationSettingsMode&&
-        <SystemSlidebar className="detail-panel">
+        <SystemSlidebar className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT ĐƠN</span><h2>{detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
-            <Link className="close" href={listHref({order:null,tab:null,mode:null})}>×</Link>
+            <div className="panel-head-actions">
+              {sp.backUser&&<Link className="context-stack-back" href={listHref({account:sp.backUser,accountTab:'orders',backUser:null,order:null,tab:null})} title="Trở lại danh sách đơn của User">← Trở lại User</Link>}
+              <Link className="close" href={listHref({order:null,tab:null,mode:null,backUser:null})} aria-label="Đóng chi tiết đơn">×</Link>
+            </div>
           </div>
 
           <div className="panel-tabs">
@@ -540,13 +639,15 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
           <div className="panel-scroll">
             {(!sp.tab||sp.tab==='info'||(detail.shipping_service==='EXPRESS'&&sp.tab==='tracking'))&&<>
               <div className="detail-grid">
-                <div><span>Username</span><b>{detail.erp_users?.username??'—'}</b></div>
+                <div><span>Username</span><b>{detail.erp_user_id&&detail.erp_users?.username
+                  ?<Link className="p1-order-username-link" href={listHref({account:detail.erp_user_id,accountTab:'info',backUser:null,order:null,tab:null})}>{detail.erp_users.username}</Link>
+                  :'—'}</b></div>
                 <div><span>Ngày đặt</span><b>{formatDateTime(detail.order_date)}</b></div>
                 {detail.archived_at&&<div><span>Lưu trữ lúc</span><b>{formatDateTime(detail.archived_at)}</b></div>}
                 <div><span>Trạng thái đơn</span><b>{detail.archived_at
                   ? 'Đã lưu trữ'
-                  : detail.order_status==='CANCELLED'
-                    ? 'Đã hủy'
+                  : orderIsCancelled(detail)
+                    ? 'Đã huỷ'
                     : detail.shipping_service==='EXPRESS'
                       ? detail.receive_status==='RECEIVED'
                         ? 'Đã nhận · Hỏa tốc'
@@ -678,6 +779,31 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                     </div>}
                 </div>}
 
+              <h3>Sản phẩm</h3>
+              <div className="mini-table">
+                <div className="mini-head"><span>Sản phẩm</span><span>SKU / Phân loại</span><span>SL</span><span>Giá</span></div>
+                {!items.length
+                  ? <div className="empty compact">Chưa có sản phẩm.</div>
+                  : items.map((it:any)=><div className="mini-row" key={it.id}>
+                      <span>{it.product_name??'Sản phẩm'}</span>
+                      <span>{[it.sku,it.variant].filter(Boolean).join(' · ')||'—'}</span>
+                      <span>{it.quantity??1}</span>
+                      <span>{formatMoney(it.final_price??it.original_price)}</span>
+                    </div>)}
+              </div>
+              <div className="mini-total-row">
+                <span>Tổng giá gốc</span>
+                <b>{formatMoney(detailTotalOriginal)}</b>
+              </div>
+
+              <h3>Voucher</h3>
+              {!vouchers.length
+                ? <div className="empty compact">Không sử dụng voucher.</div>
+                : <div className="voucher-list">{vouchers.map((v:any)=><div className="voucher-row" key={v.id}>
+                    <div><b>{v.voucher_tag??'Voucher'}</b><span>{v.voucher_name??'—'}</span></div>
+                    <div><span>{v.voucher_type??'—'}</span><b>{v.voucher_code??'—'}</b></div>
+                  </div>)}</div>}
+
               <div className="panel-action-row split-actions">
                 <CopyOrderButton text={`Mã đơn: ${detail.shopee_order_id??''}\nMã vận đơn: ${currentShip?.tracking_number??''}\nCOD: ${detail.cod??0}\nNgười nhận: ${detail.recipient_name??''}\nSĐT: ${detail.recipient_phone??''}\nĐịa chỉ: ${detail.recipient_address??''}`}/>
                 {canOperate&&!detail.archived_at&&<Link className="button primary" href={listHref({order:detail.id,mode:'edit'})}>Sửa đơn</Link>}
@@ -705,30 +831,6 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                     </>}
               </div>}
 
-              <h3>Sản phẩm</h3>
-              <div className="mini-table">
-                <div className="mini-head"><span>Sản phẩm</span><span>SKU / Phân loại</span><span>SL</span><span>Giá</span></div>
-                {!items.length
-                  ? <div className="empty compact">Chưa có sản phẩm.</div>
-                  : items.map((it:any)=><div className="mini-row" key={it.id}>
-                      <span>{it.product_name??'Sản phẩm'}</span>
-                      <span>{[it.sku,it.variant].filter(Boolean).join(' · ')||'—'}</span>
-                      <span>{it.quantity??1}</span>
-                      <span>{formatMoney(it.final_price??it.original_price)}</span>
-                    </div>)}
-              </div>
-              <div className="mini-total-row">
-                <span>Tổng giá gốc</span>
-                <b>{formatMoney(detailTotalOriginal)}</b>
-              </div>
-
-              <h3>Voucher</h3>
-              {!vouchers.length
-                ? <div className="empty compact">Không sử dụng voucher.</div>
-                : <div className="voucher-list">{vouchers.map((v:any)=><div className="voucher-row" key={v.id}>
-                    <div><b>{v.voucher_tag??'Voucher'}</b><span>{v.voucher_name??'—'}</span></div>
-                    <div><span>{v.voucher_type??'—'}</span><b>{v.voucher_code??'—'}</b></div>
-                  </div>)}</div>}
             </>}
 
             {detail.shipping_service!=='EXPRESS'&&sp.tab==='tracking'&&<>

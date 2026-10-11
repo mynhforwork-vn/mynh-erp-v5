@@ -1,18 +1,16 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
-import { DeleteOrderConfirmForm } from '@/components/delete-order-confirm-form'
-import { ConfirmOperationDialog } from '@/components/confirm-operation-dialog'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
+import { usePurchaseToolbarRoot } from '@/components/use-purchase-toolbar-root'
 import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
+import { orderIsCancelled } from '@/lib/purchase-order-cancellation'
+import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
 import {
-  archiveOrder,
   archiveOrdersBulk,
-  deleteOrdersBulkPermanent,
   quickAddTrackingNumber,
-  restoreOrder,
   restoreOrdersBulk,
 } from '@/lib/actions/core'
 
@@ -23,25 +21,27 @@ type CarrierConfig={
   display_name:string
   tracking_prefixes?:string[]|null
 }
-type ColKey='number'|'order'|'username'|'time'|'product'|'cod'|'tracking'|'carrier'|'voucher'|'status'
+type ColKey='number'|'order'|'username'|'device'|'time'|'product'|'cod'|'tracking'|'voucher'|'status'
 type SortKey='order_asc'|'order_desc'|'username_asc'|'username_desc'|'time_new'|'time_old'|'cod_desc'|'cod_asc'|'status_asc'|'status_desc'
 
-const ALL:ColKey[]=['number','order','username','time','product','cod','tracking','carrier','voucher','status']
+const ALL:ColKey[]=['number','order','username','device','time','product','cod','tracking','voucher','status']
 const LABELS:Record<ColKey,string>={
   number:'#',
   order:'Mã đơn',
   username:'Username',
+  device:'Thiết bị',
   time:'Thời gian đặt',
   product:'Sản phẩm',
   cod:'COD',
-  tracking:'Mã vận đơn',
-  carrier:'ĐVVC',
+  tracking:'Vận chuyển',
   voucher:'Voucher',
   status:'Xử lý',
 }
 const STORAGE_COLUMNS='mynh-v5-purchase-order-columns'
 const STORAGE_COLUMN_ORDER='mynh-v5-purchase-order-column-order'
 const STORAGE_SORT='mynh-v5-purchase-order-sort'
+const STORAGE_DEVICE_MIGRATION='mynh-v5-purchase-order-device-v1'
+const STORAGE_SHIPPING_MIGRATION='mynh-v5-purchase-order-shipping-v2'
 
 function activeShipment(order:Row){
   return (order?.shipments??[]).find((x:any)=>x.is_active)??order?.shipments?.[0]??null
@@ -61,6 +61,7 @@ function voucherSummary(vouchers:any[]){
   )].join(' · ')
 }
 function statusKey(row:Row){
+  if(orderIsCancelled(row))return 'CANCELLED'
   if(row.shipping_service==='EXPRESS')return ['EXPRESS',row.receive_status??''].join(' ')
   const s=activeShipment(row)?.current_tracking_status??''
   return [s,row.receive_status??''].join(' ')
@@ -77,67 +78,6 @@ function ColumnIcon(){
   </svg>
 }
 
-
-function OrderLifecycleCell({
-  row,
-  returnQuery,
-  canManage,
-  canDeletePermanent,
-  open,
-  onToggle
-}:{
-  row:Row
-  returnQuery:string
-  canManage:boolean
-  canDeletePermanent:boolean
-  open:boolean
-  onToggle:()=>void
-}){
-  const [deleteOpen,setDeleteOpen]=useState(false)
-
-  useEffect(()=>{
-    if(!open)setDeleteOpen(false)
-  },[open])
-
-  if(!canManage)return <span className="row-action-readonly">—</span>
-
-  return <div className="row-action-menu-wrap">
-    <button
-      type="button"
-      className="row-action-kebab"
-      aria-label="Mở thao tác"
-      aria-expanded={open}
-      onClick={onToggle}
-    ><span aria-hidden="true">⋮</span></button>
-
-    {open&&<div className="row-action-menu">
-      {row.archived_at
-        ? <form action={restoreOrder} className="row-action-menu-form">
-            <input type="hidden" name="order_id" value={row.id}/>
-            <input type="hidden" name="return_query" value={returnQuery}/>
-            <input type="hidden" name="table_action" value="1"/>
-            <button className="row-action-menu-item restore" type="submit">Khôi phục</button>
-          </form>
-        : <form action={archiveOrder} className="row-action-menu-form">
-            <input type="hidden" name="order_id" value={row.id}/>
-            <input type="hidden" name="return_query" value={returnQuery}/>
-            <input type="hidden" name="table_action" value="1"/>
-            <button className="row-action-menu-item archive" type="submit">Lưu trữ</button>
-          </form>}
-
-      {canDeletePermanent&&<>
-        <button
-          type="button"
-          className="row-action-menu-item delete"
-          onClick={()=>setDeleteOpen(true)}
-        >Xóa đơn</button>
-
-        {deleteOpen&&<DeleteOrderConfirmForm compact orderId={String(row.id)} confirmCode={String(row.shopee_order_id??row.id.slice(0,8))} returnQuery={returnQuery} onCancel={()=>setDeleteOpen(false)}/>}
-
-      </>}
-    </div>}
-  </div>
-}
 
 function QuickTrackingEditor({
   orderId,
@@ -202,14 +142,12 @@ export function PurchaseOrderTable({
   selectedId,
   baseQuery='',
   canEdit=false,
-  canDeletePermanent=false,
   carrierConfigs=[],
 }:{
   rows:Row[]
   selectedId?:string|null
   baseQuery?:string
   canEdit?:boolean
-  canDeletePermanent?:boolean
   carrierConfigs?:CarrierConfig[]
 }){
   const [visible,setVisible]=useState<ColKey[]>(ALL)
@@ -217,56 +155,56 @@ export function PurchaseOrderTable({
   const [open,setOpen]=useState(false)
   const [sort,setSort]=useState<SortKey>('time_new')
   const [selected,setSelected]=useState<string[]>([])
-  const [bulkDeleteOpen,setBulkDeleteOpen]=useState(false)
-  const [bulkDeleteError,setBulkDeleteError]=useState('')
-  const [bulkDeleteReason,setBulkDeleteReason]=useState('')
-  const [bulkDeletePending,startBulkDelete]=useTransition()
-  const router=useRouter()
-  function submitBulkDelete(){
-    const formData=new FormData()
-    formData.set('return_query',baseQuery)
-    for(const id of selected)formData.append('order_ids',id)
-    formData.set('reason',bulkDeleteReason)
-    setBulkDeleteError('')
-    startBulkDelete(async()=>{
-      try{
-        const result=await deleteOrdersBulkPermanent(formData)
-        if(!result.ok){setBulkDeleteError(result.error);return}
-        setBulkDeleteOpen(false)
-        setBulkDeleteReason('')
-        router.replace(result.href)
-        router.refresh()
-      }catch{
-        setBulkDeleteError('Không kết nối được máy chủ. Hãy tải lại trang và kiểm tra đơn trước khi thử tiếp.')
-      }
-    })
-  }
-  const [openActionId,setOpenActionId]=useState<string|null>(null)
-  const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
-  const [dragOverColumn,setDragOverColumn]=useState<ColKey|null>(null)
+
+  const draggingRef=useRef<ColKey|null>(null)
   const tableWrapRef=useRef<HTMLDivElement|null>(null)
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
-  const bulkDeleteRef=useRef<HTMLDivElement|null>(null)
+  const toolbarRoot=usePurchaseToolbarRoot('p1-order-toolbar-actions')
 
   useEffect(()=>{
     try{
+      // Introduce Device once into existing saved column preferences.
+      // Afterwards users can hide it permanently without the migration undoing it.
+      const needsMigration=!localStorage.getItem(STORAGE_DEVICE_MIGRATION)
+      const needsShippingMigration=!localStorage.getItem(STORAGE_SHIPPING_MIGRATION)
+      const mergedShipping=(keys:string[])=>{
+        if(!needsShippingMigration||!keys.includes('carrier'))return keys
+        const next=keys.filter(k=>k!=='carrier')
+        if(!next.includes('tracking')){
+          const i=keys.indexOf('carrier')
+          next.splice(Math.min(i,next.length),0,'tracking')
+        }
+        return next
+      }
+      const withDevice=(keys:string[])=>{
+        if(keys.includes('device'))return keys
+        const next=[...keys]
+        const pos=next.indexOf('username')
+        next.splice(pos<0?next.length:pos+1,0,'device')
+        return next
+      }
       const raw=localStorage.getItem(STORAGE_COLUMNS)
       if(raw){
         const parsed=JSON.parse(raw)
         if(Array.isArray(parsed)){
-          const valid=parsed.filter((x:any)=>ALL.includes(x))
-          if(valid.length)setVisible(valid)
+          const columns=normalizeLegacyVisibleColumns<ColKey>(
+            needsMigration?withDevice(mergedShipping(parsed)):mergedShipping(parsed),ALL,['order'])
+          setVisible(columns)
+          if(needsMigration)localStorage.setItem(STORAGE_COLUMNS,JSON.stringify(columns))
         }
       }
       const rawOrder=localStorage.getItem(STORAGE_COLUMN_ORDER)
       if(rawOrder){
         const parsedOrder=JSON.parse(rawOrder)
         if(Array.isArray(parsedOrder)){
-          const validOrder=parsedOrder.filter((x:any)=>ALL.includes(x))
-          const missing=ALL.filter(x=>!validOrder.includes(x))
-          if(validOrder.length)setColumnOrder([...validOrder,...missing])
+          const columns=normalizeLegacyColumnOrder<ColKey>(
+            needsMigration?withDevice(mergedShipping(parsedOrder)):mergedShipping(parsedOrder),ALL)
+          setColumnOrder(columns)
+          if(needsMigration)localStorage.setItem(STORAGE_COLUMN_ORDER,JSON.stringify(columns))
         }
       }
+      if(needsMigration)localStorage.setItem(STORAGE_DEVICE_MIGRATION,'1')
+      if(needsShippingMigration)localStorage.setItem(STORAGE_SHIPPING_MIGRATION,'1')
       const savedSort=localStorage.getItem(STORAGE_SORT) as SortKey|null
       if(savedSort)setSort(savedSort)
     }catch{}
@@ -282,43 +220,18 @@ export function PurchaseOrderTable({
   },[selectedId,sort,visible])
 
   useEffect(()=>{
-    if(!openActionId)return
-    function onPointerDown(event:PointerEvent){
-      const target=event.target as HTMLElement|null
-      if(target?.closest('.row-action-menu-wrap')||target?.closest('.erp-confirm-overlay'))return
-      setOpenActionId(null)
+    if(!open)return
+    const onPointerDown=(event:PointerEvent)=>{
+      if(event.target instanceof Node&&!columnManagerRef.current?.contains(event.target))setOpen(false)
     }
-    function onKeyDown(event:KeyboardEvent){
-      if(event.key==='Escape'&&!document.querySelector('.erp-confirm-overlay'))setOpenActionId(null)
-    }
+    const onKeyDown=(event:KeyboardEvent)=>{if(event.key==='Escape')setOpen(false)}
     document.addEventListener('pointerdown',onPointerDown)
     document.addEventListener('keydown',onKeyDown)
     return ()=>{
       document.removeEventListener('pointerdown',onPointerDown)
       document.removeEventListener('keydown',onKeyDown)
     }
-  },[openActionId])
-
-  useEffect(()=>{
-    if(!open&&!bulkDeleteOpen)return
-    function onPointerDown(event:PointerEvent){
-      const target=event.target as Node|null
-      if(open&&target&&!columnManagerRef.current?.contains(target))setOpen(false)
-      if(bulkDeleteOpen&&target&&!bulkDeleteRef.current?.contains(target)&&!(target instanceof Element&&target.closest('.erp-confirm-overlay')))setBulkDeleteOpen(false)
-    }
-    function onKeyDown(event:KeyboardEvent){
-      if(event.key!=='Escape')return
-      setOpen(false)
-      if(!document.querySelector('.erp-confirm-overlay'))setBulkDeleteOpen(false)
-    }
-    document.addEventListener('pointerdown',onPointerDown)
-    document.addEventListener('keydown',onKeyDown)
-    return ()=>{
-      document.removeEventListener('pointerdown',onPointerDown)
-      document.removeEventListener('keydown',onKeyDown)
-    }
-  },[open,bulkDeleteOpen])
-
+  },[open])
 
   function persistColumns(next:ColKey[]){
     setVisible(next)
@@ -336,6 +249,15 @@ export function PurchaseOrderTable({
     next.splice(targetIndex,0,source)
     persistColumnOrder(next)
   }
+  function moveColumn(key:ColKey,delta:-1|1){
+    const i=columnOrder.indexOf(key)
+    const target=i+delta
+    if(i<0||target<0||target>=columnOrder.length)return
+    const next=[...columnOrder]
+    next.splice(i,1)
+    next.splice(target,0,key)
+    persistColumnOrder(next)
+  }
   function resetColumns(){
     persistColumns(ALL)
     persistColumnOrder(ALL)
@@ -349,12 +271,24 @@ export function PurchaseOrderTable({
     setSort(next)
     try{localStorage.setItem(STORAGE_SORT,next)}catch{}
   }
+  function hrefForUser(id:string){
+    const p=new URLSearchParams(baseQuery)
+    p.set('account',id)
+    p.set('accountTab','info')
+    p.delete('backUser')
+    p.delete('mode')
+    p.delete('settings')
+    return '/purchase/orders?'+p.toString()
+  }
   function hrefFor(id:string){
     const p=new URLSearchParams(baseQuery)
     p.set('order',id)
     p.delete('mode')
     p.delete('settings')
     p.delete('user')
+    p.delete('account')
+    p.delete('accountTab')
+    p.delete('backUser')
     return '/purchase/orders?'+p.toString()
   }
   function isVisible(key:ColKey){return visible.includes(key)}
@@ -404,99 +338,128 @@ export function PurchaseOrderTable({
     setSelected(sorted.slice(0,200).map((row:any)=>String(row.id)))
   }
 
-  const colSpan=visible.length+1+(canEdit?1:0)
+  // Tracking/HUB sizing: minimum follows visible semantic IDs, not positions.
+  const columnMinimums:Record<ColKey,number>={"number":28,"order":134,"username":94,"device":128,"time":116,"product":149,"cod":76,"tracking":177,"voucher":69,"status":104}
+  const panelMinimums:Record<ColKey,number>={"number":26,"order":116,"username":84,"device":112,"time":106,"product":118,"cod":65,"tracking":150,"voucher":61,"status":92}
+  const shownColumns=columnOrder.filter(isVisible)
+  const panelFitWeights:Record<ColKey,number>={
+    number:20,order:108,username:80,device:106,time:103,product:121,
+    cod:60,tracking:145,voucher:57,status:91
+  }
+  const panelFitTotal=(canEdit?24:0)+shownColumns.reduce((sum,key)=>sum+panelFitWeights[key],0)
+  const panelShare=(weight:number)=>({ '--p1-panel-col-width':(weight/panelFitTotal*100)+'%' }) as CSSProperties
+  const fullFloor=(canEdit?30:0)+shownColumns.reduce((sum,k)=>sum+columnMinimums[k],0)
+  const panelFloor=(canEdit?28:0)+shownColumns.reduce((sum,k)=>sum+panelMinimums[k],0)
+  const tableWidths={
+    '--p1-order-min-width':fullFloor+'px',
+    '--p1-order-panel-min-width':panelFloor+'px',
+  } as CSSProperties
+  const colSpan=visible.length+(canEdit?1:0)
   const toggleSort=(a:SortKey,b:SortKey)=>changeSort(sort===a?b:a)
 
   function renderHeader(key:ColKey){
-    if(key==='number')return <th key={key}>#</th>
-    if(key==='order')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('order_asc','order_desc')}>Mã đơn <span>{sortIndicator(sort,'order_asc','order_desc')}</span></button></th>
-    if(key==='username')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('username_asc','username_desc')}>Username <span>{sortIndicator(sort,'username_asc','username_desc')}</span></button></th>
-    if(key==='time')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('time_old','time_new')}>Thời gian đặt <span>{sort==='time_new'?'↓':sort==='time_old'?'↑':'↕'}</span></button></th>
-    if(key==='product')return <th key={key}>Sản phẩm</th>
-    if(key==='cod')return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('cod_asc','cod_desc')}>COD <span>{sortIndicator(sort,'cod_asc','cod_desc')}</span></button></th>
-    if(key==='tracking')return <th key={key}>Mã vận đơn</th>
-    if(key==='carrier')return <th key={key}>ĐVVC</th>
-    if(key==='voucher')return <th key={key}>Voucher</th>
-    return <th key={key}><button className="sort-head" type="button" onClick={()=>toggleSort('status_asc','status_desc')}>Xử lý <span>{sortIndicator(sort,'status_asc','status_desc')}</span></button></th>
+    if(key==='number')return <th key={key} data-order-col={key}>#</th>
+    if(key==='order')return <th key={key} data-order-col={key} className="p1-order-identity-head"><button className="sort-head" type="button" onClick={()=>toggleSort('order_asc','order_desc')}>Mã đơn <span>{sortIndicator(sort,'order_asc','order_desc')}</span></button></th>
+    if(key==='username')return <th key={key} data-order-col={key}><button className="sort-head" type="button" onClick={()=>toggleSort('username_asc','username_desc')}>Username <span>{sortIndicator(sort,'username_asc','username_desc')}</span></button></th>
+    if(key==='device')return <th key={key} data-order-col={key}>Thiết bị</th>
+    if(key==='time')return <th key={key} data-order-col={key}><button className="sort-head" type="button" onClick={()=>toggleSort('time_old','time_new')}>Thời gian đặt <span>{sort==='time_new'?'↓':sort==='time_old'?'↑':'↕'}</span></button></th>
+    if(key==='product')return <th key={key} data-order-col={key} className="p1-order-product-head">Sản phẩm</th>
+    if(key==='cod')return <th key={key} data-order-col={key}><button className="sort-head" type="button" onClick={()=>toggleSort('cod_asc','cod_desc')}>COD <span>{sortIndicator(sort,'cod_asc','cod_desc')}</span></button></th>
+    if(key==='tracking')return <th key={key} data-order-col={key} className="p1-order-tracking-head">Vận chuyển</th>
+    if(key==='voucher')return <th key={key} data-order-col={key}>Voucher</th>
+    return <th key={key} data-order-col={key}><button className="sort-head" type="button" onClick={()=>toggleSort('status_asc','status_desc')}>Xử lý <span>{sortIndicator(sort,'status_asc','status_desc')}</span></button></th>
   }
 
   function renderCell(key:ColKey,o:any,i:number){
     const s=activeShipment(o)
-    if(key==='number')return <td key={key}>{i+1}</td>
-    if(key==='order')return <td key={key}><Link className="table-link" prefetch={false} href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
-    if(key==='username')return <td key={key}>{o.erp_users?.username??'—'}</td>
-    if(key==='time')return <td key={key} className="order-time-cell">{formatDateTime(o.order_date)}</td>
-    if(key==='product')return <td key={key} className="truncate product-cell">{productSummary(o.order_items??[])}</td>
-    if(key==='cod')return <td key={key} className="money">{formatMoney(o.cod)}</td>
-    if(key==='tracking')return <td key={key} className="tracking-number-cell">
-      {s?.tracking_number
-        ? <span className="tracking-number-value">{s.tracking_number}</span>
-        : canEdit&&!o.archived_at
-          ? <QuickTrackingEditor
-              orderId={o.id}
-              returnQuery={baseQuery}
-              carrierConfigs={carrierConfigs}
-              isExpress={o.shipping_service==='EXPRESS'}
-            />
-          : <span className="tracking-missing-text">Chưa có</span>}
+    if(key==='number')return <td key={key} data-order-col={key}>{i+1}</td>
+    if(key==='order')return <td key={key} data-order-col={key} className="p1-order-identity-cell"><Link className="table-link" prefetch={false} href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
+    if(key==='username')return <td key={key} data-order-col={key} className="p1-order-user-cell" title={o.erp_users?.username??undefined}>
+      {o.erp_user_id&&o.erp_users?.username
+        ? <Link className="p1-order-username-link" prefetch={false} href={hrefForUser(String(o.erp_user_id))}
+            title={'Xem chi tiết User '+o.erp_users.username}>{o.erp_users.username}</Link>
+        : '—'}
     </td>
-    if(key==='carrier')return <td key={key}>{o.shipping_service==='EXPRESS'?'Hỏa tốc':s?.carrier??'—'}</td>
-    if(key==='voucher')return <td key={key} className="voucher-cell"><VoucherTags value={voucherSummary(o.order_vouchers??[])} compact maxVisible={2}/></td>
-    return <td key={key}>
+    if(key==='device'){
+      const mobile=String(o.account_device_info?.mobileType??'')
+      const browser=String(o.account_device_info?.browserName??'')
+      return <td key={key} data-order-col={key} className="p1-order-device-cell"
+        title={'Mobile: '+(mobile||'—')+' · Browser: '+(browser||'—')}>
+        <span className="p1-order-device-lines">
+          <span><small>M:</small><b>{mobile||'—'}</b></span>
+          <span><small>B:</small><b>{browser||'—'}</b></span>
+        </span>
+      </td>
+    }
+    if(key==='time')return <td key={key} data-order-col={key} className="order-time-cell">{formatDateTime(o.order_date)}</td>
+    if(key==='product')return <td key={key} data-order-col={key} className="product-cell" title={(o.order_items??[]).map((it:any)=>[it.product_name,it.variant].filter(Boolean).join(' · ')).join(' | ')||'—'}>
+      <span className="p1-product-lines">
+        {(o.order_items??[]).length
+          ? (o.order_items??[]).slice(0,2).map((it:any,index:number)=><span key={it.id??index}>
+              {[it.product_name,it.variant].filter(Boolean).join(' · ')||'Sản phẩm'}
+              {index===1&&(o.order_items??[]).length>2?' +'+((o.order_items??[]).length-2):''}
+            </span>)
+          : <span>—</span>}
+      </span>
+    </td>
+    if(key==='cod')return <td key={key} data-order-col={key} className="money">{formatMoney(o.cod)}</td>
+    if(key==='tracking'){
+      const cancelled=orderIsCancelled(o)
+      const value=String(s?.tracking_number??'')
+      const carrier=o.shipping_service==='EXPRESS'?'Hỏa tốc':String(s?.carrier??'')
+      return <td key={key} data-order-col={key} className="tracking-number-cell p1-shipping-cell"
+        title={'MVĐ: '+(value||'Chưa có')+' · ĐVVC: '+(carrier||'Chưa rõ')}>
+        <span className="p1-shipping-lines">
+          <span className="p1-shipping-number">
+            {value?<b title={value}>{value}</b>:canEdit&&!o.archived_at&&!cancelled
+              ?<QuickTrackingEditor orderId={o.id} returnQuery={baseQuery}
+                carrierConfigs={carrierConfigs} isExpress={o.shipping_service==='EXPRESS'}/>
+              :<b>Chưa có</b>}
+          </span>
+          <span className="p1-shipping-carrier">{cancelled?'Đơn bị huỷ':carrier||'Chưa rõ ĐVVC'}</span>
+        </span>
+      </td>
+    }
+    if(key==='voucher')return <td key={key} data-order-col={key} className="voucher-cell"><VoucherTags value={voucherSummary(o.order_vouchers??[])} compact maxVisible={2}/></td>
+    return <td key={key} data-order-col={key}>
       <div className="order-state-cell">
-        {o.shipping_service==='EXPRESS'
+        {orderIsCancelled(o)
+          ? <span className="status-pill status-cancelled">Đơn bị huỷ</span>
+          :o.shipping_service==='EXPRESS'
           ? <span className="status-pill orange">Hỏa tốc</span>
           : s?.tracking_number
             ? <span className={'status-pill status-'+String(s?.current_tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(s?.current_tracking_status)}</span>
             : <span className="status-pill orange">Chờ mã vận đơn</span>}
-        {o.receive_status!=='NOT_READY'&&<span className={'status-pill '+(o.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(o.receive_status)}</span>}
+        {!orderIsCancelled(o)&&o.receive_status!=='NOT_READY'&&<span className={'status-pill '+(o.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(o.receive_status)}</span>}
         {o.archived_at&&<span className="status-pill archived">Lưu trữ</span>}
       </div>
     </td>
   }
 
   return <div className="order-table-shell">
-    {canEdit&&selected.length>0&&<div className="order-bulk-bar">
-      <div className="order-bulk-summary">
-        <b>{selected.length}</b>
-        <span>đơn đã chọn{sorted.length>200?' · tối đa 200/lần':''}</span>
-        <button type="button" onClick={()=>setSelected([])}>Bỏ chọn</button>
-      </div>
-
-      {selectedArchived
-        ? <form action={restoreOrdersBulk} className="order-bulk-form">
-            <input type="hidden" name="return_query" value={baseQuery}/>
-            {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
-            <button className="button small primary" type="submit">Khôi phục đã chọn</button>
-          </form>
-        : <form action={archiveOrdersBulk} className="order-bulk-form">
-            <input type="hidden" name="return_query" value={baseQuery}/>
-            {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
-            <button className="button small archive-button" type="submit">Lưu trữ đã chọn</button>
-          </form>}
-
-      {canDeletePermanent&&<div className="order-bulk-delete" ref={bulkDeleteRef}>
-        <button
-          type="button"
-          className="button small danger"
-          onClick={()=>setBulkDeleteOpen(v=>!v)}
-          aria-expanded={bulkDeleteOpen}
-        >Xóa đã chọn</button>
-        {bulkDeleteOpen&&<ConfirmOperationDialog
-          title={'Xóa vĩnh viễn '+selected.length+' đơn hàng'}
-          kind="XÁC NHẬN XÓA NHIỀU ĐƠN"
-          target={selected.map(id=>String(rows.find(row=>String(row.id)===id)?.shopee_order_id??id.slice(0,8))).slice(0,4).join(' · ')+(selected.length>4?' và '+(selected.length-4)+' đơn khác':'')}
-          description={'Đã chọn '+selected.length+' đơn. Hãy kiểm tra danh sách trước khi xác nhận.'}
-          notice="Không thể hoàn tác. Những đơn phát sinh giao dịch không thể đảo ngược sẽ bị chặn xóa."
-          reason={bulkDeleteReason} onReasonChange={setBulkDeleteReason}
-          pending={bulkDeletePending} error={bulkDeleteError}
-          onClose={()=>{if(!bulkDeletePending){setBulkDeleteOpen(false);setBulkDeleteError('');setBulkDeleteReason('')}}}
-          onConfirm={submitBulkDelete} confirmLabel="Xác nhận xóa"
-        />}
+    {toolbarRoot&&createPortal(<div className="p1-order-table-actions">
+      {canEdit&&selected.length>0&&<div className="p1-order-bulk-icons" aria-label={selected.length+' đơn đã chọn'}>
+        <span className="p1-order-selected-count" title={selected.length+' đơn đã chọn'}>{selected.length}</span>
+        {selectedArchived
+          ? <form action={restoreOrdersBulk} className="order-bulk-form">
+              <input type="hidden" name="return_query" value={baseQuery}/>
+              {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
+              <button type="submit" className="p1-toolbar-icon" title="Khôi phục đơn đã chọn" aria-label="Khôi phục đơn đã chọn">
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11a9 9 0 1 1 2.6 6.4M3 4v7h7"/><path d="M12 7v5l3 2"/></svg>
+              </button>
+            </form>
+          : <form action={archiveOrdersBulk} className="order-bulk-form">
+              <input type="hidden" name="return_query" value={baseQuery}/>
+              {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
+              <button type="submit" className="p1-toolbar-icon" title="Lưu trữ đơn đã chọn" aria-label="Lưu trữ đơn đã chọn">
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v12h14V8M10 12h4"/></svg>
+              </button>
+            </form>}
+        <button type="button" className="p1-toolbar-icon" title="Bỏ chọn tất cả" aria-label="Bỏ chọn tất cả" onClick={()=>setSelected([])}>
+          <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
       </div>}
-    </div>}
-
-    <div className="order-column-manager managed-column-wrap" ref={columnManagerRef}>
+    <div className="p1-order-column-manager managed-column-wrap" ref={columnManagerRef}>
       <button className="icon-button managed-column-button" type="button" onClick={()=>setOpen(v=>!v)} title="Cột & thứ tự" aria-expanded={open}>
         <ColumnIcon/>
       </button>
@@ -507,42 +470,74 @@ export function PurchaseOrderTable({
         </div>
         {columnOrder.map(k=><div
           key={k}
-          className={'column-manager-row draggable '+(k==='order'?'locked ':'')+(draggingColumn===k?'dragging ':'')+(dragOverColumn===k&&draggingColumn!==k?'drop-target':'')}
-          onDragOver={e=>{e.preventDefault();setDragOverColumn(k)}}
-          onDragLeave={()=>{if(dragOverColumn===k)setDragOverColumn(null)}}
-          onDrop={e=>{
-            e.preventDefault()
-            const source=(e.dataTransfer.getData('text/plain')||draggingColumn) as ColKey|null
-            if(source&&ALL.includes(source))reorderColumn(source,k)
-            setDraggingColumn(null)
-            setDragOverColumn(null)
+          data-column-key={k}
+          className={'column-manager-row draggable '+(k==='order'?'locked ':'')}
+          onPointerEnter={e=>{
+            if(draggingRef.current&&draggingRef.current!==k)e.currentTarget.classList.add('drop-target')
           }}
+          onPointerLeave={e=>e.currentTarget.classList.remove('drop-target')}
         >
           <button
             type="button"
             className="column-drag-handle"
-            draggable
             title="Kéo để đổi thứ tự cột"
             aria-label={'Kéo '+LABELS[k]}
-            onDragStart={e=>{
-              setDraggingColumn(k)
-              e.dataTransfer.effectAllowed='move'
-              e.dataTransfer.setData('text/plain',k)
+            onPointerDown={e=>{
+              if(e.button!==0)return
+              e.preventDefault()
+              draggingRef.current=k
+              const handle=e.currentTarget
+              const row=handle.closest('.column-manager-row')
+              const menu=handle.closest('.column-manager-menu')
+              row?.classList.add('dragging')
+              const initialY=e.clientY
+              const onMove=(event:PointerEvent)=>{
+                if(Math.abs(event.clientY-initialY)<3)return
+                menu?.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'))
+                const target=document.elementFromPoint(event.clientX,event.clientY)?.closest('.column-manager-row')
+                if(target&&menu?.contains(target)&&target!==row)target.classList.add('drop-target')
+              }
+              const onUp=(event:PointerEvent)=>{
+                window.removeEventListener('pointermove',onMove,true)
+                window.removeEventListener('pointerup',onUp,true)
+                window.removeEventListener('pointercancel',onUp,true)
+                row?.classList.remove('dragging')
+                menu?.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'))
+                const target=document.elementFromPoint(event.clientX,event.clientY)?.closest('.column-manager-row')
+                const destination=target&&menu?.contains(target)?target.getAttribute('data-column-key'):null
+                const source=draggingRef.current
+                draggingRef.current=null
+                if(source&&destination&&ALL.includes(destination as ColKey)&&source!==destination){
+                  reorderColumn(source,destination as ColKey)
+                }
+              }
+              window.addEventListener('pointermove',onMove,true)
+              window.addEventListener('pointerup',onUp,true)
+              window.addEventListener('pointercancel',onUp,true)
             }}
-            onDragEnd={()=>{setDraggingColumn(null);setDragOverColumn(null)}}
           >⠿</button>
           <label>
             <input type="checkbox" checked={visible.includes(k)} disabled={k==='order'} onChange={()=>toggleColumn(k)}/>
             <span>{LABELS[k]}</span>
           </label>
+          <div className="column-order-buttons" aria-label={'Đổi thứ tự '+LABELS[k]}>
+            <button type="button" title={'Chuyển '+LABELS[k]+' lên'} aria-label={'Chuyển '+LABELS[k]+' lên'}
+              disabled={columnOrder.indexOf(k)===0}
+              onClick={()=>moveColumn(k,-1)}>↑</button>
+            <button type="button" title={'Chuyển '+LABELS[k]+' xuống'} aria-label={'Chuyển '+LABELS[k]+' xuống'}
+              disabled={columnOrder.indexOf(k)===columnOrder.length-1}
+              onClick={()=>moveColumn(k,1)}>↓</button>
+          </div>
         </div>)}
       </div>}
-    </div>
-
-    
+    </div></div>,toolbarRoot)}
 
     <div className="card table-card order-table-card" ref={tableWrapRef}>
-      <table className="table order-table">
+      <table className="table order-table mynh-p1-semantic-table" style={tableWidths}>
+        <colgroup>
+          {canEdit&&<col className="p1-order-col-select" style={panelShare(24)}/>}
+          {shownColumns.map(k=><col key={k} className={'p1-order-col-'+k} style={panelShare(panelFitWeights[k])}/>)}
+        </colgroup>
         <thead><tr>
           {canEdit&&<th className="bulk-select-col">
             <input
@@ -554,7 +549,6 @@ export function PurchaseOrderTable({
             />
           </th>}
           {columnOrder.filter(isVisible).map(renderHeader)}
-          <th className="row-actions-head" aria-label="Thao tác"></th>
         </tr></thead>
         <tbody>
           {!sorted.length
@@ -570,16 +564,6 @@ export function PurchaseOrderTable({
                     />
                   </td>}
                   {columnOrder.filter(isVisible).map(k=>renderCell(k,o,i))}
-                  <td className="row-actions-cell">
-                    <OrderLifecycleCell
-                      row={o}
-                      returnQuery={baseQuery}
-                      canManage={canEdit}
-                      canDeletePermanent={canDeletePermanent}
-                      open={openActionId===String(o.id)}
-                      onToggle={()=>setOpenActionId(prev=>prev===String(o.id)?null:String(o.id))}
-                    />
-                  </td>
                 </tr>
               })}
         </tbody>

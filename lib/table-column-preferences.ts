@@ -53,3 +53,36 @@ export function normalizeTableColumnPreferences<K extends string>(
   }
   return {order,hidden}
 }
+
+
+/**
+ * Legacy Purchase tables use TWO separate arrays in localStorage:
+ * visible-column keys and column-order keys. Keep these original keys;
+ * normalize only the content so no existing user's settings are discarded.
+ */
+export function normalizeLegacyVisibleColumns<K extends string>(
+  saved: unknown,
+  all: readonly K[],
+  locked: readonly K[],
+): K[] {
+  if (!Array.isArray(saved)) return [...all]
+  const valid: K[] = []
+  for (const value of saved) {
+    if (typeof value !== 'string' || !all.includes(value as K) || valid.includes(value as K)) continue
+    valid.push(value as K)
+  }
+  if (!valid.length) return [...all]
+  // Preserve the old array order wherever possible; restore only required keys.
+  for (const key of locked) {
+    if (all.includes(key) && !valid.includes(key)) valid.unshift(key)
+  }
+  return valid
+}
+
+export function normalizeLegacyColumnOrder<K extends string>(
+  saved: unknown,
+  all: readonly K[],
+): K[] {
+  if (!Array.isArray(saved)) return [...all]
+  return normalizeTableColumnPreferences({order:saved},all).order
+}

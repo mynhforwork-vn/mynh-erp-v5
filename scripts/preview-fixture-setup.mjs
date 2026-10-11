@@ -119,6 +119,7 @@ await insert('debt_ledger',{
 
 await insert('orders',{
   id:fixtures.warehouse_order_id,
+  erp_user_id:fixtures.erp_user_id,
   shopee_order_id:fixtures.warehouse_order_code,
   recipient_name:'QA Warehouse',
   recipient_phone:'0900000001',
@@ -170,6 +171,7 @@ await insert('destination_hub_configs',{
 
 await insert('orders',{
   id:fixtures.hub_order_id,
+  erp_user_id:fixtures.erp_user_id,
   shopee_order_id:fixtures.hub_order_code,
   recipient_name:'QA Shipper HUB',
   recipient_phone:'0900000002',
