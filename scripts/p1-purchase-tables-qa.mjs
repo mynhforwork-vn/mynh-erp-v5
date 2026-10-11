@@ -444,17 +444,17 @@ try {
         await page.locator('.order-table th[data-order-col="voucher"],.order-table col.p1-order-col-voucher').count()===2)
       const deviceRow=rows.filter({hasText:'Thiết bị'})
       const timeRow=rows.filter({hasText:'Thời gian đặt'})
-      await deviceRow.locator('.column-drag-handle').dragTo(timeRow)
+      await timeRow.locator('.column-drag-handle').dragTo(deviceRow)
       const ordering=await page.locator('.order-table thead th[data-order-col]').evaluateAll(
         els=>els.map(el=>el.getAttribute('data-order-col')))
       check('Order columns can be reordered by dragging manager handles',
-        ordering.indexOf('device')===ordering.indexOf('time')-1,{ordering})
+        ordering.indexOf('time')===ordering.indexOf('device')-1,{ordering})
       await page.keyboard.press('Escape')
       await page.reload({waitUntil:'load',timeout:35000})
       const afterOrderReload=await page.locator('.order-table thead th[data-order-col]').evaluateAll(
         els=>els.map(el=>el.getAttribute('data-order-col')))
       check('Order column reordering persists after reload',
-        afterOrderReload.indexOf('device')===afterOrderReload.indexOf('time')-1,{afterOrderReload})
+        afterOrderReload.indexOf('time')===afterOrderReload.indexOf('device')-1,{afterOrderReload})
       // Restore default order before measuring live drag resize.
       await page.locator('.p1-order-toolbar-actions .managed-column-button').click()
       await page.locator('.p1-order-toolbar-actions .column-manager-head button').click()
