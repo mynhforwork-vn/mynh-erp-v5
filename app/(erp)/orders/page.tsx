@@ -445,6 +445,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               ? `${rows.length} / ${totalOrders} đơn · +1 đơn đang mở ngoài bộ lọc`
               : `${rows.length} / ${totalOrders} đơn`}
           </span>
+          <div id="p1-order-toolbar-actions" className="p1-order-toolbar-actions"/>
         </div>
 
         {error
@@ -454,7 +455,6 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               selectedId={sp.order}
               baseQuery={returnQuery}
               canEdit={canOperate}
-              canDeletePermanent={role==='admin'}
               carrierConfigs={carrierConfigs}
             />}
 

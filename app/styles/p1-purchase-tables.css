@@ -1,0 +1,419 @@
+/* MYNH ERP V5 — P1 Purchase data tables.
+   Scoped to two operational purchase lists. No global resize policy.
+   The existing Desktop resize manager retains saved width preferences. */
+
+.brand-shell-v1 :is(.order-list-pane,.account-list-pane,.order-table-shell,.account-table-shell){
+  box-sizing:border-box;
+  min-width:0!important;
+  max-width:100%!important;
+}
+.brand-shell-v1 :is(.order-table-card,.account-table-card){
+  box-sizing:border-box;
+  width:100%;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-color:#afbecb transparent;
+}
+/* Adapt natural table widths to the workspace, without trying to fit long
+   recipient/product data into 40px columns beside an order slidebar.
+   Only tables not currently controlled by a user's saved manual drag
+   receive these defaults; never overwrite an explicitly resized table. */
+.brand-shell-v1 table.table:is(.user-table,.order-table):not(.mynh-resizable-table){
+  /* Fixed column allocation uses the visible header schema, rather than
+     letting a long username/email/recipient force the entire table wider
+     than the Desktop lane. Full text remains in title/detail slidebar. */
+  table-layout:fixed!important;
+  box-sizing:border-box;
+  width:100%!important;
+}
+.brand-shell-v1 table.table.order-table:not(.mynh-resizable-table){
+  min-width:980px!important;
+}
+.brand-shell-v1 :is(.account-workspace,.order-workspace):is(.with-panel,.has-slidebar)
+table.table.order-table:not(.mynh-resizable-table){
+  min-width:910px!important;
+}
+/* Keep IDs, money and controls meaningful. The table can scroll locally if
+   the remaining space is smaller than the readable minimum. */
+.brand-shell-v1 table.table:is(.user-table,.order-table) > thead > tr > th,
+.brand-shell-v1 table.table:is(.user-table,.order-table) > tbody > tr > td{
+  min-width:0;
+  box-sizing:border-box;
+}
+.brand-shell-v1 table.table:is(.user-table,.order-table) > thead > tr > th:first-child{
+  white-space:nowrap!important;
+}
+.brand-shell-v1 table.table:is(.user-table,.order-table) :is(.p1-table-long-text,.product-cell,.tracking-number-cell){
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.brand-shell-v1 table.table:is(.user-table,.order-table) .p1-table-long-text{
+  white-space:nowrap;
+  max-width:260px;
+}
+.brand-shell-v1 table.table.order-table .product-cell{
+  max-width:285px!important;
+}
+.brand-shell-v1 table.table:is(.user-table,.order-table) .table-link{
+  white-space:nowrap;
+}
+.brand-shell-v1 table.table:is(.user-table,.order-table) td.money,
+.brand-shell-v1 table.table:is(.user-table,.order-table) td.count-cell{
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.brand-shell-v1 table.table:is(.user-table,.order-table) .row-actions-head,
+.brand-shell-v1 table.table:is(.user-table,.order-table) .row-actions-cell{
+  box-sizing:border-box;
+  width:44px!important;
+  min-width:44px!important;
+  max-width:44px!important;
+  padding-inline:5px!important;
+  overflow:visible;
+}
+/* Anchor fixed actions only in the scrollable table lane; the opaque cell
+   avoids text bleeding through from the penultimate column. */
+@media(min-width:901px){
+  .brand-shell-v1 :is(.account-table-card,.order-table-card)
+  :is(th.row-actions-head,td.row-actions-cell){
+    position:sticky!important;
+    right:0!important;
+    background:var(--erp-table-head-bg)!important;
+    box-shadow:-1px 0 0 #d8e3ec!important;
+  }
+  .brand-shell-v1 :is(.account-table-card,.order-table-card) td.row-actions-cell{
+    background:#fff!important;
+  }
+  .brand-shell-v1 :is(.account-table-card,.order-table-card) tr:hover td.row-actions-cell{
+    background:var(--erp-table-hover)!important;
+  }
+  .brand-shell-v1 :is(.account-table-card,.order-table-card) tr.selected-row td.row-actions-cell{
+    background:var(--erp-table-selected)!important;
+  }
+}
+@media(max-width:900px){
+  .brand-shell-v1 table.table.order-table:not(.mynh-resizable-table){
+    min-width:890px!important;
+  }
+  .brand-shell-v1 table.table:is(.user-table,.order-table) .p1-table-long-text{
+    max-width:170px;
+  }
+  .brand-shell-v1 :is(.order-table-card,.account-table-card){
+    -webkit-overflow-scrolling:touch;
+  }
+}
+
+
+/* Fixed-layout tables must constrain actual cell contents as well as columns.
+   A long Username must NEVER paint over the platform cell or intercept clicks. */
+.brand-shell-v1 table.order-table th.p1-order-identity-head{width:148px!important}
+.brand-shell-v1 table.order-table th.p1-order-tracking-head{width:135px!important}
+.brand-shell-v1 table.order-table th.p1-order-product-head{width:145px!important}
+.brand-shell-v1 table.user-table td.p1-user-identity-cell,
+.brand-shell-v1 table.user-table td.p1-user-platform-cell,
+.brand-shell-v1 table.order-table td.p1-order-identity-cell,
+.brand-shell-v1 table.order-table td.p1-order-user-cell{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis;
+}
+.brand-shell-v1 table.user-table td.p1-user-identity-cell .user-name-actions{
+  display:flex!important;
+  align-items:center;
+  flex-wrap:nowrap!important;
+  width:100%;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  gap:4px;
+}
+.brand-shell-v1 table.user-table td.p1-user-identity-cell .table-link,
+.brand-shell-v1 table.order-table td.p1-order-identity-cell .table-link{
+  display:block!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.brand-shell-v1 table.user-table td.p1-user-identity-cell .table-link{
+  flex:1 1 auto!important;
+}
+.brand-shell-v1 table.user-table td.p1-user-identity-cell .quick-order-link{
+  flex:0 0 auto!important;
+}
+.brand-shell-v1 table.user-table td.p1-user-platform-cell .platform-cell{
+  display:inline-flex!important;
+  max-width:100%!important;
+  box-sizing:border-box;
+  overflow:hidden!important;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.brand-shell-v1 table.order-table td.p1-order-user-cell{
+  white-space:nowrap;
+}
+
+
+
+/* P1 — fit theo cột định danh thực tế, không dùng nth-child.
+   Width tối thiểu tính từ các cột đang hiển thị tại component.
+   Không can thiệp bảng đang dùng resize lưu trong localStorage. */
+.brand-shell-v1 .account-table-card table.user-table:not(.mynh-resizable-table){
+  width:100%!important;
+  table-layout:fixed!important;
+}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-select{width:32px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-number{width:32px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-platform{width:64px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-phone{width:108px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-status{width:89px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-device{width:102px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-voucher{width:76px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-orders{width:52px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-createdAt{width:135px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-username{width:154px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-email{width:155px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-note{width:auto!important}
+@media(min-width:1800px){
+  .brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-username,
+  .brand-shell-v1 table.user-table:not(.mynh-resizable-table) col.p1-account-col-email{
+    width:25%!important;
+  }
+}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="number"]{width:32px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="voucher"]{width:76px!important}
+.brand-shell-v1 table.user-table:not(.mynh-resizable-table) th[data-account-col="orders"]{width:52px!important}
+.brand-shell-v1 .account-table-card table.user-table :is(th,td){
+  overflow:hidden!important;
+  text-overflow:ellipsis;
+  white-space:nowrap!important;
+  vertical-align:middle;
+  padding-inline:4px!important;
+}
+.brand-shell-v1 .account-table-card table.user-table :is(th,td)[data-account-col="number"],
+.brand-shell-v1 .account-table-card table.user-table td.count-cell{
+  text-align:center!important;
+  font-variant-numeric:tabular-nums;
+}
+.brand-shell-v1 .account-table-card table.user-table .voucher-cell .voucher-tags{
+  flex-wrap:nowrap!important;gap:2px!important;max-width:100%!important;overflow:hidden!important;
+}
+.brand-shell-v1 .account-table-card table.user-table .voucher-cell :is(.voucher-tag,.voucher-tag-compact){
+  max-width:100%!important;min-width:0!important;overflow:hidden!important;
+  text-overflow:ellipsis;white-space:nowrap!important;
+}
+.brand-shell-v1 .account-table-card table.user-table td.p1-user-identity-cell .quick-order-link{
+  display:inline-grid!important;place-items:center!important;
+  box-sizing:border-box;width:22px!important;height:22px!important;
+  min-width:22px!important;padding:0!important;border-radius:5px!important;
+  font-size:16px!important;line-height:1!important;
+}
+
+/* Icon Cột đặt cuối hàng filter, không thêm thanh tiêu đề phụ. */
+.brand-shell-v1 .p1-account-filter-actions,
+.brand-shell-v1 .p1-order-toolbar-actions{
+  position:relative;display:flex;align-items:center;justify-content:flex-end;
+  flex:0 0 auto;min-width:29px;margin-left:auto;z-index:24;
+}
+.brand-shell-v1 .p1-account-filter-actions .column-manager,
+.brand-shell-v1  .p1-order-toolbar-actions .p1-order-column-manager{
+  display:block!important;position:relative!important;
+  top:0!important;right:auto!important;bottom:auto!important;left:auto!important;
+  transform:none!important;flex:0 0 auto!important;z-index:45!important;
+}
+.brand-shell-v1 .p1-account-filter-actions .managed-column-button,
+.brand-shell-v1 .p1-order-toolbar-actions .managed-column-button{
+  display:inline-flex!important;align-items:center;justify-content:center;
+  width:29px!important;min-width:29px!important;height:29px!important;
+  padding:0!important;position:static!important;border-radius:6px!important;
+  border:1px solid #d7e2eb!important;background:#fff!important;color:#456073!important;
+}
+.brand-shell-v1 .p1-account-filter-actions .managed-column-button>span{display:none!important}
+.brand-shell-v1 .p1-account-filter-actions .column-manager-menu,
+.brand-shell-v1 .p1-order-toolbar-actions .column-manager-menu{
+  position:absolute!important;top:calc(100% + 5px)!important;
+  right:0!important;left:auto!important;bottom:auto!important;z-index:80!important;
+  box-sizing:border-box;width:min(244px,calc(100vw - 32px))!important;
+  max-height:min(430px,70vh)!important;overflow-y:auto!important;
+  padding:7px!important;border:1px solid #dae4ed!important;
+  border-radius:8px!important;background:#fff!important;
+  box-shadow:0 12px 28px rgba(32,52,72,.16)!important;
+}
+.brand-shell-v1 .p1-account-filter-actions .column-manager-menu :is(.column-manager-row label,.column-manager-head b){
+  font-size:11px!important;
+}
+/* Thanh hành động đơn theo checkbox, chỉ 2 icon, không cột action cuối dòng. */
+.brand-shell-v1 .p1-order-table-actions{display:flex;align-items:center;gap:5px}
+.brand-shell-v1 .p1-order-bulk-icons{display:inline-flex;align-items:center;gap:4px}
+.brand-shell-v1 .p1-order-bulk-icons .order-bulk-form{display:inline-flex;margin:0;padding:0}
+.brand-shell-v1 .p1-order-selected-count{
+  display:inline-grid;place-items:center;min-width:19px;height:21px;
+  font-size:11px;color:#265983;font-variant-numeric:tabular-nums;font-weight:650;
+}
+.brand-shell-v1 .p1-order-table-actions .p1-toolbar-icon{
+  display:inline-grid;place-items:center;box-sizing:border-box;
+  width:29px;height:29px;min-width:29px;padding:0;
+  color:#365d7b;background:#fff;border:1px solid #d7e2eb;
+  border-radius:6px;cursor:pointer;
+}
+.brand-shell-v1 .p1-order-table-actions .p1-toolbar-icon:is(:hover,:focus-visible){
+  background:#eef5fa;border-color:#87abc5;outline-offset:2px;
+}
+/* Tag/chip không được mở rộng cột theo nội dung. */
+.brand-shell-v1 table.table:is(.user-table,.order-table) :is(
+  .status-pill,.voucher-tag,.voucher-tag-compact,.device-state-chip,.platform-cell){
+  box-sizing:border-box;min-width:0!important;max-width:100%!important;
+  padding:2px 5px!important;font-size:9px!important;line-height:1.25!important;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.brand-shell-v1 table.table.user-table .device-state-set{
+  display:flex;min-width:0;max-width:100%;gap:2px;flex-wrap:nowrap;
+}
+.brand-shell-v1 table.table.user-table .device-state-chip{flex:0 1 auto;padding:2px 3px!important}
+.brand-shell-v1 table.table.order-table .order-state-cell{min-width:0;max-width:100%;gap:3px!important}
+.brand-shell-v1 table.table.order-table .order-state-cell .status-pill{max-width:100%!important}
+/* Tối đa 2 dòng sản phẩm, tên dài cắt tại chính ô sản phẩm. */
+.brand-shell-v1 table.table.order-table td.product-cell{
+  white-space:normal!important;vertical-align:middle!important;
+  min-width:0;max-width:none!important;overflow:hidden!important;
+}
+.brand-shell-v1 table.table.order-table .p1-product-lines{
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  line-clamp:2;overflow:hidden;max-width:100%;line-height:1.4;white-space:normal;
+}
+.brand-shell-v1 table.table.order-table .p1-product-lines>span{
+  display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.brand-shell-v1 .order-toolbar.entity-command-bar{
+  display:flex;align-items:center;flex-wrap:wrap;gap:5px;
+  position:relative;overflow:visible!important;
+}
+.brand-shell-v1 .order-toolbar.entity-command-bar .toolbar-note{min-width:0}
+.brand-shell-v1 .p1-order-toolbar-actions{z-index:32}
+/* Stable command-row slots: filters may scroll, the column icon never does. */
+.brand-shell-v1 .p1-account-command-row{
+  display:flex;align-items:stretch;gap:5px;
+  width:100%;min-width:0;max-width:100%;
+  box-sizing:border-box;position:relative;
+}
+.brand-shell-v1 .p1-account-command-row>form.account-filter-bar{
+  flex:1 1 0!important;width:0!important;
+  min-width:0!important;max-width:none!important;
+}
+.brand-shell-v1 .p1-account-command-row>.p1-account-filter-actions{
+  flex:0 0 29px!important;min-width:29px!important;
+  margin-left:0!important;align-self:center;
+}
+/* Available width is the content lane, not the combined minimum widths
+   of legacy filter children. The filter must wrap rather than overflow. */
+.brand-shell-v1 .account-screen form.account-filter-bar.one-line.entity-user-command{
+  box-sizing:border-box!important;
+  width:100%!important;min-width:0!important;max-width:100%!important;
+}
+/* Account filter lane must wrap before the icon can leave the viewport. */
+@media(min-width:901px) and (max-width:1280px){
+  .brand-shell-v1 form.account-filter-bar.one-line.entity-user-command{
+    display:flex!important;flex-wrap:wrap!important;
+    height:auto!important;min-height:36px!important;
+    gap:5px!important;padding-block:5px!important;
+  }
+  .brand-shell-v1 .entity-user-command .search{flex:1 1 190px!important;min-width:130px!important}
+  .brand-shell-v1 .entity-user-command .p1-filter-dropdown{
+    flex:0 1 122px!important;min-width:100px!important;
+  }
+  .brand-shell-v1 .p1-account-filter-actions{margin-left:auto}
+}
+/* Custom filters: one language across trigger and list, no OS-native grey menu.
+   Preserve HTML form submission using the dropdown's hidden input. */
+.brand-shell-v1 form.account-filter-bar.one-line.entity-user-command{
+  overflow:visible!important;
+  align-items:center!important;
+  gap:6px!important;
+}
+.brand-shell-v1 .entity-user-command .p1-filter-dropdown{
+  position:relative!important;
+  flex:0 1 130px!important;
+  min-width:97px!important;
+  max-width:180px!important;
+  z-index:18;
+}
+.brand-shell-v1 .entity-user-command .p1-filter-dropdown.is-open{z-index:80!important}
+.brand-shell-v1 .p1-filter-dropdown .p1-filter-trigger{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:6px!important;
+  width:100%!important;
+  height:29px!important;
+  padding:0 9px!important;
+  border:1px solid #dbe4eb!important;
+  border-radius:7px!important;
+  background:#fff!important;
+  color:#344b5e!important;
+  box-shadow:none!important;
+  font-family:inherit!important;font-size:11px!important;font-weight:500!important;line-height:1.3!important;
+  cursor:pointer;
+}
+.brand-shell-v1 .p1-filter-dropdown .p1-filter-trigger>span{
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.brand-shell-v1 .p1-filter-dropdown .p1-filter-trigger svg{flex:none;color:#647789}
+.brand-shell-v1 .p1-filter-dropdown .p1-filter-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
+  border-color:#8bafc7!important;
+  outline:0!important;
+  box-shadow:0 0 0 2px rgba(65,118,154,.10)!important;
+}
+.brand-shell-v1 .p1-filter-dropdown .p1-filter-menu{
+  box-sizing:border-box;
+  position:absolute!important;
+  top:calc(100% + 5px)!important;
+  left:0!important;
+  min-width:max(100%,160px)!important;
+  max-width:min(230px,calc(100vw - 30px))!important;
+  width:max-content!important;
+  padding:5px!important;
+  max-height:260px!important;
+  overflow-y:auto!important;
+  background:#fff!important;
+  border:1px solid #dbe6ef!important;
+  border-radius:9px!important;
+  box-shadow:0 12px 26px rgba(30,50,70,.16)!important;
+}
+.brand-shell-v1 .p1-filter-menu .p1-filter-option{
+  display:flex!important;
+  align-items:center!important;
+  gap:7px!important;
+  width:100%!important;
+  min-height:31px!important;
+  padding:4px 9px 4px 5px!important;
+  border:0!important;
+  border-radius:5px!important;
+  background:#fff!important;
+  color:#405464!important;
+  text-align:left!important;
+  white-space:nowrap!important;
+  font-family:inherit!important;font-size:11px!important;font-weight:500!important;line-height:1.35!important;
+  cursor:pointer;
+}
+.brand-shell-v1 .p1-filter-menu .p1-filter-option:is(.focused,:hover){background:#f1f6fa!important}
+.brand-shell-v1 .p1-filter-menu .p1-filter-option.selected{
+  background:#e8f2f9!important;color:#255a82!important;font-weight:650!important;
+}
+.brand-shell-v1 .p1-filter-option .p1-filter-check{
+  flex:0 0 16px;text-align:center;color:#3275aa;font-size:13px;
+}
+@media(max-width:900px){
+  .brand-shell-v1 form.account-filter-bar.one-line.entity-user-command{
+    height:auto!important;
+    min-height:36px!important;
+    flex-wrap:wrap!important;
+    padding-block:6px!important;
+  }
+  .brand-shell-v1 .entity-user-command .search{flex:1 1 100%!important;min-width:0!important}
+  .brand-shell-v1 .entity-user-command .p1-filter-dropdown{flex:1 1 42%!important;max-width:none!important}
+}

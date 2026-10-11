@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { createPortal } from 'react-dom'
 import { formatDateTime, formatPhone, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
-import { archiveERPUser, archiveERPUsersBulk, restoreERPUser, restoreERPUsersBulk } from '@/lib/actions/core'
+import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
+import { archiveERPUsersBulk, restoreERPUsersBulk } from '@/lib/actions/core'
 
 type Row=Record<string,any>
 type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'device'|'voucher'|'orders'|'createdAt'|'note'
@@ -65,48 +67,6 @@ function ColumnIcon(){
 }
 
 
-function UserLifecycleCell({
-  row,
-  returnQuery,
-  canManage,
-  open,
-  onToggle
-}:{
-  row:Row
-  returnQuery:string
-  canManage:boolean
-  open:boolean
-  onToggle:()=>void
-}){
-  if(!canManage)return <span className="row-action-readonly">—</span>
-
-  return <div className="row-action-menu-wrap">
-    <button
-      type="button"
-      className="row-action-kebab"
-      aria-label="Mở thao tác"
-      aria-expanded={open}
-      onClick={onToggle}
-    ><span aria-hidden="true">⋮</span></button>
-
-    {open&&<div className="row-action-menu">
-      {row.archived_at
-        ? <form action={restoreERPUser} className="row-action-menu-form">
-            <input type="hidden" name="user_id" value={row.id}/>
-            <input type="hidden" name="return_query" value={returnQuery}/>
-            <input type="hidden" name="table_action" value="1"/>
-            <button className="row-action-menu-item restore" type="submit">Khôi phục User</button>
-          </form>
-        : <form action={archiveERPUser} className="row-action-menu-form">
-            <input type="hidden" name="user_id" value={row.id}/>
-            <input type="hidden" name="return_query" value={returnQuery}/>
-            <input type="hidden" name="table_action" value="1"/>
-            <button className="row-action-menu-item archive" type="submit">Lưu trữ User</button>
-          </form>}
-    </div>}
-  </div>
-}
-
 export function PurchaseAccountTable({
   rows,
   selectedId,
@@ -124,10 +84,11 @@ export function PurchaseAccountTable({
   const [columnOrder,setColumnOrder]=useState<ColKey[]>(ALL)
   const [open,setOpen]=useState(false)
   const [selected,setSelected]=useState<string[]>([])
-  const [openActionId,setOpenActionId]=useState<string|null>(null)
   const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
   const [dragOverColumn,setDragOverColumn]=useState<ColKey|null>(null)
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
+  const [toolbarRoot,setToolbarRoot]=useState<HTMLElement|null>(null)
+  useEffect(()=>{setToolbarRoot(document.getElementById('p1-account-filter-actions'))},[])
 
   useEffect(()=>{
     try{
@@ -135,17 +96,14 @@ export function PurchaseAccountTable({
       if(raw){
         const parsed=JSON.parse(raw)
         if(Array.isArray(parsed)){
-          const valid=parsed.filter((x:any)=>ALL.includes(x))
-          if(valid.length)setVisible(valid)
+          setVisible(normalizeLegacyVisibleColumns<ColKey>(parsed,ALL,['username']))
         }
       }
       const rawOrder=localStorage.getItem(STORAGE_ORDER_KEY)
       if(rawOrder){
         const parsedOrder=JSON.parse(rawOrder)
         if(Array.isArray(parsedOrder)){
-          const validOrder=parsedOrder.filter((x:any)=>ALL.includes(x))
-          const missing=ALL.filter(x=>!validOrder.includes(x))
-          if(validOrder.length)setColumnOrder([...validOrder,...missing])
+          setColumnOrder(normalizeLegacyColumnOrder<ColKey>(parsedOrder,ALL))
         }
       }
     }catch{}
@@ -155,24 +113,6 @@ export function PurchaseAccountTable({
     const valid=new Set(rows.map((x:any)=>String(x.id)))
     setSelected(prev=>prev.filter(id=>valid.has(id)))
   },[rows])
-
-  useEffect(()=>{
-    if(!openActionId)return
-    function onPointerDown(event:PointerEvent){
-      const target=event.target as HTMLElement|null
-      if(target?.closest('.row-action-menu-wrap'))return
-      setOpenActionId(null)
-    }
-    function onKeyDown(event:KeyboardEvent){
-      if(event.key==='Escape')setOpenActionId(null)
-    }
-    document.addEventListener('pointerdown',onPointerDown)
-    document.addEventListener('keydown',onKeyDown)
-    return ()=>{
-      document.removeEventListener('pointerdown',onPointerDown)
-      document.removeEventListener('keydown',onKeyDown)
-    }
-  },[openActionId])
 
   useEffect(()=>{
     if(!open)return
@@ -221,7 +161,13 @@ export function PurchaseAccountTable({
   const selectedRows=useMemo(()=>rows.filter((row:any)=>selectedSet.has(String(row.id))),[rows,selectedSet])
   const selectedArchived=selectedRows.length>0&&selectedRows.every((row:any)=>Boolean(row.archived_at))
   const allSelected=rows.length>0&&rows.slice(0,200).every((row:any)=>selectedSet.has(String(row.id)))
-  const colSpan=useMemo(()=>visible.length+1+(canManage?1:0),[visible,canManage])
+  const colSpan=useMemo(()=>visible.length+(canManage?1:0),[visible,canManage])
+  const columnMinimums:Record<ColKey,number>={
+    number:32,username:154,platform:64,phone:108,email:155,
+    status:89,device:102,voucher:76,orders:52,createdAt:135,note:90
+  }
+  const minimumWidth=(canManage?32:0)+columnOrder
+    .filter(key=>visible.includes(key)).reduce((sum,key)=>sum+columnMinimums[key],0)
 
   function hrefFor(id:string){
     const p=new URLSearchParams(detailQuery)
@@ -258,41 +204,41 @@ export function PurchaseAccountTable({
   }
 
   function renderHeader(key:ColKey){
-    if(key==='number')return <th key={key}>#</th>
-    if(key==='username')return <th key={key}><Link className="sortable-head" href={sortHref(detailQuery,nameNext)}>Username <span>{sort==='name_asc'?'↑':sort==='name_desc'?'↓':'↕'}</span></Link></th>
-    if(key==='platform')return <th key={key}>Nền tảng</th>
-    if(key==='phone')return <th key={key}>SĐT</th>
-    if(key==='email')return <th key={key}>Email</th>
-    if(key==='status')return <th key={key}>Trạng thái</th>
-    if(key==='device')return <th key={key}>Thiết bị</th>
-    if(key==='voucher')return <th key={key}>Voucher đã dùng</th>
-    if(key==='orders')return <th key={key}>Số đơn</th>
-    if(key==='createdAt')return <th key={key}><Link className="sortable-head" href={sortHref(detailQuery,timeNext)}>Thời gian tạo <span>{sort==='newest'?'↓':sort==='oldest'?'↑':'↕'}</span></Link></th>
-    return <th key={key}>Ghi chú</th>
+    if(key==='number')return <th key={key} data-account-col={key}>#</th>
+    if(key==='username')return <th key={key} data-account-col={key} className="p1-user-identity-head"><Link className="sortable-head" href={sortHref(detailQuery,nameNext)}>Username <span>{sort==='name_asc'?'↑':sort==='name_desc'?'↓':'↕'}</span></Link></th>
+    if(key==='platform')return <th key={key} data-account-col={key}>Nền tảng</th>
+    if(key==='phone')return <th key={key} data-account-col={key}>SĐT</th>
+    if(key==='email')return <th key={key} data-account-col={key}>Email</th>
+    if(key==='status')return <th key={key} data-account-col={key}>Trạng thái</th>
+    if(key==='device')return <th key={key} data-account-col={key} className="p1-user-device-head">Thiết bị</th>
+    if(key==='voucher')return <th key={key} data-account-col={key} className="p1-user-voucher-head">Voucher đã dùng</th>
+    if(key==='orders')return <th key={key} data-account-col={key}>Số đơn</th>
+    if(key==='createdAt')return <th key={key} data-account-col={key}><Link className="sortable-head" href={sortHref(detailQuery,timeNext)}>Thời gian tạo <span>{sort==='newest'?'↓':sort==='oldest'?'↑':'↕'}</span></Link></th>
+    return <th key={key} data-account-col={key}>Ghi chú</th>
   }
 
   function renderCell(key:ColKey,u:any,i:number){
-    if(key==='number')return <td key={key}>{i+1}</td>
-    if(key==='username')return <td key={key}>
+    if(key==='number')return <td key={key} data-account-col={key}>{i+1}</td>
+    if(key==='username')return <td key={key} className="p1-user-identity-cell">
       <div className="user-name-actions">
-        <Link className="table-link" prefetch={false} href={hrefFor(u.id)}>{u.username}</Link>
-        {!u.archived_at&&u.status!=='Blocked'&&<Link className="quick-order-link" href={createOrderHref(u.id)} title="Tạo đơn từ User">+ Đơn</Link>}
+        <Link className="table-link" prefetch={false} href={hrefFor(u.id)} title={u.username}>{u.username}</Link>
+        {!u.archived_at&&u.status!=='Blocked'&&<Link className="quick-order-link" href={createOrderHref(u.id)} title="Tạo đơn từ User" aria-label={'Tạo đơn từ '+u.username}>+</Link>}
       </div>
     </td>
-    if(key==='platform')return <td key={key}><span className="platform-cell">{u.platform??'SHOPEE'}</span></td>
+    if(key==='platform')return <td key={key} className="p1-user-platform-cell"><span className="platform-cell">{u.platform??'SHOPEE'}</span></td>
     if(key==='phone')return <td key={key}>{formatPhone(u.phone)}</td>
-    if(key==='email')return <td key={key}>{u.email??'—'}</td>
+    if(key==='email')return <td key={key} title={u.email??undefined} className="p1-table-long-text">{u.email??'—'}</td>
     if(key==='status')return <td key={key}>{u.archived_at
       ? <span className="status-pill archived">Lưu trữ</span>
       : <span className={'status-pill '+statusClass(u.status)}>{statusLabel(u.status)}</span>}</td>
     if(key==='device')return <td key={key} className="device-icon-cell"><DeviceIcons row={u}/></td>
-    if(key==='voucher')return <td key={key} className="voucher-cell"><VoucherTags value={u.voucher_used_summary} compact maxVisible={2}/></td>
+    if(key==='voucher')return <td key={key} className="voucher-cell"><VoucherTags value={u.voucher_used_summary} compact maxVisible={1}/></td>
     if(key==='orders')return <td key={key} className="count-cell">{u.order_count??0}</td>
-    if(key==='createdAt')return <td key={key}>{formatDateTime(u.created_at)}</td>
-    return <td key={key} className="truncate">{u.note??'—'}</td>
+    if(key==='createdAt')return <td key={key} title={formatDateTime(u.effective_created_at??u.created_at)}>{formatDateTime(u.effective_created_at??u.created_at)}</td>
+    return <td key={key} className="truncate p1-table-long-text" title={u.note??undefined}>{u.note??'—'}</td>
   }
 
-  return <div className="account-table-shell">
+  return <div className="account-table-shell p1-account-table-shell">
     {canManage&&selected.length>0&&<div className="order-bulk-bar user-bulk-bar">
       <div className="order-bulk-summary">
         <b>{selected.length}</b>
@@ -312,9 +258,9 @@ export function PurchaseAccountTable({
           </form>}
     </div>}
 
-    <div className="column-manager managed-column-wrap" ref={columnManagerRef}>
+    {toolbarRoot&&createPortal(<div className="column-manager managed-column-wrap" ref={columnManagerRef}>
       <button className="icon-button managed-column-button" type="button" onClick={()=>setOpen(v=>!v)} aria-expanded={open} title="Cột & thứ tự">
-        <ColumnIcon/>
+        <ColumnIcon/><span>Cột</span>
       </button>
       {open&&<div className="column-manager-menu">
         <div className="column-manager-head"><b>Cột & thứ tự</b><button type="button" onClick={reset}>↺ Mặc định</button></div>
@@ -350,18 +296,19 @@ export function PurchaseAccountTable({
           </label>
         </div>)}
       </div>}
-    </div>
-
-    
+    </div>,toolbarRoot)}
 
     <div className="card table-card account-table-card">
-      <table className="table user-table">
+      <table className="table user-table" style={{minWidth:minimumWidth}}>
+        <colgroup>
+          {canManage&&<col className="p1-account-col p1-account-col-select"/>}
+          {columnOrder.filter(isVisible).map(k=><col key={k} className={'p1-account-col p1-account-col-'+k}/>)}
+        </colgroup>
         <thead><tr>
           {canManage&&<th className="bulk-select-col">
             <input type="checkbox" aria-label="Chọn tối đa 200 User" checked={allSelected} onChange={toggleSelectAll} disabled={!rows.length}/>
           </th>}
           {columnOrder.filter(isVisible).map(renderHeader)}
-          <th className="row-actions-head" aria-label="Thao tác"></th>
         </tr></thead>
         <tbody>
           {!rows.length
@@ -376,15 +323,6 @@ export function PurchaseAccountTable({
                   />
                 </td>}
                 {columnOrder.filter(isVisible).map(k=>renderCell(k,u,i))}
-                <td className="row-actions-cell">
-                  <UserLifecycleCell
-                    row={u}
-                    returnQuery={detailQuery}
-                    canManage={canManage}
-                    open={openActionId===String(u.id)}
-                    onToggle={()=>setOpenActionId(prev=>prev===String(u.id)?null:String(u.id))}
-                  />
-                </td>
               </tr>)}
         </tbody>
       </table>
