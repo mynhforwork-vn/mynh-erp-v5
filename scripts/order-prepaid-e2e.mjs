@@ -60,19 +60,28 @@ try{
   await form.locator('.user-picker-menu button').filter({hasText:f.erp_username}).first().click()
   await form.locator('input[name="shopee_order_id"]').fill(f.prepaid_order_code)
   await form.locator('input[name="item_product_name"]').first().fill('Sản phẩm kiểm thử đã thanh toán')
-  await form.locator('input[name="cod"]').fill('25000')
-  check('Khu vực nhập tiền và loại thẻ hiện ngay khi tạo đơn',
+  check('COD ẩn hoàn toàn khỏi form nhưng giữ trong payload',
+    await form.locator('input[name="cod"][type="hidden"]').count()===1
+    &&await form.getByText('COD',{exact:true}).count()===0
+    &&await form.locator('input[name="cod"]').inputValue()==='0')
+  for(const status of ['UNPAID','PENDING','REFUNDED']){
+    await form.locator('select[name="payment_status"]').selectOption(status)
+    check('Ẩn toàn bộ chi tiết thanh toán khi trạng thái '+status,
+      await form.locator('.order-prepaid-fields').count()===0
+      &&await form.locator('[name="prepaid_amount"]').count()===0)
+  }
+  await form.locator('select[name="payment_status"]').selectOption('PARTIAL')
+  check('Thanh toán một phần mở đủ trường số tiền và loại thẻ',
     await form.locator('.order-prepaid-fields').isVisible()
-    &&await form.locator('input[name="prepaid_amount"]').count()===1
-    &&await form.locator('select[name="prepaid_source_type"]').count()===1
-    &&await form.locator('input[name="prepaid_amount"]').isDisabled())
+    &&await form.locator('[name="prepaid_amount"]').isEnabled()
+    &&await form.locator('[name="prepaid_source_type"]').isEnabled())
+  await form.locator('select[name="payment_status"]').selectOption('PAID')
+  check('Đã thanh toán mở đủ trường số tiền và loại thẻ',
+    await form.locator('.order-prepaid-fields').isVisible()
+    &&await form.locator('[name="prepaid_amount"]').isEnabled()
+    &&await form.locator('[name="prepaid_source_type"]').isEnabled())
   await form.locator('.order-prepaid-fields').scrollIntoViewIfNeeded()
   await page.screenshot({path:'qa-order-prepaid-artifacts/payment-fields-before-1440.png',fullPage:false})
-  await form.getByRole('button',{name:'Đã trả bằng tài khoản/thẻ'}).click()
-  check('Chọn nhanh thanh toán thẻ cho phép nhập và đổi trạng thái',
-    await form.locator('select[name="payment_status"]').inputValue()==='PAID'
-    &&await form.locator('input[name="prepaid_amount"]').isEnabled()
-    &&await form.locator('select[name="prepaid_source_type"]').isEnabled())
   for(const width of [320,390,768,1440]){
     await page.setViewportSize({width,height:width===320?568:width===390?844:width===768?1024:900})
     const g=await form.evaluate(form=>{
@@ -98,25 +107,25 @@ try{
     &&!u.searchParams.has('mode'),{timeout:25000})
   const id=new URL(page.url()).searchParams.get('order')
   assert.ok(id,'Order ID missing')
-  const persisted=await verify(client,id,250000,'CREDIT_CARD','Visa ****1234',25000)
-  check('Tạo đơn lưu tiền thẻ và giữ nguyên COD 25.000',persisted.ok,{data:persisted.data,error:persisted.error})
+  const persisted=await verify(client,id,250000,'CREDIT_CARD','Visa ****1234',0)
+  check('Tạo đơn lưu tiền thẻ và COD mặc định 0 không đổi',persisted.ok,{data:persisted.data,error:persisted.error})
   await page.reload({waitUntil:'load'})
   const panel=page.locator('.order-panel .detail-grid')
-  check('Chi tiết đơn sau reload hiển thị khoản đã trả, thẻ và COD',
-    (await panel.innerText()).includes('250.000')&&(await panel.innerText()).includes('Visa ****1234')
-    &&(await panel.innerText()).includes('25.000'))
+  check('Chi tiết đơn sau reload hiển thị khoản đã trả và thẻ',
+    (await panel.innerText()).includes('250.000')&&(await panel.innerText()).includes('Visa ****1234'))
   await page.getByRole('link',{name:'Sửa đơn'}).click()
   await page.waitForURL(u=>u.searchParams.get('mode')==='edit',{timeout:12000})
   const edit=page.locator('form.order-editor')
-  check('Form sửa điền lại thẻ và số tiền',
+  check('Form sửa điền lại thẻ và số tiền, giữ COD ẩn',
     await edit.locator('input[name="prepaid_amount"]').inputValue()==='250000'
-    &&await edit.locator('select[name="prepaid_source_type"]').inputValue()==='CREDIT_CARD')
+    &&await edit.locator('select[name="prepaid_source_type"]').inputValue()==='CREDIT_CARD'
+    &&await edit.locator('input[name="cod"][type="hidden"]').count()===1)
   await edit.locator('input[name="prepaid_amount"]').fill('275000')
   await edit.locator('select[name="prepaid_source_type"]').selectOption('BANK_ACCOUNT')
   await edit.locator('input[name="prepaid_source_label"]').fill('MB Bank')
   await edit.getByRole('button',{name:'Lưu thay đổi'}).click()
   await page.waitForURL(u=>u.searchParams.has('order')&&!u.searchParams.has('mode'),{timeout:25000})
-  const updated=await verify(client,id,275000,'BANK_ACCOUNT','MB Bank',25000)
+  const updated=await verify(client,id,275000,'BANK_ACCOUNT','MB Bank',0)
   check('Sửa đơn cập nhật nguồn tiền không đổi COD',updated.ok,{data:updated.data,error:updated.error})
   await go('/purchase/accounts?range=all&user='+encodeURIComponent(f.erp_user_id)
     +'&tab=orders&order='+encodeURIComponent(id))

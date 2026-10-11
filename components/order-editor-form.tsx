@@ -169,7 +169,7 @@ export function OrderEditorForm({
   const [prepaidAmount,setPrepaidAmount]=useState(String(values.prepaid_amount??''))
   const [prepaidSourceType,setPrepaidSourceType]=useState(String(values.prepaid_source_type??''))
   const [prepaidSourceLabel,setPrepaidSourceLabel]=useState(String(values.prepaid_source_label??''))
-  const showPrepaid=['PAID','PARTIAL','REFUNDED'].includes(paymentStatus)
+  const showPrepaid=paymentStatus==='PAID'||paymentStatus==='PARTIAL'
   const [recipientName,setRecipientName]=useState(String(values.recipient_name??''))
   const [recipientPhone,setRecipientPhone]=useState(String(
     values.recipient_phone??(mode==='create'?initialUser?.phone??'':'')
@@ -502,29 +502,21 @@ export function OrderEditorForm({
             : trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ':'Chờ mã vận đơn'}</small>
         </div>
       </div>
-      <div className="order-prepaid-fields">
+      {showPrepaid&&<div className="order-prepaid-fields">
         <div className="form-section-head">
-          <div><h3>Thanh toán trước bằng tài khoản/thẻ</h3>
-            <small>Khai báo tiền đã trả trước bằng tài khoản hoặc thẻ, tách biệt với COD khi giao hàng.</small></div>
+          <div><h3>Chi tiết thanh toán tài khoản/thẻ</h3>
+            <small>Chỉ ghi nhận số tiền đã thanh toán và nguồn thanh toán, không thay đổi COD lưu trong hệ thống.</small></div>
         </div>
-        {!showPrepaid&&<div className="order-prepaid-quick-action">
-          <button type="button" className="button small" onClick={()=>setPaymentStatus('PAID')}>
-            Đã trả bằng tài khoản/thẻ
-          </button>
-          <small className="field-help">Bấm nút trên để nhập ngay, hoặc chọn “Thanh toán một phần” trong trạng thái Thanh toán.</small>
-        </div>}
         <div className="form-grid">
           <label>Số tiền đã thanh toán (₫)
             <input name="prepaid_amount" type="number" inputMode="numeric" min="1" step="1"
-              disabled={!showPrepaid}
-              required={mode==='create'&&paymentStatus!=='REFUNDED'}
+              required={mode==='create'}
               value={prepaidAmount} onChange={e=>setPrepaidAmount(e.target.value)}
               placeholder="Ví dụ: 250000"/>
           </label>
           <label>Loại tài khoản/thẻ
             <select name="prepaid_source_type" value={prepaidSourceType}
-              disabled={!showPrepaid}
-              required={mode==='create'&&paymentStatus!=='REFUNDED'}
+              required={mode==='create'}
               onChange={e=>setPrepaidSourceType(e.target.value)}>
               <option value="">Chọn loại đã dùng</option>
               {PREPAID_SOURCE_OPTIONS.map(option=><option value={option.value} key={option.value}>{option.label}</option>)}
@@ -533,12 +525,11 @@ export function OrderEditorForm({
         </div>
         <label>Tên tài khoản/thẻ (không bắt buộc)
           <input name="prepaid_source_label" value={prepaidSourceLabel}
-            disabled={!showPrepaid}
             onChange={e=>setPrepaidSourceLabel(e.target.value)} maxLength={120}
             placeholder="Ví dụ: MB Bank · Visa ****1234" autoComplete="off"/>
           <small className="field-help">Chỉ ghi tên nguồn tiền và tối đa 4 số cuối; không nhập số thẻ đầy đủ, CVV hoặc mật khẩu.</small>
         </label>
-      </div>
+      </div>}
     </section>
 
     <section className="form-section">
@@ -807,13 +798,9 @@ export function OrderEditorForm({
       </datalist>
     </section>
 
-    <section className="form-section order-cod-section">
-      <h3>Giá trị đơn</h3>
-      <label>COD
-        <input name="cod" inputMode="numeric" value={cod} onChange={e=>setCod(e.target.value)} placeholder="Nhập COD sau khi hoàn tất sản phẩm / voucher"/>
-        <small className="field-help">Nhập cuối cùng sau khi đã kiểm tra sản phẩm và voucher.</small>
-      </label>
-    </section>
+    {/* COD stays in the form payload to preserve legacy values when editing,
+        but is not shown as an input in the order editor. */}
+    <input type="hidden" name="cod" value={cod}/>
 
     <div className="form-actions">
       <a className="button" href={cancelHref}>Hủy</a>

@@ -10,7 +10,8 @@ assert.deepEqual(test('PARTIAL','85000','BANK_ACCOUNT','MB Bank'),
   {prepaid_amount:85000,prepaid_source_type:'BANK_ACCOUNT',prepaid_source_label:'MB Bank'})
 assert.deepEqual(test('UNPAID','250000','CREDIT_CARD','Visa ****1234'),
   {prepaid_amount:null,prepaid_source_type:null,prepaid_source_label:null})
-assert.deepEqual(test('REFUNDED','','',''),{prepaid_amount:null,prepaid_source_type:null,prepaid_source_label:null})
+assert.deepEqual(test('REFUNDED','250000','CREDIT_CARD','Visa ****1234'),
+  {prepaid_amount:null,prepaid_source_type:null,prepaid_source_label:null})
 assert.deepEqual(test('PAID','','','',false),{prepaid_amount:null,prepaid_source_type:null,prepaid_source_label:null})
 assert.equal(prepaidSourceLabel('CREDIT_CARD'),'Thẻ tín dụng')
 for(const args of [
@@ -22,8 +23,9 @@ for(const args of [
  ['PAID','100000','INVALID','']
 ]) assert.throws(()=>test(...args))
 const editor=fs.readFileSync('components/order-editor-form.tsx','utf8')
-assert.match(editor,/\{!showPrepaid&&<div className="order-prepaid-quick-action">/)
-assert.match(editor,/<div className="order-prepaid-fields">/)
-assert.doesNotMatch(editor,/\{showPrepaid&&<div className="order-prepaid-fields">/)
-assert.match(editor,/onClick=\{\(\)=>setPaymentStatus\('PAID'\)\}/)
-console.log('ORDER_PREPAID_QA 15 PASS')
+assert.match(editor,/\{showPrepaid&&<div className="order-prepaid-fields">/)
+assert.match(editor,/paymentStatus==='PAID'\|\|paymentStatus==='PARTIAL'/)
+assert.doesNotMatch(editor,/order-prepaid-quick-action/)
+assert.doesNotMatch(editor,/order-cod-section/)
+assert.match(editor,/<input type="hidden" name="cod" value=\{cod\}\/>/)
+console.log('ORDER_PREPAID_QA 16 PASS')

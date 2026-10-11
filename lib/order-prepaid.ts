@@ -26,7 +26,7 @@ export function parsePrepaidMetadata(input:{
   isCreate:boolean
 }):PrepaidMetadata{
   const status=input.paymentStatus.toUpperCase()
-  if(!['PAID','PARTIAL','REFUNDED'].includes(status))
+  if(!['PAID','PARTIAL'].includes(status))
     return {prepaid_amount:null,prepaid_source_type:null,prepaid_source_label:null}
 
   const amountText=String(input.amount??'').trim()
