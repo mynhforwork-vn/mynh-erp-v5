@@ -247,7 +247,7 @@
 }
 /* Keep toasts inside the main lane when the left sidebar expands/collapses. */
 @media(max-width:1440px){
-  .tracking-success-toast-stack{left:222px;width:min(342px,calc(100vw - 236px))}
+  .tracking-success-toast-stack{left:232px;width:min(342px,calc(100vw - 246px))}
 }
 @media(max-width:1180px){
   .tracking-success-toast-stack{left:82px;width:min(342px,calc(100vw - 96px))}
