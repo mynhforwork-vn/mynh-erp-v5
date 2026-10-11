@@ -502,20 +502,28 @@ export function OrderEditorForm({
             : trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ':'Chờ mã vận đơn'}</small>
         </div>
       </div>
-      {showPrepaid&&<div className="order-prepaid-fields">
+      <div className="order-prepaid-fields">
         <div className="form-section-head">
-          <div><h3>Đã thanh toán bằng tài khoản/thẻ</h3>
-            <small>Lưu riêng tiền đã trả trước. COD là tiền thu khi giao hàng, không tự cộng hoặc trừ.</small></div>
+          <div><h3>Thanh toán trước bằng tài khoản/thẻ</h3>
+            <small>Khai báo tiền đã trả trước bằng tài khoản hoặc thẻ, tách biệt với COD khi giao hàng.</small></div>
         </div>
+        {!showPrepaid&&<div className="order-prepaid-quick-action">
+          <button type="button" className="button small" onClick={()=>setPaymentStatus('PAID')}>
+            Đã trả bằng tài khoản/thẻ
+          </button>
+          <small className="field-help">Bấm nút trên để nhập ngay, hoặc chọn “Thanh toán một phần” trong trạng thái Thanh toán.</small>
+        </div>}
         <div className="form-grid">
           <label>Số tiền đã thanh toán (₫)
             <input name="prepaid_amount" type="number" inputMode="numeric" min="1" step="1"
+              disabled={!showPrepaid}
               required={mode==='create'&&paymentStatus!=='REFUNDED'}
               value={prepaidAmount} onChange={e=>setPrepaidAmount(e.target.value)}
               placeholder="Ví dụ: 250000"/>
           </label>
           <label>Loại tài khoản/thẻ
             <select name="prepaid_source_type" value={prepaidSourceType}
+              disabled={!showPrepaid}
               required={mode==='create'&&paymentStatus!=='REFUNDED'}
               onChange={e=>setPrepaidSourceType(e.target.value)}>
               <option value="">Chọn loại đã dùng</option>
@@ -525,11 +533,12 @@ export function OrderEditorForm({
         </div>
         <label>Tên tài khoản/thẻ (không bắt buộc)
           <input name="prepaid_source_label" value={prepaidSourceLabel}
+            disabled={!showPrepaid}
             onChange={e=>setPrepaidSourceLabel(e.target.value)} maxLength={120}
             placeholder="Ví dụ: MB Bank · Visa ****1234" autoComplete="off"/>
           <small className="field-help">Chỉ ghi tên nguồn tiền và tối đa 4 số cuối; không nhập số thẻ đầy đủ, CVV hoặc mật khẩu.</small>
         </label>
-      </div>}
+      </div>
     </section>
 
     <section className="form-section">

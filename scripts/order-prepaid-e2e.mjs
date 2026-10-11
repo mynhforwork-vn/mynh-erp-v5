@@ -27,6 +27,7 @@ if(sessionError)throw sessionError
 const browser=await chromium.launch({
   headless:true,...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{})
 })
+fs.mkdirSync('qa-order-prepaid-artifacts',{recursive:true})
 const checks=[]
 function check(name,pass,meta={}){
   checks.push({name,pass:Boolean(pass),...meta})
@@ -60,7 +61,18 @@ try{
   await form.locator('input[name="shopee_order_id"]').fill(f.prepaid_order_code)
   await form.locator('input[name="item_product_name"]').first().fill('Sản phẩm kiểm thử đã thanh toán')
   await form.locator('input[name="cod"]').fill('25000')
-  await form.locator('select[name="payment_status"]').selectOption('PAID')
+  check('Khu vực nhập tiền và loại thẻ hiện ngay khi tạo đơn',
+    await form.locator('.order-prepaid-fields').isVisible()
+    &&await form.locator('input[name="prepaid_amount"]').count()===1
+    &&await form.locator('select[name="prepaid_source_type"]').count()===1
+    &&await form.locator('input[name="prepaid_amount"]').isDisabled())
+  await form.locator('.order-prepaid-fields').scrollIntoViewIfNeeded()
+  await page.screenshot({path:'qa-order-prepaid-artifacts/payment-fields-before-1440.png',fullPage:false})
+  await form.getByRole('button',{name:'Đã trả bằng tài khoản/thẻ'}).click()
+  check('Chọn nhanh thanh toán thẻ cho phép nhập và đổi trạng thái',
+    await form.locator('select[name="payment_status"]').inputValue()==='PAID'
+    &&await form.locator('input[name="prepaid_amount"]').isEnabled()
+    &&await form.locator('select[name="prepaid_source_type"]').isEnabled())
   for(const width of [320,390,768,1440]){
     await page.setViewportSize({width,height:width===320?568:width===390?844:width===768?1024:900})
     const g=await form.evaluate(form=>{
@@ -70,6 +82,10 @@ try{
     })
     check('Form thanh toán không tràn viewport '+width,
       g.panelLeft>=-2&&g.panelRight<=width+2&&g.fieldsRight<=width+2,g)
+    if(width===390){
+      await form.locator('.order-prepaid-fields').scrollIntoViewIfNeeded()
+      await page.screenshot({path:'qa-order-prepaid-artifacts/payment-fields-mobile-390.png',fullPage:false})
+    }
   }
   await page.setViewportSize({width:1440,height:900})
   await form.locator('input[name="prepaid_amount"]').fill('250000')

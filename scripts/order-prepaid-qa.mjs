@@ -1,5 +1,6 @@
 // Standalone payment metadata contract. No Supabase writes.
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
 import {parsePrepaidMetadata,prepaidSourceLabel} from '../lib/order-prepaid.ts'
 const test=(paymentStatus,amount,type,label,isCreate=true)=>
   parsePrepaidMetadata({paymentStatus,amount,sourceType:type,sourceLabel:label,isCreate})
@@ -20,4 +21,9 @@ for(const args of [
  ['PAID','100000','CREDIT_CARD','4111111111111111'],
  ['PAID','100000','INVALID','']
 ]) assert.throws(()=>test(...args))
-console.log('ORDER_PREPAID_QA 11 PASS')
+const editor=fs.readFileSync('components/order-editor-form.tsx','utf8')
+assert.match(editor,/\{!showPrepaid&&<div className="order-prepaid-quick-action">/)
+assert.match(editor,/<div className="order-prepaid-fields">/)
+assert.doesNotMatch(editor,/\{showPrepaid&&<div className="order-prepaid-fields">/)
+assert.match(editor,/onClick=\{\(\)=>setPaymentStatus\('PAID'\)\}/)
+console.log('ORDER_PREPAID_QA 15 PASS')
