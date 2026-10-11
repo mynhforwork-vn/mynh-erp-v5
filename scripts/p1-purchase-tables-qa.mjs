@@ -171,6 +171,45 @@ try {
         check('Order device values survive reload',
           reloaded.includes('iPhone QA 15')&&reloaded.includes('Chrome QA'),{reloaded})
       }
+      // Drill down without navigating away from Purchase Orders.
+      const qaUsername=page.locator('.order-table tbody tr').filter({
+        has:page.locator('a.table-link',{hasText:session.fixtures.warehouse_order_code}),
+      }).locator('a.p1-order-username-link')
+      check('Order Username is an actionable User detail link',
+        await qaUsername.count()===1
+        &&(await qaUsername.getAttribute('href'))?.includes('account='+session.fixtures.erp_user_id))
+      await qaUsername.click()
+      await page.waitForURL(url=>url.pathname==='/purchase/orders'
+        &&url.searchParams.get('account')===session.fixtures.erp_user_id,{timeout:15000})
+      await page.locator('.order-account-detail-panel').waitFor({state:'visible',timeout:15000})
+      check('Username opens correct User slidebar inside Orders without module switch',
+        (await page.locator('.order-account-detail-panel .panel-head h2').innerText())===session.fixtures.erp_username
+        &&await page.locator('.order-table thead th').count()>0)
+      check('User detail shows Mobile and Browser',
+        (await page.locator('.order-account-detail-panel .purchase-device-detail-grid').innerText())
+          .includes('iPhone QA 15')
+        &&(await page.locator('.order-account-detail-panel .purchase-device-detail-grid').innerText())
+          .includes('Chrome QA'))
+      await page.locator('.order-account-detail-panel .user-panel-tabs').getByRole('link',{name:/Đơn hàng/}).click()
+      await page.waitForURL(url=>url.searchParams.get('accountTab')==='orders',{timeout:15000})
+      check('User orders tab keeps Purchase Orders location',
+        new URL(page.url()).pathname==='/purchase/orders'
+        &&await page.locator('.order-account-detail-panel .user-order-card.detailed').count()>0)
+      await page.locator('.order-account-detail-panel .user-order-card.detailed').first().click()
+      await page.waitForURL(url=>url.searchParams.has('order')&&!url.searchParams.has('account')
+        &&url.searchParams.get('backUser')===session.fixtures.erp_user_id,{timeout:15000})
+      check('User order opens order detail with return context',
+        await page.locator('.order-workspace .detail-panel .panel-head').count()>0)
+      await page.getByRole('link',{name:'← Trở lại User'}).click()
+      await page.waitForURL(url=>url.searchParams.get('account')===session.fixtures.erp_user_id
+        &&url.searchParams.get('accountTab')==='orders'&&!url.searchParams.has('order'),{timeout:15000})
+      check('Back from order returns to same User orders list',
+        await page.locator('.order-account-detail-panel .user-order-card.detailed').count()>0)
+      await page.locator('.order-account-detail-panel .close').click()
+      await page.waitForURL(url=>!url.searchParams.has('account'),{timeout:15000})
+      check('Closing User restores original order table',
+        new URL(page.url()).pathname==='/purchase/orders'
+        &&await page.locator('.order-table thead th').count()>0)
       const bulkCheckbox=page.locator('.order-table tbody input[type="checkbox"]').first()
       check('Order bulk actions hidden without selection',
         await page.locator('.p1-order-bulk-icons').count()===0)
