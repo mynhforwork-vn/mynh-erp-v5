@@ -6,7 +6,7 @@ import type { AccountDeviceRow } from '@/lib/purchase-account-device-fields'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { updateERPUser } from '@/lib/actions/core'
 import { orderIsCancelled } from '@/lib/purchase-order-cancellation'
-import { prepaidSourceLabel } from '@/lib/order-prepaid'
+import { prepaidSourceLabel,resolveOrderValue } from '@/lib/order-prepaid'
 
 type UserRecord={
   id:string,username:string,phone?:string|null,email?:string|null,status?:string|null,
@@ -139,7 +139,10 @@ export function OrderAccountDetailPanel({
                 <div className="user-order-card-top">
                   <div><b>{order.shopee_order_id??order.id.slice(0,8)}</b>
                     <span>{formatDateTime(order.order_date)} · {order.area??'Chưa rõ khu vực'}</span></div>
-                  <strong>{formatMoney(order.cod)}</strong>
+                  <strong title="Giá trị đơn hàng">{(()=>{
+  const total=resolveOrderValue({paymentStatus:order.payment_status,prepaidAmount:order.prepaid_amount,cod:order.cod})
+  return total===null?'Chưa đủ dữ liệu':formatMoney(total)
+})()}</strong>
                 </div>
                 <div className="order-detail-strip">
                   <span>Đơn <b>{statusOf(order)}</b></span>

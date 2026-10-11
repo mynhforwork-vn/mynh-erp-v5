@@ -7,7 +7,7 @@ import { archiveOrder, confirmReceiveOrders, markExpressDelivered, markExpressDe
 import { DeleteOrderConfirmForm } from '@/components/delete-order-confirm-form'
 import { CopyOrderButton } from '@/components/copy-order-button'
 import { OrderEditorForm } from '@/components/order-editor-form'
-import { prepaidSourceLabel } from '@/lib/order-prepaid'
+import { prepaidSourceLabel,resolveOrderValue } from '@/lib/order-prepaid'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import { isShippingTrackingStatus } from '@/lib/tracking/status-groups'
 import { PurchaseOrderTable } from '@/components/purchase-order-table'
@@ -670,6 +670,10 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                   {detail.prepaid_source_label&&<div className="full"><span>Tài khoản/thẻ sử dụng</span><b>{detail.prepaid_source_label}</b></div>}
                 </>}
                 <div><span>COD</span><b>{formatMoney(detail.cod)}</b></div>
+                <div><span>Giá trị đơn hàng</span><b>{(()=>{
+  const total=resolveOrderValue({paymentStatus:detail.payment_status,prepaidAmount:detail.prepaid_amount,cod:detail.cod})
+  return total===null?'Chưa đủ dữ liệu':formatMoney(total)
+})()}</b></div>
                 <div><span>Tổng giá gốc</span><b>{formatMoney(detailTotalOriginal)}</b></div>
                 <div><span>Dịch vụ</span><b>{detail.shipping_service==='EXPRESS'?'Hỏa tốc':'Tiêu chuẩn'}</b></div>
                 <div><span>Người nhận</span><b>{detail.recipient_name??'—'}</b></div>

@@ -66,3 +66,24 @@ export function resolveOrderCod(paymentStatus:string,rawAmount:unknown):number{
     throw new Error('COD không hợp lệ')
   return amount
 }
+
+/** Total order value: paid amount, COD, or both; never original product price.
+ * Legacy paid/partially paid orders without an amount remain unknown.
+ */
+export function resolveOrderValue(input:{
+  paymentStatus?:string|null
+  prepaidAmount?:number|string|null
+  cod?:number|string|null
+}):number|null{
+  const status=String(input.paymentStatus??'UNPAID').trim().toUpperCase()
+  const parse=(raw:number|string|null|undefined):number|null=>{
+    if(raw==null||String(raw).trim()==='')return null
+    const value=Number(raw)
+    return Number.isFinite(value)&&value>=0?value:null
+  }
+  const cod=parse(input.cod)
+  const prepaid=parse(input.prepaidAmount)
+  if(status==='PAID')return prepaid!==null&&prepaid>0?prepaid:null
+  if(status==='PARTIAL')return prepaid!==null&&prepaid>0&&cod!==null?prepaid+cod:null
+  return cod
+}

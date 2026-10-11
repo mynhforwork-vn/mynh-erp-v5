@@ -8,6 +8,7 @@ import { AccountFilterDropdown } from '@/components/account-filter-dropdown'
 import { VoucherTags } from '@/components/voucher-tags'
 import { UserBulkImport } from '@/components/user-bulk-import'
 import { ContextOrderPanel } from '@/components/context-order-panel'
+import { prepaidSourceLabel,resolveOrderValue } from '@/lib/order-prepaid'
 import Link from 'next/link'
 
 type SP={
@@ -563,12 +564,16 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                       return <Link className="user-order-card detailed" href={selectedOrderHref(o)} key={o.id}>
                         <div className="user-order-card-top">
                           <div><b>{o.shopee_order_id??o.id.slice(0,8)}</b><span>{formatDateTime(o.order_date)} · {o.area??'Chưa rõ khu vực'}</span></div>
-                          <strong>{formatMoney(o.cod)}</strong>
+                          <strong title="Giá trị đơn hàng">{(()=>{
+  const total=resolveOrderValue({paymentStatus:o.payment_status,prepaidAmount:o.prepaid_amount,cod:o.cod})
+  return total===null?'Chưa đủ dữ liệu':formatMoney(total)
+})()}</strong>
                         </div>
 
                         <div className="order-detail-strip">
                           <span>Đơn <b>{statusLabel(o.order_status)}</b></span>
                           <span>Thanh toán <b>{statusLabel(o.payment_status)}</b></span>
+                           {o.prepaid_amount!=null&&<span>Đã trả <b>{formatMoney(o.prepaid_amount)}</b> · {prepaidSourceLabel(o.prepaid_source_type)}{o.prepaid_source_label?' · '+o.prepaid_source_label:''}</span>}
                           <span>Nhận <b>{statusLabel(o.receive_status)}</b></span>
                         </div>
 

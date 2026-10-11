@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { SystemSlidebar } from '@/components/system-slidebar'
 import { formatDateTime,formatMoney,formatPhone,sourceLabel,statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
-import { prepaidSourceLabel } from '@/lib/order-prepaid'
+import { prepaidSourceLabel,resolveOrderValue } from '@/lib/order-prepaid'
 
 type Props={
   order:any
@@ -75,6 +75,10 @@ export function ContextOrderPanel({
             {order.prepaid_source_label&&<div className="full"><span>Tài khoản/thẻ sử dụng</span><b>{order.prepaid_source_label}</b></div>}
           </>}
           <div><span>COD</span><b>{formatMoney(order.cod)}</b></div>
+          <div><span>Giá trị đơn hàng</span><b>{(()=>{
+  const total=resolveOrderValue({paymentStatus:order.payment_status,prepaidAmount:order.prepaid_amount,cod:order.cod})
+  return total===null?'Chưa đủ dữ liệu':formatMoney(total)
+})()}</b></div>
           <div><span>Tổng giá gốc</span><b>{formatMoney(totalOriginal)}</b></div>
           <div><span>Dịch vụ</span><b>{isExpress?'Hỏa tốc':'Tiêu chuẩn'}</b></div>
           <div><span>Nhận hàng</span><b>{statusLabel(order.receive_status)}</b></div>

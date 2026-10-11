@@ -5,7 +5,7 @@ import {suggestDestinationHub} from '@/lib/destination-hub-resolution'
 import { useMemo, useState } from 'react'
 import { createOrder, updateOrder } from '@/lib/actions/core'
 import { formatParsedOrderSummary, parseShopeeOrderText } from '@/lib/shopee-order-text-parser'
-import { PREPAID_SOURCE_OPTIONS } from '@/lib/order-prepaid'
+import { PREPAID_SOURCE_OPTIONS,resolveOrderValue } from '@/lib/order-prepaid'
 
 type UserOption={
   id:string
@@ -483,15 +483,6 @@ export function OrderEditorForm({
       </div>
 
       <div className="form-grid">
-        <label>Thanh toán
-          <select name="payment_status" value={paymentStatus} onChange={e=>setPaymentStatus(e.target.value)}>
-            <option value="UNPAID">Chưa thanh toán</option>
-            <option value="PENDING">Đang chờ</option>
-            <option value="PARTIAL">Thanh toán một phần</option>
-            <option value="PAID">Đã thanh toán</option>
-            <option value="REFUNDED">Đã hoàn tiền</option>
-          </select>
-        </label>
         <div className="derived-order-state">
           <span>Trạng thái đơn</span>
           <b>{shippingService==='EXPRESS'
@@ -502,35 +493,6 @@ export function OrderEditorForm({
             : trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ':'Chờ mã vận đơn'}</small>
         </div>
       </div>
-      {paymentStatus==='PAID'&&<small className="field-help">Đã thanh toán: COD tự động bằng 0 ₫.</small>}
-      {showPrepaid&&<div className="order-prepaid-fields">
-        <div className="form-section-head">
-          <div><h3>Chi tiết thanh toán tài khoản/thẻ</h3>
-            <small>Ghi nhận số tiền đã thanh toán và nguồn thanh toán; COD được xử lý theo trạng thái thanh toán.</small></div>
-        </div>
-        <div className="form-grid">
-          <label>Số tiền đã thanh toán (₫)
-            <input name="prepaid_amount" type="number" inputMode="numeric" min="1" step="1"
-              required={mode==='create'}
-              value={prepaidAmount} onChange={e=>setPrepaidAmount(e.target.value)}
-              placeholder="Ví dụ: 250000"/>
-          </label>
-          <label>Loại tài khoản/thẻ
-            <select name="prepaid_source_type" value={prepaidSourceType}
-              required={mode==='create'}
-              onChange={e=>setPrepaidSourceType(e.target.value)}>
-              <option value="">Chọn loại đã dùng</option>
-              {PREPAID_SOURCE_OPTIONS.map(option=><option value={option.value} key={option.value}>{option.label}</option>)}
-            </select>
-          </label>
-        </div>
-        <label>Tên tài khoản/thẻ (không bắt buộc)
-          <input name="prepaid_source_label" value={prepaidSourceLabel}
-            onChange={e=>setPrepaidSourceLabel(e.target.value)} maxLength={120}
-            placeholder="Ví dụ: MB Bank · Visa ****1234" autoComplete="off"/>
-          <small className="field-help">Chỉ ghi tên nguồn tiền và tối đa 4 số cuối; không nhập số thẻ đầy đủ, CVV hoặc mật khẩu.</small>
-        </label>
-      </div>}
     </section>
 
     <section className="form-section">
@@ -799,17 +761,67 @@ export function OrderEditorForm({
       </datalist>
     </section>
 
-    {paymentStatus==='PAID'
-      ? <input type="hidden" name="cod" value="0"/>
-      : <section className="form-section order-cod-section">
-          <h3>Giá trị đơn</h3>
-          <label>COD
-            <input name="cod" inputMode="decimal" required
-              value={cod} onChange={e=>setCod(e.target.value)}
-              placeholder="Nhập COD sau khi kiểm tra sản phẩm / voucher"/>
-            <small className="field-help">Nhập COD cần thu khi giao hàng. Có thể nhập 0 nếu thực tế không thu COD.</small>
+    <section className="form-section order-value-section">
+      <h3>Thanh toán & giá trị đơn hàng</h3>
+      <small className="field-help">Dùng chung cho Tiêu chuẩn và Hỏa tốc; đổi dịch vụ không xóa dữ liệu thanh toán.</small>
+      <label>Trạng thái thanh toán
+        <select name="payment_status" value={paymentStatus} onChange={e=>setPaymentStatus(e.target.value)}>
+          <option value="UNPAID">Chưa thanh toán</option>
+          <option value="PENDING">Đang chờ</option>
+          <option value="PARTIAL">Thanh toán một phần</option>
+          <option value="PAID">Đã thanh toán</option>
+          <option value="REFUNDED">Đã hoàn tiền</option>
+        </select>
+      </label>
+        {paymentStatus==='PAID'&&<small className="field-help">Đã thanh toán: COD tự động bằng 0 ₫.</small>}
+        {showPrepaid&&<div className="order-prepaid-fields">
+          <div className="form-section-head">
+            <div><h3>Chi tiết thanh toán tài khoản/thẻ</h3>
+              <small>Ghi nhận số tiền đã thanh toán và nguồn thanh toán; COD được xử lý theo trạng thái thanh toán.</small></div>
+          </div>
+          <div className="form-grid">
+            <label>Số tiền đã thanh toán (₫)
+              <input name="prepaid_amount" type="number" inputMode="numeric" min="1" step="1"
+                required={mode==='create'}
+                value={prepaidAmount} onChange={e=>setPrepaidAmount(e.target.value)}
+                placeholder="Ví dụ: 250000"/>
+            </label>
+            <label>Loại tài khoản/thẻ
+              <select name="prepaid_source_type" value={prepaidSourceType}
+                required={mode==='create'}
+                onChange={e=>setPrepaidSourceType(e.target.value)}>
+                <option value="">Chọn loại đã dùng</option>
+                {PREPAID_SOURCE_OPTIONS.map(option=><option value={option.value} key={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+          </div>
+          <label>Tên tài khoản/thẻ (không bắt buộc)
+            <input name="prepaid_source_label" value={prepaidSourceLabel}
+              onChange={e=>setPrepaidSourceLabel(e.target.value)} maxLength={120}
+              placeholder="Ví dụ: MB Bank · Visa ****1234" autoComplete="off"/>
+            <small className="field-help">Chỉ ghi tên nguồn tiền và tối đa 4 số cuối; không nhập số thẻ đầy đủ, CVV hoặc mật khẩu.</small>
           </label>
-        </section>}
+        </div>}
+      {paymentStatus==='PAID'
+        ? <input type="hidden" name="cod" value="0"/>
+        : <div className="order-cod-section">
+            <label>COD
+              <input name="cod" inputMode="decimal" required
+                value={cod} onChange={e=>setCod(e.target.value)}
+                placeholder="Nhập COD sau khi kiểm tra sản phẩm / voucher"/>
+              <small className="field-help">Số tiền cần thu khi giao. Có thể nhập 0 nếu không thu COD.</small>
+            </label>
+          </div>}
+      <div className="order-value-summary" aria-live="polite">
+        <span>Giá trị đơn hàng</span>
+        <strong>{(()=>{
+          const amount=resolveOrderValue({paymentStatus,prepaidAmount,cod:paymentStatus==='PAID'?0:cod})
+          return amount===null?'Chưa đủ dữ liệu':new Intl.NumberFormat('vi-VN').format(amount)+' ₫'
+        })()}</strong>
+        <small>{paymentStatus==='PAID'?'Bằng số tiền đã thanh toán · COD = 0':
+          paymentStatus==='PARTIAL'?'Số tiền đã thanh toán + COD':'Bằng số tiền COD'}</small>
+      </div>
+    </section>
 
     <div className="form-actions">
       <a className="button" href={cancelHref}>Hủy</a>
