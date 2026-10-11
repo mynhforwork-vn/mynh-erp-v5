@@ -462,10 +462,10 @@ export function PurchaseOrderTable({
         </div>
         {columnOrder.map(k=><div
           key={k}
-          className={'column-manager-row draggable '+(k==='order'?'locked ':'')+(draggingColumn===k?'dragging ':'')+(dragOverColumn===k&&draggingColumn!==k?'drop-target':'')}
-          onDragEnter={()=>setDragOverColumn(k)}
+          className={'column-manager-row draggable '+(k==='order'?'locked ':'')}
+          onDragEnter={e=>e.currentTarget.classList.add('drop-target')}
           onDragOver={e=>{e.preventDefault();e.dataTransfer.dropEffect='move'}}
-          onDragLeave={()=>{if(dragOverColumn===k)setDragOverColumn(null)}}
+          onDragLeave={e=>e.currentTarget.classList.remove('drop-target')}
           onPointerUp={()=>{
             // Fallback for browsers where the native HTML5 drop is suppressed
             // by a portal or a pointer gesture on the drag handle.
@@ -477,6 +477,7 @@ export function PurchaseOrderTable({
           }}
           onDrop={e=>{
             e.preventDefault()
+            e.currentTarget.classList.remove('drop-target')
             const source=(e.dataTransfer.getData('text/plain')||draggingRef.current||draggingColumn) as ColKey|null
             if(source&&ALL.includes(source))reorderColumn(source,k)
             draggingRef.current=null
@@ -493,11 +494,17 @@ export function PurchaseOrderTable({
             onPointerDown={()=>{draggingRef.current=k}}
             onDragStart={e=>{
               draggingRef.current=k
-              setDraggingColumn(k)
+              // Keep the source DOM stable through dragstart/dragover/drop.
+              // React rerenders here can cancel native HTML5 DnD in Chromium.
+              e.currentTarget.closest('.column-manager-row')?.classList.add('dragging')
               e.dataTransfer.effectAllowed='move'
               e.dataTransfer.setData('text/plain',k)
             }}
-            onDragEnd={()=>{draggingRef.current=null;setDraggingColumn(null);setDragOverColumn(null)}}
+            onDragEnd={e=>{
+              e.currentTarget.closest('.column-manager-row')?.classList.remove('dragging')
+              draggingRef.current=null
+              setDraggingColumn(null);setDragOverColumn(null)
+            }}
           >⠿</button>
           <label>
             <input type="checkbox" checked={visible.includes(k)} disabled={k==='order'} onChange={()=>toggleColumn(k)}/>
