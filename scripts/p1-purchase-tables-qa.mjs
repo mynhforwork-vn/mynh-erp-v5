@@ -450,6 +450,16 @@ try {
         await page.locator('.order-table th[data-order-col="voucher"],.order-table col.p1-order-col-voucher').count()===2)
       const deviceRow=rows.filter({hasText:'Thiết bị'})
       const timeRow=rows.filter({hasText:'Thời gian đặt'})
+      await timeRow.getByRole('button',{name:'Chuyển Thời gian đặt lên'}).click()
+      const movedByButton=await page.locator('.order-table thead th[data-order-col]').evaluateAll(
+        els=>els.map(el=>el.getAttribute('data-order-col')))
+      check('Order move-up button changes the real table order',
+        movedByButton.indexOf('time')===movedByButton.indexOf('device')-1,{movedByButton})
+      await timeRow.getByRole('button',{name:'Chuyển Thời gian đặt xuống'}).click()
+      const restoredBeforeDrag=await page.locator('.order-table thead th[data-order-col]').evaluateAll(
+        els=>els.map(el=>el.getAttribute('data-order-col')))
+      check('Order move-down button restores original column order',
+        restoredBeforeDrag.indexOf('device')===restoredBeforeDrag.indexOf('time')-1,{restoredBeforeDrag})
       await timeRow.locator('.column-drag-handle').dragTo(deviceRow)
       const ordering=await page.locator('.order-table thead th[data-order-col]').evaluateAll(
         els=>els.map(el=>el.getAttribute('data-order-col')))
