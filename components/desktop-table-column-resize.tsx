@@ -138,7 +138,7 @@ export function DesktopTableColumnResize() {
     // leaving the slidebar restores the manually saved full-table widths.
     const purchasePanelWeights={
       account:{number:22,username:102,platform:53,phone:90,email:98,
-        status:72,device:79,voucher:65,orders:40,createdAt:106,note:76},
+        status:72,mobile:81,browser:72,voucher:65,orders:40,createdAt:106,note:76},
       order:{number:22,order:116,username:76,time:111,product:123,
         cod:62,tracking:113,carrier:70,voucher:61,status:94},
     }
