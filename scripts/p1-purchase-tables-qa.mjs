@@ -216,6 +216,20 @@ try {
         &&semantic.aligned&&Number.isFinite(semantic.expectedMin)
         &&semantic.width+2>=Math.min(semantic.expectedMin,semantic.width),
         semantic)
+      if(view.width===390){
+        const names=semantic.widths
+        if(spec.name==='User'){
+          const username=names.find(x=>x.label.startsWith('Username'))
+          const email=names.find(x=>x.label==='Email')
+          check('User compact columns remain readable on Mobile',
+            Boolean(username?.width>=112&&email?.width>=115),{username,email})
+        }else{
+          const username=names.find(x=>x.label.startsWith('Username'))
+          const product=names.find(x=>x.label==='Sản phẩm')
+          check('Order product and Username keep readable Mobile floor',
+            Boolean(username?.width>=75&&product?.width>=115),{username,product})
+        }
+      }
       if(spec.name==='User'&&view.width===2560){
         const note=semantic.widths.find(x=>x.label==='Ghi chú')
         check('User wide-desktop note cannot absorb all extra width',
