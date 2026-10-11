@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import assert from 'node:assert/strict'
 import {normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder} from '../lib/table-column-preferences.ts'
 import {accountDeviceFields} from '../lib/purchase-account-device-fields.ts'
+import {trackingNumberMeansCancelled,orderIsCancelled} from '../lib/purchase-order-cancellation.ts'
 const cols=['number','order','username','device','time','product','cod','tracking','voucher','status']
 const tests=[
 ['Legacy Order preserves required ID',()=>{
@@ -54,6 +55,20 @@ const tests=[
  assert.ok(account.includes('<colgroup>')&&order.includes('<colgroup>'))
  assert.ok(account.includes('--p1-account-panel-min-width'))
  assert.ok(order.includes('--p1-order-panel-min-width'))
+}],
+['Tracking sentinel is cancelled without guessing other missing values',()=>{
+ assert.equal(trackingNumberMeansCancelled('  KHÔNG   CÓ  '),true)
+ assert.equal(trackingNumberMeansCancelled('SPXVN123'),false)
+ assert.equal(trackingNumberMeansCancelled(null),false)
+ assert.equal(orderIsCancelled({order_status:'PROCESSING',shipments:[{tracking_number:'KHÔNG CÓ',is_active:true,current_tracking_status:'READY_TO_SHIP'}]}),true)
+ assert.equal(orderIsCancelled({order_status:'PROCESSING',shipments:[{tracking_number:null,is_active:true}]}),false)
+ const order=fs.readFileSync('components/purchase-order-table.tsx','utf8')
+ assert.ok(order.includes("tracking:'Vận chuyển'"))
+ assert.ok(!order.includes("carrier:'ĐVVC'"))
+ assert.ok(order.includes('M:')&&order.includes('B:'))
+ const core=fs.readFileSync('lib/actions/core.ts','utf8')
+ assert.ok(core.includes("const orderStatus=cancelledByMarker?'CANCELLED'"))
+ assert.ok(core.includes("if(data&&trackingNumber&&!isExpress&&!cancelledByMarker)"))
 }],
 ['P1 existing business actions retained',()=>{
  const order=fs.readFileSync('components/purchase-order-table.tsx','utf8')
