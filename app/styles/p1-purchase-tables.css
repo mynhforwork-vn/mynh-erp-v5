@@ -199,28 +199,28 @@
 .brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-username{width:125px!important}
 .brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-email{width:130px!important}
 .brand-shell-v1 .account-workspace.with-panel .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-note{width:72px!important}
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-select{width:30px!important}
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-number{width:30px!important}
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-order{width:150px!important}
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-time{width:134px!important}
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-cod{width:90px!important}
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-tracking{width:155px!important}
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-carrier{width:95px!important}
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-voucher{width:85px!important}
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-status{width:120px!important}
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-username{width:105px!important}
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-product{width:165px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-select{width:28px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-number{width:28px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-order{width:134px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-time{width:116px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-cod{width:76px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-tracking{width:146px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-carrier{width:77px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-voucher{width:75px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-status{width:105px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-username{width:90px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-product{width:148px!important}
 .brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-select{width:28px!important}
-.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-number{width:28px!important}
-.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-order{width:135px!important}
-.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-time{width:120px!important}
-.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-cod{width:75px!important}
-.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-tracking{width:140px!important}
-.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-carrier{width:78px!important}
-.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-voucher{width:70px!important}
-.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-status{width:108px!important}
-.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-username{width:85px!important}
-.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-product{width:130px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-number{width:26px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-order{width:118px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-time{width:106px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-cod{width:65px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-tracking{width:123px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-carrier{width:68px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-voucher{width:63px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-status{width:94px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-username{width:72px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-product{width:115px!important}
 /* Full account table: semantic column widths calculated from visible data
    and the actual table lane. Metadata and counts stay compact. These rules
    never replace user-resized columns or mobile/panel layout constraints. */
@@ -260,16 +260,38 @@
   .brand-shell-v1 .account-workspace .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-createdAt{width:125px!important}
   .brand-shell-v1 .account-workspace .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-note{width:72px!important}
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-select{width:28px!important}
-  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-number{width:28px!important}
-  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-order{width:135px!important}
-  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-username{width:85px!important}
-  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-time{width:120px!important}
-  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-product{width:130px!important}
-  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-cod{width:75px!important}
-  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-tracking{width:140px!important}
-  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-carrier{width:78px!important}
-  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-voucher{width:70px!important}
-  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-status{width:108px!important}
+  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-number{width:26px!important}
+  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-order{width:118px!important}
+  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-username{width:72px!important}
+  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-time{width:106px!important}
+  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-product{width:115px!important}
+  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-cod{width:65px!important}
+  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-tracking{width:123px!important}
+  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-carrier{width:68px!important}
+  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-voucher{width:63px!important}
+  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-status{width:94px!important}
+}
+/* Purchase order device details: two readable lines in a single narrow
+   semantic column, so Mobile and Browser do not require extra table scrolling. */
+.brand-shell-v1 table.order-table td.p1-order-device-cell{
+  overflow:hidden!important;vertical-align:middle!important;
+  padding-inline:3px!important;
+}
+.brand-shell-v1 table.order-table .p1-order-device-lines{
+  display:flex;flex-direction:column;gap:2px;
+  min-width:0;overflow:hidden;line-height:1.2;
+}
+.brand-shell-v1 table.order-table .p1-order-device-lines>span{
+  display:flex;gap:4px;align-items:center;
+  min-width:0;max-width:100%;white-space:nowrap;
+}
+.brand-shell-v1 table.order-table .p1-order-device-lines small{
+  flex:0 0 37px;font-size:8px;font-weight:600;color:#708399;
+}
+.brand-shell-v1 table.order-table .p1-order-device-lines b{
+  display:block;flex:1 1 0;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:10px;font-weight:500;color:#334d65;
 }
 /* Desktop + right slidebar: show every enabled column without horizontal scrolling.
    Shares are computed from actual visible IDs in the component; no positional CSS.
