@@ -8,6 +8,7 @@ import {createBrowserClient} from '@supabase/ssr'
 const base=process.env.PREVIEW_URL
 const url=process.env.SUPABASE_URL
 const key=process.env.SUPABASE_KEY
+const onlyOrderColumns=process.env.QA_ORDER_COLUMNS_ONLY==='1'
 assert.ok(base&&url&&key,'Thiếu cấu hình QA')
 const session=JSON.parse(fs.readFileSync('qa-session.json','utf8'))
 const jar=new Map()
@@ -38,6 +39,11 @@ try {
     assert.equal(r?.status(),200,route+' HTTP '+r?.status())
     assert.ok(!new URL(page.url()).pathname.includes('/login'),'Auth required')
   }
+  // On the main Preview, isolate the column feature from unrelated Account
+  // filter hydration/network delays. The full User reference still runs on P2.
+  let userRowHeight=30
+  let userMenuWidth=244
+  if(!onlyOrderColumns){
   await go('/purchase/accounts?range=all')
   const filter=page.locator('form.account-filter-bar')
   await filter.locator('.p1-filter-trigger[aria-label^="Browser:"]').click()
@@ -68,12 +74,13 @@ try {
   const userColumnButton=page.locator('.p1-account-filter-actions .column-manager .managed-column-button')
   await userColumnButton.click()
   const userMenu=page.locator('.p1-account-filter-actions .column-manager-menu')
-  const userRowHeight=await userMenu.locator('.column-manager-row').first().evaluate(el=>el.getBoundingClientRect().height)
-  const userMenuWidth=await userMenu.evaluate(el=>el.getBoundingClientRect().width)
+  userRowHeight=await userMenu.locator('.column-manager-row').first().evaluate(el=>el.getBoundingClientRect().height)
+  userMenuWidth=await userMenu.evaluate(el=>el.getBoundingClientRect().width)
   check('Bảng User làm chuẩn menu cột gọn',userRowHeight<=38&&userMenuWidth<=255,
     {userRowHeight,userMenuWidth})
   await page.screenshot({path:'qa-purchase-filter-columns-artifacts/user-columns-reference-1440.png',fullPage:false})
   await page.keyboard.press('Escape')
+  }
   // Reproduce the reported state: a User-scoped order list on the main Preview.
   const qaUser=session.fixtures?.erp_user_id
   assert.ok(qaUser,'Thiếu User QA cho kiểm thử URL lọc theo User')
