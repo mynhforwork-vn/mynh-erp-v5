@@ -12,6 +12,7 @@ import { isShippingTrackingStatus } from '@/lib/tracking/status-groups'
 import { PurchaseOrderTable } from '@/components/purchase-order-table'
 import { OrderAccountDetailPanel } from '@/components/order-account-detail-panel'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
+import { orderIsCancelled } from '@/lib/purchase-order-cancellation'
 import { DestinationHubConfigModal } from '@/components/destination-hub-config-panel'
 import { suggestReceivingWarehouseId } from '@/lib/warehouse-routing'
 
@@ -222,13 +223,13 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       )return false
     }else if(sp.tracking==='shipping'){
       const status=shipment?.current_tracking_status
-      if(!isShippingTrackingStatus(status))return false
+      if(orderIsCancelled(o)||!isShippingTrackingStatus(status))return false
     }else if(sp.tracking==='missing'){
       if(shipment?.tracking_number)return false
     }else if(sp.tracking==='cancelled'){
       const orderStatus=String(o.order_status??'').toUpperCase()
-      if(shipment?.current_tracking_status!=='CANCELLED'&&orderStatus!=='CANCELLED'&&orderStatus!=='CANCELED')return false
-    }else if(sp.tracking&&shipment?.current_tracking_status!==sp.tracking){
+      if(!orderIsCancelled(o))return false
+    }else if(sp.tracking&&(orderIsCancelled(o)||shipment?.current_tracking_status!==sp.tracking)){
       return false
     }
     return true
@@ -237,17 +238,13 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const totalOrders=scopeRows.length
   const shipping=scopeRows.filter((o:any)=>{
     const s=activeShipment(o)?.current_tracking_status
-    return isShippingTrackingStatus(s)
+    return !orderIsCancelled(o)&&isShippingTrackingStatus(s)
   }).length
-  const arrivedHub=scopeRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='ARRIVED_DESTINATION_HUB').length
-  const delivered=scopeRows.filter((o:any)=>activeShipment(o)?.current_tracking_status==='DELIVERED').length
-  const waiting=scopeRows.filter((o:any)=>o.receive_status==='WAITING_RECEIVE').length
+  const arrivedHub=scopeRows.filter((o:any)=>!orderIsCancelled(o)&&activeShipment(o)?.current_tracking_status==='ARRIVED_DESTINATION_HUB').length
+  const delivered=scopeRows.filter((o:any)=>!orderIsCancelled(o)&&activeShipment(o)?.current_tracking_status==='DELIVERED').length
+  const waiting=scopeRows.filter((o:any)=>!orderIsCancelled(o)&&o.receive_status==='WAITING_RECEIVE').length
   const missingTracking=scopeRows.filter((o:any)=>!activeShipment(o)?.tracking_number).length
-  const cancelled=scopeRows.filter((o:any)=>{
-    const status=activeShipment(o)?.current_tracking_status
-    const orderStatus=String(o.order_status??'').toUpperCase()
-    return status==='CANCELLED'||orderStatus==='CANCELLED'||orderStatus==='CANCELED'
-  }).length
+  const cancelled=scopeRows.filter((o:any)=>orderIsCancelled(o)).length
 
   const expressCount=scopeRows.filter((o:any)=>o.shipping_service==='EXPRESS').length
   const expressAttentionRows=scopeRows.filter((o:any)=>{
@@ -621,7 +618,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             <div><span className="eyebrow">CHI TIẾT ĐƠN</span><h2>{detail.shopee_order_id??detail.id.slice(0,8)}</h2>
               {sp.backUser&&<Link className="context-stack-back" href={listHref({account:sp.backUser,accountTab:'orders',backUser:null,order:null,tab:null})}>← Trở lại User</Link>}
             </div>
-            <Link className="close" href={listHref({order:null,tab:null,mode:null})}>×</Link>
+            <Link className="close" href={listHref({order:null,tab:null,mode:null,backUser:null})}>×</Link>
           </div>
 
           <div className="panel-tabs">
@@ -641,8 +638,8 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                 {detail.archived_at&&<div><span>Lưu trữ lúc</span><b>{formatDateTime(detail.archived_at)}</b></div>}
                 <div><span>Trạng thái đơn</span><b>{detail.archived_at
                   ? 'Đã lưu trữ'
-                  : detail.order_status==='CANCELLED'
-                    ? 'Đã hủy'
+                  : orderIsCancelled(detail)
+                    ? 'Đã huỷ'
                     : detail.shipping_service==='EXPRESS'
                       ? detail.receive_status==='RECEIVED'
                         ? 'Đã nhận · Hỏa tốc'
