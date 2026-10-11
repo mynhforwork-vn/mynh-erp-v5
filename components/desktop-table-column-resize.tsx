@@ -62,6 +62,13 @@ export function DesktopTableColumnResize() {
       table.style.removeProperty('width')
       table.style.removeProperty('min-width')
       table.classList.remove('mynh-resizable-table')
+      if(table.matches('.mynh-p1-semantic-table.order-table')){
+        table.querySelectorAll('colgroup col').forEach(col=>{
+          ;(col as HTMLElement).style.removeProperty('width')
+          ;(col as HTMLElement).style.removeProperty('min-width')
+          ;(col as HTMLElement).style.removeProperty('max-width')
+        })
+      }
       headerCells(table).forEach(th=>{
         th.style.removeProperty('width')
         th.style.removeProperty('min-width')
@@ -166,6 +173,61 @@ export function DesktopTableColumnResize() {
       return result
     }
 
+    // Orders own their semantic colgroup. Fit *both* colgroup and headers to
+    // the real table lane, including user-resized columns and reordered columns.
+    // A narrow lane scrolls inside the card only when readable minimums cannot fit.
+    const orderFit=(table:HTMLTableElement,ths:HTMLTableCellElement[],saved:Record<string,number>)=>{
+      const pane=table.closest('.order-table-card') as HTMLElement|null
+      const panel=Boolean(table.closest('.order-workspace.with-panel'))
+      const min:Record<string,number>=panel
+        ?{select:26,number:24,order:109,username:82,device:109,time:105,product:117,cod:63,tracking:143,voucher:60,status:91}
+        :{select:28,number:26,order:130,username:106,device:124,time:118,product:145,cod:67,tracking:159,voucher:65,status:101}
+      const base:Record<string,number>=panel
+        ?{select:28,number:26,order:124,username:94,device:132,time:112,product:138,cod:66,tracking:166,voucher:65,status:98}
+        :{select:28,number:28,order:155,username:128,device:151,time:134,product:203,cod:78,tracking:193,voucher:72,status:119}
+      const max:Record<string,number>={select:32,number:38,order:240,username:235,device:174,time:163,product:480,cod:110,tracking:330,voucher:105,status:168}
+      const keys=ths.map(th=>th.classList.contains('bulk-select-col')?'select':th.dataset.orderCol??'')
+      const result=keys.map((key,i)=>{
+        const previous=saved[headerName(ths[i])]??(key==='tracking'?saved['Mã vận đơn']:undefined)
+        return Math.max(min[key]??70,Math.min(max[key]??300,previous??base[key]??90))
+      })
+      const minimum=keys.reduce((sum,key)=>sum+(min[key]??70),0)
+      const available=Math.floor(pane?.clientWidth??table.parentElement?.clientWidth??0)-2
+      const target=Math.max(minimum,available)
+      let spare=target-result.reduce((sum,v)=>sum+v,0)
+      if(spare<0){
+        // Uncustomized flexible columns yield first, then stored preferences,
+        // but never below readable per-column minimums.
+        for(const customized of [false,true]){
+          for(const key of ['product','tracking','order','username','device','time','status','voucher','cod']){
+            const i=keys.indexOf(key)
+            if(i<0||spare>=0)continue
+            const hasSaved=Boolean(saved[headerName(ths[i])])
+            if(hasSaved!==customized)continue
+            const reduce=Math.min(-spare,Math.max(0,result[i]-(min[key]??70)))
+            result[i]-=reduce;spare+=reduce
+          }
+        }
+      }else if(spare>0){
+        for(const key of ['product','tracking','order','username','time','status','device','cod','voucher']){
+          const i=keys.indexOf(key)
+          if(i<0||spare<=0)continue
+          // Don't expand a deliberately set width until free columns are filled.
+          if(saved[headerName(ths[i])]!==undefined)continue
+          const gain=Math.min(spare,Math.max(0,(max[key]??300)-result[i]))
+          result[i]+=gain;spare-=gain
+        }
+        // Ultra-wide lanes use proportionate allocation, without a giant device column.
+        for(const key of ['product','tracking','order','username']){
+          const i=keys.indexOf(key)
+          if(i<0||spare<=0)continue
+          const gain=Math.min(spare,Math.max(0,(max[key]??300)-result[i]))
+          result[i]+=gain;spare-=gain
+        }
+      }
+      return result
+    }
+
     const trackingDefaults:Record<string,number>={
       'tracking-col-order':166,'tracking-col-product':250,
       'tracking-col-cod':94,'tracking-col-recipient':245,
@@ -178,6 +240,7 @@ export function DesktopTableColumnResize() {
       if (!ths.length) return
       const visibleWidths = ths.map(headerWidth)
       const isTracking=table.classList.contains('tracking-hub-table-v2')
+      const isOrder=table.matches('.mynh-p1-semantic-table.order-table')
       // Beginning a drag passes empty overrides. In that case freeze what is
       // actually on screen (not the default contract), preventing a width jump.
       const fromStoredPreferences=Object.keys(overrides).length>0
@@ -187,7 +250,8 @@ export function DesktopTableColumnResize() {
           : undefined)
         || visibleWidths[i])
       const panelWidths=fitPurchasePanel(table,ths)
-      const assigned = isTracking ? fitTrackingPanel(table,ths,preferred,overrides) : panelWidths??preferred
+      const assigned = isOrder?orderFit(table,ths,overrides)
+        :isTracking ? fitTrackingPanel(table,ths,preferred,overrides) : panelWidths??preferred
       let total = 0
       ths.forEach((th,i) => {
         // The account sequence number, order count and voucher tags are
@@ -196,13 +260,23 @@ export function DesktopTableColumnResize() {
         const accountCompact:Record<string,number>={number:33,orders:58,voucher:96}
         const accountWidth=table.classList.contains('user-table')
           ?accountCompact[th.dataset.accountCol??'']:undefined
-        const width = panelWidths ? assigned[i] : accountWidth??(th.classList.contains('tracking-action-head') ? 44 :
+        const width = isOrder?assigned[i]:panelWidths ? assigned[i] : accountWidth??(th.classList.contains('tracking-action-head') ? 44 :
           compactCol(th) ? Math.max(24, Math.min(140, assigned[i])) : clampForHeader(th,assigned[i]))
         total += width
         th.style.setProperty('width', width+'px', 'important')
         th.style.setProperty('min-width', width+'px', 'important')
         th.style.setProperty('max-width', width+'px', 'important')
       })
+      if(isOrder){
+        const cols=Array.from(table.querySelectorAll(':scope > colgroup > col')) as HTMLElement[]
+        cols.forEach((col,i)=>{
+          const width=assigned[i]
+          if(width===undefined)return
+          col.style.setProperty('width',width+'px','important')
+          col.style.setProperty('min-width',width+'px','important')
+          col.style.setProperty('max-width',width+'px','important')
+        })
+      }
       table.style.setProperty('table-layout', 'fixed', 'important')
       table.style.setProperty('width', total+'px', 'important')
       table.style.setProperty('min-width', total+'px', 'important')
@@ -249,9 +323,12 @@ export function DesktopTableColumnResize() {
       const purchasePane=table.closest('.account-table-card,.order-table-card') as HTMLElement|null
       const token=tracking
         ? (table.closest('.tracking-content-workspace.with-panel')?'panel:':'full:')+Math.round(pane?.clientWidth??0)
-        : purchase ? (purchasePanelContext(table)?'panel:':'full:')+Math.round(purchasePane?.clientWidth??0)
+        : purchase ? (table.closest('.order-workspace.with-panel,.account-workspace.with-panel')?'panel:':'full:')
+          +Math.round(purchasePane?.clientWidth??0)+':'
+          +ths.map(th=>th.dataset.orderCol??th.dataset.accountCol??(th.classList.contains('bulk-select-col')?'select':'')).join(',')
         : 'general'
-      if (Object.keys(saved).length && trackingLayout.get(table)!==token) {
+      if ((table.matches('.mynh-p1-semantic-table.order-table')||Object.keys(saved).length)
+          &&trackingLayout.get(table)!==token) {
         clearInlineWidths(table)
         freezeWidths(table,saved)
       }
@@ -294,11 +371,17 @@ export function DesktopTableColumnResize() {
           const idx = headerCells(table).indexOf(th)
           if (idx < 0) return
           const before = baseline[idx] || initial
+          const orderTable=table.matches('.mynh-p1-semantic-table.order-table')
+          const priorSaved=readSaved(table)
           const originalSelection = document.body.style.userSelect
           document.body.style.userSelect='none'
           grip.classList.add('resizing')
           const move = (event:PointerEvent) => {
             const colWidth = clampForHeader(th,before+event.clientX-startX)
+            if(orderTable){
+              freezeWidths(table,{...priorSaved,[label]:colWidth})
+              return
+            }
             const ths = headerCells(table)
             const old = baseline.reduce((sum,x) => sum+x,0)
             table.style.setProperty('width', (old-before+colWidth)+'px','important')
@@ -333,7 +416,7 @@ export function DesktopTableColumnResize() {
           delete widths[label]
           // Measure the natural width again before re-applying any other custom widths.
           clearInlineWidths(table)
-          if(Object.keys(widths).length)freezeWidths(table,widths)
+          if(Object.keys(widths).length||table.matches('.mynh-p1-semantic-table.order-table'))freezeWidths(table,widths)
           save(table,widths)
         })
         grip.addEventListener('keydown',e=>{
@@ -370,6 +453,9 @@ export function DesktopTableColumnResize() {
     })
     observer.observe(main,{childList:true,subtree:true,attributes:true,attributeFilter:['class']})
     const onChange=()=>{if(mq.matches)queue()}
+    const paneResize=new ResizeObserver(()=>queue())
+    main.querySelectorAll('.order-table-card').forEach(el=>paneResize.observe(el))
+    window.addEventListener('resize',queue)
     mq.addEventListener('change',onChange)
     const sync=(event:Event)=>{
       const detail=(event as CustomEvent<{key?:string,source?:HTMLTableElement}>).detail
@@ -397,6 +483,8 @@ export function DesktopTableColumnResize() {
     queue()
     return ()=>{
       observer.disconnect()
+      paneResize.disconnect()
+      window.removeEventListener('resize',queue)
       window.removeEventListener('mynh-table-column-width-changed',sync)
       window.removeEventListener('mynh-sidebar-resized',queue)
       mq.removeEventListener('change',onChange)
