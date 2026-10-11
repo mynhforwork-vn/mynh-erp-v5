@@ -2,6 +2,7 @@
 import fs from 'node:fs'
 import assert from 'node:assert/strict'
 import {normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder} from '../lib/table-column-preferences.ts'
+import {accountDeviceFields} from '../lib/purchase-account-device-fields.ts'
 const cols=['number','order','username','time','product','cod','tracking','carrier','voucher','status']
 const tests=[
 ['Legacy Order preserves required ID',()=>{
@@ -24,6 +25,16 @@ const tests=[
  assert.ok(!/tracking-hub-head-v2|warehouse-intake-layout/.test(css))
 }],
 ['P1 legacy preference identifiers unchanged',()=>{
+ // Legacy combined device rows and new independent slots display consistently.
+ assert.deepEqual(accountDeviceFields({all_devices:[{
+   device_key:'manual-primary',device_name:'Samsung S30',
+   device_type:'DESKTOP',browser_name:'Chrome',is_active:true
+ }]}),{mobileType:'Samsung S30',browserName:'Chrome'})
+ assert.deepEqual(accountDeviceFields({all_devices:[
+   {device_key:'manual-primary',device_name:'Samsung S30',device_type:'DESKTOP',browser_name:'Chrome',is_active:false},
+   {device_key:'manual-mobile',device_name:'iPhone 15',device_type:'MOBILE',is_active:true},
+   {device_key:'manual-browser',device_name:'Safari',device_type:'BROWSER_PROFILE',browser_name:'Safari',is_active:true},
+ ]}),{mobileType:'iPhone 15',browserName:'Safari'})
  const account=fs.readFileSync('components/purchase-account-table.tsx','utf8')
  const order=fs.readFileSync('components/purchase-order-table.tsx','utf8')
  assert.ok(account.includes("const STORAGE_KEY='mynh-v5-purchase-account-columns'"))
