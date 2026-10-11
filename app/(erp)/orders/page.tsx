@@ -288,6 +288,13 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       if(v===null||v===undefined||v==='')p.delete(k)
       else p.set(k,v)
     }
+    // A single slidebar context owns the URL. Opening an Order clears User
+    // context and vice versa, including links created from old bookmarks.
+    if(extra.account){
+      p.delete('order');p.delete('tab');p.delete('backUser');p.delete('mode')
+    }else if(extra.order){
+      p.delete('account');p.delete('accountTab');p.delete('accountMode')
+    }
     const qs=p.toString()
     return `/purchase/orders${qs?`?${qs}`:''}`
   }
@@ -388,7 +395,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   let earliestAccountOrderDate:string|null=null
   const accountTab=['info','orders','history'].includes(sp.accountTab??'')
     ?String(sp.accountTab):'info'
-  if(sp.account){
+  if(sp.account&&!sp.order){
     const accountResult=await supabase.from('erp_users')
       .select('id,username,phone,email,status,platform,note,created_at,archived_at,order_count,browser_name,spc_st_secret_id,spc_f_secret_id,spc_st_encrypted,spc_f_encrypted')
       .eq('id',sp.account).maybeSingle()
@@ -527,7 +534,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
       </section>
 
-      {sp.account&&
+      {sp.account&&!sp.order&&
         <OrderAccountDetailPanel
           account={openedAccount}
           devices={openedAccountDevices}
@@ -542,14 +549,14 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
           editMode={sp.accountMode==='edit'}
           editHref={listHref({accountTab:'info',accountMode:'edit'})}
           returnQuery={listHref({accountTab:'info',accountMode:null}).split('?')[1]??''}
-          closeHref={listHref({account:null,accountTab:null,accountMode:null})}
+          closeHref={listHref({account:null,accountTab:null,accountMode:null,order:null,tab:null,backUser:null})}
           infoHref={listHref({accountTab:'info',accountMode:null})}
           ordersHref={listHref({accountTab:'orders',accountMode:null})}
           historyHref={listHref({accountTab:'history',accountMode:null})}
         />
       }
 
-      {createMode&&!sp.account&&!destinationSettingsMode&&
+      {createMode&&!sp.account&&!sp.order&&!destinationSettingsMode&&
         <SystemSlidebar className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Tạo đơn mới</h2></div>
@@ -570,7 +577,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         </SystemSlidebar>
       }
 
-      {detail&&editMode&&!sp.account&&!destinationSettingsMode&&
+      {detail&&editMode&&!destinationSettingsMode&&
         <SystemSlidebar className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">ĐƠN NHẬP HÀNG</span><h2>Sửa {detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
@@ -612,8 +619,8 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
         </SystemSlidebar>
       }
 
-      {detail&&!editMode&&!sp.account&&!destinationSettingsMode&&
-        <SystemSlidebar className="detail-panel">
+      {detail&&!editMode&&!destinationSettingsMode&&
+        <SystemSlidebar className="detail-panel order-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT ĐƠN</span><h2>{detail.shopee_order_id??detail.id.slice(0,8)}</h2>
               {sp.backUser&&<Link className="context-stack-back" href={listHref({account:sp.backUser,accountTab:'orders',backUser:null,order:null,tab:null})}>← Trở lại User</Link>}
@@ -632,7 +639,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
             {(!sp.tab||sp.tab==='info'||(detail.shipping_service==='EXPRESS'&&sp.tab==='tracking'))&&<>
               <div className="detail-grid">
                 <div><span>Username</span><b>{detail.erp_user_id&&detail.erp_users?.username
-                  ?<Link className="p1-order-username-link" href={listHref({account:detail.erp_user_id,accountTab:'info',backUser:null})}>{detail.erp_users.username}</Link>
+                  ?<Link className="p1-order-username-link" href={listHref({account:detail.erp_user_id,accountTab:'info',backUser:null,order:null,tab:null})}>{detail.erp_users.username}</Link>
                   :'—'}</b></div>
                 <div><span>Ngày đặt</span><b>{formatDateTime(detail.order_date)}</b></div>
                 {detail.archived_at&&<div><span>Lưu trữ lúc</span><b>{formatDateTime(detail.archived_at)}</b></div>}
