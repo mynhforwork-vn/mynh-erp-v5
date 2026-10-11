@@ -250,7 +250,7 @@ async function fetchProvider(config:ProviderConfig,job:Job){
 }
 
 function cancelledPlaceholder(value:unknown):boolean{
-  return String(value??"").trim().replace(/\\s+/g," ").toLocaleUpperCase("vi-VN")==="KHÔNG CÓ";
+  return String(value??"").trim().replace(/\s+/g," ").toLocaleUpperCase("vi-VN")==="KHÔNG CÓ";
 }
 
 async function processJob(job:Job,syncSource:RequestMode){

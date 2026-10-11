@@ -33,7 +33,7 @@ if(!supabaseUrl||!serviceRoleKey)throw new Error("Missing Supabase runtime varia
 const db=createClient(supabaseUrl,serviceRoleKey,{auth:{persistSession:false,autoRefreshToken:false}});
 
 function cancelledPlaceholder(value:unknown):boolean{
-  return String(value??"").trim().replace(/\\s+/g," ").toLocaleUpperCase("vi-VN")==="KHÔNG CÓ";
+  return String(value??"").trim().replace(/\s+/g," ").toLocaleUpperCase("vi-VN")==="KHÔNG CÓ";
 }
 
 function json(data:unknown,status=200){
