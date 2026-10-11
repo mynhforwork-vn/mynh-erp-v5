@@ -112,6 +112,14 @@ try{
   await form.locator('input[name="prepaid_source_label"]').fill('Visa ****1234')
   check('Giao diện nhập đủ ba trường thanh toán',await form.locator('.order-prepaid-fields input').count()===2
     &&await form.locator('select[name="prepaid_source_type"]').count()===1)
+  await form.getByRole('button',{name:'Hỏa tốc',exact:true}).click()
+  check('Tạo đơn chọn Hỏa tốc không làm mất thông tin thẻ đã nhập',
+    await form.locator('input[name="shipping_service"]').inputValue()==='EXPRESS'
+    &&await form.locator('input[name="prepaid_amount"]').inputValue()==='250000'
+    &&await form.locator('select[name="prepaid_source_type"]').inputValue()==='CREDIT_CARD'
+    &&await form.locator('input[name="prepaid_source_label"]').inputValue()==='Visa ****1234'
+    &&(await form.locator('.order-value-summary').innerText()).includes('250.000'))
+  await form.getByRole('button',{name:'Tiêu chuẩn',exact:true}).click()
   await form.getByRole('button',{name:'Tạo đơn'}).click()
   await page.waitForURL(u=>u.pathname==='/purchase/orders'&&u.searchParams.has('order')
     &&!u.searchParams.has('mode'),{timeout:25000})
@@ -121,8 +129,9 @@ try{
   check('Tạo đơn Đã thanh toán ghi COD 0 dù trước đó nhập 25000',persisted.ok,{data:persisted.data,error:persisted.error})
   await page.reload({waitUntil:'load'})
   const panel=page.locator('.order-panel .detail-grid')
-  check('Chi tiết đơn sau reload hiển thị khoản đã trả và thẻ',
-    (await panel.innerText()).includes('250.000')&&(await panel.innerText()).includes('Visa ****1234'))
+  check('Chi tiết đơn sau reload hiển thị khoản đã trả, thẻ và giá trị đơn',
+    (await panel.innerText()).includes('250.000')&&(await panel.innerText()).includes('Visa ****1234')
+    &&(await panel.innerText()).includes('Giá trị đơn hàng'))
   await page.getByRole('link',{name:'Sửa đơn'}).click()
   await page.waitForURL(u=>u.searchParams.get('mode')==='edit',{timeout:12000})
   const edit=page.locator('form.order-editor')
@@ -141,11 +150,14 @@ try{
   await page.waitForURL(u=>u.searchParams.has('order')&&!u.searchParams.has('mode'),{timeout:25000})
   const updated=await verify(client,id,275000,'BANK_ACCOUNT','MB Bank',12500,'PARTIAL')
   check('Sửa đơn Một phần lưu COD 12500 và tiền trả trước riêng',updated.ok,{data:updated.data,error:updated.error})
+  check('Chi tiết Một phần hiển thị giá trị đơn 287.500',
+    (await page.locator('.order-panel .detail-grid').innerText()).includes('287.500'))
   await go('/purchase/accounts?range=all&user='+encodeURIComponent(f.erp_user_id)
     +'&tab=orders&order='+encodeURIComponent(id))
-  check('Slidebar đơn trong User hiện thanh toán trước',
+  check('Slidebar đơn trong User hiện thanh toán trước và giá trị đơn',
     (await page.locator('.context-order-panel').innerText()).includes('275.000')
-    &&(await page.locator('.context-order-panel').innerText()).includes('MB Bank'))
+    &&(await page.locator('.context-order-panel').innerText()).includes('MB Bank')
+    &&(await page.locator('.context-order-panel').innerText()).includes('287.500'))
   await go('/purchase/tracking?range=all&order='+encodeURIComponent(id))
   check('Slidebar đơn trong Tracking hiện thanh toán trước',
     (await page.locator('.context-order-panel').innerText()).includes('275.000')
@@ -162,6 +174,62 @@ try{
   await page.waitForURL(u=>u.searchParams.has('order')&&!u.searchParams.has('mode'),{timeout:25000})
   const paidNow=await verify(client,id,275000,'BANK_ACCOUNT','MB Bank',0,'PAID')
   check('Lưu sửa Đã thanh toán ghi COD 0 vào Supabase',paidNow.ok,{data:paidNow.data,error:paidNow.error})
+  // Verify the reported Hỏa tốc payment regression against the real DB.
+  await go('/purchase/orders?range=all&order='+encodeURIComponent(id)+'&mode=edit')
+  const express=page.locator('form.order-editor')
+  await express.locator('select[name="payment_status"]').selectOption('PARTIAL')
+  await express.locator('input[name="cod"]').fill('14000')
+  await express.getByRole('button',{name:'Hỏa tốc',exact:true}).click()
+  check('Đổi sang Hỏa tốc không mất trường thanh toán và tiền đã nhập',
+    await express.locator('input[name="shipping_service"]').inputValue()==='EXPRESS'
+    &&await express.locator('input[name="prepaid_amount"]').inputValue()==='275000'
+    &&await express.locator('select[name="prepaid_source_type"]').inputValue()==='BANK_ACCOUNT'
+    &&await express.locator('input[name="prepaid_source_label"]').inputValue()==='MB Bank'
+    &&await express.locator('input[name="cod"]').inputValue()==='14000')
+  check('Hỏa tốc Một phần tính giá trị đơn 289.000 trong form',
+    (await express.locator('.order-value-summary').innerText()).includes('289.000'))
+  for(const width of [320,390,768,1440]){
+    await page.setViewportSize({width,height:width===320?568:width===390?844:width===768?1024:900})
+    const g=await express.locator('.order-value-section').evaluate(el=>({
+      right:el.getBoundingClientRect().right,width:innerWidth,
+    }))
+    check('Hỏa tốc giá trị đơn không tràn '+width,g.right<=width+2,g)
+  }
+  await page.setViewportSize({width:1440,height:900})
+  await express.getByRole('button',{name:'Lưu thay đổi'}).click()
+  await page.waitForURL(u=>u.searchParams.has('order')&&!u.searchParams.has('mode'),{timeout:25000})
+  const {data:expressRow,error:expressError}=await client.from('orders')
+    .select('shipping_service,cod,payment_status,prepaid_amount,prepaid_source_type,prepaid_source_label')
+    .eq('id',id).single()
+  check('Hỏa tốc Một phần lưu COD và thẻ đúng trên Supabase',
+    !expressError&&expressRow?.shipping_service==='EXPRESS'
+    &&expressRow?.payment_status==='PARTIAL'
+    &&Number(expressRow?.prepaid_amount)===275000
+    &&Number(expressRow?.cod)===14000
+    &&expressRow?.prepaid_source_type==='BANK_ACCOUNT'
+    &&expressRow?.prepaid_source_label==='MB Bank',{data:expressRow,error:expressError?.message})
+  await page.reload({waitUntil:'load'})
+  check('Tab Thông tin Hỏa tốc hiển thị giá trị đơn 289.000 và nguồn thẻ',
+    (await page.locator('.order-panel .detail-grid').innerText()).includes('289.000')
+    &&(await page.locator('.order-panel .detail-grid').innerText()).includes('MB Bank'))
+  await page.getByRole('link',{name:'Sửa đơn'}).click()
+  await page.waitForURL(u=>u.searchParams.get('mode')==='edit',{timeout:12000})
+  const paidExpress=page.locator('form.order-editor')
+  check('Sửa Hỏa tốc sau reload còn dữ liệu thanh toán',
+    await paidExpress.locator('input[name="shipping_service"]').inputValue()==='EXPRESS'
+    &&await paidExpress.locator('input[name="prepaid_amount"]').inputValue()==='275000'
+    &&await paidExpress.locator('select[name="prepaid_source_type"]').inputValue()==='BANK_ACCOUNT')
+  await paidExpress.locator('select[name="payment_status"]').selectOption('PAID')
+  check('Đã thanh toán Hỏa tốc COD = 0 và giá trị bằng tiền đã trả',
+    await paidExpress.locator('input[name="cod"][type="hidden"]').inputValue()==='0'
+    &&(await paidExpress.locator('.order-value-summary').innerText()).includes('275.000'))
+  await paidExpress.getByRole('button',{name:'Lưu thay đổi'}).click()
+  await page.waitForURL(u=>u.searchParams.has('order')&&!u.searchParams.has('mode'),{timeout:25000})
+  const {data:expressPaid}=await client.from('orders')
+    .select('shipping_service,payment_status,cod,prepaid_amount').eq('id',id).single()
+  check('Hỏa tốc Đã thanh toán lưu COD 0 và tiền thẻ',
+    expressPaid?.shipping_service==='EXPRESS'&&expressPaid?.payment_status==='PAID'
+    &&Number(expressPaid?.cod)===0&&Number(expressPaid?.prepaid_amount)===275000)
   const {data:ledger}=await client.from('finance_transactions').select('id').eq('reference_id',id)
   check('Không sinh bút toán tài chính ngoài ý muốn',(ledger??[]).length===0)
   await context.close()

@@ -678,3 +678,24 @@
     z-index:120!important;
   }
 }
+
+/* Shared monetary summary for normal and Hỏa tốc order editor. */
+.brand-shell-v1 .order-editor .order-value-section{
+  min-width:0;
+}
+.brand-shell-v1 .order-editor .order-value-summary{
+  display:flex;flex-direction:column;gap:4px;
+  margin-top:10px;padding:12px 14px;
+  background:#f1f6fb;border-radius:8px;
+  color:#29485f;
+}
+.brand-shell-v1 .order-editor .order-value-summary>span{
+  font-size:12px;font-weight:650;
+}
+.brand-shell-v1 .order-editor .order-value-summary>strong{
+  font-size:21px;line-height:1.3;font-variant-numeric:tabular-nums;
+  overflow-wrap:anywhere;color:#173f65;
+}
+.brand-shell-v1 .order-editor .order-value-summary>small{
+  font-size:11px;color:#60778c;
+}

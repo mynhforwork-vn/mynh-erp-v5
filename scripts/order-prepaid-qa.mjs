@@ -1,7 +1,7 @@
 // Standalone payment metadata contract. No Supabase writes.
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import {parsePrepaidMetadata,prepaidSourceLabel,resolveOrderCod} from '../lib/order-prepaid.ts'
+import {parsePrepaidMetadata,prepaidSourceLabel,resolveOrderCod,resolveOrderValue} from '../lib/order-prepaid.ts'
 const test=(paymentStatus,amount,type,label,isCreate=true)=>
   parsePrepaidMetadata({paymentStatus,amount,sourceType:type,sourceLabel:label,isCreate})
 assert.deepEqual(test('PAID','250000','CREDIT_CARD','Visa ****1234'),
@@ -24,6 +24,18 @@ for(const args of [
 ]) assert.throws(()=>test(...args))
 const editor=fs.readFileSync('components/order-editor-form.tsx','utf8')
 assert.match(editor,/\{showPrepaid&&<div className="order-prepaid-fields">/)
+assert.match(editor,/Thanh toán & giá trị đơn hàng/)
+assert.match(editor,/order-value-summary/)
+for(const path of ['app/(erp)/orders/page.tsx','components/context-order-panel.tsx','components/order-account-detail-panel.tsx','app/(erp)/users/page.tsx']){
+  assert.match(fs.readFileSync(path,'utf8'),/resolveOrderValue/)
+}
+assert.equal(resolveOrderValue({paymentStatus:'PAID',prepaidAmount:250000,cod:9000}),250000)
+assert.equal(resolveOrderValue({paymentStatus:'PARTIAL',prepaidAmount:125000,cod:35000}),160000)
+assert.equal(resolveOrderValue({paymentStatus:'UNPAID',cod:35000}),35000)
+assert.equal(resolveOrderValue({paymentStatus:'PENDING',cod:0}),0)
+assert.equal(resolveOrderValue({paymentStatus:'REFUNDED',cod:35000}),35000)
+assert.equal(resolveOrderValue({paymentStatus:'PAID',prepaidAmount:null,cod:0}),null)
+assert.equal(resolveOrderValue({paymentStatus:'PARTIAL',prepaidAmount:null,cod:35000}),null)
 assert.match(editor,/paymentStatus==='PAID'\|\|paymentStatus==='PARTIAL'/)
 assert.doesNotMatch(editor,/order-prepaid-quick-action/)
 assert.match(editor,/paymentStatus==='PAID'\s*\? <input type="hidden" name="cod" value="0"\/>/)
@@ -42,4 +54,4 @@ for(const status of ['UNPAID','PARTIAL','PENDING','REFUNDED']){
 }
 assert.throws(()=>resolveOrderCod('PARTIAL','-1'))
 assert.throws(()=>resolveOrderCod('UNPAID','abc'))
-console.log('ORDER_PREPAID_QA 29 PASS')
+console.log('ORDER_PREPAID_QA 41 PASS')
