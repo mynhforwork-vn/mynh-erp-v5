@@ -312,6 +312,30 @@ try {
       },spec.table)
       check(spec.name+' compact colour pills',Boolean(colouredTag&&colouredTag.font<=8.5&&colouredTag.padding<=4),colouredTag??{})
       await page.screenshot({path:output+'/'+(spec.name==='User'?'accounts':'orders')+'-panel-1440.png',fullPage:false})
+      // Prior P0 manual widths must fit while the slidebar is open and
+      // remain stored unchanged when returning to full Desktop layout.
+      const savedWidthKey=await page.evaluate(selector=>{
+        const table=document.querySelector(selector)
+        const names=[...table.classList].filter(c=>!['table','active','striped','mynh-resizable-table'].includes(c)).sort()
+        return 'mynh-col-widths-v1:'+location.pathname+':'+names.join('.')
+      },spec.table)
+      const manualWidths=spec.name==='User'?{'Username':420,'Email':350}:{'Mã đơn':360,'Sản phẩm':430}
+      await page.evaluate(({key,widths})=>localStorage.setItem(key,JSON.stringify(widths)),
+        {key:savedWidthKey,widths:manualWidths})
+      await page.reload({waitUntil:'load',timeout:35000})
+      await page.locator(spec.panel).waitFor({state:'visible',timeout:15000})
+      await page.waitForTimeout(180)
+      const fittedSaved=await measure(spec)
+      const stillSaved=await page.evaluate(key=>localStorage.getItem(key),savedWidthKey)
+      check(spec.name+' manual widths fit in right panel without losing saved values',
+        Boolean(fittedSaved&&fittedSaved.scrollWidth<=fittedSaved.clientWidth+4
+          &&fittedSaved.table.width<=fittedSaved.clientWidth+4
+          &&stillSaved===JSON.stringify(manualWidths)),
+        {table:fittedSaved?.table,lane:fittedSaved?.wrap,scrollWidth:fittedSaved?.scrollWidth,
+          clientWidth:fittedSaved?.clientWidth,storageUnchanged:stillSaved===JSON.stringify(manualWidths)})
+      await page.evaluate(key=>localStorage.removeItem(key),savedWidthKey)
+      await page.reload({waitUntil:'load',timeout:35000})
+      await page.locator(spec.panel).waitFor({state:'visible',timeout:15000})
       if(spec.name==='User'){
         const trigger=page.locator('.p1-account-filter-actions .managed-column-button')
         const menu=page.locator('.p1-account-filter-actions .column-manager-menu')
