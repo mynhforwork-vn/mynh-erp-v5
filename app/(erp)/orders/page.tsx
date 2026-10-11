@@ -403,7 +403,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     if(openedAccount){
       const [accountOrderResult,accountDeviceResult,firstOrderResult]=await Promise.all([
         supabase.from('orders')
-          .select('id,shopee_order_id,order_date,cod,order_status,payment_status,receive_status,shipments(tracking_number,current_tracking_status,is_active),order_items(product_name,variant),order_vouchers(voucher_tag,voucher_type,voucher_name,voucher_code)')
+          .select('id,shopee_order_id,order_date,area,cod,order_status,payment_status,receive_status,recipient_name,recipient_phone,recipient_address,destination_hub,archived_at,shipments(tracking_number,carrier,current_tracking_status,is_active),order_items(product_name,variant,sku,quantity,final_price,original_price),order_vouchers(voucher_tag,voucher_type,voucher_name,voucher_code)')
           .eq('erp_user_id',openedAccount.id)
           .order('order_date',{ascending:false}).limit(100),
         supabase.from('purchase_account_devices')
@@ -778,6 +778,31 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                     </div>}
                 </div>}
 
+              <h3>Sản phẩm</h3>
+              <div className="mini-table">
+                <div className="mini-head"><span>Sản phẩm</span><span>SKU / Phân loại</span><span>SL</span><span>Giá</span></div>
+                {!items.length
+                  ? <div className="empty compact">Chưa có sản phẩm.</div>
+                  : items.map((it:any)=><div className="mini-row" key={it.id}>
+                      <span>{it.product_name??'Sản phẩm'}</span>
+                      <span>{[it.sku,it.variant].filter(Boolean).join(' · ')||'—'}</span>
+                      <span>{it.quantity??1}</span>
+                      <span>{formatMoney(it.final_price??it.original_price)}</span>
+                    </div>)}
+              </div>
+              <div className="mini-total-row">
+                <span>Tổng giá gốc</span>
+                <b>{formatMoney(detailTotalOriginal)}</b>
+              </div>
+
+              <h3>Voucher</h3>
+              {!vouchers.length
+                ? <div className="empty compact">Không sử dụng voucher.</div>
+                : <div className="voucher-list">{vouchers.map((v:any)=><div className="voucher-row" key={v.id}>
+                    <div><b>{v.voucher_tag??'Voucher'}</b><span>{v.voucher_name??'—'}</span></div>
+                    <div><span>{v.voucher_type??'—'}</span><b>{v.voucher_code??'—'}</b></div>
+                  </div>)}</div>}
+
               <div className="panel-action-row split-actions">
                 <CopyOrderButton text={`Mã đơn: ${detail.shopee_order_id??''}\nMã vận đơn: ${currentShip?.tracking_number??''}\nCOD: ${detail.cod??0}\nNgười nhận: ${detail.recipient_name??''}\nSĐT: ${detail.recipient_phone??''}\nĐịa chỉ: ${detail.recipient_address??''}`}/>
                 {canOperate&&!detail.archived_at&&<Link className="button primary" href={listHref({order:detail.id,mode:'edit'})}>Sửa đơn</Link>}
@@ -805,30 +830,6 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                     </>}
               </div>}
 
-              <h3>Sản phẩm</h3>
-              <div className="mini-table">
-                <div className="mini-head"><span>Sản phẩm</span><span>SKU / Phân loại</span><span>SL</span><span>Giá</span></div>
-                {!items.length
-                  ? <div className="empty compact">Chưa có sản phẩm.</div>
-                  : items.map((it:any)=><div className="mini-row" key={it.id}>
-                      <span>{it.product_name??'Sản phẩm'}</span>
-                      <span>{[it.sku,it.variant].filter(Boolean).join(' · ')||'—'}</span>
-                      <span>{it.quantity??1}</span>
-                      <span>{formatMoney(it.final_price??it.original_price)}</span>
-                    </div>)}
-              </div>
-              <div className="mini-total-row">
-                <span>Tổng giá gốc</span>
-                <b>{formatMoney(detailTotalOriginal)}</b>
-              </div>
-
-              <h3>Voucher</h3>
-              {!vouchers.length
-                ? <div className="empty compact">Không sử dụng voucher.</div>
-                : <div className="voucher-list">{vouchers.map((v:any)=><div className="voucher-row" key={v.id}>
-                    <div><b>{v.voucher_tag??'Voucher'}</b><span>{v.voucher_name??'—'}</span></div>
-                    <div><span>{v.voucher_type??'—'}</span><b>{v.voucher_code??'—'}</b></div>
-                  </div>)}</div>}
             </>}
 
             {detail.shipping_service!=='EXPRESS'&&sp.tab==='tracking'&&<>
