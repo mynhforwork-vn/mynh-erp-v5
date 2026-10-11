@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { SUPABASE_URL } from '@/lib/supabase/config'
+import { trackingNumberMeansCancelled } from '@/lib/purchase-order-cancellation'
 
 function apiError(message:string,status=500,detail?:string){
   return NextResponse.json({error:message,detail:detail??null},{status})
@@ -22,7 +23,7 @@ export async function POST(req:Request){
 
     const {data:shipment,error:shipmentError}=await supabase
       .from('shipments')
-      .select('id,orders(archived_at)')
+      .select('id,tracking_number,current_tracking_status,orders(archived_at,order_status)')
       .eq('id',body.shipment_id)
       .maybeSingle()
 
@@ -30,6 +31,12 @@ export async function POST(req:Request){
     if(!shipment)return apiError('Không tìm thấy vận đơn',404)
     if((shipment.orders as any)?.archived_at){
       return apiError('Đơn đã lưu trữ nên không thể đồng bộ Tracking',409)
+    }
+    const orderStatus=String((shipment.orders as any)?.order_status??'').toUpperCase()
+    if(trackingNumberMeansCancelled(shipment.tracking_number)
+       ||['CANCELLED','CANCELED'].includes(orderStatus)
+       ||shipment.current_tracking_status==='CANCELLED'){
+      return apiError('Đơn đã huỷ hoặc mã vận đơn KHÔNG CÓ, không cần đồng bộ Tracking',409)
     }
 
     const {data:{session}}=await supabase.auth.getSession()

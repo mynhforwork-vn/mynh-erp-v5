@@ -238,3 +238,35 @@
     text-overflow:ellipsis;
   }
 }
+
+/* Acknowledgements float at the top-left and do not consume KPI/table height. */
+.tracking-success-toast-stack{
+  position:fixed;top:max(14px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));
+  z-index:110;display:flex;flex-direction:column;gap:8px;
+  width:min(342px,calc(100vw - 28px));pointer-events:none;
+}
+.tracking-success-toast{
+  display:flex;align-items:flex-start;gap:8px;
+  min-width:0;padding:10px 9px 10px 11px;
+  background:#fff;border:1px solid #c5dfd3;border-left:3px solid #3b9874;
+  border-radius:7px;box-shadow:0 7px 22px rgba(30,55,68,.15);
+  color:#224839;pointer-events:auto;
+}
+.tracking-success-toast-mark{
+  width:17px;height:17px;flex:0 0 17px;display:grid;place-items:center;
+  border-radius:50%;background:#e3f3ea;color:#168356;font-size:12px;font-weight:700;
+}
+.tracking-success-toast-content{
+  flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;
+  font-size:11px;line-height:1.4;overflow-wrap:anywhere;
+}
+.tracking-success-toast-content strong{font-weight:650}
+.tracking-success-toast-content span{color:#567567}
+.tracking-success-toast-close{
+  width:23px;height:23px;flex:0 0 23px;
+  padding:0;border:0;border-radius:5px;background:transparent;
+  color:#55736a;font-size:17px;line-height:1;cursor:pointer;
+}
+.tracking-success-toast-close:hover,.tracking-success-toast-close:focus-visible{
+  background:#e8f3ee;outline-offset:2px;
+}

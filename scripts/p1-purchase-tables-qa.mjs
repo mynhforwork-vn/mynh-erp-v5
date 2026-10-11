@@ -827,7 +827,28 @@ try {
     }
   }
 
+  await page.setViewportSize({width:1440,height:900})
+  await nav('/purchase/tracking?range=all&received=1&payment=1')
+  check('Tracking success confirmations appear as top-left floating toasts',
+    await page.locator('.tracking-success-toast').count()===2
+    &&await page.locator('.tracking-flash-row .notice.success').count()===0
+    &&await page.locator('.tracking-success-toast-stack').evaluate(el=>
+      getComputedStyle(el).position==='fixed'
+      &&el.getBoundingClientRect().top<45))
+  check('Tracking toast parameters are cleared after acknowledgement',
+    !new URL(page.url()).searchParams.has('received')
+    &&!new URL(page.url()).searchParams.has('payment'))
+  await page.getByRole('button',{name:'Đóng thông báo Đã xác nhận nhận hàng'}).click()
+  check('Tracking toast has a working close button',
+    await page.locator('.tracking-success-toast').count()===1)
+  await page.waitForTimeout(5150)
+  check('Tracking success toast dismisses automatically after about five seconds',
+    await page.locator('.tracking-success-toast').count()===0)
   await nav('/purchase/tracking?range=all')
+  const cancelledMarkerVisible=await page.locator('.tracking-hub-table-v2 tbody tr').evaluateAll(rows=>
+    rows.some(row=>row.textContent?.toLocaleUpperCase('vi-VN').includes('KHÔNG CÓ')))
+  check('Cancelled KHÔNG CÓ shipments absent from Tracking tables and KPI input',
+    !cancelledMarkerVisible)
   const tracking=await page.evaluate(()=>{
     const first=document.querySelector('.tracking-hub-head-v2')
     const r=first?.getBoundingClientRect()
