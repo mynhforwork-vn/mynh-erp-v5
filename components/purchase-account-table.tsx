@@ -192,12 +192,34 @@ export function PurchaseAccountTable({
     .reduce((sum,key)=>sum+contentWeights[key],0)
   const flexible=shownColumns.filter(k=>flexKeys.has(k))
   const flexibleWeights=flexible.reduce((sum,key)=>sum+contentWeights[key],0)
-  const widthBudget=Math.max(flexibleWeights,tableLaneWidth-fixedWidth)
-  const tableTarget=fixedWidth+widthBudget
+  const minimumText:Partial<Record<ColKey,number>>={
+    username:124,email:151,mobile:94,browser:78,note:103,
+  }
+  const minimumBudget=flexible.reduce((sum,key)=>sum+(minimumText[key]??0),0)
+  const widthBudget=tableLaneWidth>0
+    ?Math.max(minimumBudget,tableLaneWidth-fixedWidth)
+    :flexibleWeights
   const computedFullWidths:Record<ColKey,number>={...contentWeights}
   for(const key of flexible){
-    computedFullWidths[key]=widthBudget*contentWeights[key]/Math.max(1,flexibleWeights)
+    computedFullWidths[key]=Math.max(minimumText[key]??0,
+      widthBudget*contentWeights[key]/Math.max(1,flexibleWeights))
   }
+  let overage=flexible.reduce((sum,key)=>sum+computedFullWidths[key],0)-widthBudget
+  if(overage>0){
+    // Respect minimum readable text widths while compressing other columns.
+    for(let pass=0;pass<2&&overage>0.1;pass++){
+      const remaining=flexible.filter(key=>computedFullWidths[key]>(minimumText[key]??0)+0.1)
+      const room=remaining.reduce((sum,key)=>sum+computedFullWidths[key]-(minimumText[key]??0),0)
+      if(room<=0)break
+      for(const key of remaining){
+        const available=computedFullWidths[key]-(minimumText[key]??0)
+        const reduction=Math.min(available,overage*available/room)
+        computedFullWidths[key]-=reduction
+      }
+      overage=flexible.reduce((sum,key)=>sum+computedFullWidths[key],0)-widthBudget
+    }
+  }
+  const tableTarget=fixedWidth+flexible.reduce((sum,key)=>sum+computedFullWidths[key],0)
   // The full-width table uses fixed pixels for counts/tags/metadata.
   // Only long meaningful text fields share remaining space.
   const fullColumnStyle=(width:number)=>({
