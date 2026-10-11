@@ -1,5 +1,6 @@
 import { requireUser } from '@/lib/supabase/auth'
 import { SystemSlidebar } from '@/components/system-slidebar'
+import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
 import { archiveERPUser, createERPUser, deleteERPUserPermanent, restoreERPUser, updateERPUser } from '@/lib/actions/core'
 import { PurchaseAccountTable } from '@/components/purchase-account-table'
@@ -38,12 +39,6 @@ function deviceBrowserBucket(value?:string|null){
   if(v.includes('shopee app'))return 'app'
   if(!v)return 'none'
   return 'other'
-}
-function deviceTypeLabel(type?:string|null){
-  if(type==='MOBILE')return 'Điện thoại'
-  if(type==='TABLET')return 'Máy tính bảng'
-  if(type==='BROWSER_PROFILE')return 'Browser Profile'
-  return 'Máy tính'
 }
 
 const actionLabels:Record<string,string>={
@@ -339,8 +334,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     }
   }
 
-  const selectedDevices=selected?.all_devices??[]
-  const primaryDevice=selectedDevices.find((d:any)=>d.device_key==='manual-primary')??selectedDevices.find((d:any)=>d.is_active)??null
+  const selectedDeviceFields=selected?accountDeviceFields(selected):{mobileType:'',browserName:''}
   const selectedVoucherRows=selected?.voucher_used_rows??[]
   const voucherCounts=new Map<string,number>()
   for(const v of selectedVoucherRows){
@@ -456,13 +450,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               <label>SPC_F<textarea name="spc_f" rows={2}/></label>
             </section>
             <section className="form-section">
-              <h3>Thiết bị đang hoạt động</h3>
-              <label>Tên máy<input name="device_name" placeholder="Ví dụ: MacBook M1 · Máy mua 01"/></label>
-              <div className="form-grid">
-                <label>Loại<select name="device_type" defaultValue="DESKTOP"><option value="DESKTOP">Máy tính</option><option value="MOBILE">Điện thoại</option><option value="BROWSER_PROFILE">Browser Profile</option></select></label>
-                <label>Browser<input name="browser_name" placeholder="Chrome"/></label>
+              <h3>Thiết bị</h3>
+              <div className="form-grid purchase-two-device-fields">
+                <label>Mobile — Loại thiết bị<input name="mobile_device_type" maxLength={120} placeholder="Ví dụ: iPhone 15"/></label>
+                <label>Browser — Tên<input name="browser_name" maxLength={120} placeholder="Ví dụ: Chrome"/></label>
               </div>
-              <label>Profile<input name="browser_profile" placeholder="Profile A / NST Profile..."/></label>
               <label>Ghi chú<textarea name="note" rows={2}/></label>
             </section>
             <div className="form-actions"><Link className="button" href={filterHref({mode:null,user:null,tab:null})}>Hủy</Link><button className="button primary">Tạo tài khoản</button></div>
@@ -518,21 +510,10 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                 {selected.archived_at&&<div><span>Lưu trữ lúc</span><b>{formatDateTime(selected.archived_at)}</b></div>}
               </div>
 
-              <div className="panel-section-head"><div><h3>Thiết bị hoạt động</h3><span>{selectedDevices.filter((d:any)=>d.is_active).length} active / {selectedDevices.length} đã ghi nhận</span></div></div>
-              <div className="device-card-scroll">
-                {!selectedDevices.length
-                  ? <div className="empty compact">Chưa ghi nhận thiết bị.</div>
-                  : selectedDevices.map((d:any)=><div className={`device-activity-card ${d.is_active?'active':''}`} key={d.id}>
-                      <div className="device-activity-main">
-                        <div><b>{d.device_name}</b><span>{deviceTypeLabel(d.device_type)}</span></div>
-                        <span className={`device-live-dot ${d.is_active?'on':''}`}>{d.is_active?'Đang hoạt động':'Ngừng hoạt động'}</span>
-                      </div>
-                      <div className="device-activity-meta">
-                        <span>Browser <b>{d.browser_name??'—'}</b></span>
-                        <span>Profile <b>{d.browser_profile??'—'}</b></span>
-                        <span>Hoạt động gần nhất <b>{formatDateTime(d.last_seen_at)}</b></span>
-                      </div>
-                    </div>)}
+              <div className="panel-section-head"><div><h3>Thiết bị</h3></div></div>
+              <div className="detail-grid compact-detail-grid purchase-device-detail-grid">
+                <div><span>Mobile · Loại thiết bị</span><b title={selectedDeviceFields.mobileType||undefined}>{selectedDeviceFields.mobileType||'—'}</b></div>
+                <div><span>Browser · Tên</span><b title={selectedDeviceFields.browserName||undefined}>{selectedDeviceFields.browserName||'—'}</b></div>
               </div>
 
               <div className="panel-section-head voucher-section-title"><div><h3>Voucher đã dùng</h3><span>Tự tổng hợp từ đơn hàng của User</span></div></div>
@@ -649,13 +630,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               <label>SPC_F mới<textarea name="spc_f" rows={2} placeholder="Để trống nếu không đổi"/></label>
             </section>
             <section className="form-section">
-              <h3>Thiết bị chính</h3>
-              <label>Tên máy<input name="device_name" defaultValue={primaryDevice?.device_name??''} placeholder="MacBook M1 · Máy mua 01"/></label>
-              <div className="form-grid">
-                <label>Loại<select name="device_type" defaultValue={primaryDevice?.device_type??'DESKTOP'}><option value="DESKTOP">Máy tính</option><option value="MOBILE">Điện thoại</option><option value="BROWSER_PROFILE">Browser Profile</option></select></label>
-                <label>Browser<input name="browser_name" defaultValue={primaryDevice?.browser_name??selected.browser_name??''}/></label>
+              <h3>Thiết bị</h3>
+              <div className="form-grid purchase-two-device-fields">
+                <label>Mobile — Loại thiết bị<input name="mobile_device_type" maxLength={120} defaultValue={selectedDeviceFields.mobileType} placeholder="Ví dụ: iPhone 15"/></label>
+                <label>Browser — Tên<input name="browser_name" maxLength={120} defaultValue={selectedDeviceFields.browserName} placeholder="Ví dụ: Chrome"/></label>
               </div>
-              <label>Profile<input name="browser_profile" defaultValue={primaryDevice?.browser_profile??''}/></label>
               <label>Ghi chú<textarea name="note" rows={2} defaultValue={selected.note??''}/></label>
             </section>
             <div className="form-actions"><Link className="button" href={detailHref({user:selected.id,mode:null})}>Hủy</Link><button className="button primary">Lưu thay đổi</button></div>
