@@ -154,8 +154,7 @@ export function PurchaseOrderTable({
   const [open,setOpen]=useState(false)
   const [sort,setSort]=useState<SortKey>('time_new')
   const [selected,setSelected]=useState<string[]>([])
-  const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
-  const [dragOverColumn,setDragOverColumn]=useState<ColKey|null>(null)
+
   const draggingRef=useRef<ColKey|null>(null)
   const tableWrapRef=useRef<HTMLDivElement|null>(null)
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
