@@ -16,8 +16,10 @@ type UserRecord={
 type UserOrder={
   id:string,shopee_order_id?:string|null,order_date?:string|null,
   cod?:number|null,order_status?:string|null,receive_status?:string|null,payment_status?:string|null,
-  shipments?:{tracking_number?:string|null,current_tracking_status?:string|null,is_active?:boolean|null}[]|null,
-  order_items?:{product_name?:string|null,variant?:string|null}[]|null,
+  shipments?:{tracking_number?:string|null,carrier?:string|null,current_tracking_status?:string|null,is_active?:boolean|null}[]|null,
+  area?:string|null,recipient_name?:string|null,recipient_phone?:string|null,
+  recipient_address?:string|null,destination_hub?:string|null,archived_at?:string|null,
+  order_items?:{product_name?:string|null,variant?:string|null,sku?:string|null,quantity?:number|null,final_price?:number|null,original_price?:number|null}[]|null,
   order_vouchers?:{voucher_tag?:string|null,voucher_type?:string|null,voucher_name?:string|null,voucher_code?:string|null}[]|null,
   href:string
 }
@@ -126,20 +128,43 @@ export function OrderAccountDetailPanel({
         <div className="panel-section-head"><div><h3>Đơn hàng của User</h3><span>{orders.length} đơn gần nhất</span></div></div>
         <div className="user-order-list detailed">
           {!orders.length?<div className="empty compact">User này chưa có đơn hàng.</div>
-            :orders.map(order=><Link key={order.id} className="user-order-card detailed" href={order.href}>
-              <div className="user-order-card-top">
-                <div><b>{order.shopee_order_id??order.id.slice(0,8)}</b><span>{formatDateTime(order.order_date)}</span></div>
-                <strong>{formatMoney(order.cod)}</strong>
-              </div>
-              <div className="order-detail-strip"><span>Trạng thái <b>{statusOf(order)}</b></span>
-                <span>Nhận <b>{statusLabel(order.receive_status)}</b></span></div>
-              <div className="user-order-products">
-                {(order.order_items??[]).slice(0,2).map((item,i)=><div key={i}>
-                  <span>{[item.product_name,item.variant].filter(Boolean).join(' · ')||'Sản phẩm'}</span>
-                </div>)}
-              </div>
-              <div className="user-order-shipping"><span>Thanh toán <b>{statusLabel(order.payment_status)}</b></span></div>
-            </Link>)}
+            :orders.map(order=>{
+              const ship=order.shipments?.find(s=>s.is_active)??order.shipments?.[0]
+              const voucherText=(order.order_vouchers??[]).map(v=>
+                String(v.voucher_tag||v.voucher_type||v.voucher_name||v.voucher_code||'').trim()
+              ).filter(Boolean).join(' · ')
+              return <Link key={order.id} className="user-order-card detailed" href={order.href}>
+                <div className="user-order-card-top">
+                  <div><b>{order.shopee_order_id??order.id.slice(0,8)}</b>
+                    <span>{formatDateTime(order.order_date)} · {order.area??'Chưa rõ khu vực'}</span></div>
+                  <strong>{formatMoney(order.cod)}</strong>
+                </div>
+                <div className="order-detail-strip">
+                  <span>Đơn <b>{statusOf(order)}</b></span>
+                  <span>Thanh toán <b>{statusLabel(order.payment_status)}</b></span>
+                  <span>Nhận <b>{statusLabel(order.receive_status)}</b></span>
+                </div>
+                <div className="user-order-products">
+                  {(order.order_items??[]).map((item,i)=><div key={i}>
+                    <span>{item.product_name??'Sản phẩm'}{item.variant?' · '+item.variant:''}</span>
+                    <b>{item.sku??'—'} · ×{item.quantity??1} · {formatMoney(item.final_price??item.original_price)}</b>
+                  </div>)}
+                </div>
+                <div className="user-order-recipient">
+                  <span>{order.recipient_name??'—'} · {formatPhone(order.recipient_phone)}</span>
+                  <small>{order.recipient_address??'—'}</small>
+                </div>
+                <div className="user-order-shipping">
+                  <div><span>MVĐ</span><b>{ship?.tracking_number??'Chưa có'}</b>
+                    <small>{ship?.carrier??'—'} · {order.destination_hub??'Chưa rõ kho đích'}</small></div>
+                  <span className={'status-pill status-'+String(ship?.current_tracking_status??'UNKNOWN').toLowerCase()}>
+                    {orderIsCancelled(order)?'Đã huỷ':statusOf(order)}
+                  </span>
+                  {order.archived_at&&<span className="status-pill archived">Lưu trữ</span>}
+                </div>
+                {voucherText&&<VoucherTags value={voucherText}/>}
+              </Link>
+            })}
         </div>
       </>}
       {tab==='history'&&<>
