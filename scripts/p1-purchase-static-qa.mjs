@@ -70,6 +70,19 @@ const tests=[
  assert.ok(core.includes("const orderStatus=cancelledByMarker?'CANCELLED'"))
  assert.ok(core.includes("if(data&&trackingNumber&&!isExpress&&!cancelledByMarker)"))
 }],
+['Cancelled no-MVĐ cannot reach alert feeds, Telegram or carrier probe',()=>{
+ const api=fs.readFileSync('app/api/alerts/in-app/route.ts','utf8')
+ const dispatcher=fs.readFileSync('supabase/functions/tracking-dispatcher/index.ts','utf8')
+ const telegram=fs.readFileSync('supabase/functions/telegram-alert-dispatcher/index.ts','utf8')
+ const css=fs.readFileSync('app/styles/tracking-compact-actions-v1.css','utf8')
+ assert.match(api,/cancelledCodes\.has\(notice\.order_code\)/)
+ assert.match(api,/filter\(order=>!orderIsCancelled\(order\)\)/)
+ assert.match(dispatcher,/if\(cancelledPlaceholder\(job\.tracking_number\)\)/)
+ assert.match(dispatcher,/if\(cancelledPlaceholder\(body\.test_tracking_number\)\)/)
+ assert.match(telegram,/const eligibleAlerts=alerts\.filter\(alert=>!excludedSet\.has\(alert\.id\)\)/)
+ assert.match(telegram,/telegram_suppressed_reason:"CANCELLED_OR_NO_MVD"/)
+ assert.match(css,/\.brand-shell-v1\.desktop-sidebar-collapsed \.tracking-success-toast-stack/)
+}],
 ['P1 existing business actions retained',()=>{
  const order=fs.readFileSync('components/purchase-order-table.tsx','utf8')
  const account=fs.readFileSync('components/purchase-account-table.tsx','utf8')

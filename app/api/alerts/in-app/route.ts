@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {buildOrderNotices,type LegacyAlert,type TrackingOrderNotice} from '@/lib/notification-order-presentation'
 import {buildOrderWorkNotices,type TaskOrder} from '@/lib/notification-order-tasks'
+import {orderIsCancelled} from '@/lib/purchase-order-cancellation'
 
 const noCache={ 'Cache-Control':'private, no-store, max-age=0' }
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -36,7 +37,13 @@ export async function GET(request:Request){
   const {data:receivingWarehouses}=canConfirmReceipt
     ?await supabase.from('warehouses').select('id,code,name,address').eq('is_active',true).order('code')
     :{data:[]}
+  // Historical orders can still be PROCESSING while their active shipment has
+  // the explicit cancellation marker "KHÔNG CÓ". Hide their prior alerts too.
+  const cancelledCodes=new Set((orderResult.data??[])
+    .filter(order=>orderIsCancelled({order_status:order.order_status,shipments:order.shipments}))
+    .map(order=>String(order.shopee_order_id)))
   const tracking=buildOrderNotices(legacyRows,orderResult.error?[]:(orderResult.data??[]))
+    .filter(notice=>!cancelledCodes.has(notice.order_code))
   // Detail fields are attached to the *same* GET response. Switching HUB, opening
   // an order or viewing its timeline does not create additional Cloudflare calls.
   const canViewRecipient=['admin','operator'].includes(String(user.app_metadata?.role??'viewer'))
@@ -76,7 +83,8 @@ export async function GET(request:Request){
     .is('archived_at',null)
     .order('order_date',{ascending:false})
     .limit(150)
-  const workNotices=taskError?[]:buildOrderWorkNotices((taskOrders??[]) as TaskOrder[])
+  const workNotices=taskError?[]:buildOrderWorkNotices(((taskOrders??[]) as TaskOrder[])
+    .filter(order=>!orderIsCancelled(order)))
     .map(item=>canViewRecipient?item:{
       ...item,recipient_name:null,recipient_phone:null,recipient_address:null,
     })

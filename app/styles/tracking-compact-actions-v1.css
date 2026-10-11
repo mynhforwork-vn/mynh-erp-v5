@@ -241,9 +241,22 @@
 
 /* Acknowledgements float at the top-left and do not consume KPI/table height. */
 .tracking-success-toast-stack{
-  position:fixed;top:max(14px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));
+  position:fixed;top:max(14px,env(safe-area-inset-top));left:230px;
   z-index:110;display:flex;flex-direction:column;gap:8px;
-  width:min(342px,calc(100vw - 28px));pointer-events:none;
+  width:min(342px,calc(100vw - 244px));pointer-events:none;
+}
+/* Keep toasts inside the main lane when the left sidebar expands/collapses. */
+@media(max-width:1440px){
+  .tracking-success-toast-stack{left:222px;width:min(342px,calc(100vw - 236px))}
+}
+@media(max-width:1180px){
+  .tracking-success-toast-stack{left:82px;width:min(342px,calc(100vw - 96px))}
+}
+@media(max-width:900px){
+  .tracking-success-toast-stack{left:66px;width:min(342px,calc(100vw - 74px))}
+}
+.brand-shell-v1.desktop-sidebar-collapsed .tracking-success-toast-stack{
+  left:82px;width:min(342px,calc(100vw - 96px));
 }
 .tracking-success-toast{
   display:flex;align-items:flex-start;gap:8px;
