@@ -56,6 +56,7 @@ const fixtures={
   history_customer_name:'QA History Customer '+suffix,
   erp_username:'qa_browser_'+suffix.replace(/[^a-z0-9]/gi,'_'),
   warehouse_order_code:'QA-WH-'+suffix,
+  prepaid_order_code:'QA-PRE-'+suffix,
   hub_order_code:'QA-HUB-'+suffix,
   sale_invoice_code:'QA-SALE-'+suffix.toUpperCase(),
   sale_sku:'QA-MUT-'+suffix.toUpperCase(),
