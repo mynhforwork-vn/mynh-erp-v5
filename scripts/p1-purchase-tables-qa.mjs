@@ -259,6 +259,11 @@ try {
           .includes('QA User updated from Orders'))
       await page.locator('.order-account-detail-panel .user-panel-tabs').getByRole('link',{name:/Đơn hàng/}).click()
       await page.waitForURL(url=>url.searchParams.get('accountTab')==='orders',{timeout:15000})
+      // URL updates before React's streamed slidebar content has completed.
+      // Wait for the actual fixture card, rather than testing an interim blank panel.
+      await page.locator('.order-account-detail-panel .user-order-card.detailed')
+        .filter({hasText:session.fixtures.hub_order_code})
+        .waitFor({state:'visible',timeout:20000})
       check('User orders tab keeps Purchase Orders location',
         new URL(page.url()).pathname==='/purchase/orders'
         &&await page.locator('.order-account-detail-panel .user-order-card.detailed').count()>0)
