@@ -4,6 +4,8 @@ import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } fr
 import { VoucherTags } from '@/components/voucher-tags'
 import type { AccountDeviceRow } from '@/lib/purchase-account-device-fields'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
+import { updateERPUser } from '@/lib/actions/core'
+import { orderIsCancelled } from '@/lib/purchase-order-cancellation'
 
 type UserRecord={
   id:string,username:string,phone?:string|null,email?:string|null,status?:string|null,
@@ -13,7 +15,9 @@ type UserRecord={
 }
 type UserOrder={
   id:string,shopee_order_id?:string|null,order_date?:string|null,
-  cod?:number|null,order_status?:string|null,order_items?:{product_name?:string|null,variant?:string|null}[]|null,
+  cod?:number|null,order_status?:string|null,receive_status?:string|null,payment_status?:string|null,
+  shipments?:{tracking_number?:string|null,current_tracking_status?:string|null,is_active?:boolean|null}[]|null,
+  order_items?:{product_name?:string|null,variant?:string|null}[]|null,
   order_vouchers?:{voucher_tag?:string|null,voucher_type?:string|null,voucher_name?:string|null,voucher_code?:string|null}[]|null,
   href:string
 }
@@ -21,9 +25,11 @@ type UserHistory={id:string,action:string,source?:string|null,created_at?:string
 
 export function OrderAccountDetailPanel({
   account,devices,orders,history,earliestDate,tab,closeHref,infoHref,ordersHref,historyHref,
+  canEdit=false,editMode=false,editHref,returnQuery,
 }:{
   account:UserRecord|null,devices:AccountDeviceRow[],orders:UserOrder[],history:UserHistory[],
-  earliestDate?:string|null,tab:string,closeHref:string,infoHref:string,ordersHref:string,historyHref:string
+  earliestDate?:string|null,tab:string,closeHref:string,infoHref:string,ordersHref:string,historyHref:string,
+  canEdit?:boolean,editMode?:boolean,editHref:string,returnQuery:string
 }){
   if(!account)return <SystemSlidebar className="detail-panel account-detail-panel">
     <div className="panel-head"><div><span className="eyebrow">CHI TIẾT USER</span><h2>Không tìm thấy tài khoản</h2></div><Link className="close" href={closeHref}>×</Link></div>
@@ -37,8 +43,48 @@ export function OrderAccountDetailPanel({
       if(label)voucherCounts.set(label,(voucherCounts.get(label)??0)+1)
     }
   }
+  const statusOf=(order:UserOrder)=>{
+    const shipment=order.shipments?.find(s=>s.is_active)??order.shipments?.[0]
+    if(orderIsCancelled(order))return 'Đã huỷ'
+    if(order.receive_status==='RECEIVED')return 'Đã nhận'
+    if(shipment?.current_tracking_status&&shipment.current_tracking_status!=='UNKNOWN')
+      return statusLabel(shipment.current_tracking_status)
+    return statusLabel(order.order_status)
+  }
   const effectiveDate=earliestDate&&account.created_at&&Date.parse(earliestDate)<Date.parse(account.created_at)
     ?earliestDate:account.created_at
+  if(editMode&&canEdit)return <SystemSlidebar className="detail-panel account-detail-panel order-account-detail-panel">
+    <div className="panel-head"><div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Sửa {account.username}</h2></div>
+      <Link className="close" href={infoHref} aria-label="Đóng sửa tài khoản">×</Link></div>
+    <form className="panel-form panel-scroll" action={updateERPUser}>
+      <input type="hidden" name="return_path" value="orders"/>
+      <input type="hidden" name="return_query" value={returnQuery}/>
+      <input type="hidden" name="user_id" value={account.id}/>
+      <section className="form-section"><h3>Thông tin tài khoản</h3>
+        <label>Username<input name="username" required defaultValue={account.username}/></label>
+        <div className="form-grid"><label>Số điện thoại<input name="phone" defaultValue={account.phone??''}/></label>
+          <label>Email<input name="email" type="email" defaultValue={account.email??''}/></label></div>
+        <label>Trạng thái<select name="status" defaultValue={account.status??'Active'}>
+          {['Active','M01','M02','M03','M04','Captcha','Auto Hủy','Blocked','Không xác định'].map(value=>
+            <option key={value} value={value}>{statusLabel(value)}</option>)}
+        </select></label>
+        <label>Ghi chú<textarea name="note" rows={2} defaultValue={account.note??''}/></label>
+      </section>
+      <section className="form-section"><h3>Đăng nhập & phiên</h3>
+        <label>Mật khẩu mới<input name="password" type="password" autoComplete="new-password" placeholder="Để trống nếu không đổi"/></label>
+        <label>SPC_ST mới<textarea name="spc_st" rows={2} placeholder="Để trống nếu không đổi"/></label>
+        <label>SPC_F mới<textarea name="spc_f" rows={2} placeholder="Để trống nếu không đổi"/></label>
+      </section>
+      <section className="form-section"><h3>Thiết bị</h3>
+        <div className="form-grid purchase-two-device-fields">
+          <label>Mobile — Loại thiết bị<input name="mobile_device_type" maxLength={120} defaultValue={fields.mobileType}/></label>
+          <label>Browser — Tên<input name="browser_name" maxLength={120} defaultValue={fields.browserName}/></label>
+        </div>
+      </section>
+      <div className="form-actions"><Link className="button" href={infoHref}>Huỷ</Link>
+        <button className="button primary" type="submit">Lưu thay đổi</button></div>
+    </form>
+  </SystemSlidebar>
   return <SystemSlidebar className="detail-panel account-detail-panel order-account-detail-panel">
     <div className="panel-head">
       <div><span className="eyebrow">CHI TIẾT USER</span><h2>{account.username}</h2></div>
@@ -72,6 +118,9 @@ export function OrderAccountDetailPanel({
           {!!voucherCounts.size&&<div className="voucher-counts">{[...voucherCounts.entries()].map(([label,count])=><span key={label}>{label} <b>×{count}</b></span>)}</div>}
         </div>
         <div className="panel-note-row"><span>Ghi chú</span><b>{account.note||'—'}</b></div>
+        {canEdit&&!account.archived_at&&<div className="panel-action-row">
+          <Link className="button primary" href={editHref}>Sửa tài khoản</Link>
+        </div>}
       </>}
       {tab==='orders'&&<>
         <div className="panel-section-head"><div><h3>Đơn hàng của User</h3><span>{orders.length} đơn gần nhất</span></div></div>
@@ -82,12 +131,14 @@ export function OrderAccountDetailPanel({
                 <div><b>{order.shopee_order_id??order.id.slice(0,8)}</b><span>{formatDateTime(order.order_date)}</span></div>
                 <strong>{formatMoney(order.cod)}</strong>
               </div>
-              <div className="order-detail-strip"><span>Trạng thái <b>{statusLabel(order.order_status)}</b></span></div>
+              <div className="order-detail-strip"><span>Trạng thái <b>{statusOf(order)}</b></span>
+                <span>Nhận <b>{statusLabel(order.receive_status)}</b></span></div>
               <div className="user-order-products">
                 {(order.order_items??[]).slice(0,2).map((item,i)=><div key={i}>
                   <span>{[item.product_name,item.variant].filter(Boolean).join(' · ')||'Sản phẩm'}</span>
                 </div>)}
               </div>
+              <div className="user-order-shipping"><span>Thanh toán <b>{statusLabel(order.payment_status)}</b></span></div>
             </Link>)}
         </div>
       </>}
