@@ -53,3 +53,16 @@ export function parsePrepaidMetadata(input:{
     prepaid_source_label:label||null,
   }
 }
+
+/** Carrier COD: paid orders always collect zero; every other state needs an explicit value. */
+export function resolveOrderCod(paymentStatus:string,rawAmount:unknown):number{
+  if(paymentStatus.trim().toUpperCase()==='PAID')return 0
+  const raw=String(rawAmount??'').trim()
+  if(!raw)throw new Error('Vui lòng nhập COD cho đơn chưa thanh toán đủ')
+  if(!/^\d+(?:\.\d{1,2})?$/.test(raw))
+    throw new Error('COD phải là số tiền không âm, tối đa 2 chữ số thập phân')
+  const amount=Number(raw)
+  if(!Number.isFinite(amount)||amount>999_999_999_999)
+    throw new Error('COD không hợp lệ')
+  return amount
+}

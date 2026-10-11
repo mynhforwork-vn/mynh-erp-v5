@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/supabase/auth'
 import {suggestDestinationHub,type AddressHub} from '@/lib/destination-hub-resolution'
 import { trackingNumberMeansCancelled } from '@/lib/purchase-order-cancellation'
-import { parsePrepaidMetadata } from '@/lib/order-prepaid'
+import { parsePrepaidMetadata, resolveOrderCod } from '@/lib/order-prepaid'
 
 function text(v:FormDataEntryValue|null){return String(v??'').trim()}
 
@@ -464,7 +464,7 @@ export async function createOrder(formData:FormData){
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
     p_destination_hub:effectiveHub||null,
-    p_cod:numberOrNull(formData.get('cod'))??0,
+    p_cod:resolveOrderCod(text(formData.get('payment_status'))||'UNPAID',formData.get('cod')),
     p_order_status:orderStatus,
     p_payment_status:text(formData.get('payment_status'))||'UNPAID',
     p_tracking_number:trackingNumber||null,
@@ -545,7 +545,7 @@ export async function updateOrder(formData:FormData){
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
     p_destination_hub:effectiveHub||null,
-    p_cod:numberOrNull(formData.get('cod'))??0,
+    p_cod:resolveOrderCod(text(formData.get('payment_status'))||'UNPAID',formData.get('cod')),
     p_order_status:orderStatus,
     p_payment_status:text(formData.get('payment_status'))||'UNPAID',
     p_tracking_number:trackingNumber||null,

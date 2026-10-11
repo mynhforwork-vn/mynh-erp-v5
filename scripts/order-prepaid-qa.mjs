@@ -1,7 +1,7 @@
 // Standalone payment metadata contract. No Supabase writes.
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import {parsePrepaidMetadata,prepaidSourceLabel} from '../lib/order-prepaid.ts'
+import {parsePrepaidMetadata,prepaidSourceLabel,resolveOrderCod} from '../lib/order-prepaid.ts'
 const test=(paymentStatus,amount,type,label,isCreate=true)=>
   parsePrepaidMetadata({paymentStatus,amount,sourceType:type,sourceLabel:label,isCreate})
 assert.deepEqual(test('PAID','250000','CREDIT_CARD','Visa ****1234'),
@@ -26,6 +26,20 @@ const editor=fs.readFileSync('components/order-editor-form.tsx','utf8')
 assert.match(editor,/\{showPrepaid&&<div className="order-prepaid-fields">/)
 assert.match(editor,/paymentStatus==='PAID'\|\|paymentStatus==='PARTIAL'/)
 assert.doesNotMatch(editor,/order-prepaid-quick-action/)
-assert.doesNotMatch(editor,/order-cod-section/)
-assert.match(editor,/<input type="hidden" name="cod" value=\{cod\}\/>/)
-console.log('ORDER_PREPAID_QA 16 PASS')
+assert.match(editor,/paymentStatus==='PAID'\s*\? <input type="hidden" name="cod" value="0"\/>/)
+assert.match(editor,/order-cod-section/)
+assert.match(editor,/name="cod" inputMode="decimal" required/)
+const actions=fs.readFileSync('lib/actions/core.ts','utf8')
+assert.equal((actions.match(/p_cod:resolveOrderCod\(/g)??[]).length,2)
+assert.equal(resolveOrderCod('PAID','199000'),0)
+assert.equal(resolveOrderCod('PAID',null),0)
+assert.equal(resolveOrderCod('PARTIAL','25000'),25000)
+assert.equal(resolveOrderCod('UNPAID','0'),0)
+assert.equal(resolveOrderCod('PENDING','25000'),25000)
+assert.equal(resolveOrderCod('REFUNDED','16000'),16000)
+for(const status of ['UNPAID','PARTIAL','PENDING','REFUNDED']){
+  assert.throws(()=>resolveOrderCod(status,''),/Vui lòng nhập COD/)
+}
+assert.throws(()=>resolveOrderCod('PARTIAL','-1'))
+assert.throws(()=>resolveOrderCod('UNPAID','abc'))
+console.log('ORDER_PREPAID_QA 29 PASS')

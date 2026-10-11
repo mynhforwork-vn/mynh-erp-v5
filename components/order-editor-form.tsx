@@ -177,7 +177,7 @@ export function OrderEditorForm({
   const [recipientPhoneAuto,setRecipientPhoneAuto]=useState(Boolean(
     mode==='create'&&!values.recipient_phone&&initialUser?.phone
   ))
-  const [cod,setCod]=useState<number|string>(values.cod??0)
+  const [cod,setCod]=useState<number|string>(mode==='create'?'':values.cod??0)
   const [orderText,setOrderText]=useState('')
   const [recognitionMessage,setRecognitionMessage]=useState('')
   const [items,setItems]=useState<Item[]>(initialItems.length?initialItems:[emptyItem()])
@@ -502,10 +502,11 @@ export function OrderEditorForm({
             : trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ':'Chờ mã vận đơn'}</small>
         </div>
       </div>
+      {paymentStatus==='PAID'&&<small className="field-help">Đã thanh toán: COD tự động bằng 0 ₫.</small>}
       {showPrepaid&&<div className="order-prepaid-fields">
         <div className="form-section-head">
           <div><h3>Chi tiết thanh toán tài khoản/thẻ</h3>
-            <small>Chỉ ghi nhận số tiền đã thanh toán và nguồn thanh toán, không thay đổi COD lưu trong hệ thống.</small></div>
+            <small>Ghi nhận số tiền đã thanh toán và nguồn thanh toán; COD được xử lý theo trạng thái thanh toán.</small></div>
         </div>
         <div className="form-grid">
           <label>Số tiền đã thanh toán (₫)
@@ -798,9 +799,17 @@ export function OrderEditorForm({
       </datalist>
     </section>
 
-    {/* COD stays in the form payload to preserve legacy values when editing,
-        but is not shown as an input in the order editor. */}
-    <input type="hidden" name="cod" value={cod}/>
+    {paymentStatus==='PAID'
+      ? <input type="hidden" name="cod" value="0"/>
+      : <section className="form-section order-cod-section">
+          <h3>Giá trị đơn</h3>
+          <label>COD
+            <input name="cod" inputMode="decimal" required
+              value={cod} onChange={e=>setCod(e.target.value)}
+              placeholder="Nhập COD sau khi kiểm tra sản phẩm / voucher"/>
+            <small className="field-help">Nhập COD cần thu khi giao hàng. Có thể nhập 0 nếu thực tế không thu COD.</small>
+          </label>
+        </section>}
 
     <div className="form-actions">
       <a className="button" href={cancelHref}>Hủy</a>
