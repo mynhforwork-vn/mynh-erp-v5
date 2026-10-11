@@ -10,6 +10,7 @@ import { OrderEditorForm } from '@/components/order-editor-form'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import { isShippingTrackingStatus } from '@/lib/tracking/status-groups'
 import { PurchaseOrderTable } from '@/components/purchase-order-table'
+import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { DestinationHubConfigModal } from '@/components/destination-hub-config-panel'
 import { suggestReceivingWarehouseId } from '@/lib/warehouse-routing'
 
@@ -105,7 +106,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const archiveView=sp.archive==='archived'
 
   let orderListQuery=supabase.from('orders').select(
-    'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,archived_at,archived_by,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
+    'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,archived_at,archived_by,erp_users(username,browser_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
   ).gte('order_date',range.start).lte('order_date',range.end)
   orderListQuery=archiveView
     ? orderListQuery.not('archived_at','is',null)
@@ -301,7 +302,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   if(sp.order){
     const [od,it,vo]=await Promise.all([
       supabase.from('orders').select(
-        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,archived_by,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)'
+        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,archived_by,erp_users(username,browser_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,last_track_at,next_track_at,created_at,replaced_at)'
       ).eq('id',sp.order).maybeSingle(),
       supabase.from('order_items')
         .select('*,product_variants(id,variant_name,sale_price,products(id,sku,name))')
@@ -350,6 +351,31 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const displayRows=selectedOutsideFilter
     ? [{...detail,order_items:items,order_vouchers:vouchers},...rows]
     : rows
+
+  // Only fetch device records belonging to accounts on this order page.
+  const accountIds=[...new Set(displayRows.map((o:any)=>String(o.erp_user_id??'')).filter(Boolean))]
+  const batches=Array.from({length:Math.ceil(accountIds.length/200)},(_,i)=>accountIds.slice(i*200,(i+1)*200))
+  const deviceResults=await Promise.all(batches.map(ids=>
+    supabase.from('purchase_account_devices')
+      .select('erp_user_id,device_key,device_name,device_type,browser_name,is_active')
+      .in('erp_user_id',ids).limit(2000)
+  ))
+  const deviceFetchError=deviceResults.some(x=>Boolean(x.error))
+  const devicesByAccount=new Map<string,any[]>()
+  for(const result of deviceResults){
+    for(const device of result.data??[]){
+      const devices=devicesByAccount.get(device.erp_user_id)??[]
+      devices.push(device)
+      devicesByAccount.set(device.erp_user_id,devices)
+    }
+  }
+  const displayRowsWithDevices=displayRows.map((o:any)=>({
+    ...o,
+    account_device_info:accountDeviceFields({
+      all_devices:devicesByAccount.get(String(o.erp_user_id??''))??[],
+      browser_name:o.erp_users?.browser_name??null,
+    }),
+  }))
 
   const createMode=canOperate&&sp.mode==='create'
   const editMode=Boolean(canOperate&&detail&&sp.mode==='edit'&&!detail.archived_at)
@@ -448,10 +474,11 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
           <div id="p1-order-toolbar-actions" className="p1-order-toolbar-actions"/>
         </div>
 
+        {deviceFetchError&&<p role="alert" className="error-text">Không thể tải thông tin thiết bị tài khoản. Vui lòng thử tải lại.</p>}
         {error
           ? <div className="card table-card order-table-card"><div className="error-text order-table-error">{error.message}</div></div>
           : <PurchaseOrderTable
-              rows={displayRows}
+              rows={displayRowsWithDevices}
               selectedId={sp.order}
               baseQuery={returnQuery}
               canEdit={canOperate}
