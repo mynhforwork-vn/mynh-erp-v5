@@ -622,10 +622,11 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
       {detail&&!editMode&&!destinationSettingsMode&&
         <SystemSlidebar className="detail-panel order-panel">
           <div className="panel-head">
-            <div><span className="eyebrow">CHI TIẾT ĐƠN</span><h2>{detail.shopee_order_id??detail.id.slice(0,8)}</h2>
-              {sp.backUser&&<Link className="context-stack-back" href={listHref({account:sp.backUser,accountTab:'orders',backUser:null,order:null,tab:null})}>← Trở lại User</Link>}
+            <div><span className="eyebrow">CHI TIẾT ĐƠN</span><h2>{detail.shopee_order_id??detail.id.slice(0,8)}</h2></div>
+            <div className="panel-head-actions">
+              {sp.backUser&&<Link className="context-stack-back" href={listHref({account:sp.backUser,accountTab:'orders',backUser:null,order:null,tab:null})} title="Trở lại danh sách đơn của User">← Trở lại User</Link>}
+              <Link className="close" href={listHref({order:null,tab:null,mode:null,backUser:null})} aria-label="Đóng chi tiết đơn">×</Link>
             </div>
-            <Link className="close" href={listHref({order:null,tab:null,mode:null,backUser:null})}>×</Link>
           </div>
 
           <div className="panel-tabs">

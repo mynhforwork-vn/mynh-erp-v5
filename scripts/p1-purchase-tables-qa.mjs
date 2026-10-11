@@ -288,6 +288,45 @@ try {
       await page.locator('.order-account-detail-panel .user-panel-tabs').getByRole('link',{name:/Đơn hàng/}).click()
       await page.locator('.order-account-detail-panel .user-order-card.detailed').first().click()
       await page.waitForURL(url=>url.searchParams.has('order')&&!url.searchParams.has('account'),{timeout:15000})
+      // Regression for overlapping Back and Tracking tabs: a 54px header
+      // must contain BOTH navigation and close buttons, even on narrow screens.
+      const checkPanelHeader=async(width,height)=>{
+        await page.setViewportSize({width,height})
+        await page.waitForTimeout(180)
+        return page.locator('.order-workspace .order-panel').evaluate(panel=>{
+          const rect=el=>{const r=el?.getBoundingClientRect()
+            return r?{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height}:null}
+          const head=rect(panel.querySelector('.panel-head'))
+          const tabs=rect(panel.querySelector('.panel-tabs'))
+          const back=rect(panel.querySelector('.context-stack-back'))
+          const close=rect(panel.querySelector('.panel-head-actions .close'))
+          const active=rect(panel.querySelector('.panel-tabs .active'))
+          return {head,tabs,back,close,active,viewport:innerWidth,
+            fits:!!(head&&tabs&&back&&close&&active
+              &&head.bottom<=tabs.top+2
+              &&back.top>=head.top-1&&back.bottom<=head.bottom+1
+              &&close.bottom<=head.bottom+1&&back.right+3<=close.left
+              &&back.bottom+2<=active.top
+              &&head.left>=-1&&head.right<=innerWidth+1)}
+        })
+      }
+      for(const width of [1440,390,320]){
+        const geometry=await checkPanelHeader(width,width===1440?900:width===390?844:568)
+        check('Order return/back button stays inside header, clear of tabs at '+width,
+          geometry.fits,geometry)
+        if(width===1440)await page.screenshot({
+          path:output+'/order-slidebar-header-back-1440.png',fullPage:false
+        })
+      }
+      await page.setViewportSize({width:1440,height:900})
+      const trackingTab=page.locator('.order-workspace .order-panel .panel-tabs').getByRole('link',{name:'Tracking'})
+      if(await trackingTab.count()){
+        await trackingTab.click()
+        await page.waitForURL(url=>url.searchParams.get('tab')==='tracking',{timeout:15000})
+        const trackingGeometry=await checkPanelHeader(1440,900)
+        check('Tracking tab remains readable and not overlapped by Back',trackingGeometry.fits,trackingGeometry)
+        await page.screenshot({path:output+'/order-slidebar-tracking-header-1440.png',fullPage:false})
+      }
       await page.getByRole('link',{name:'← Trở lại User'}).click()
       await page.waitForURL(url=>url.searchParams.get('account')===session.fixtures.erp_user_id
         &&url.searchParams.get('accountTab')==='orders'&&!url.searchParams.has('order'),{timeout:15000})
