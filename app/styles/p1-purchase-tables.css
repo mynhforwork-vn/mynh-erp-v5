@@ -221,15 +221,15 @@
 .brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-status{width:108px!important}
 .brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-username{width:85px!important}
 .brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-product{width:130px!important}
-/* At roomy widths, only semantic text columns share leftover space.
-   Under a narrow lane their readable pixel floors stay in force. */
-@media(min-width:1400px){
+/* Full account table: semantic column widths calculated from visible data
+   and the actual table lane. Metadata and counts stay compact. These rules
+   never replace user-resized columns or mobile/panel layout constraints. */
+@media(min-width:901px){
   .brand-shell-v1 .account-workspace:not(.with-panel) .account-table-card
   table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table)
-  :is(col.p1-account-col-username,col.p1-account-col-email,col.p1-account-col-note){width:auto!important}
-  .brand-shell-v1 .order-workspace:not(.with-panel) .order-table-card
-  table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table)
-  col.p1-order-col-username{width:auto!important}
+  col.p1-account-col{
+    width:var(--p1-full-col-width)!important;
+  }
 }
 @media(min-width:1537px){
   .brand-shell-v1 .order-workspace:not(.with-panel) .order-table-card
@@ -340,14 +340,6 @@
 }
 .brand-shell-v1 table.mynh-p1-semantic-table td[data-order-col],
 .brand-shell-v1 table.mynh-p1-semantic-table td[data-account-col]{min-width:0!important;overflow:hidden;text-overflow:ellipsis}
-@media(min-width:1800px){
-  /* Three flexible account text columns divide surplus space; note never takes it all. */
-  .brand-shell-v1 .account-workspace:not(.with-panel) .account-table-card
-  table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-username{width:clamp(154px,22%,460px)!important}
-  .brand-shell-v1 .account-workspace:not(.with-panel) .account-table-card
-  table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col-email{width:clamp(155px,25%,560px)!important}
-}
-
 .brand-shell-v1 .account-table-card table.user-table :is(th,td){
   overflow:hidden!important;
   text-overflow:ellipsis;
