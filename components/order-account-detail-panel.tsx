@@ -69,7 +69,7 @@ export function OrderAccountDetailPanel({
         <div className="panel-section-head"><div><h3>Voucher đã dùng</h3></div></div>
         <div className="voucher-usage-box">
           <VoucherTags value={[...voucherCounts.keys()].join(' · ')}/>
-          {!!voucherCounts.size&&<div className="voucher-counts">{[...voucherCounts.entries()].map(([label,count)=><span key={label}>{label} <b>×{count}</b></span>)}</div>}
+          {!!voucherCounts.size&&<div className="voucher-counts">{[...voucherCounts.entries()].map(([label,count])=><span key={label}>{label} <b>×{count}</b></span>)}</div>}
         </div>
         <div className="panel-note-row"><span>Ghi chú</span><b>{account.note||'—'}</b></div>
       </>}
