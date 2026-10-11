@@ -65,6 +65,15 @@ try {
     new URL(page.url()).searchParams.get('orders')==='0'
     &&new URL(page.url()).searchParams.get('session')==='st')
   await page.screenshot({path:'qa-purchase-filter-columns-artifacts/accounts-filter-1440.png',fullPage:false})
+  const userColumnButton=page.locator('.p1-account-filter-actions .column-manager .managed-column-button')
+  await userColumnButton.click()
+  const userMenu=page.locator('.p1-account-filter-actions .column-manager-menu')
+  const userRowHeight=await userMenu.locator('.column-manager-row').first().evaluate(el=>el.getBoundingClientRect().height)
+  const userMenuWidth=await userMenu.evaluate(el=>el.getBoundingClientRect().width)
+  check('Bảng User làm chuẩn menu cột gọn',userRowHeight<=38&&userMenuWidth<=255,
+    {userRowHeight,userMenuWidth})
+  await page.screenshot({path:'qa-purchase-filter-columns-artifacts/user-columns-reference-1440.png',fullPage:false})
+  await page.keyboard.press('Escape')
   // Reproduce the reported state: a User-scoped order list on the main Preview.
   const qaUser=session.fixtures?.erp_user_id
   assert.ok(qaUser,'Thiếu User QA cho kiểm thử URL lọc theo User')
@@ -77,7 +86,9 @@ try {
     return bar?Math.round(bar.right-b.right):999
   })
   check('Nút điều chỉnh cột nằm sát mép phải toolbar',rightOffset>=0&&rightOffset<=12,{rightOffset})
-  check('Nút cột có nhãn tiếng Việt dễ nhận biết', (await button.innerText()).includes('Cột'))
+  const buttonWidth=await button.evaluate(el=>el.getBoundingClientRect().width)
+  check('Nút Đơn nhập chỉ có icon giống User, rộng 29px',
+    buttonWidth>=27&&buttonWidth<=32&&!((await button.innerText()).trim()),{buttonWidth})
   await button.click()
   const menu=page.getByRole('dialog',{name:'Sắp xếp, ẩn và hiện cột đơn nhập'})
   check('Sắp xếp cột opens a real interactive dialog',await menu.isVisible())
@@ -94,6 +105,24 @@ try {
   })
   const menuHit=await hitTest()
   check('Menu cột nổi trên mọi lớp và nhận click thật',menuHit.clickable,menuHit)
+  const metrics=await menu.evaluate(el=>{
+    const r=el.getBoundingClientRect()
+    const rows=[...el.querySelectorAll('.column-manager-row')]
+    const first=rows[0],label=first?.querySelector('label'),arrows=first?.querySelector('.column-order-buttons')
+    const l=label?.getBoundingClientRect(),a=arrows?.getBoundingClientRect()
+    const up=arrows?.querySelector('button'),down=arrows?.querySelectorAll('button')[1]
+    const u=up?.getBoundingClientRect(),d=down?.getBoundingClientRect()
+    return {width:r.width,height:r.height,rowHeight:first?.getBoundingClientRect().height,
+      labelTop:l?.top,arrowTop:a?.top,arrowWidth:a?.width,
+      horizontalArrows:!!u&&!!d&&d.left>u.right-1&&Math.abs(d.top-u.top)<2,
+      singleLine:!!l&&!!a&&Math.abs((l.top+l.height/2)-(a.top+a.height/2))<4,
+      menuScrollable:el.scrollHeight>el.clientHeight}
+  })
+  check('Menu Đơn nhập đúng chuẩn bảng User: hàng gọn, nút lên/xuống ngang, cuộn bên trong',
+    metrics.width<=userMenuWidth+5&&metrics.rowHeight<=Math.max(38,userRowHeight+3)
+    &&metrics.horizontalArrows&&metrics.singleLine&&metrics.height<=440,
+    {userRowHeight,userMenuWidth,...metrics})
+  await page.screenshot({path:'qa-purchase-filter-columns-artifacts/orders-columns-compact-1440.png',fullPage:false})
   const keys=()=>page.locator('.order-table thead th[data-order-col]').evaluateAll(rows=>rows.map(x=>x.getAttribute('data-order-col')))
   const original=await keys()
   const voucher=menu.locator('.column-manager-row[data-column-key="voucher"]')

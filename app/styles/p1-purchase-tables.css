@@ -728,21 +728,20 @@
   pointer-events:auto!important;
 }
 
-/* The purchase column menu must be visible, clickable and unclipped even
-   above an order table or alongside a slidebar. The button remains inline;
-   ONLY its menu is portaled into document.body. */
+/* Match the User table's icon-only control. Only the menu is portaled to
+   document.body so it can sit above scrollbars and overlapping slidebars. */
 .brand-shell-v1 .order-table-shell.with-inline-toolbar .p1-order-toolbar-actions .managed-column-button{
   box-sizing:border-box!important;
   display:inline-flex!important;align-items:center!important;justify-content:center!important;
-  gap:5px!important;width:57px!important;min-width:57px!important;height:29px!important;
-  padding:0 6px!important;cursor:pointer!important;
+  width:29px!important;min-width:29px!important;height:29px!important;
+  padding:0!important;cursor:pointer!important;
 }
 .brand-shell-v1 .order-table-shell.with-inline-toolbar .p1-order-toolbar-actions{
-  flex:0 0 auto!important;min-width:57px!important;
+  flex:0 0 29px!important;min-width:29px!important;
 }
-.brand-shell-v1 .order-table-shell.with-inline-toolbar .p1-column-button-label{
-  display:inline!important;font-size:11px!important;font-weight:650!important;
-  line-height:1!important;white-space:nowrap!important;
+.brand-shell-v1 .order-table-shell.with-inline-toolbar .p1-order-column-manager .managed-column-button[aria-expanded="true"]{
+  border-color:#367bbe!important;color:#265e8f!important;
+  box-shadow:0 0 0 1px rgba(52,116,175,.10)!important;
 }
 .p1-order-floating-menu.column-manager-menu{
   position:fixed!important;
@@ -751,19 +750,88 @@
   left:auto!important;bottom:auto!important;
   box-sizing:border-box!important;
   z-index:9999!important;
-  width:min(260px,calc(100vw - 16px))!important;
+  width:min(244px,calc(100vw - 16px))!important;
   min-width:0!important;
-  max-height:calc(100dvh - var(--p1-order-menu-top,64px) - 8px)!important;
-  overflow:auto!important;
+  max-height:min(430px,70vh,calc(100dvh - var(--p1-order-menu-top,64px) - 8px))!important;
+  overflow-y:auto!important;overflow-x:hidden!important;
   padding:7px!important;
   background:#fff!important;color:#354b61!important;
   border:1px solid #d6e3ee!important;border-radius:8px!important;
   box-shadow:0 16px 38px rgba(28,49,71,.19)!important;
   pointer-events:auto!important;
 }
+/* A portaled menu does not inherit the .brand-shell-v1 scoped User layout.
+   Explicitly carry over its compact one-line rows and horizontal arrows. */
+.p1-order-floating-menu.column-manager-menu .column-manager-head{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;
+  gap:5px!important;min-height:28px!important;
+  padding:2px 4px 6px!important;
+  border-bottom:1px solid #e9eef3!important;
+}
+.p1-order-floating-menu.column-manager-menu .column-manager-head b{
+  font-size:11px!important;line-height:1.35!important;
+}
+.p1-order-floating-menu.column-manager-menu .column-manager-head button{
+  flex:none!important;font-size:9.5px!important;white-space:nowrap!important;
+}
+.p1-order-floating-menu.column-manager-menu .column-manager-row.draggable{
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-columns:16px minmax(0,1fr) 45px!important;
+  align-items:center!important;
+  column-gap:4px!important;
+  min-height:30px!important;height:30px!important;
+  padding:2px 4px!important;
+  border-bottom:1px solid #edf1f4!important;
+}
+.p1-order-floating-menu.column-manager-menu .column-manager-row:last-child{
+  border-bottom:0!important;
+}
+.p1-order-floating-menu.column-manager-menu .column-drag-handle{
+  grid-column:1!important;width:16px!important;min-width:0!important;
+  height:24px!important;padding:0!important;
+  font-size:12px!important;line-height:1!important;
+}
+.p1-order-floating-menu.column-manager-menu .column-manager-row.draggable>label{
+  grid-column:2!important;min-width:0!important;
+  display:flex!important;flex-direction:row!important;
+  align-items:center!important;gap:5px!important;
+  margin:0!important;padding:0!important;
+  font-size:10px!important;line-height:1.3!important;
+  white-space:nowrap!important;overflow:hidden!important;
+}
+.p1-order-floating-menu.column-manager-menu .column-manager-row>label>span{
+  min-width:0!important;overflow:hidden!important;
+  text-overflow:ellipsis!important;white-space:nowrap!important;
+}
+.p1-order-floating-menu.column-manager-menu input[type="checkbox"]{
+  flex:0 0 12px!important;width:12px!important;min-width:12px!important;
+  height:12px!important;margin:0!important;
+}
+.p1-order-floating-menu.column-manager-menu .column-order-buttons{
+  grid-column:3!important;display:inline-flex!important;
+  flex-direction:row!important;flex-wrap:nowrap!important;
+  align-items:center!important;justify-content:flex-end!important;
+  gap:2px!important;width:45px!important;margin:0!important;padding:0!important;
+}
+.p1-order-floating-menu.column-manager-menu .column-order-buttons button{
+  box-sizing:border-box!important;display:inline-grid!important;place-items:center!important;
+  flex:0 0 21px!important;width:21px!important;height:22px!important;
+  min-width:21px!important;margin:0!important;padding:0!important;
+  border:1px solid #dae5ed!important;border-radius:4px!important;
+  background:#f8fafc!important;color:#315a79!important;
+  font-size:12px!important;line-height:1!important;
+  cursor:pointer!important;
+}
+.p1-order-floating-menu.column-manager-menu .column-order-buttons button:disabled{
+  opacity:.33!important;cursor:default!important;
+}
+.p1-order-floating-menu.column-manager-menu .column-order-buttons button:not(:disabled):hover{
+  background:#e7f0f8!important;
+}
 @media(max-width:600px){
   .p1-order-floating-menu.column-manager-menu{
     right:8px!important;
-    width:min(260px,calc(100vw - 16px))!important;
+    width:min(244px,calc(100vw - 16px))!important;
   }
 }

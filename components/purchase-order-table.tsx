@@ -495,7 +495,6 @@ export function PurchaseOrderTable({
         aria-label="Sắp xếp cột đơn nhập"
         aria-haspopup="dialog" aria-expanded={open}>
         <ColumnIcon/>
-        <span className="p1-column-button-label">Cột</span>
       </button>
       {open&&typeof document!=='undefined'&&createPortal(
         <div ref={columnMenuRef} className="column-manager-menu p1-order-floating-menu" role="dialog"
