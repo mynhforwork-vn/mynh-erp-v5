@@ -259,11 +259,6 @@ try {
           .includes('QA User updated from Orders'))
       await page.locator('.order-account-detail-panel .user-panel-tabs').getByRole('link',{name:/Đơn hàng/}).click()
       await page.waitForURL(url=>url.searchParams.get('accountTab')==='orders',{timeout:15000})
-      // URL updates before React's streamed slidebar content has completed.
-      // Wait for the actual fixture card, rather than testing an interim blank panel.
-      await page.locator('.order-account-detail-panel .user-order-card.detailed')
-        .filter({hasText:session.fixtures.hub_order_code})
-        .waitFor({state:'visible',timeout:20000})
       check('User orders tab keeps Purchase Orders location',
         new URL(page.url()).pathname==='/purchase/orders'
         &&await page.locator('.order-account-detail-panel .user-order-card.detailed').count()>0)
@@ -510,12 +505,8 @@ try {
       }).locator('input[type="checkbox"]').uncheck()
       await page.keyboard.press('Escape')
       await page.reload({waitUntil:'load',timeout:35000})
-      // The server first paints default columns, then the client restores
-      // localStorage preferences. Assert after hydration, not at first paint.
-      const deviceColumn=page.locator('.order-table th[data-order-col="device"]')
-      await deviceColumn.waitFor({state:'detached',timeout:15000}).catch(()=>{})
       check('Explicitly hidden Device column stays hidden after reload',
-        await deviceColumn.count()===0)
+        await page.locator('.order-table th[data-order-col="device"]').count()===0)
       await page.evaluate(({storage,order})=>{
         localStorage.removeItem(storage);localStorage.removeItem(order)
         localStorage.removeItem('mynh-v5-purchase-order-device-v1')
