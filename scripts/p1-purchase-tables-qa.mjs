@@ -365,6 +365,67 @@ try {
     tracking.exists&&tracking.height<=53
     &&tracking.detailIndex===tracking.statusIndex+1,tracking)
   await page.screenshot({path:output+'/tracking-regression-390.png',fullPage:false})
+  const measureHub=()=>page.evaluate(()=>{
+    const table=document.querySelector('.tracking-hub-card-v2.open .mynh-tracking-semantic-table')
+    const wrap=table?.closest('.tracking-hub-table-wrap-v2')
+    if(!table||!wrap)return null
+    const ids=[...table.querySelectorAll('colgroup col')].map(col=>
+      [...col.classList].find(k=>k.startsWith('tracking-colgroup-'))?.slice(18))
+    const headers=[...table.querySelectorAll('thead th')]
+    const headerIds=headers.map(th=>[...th.classList].find(k=>k.startsWith('tracking-col-'))?.slice(13)
+      ??(th.classList.contains('select-col')?'select':null))
+    const geometry=headers.map(th=>{
+      const r=th.getBoundingClientRect();return{left:r.left,right:r.right,width:r.width}
+    })
+    const start=wrap.scrollLeft;wrap.scrollLeft=wrap.scrollWidth
+    const scrolls=wrap.scrollWidth<=wrap.clientWidth+4||wrap.scrollLeft>start+1
+    wrap.scrollLeft=start
+    const product=table.querySelector('.tracking-product-lines')
+    const height=product?.getBoundingClientRect().height??0
+    const lineHeight=parseFloat(getComputedStyle(product??table).lineHeight)
+    return{viewport:innerWidth,documentWidth:document.documentElement.scrollWidth,
+      wrapRight:wrap.getBoundingClientRect().right,
+      scrolls,overflow:getComputedStyle(wrap).overflowX,
+      width:table.getBoundingClientRect().width,minWidth:parseFloat(getComputedStyle(table).minWidth),
+      ids,headerIds,geometry,height,lineHeight}
+  })
+  for(const viewport of [
+    {width:320,height:568},{width:390,height:844},{width:768,height:1024},
+    {width:1024,height:768},{width:1440,height:900},
+    {width:1920,height:1080},{width:2560,height:1600}
+  ]){
+    await page.setViewportSize(viewport)
+    await page.waitForTimeout(80)
+    const m=await measureHub()
+    check('Tracking HUB table semantic fit '+viewport.width,Boolean(m
+      &&m.documentWidth<=viewport.width+4&&m.wrapRight<=viewport.width+4
+      &&m.scrolls&&m.overflow!=='hidden'
+      &&m.ids.join(',')===m.headerIds.join(',')
+      &&m.geometry.every((g,i,all)=>g.width>0&&(i===0||all[i-1].right<=g.left+2))
+      &&m.height<=m.lineHeight*2+4),m??{})
+  }
+  await page.setViewportSize({width:1440,height:900})
+  const hubGroup=page.locator('.tracking-hub-card-v2.open').first()
+  await hubGroup.locator('.managed-column-button').click()
+  const productToggle=hubGroup.locator('.managed-column-row').filter({hasText:'Sản phẩm'}).locator('input[type=checkbox]')
+  await productToggle.uncheck()
+  const hidden=await measureHub()
+  check('Tracking HUB hide column realigns semantic table',
+    Boolean(hidden&&!hidden.ids.includes('product')
+      &&hidden.ids.join(',')===hidden.headerIds.join(',')
+      &&hidden.documentWidth<=1444),hidden??{})
+  await productToggle.check()
+  await page.keyboard.press('Escape')
+  const orderLink=hubGroup.locator('.tracking-order-id .table-link').first()
+  if(await orderLink.count()){
+    await orderLink.click()
+    await page.locator('.tracking-content-workspace.with-panel').waitFor({state:'visible',timeout:15000})
+    const m=await measureHub()
+    check('Tracking HUB right slidebar preserves table access',
+      Boolean(m&&m.documentWidth<=1444&&m.wrapRight<=1444
+        &&m.scrolls&&m.ids.join(',')===m.headerIds.join(',')),m??{})
+    await page.screenshot({path:output+'/tracking-hub-panel-1440.png',fullPage:false})
+  }
   await context.close()
 }finally{await browser.close()}
 const failed=checks.filter(x=>!x.pass)
