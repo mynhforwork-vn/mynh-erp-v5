@@ -16,7 +16,7 @@ import { DestinationHubConfigModal } from '@/components/destination-hub-config-p
 import { suggestReceivingWarehouseId } from '@/lib/warehouse-routing'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
-type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,user?:string,settings?:string,archive?:string,account?:string,accountTab?:string,backUser?:string}
+type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,user?:string,settings?:string,archive?:string,account?:string,accountTab?:string,accountMode?:string,backUser?:string}
 
 const HOUR=60*60*1000
 const DAY=24*HOUR
@@ -285,6 +285,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     if(sp.archive)p.set('archive',sp.archive)
     if(sp.account)p.set('account',sp.account)
     if(sp.accountTab)p.set('accountTab',sp.accountTab)
+    if(sp.accountMode)p.set('accountMode',sp.accountMode)
     if(sp.backUser)p.set('backUser',sp.backUser)
     for(const [k,v] of Object.entries(extra)){
       if(v===null||v===undefined||v==='')p.delete(k)
@@ -398,7 +399,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
     if(openedAccount){
       const [accountOrderResult,accountDeviceResult,firstOrderResult]=await Promise.all([
         supabase.from('orders')
-          .select('id,shopee_order_id,order_date,cod,order_status,order_items(product_name,variant),order_vouchers(voucher_tag,voucher_type,voucher_name,voucher_code)')
+          .select('id,shopee_order_id,order_date,cod,order_status,payment_status,receive_status,shipments(tracking_number,current_tracking_status,is_active),order_items(product_name,variant),order_vouchers(voucher_tag,voucher_type,voucher_name,voucher_code)')
           .eq('erp_user_id',openedAccount.id)
           .order('order_date',{ascending:false}).limit(100),
         supabase.from('purchase_account_devices')
@@ -535,15 +536,19 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
           devices={openedAccountDevices}
           orders={openedAccountOrders.map(o=>({
             ...o,
-            href:listHref({account:null,accountTab:null,order:o.id,tab:'info',backUser:openedAccount.id,mode:null}),
+            href:listHref({account:null,accountTab:null,accountMode:null,order:o.id,tab:'info',backUser:openedAccount.id,mode:null}),
           }))}
           history={openedAccountHistory}
           earliestDate={earliestAccountOrderDate}
           tab={accountTab}
-          closeHref={listHref({account:null,accountTab:null})}
-          infoHref={listHref({accountTab:'info'})}
-          ordersHref={listHref({accountTab:'orders'})}
-          historyHref={listHref({accountTab:'history'})}
+          canEdit={canOperate}
+          editMode={sp.accountMode==='edit'}
+          editHref={listHref({accountTab:'info',accountMode:'edit'})}
+          returnQuery={listHref({accountTab:'info',accountMode:null}).split('?')[1]??''}
+          closeHref={listHref({account:null,accountTab:null,accountMode:null})}
+          infoHref={listHref({accountTab:'info',accountMode:null})}
+          ordersHref={listHref({accountTab:'orders',accountMode:null})}
+          historyHref={listHref({accountTab:'history',accountMode:null})}
         />
       }
 
