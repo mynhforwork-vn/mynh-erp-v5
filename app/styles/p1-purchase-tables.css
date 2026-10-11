@@ -307,6 +307,27 @@
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font-size:10px;font-weight:500;color:#334d65;
 }
+/* Column-order fallback controls remain inside the menu, not the table. */
+.brand-shell-v1 .p1-order-column-manager .column-manager-row{
+  display:flex;align-items:center;min-width:0;gap:3px;
+}
+.brand-shell-v1 .p1-order-column-manager .column-manager-row>label{
+  flex:1 1 auto;min-width:0;
+}
+.brand-shell-v1 .p1-order-column-manager .column-order-buttons{
+  display:inline-flex;align-items:center;gap:2px;flex:0 0 auto;margin-left:auto;
+}
+.brand-shell-v1 .p1-order-column-manager .column-order-buttons button{
+  width:20px;height:22px;padding:0;border-radius:4px;
+  border:1px solid #dae5ed;background:#f8fafc;color:#315a79;
+  font-size:12px;line-height:1;cursor:pointer;
+}
+.brand-shell-v1 .p1-order-column-manager .column-order-buttons button:disabled{
+  opacity:.33;cursor:default;
+}
+.brand-shell-v1 .p1-order-column-manager .column-order-buttons button:not(:disabled):hover{
+  background:#e7f0f8;
+}
 /* Two-line shipping column and compact Mobile/Browser labels. */
 .brand-shell-v1 table.order-table td.p1-shipping-cell{
   min-width:0!important;overflow:hidden!important;padding-inline:3px!important;
