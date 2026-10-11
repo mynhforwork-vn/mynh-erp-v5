@@ -227,6 +227,11 @@ try {
       check('User orders tab keeps Purchase Orders location',
         new URL(page.url()).pathname==='/purchase/orders'
         &&await page.locator('.order-account-detail-panel .user-order-card.detailed').count()>0)
+      const accountOrderCard=page.locator('.order-account-detail-panel .user-order-card.detailed').first()
+      check('Context User order card includes SKU quantity price, recipient, shipping and vouchers',
+        await accountOrderCard.locator('.user-order-products b').count()>0
+        &&await accountOrderCard.locator('.user-order-recipient').count()===1
+        &&await accountOrderCard.locator('.user-order-shipping').count()===1)
       const actualDelivered=page.locator('.order-account-detail-panel .user-order-card.detailed')
         .filter({hasText:session.fixtures.hub_order_code})
       check('User order summary uses actual DELIVERED tracking status',
@@ -236,6 +241,18 @@ try {
         &&url.searchParams.get('backUser')===session.fixtures.erp_user_id,{timeout:15000})
       check('User order opens order detail with return context',
         await page.locator('.order-workspace .detail-panel .panel-head').count()>0)
+      check('Order detail renders full products SKU quantity price and voucher sections',
+        await page.locator('.order-workspace .detail-panel .mini-table .mini-row').count()>0
+        &&await page.locator('.order-workspace .detail-panel .mini-total-row').count()===1)
+      check('Order and User panels are mutually exclusive',
+        await page.locator('.order-account-detail-panel').count()===0)
+      await page.locator('.order-workspace .detail-panel .detail-grid .p1-order-username-link').click()
+      await page.waitForURL(url=>url.searchParams.has('account')&&!url.searchParams.has('order'),{timeout:15000})
+      check('Clicking Username in order detail removes stale order param',
+        await page.locator('.order-account-detail-panel').count()===1)
+      await page.locator('.order-account-detail-panel .user-panel-tabs').getByRole('link',{name:/Đơn hàng/}).click()
+      await page.locator('.order-account-detail-panel .user-order-card.detailed').first().click()
+      await page.waitForURL(url=>url.searchParams.has('order')&&!url.searchParams.has('account'),{timeout:15000})
       await page.getByRole('link',{name:'← Trở lại User'}).click()
       await page.waitForURL(url=>url.searchParams.get('account')===session.fixtures.erp_user_id
         &&url.searchParams.get('accountTab')==='orders'&&!url.searchParams.has('order'),{timeout:15000})
@@ -413,6 +430,78 @@ try {
       await page.evaluate(({storage,order})=>{
         localStorage.removeItem(storage);localStorage.removeItem(order)
         localStorage.removeItem('mynh-v5-purchase-order-device-v1')
+      },spec)
+      await page.reload({waitUntil:'load',timeout:35000})
+      const columnButton=page.locator('.p1-order-toolbar-actions .managed-column-button')
+      await columnButton.click()
+      const rows=page.locator('.p1-order-toolbar-actions .column-manager-row')
+      const voucher=rows.filter({hasText:'Voucher'})
+      await voucher.locator('input[type="checkbox"]').uncheck()
+      check('Order column manager hides Voucher column and matching colgroup',
+        await page.locator('.order-table th[data-order-col="voucher"],.order-table col.p1-order-col-voucher').count()===0)
+      await voucher.locator('input[type="checkbox"]').check()
+      check('Order column manager shows Voucher again',
+        await page.locator('.order-table th[data-order-col="voucher"],.order-table col.p1-order-col-voucher').count()===2)
+      const deviceRow=rows.filter({hasText:'Thiết bị'})
+      const timeRow=rows.filter({hasText:'Thời gian đặt'})
+      await deviceRow.locator('.column-drag-handle').dragTo(timeRow)
+      const ordering=await page.locator('.order-table thead th[data-order-col]').evaluateAll(
+        els=>els.map(el=>el.getAttribute('data-order-col')))
+      check('Order columns can be reordered by dragging manager handles',
+        ordering.indexOf('device')===ordering.indexOf('time')-1,{ordering})
+      await page.keyboard.press('Escape')
+      await page.reload({waitUntil:'load',timeout:35000})
+      const afterOrderReload=await page.locator('.order-table thead th[data-order-col]').evaluateAll(
+        els=>els.map(el=>el.getAttribute('data-order-col')))
+      check('Order column reordering persists after reload',
+        afterOrderReload.indexOf('device')===afterOrderReload.indexOf('time')-1,{afterOrderReload})
+      // Restore default order before measuring live drag resize.
+      await page.locator('.p1-order-toolbar-actions .managed-column-button').click()
+      await page.locator('.p1-order-toolbar-actions .column-manager-head button').click()
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(260)
+      const deviceGrip=page.locator('.order-table th[data-order-col="device"] .mynh-column-resize-grip')
+      check('Order Device header offers active drag-resize grip',await deviceGrip.count()===1)
+      if(await deviceGrip.count()){
+        const b=await deviceGrip.boundingBox()
+        await page.mouse.move(b.x+b.width/2,b.y+b.height/2)
+        await page.mouse.down()
+        await page.mouse.move(b.x+b.width/2+115,b.y+b.height/2,{steps:6})
+        await page.mouse.up()
+        await page.waitForTimeout(260)
+        const dragGeometry=await page.evaluate(()=>{
+          const table=document.querySelector('table.order-table')
+          const wrap=document.querySelector('.order-table-card')
+          const ths=[...table.querySelectorAll('thead th')]
+          const cols=[...table.querySelectorAll('colgroup col')]
+          return {
+            width:table.getBoundingClientRect().width,lane:wrap.clientWidth,scroll:wrap.scrollWidth,
+            device:table.querySelector('th[data-order-col="device"]')?.getBoundingClientRect().width,
+            widthsAligned:ths.every((th,i)=>Math.abs(th.getBoundingClientRect().width-cols[i].getBoundingClientRect().width)<3),
+            sum:ths.reduce((sum,th)=>sum+th.getBoundingClientRect().width,0),
+          }
+        })
+        check('Dragging Device redistributes widths without whole-table overflow or colgroup mismatch',
+          dragGeometry.width<=dragGeometry.lane+4
+          &&dragGeometry.scroll<=dragGeometry.lane+4
+          &&dragGeometry.widthsAligned
+          &&Math.abs(dragGeometry.sum-dragGeometry.width)<6
+          &&dragGeometry.device<225,dragGeometry)
+        await page.screenshot({path:output+'/orders-device-drag-auto-fit-1440.png',fullPage:false})
+        await page.reload({waitUntil:'load',timeout:35000})
+        const afterDrag=await measure(spec)
+        check('Order manually resized columns still fit after reload',
+          afterDrag.table.width<=afterDrag.wrap.width+5,{table:afterDrag.table.width,lane:afterDrag.wrap.width})
+        await page.evaluate(()=>{
+          const table=document.querySelector('table.order-table')
+          const names=[...table.classList].filter(x=>!['table','active','striped','mynh-resizable-table'].includes(x)).sort()
+          localStorage.removeItem('mynh-col-widths-v1:'+location.pathname+':'+names.join('.'))
+        })
+      }
+      await page.evaluate(({storage,order})=>{
+        localStorage.removeItem(storage);localStorage.removeItem(order)
+        localStorage.removeItem('mynh-v5-purchase-order-device-v1')
+        localStorage.removeItem('mynh-v5-purchase-order-shipping-v2')
       },spec)
       await page.reload({waitUntil:'load',timeout:35000})
     }
