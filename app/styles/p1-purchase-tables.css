@@ -204,8 +204,7 @@
 .brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-order{width:134px!important}
 .brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-time{width:116px!important}
 .brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-cod{width:76px!important}
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-tracking{width:146px!important}
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-carrier{width:77px!important}
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-tracking{width:177px!important}
 .brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-voucher{width:75px!important}
 .brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-status{width:105px!important}
 .brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-username{width:90px!important}
@@ -215,8 +214,7 @@
 .brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-order{width:118px!important}
 .brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-time{width:106px!important}
 .brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-cod{width:65px!important}
-.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-tracking{width:123px!important}
-.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-carrier{width:68px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-tracking{width:150px!important}
 .brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-voucher{width:63px!important}
 .brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-status{width:94px!important}
 .brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-username{width:84px!important}
@@ -266,8 +264,7 @@
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-time{width:106px!important}
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-product{width:115px!important}
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-cod{width:65px!important}
-  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-tracking{width:123px!important}
-  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-carrier{width:68px!important}
+  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-tracking{width:150px!important}
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-voucher{width:63px!important}
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-status{width:94px!important}
 }
@@ -303,12 +300,39 @@
   min-width:0;max-width:100%;white-space:nowrap;
 }
 .brand-shell-v1 table.order-table .p1-order-device-lines small{
-  flex:0 0 37px;font-size:8px;font-weight:600;color:#708399;
+  flex:0 0 15px;font-size:8px;font-weight:600;color:#708399;
 }
 .brand-shell-v1 table.order-table .p1-order-device-lines b{
   display:block;flex:1 1 0;min-width:0;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font-size:10px;font-weight:500;color:#334d65;
+}
+/* Two-line shipping column and compact Mobile/Browser labels. */
+.brand-shell-v1 table.order-table td.p1-shipping-cell{
+  min-width:0!important;overflow:hidden!important;padding-inline:3px!important;
+}
+.brand-shell-v1 table.order-table .p1-shipping-lines{
+  display:flex;flex-direction:column;gap:3px;max-width:100%;min-width:0;overflow:hidden;line-height:1.18;
+}
+.brand-shell-v1 table.order-table .p1-shipping-lines>span{
+  display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;
+}
+.brand-shell-v1 table.order-table .p1-shipping-number b{
+  font-size:10px;font-weight:650;color:#285579;
+}
+.brand-shell-v1 table.order-table .p1-shipping-carrier{
+  font-size:9px;color:#627b8d;
+}
+.brand-shell-v1 .order-workspace .detail-panel .panel-head .context-stack-back{
+  position:static!important;transform:none!important;
+  display:inline-flex!important;align-items:center!important;
+  width:auto!important;height:auto!important;
+  margin-top:5px!important;padding:3px 6px!important;
+  font-size:10px!important;line-height:1.2!important;
+  background:#f5f9fc;color:#295779;border:1px solid #dae5ef;border-radius:5px;
+}
+.brand-shell-v1 .order-account-detail-panel .user-order-card .order-detail-strip{
+  display:flex;flex-wrap:wrap;gap:4px;
 }
 /* Desktop + right slidebar: show every enabled column without horizontal scrolling.
    Shares are computed from actual visible IDs in the component; no positional CSS.
