@@ -306,7 +306,7 @@ export function PurchaseOrderTable({
 
   // Tracking/HUB sizing: minimum follows visible semantic IDs, not positions.
   const columnMinimums:Record<ColKey,number>={"number":28,"order":134,"username":90,"device":139,"time":116,"product":148,"cod":76,"tracking":146,"carrier":77,"voucher":75,"status":105}
-  const panelMinimums:Record<ColKey,number>={"number":26,"order":118,"username":72,"device":113,"time":106,"product":115,"cod":65,"tracking":123,"carrier":68,"voucher":63,"status":94}
+  const panelMinimums:Record<ColKey,number>={"number":26,"order":118,"username":84,"device":113,"time":106,"product":115,"cod":65,"tracking":123,"carrier":68,"voucher":63,"status":94}
   const shownColumns=columnOrder.filter(isVisible)
   const panelFitWeights:Record<ColKey,number>={
     number:20,order:108,username:73,device:118,time:103,product:121,
