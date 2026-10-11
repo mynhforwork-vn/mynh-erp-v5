@@ -358,7 +358,7 @@ try {
     }
     if(spec.name==='Đơn nhập'){
       await page.evaluate(({storage,order})=>{
-        const old=['number','order','username','time','product','cod','tracking','carrier','voucher','status']
+        const old=['number','order','username','time','product','cod','tracking','voucher','status']
         localStorage.removeItem('mynh-v5-purchase-order-device-v1')
         localStorage.setItem(storage,JSON.stringify(old))
         localStorage.setItem(order,JSON.stringify(old))
