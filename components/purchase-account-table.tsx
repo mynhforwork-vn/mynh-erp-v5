@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { createPortal } from 'react-dom'
+import { usePurchaseToolbarRoot } from '@/components/use-purchase-toolbar-root'
 import { formatDateTime, formatPhone, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
@@ -59,8 +60,7 @@ export function PurchaseAccountTable({
   const [columnOrder,setColumnOrder]=useState<ColKey[]>(ALL)
   const [open,setOpen]=useState(false)
   const [selected,setSelected]=useState<string[]>([])
-  const [draggingColumn,setDraggingColumn]=useState<ColKey|null>(null)
-  const [dragOverColumn,setDragOverColumn]=useState<ColKey|null>(null)
+  const draggingRef=useRef<ColKey|null>(null)
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
   const tableCardRef=useRef<HTMLDivElement|null>(null)
   const [tableLaneWidth,setTableLaneWidth]=useState(0)
@@ -73,8 +73,7 @@ export function PurchaseAccountTable({
     observer.observe(card)
     return ()=>observer.disconnect()
   },[])
-  const [toolbarRoot,setToolbarRoot]=useState<HTMLElement|null>(null)
-  useEffect(()=>{setToolbarRoot(document.getElementById('p1-account-filter-actions'))},[])
+  const toolbarRoot=usePurchaseToolbarRoot('p1-account-filter-actions')
 
   useEffect(()=>{
     try{
@@ -140,6 +139,15 @@ export function PurchaseAccountTable({
     const targetIndex=next.indexOf(target)
     if(targetIndex<0)return
     next.splice(targetIndex,0,source)
+    persistOrder(next)
+  }
+  function moveColumn(key:ColKey,delta:-1|1){
+    const index=columnOrder.indexOf(key)
+    const target=index+delta
+    if(index<0||target<0||target>=columnOrder.length)return
+    const next=[...columnOrder]
+    next.splice(index,1)
+    next.splice(target,0,key)
     persistOrder(next)
   }
   function reset(){
@@ -337,34 +345,61 @@ export function PurchaseAccountTable({
         <div className="column-manager-head"><b>Cột & thứ tự</b><button type="button" onClick={reset}>↺ Mặc định</button></div>
         {columnOrder.map(k=><div
           key={k}
-          className={'column-manager-row draggable '+(k==='username'?'locked ':'')+(draggingColumn===k?'dragging ':'')+(dragOverColumn===k&&draggingColumn!==k?'drop-target':'')}
-          onDragOver={e=>{e.preventDefault();setDragOverColumn(k)}}
-          onDragLeave={()=>{if(dragOverColumn===k)setDragOverColumn(null)}}
-          onDrop={e=>{
-            e.preventDefault()
-            const source=(e.dataTransfer.getData('text/plain')||draggingColumn) as ColKey|null
-            if(source&&ALL.includes(source))reorderColumn(source,k)
-            setDraggingColumn(null)
-            setDragOverColumn(null)
-          }}
+          data-column-key={k}
+          className={'column-manager-row draggable '+(k==='username'?'locked ':'')}
         >
           <button
             type="button"
             className="column-drag-handle"
-            draggable
             title="Kéo để đổi thứ tự cột"
             aria-label={'Kéo '+LABELS[k]}
-            onDragStart={e=>{
-              setDraggingColumn(k)
-              e.dataTransfer.effectAllowed='move'
-              e.dataTransfer.setData('text/plain',k)
+            onPointerDown={e=>{
+              if(e.button!==0)return
+              e.preventDefault()
+              draggingRef.current=k
+              const row=e.currentTarget.closest('.column-manager-row')
+              const menu=e.currentTarget.closest('.column-manager-menu')
+              row?.classList.add('dragging')
+              const initialY=e.clientY
+              const onMove=(event:PointerEvent)=>{
+                if(Math.abs(event.clientY-initialY)<3)return
+                menu?.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'))
+                const target=document.elementFromPoint(event.clientX,event.clientY)?.closest('.column-manager-row')
+                if(target&&menu?.contains(target)&&target!==row)target.classList.add('drop-target')
+              }
+              const onUp=(event:PointerEvent)=>{
+                window.removeEventListener('pointermove',onMove,true)
+                window.removeEventListener('pointerup',onUp,true)
+                window.removeEventListener('pointercancel',onUp,true)
+                row?.classList.remove('dragging')
+                menu?.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'))
+                const target=document.elementFromPoint(event.clientX,event.clientY)?.closest('.column-manager-row')
+                const destination=target&&menu?.contains(target)?target.getAttribute('data-column-key'):null
+                const source=draggingRef.current
+                draggingRef.current=null
+                if(source&&destination&&ALL.includes(destination as ColKey)&&source!==destination){
+                  reorderColumn(source,destination as ColKey)
+                }
+              }
+              window.addEventListener('pointermove',onMove,true)
+              window.addEventListener('pointerup',onUp,true)
+              window.addEventListener('pointercancel',onUp,true)
             }}
-            onDragEnd={()=>{setDraggingColumn(null);setDragOverColumn(null)}}
           >⠿</button>
           <label>
             <input type="checkbox" checked={visible.includes(k)} disabled={k==='username'} onChange={()=>toggle(k)}/>
             <span>{LABELS[k]}</span>
           </label>
+          <div className="column-order-buttons" aria-label={'Đổi thứ tự '+LABELS[k]}>
+            <button type="button" title={'Chuyển '+LABELS[k]+' lên'}
+              aria-label={'Chuyển '+LABELS[k]+' lên'}
+              disabled={columnOrder.indexOf(k)===0}
+              onClick={()=>moveColumn(k,-1)}>↑</button>
+            <button type="button" title={'Chuyển '+LABELS[k]+' xuống'}
+              aria-label={'Chuyển '+LABELS[k]+' xuống'}
+              disabled={columnOrder.indexOf(k)===columnOrder.length-1}
+              onClick={()=>moveColumn(k,1)}>↓</button>
+          </div>
         </div>)}
       </div>}
     </div>,toolbarRoot)}

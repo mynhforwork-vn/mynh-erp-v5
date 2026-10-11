@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
+import { usePurchaseToolbarRoot } from '@/components/use-purchase-toolbar-root'
 import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
@@ -158,8 +159,7 @@ export function PurchaseOrderTable({
   const draggingRef=useRef<ColKey|null>(null)
   const tableWrapRef=useRef<HTMLDivElement|null>(null)
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
-  const [toolbarRoot,setToolbarRoot]=useState<HTMLElement|null>(null)
-  useEffect(()=>{setToolbarRoot(document.getElementById('p1-order-toolbar-actions'))},[])
+  const toolbarRoot=usePurchaseToolbarRoot('p1-order-toolbar-actions')
 
   useEffect(()=>{
     try{
