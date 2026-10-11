@@ -125,6 +125,7 @@ export async function createERPUser(formData:FormData){
 export async function updateERPUser(formData:FormData){
   const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
+  const returnToOrders=text(formData.get('return_path'))==='orders'
   const userId=text(formData.get('user_id'))
   if(!userId)throw new Error('Thiếu tài khoản cần cập nhật')
 
@@ -152,7 +153,10 @@ export async function updateERPUser(formData:FormData){
   await saveAccountDeviceFields(supabase,userId,mobileType,browserName,true)
 
   revalidatePath('/purchase/accounts')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data),mode:null,tab:'info'}))
+  revalidatePath('/purchase/orders')
+  redirect(returnToOrders
+    ?returnHref('/purchase/orders',returnQuery,{account:userId,accountTab:'info',accountMode:null})
+    :returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info'}))
 }
 
 
