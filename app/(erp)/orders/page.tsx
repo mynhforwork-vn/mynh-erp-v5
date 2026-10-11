@@ -490,7 +490,11 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
 
     <div className={`split-view order-workspace ${panelOpen?'with-panel':''}`}>
       <section className="order-list-pane">
-        <div className="toolbar order-toolbar entity-command-bar">
+
+
+        {deviceFetchError&&<p role="alert" className="error-text">Không thể tải thông tin thiết bị tài khoản. Vui lòng thử tải lại.</p>}
+        <PurchaseOrderTable
+          toolbar={<>
           <form className="order-search-form" action="/purchase/orders">
             <input type="hidden" name="range" value={range.key}/>
             {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
@@ -519,19 +523,15 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
               ? `${rows.length} / ${totalOrders} đơn · +1 đơn đang mở ngoài bộ lọc`
               : `${rows.length} / ${totalOrders} đơn`}
           </span>
-          <div id="p1-order-toolbar-actions" className="p1-order-toolbar-actions"/>
-        </div>
 
-        {deviceFetchError&&<p role="alert" className="error-text">Không thể tải thông tin thiết bị tài khoản. Vui lòng thử tải lại.</p>}
-        {error
-          ? <div className="card table-card order-table-card"><div className="error-text order-table-error">{error.message}</div></div>
-          : <PurchaseOrderTable
-              rows={displayRowsWithDevices}
-              selectedId={sp.order}
-              baseQuery={returnQuery}
-              canEdit={canOperate}
-              carrierConfigs={carrierConfigs}
-            />}
+          </>}
+          error={error?.message??null}
+          rows={displayRowsWithDevices}
+          selectedId={sp.order}
+          baseQuery={returnQuery}
+          canEdit={canOperate}
+          carrierConfigs={carrierConfigs}
+        />
 
       </section>
 

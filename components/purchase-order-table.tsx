@@ -1,8 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { createPortal } from 'react-dom'
-import { usePurchaseToolbarRoot } from '@/components/use-purchase-toolbar-root'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
@@ -143,12 +141,16 @@ export function PurchaseOrderTable({
   baseQuery='',
   canEdit=false,
   carrierConfigs=[],
+  toolbar,
+  error,
 }:{
   rows:Row[]
   selectedId?:string|null
   baseQuery?:string
   canEdit?:boolean
   carrierConfigs?:CarrierConfig[]
+  toolbar:ReactNode
+  error?:string|null
 }){
   const [visible,setVisible]=useState<ColKey[]>(ALL)
   const [columnOrder,setColumnOrder]=useState<ColKey[]>(ALL)
@@ -160,7 +162,6 @@ export function PurchaseOrderTable({
   const draggingRef=useRef<ColKey|null>(null)
   const tableWrapRef=useRef<HTMLDivElement|null>(null)
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
-  const toolbarRoot=usePurchaseToolbarRoot('p1-order-toolbar-actions')
 
   useEffect(()=>{
     try{
@@ -437,8 +438,11 @@ export function PurchaseOrderTable({
     </td>
   }
 
-  return <div className="order-table-shell">
-    {toolbarRoot&&createPortal(<div className="p1-order-table-actions">
+  return <div className="order-table-shell with-inline-toolbar">
+    <div className="toolbar order-toolbar entity-command-bar">
+      {toolbar}
+      <div className="p1-order-toolbar-actions">
+        <div className="p1-order-table-actions">
       {canEdit&&selected.length>0&&<div className="p1-order-bulk-icons" aria-label={selected.length+' đơn đã chọn'}>
         <span className="p1-order-selected-count" title={selected.length+' đơn đã chọn'}>{selected.length}</span>
         {selectedArchived
@@ -542,10 +546,14 @@ export function PurchaseOrderTable({
           </div>
         </div>)}
       </div>}
-    </div></div>,toolbarRoot)}
+        </div>
+      </div>
+    </div>
 
     <div className="card table-card order-table-card" ref={tableWrapRef}>
-      <table className="table order-table mynh-p1-semantic-table" style={tableWidths}>
+      {error
+        ? <div className="error-text order-table-error" role="alert">{error}</div>
+        : <table className="table order-table mynh-p1-semantic-table" style={tableWidths}>
         <colgroup>
           {canEdit&&<col className="p1-order-col-select" style={panelShare(24)}/>}
           {shownColumns.map(k=><col key={k} className={'p1-order-col-'+k} style={panelShare(panelFitWeights[k])}/>)}
@@ -579,7 +587,7 @@ export function PurchaseOrderTable({
                 </tr>
               })}
         </tbody>
-      </table>
+      </table>}
     </div>
   </div>
 }

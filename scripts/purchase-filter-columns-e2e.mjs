@@ -65,8 +65,18 @@ try {
     new URL(page.url()).searchParams.get('orders')==='0'
     &&new URL(page.url()).searchParams.get('session')==='st')
   await page.screenshot({path:'qa-purchase-filter-columns-artifacts/accounts-filter-1440.png',fullPage:false})
-  await go('/purchase/orders?range=all')
+  // Reproduce the reported state: a User-scoped order list on the main Preview.
+  const qaUser=session.fixtures?.erp_user_id
+  assert.ok(qaUser,'Thiếu User QA cho kiểm thử URL lọc theo User')
+  await go('/purchase/orders?range=all&user='+encodeURIComponent(qaUser))
   const button=page.getByRole('button',{name:'Sắp xếp cột đơn nhập'})
+  check('Nút điều chỉnh cột có một bản duy nhất trong toolbar',
+    await button.count()===1&&await page.locator('.order-toolbar .p1-order-column-manager').count()===1)
+  const rightOffset=await button.evaluate(el=>{
+    const b=el.getBoundingClientRect(),bar=el.closest('.order-toolbar')?.getBoundingClientRect()
+    return bar?Math.round(bar.right-b.right):999
+  })
+  check('Nút điều chỉnh cột nằm sát mép phải toolbar',rightOffset>=0&&rightOffset<=12,{rightOffset})
   await button.click()
   const menu=page.getByRole('dialog',{name:'Sắp xếp, ẩn và hiện cột đơn nhập'})
   check('Sắp xếp cột opens a real interactive dialog',await menu.isVisible())
@@ -93,6 +103,22 @@ try {
     (await keys()).indexOf('voucher')===original.indexOf('voucher'))
   await page.keyboard.press('Escape')
   check('Escape closes column manager',await menu.count()===0)
+  // Open a detail slidebar, then use the column manager again on the new toolbar.
+  // This is where a detached portal used to leave a dead control.
+  const firstOrder=page.locator('.order-table tbody .p1-order-identity-cell a').first()
+  if(await firstOrder.count()){
+    await firstOrder.click()
+    await page.waitForURL(u=>u.searchParams.has('order'),{timeout:25000})
+    await page.locator('.order-panel').waitFor()
+    await button.click()
+    check('Nút cột hoạt động khi mở slidebar chi tiết đơn',await menu.isVisible())
+    await page.keyboard.press('Escape')
+    check('Esc đóng menu khi slidebar đang mở',await menu.count()===0)
+    await page.reload({waitUntil:'load'})
+    await button.click()
+    check('Nút cột vẫn mở được sau reload có slidebar',await menu.isVisible())
+    await page.keyboard.press('Escape')
+  }
   for(const [width,height] of [[320,568],[390,844],[768,1024],[1440,900]]){
     await page.setViewportSize({width,height})
     await button.click()

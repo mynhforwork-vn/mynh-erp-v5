@@ -699,3 +699,31 @@
 .brand-shell-v1 .order-editor .order-value-summary>small{
   font-size:11px;color:#60778c;
 }
+
+/* P2: purchase-order column controls live INSIDE the real toolbar, not in
+   a portal targeting a server-rendered placeholder that App Router replaces.
+   The icon stays at the physical right edge, including when a slidebar opens. */
+.brand-shell-v1 .order-table-shell.with-inline-toolbar{
+  display:flex;flex-direction:column;flex:1 1 auto;min-width:0;min-height:0;
+}
+.brand-shell-v1 .order-table-shell.with-inline-toolbar>.order-toolbar{
+  flex:0 0 auto;box-sizing:border-box;
+  width:100%;min-width:0;height:auto;min-height:35px;
+  padding-right:5px!important;
+  margin:0;
+  position:relative;
+  z-index:30;
+}
+.brand-shell-v1 .order-table-shell.with-inline-toolbar>.order-toolbar>.p1-order-toolbar-actions{
+  flex:0 0 29px;align-self:center;margin-left:auto!important;
+  position:relative;right:0;z-index:35;
+}
+.brand-shell-v1 .order-table-shell.with-inline-toolbar>.order-table-card{
+  flex:1 1 auto;min-height:0;height:auto!important;
+}
+.brand-shell-v1 .order-table-shell.with-inline-toolbar .p1-order-toolbar-actions .managed-column-button{
+  cursor:pointer!important;pointer-events:auto!important;
+}
+.brand-shell-v1 .order-table-shell.with-inline-toolbar .column-manager-menu{
+  pointer-events:auto!important;
+}
