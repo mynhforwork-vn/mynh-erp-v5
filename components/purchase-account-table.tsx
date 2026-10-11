@@ -5,16 +5,17 @@ import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import { formatDateTime, formatPhone, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
+import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
 import { archiveERPUsersBulk, restoreERPUsersBulk } from '@/lib/actions/core'
 
 type Row=Record<string,any>
-type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'device'|'voucher'|'orders'|'createdAt'|'note'
+type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'mobile'|'browser'|'voucher'|'orders'|'createdAt'|'note'
 
-const ALL:ColKey[]=['number','username','platform','phone','email','status','device','voucher','orders','createdAt','note']
+const ALL:ColKey[]=['number','username','platform','phone','email','status','mobile','browser','voucher','orders','createdAt','note']
 const LABELS:Record<ColKey,string>={
   number:'#',username:'Username',platform:'Nền tảng',phone:'SĐT',email:'Email',
-  status:'Trạng thái',device:'Thiết bị',voucher:'Voucher đã dùng',orders:'Số đơn',
+  status:'Trạng thái',mobile:'Mobile',browser:'Browser',voucher:'Voucher đã dùng',orders:'Số đơn',
   createdAt:'Thời gian tạo',note:'Ghi chú'
 }
 const STORAGE_KEY='mynh-v5-purchase-account-columns'
@@ -25,32 +26,6 @@ function statusClass(status?:string|null){
   if(status==='Blocked')return 'red'
   if(['M01','M02','M03','M04','Captcha','Auto Hủy'].includes(String(status)))return 'orange'
   return ''
-}
-
-function hasST(row:Row){return Boolean(row.spc_st_secret_id||row.spc_st_encrypted)}
-function hasF(row:Row){return Boolean(row.spc_f_secret_id||row.spc_f_encrypted)}
-
-function DeviceIcons({row}:{row:Row}){
-  const active=(row.active_devices??[]).filter((d:any)=>d.is_active)
-  const hasMobile=active.some((d:any)=>d.device_type==='MOBILE')
-  const hasWeb=active.some((d:any)=>d.device_type==='DESKTOP'||d.device_type==='BROWSER_PROFILE')
-
-  return <div className="device-state-set" aria-label="Trạng thái phiên và thiết bị">
-    <span className={'device-state-chip session '+(hasST(row)?'on':'')} title={hasST(row)?'Có SPC_ST':'Chưa có SPC_ST'}>ST</span>
-    <span className={'device-state-chip session '+(hasF(row)?'on':'')} title={hasF(row)?'Có SPC_F':'Chưa có SPC_F'}>F</span>
-    <span className={'device-state-chip '+(hasMobile?'on':'')} title={hasMobile?'Có Mobile đang hoạt động':'Không có Mobile đang hoạt động'}>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <rect x="7" y="2.5" width="10" height="19" rx="2" fill="none"/>
-        <path d="M10 5h4M11 18.5h2" fill="none"/>
-      </svg>
-    </span>
-    <span className={'device-state-chip '+(hasWeb?'on':'')} title={hasWeb?'Có Web/Browser đang hoạt động':'Không có Web/Browser đang hoạt động'}>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <rect x="3" y="4" width="18" height="13" rx="2" fill="none"/>
-        <path d="M8 21h8M12 17v4" fill="none"/>
-      </svg>
-    </span>
-  </div>
 }
 
 function sortHref(baseQuery:string,nextSort:string){
@@ -96,14 +71,18 @@ export function PurchaseAccountTable({
       if(raw){
         const parsed=JSON.parse(raw)
         if(Array.isArray(parsed)){
-          setVisible(normalizeLegacyVisibleColumns<ColKey>(parsed,ALL,['username']))
+          setVisible(normalizeLegacyVisibleColumns<ColKey>(
+            parsed.flatMap((k:string)=>k==='device'?['mobile','browser']:[k]),ALL,['username']
+          ))
         }
       }
       const rawOrder=localStorage.getItem(STORAGE_ORDER_KEY)
       if(rawOrder){
         const parsedOrder=JSON.parse(rawOrder)
         if(Array.isArray(parsedOrder)){
-          setColumnOrder(normalizeLegacyColumnOrder<ColKey>(parsedOrder,ALL))
+          setColumnOrder(normalizeLegacyColumnOrder<ColKey>(
+            parsedOrder.flatMap((k:string)=>k==='device'?['mobile','browser']:[k]),ALL
+          ))
         }
       }
     }catch{}
@@ -163,14 +142,14 @@ export function PurchaseAccountTable({
   const allSelected=rows.length>0&&rows.slice(0,200).every((row:any)=>selectedSet.has(String(row.id)))
   const colSpan=useMemo(()=>visible.length+(canManage?1:0),[visible,canManage])
   // Same visible-column full/panel width policy as Tracking/HUB.
-  const columnMinimums:Record<ColKey,number>={"number":32,"username":154,"platform":64,"phone":108,"email":155,"status":89,"device":102,"voucher":76,"orders":52,"createdAt":135,"note":90}
-  const panelMinimums:Record<ColKey,number>={"number":28,"username":125,"platform":58,"phone":96,"email":130,"status":80,"device":90,"voucher":70,"orders":44,"createdAt":125,"note":72}
+  const columnMinimums:Record<ColKey,number>={"number":32,"username":154,"platform":64,"phone":108,"email":155,"status":89,"mobile":104,"browser":96,"voucher":76,"orders":52,"createdAt":135,"note":90}
+  const panelMinimums:Record<ColKey,number>={"number":28,"username":125,"platform":58,"phone":96,"email":130,"status":80,"mobile":83,"browser":75,"voucher":70,"orders":44,"createdAt":125,"note":72}
   const shownColumns=columnOrder.filter(isVisible)
   // Compact panel sizing is relative to the real table lane. Every visible
   // column receives an explicit share, including when users hide/reorder.
   const panelFitWeights:Record<ColKey,number>={
     number:22,username:102,platform:53,phone:90,email:98,
-    status:72,device:79,voucher:65,orders:40,createdAt:106,note:76
+    status:72,mobile:81,browser:72,voucher:65,orders:40,createdAt:106,note:76
   }
   const panelFitTotal=(canManage?24:0)+shownColumns.reduce((sum,key)=>sum+panelFitWeights[key],0)
   const panelShare=(weight:number)=>({ '--p1-panel-col-width':(weight/panelFitTotal*100)+'%' }) as CSSProperties
@@ -222,7 +201,8 @@ export function PurchaseAccountTable({
     if(key==='phone')return <th key={key} data-account-col={key}>SĐT</th>
     if(key==='email')return <th key={key} data-account-col={key}>Email</th>
     if(key==='status')return <th key={key} data-account-col={key}>Trạng thái</th>
-    if(key==='device')return <th key={key} data-account-col={key} className="p1-user-device-head">Thiết bị</th>
+    if(key==='mobile')return <th key={key} data-account-col={key}>Mobile</th>
+    if(key==='browser')return <th key={key} data-account-col={key}>Browser</th>
     if(key==='voucher')return <th key={key} data-account-col={key} className="p1-user-voucher-head">Voucher đã dùng</th>
     if(key==='orders')return <th key={key} data-account-col={key}>Số đơn</th>
     if(key==='createdAt')return <th key={key} data-account-col={key}><Link className="sortable-head" href={sortHref(detailQuery,timeNext)}>Thời gian tạo <span>{sort==='newest'?'↓':sort==='oldest'?'↑':'↕'}</span></Link></th>
@@ -243,7 +223,11 @@ export function PurchaseAccountTable({
     if(key==='status')return <td key={key} data-account-col={key}>{u.archived_at
       ? <span className="status-pill archived">Lưu trữ</span>
       : <span className={'status-pill '+statusClass(u.status)}>{statusLabel(u.status)}</span>}</td>
-    if(key==='device')return <td key={key} data-account-col={key} className="device-icon-cell"><DeviceIcons row={u}/></td>
+    if(key==='mobile'||key==='browser'){
+      const fields=accountDeviceFields(u)
+      const value=key==='mobile'?fields.mobileType:fields.browserName
+      return <td key={key} data-account-col={key} className="p1-device-text-cell" title={value||undefined}>{value||'—'}</td>
+    }
     if(key==='voucher')return <td key={key} data-account-col={key} className="voucher-cell"><VoucherTags value={u.voucher_used_summary} compact maxVisible={1}/></td>
     if(key==='orders')return <td key={key} data-account-col={key} className="count-cell">{u.order_count??0}</td>
     if(key==='createdAt')return <td key={key} data-account-col={key} title={formatDateTime(u.effective_created_at??u.created_at)}>{formatDateTime(u.effective_created_at??u.created_at)}</td>
