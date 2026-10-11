@@ -727,3 +727,43 @@
 .brand-shell-v1 .order-table-shell.with-inline-toolbar .column-manager-menu{
   pointer-events:auto!important;
 }
+
+/* The purchase column menu must be visible, clickable and unclipped even
+   above an order table or alongside a slidebar. The button remains inline;
+   ONLY its menu is portaled into document.body. */
+.brand-shell-v1 .order-table-shell.with-inline-toolbar .p1-order-toolbar-actions .managed-column-button{
+  box-sizing:border-box!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  gap:5px!important;width:57px!important;min-width:57px!important;height:29px!important;
+  padding:0 6px!important;cursor:pointer!important;
+}
+.brand-shell-v1 .order-table-shell.with-inline-toolbar .p1-order-toolbar-actions{
+  flex:0 0 auto!important;min-width:57px!important;
+}
+.brand-shell-v1 .order-table-shell.with-inline-toolbar .p1-column-button-label{
+  display:inline!important;font-size:11px!important;font-weight:650!important;
+  line-height:1!important;white-space:nowrap!important;
+}
+.p1-order-floating-menu.column-manager-menu{
+  position:fixed!important;
+  top:var(--p1-order-menu-top,64px)!important;
+  right:var(--p1-order-menu-right,8px)!important;
+  left:auto!important;bottom:auto!important;
+  box-sizing:border-box!important;
+  z-index:9999!important;
+  width:min(260px,calc(100vw - 16px))!important;
+  min-width:0!important;
+  max-height:calc(100dvh - var(--p1-order-menu-top,64px) - 8px)!important;
+  overflow:auto!important;
+  padding:7px!important;
+  background:#fff!important;color:#354b61!important;
+  border:1px solid #d6e3ee!important;border-radius:8px!important;
+  box-shadow:0 16px 38px rgba(28,49,71,.19)!important;
+  pointer-events:auto!important;
+}
+@media(max-width:600px){
+  .p1-order-floating-menu.column-manager-menu{
+    right:8px!important;
+    width:min(260px,calc(100vw - 16px))!important;
+  }
+}

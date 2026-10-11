@@ -77,9 +77,23 @@ try {
     return bar?Math.round(bar.right-b.right):999
   })
   check('Nút điều chỉnh cột nằm sát mép phải toolbar',rightOffset>=0&&rightOffset<=12,{rightOffset})
+  check('Nút cột có nhãn tiếng Việt dễ nhận biết', (await button.innerText()).includes('Cột'))
   await button.click()
   const menu=page.getByRole('dialog',{name:'Sắp xếp, ẩn và hiện cột đơn nhập'})
   check('Sắp xếp cột opens a real interactive dialog',await menu.isVisible())
+  const hitTest=()=>menu.evaluate(el=>{
+    const r=el.getBoundingClientRect()
+    // Test a real menu row, not just Playwright's isVisible()
+    const row=el.querySelector('.column-manager-row')||el
+    const b=row.getBoundingClientRect()
+    const x=Math.min(innerWidth-2,Math.max(2,b.left+b.width/2))
+    const y=Math.min(innerHeight-2,Math.max(2,b.top+b.height/2))
+    const hit=document.elementFromPoint(x,y)
+    return {top:r.top,left:r.left,right:r.right,hitTag:hit?.tagName??'',
+      clickable:!!hit&&(el===hit||el.contains(hit))}
+  })
+  const menuHit=await hitTest()
+  check('Menu cột nổi trên mọi lớp và nhận click thật',menuHit.clickable,menuHit)
   const keys=()=>page.locator('.order-table thead th[data-order-col]').evaluateAll(rows=>rows.map(x=>x.getAttribute('data-order-col')))
   const original=await keys()
   const voucher=menu.locator('.column-manager-row[data-column-key="voucher"]')
@@ -130,7 +144,9 @@ try {
       const b=el.getBoundingClientRect()
       return {left:b.left,right:b.right,bottom:b.bottom,viewport:innerWidth}
     })
-    check('Column manager visible and bounded '+width,g.left>=-1&&g.right<=width+2,g)
+    const h=await hitTest()
+    check('Column manager visible and bounded '+width,g.left>=-1&&g.right<=width+2&&h.clickable,
+      {...g,clickable:h.clickable,hitTag:h.hitTag})
     if(width===390)await page.screenshot({path:'qa-purchase-filter-columns-artifacts/orders-columns-mobile-390.png',fullPage:false})
     await page.keyboard.press('Escape')
   }
