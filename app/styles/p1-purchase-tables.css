@@ -219,7 +219,7 @@
 .brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-carrier{width:68px!important}
 .brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-voucher{width:63px!important}
 .brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-status{width:94px!important}
-.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-username{width:72px!important}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-username{width:84px!important}
 .brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-product{width:115px!important}
 /* Full account table: semantic column widths calculated from visible data
    and the actual table lane. Metadata and counts stay compact. These rules
@@ -262,7 +262,7 @@
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-select{width:28px!important}
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-number{width:26px!important}
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-order{width:118px!important}
-  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-username{width:72px!important}
+  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-username{width:84px!important}
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-time{width:106px!important}
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-product{width:115px!important}
   .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-order-col-cod{width:65px!important}
