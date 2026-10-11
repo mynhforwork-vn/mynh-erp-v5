@@ -30,8 +30,11 @@ const tests=[
  assert.ok(account.includes("const STORAGE_ORDER_KEY='mynh-v5-purchase-account-column-order'"))
  assert.ok(order.includes("const STORAGE_COLUMNS='mynh-v5-purchase-order-columns'"))
  assert.ok(order.includes("const STORAGE_COLUMN_ORDER='mynh-v5-purchase-order-column-order'"))
- assert.ok(account.includes("className=\"table user-table\""))
- assert.ok(order.includes("className=\"table order-table\""))
+ assert.match(account,/className="table user-table mynh-p1-semantic-table"/)
+ assert.match(order,/className="table order-table mynh-p1-semantic-table"/)
+ assert.ok(account.includes('<colgroup>')&&order.includes('<colgroup>'))
+ assert.ok(account.includes('--p1-account-panel-min-width'))
+ assert.ok(order.includes('--p1-order-panel-min-width'))
 }],
 ['P1 existing business actions retained',()=>{
  const order=fs.readFileSync('components/purchase-order-table.tsx','utf8')
