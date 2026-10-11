@@ -549,6 +549,7 @@ export function PurchaseOrderTable({
         </div>
       </div>
     </div>
+    </div>
 
     <div className="card table-card order-table-card" ref={tableWrapRef}>
       {error
