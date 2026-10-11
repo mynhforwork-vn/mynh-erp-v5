@@ -19,14 +19,15 @@ type CarrierConfig={
   display_name:string
   tracking_prefixes?:string[]|null
 }
-type ColKey='number'|'order'|'username'|'time'|'product'|'cod'|'tracking'|'carrier'|'voucher'|'status'
+type ColKey='number'|'order'|'username'|'device'|'time'|'product'|'cod'|'tracking'|'carrier'|'voucher'|'status'
 type SortKey='order_asc'|'order_desc'|'username_asc'|'username_desc'|'time_new'|'time_old'|'cod_desc'|'cod_asc'|'status_asc'|'status_desc'
 
-const ALL:ColKey[]=['number','order','username','time','product','cod','tracking','carrier','voucher','status']
+const ALL:ColKey[]=['number','order','username','device','time','product','cod','tracking','carrier','voucher','status']
 const LABELS:Record<ColKey,string>={
   number:'#',
   order:'Mã đơn',
   username:'Username',
+  device:'Thiết bị',
   time:'Thời gian đặt',
   product:'Sản phẩm',
   cod:'COD',
@@ -38,6 +39,7 @@ const LABELS:Record<ColKey,string>={
 const STORAGE_COLUMNS='mynh-v5-purchase-order-columns'
 const STORAGE_COLUMN_ORDER='mynh-v5-purchase-order-column-order'
 const STORAGE_SORT='mynh-v5-purchase-order-sort'
+const STORAGE_DEVICE_MIGRATION='mynh-v5-purchase-order-device-v1'
 
 function activeShipment(order:Row){
   return (order?.shipments??[]).find((x:any)=>x.is_active)??order?.shipments?.[0]??null
@@ -159,20 +161,37 @@ export function PurchaseOrderTable({
 
   useEffect(()=>{
     try{
+      // Introduce Device once into existing saved column preferences.
+      // Afterwards users can hide it permanently without the migration undoing it.
+      const needsMigration=!localStorage.getItem(STORAGE_DEVICE_MIGRATION)
+      const withDevice=(keys:string[])=>{
+        if(keys.includes('device'))return keys
+        const next=[...keys]
+        const pos=next.indexOf('username')
+        next.splice(pos<0?next.length:pos+1,0,'device')
+        return next
+      }
       const raw=localStorage.getItem(STORAGE_COLUMNS)
       if(raw){
         const parsed=JSON.parse(raw)
         if(Array.isArray(parsed)){
-          setVisible(normalizeLegacyVisibleColumns<ColKey>(parsed,ALL,['order']))
+          const columns=normalizeLegacyVisibleColumns<ColKey>(
+            needsMigration?withDevice(parsed):parsed,ALL,['order'])
+          setVisible(columns)
+          if(needsMigration)localStorage.setItem(STORAGE_COLUMNS,JSON.stringify(columns))
         }
       }
       const rawOrder=localStorage.getItem(STORAGE_COLUMN_ORDER)
       if(rawOrder){
         const parsedOrder=JSON.parse(rawOrder)
         if(Array.isArray(parsedOrder)){
-          setColumnOrder(normalizeLegacyColumnOrder<ColKey>(parsedOrder,ALL))
+          const columns=normalizeLegacyColumnOrder<ColKey>(
+            needsMigration?withDevice(parsedOrder):parsedOrder,ALL)
+          setColumnOrder(columns)
+          if(needsMigration)localStorage.setItem(STORAGE_COLUMN_ORDER,JSON.stringify(columns))
         }
       }
+      if(needsMigration)localStorage.setItem(STORAGE_DEVICE_MIGRATION,'1')
       const savedSort=localStorage.getItem(STORAGE_SORT) as SortKey|null
       if(savedSort)setSort(savedSort)
     }catch{}
@@ -286,12 +305,12 @@ export function PurchaseOrderTable({
   }
 
   // Tracking/HUB sizing: minimum follows visible semantic IDs, not positions.
-  const columnMinimums:Record<ColKey,number>={"number":30,"order":150,"username":105,"time":134,"product":165,"cod":90,"tracking":155,"carrier":95,"voucher":85,"status":120}
-  const panelMinimums:Record<ColKey,number>={"number":28,"order":135,"username":85,"time":120,"product":130,"cod":75,"tracking":140,"carrier":78,"voucher":70,"status":108}
+  const columnMinimums:Record<ColKey,number>={"number":28,"order":134,"username":90,"device":139,"time":116,"product":148,"cod":76,"tracking":146,"carrier":77,"voucher":75,"status":105}
+  const panelMinimums:Record<ColKey,number>={"number":26,"order":118,"username":72,"device":113,"time":106,"product":115,"cod":65,"tracking":123,"carrier":68,"voucher":63,"status":94}
   const shownColumns=columnOrder.filter(isVisible)
   const panelFitWeights:Record<ColKey,number>={
-    number:22,order:116,username:76,time:111,product:123,
-    cod:62,tracking:113,carrier:70,voucher:61,status:94
+    number:20,order:108,username:73,device:118,time:103,product:121,
+    cod:60,tracking:104,carrier:65,voucher:58,status:91
   }
   const panelFitTotal=(canEdit?24:0)+shownColumns.reduce((sum,key)=>sum+panelFitWeights[key],0)
   const panelShare=(weight:number)=>({ '--p1-panel-col-width':(weight/panelFitTotal*100)+'%' }) as CSSProperties
@@ -308,6 +327,7 @@ export function PurchaseOrderTable({
     if(key==='number')return <th key={key} data-order-col={key}>#</th>
     if(key==='order')return <th key={key} data-order-col={key} className="p1-order-identity-head"><button className="sort-head" type="button" onClick={()=>toggleSort('order_asc','order_desc')}>Mã đơn <span>{sortIndicator(sort,'order_asc','order_desc')}</span></button></th>
     if(key==='username')return <th key={key} data-order-col={key}><button className="sort-head" type="button" onClick={()=>toggleSort('username_asc','username_desc')}>Username <span>{sortIndicator(sort,'username_asc','username_desc')}</span></button></th>
+    if(key==='device')return <th key={key} data-order-col={key}>Thiết bị</th>
     if(key==='time')return <th key={key} data-order-col={key}><button className="sort-head" type="button" onClick={()=>toggleSort('time_old','time_new')}>Thời gian đặt <span>{sort==='time_new'?'↓':sort==='time_old'?'↑':'↕'}</span></button></th>
     if(key==='product')return <th key={key} data-order-col={key} className="p1-order-product-head">Sản phẩm</th>
     if(key==='cod')return <th key={key} data-order-col={key}><button className="sort-head" type="button" onClick={()=>toggleSort('cod_asc','cod_desc')}>COD <span>{sortIndicator(sort,'cod_asc','cod_desc')}</span></button></th>
@@ -322,6 +342,17 @@ export function PurchaseOrderTable({
     if(key==='number')return <td key={key} data-order-col={key}>{i+1}</td>
     if(key==='order')return <td key={key} data-order-col={key} className="p1-order-identity-cell"><Link className="table-link" prefetch={false} href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
     if(key==='username')return <td key={key} data-order-col={key} className="p1-order-user-cell" title={o.erp_users?.username??undefined}>{o.erp_users?.username??'—'}</td>
+    if(key==='device'){
+      const mobile=String(o.account_device_info?.mobileType??'')
+      const browser=String(o.account_device_info?.browserName??'')
+      return <td key={key} data-order-col={key} className="p1-order-device-cell"
+        title={'Mobile: '+(mobile||'—')+' · Browser: '+(browser||'—')}>
+        <span className="p1-order-device-lines">
+          <span><small>Mobile</small><b>{mobile||'—'}</b></span>
+          <span><small>Browser</small><b>{browser||'—'}</b></span>
+        </span>
+      </td>
+    }
     if(key==='time')return <td key={key} data-order-col={key} className="order-time-cell">{formatDateTime(o.order_date)}</td>
     if(key==='product')return <td key={key} data-order-col={key} className="product-cell" title={(o.order_items??[]).map((it:any)=>[it.product_name,it.variant].filter(Boolean).join(' · ')).join(' | ')||'—'}>
       <span className="p1-product-lines">
