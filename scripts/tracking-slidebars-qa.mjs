@@ -28,6 +28,11 @@ const browser=await chromium.launch({
   ...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{})
 })
 const results=[]
+// Minimum readable width after adding Tracking status-detail column:
+// selection 25 + order 120 + product 118 + COD 70 + recipient 118
+// + status 135 + detail 165 + action 44 = 795px (fractional CSS rounds to 794).
+// Never squeeze these columns solely to meet the former 760px-only test.
+const panelReadableFloor=794
 const check=(name,pass,details={})=>{
   results.push({name,pass:Boolean(pass),...details})
   console.log((pass?'PASS ':'FAIL ')+name+' '+JSON.stringify(details))
@@ -84,7 +89,17 @@ try{
           icon:button?{width:button.getBoundingClientRect().width,height:button.getBoundingClientRect().height}:null,
           resizerPresent:Boolean(grip),
           tableScrollElement:Boolean(document.querySelector('.tracking-hub-table-wrap-v2')),
-          tableScroll:{scrollWidth:document.querySelector('.tracking-hub-table-wrap-v2')?.scrollWidth??0,clientWidth:document.querySelector('.tracking-hub-table-wrap-v2')?.clientWidth??0,overflow:getComputedStyle(document.querySelector('.tracking-hub-table-wrap-v2')).overflowX},
+          tableScroll:(()=>{
+            const el=document.querySelector('.tracking-hub-table-wrap-v2')
+            if(!el)return {scrollWidth:0,clientWidth:0,overflow:'hidden',scrollWorks:false}
+            const before=el.scrollLeft
+            el.scrollLeft=el.scrollWidth
+            const moved=el.scrollLeft>before+1
+            el.scrollLeft=before
+            return {scrollWidth:el.scrollWidth,clientWidth:el.clientWidth,
+              overflow:getComputedStyle(el).overflowX,
+              scrollWorks:el.scrollWidth<=el.clientWidth+2||moved}
+          })(),
         }
       })
       const panelOK=expectedPanel
@@ -107,9 +122,10 @@ try{
       // The HUB pane shrinks with each sidebar. The data table may be wider
       // than its pane, but it MUST scroll there rather than squeezing columns.
       const adaptive=Boolean(v.table&&v.tableWrap&&v.tableScroll)
-        &&Math.abs(v.table.width-Math.max(expectedPanel?760:900,v.tableWrap.width))<=12
+        &&Math.abs(v.table.width-Math.max(expectedPanel?panelReadableFloor:900,v.tableWrap.width))<=12
         &&v.tableScroll.overflow!=='hidden'
         &&v.tableScroll.scrollWidth>=v.tableScroll.clientWidth
+        &&v.tableScroll.scrollWorks
       check(viewport.width+' '+name,Boolean(panelOK&&leftOK&&layoutOK&&compactOK&&v.resizerPresent&&adaptive),v)
       await page.screenshot({path:output+'/'+viewport.width+'-'+name+'.png',fullPage:false})
       return v
@@ -204,14 +220,17 @@ try{
       check(viewport.width+' right open narrows pane without squeezing table',
         Boolean(initial.tableWrap&&panelWide.table&&panelWide.tableWrap
           &&panelWide.tableWrap.width<initial.tableWrap.width-60
-          &&Math.abs(panelWide.table.width-Math.max(760,panelWide.tableWrap.width))<=15),
+          &&Math.abs(panelWide.table.width-Math.max(panelReadableFloor,panelWide.tableWrap.width))<=15
+          &&panelWide.tableScroll.scrollWorks),
         {before:initial.tableWrap?.width,after:panelWide.tableWrap?.width,table:panelWide.table?.width,customized:panelWide.customized})
       check(viewport.width+' tracking lane visibly fits panel when space allows',
         Boolean(panelWide.table&&panelWide.tableWrap
-          &&(panelWide.tableWrap.width>=760
+          &&(panelWide.tableWrap.width>=panelReadableFloor
             ?panelWide.table.width<=panelWide.tableWrap.width+12
-            :panelWide.table.width<=775
-              &&panelWide.tableScroll.scrollWidth-panelWide.tableScroll.clientWidth<=155)),
+            :panelWide.table.width<=panelReadableFloor+12
+              &&panelWide.tableScroll.scrollWorks
+              &&panelWide.tableScroll.scrollWidth-panelWide.tableScroll.clientWidth
+                <=panelReadableFloor-panelWide.tableWrap.width+15)),
         {lane:panelWide.tableWrap?.width,table:panelWide.table?.width,
           scroll:panelWide.tableScroll?.scrollWidth-panelWide.tableScroll?.clientWidth})
       check(viewport.width+' right panel protects status detail and action columns',
