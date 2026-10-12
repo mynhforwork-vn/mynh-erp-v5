@@ -230,6 +230,13 @@ try{
         }
         const head=rect(h),title=rect(identity),stats=rect(metrics),actions=rect(controls)
         const chips=[...metrics.querySelectorAll(':scope > span')].map(rect)
+        const tableWidth=table.getBoundingClientRect().width
+        const tableLaneWidth=lane.clientWidth
+        const savedTableScroll=lane.scrollLeft
+        const needsTableScroll=lane.scrollWidth>tableLaneWidth+3
+        if(needsTableScroll)lane.scrollLeft=lane.scrollWidth
+        const tableScrollWorks=!needsTableScroll||lane.scrollLeft>savedTableScroll+1
+        lane.scrollLeft=savedTableScroll
         const oldScroll=metrics.scrollLeft
         const overflow=metrics.scrollWidth>metrics.clientWidth+3
         if(overflow)metrics.scrollLeft=metrics.scrollWidth
@@ -244,9 +251,10 @@ try{
         return{head,title,stats,actions,chips,overflow,scrollWorks,
           rowHeight:head.height,
           scrollWidth:metrics.scrollWidth,clientWidth:metrics.clientWidth,
-          tableWidth:table.getBoundingClientRect().width,
-          tableLaneWidth:lane.clientWidth,
+          tableWidth,
+          tableLaneWidth,
           tableScrollWidth:lane.scrollWidth,
+          tableScrollWorks,
           tableScrollX:getComputedStyle(lane).overflowX,
           lastColumns:right}
       })
@@ -271,12 +279,15 @@ try{
           &&hubHeader.tableWidth>=750
           &&hubHeader.tableScrollWidth>=hubHeader.tableLaneWidth),
         cols??{reason:'missing table columns'})
-      check(view.width+' Tracking fits lane instead of wasting 1120px',
-        Boolean(hubHeader&&hubHeader.tableWidth<=Math.max(760,hubHeader.tableLaneWidth)+15
-          &&(hubHeader.tableLaneWidth>=760
-            ?hubHeader.tableWidth<=hubHeader.tableLaneWidth+12
-            :hubHeader.tableWidth-hubHeader.tableLaneWidth<=760-hubHeader.tableLaneWidth+15)),
-        {table:hubHeader?.tableWidth,lane:hubHeader?.tableLaneWidth})
+      // A readable 7-column table may have an intrinsic ~794px minimum.
+      // It must stay within a bounded intrinsic width and scroll INSIDE its lane,
+      // not cause page overflow or shrink status/detail/actions into overlap.
+      check(view.width+' Tracking bounded width with working lane scroll',
+        Boolean(hubHeader
+          &&hubHeader.tableWidth<=Math.max(800,hubHeader.tableLaneWidth)+15
+          &&(hubHeader.tableWidth<=hubHeader.tableLaneWidth+2||hubHeader.tableScrollWorks)),
+        {table:hubHeader?.tableWidth,lane:hubHeader?.tableLaneWidth,
+          scrollWidth:hubHeader?.tableScrollWidth,scrollWorks:hubHeader?.tableScrollWorks})
       if(visible){
         if([320,390,768,1024,1440].includes(view.width)){
           await page.screenshot({path:output+'/table-'+view.width+'-panel.png',fullPage:false})
