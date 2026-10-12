@@ -62,10 +62,10 @@ function buildCandidate(source) {
   assert.ok(source.includes("GHN_PROXY") && source.includes("runTrackingCycle("));
 
   const trackingCore = functionBodyUntil(
-    source, "async function runTrackingCycle(", "async function runAutomationCycle("
+    source, "async function runTrackingCycle(", "async function callExistingTrackingProxy("
   );
   const trackingProxy = functionBodyUntil(
-    source, "async function callExistingTrackingProxy(", "async function "
+    source, "async function callExistingTrackingProxy(", "\nfunction "
   );
   const trackingCoreHash = hash(trackingCore);
   const trackingProxyHash = hash(trackingProxy);
