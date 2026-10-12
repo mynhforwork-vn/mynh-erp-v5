@@ -30,7 +30,7 @@ check('Backend never enables Telegram when saving an alert rule',()=>{
 })
 check('In-app notification center and API remain intact',()=>{
   assert.ok(fs.existsSync('components/in-app-alert-center.tsx'))
-  assert.ok(alerts.includes('alert_events'))
+  assert.ok(alerts.includes("supabase.rpc('get_in_app_alerts'"))
 })
 check('Old Telegram UI removed, responsive in-app styles loaded',()=>{
   assert.ok(!fs.existsSync('components/tracking-telegram-settings.tsx'))
