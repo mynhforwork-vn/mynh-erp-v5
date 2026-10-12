@@ -164,7 +164,7 @@ check(css,'col.tracking-colgroup-actions','action width fixed at large viewport'
 check(css,'width:44px!important','locked action column via colgroup')
 
 check(css,'.tracking-content-workspace.with-panel','context-aware compact table CSS')
-check(fs.readFileSync('app/styles/enterprise-tables-v1.css','utf8'),'min-width:760px!important','panel-aware compact Tracking minimum')
+check(fs.readFileSync('app/styles/enterprise-tables-v1.css','utf8'),'min-width:var(--tracking-table-panel-min-width,760px)!important','panel-aware compact Tracking minimum with overrideable default')
 check(resizer,'fitTrackingPanel','saved resized widths adapt to right panel')
 check(resizer,".matches('.tracking-content-workspace')",'recompute saved widths on right panel toggle')
 const layoutQa=fs.readFileSync('scripts/tracking-slidebars-qa.mjs','utf8')
