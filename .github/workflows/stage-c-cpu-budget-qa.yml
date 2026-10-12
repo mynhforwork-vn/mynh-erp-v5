@@ -1,0 +1,104 @@
+name: Stage C — CPU-limit diagnosis (isolated Preview)
+
+on:
+  push:
+    branches:
+      - qa/stage-c-cpu-preview-limit-20261012
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-stage-c-cpu-limit-20261012
+  cancel-in-progress: true
+
+jobs:
+  cpu-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+      SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
+      PREVIEW_URL: https://erp-stage-c-cpu-budget-qa-mynh-erp-v5.mynh-forwork.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify only QA files differ from release application
+        run: |
+          git fetch --quiet origin release/final-telegram-off-spx-20261012
+          git diff --name-only origin/release/final-telegram-off-spx-20261012 HEAD
+          test "$(git diff --name-only origin/release/final-telegram-off-spx-20261012 HEAD | grep -Evc '^(.github/workflows/|wrangler.cpu-qa.jsonc$)' || true)" = 0
+          echo 'This Preview only modifies the resource config, not ERP runtime code'
+      - name: Install QA dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck and build without Production deploy
+        run: |
+          npm run typecheck
+          npx opennextjs-cloudflare build
+      - name: Publish CPU-limited experiment ONLY to new Preview
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx wrangler preview --config wrangler.cpu-qa.jsonc --name erp-stage-c-cpu-budget-qa --worker-name mynh-erp-v5 --message "QA only: CPU 1000ms $GITHUB_SHA" --json > cpu-preview.json
+          echo 'PREVIEW_CPU_UPLOAD_SUCCESS (no Production deployment)'
+      - name: Check isolated Preview health and auth
+        run: |
+          test "$(curl --silent --show-error --max-time 30 -o /tmp/cpu-qa-health.json -w '%{http_code}' "$PREVIEW_URL/api/health")" = 200
+          grep -q '"ok":true' /tmp/cpu-qa-health.json
+          test "$(curl --silent --show-error --max-time 30 -o /tmp/cpu-qa-login.html -w '%{http_code}' "$PREVIEW_URL/login")" = 200
+      - name: Create disposable QA operator
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-setup.mjs
+      - name: Create identifiable QA fixtures
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-fixture-setup.mjs
+      - name: Install browser
+        run: |
+          npm install --no-save playwright --no-audit --no-fund
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: Cross-module browser smoke for 320,390,768,1440,1920
+        id: browser
+        continue-on-error: true
+        timeout-minutes: 15
+        run: node scripts/erp-cross-module-smoke.mjs
+      - name: Full RBAC 3 roles + frontend resource requests
+        id: rbac
+        continue-on-error: true
+        timeout-minutes: 18
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-rbac-qa.mjs
+      - name: CPU Preview E2E aggregate gate
+        if: always()
+        run: |
+          echo "Browser: ${{ steps.browser.outcome }}"
+          echo "RBAC: ${{ steps.rbac.outcome }}"
+          test "${{ steps.browser.outcome }}" = success
+          test "${{ steps.rbac.outcome }}" = success
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cpu-preview-qa-${{ github.sha }}
+          path: |
+            qa-browser-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Cleanup ONLY labelled QA fixtures
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-fixture-cleanup.mjs
+      - name: Cleanup temporary QA operator
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-cleanup.mjs
