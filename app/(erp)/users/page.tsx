@@ -133,7 +133,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   function matchesAccountScope(u:any){
     const activeDevices=u.active_devices??[]
     const allDevices=u.all_devices??[]
-    if(browser!=='all'&&!activeDevices.some((d:any)=>deviceBrowserBucket(d.browser_name)===browser))return false
+    const actualBrowser=accountDeviceFields(u).browserName
+    if(browser==='none'&&actualBrowser)return false
+    if(browser.startsWith('name:')&&actualBrowser.toLocaleLowerCase('vi')!==browser.slice(5).toLocaleLowerCase('vi'))return false
+    if(browser!=='all'&&browser!=='none'&&!browser.startsWith('name:')
+      &&!activeDevices.some((d:any)=>deviceBrowserBucket(d.browser_name)===browser))return false
 
     const st=hasST(u),sf=hasF(u)
     if(session==='full'&&!(st&&sf))return false
@@ -167,11 +171,29 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     return true
   }
 
+  // Derive filter choices from the loaded user list, not a fixed browser or
+  // order-count catalog. Reuse exactly the Browser text shown in the table.
+  const browserNames=[...new Map(enriched.map((u:any)=>accountDeviceFields(u).browserName)
+    .filter(Boolean).map((name:string)=>[name.toLocaleLowerCase('vi'),name] as const)).values()]
+    .sort((a,b)=>a.localeCompare(b,'vi'))
+  const browserOptions=[
+    ...browserNames.map(name=>({value:'name:'+name,label:name})),
+    ...(enriched.some((u:any)=>!accountDeviceFields(u).browserName)
+      ?[{value:'none',label:'Không có Browser'}]:[]),
+  ]
+  const sessionOptions=[
+    {value:'full',label:'Đủ ST + F',matches:(u:any)=>hasST(u)&&hasF(u)},
+    {value:'st',label:'Có SPC_ST',matches:(u:any)=>hasST(u)},
+    {value:'f',label:'Có SPC_F',matches:(u:any)=>hasF(u)},
+    {value:'missing',label:'Thiếu SPC',matches:(u:any)=>!(hasST(u)&&hasF(u))},
+    {value:'none',label:'Không SPC',matches:(u:any)=>!hasST(u)&&!hasF(u)},
+  ].filter(option=>enriched.some(option.matches)).map(({value,label})=>({value,label}))
+  const orderOptions=[...new Set(enriched.map((u:any)=>Number(u.order_count??0))
+    .filter((n:number)=>Number.isInteger(n)&&n>=0))]
+    .sort((a,b)=>a-b).map(n=>({value:String(n),label:n+' đơn'}))
   const voucherOptions=[...new Set(enriched.flatMap((u:any)=>u.voucher_tags as string[]))]
     .sort((a,b)=>a.localeCompare(b,'vi')).map(tag=>({value:'tag:'+tag,label:tag}))
-  const maxOrders=Math.max(5,...enriched.map((u:any)=>Number(u.order_count??0)))
-  const orderOptions=Array.from({length:Math.min(20,maxOrders)+1},(_,i)=>({value:String(i),label:i+' đơn'}))
-  if(maxOrders>20)orderOptions.push({value:'21+',label:'21+ đơn'})
+  const hasNoVoucher=enriched.some((u:any)=>!u.voucher_tags?.length)
 
   const scopeRows=enriched.filter(matchesAccountScope)
   const counts={
@@ -373,25 +395,18 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     <div className="p1-account-command-row">
     <form className="account-filter-bar one-line entity-command-bar entity-user-command" action="/purchase/accounts">
       <input className="search" name="q" defaultValue={sp.q??''} placeholder="Tìm User / SĐT / Email / máy / voucher"/>
-      <AccountFilterDropdown name="browser" value={browser} label="Browser" options={[
-        {value:'all',label:'Browser: Tất cả'},
-        {value:'chrome',label:'Chrome'},{value:'safari',label:'Safari'},
-        {value:'edge',label:'Edge'},{value:'app',label:'Shopee App'},
-        {value:'other',label:'Khác'},
+      <AccountFilterDropdown name="browser" value={browser} label="Browser" baseHref={filterHref()} options={[
+        {value:'all',label:'Browser: Tất cả'},...browserOptions,
       ]}/>
-      <AccountFilterDropdown name="session" value={session} label="SPC" options={[
-        {value:'all',label:'SPC: Tất cả'},
-        {value:'full',label:'Đủ ST + F'},{value:'st',label:'Có SPC_ST'},
-        {value:'f',label:'Có SPC_F'},{value:'missing',label:'Thiếu SPC'},
-        {value:'none',label:'Không SPC'},
+      <AccountFilterDropdown name="session" value={session} label="SPC" baseHref={filterHref()} options={[
+        {value:'all',label:'SPC: Tất cả'},...sessionOptions,
       ]}/>
-      <AccountFilterDropdown name="orders" value={orders} label="Số đơn" options={[
-        {value:'all',label:'Số đơn: Tất cả'},
-        ...orderOptions,
+      <AccountFilterDropdown name="orders" value={orders} label="Số đơn" baseHref={filterHref()} options={[
+        {value:'all',label:'Số đơn: Tất cả'},...orderOptions,
       ]}/>
-      <AccountFilterDropdown name="voucher" value={voucher} label="Tag voucher" options={[
+      <AccountFilterDropdown name="voucher" value={voucher} label="Tag voucher" baseHref={filterHref()} options={[
         {value:'all',label:'Tag: Tất cả'},
-        {value:'none',label:'Chưa dùng voucher'},
+        ...(hasNoVoucher?[{value:'none',label:'Chưa dùng voucher'}]:[]),
         ...voucherOptions,
       ]}/>
       {state!=='all'&&<input type="hidden" name="state" value={state}/>}
