@@ -1,5 +1,5 @@
 import { requireUser } from '@/lib/supabase/auth'
-import { SalesPOSWorkspace } from '@/components/sales-pos-workspace'
+import { SalesPOSClient } from '@/components/sales-pos-client'
 
 export default async function POSPage(){
   const {supabase,user}=await requireUser()
@@ -79,7 +79,7 @@ export default async function POSPage(){
 
   const errors=[warehouseError,balanceError,customerError,bankTransferResult.error,categoriesResult.error,printConfigResult.error].filter(Boolean).map((e:any)=>e.message)
 
-  return <SalesPOSWorkspace
+  return <SalesPOSClient
     warehouses={(warehouses??[]) as any[]}
     products={products}
     customers={(customers??[]) as any[]}
