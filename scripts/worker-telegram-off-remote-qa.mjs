@@ -56,6 +56,10 @@ for(const candidate of [url.origin,uniqueUrl]){
     contentType:r.headers.get("content-type"),
     resultKeys:data?Object.keys(data).slice(0,8):[],
     errorValue:typeof data?.error==="string"?data.error.slice(0,140):null,
+    cfErrorCode:data?.error_code??null,
+    cfErrorName:data?.error_name??null,
+    cfTitle:typeof data?.title==='string'?data.title.slice(0,100):null,
+    cfDetail:typeof data?.detail==='string'?data.detail.slice(0,160):null,
     bodyTag:!data?body.slice(0,90).replace(/[^a-zA-Z0-9 _-]/g,""):null,
   });
 }
