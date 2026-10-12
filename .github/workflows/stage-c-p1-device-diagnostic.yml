@@ -1,0 +1,78 @@
+name: Stage C P1 Device Save Diagnostic — RC b3b34942
+on:
+  push:
+    branches:
+      - qa/stage-c-final-b3b34942
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stage-c-purchase-20261012
+  cancel-in-progress: true
+jobs:
+  purchase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 34
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+      SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
+      PREVIEW_URL: https://erp-cross-module-qa-v1-mynh-erp-v5.mynh-forwork.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Probe historically pinned Preview without Cloudflare management API
+        run: |
+          # Management API intermittently serves HTML (not JSON); do not hammer it.
+          # This is a health check, not a fresh proof of immutable Preview SHA.
+          test "$PREVIEW_URL" = "https://erp-cross-module-qa-v1-mynh-erp-v5.mynh-forwork.workers.dev"
+          test "$(curl --silent --show-error --max-time 25 -o /tmp/stage-c-purchase-health.json -w '%{http_code}' "$PREVIEW_URL/api/health")" = 200
+          grep -q '"ok":true' /tmp/stage-c-purchase-health.json
+          test "$(curl --silent --show-error --max-time 25 -o /tmp/stage-c-purchase-login.html -w '%{http_code}' "$PREVIEW_URL/login")" = 200
+          echo 'STAGE_C_PREVIEW_HEALTH_PASS: deployment SHA last independently verified efdf63bba; fresh CF metadata currently unavailable'
+      - name: Create temporary QA login
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-setup.mjs
+      - name: Create identified QA User and orders
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-fixture-setup.mjs
+      - name: Prepare Chromium
+        run: |
+          npm install --no-save playwright --no-audit --no-fund
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: User detail → order → tracking, column actions and reload
+        id: journey
+        continue-on-error: true
+        timeout-minutes: 16
+        run: node scripts/p1-purchase-tables-qa.mjs
+      - name: Evaluate purchase E2E (not build)
+        if: always()
+        run: |
+          echo "Purchase E2E: ${{ steps.journey.outcome }}"
+          test "${{ steps.journey.outcome }}" = success
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage-c-purchase-${{ github.sha }}
+          path: qa-p1-purchase-artifacts/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Cleanup only labelled QA fixtures
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-fixture-cleanup.mjs
+      - name: Cleanup disposable QA login
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-cleanup.mjs
