@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { usePurchaseToolbarRoot } from '@/components/use-purchase-toolbar-root'
 import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
@@ -143,23 +142,28 @@ export function PurchaseOrderTable({
   baseQuery='',
   canEdit=false,
   carrierConfigs=[],
+  toolbar,
+  error,
 }:{
   rows:Row[]
   selectedId?:string|null
   baseQuery?:string
   canEdit?:boolean
   carrierConfigs?:CarrierConfig[]
+  toolbar:ReactNode
+  error?:string|null
 }){
   const [visible,setVisible]=useState<ColKey[]>(ALL)
   const [columnOrder,setColumnOrder]=useState<ColKey[]>(ALL)
   const [open,setOpen]=useState(false)
+  const [menuPosition,setMenuPosition]=useState({top:64,right:8})
   const [sort,setSort]=useState<SortKey>('time_new')
   const [selected,setSelected]=useState<string[]>([])
 
   const draggingRef=useRef<ColKey|null>(null)
   const tableWrapRef=useRef<HTMLDivElement|null>(null)
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
-  const toolbarRoot=usePurchaseToolbarRoot('p1-order-toolbar-actions')
+  const columnMenuRef=useRef<HTMLDivElement|null>(null)
 
   useEffect(()=>{
     try{
@@ -222,14 +226,27 @@ export function PurchaseOrderTable({
   useEffect(()=>{
     if(!open)return
     const onPointerDown=(event:PointerEvent)=>{
-      if(event.target instanceof Node&&!columnManagerRef.current?.contains(event.target))setOpen(false)
+      if(event.target instanceof Node
+        &&!columnManagerRef.current?.contains(event.target)
+        &&!columnMenuRef.current?.contains(event.target))setOpen(false)
     }
     const onKeyDown=(event:KeyboardEvent)=>{if(event.key==='Escape')setOpen(false)}
     document.addEventListener('pointerdown',onPointerDown)
     document.addEventListener('keydown',onKeyDown)
+    const recalculate=()=>{
+      const button=columnManagerRef.current?.querySelector<HTMLButtonElement>('.managed-column-button')
+      if(!button)return
+      const rect=button.getBoundingClientRect()
+      setMenuPosition({
+        top:Math.max(8,Math.min(rect.bottom+5,window.innerHeight-245)),
+        right:Math.max(8,window.innerWidth-rect.right),
+      })
+    }
+    window.addEventListener('resize',recalculate)
     return ()=>{
       document.removeEventListener('pointerdown',onPointerDown)
       document.removeEventListener('keydown',onKeyDown)
+      window.removeEventListener('resize',recalculate)
     }
   },[open])
 
@@ -436,8 +453,11 @@ export function PurchaseOrderTable({
     </td>
   }
 
-  return <div className="order-table-shell">
-    {toolbarRoot&&createPortal(<div className="p1-order-table-actions">
+  return <div className="order-table-shell with-inline-toolbar">
+    <div className="toolbar order-toolbar entity-command-bar">
+      {toolbar}
+      <div className="p1-order-toolbar-actions">
+        <div className="p1-order-table-actions">
       {canEdit&&selected.length>0&&<div className="p1-order-bulk-icons" aria-label={selected.length+' đơn đã chọn'}>
         <span className="p1-order-selected-count" title={selected.length+' đơn đã chọn'}>{selected.length}</span>
         {selectedArchived
@@ -460,10 +480,29 @@ export function PurchaseOrderTable({
         </button>
       </div>}
     <div className="p1-order-column-manager managed-column-wrap" ref={columnManagerRef}>
-      <button className="icon-button managed-column-button" type="button" onClick={()=>setOpen(v=>!v)} title="Cột & thứ tự" aria-expanded={open}>
+      <button className="icon-button managed-column-button" type="button"
+        onClick={event=>{
+          const rect=event.currentTarget.getBoundingClientRect()
+          // Anchor the floating menu to the actual button, independently
+          // of table scroll containers, slidebars and toolbar stacking contexts.
+          setMenuPosition({
+            top:Math.max(8,Math.min(rect.bottom+5,window.innerHeight-245)),
+            right:Math.max(8,window.innerWidth-rect.right),
+          })
+          setOpen(value=>!value)
+        }}
+        title="Sắp xếp, ẩn và hiện cột đơn nhập"
+        aria-label="Sắp xếp cột đơn nhập"
+        aria-haspopup="dialog" aria-expanded={open}>
         <ColumnIcon/>
       </button>
-      {open&&<div className="column-manager-menu">
+      {open&&typeof document!=='undefined'&&createPortal(
+        <div ref={columnMenuRef} className="column-manager-menu p1-order-floating-menu" role="dialog"
+          aria-label="Sắp xếp, ẩn và hiện cột đơn nhập"
+          style={{
+            '--p1-order-menu-top':menuPosition.top+'px',
+            '--p1-order-menu-right':menuPosition.right+'px',
+          } as CSSProperties}>
         <div className="column-manager-head">
           <b>Cột & thứ tự</b>
           <button type="button" onClick={resetColumns}>↺ Mặc định</button>
@@ -529,11 +568,16 @@ export function PurchaseOrderTable({
               onClick={()=>moveColumn(k,1)}>↓</button>
           </div>
         </div>)}
-      </div>}
-    </div></div>,toolbarRoot)}
+      </div>,document.body)}
+        </div>
+      </div>
+    </div>
+    </div>
 
     <div className="card table-card order-table-card" ref={tableWrapRef}>
-      <table className="table order-table mynh-p1-semantic-table" style={tableWidths}>
+      {error
+        ? <div className="error-text order-table-error" role="alert">{error}</div>
+        : <table className="table order-table mynh-p1-semantic-table" style={tableWidths}>
         <colgroup>
           {canEdit&&<col className="p1-order-col-select" style={panelShare(24)}/>}
           {shownColumns.map(k=><col key={k} className={'p1-order-col-'+k} style={panelShare(panelFitWeights[k])}/>)}
@@ -567,7 +611,7 @@ export function PurchaseOrderTable({
                 </tr>
               })}
         </tbody>
-      </table>
+      </table>}
     </div>
   </div>
 }

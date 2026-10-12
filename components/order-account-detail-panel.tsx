@@ -6,6 +6,7 @@ import type { AccountDeviceRow } from '@/lib/purchase-account-device-fields'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { updateERPUser } from '@/lib/actions/core'
 import { orderIsCancelled } from '@/lib/purchase-order-cancellation'
+import { prepaidSourceLabel,resolveOrderValue } from '@/lib/order-prepaid'
 
 type UserRecord={
   id:string,username:string,phone?:string|null,email?:string|null,status?:string|null,
@@ -16,6 +17,7 @@ type UserRecord={
 type UserOrder={
   id:string,shopee_order_id?:string|null,order_date?:string|null,
   cod?:number|null,order_status?:string|null,receive_status?:string|null,payment_status?:string|null,
+  prepaid_amount?:number|null,prepaid_source_type?:string|null,prepaid_source_label?:string|null,
   shipments?:{tracking_number?:string|null,carrier?:string|null,current_tracking_status?:string|null,is_active?:boolean|null}[]|null,
   area?:string|null,recipient_name?:string|null,recipient_phone?:string|null,
   recipient_address?:string|null,destination_hub?:string|null,archived_at?:string|null,
@@ -137,11 +139,15 @@ export function OrderAccountDetailPanel({
                 <div className="user-order-card-top">
                   <div><b>{order.shopee_order_id??order.id.slice(0,8)}</b>
                     <span>{formatDateTime(order.order_date)} · {order.area??'Chưa rõ khu vực'}</span></div>
-                  <strong>{formatMoney(order.cod)}</strong>
+                  <strong title="Giá trị đơn hàng">{(()=>{
+  const total=resolveOrderValue({paymentStatus:order.payment_status,prepaidAmount:order.prepaid_amount,cod:order.cod})
+  return total===null?'Chưa đủ dữ liệu':formatMoney(total)
+})()}</strong>
                 </div>
                 <div className="order-detail-strip">
                   <span>Đơn <b>{statusOf(order)}</b></span>
                   <span>Thanh toán <b>{statusLabel(order.payment_status)}</b></span>
+                  {order.prepaid_amount!=null&&<span>Đã trả <b>{formatMoney(order.prepaid_amount)}</b> · {prepaidSourceLabel(order.prepaid_source_type)}{order.prepaid_source_label?' · '+order.prepaid_source_label:''}</span>}
                   <span>Nhận <b>{statusLabel(order.receive_status)}</b></span>
                 </div>
                 <div className="user-order-products">

@@ -8,6 +8,7 @@ import { AccountFilterDropdown } from '@/components/account-filter-dropdown'
 import { VoucherTags } from '@/components/voucher-tags'
 import { UserBulkImport } from '@/components/user-bulk-import'
 import { ContextOrderPanel } from '@/components/context-order-panel'
+import { prepaidSourceLabel,resolveOrderValue } from '@/lib/order-prepaid'
 import Link from 'next/link'
 
 type SP={
@@ -132,7 +133,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   function matchesAccountScope(u:any){
     const activeDevices=u.active_devices??[]
     const allDevices=u.all_devices??[]
-    if(browser!=='all'&&!activeDevices.some((d:any)=>deviceBrowserBucket(d.browser_name)===browser))return false
+    const actualBrowser=accountDeviceFields(u).browserName
+    if(browser==='none'&&actualBrowser)return false
+    if(browser.startsWith('name:')&&actualBrowser.toLocaleLowerCase('vi')!==browser.slice(5).toLocaleLowerCase('vi'))return false
+    if(browser!=='all'&&browser!=='none'&&!browser.startsWith('name:')
+      &&!activeDevices.some((d:any)=>deviceBrowserBucket(d.browser_name)===browser))return false
 
     const st=hasST(u),sf=hasF(u)
     if(session==='full'&&!(st&&sf))return false
@@ -166,11 +171,29 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     return true
   }
 
+  // Derive filter choices from the loaded user list, not a fixed browser or
+  // order-count catalog. Reuse exactly the Browser text shown in the table.
+  const browserNames=[...new Map(enriched.map((u:any)=>accountDeviceFields(u).browserName)
+    .filter(Boolean).map((name:string)=>[name.toLocaleLowerCase('vi'),name] as const)).values()]
+    .sort((a,b)=>a.localeCompare(b,'vi'))
+  const browserOptions=[
+    ...browserNames.map(name=>({value:'name:'+name,label:name})),
+    ...(enriched.some((u:any)=>!accountDeviceFields(u).browserName)
+      ?[{value:'none',label:'Không có Browser'}]:[]),
+  ]
+  const sessionOptions=[
+    {value:'full',label:'Đủ ST + F',matches:(u:any)=>hasST(u)&&hasF(u)},
+    {value:'st',label:'Có SPC_ST',matches:(u:any)=>hasST(u)},
+    {value:'f',label:'Có SPC_F',matches:(u:any)=>hasF(u)},
+    {value:'missing',label:'Thiếu SPC',matches:(u:any)=>!(hasST(u)&&hasF(u))},
+    {value:'none',label:'Không SPC',matches:(u:any)=>!hasST(u)&&!hasF(u)},
+  ].filter(option=>enriched.some(option.matches)).map(({value,label})=>({value,label}))
+  const orderOptions=[...new Set(enriched.map((u:any)=>Number(u.order_count??0))
+    .filter((n:number)=>Number.isInteger(n)&&n>=0))]
+    .sort((a,b)=>a-b).map(n=>({value:String(n),label:n+' đơn'}))
   const voucherOptions=[...new Set(enriched.flatMap((u:any)=>u.voucher_tags as string[]))]
     .sort((a,b)=>a.localeCompare(b,'vi')).map(tag=>({value:'tag:'+tag,label:tag}))
-  const maxOrders=Math.max(5,...enriched.map((u:any)=>Number(u.order_count??0)))
-  const orderOptions=Array.from({length:Math.min(20,maxOrders)+1},(_,i)=>({value:String(i),label:i+' đơn'}))
-  if(maxOrders>20)orderOptions.push({value:'21+',label:'21+ đơn'})
+  const hasNoVoucher=enriched.some((u:any)=>!u.voucher_tags?.length)
 
   const scopeRows=enriched.filter(matchesAccountScope)
   const counts={
@@ -298,7 +321,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   }
   if(selected&&sp.tab==='orders'){
     const o=await supabase.from('orders').select(
-      'id,shopee_order_id,order_date,area,destination_hub,cod,receive_status,warehouse_status,order_status,payment_status,recipient_name,recipient_phone,recipient_address,source,archived_at,order_items(sku,product_name,variant,quantity,original_price,final_price),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active)'
+      'id,shopee_order_id,order_date,area,destination_hub,cod,receive_status,warehouse_status,order_status,payment_status,prepaid_amount,prepaid_source_type,prepaid_source_label,recipient_name,recipient_phone,recipient_address,source,archived_at,order_items(sku,product_name,variant,quantity,original_price,final_price),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active)'
     ).eq('erp_user_id',selected.id).order('order_date',{ascending:false}).limit(100)
     userOrders=(o.data??[]) as any[]
   }
@@ -306,7 +329,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   if(selected&&sp.order){
     const [od,it,vo]=await Promise.all([
       supabase.from('orders').select(
-        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,order_status,payment_status,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,last_track_at,next_track_at,replaced_at)'
+        'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,order_status,payment_status,prepaid_amount,prepaid_source_type,prepaid_source_label,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,updated_at,archived_at,erp_users(username),shipments(id,tracking_number,carrier,current_tracking_status,is_active,last_track_at,next_track_at,replaced_at)'
       ).eq('id',sp.order).eq('erp_user_id',selected.id).maybeSingle(),
       supabase.from('order_items').select('*').eq('order_id',sp.order).order('created_at'),
       supabase.from('order_vouchers').select('*').eq('order_id',sp.order).order('created_at'),
@@ -372,25 +395,18 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     <div className="p1-account-command-row">
     <form className="account-filter-bar one-line entity-command-bar entity-user-command" action="/purchase/accounts">
       <input className="search" name="q" defaultValue={sp.q??''} placeholder="Tìm User / SĐT / Email / máy / voucher"/>
-      <AccountFilterDropdown name="browser" value={browser} label="Browser" options={[
-        {value:'all',label:'Browser: Tất cả'},
-        {value:'chrome',label:'Chrome'},{value:'safari',label:'Safari'},
-        {value:'edge',label:'Edge'},{value:'app',label:'Shopee App'},
-        {value:'other',label:'Khác'},
+      <AccountFilterDropdown name="browser" value={browser} label="Browser" baseHref={filterHref()} options={[
+        {value:'all',label:'Browser: Tất cả'},...browserOptions,
       ]}/>
-      <AccountFilterDropdown name="session" value={session} label="SPC" options={[
-        {value:'all',label:'SPC: Tất cả'},
-        {value:'full',label:'Đủ ST + F'},{value:'st',label:'Có SPC_ST'},
-        {value:'f',label:'Có SPC_F'},{value:'missing',label:'Thiếu SPC'},
-        {value:'none',label:'Không SPC'},
+      <AccountFilterDropdown name="session" value={session} label="SPC" baseHref={filterHref()} options={[
+        {value:'all',label:'SPC: Tất cả'},...sessionOptions,
       ]}/>
-      <AccountFilterDropdown name="orders" value={orders} label="Số đơn" options={[
-        {value:'all',label:'Số đơn: Tất cả'},
-        ...orderOptions,
+      <AccountFilterDropdown name="orders" value={orders} label="Số đơn" baseHref={filterHref()} options={[
+        {value:'all',label:'Số đơn: Tất cả'},...orderOptions,
       ]}/>
-      <AccountFilterDropdown name="voucher" value={voucher} label="Tag voucher" options={[
+      <AccountFilterDropdown name="voucher" value={voucher} label="Tag voucher" baseHref={filterHref()} options={[
         {value:'all',label:'Tag: Tất cả'},
-        {value:'none',label:'Chưa dùng voucher'},
+        ...(hasNoVoucher?[{value:'none',label:'Chưa dùng voucher'}]:[]),
         ...voucherOptions,
       ]}/>
       {state!=='all'&&<input type="hidden" name="state" value={state}/>}
@@ -563,12 +579,16 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                       return <Link className="user-order-card detailed" href={selectedOrderHref(o)} key={o.id}>
                         <div className="user-order-card-top">
                           <div><b>{o.shopee_order_id??o.id.slice(0,8)}</b><span>{formatDateTime(o.order_date)} · {o.area??'Chưa rõ khu vực'}</span></div>
-                          <strong>{formatMoney(o.cod)}</strong>
+                          <strong title="Giá trị đơn hàng">{(()=>{
+  const total=resolveOrderValue({paymentStatus:o.payment_status,prepaidAmount:o.prepaid_amount,cod:o.cod})
+  return total===null?'Chưa đủ dữ liệu':formatMoney(total)
+})()}</strong>
                         </div>
 
                         <div className="order-detail-strip">
                           <span>Đơn <b>{statusLabel(o.order_status)}</b></span>
                           <span>Thanh toán <b>{statusLabel(o.payment_status)}</b></span>
+                           {o.prepaid_amount!=null&&<span>Đã trả <b>{formatMoney(o.prepaid_amount)}</b> · {prepaidSourceLabel(o.prepaid_source_type)}{o.prepaid_source_label?' · '+o.prepaid_source_label:''}</span>}
                           <span>Nhận <b>{statusLabel(o.receive_status)}</b></span>
                         </div>
 

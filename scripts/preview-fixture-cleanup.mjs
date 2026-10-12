@@ -132,6 +132,20 @@ await del('audit_logs','entity_id',f.warehouse_order_id)
 await del('audit_logs','entity_id',f.hub_order_id)
 await del('audit_logs','entity_id',f.erp_user_id)
 
+// P2 prepaid tests create exactly one unique order by the temporary QA user.
+// Discover by the fixture code, never delete arbitrary business records.
+if(f.prepaid_order_code){
+  const created=await rows('/rest/v1/orders?select=id&shopee_order_id=eq.'+
+    encodeURIComponent(String(f.prepaid_order_code).toUpperCase()))
+  for(const order of created){
+    await del('audit_logs','entity_id',order.id)
+    await del('shipments','order_id',order.id)
+    await del('order_vouchers','order_id',order.id)
+    await del('order_items','order_id',order.id)
+    await del('orders','id',order.id)
+  }
+}
+
 for(const variantId of variantIds)await del('inventory_transactions','product_variant_id',variantId)
 for(const saleId of saleIds)await del('sales','id',saleId)
 for(const paymentId of paymentIds)await del('customer_payments','id',paymentId)

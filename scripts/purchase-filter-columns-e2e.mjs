@@ -1,0 +1,301 @@
+// Verify real purchase-account filters and the order-column controls
+// on an isolated Cloudflare Preview using a temporary QA login.
+import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import {chromium} from 'playwright'
+import {createBrowserClient} from '@supabase/ssr'
+
+const base=process.env.PREVIEW_URL
+const url=process.env.SUPABASE_URL
+const key=process.env.SUPABASE_KEY
+const onlyOrderColumns=process.env.QA_ORDER_COLUMNS_ONLY==='1'
+assert.ok(base&&url&&key,'Thiếu cấu hình QA')
+const session=JSON.parse(fs.readFileSync('qa-session.json','utf8'))
+const jar=new Map()
+const client=createBrowserClient(url,key,{cookies:{
+  getAll:()=>[...jar.values()].map(x=>({name:x.name,value:x.value})),
+  setAll:items=>items.forEach(x=>jar.set(x.name,x)),
+}})
+const {error}=await client.auth.setSession({
+  access_token:session.access_token,refresh_token:session.refresh_token,
+})
+if(error)throw error
+const browser=await chromium.launch({headless:true,...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{})})
+fs.mkdirSync('qa-purchase-filter-columns-artifacts',{recursive:true})
+const results=[]
+function check(name,pass,details={}){
+  results.push({name,pass:Boolean(pass),...details})
+  console.log((pass?'PASS ':'FAIL ')+name+' '+JSON.stringify(details))
+}
+try {
+  const context=await browser.newContext({viewport:{width:1440,height:900}})
+  await context.addCookies([...jar.values()].map(c=>({
+    name:c.name,value:c.value,url:base,secure:c.options?.secure!==false,
+    httpOnly:Boolean(c.options?.httpOnly),sameSite:'Lax',
+  })))
+  const page=await context.newPage()
+  const go=async(route)=>{
+    const r=await page.goto(base+route,{waitUntil:'load',timeout:45000})
+    assert.equal(r?.status(),200,route+' HTTP '+r?.status())
+    assert.ok(!new URL(page.url()).pathname.includes('/login'),'Auth required')
+  }
+  // On the main Preview, isolate the column feature from unrelated Account
+  // filter hydration/network delays. The full User reference still runs on P2.
+  let userRowHeight=30
+  let userMenuWidth=244
+  if(!onlyOrderColumns){
+  await go('/purchase/accounts?range=all')
+  const filter=page.locator('form.account-filter-bar')
+  const dropdown=name=>filter.locator('.p1-filter-popover-control').nth(
+    {Browser:0,SPC:1,'Số đơn':2,'Tag voucher':3}[name])
+  check('Bốn bộ lọc là danh sách riêng của ERP, không phải native select',
+    await filter.locator('.p1-filter-popover-control').count()===4
+    &&await filter.locator('select.p1-filter-native').count()===0
+    &&await filter.locator('input[type="hidden"][name="browser"]').count()===1)
+  const initialClosed=await dropdown('Browser').evaluate(el=>{
+    const summary=el.querySelector('button.p1-filter-trigger')
+    const menu=el.querySelector('.p1-filter-top-layer')
+    const style=getComputedStyle(summary)
+    const b=menu.getBoundingClientRect()
+    return {
+      firstChild:el.firstElementChild===summary,
+      closed:!el.querySelector('.p1-filter-top-layer').matches(':popover-open'),
+      menuHidden:getComputedStyle(menu).display==='none'&&b.height===0,
+      fontFamily:style.fontFamily,fontSize:parseFloat(style.fontSize),lineHeight:parseFloat(style.lineHeight),
+      fontWeight:style.fontWeight,
+      bodyFont:getComputedStyle(document.body).fontFamily,
+    }
+  })
+  check('HTML đúng chuẩn: summary đứng đầu, menu thực sự ẩn trước click',
+    initialClosed.firstChild&&initialClosed.closed&&initialClosed.menuHidden,initialClosed)
+  check('Typography dropdown đồng bộ font ERP, đủ lớn cho tiếng Việt',
+    initialClosed.fontSize>=12
+    &&initialClosed.fontFamily.toLowerCase().includes('inter')
+    &&initialClosed.lineHeight>=16,
+    initialClosed)
+  await dropdown('Browser').locator('button.p1-filter-trigger').click()
+  const actualMenu=dropdown('Browser').locator('.p1-filter-top-layer')
+  const menuHit=await actualMenu.locator('a[data-value^="name:"]').first().evaluate(el=>{
+    const r=el.getBoundingClientRect()
+    const top=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)
+    const style=getComputedStyle(el)
+    return {hit:top?.tagName,canClick:top===el||el.contains(top),
+      fontFamily:style.fontFamily,fontSize:parseFloat(style.fontSize),
+      lineHeight:parseFloat(style.lineHeight)}
+  })
+  check('Một lựa chọn Browser có thể bấm thật và font không khác header',
+    menuHit.canClick&&menuHit.fontSize>=12
+    &&menuHit.fontFamily===initialClosed.fontFamily,
+    menuHit)
+  const browserMeta=await dropdown('Browser').evaluate(el=>{
+    const rect=el.querySelector('button.p1-filter-trigger').getBoundingClientRect()
+    const hit=document.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2)
+    const choices=[...el.querySelectorAll('a.p1-filter-option')].map(x=>({
+      value:x.getAttribute('data-value'),text:x.textContent.trim(),
+    }))
+    return {open:el.querySelector('.p1-filter-top-layer').matches(':popover-open'),hit:hit?.tagName,options:choices}
+  })
+  check('Browser mở được menu và giá trị từ data-list thực',
+    browserMeta.open&&browserMeta.options.length>=2
+    &&browserMeta.options.slice(1).every(x=>x.value.startsWith('name:')||x.value==='none'),
+    {open:browserMeta.open,values:browserMeta.options.slice(0,6)})
+  const browserAnchor=dropdown('Browser').locator('a[data-value^="name:"]').first()
+  const browserValue=await browserAnchor.getAttribute('data-value')
+  assert.ok(browserValue,'Không có browser thực để thử chọn')
+  await browserAnchor.click()
+  await page.waitForURL(u=>u.searchParams.get('browser')===browserValue,{timeout:25000})
+  const browserName=browserValue.slice(5)
+  await page.locator('.user-table tbody tr').first().waitFor({timeout:20000})
+  const filteredBrowsers=await page.locator('.user-table tbody tr td[data-account-col="browser"]').allTextContents()
+  check('Bộ lọc thay đổi DỮ LIỆU BẢNG, không chỉ URL',
+    filteredBrowsers.length>0&&filteredBrowsers.every(x=>x.trim().toLocaleLowerCase('vi')===browserName.toLocaleLowerCase('vi')),
+    {browserName,visibleRowCount:filteredBrowsers.length,browsers:filteredBrowsers.slice(0,10)})
+  check('Chọn Browser thực, giữ tham số GET và ô lọc',await filter.locator('input[name="browser"]').inputValue()===browserValue)
+  await dropdown('SPC').locator('button.p1-filter-trigger').click()
+  const spcAnchor=dropdown('SPC').locator('a.p1-filter-option[data-value]:not([data-value="all"])').first()
+  const spcValue=await spcAnchor.getAttribute('data-value')
+  assert.ok(spcValue,'Không có phân loại SPC trong dữ liệu')
+  await spcAnchor.click()
+  await page.waitForURL(u=>u.searchParams.get('session')===spcValue,{timeout:25000})
+  check('SPC chọn từ trạng thái hiện có và giữ Browser',
+    new URL(page.url()).searchParams.get('browser')===browserValue
+    &&await filter.locator('input[name="session"]').inputValue()===spcValue)
+  await dropdown('Số đơn').locator('button.p1-filter-trigger').click()
+  const orderAnchor=dropdown('Số đơn').locator('a.p1-filter-option[data-value]:not([data-value="all"])').first()
+  const orderValue=await orderAnchor.getAttribute('data-value')
+  assert.ok(orderValue,'Không có số lượng đơn từ data-list')
+  await orderAnchor.click()
+  await page.waitForURL(u=>u.searchParams.get('orders')===orderValue,{timeout:25000})
+  check('Số đơn chọn từ số lượng trong data-list và giữ SPC',
+    await filter.locator('input[name="orders"]').inputValue()===orderValue
+    &&new URL(page.url()).searchParams.get('session')===spcValue)
+  await dropdown('Tag voucher').locator('button.p1-filter-trigger').click()
+  const voucherAnchor=dropdown('Tag voucher').locator('a.p1-filter-option[data-value]:not([data-value="all"])').first()
+  const voucherValue=await voucherAnchor.getAttribute('data-value')
+  assert.ok(voucherValue,'Không có Tag voucher/chưa dùng từ data-list')
+  await voucherAnchor.click()
+  await page.waitForURL(u=>u.searchParams.get('voucher')===voucherValue,{timeout:25000})
+  check('Tag voucher chọn được và giữ Số đơn',
+    await filter.locator('input[name="voucher"]').inputValue()===voucherValue
+    &&new URL(page.url()).searchParams.get('orders')===orderValue)
+  await page.reload({waitUntil:'load'})
+  check('Bốn lựa chọn giữ nguyên sau reload',
+    await filter.locator('input[name="browser"]').inputValue()===browserValue
+    &&await filter.locator('input[name="session"]').inputValue()===spcValue
+    &&await filter.locator('input[name="orders"]').inputValue()===orderValue
+    &&await filter.locator('input[name="voucher"]').inputValue()===voucherValue)
+  await dropdown('Browser').locator('button.p1-filter-trigger').click()
+  if(await dropdown('Browser').locator('input.p1-filter-search').count()){
+    await dropdown('Browser').locator('input.p1-filter-search').fill('không-có-trong-data')
+    check('Data-list có thể tìm, báo khi không có kết quả',
+      await dropdown('Browser').locator('.p1-filter-empty').isVisible())
+  }
+  await page.keyboard.press('Escape')
+  check('Esc đóng danh sách lựa chọn và menu không còn bắt cú nhấp',
+    await dropdown('Browser').evaluate(el=>!el.querySelector('.p1-filter-top-layer').matches(':popover-open')
+      &&getComputedStyle(el.querySelector('.p1-filter-top-layer')).display==='none'))
+  await dropdown('SPC').locator('button.p1-filter-trigger').click()
+  await page.locator('.entity-user-command .search').click()
+  check('Nhấp ngoài đóng dropdown SPC',
+    await dropdown('SPC').evaluate(el=>!el.querySelector('.p1-filter-top-layer').matches(':popover-open')))
+  for(const [w,h] of [[320,568],[390,844],[768,1024],[1440,900]]){
+    await page.setViewportSize({width:w,height:h})
+    const trigger=dropdown('SPC').locator('button.p1-filter-trigger')
+    const geometry=await trigger.evaluate(el=>{
+      const r=el.getBoundingClientRect()
+      return {left:r.left,right:r.right,width:r.width,viewport:innerWidth}
+    })
+    check('Nút lọc SPC vừa màn '+w,geometry.left>=-1
+      &&geometry.right<=w+2&&geometry.width>=90,geometry)
+    await trigger.click()
+    const m=await dropdown('SPC').locator('.p1-filter-top-layer').evaluate(el=>{
+      const r=el.getBoundingClientRect()
+      return {left:r.left,right:r.right,width:r.width}
+    })
+    check('Menu SPC không bị cắt ngang '+w,m.left>=-1&&m.right<=w+2,m)
+    await page.keyboard.press('Escape')
+  }
+  await page.setViewportSize({width:1440,height:900})
+  await page.screenshot({path:'qa-purchase-filter-columns-artifacts/accounts-filter-1440.png',fullPage:false})
+  const userColumnButton=page.locator('.p1-account-filter-actions .column-manager .managed-column-button')
+  await userColumnButton.click()
+  const userMenu=page.locator('.p1-account-filter-actions .column-manager-menu')
+  userRowHeight=await userMenu.locator('.column-manager-row').first().evaluate(el=>el.getBoundingClientRect().height)
+  userMenuWidth=await userMenu.evaluate(el=>el.getBoundingClientRect().width)
+  check('Bảng User làm chuẩn menu cột gọn',userRowHeight<=38&&userMenuWidth<=255,
+    {userRowHeight,userMenuWidth})
+  await page.screenshot({path:'qa-purchase-filter-columns-artifacts/user-columns-reference-1440.png',fullPage:false})
+  await page.keyboard.press('Escape')
+  }
+  // Reproduce the reported state: a User-scoped order list on the main Preview.
+  const qaUser=session.fixtures?.erp_user_id
+  assert.ok(qaUser,'Thiếu User QA cho kiểm thử URL lọc theo User')
+  await go('/purchase/orders?range=all&user='+encodeURIComponent(qaUser))
+  const button=page.getByRole('button',{name:'Sắp xếp cột đơn nhập'})
+  check('Nút điều chỉnh cột có một bản duy nhất trong toolbar',
+    await button.count()===1&&await page.locator('.order-toolbar .p1-order-column-manager').count()===1)
+  const rightOffset=await button.evaluate(el=>{
+    const b=el.getBoundingClientRect(),bar=el.closest('.order-toolbar')?.getBoundingClientRect()
+    return bar?Math.round(bar.right-b.right):999
+  })
+  check('Nút điều chỉnh cột nằm sát mép phải toolbar',rightOffset>=0&&rightOffset<=12,{rightOffset})
+  const buttonWidth=await button.evaluate(el=>el.getBoundingClientRect().width)
+  check('Nút Đơn nhập chỉ có icon giống User, rộng 29px',
+    buttonWidth>=27&&buttonWidth<=32&&!((await button.innerText()).trim()),{buttonWidth})
+  await button.click()
+  const menu=page.getByRole('dialog',{name:'Sắp xếp, ẩn và hiện cột đơn nhập'})
+  check('Sắp xếp cột opens a real interactive dialog',await menu.isVisible())
+  const hitTest=()=>menu.evaluate(el=>{
+    const r=el.getBoundingClientRect()
+    // Test a real menu row, not just Playwright's isVisible()
+    const row=el.querySelector('.column-manager-row')||el
+    const b=row.getBoundingClientRect()
+    const x=Math.min(innerWidth-2,Math.max(2,b.left+b.width/2))
+    const y=Math.min(innerHeight-2,Math.max(2,b.top+b.height/2))
+    const hit=document.elementFromPoint(x,y)
+    return {top:r.top,left:r.left,right:r.right,hitTag:hit?.tagName??'',
+      clickable:!!hit&&(el===hit||el.contains(hit))}
+  })
+  const menuHit=await hitTest()
+  check('Menu cột nổi trên mọi lớp và nhận click thật',menuHit.clickable,menuHit)
+  const metrics=await menu.evaluate(el=>{
+    const r=el.getBoundingClientRect()
+    const rows=[...el.querySelectorAll('.column-manager-row')]
+    const first=rows[0],label=first?.querySelector('label'),arrows=first?.querySelector('.column-order-buttons')
+    const l=label?.getBoundingClientRect(),a=arrows?.getBoundingClientRect()
+    const up=arrows?.querySelector('button'),down=arrows?.querySelectorAll('button')[1]
+    const u=up?.getBoundingClientRect(),d=down?.getBoundingClientRect()
+    return {width:r.width,height:r.height,rowHeight:first?.getBoundingClientRect().height,
+      labelTop:l?.top,arrowTop:a?.top,arrowWidth:a?.width,
+      horizontalArrows:!!u&&!!d&&d.left>u.right-1&&Math.abs(d.top-u.top)<2,
+      singleLine:!!l&&!!a&&Math.abs((l.top+l.height/2)-(a.top+a.height/2))<4,
+      menuScrollable:el.scrollHeight>el.clientHeight}
+  })
+  check('Menu Đơn nhập đúng chuẩn bảng User: hàng gọn, nút lên/xuống ngang, cuộn bên trong',
+    metrics.width<=userMenuWidth+5&&metrics.rowHeight<=Math.max(38,userRowHeight+3)
+    &&metrics.horizontalArrows&&metrics.singleLine&&metrics.height<=440,
+    {userRowHeight,userMenuWidth,...metrics})
+  await page.screenshot({path:'qa-purchase-filter-columns-artifacts/orders-columns-compact-1440.png',fullPage:false})
+  const keys=()=>page.locator('.order-table thead th[data-order-col]').evaluateAll(rows=>rows.map(x=>x.getAttribute('data-order-col')))
+  const original=await keys()
+  const voucher=menu.locator('.column-manager-row[data-column-key="voucher"]')
+  await voucher.getByRole('button',{name:'Chuyển Voucher lên'}).click()
+  const changed=await keys()
+  check('Up action changes actual order table column position',
+    changed.indexOf('voucher')===original.indexOf('voucher')-1,
+    {before:original,after:changed})
+  await voucher.locator('input[type="checkbox"]').uncheck()
+  check('Hide action removes column from header and table',!(await keys()).includes('voucher'))
+  await voucher.locator('input[type="checkbox"]').check()
+  check('Show action restores visible column', (await keys()).includes('voucher'))
+  await page.reload({waitUntil:'load'})
+  await page.locator('.order-table thead th[data-order-col]').first().waitFor()
+  await page.waitForFunction(()=>document.querySelectorAll('.order-table th[data-order-col="voucher"]').length>0)
+  check('Column position persists across reload',
+    (await keys()).indexOf('voucher')===original.indexOf('voucher')-1)
+  await button.click()
+  await menu.locator('.column-manager-head button').click()
+  check('Reset restores default column position',
+    (await keys()).indexOf('voucher')===original.indexOf('voucher'))
+  await page.keyboard.press('Escape')
+  check('Escape closes column manager',await menu.count()===0)
+  // Open a detail slidebar, then use the column manager again on the new toolbar.
+  // This is where a detached portal used to leave a dead control.
+  const firstOrder=page.locator('.order-table tbody .p1-order-identity-cell a').first()
+  if(await firstOrder.count()){
+    await firstOrder.click()
+    await page.waitForURL(u=>u.searchParams.has('order'),{timeout:25000})
+    await page.locator('.order-panel').waitFor()
+    await button.click()
+    check('Nút cột hoạt động khi mở slidebar chi tiết đơn',await menu.isVisible())
+    await page.keyboard.press('Escape')
+    check('Esc đóng menu khi slidebar đang mở',await menu.count()===0)
+    await page.reload({waitUntil:'load'})
+    await button.click()
+    check('Nút cột vẫn mở được sau reload có slidebar',await menu.isVisible())
+    await page.keyboard.press('Escape')
+    // On Mobile the detail slidebar intentionally covers its background list.
+    // Close it before testing the toolbar at narrow viewports.
+    await page.getByRole('link',{name:'Đóng chi tiết đơn'}).click()
+    await page.waitForURL(u=>!u.searchParams.has('order'),{timeout:20000})
+  }
+  for(const [width,height] of [[320,568],[390,844],[768,1024],[1440,900]]){
+    await page.setViewportSize({width,height})
+    await button.click()
+    const g=await menu.evaluate(el=>{
+      const b=el.getBoundingClientRect()
+      return {left:b.left,right:b.right,bottom:b.bottom,viewport:innerWidth}
+    })
+    const h=await hitTest()
+    check('Column manager visible and bounded '+width,g.left>=-1&&g.right<=width+2&&h.clickable,
+      {...g,clickable:h.clickable,hitTag:h.hitTag})
+    if(width===390)await page.screenshot({path:'qa-purchase-filter-columns-artifacts/orders-columns-mobile-390.png',fullPage:false})
+    await page.keyboard.press('Escape')
+  }
+  await context.close()
+}finally{await browser.close()}
+const errors=results.filter(x=>!x.pass)
+const summary={checks:results.length,passed:results.length-errors.length,failed:errors.length,errors}
+fs.writeFileSync('qa-purchase-filter-columns-artifacts/summary.json',JSON.stringify(summary,null,2))
+console.log('PURCHASE_FILTER_COLUMN_E2E '+JSON.stringify(summary))
+if(errors.length)process.exit(1)
