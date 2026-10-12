@@ -1,6 +1,9 @@
 name: Stage C — POS Client-only CPU E2E
 
 on:
+  push:
+    branches:
+      - fix/stage-c-pos-cpu-ssr-20261012
   workflow_dispatch:
 
 permissions:
