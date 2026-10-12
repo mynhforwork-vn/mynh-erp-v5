@@ -327,6 +327,8 @@ for(const role of ['admin','operator','viewer']){
     record('ui',role+' purchase order create visibility',role==='viewer'?!createOrderVisible:createOrderVisible,{createOrderVisible})
 
     await go(page,role,'/sales/pos')
+    const saleWarehouse=page.locator('.pos-warehouse select').first()
+    if(await saleWarehouse.count())await saleWarehouse.selectOption(String(f.warehouse_id))
     const search=page.getByRole('textbox',{name:'Tìm sản phẩm theo barcode, SKU hoặc tên'}).first()
     if(await search.count()){
       await search.fill(f.sale_sku);await page.waitForTimeout(200)
@@ -373,8 +375,13 @@ for(const role of ['admin','operator','viewer']){
       if(!found)throw new Error('Cannot locate unique QA deletion order')
       // Purchase Orders uses the approved right-hand detail slidebar, not a row action popup.
       await matching.getByRole('link',{name:orderCode,exact:true}).first().click()
+      const lifecycle=page.locator('.record-lifecycle-zone').first()
+      await lifecycle.getByRole('button',{name:'Lưu trữ',exact:true}).click()
+      await page.waitForURL(url=>url.searchParams.get('archive')==='archived',{timeout:25000})
+      const archived=await adminRest('/rest/v1/orders?select=id,archived_at&id=eq.'+encodeURIComponent(orderId))
+      record('backend','Permanent order deletion requires archive first',Boolean(archived[0]?.archived_at),{orderCode})
       const deleteEntry=page.locator('.permanent-delete-box')
-      await deleteEntry.waitFor({state:'visible',timeout:15000})
+      await deleteEntry.waitFor({state:'visible',timeout:25000})
       await deleteEntry.getByRole('button',{name:'Xóa vĩnh viễn đơn'}).click()
       const dialog=page.getByRole('dialog',{name:'Xóa vĩnh viễn đơn hàng'})
       await dialog.waitFor({state:'visible'})
