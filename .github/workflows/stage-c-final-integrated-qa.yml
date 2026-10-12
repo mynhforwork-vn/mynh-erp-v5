@@ -1,0 +1,130 @@
+name: Stage C Final Integrated QA — RC b3b34942
+
+on:
+  push:
+    branches:
+      - qa/stage-c-final-b3b34942
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage-c-final-b3b34942
+  cancel-in-progress: true
+
+jobs:
+  integrated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PREVIEW_URL: https://erp-cross-module-qa-v1-mynh-erp-v5.mynh-forwork.workers.dev
+      SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+      SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
+      QA_TRACKING_FOCUS: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Confirm QA branch differs only in test code from release commit
+        run: |
+          git cat-file -e b3b34942ad2170eefdebe99b11ec7599d2975425^{commit}
+          git diff --name-only b3b34942ad2170eefdebe99b11ec7599d2975425 HEAD | tee /tmp/stage-c-changed.txt
+          if grep -Ev '^(scripts/|.github/workflows/)' /tmp/stage-c-changed.txt; then
+            echo 'Non-QA application change; abort' >&2
+            exit 1
+          fi
+      - name: Install QA dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck integrated application
+        run: npm run typecheck
+      - name: Check deployed Preview and expected commit
+        run: |
+          test "$(curl -fsS --max-time 25 -o /tmp/stage-c-health.json -w '%{http_code}' "$PREVIEW_URL/api/health")" = 200
+          grep -q '"ok":true' /tmp/stage-c-health.json
+          test "$(curl -fsS --max-time 25 -o /tmp/stage-c-login.html -w '%{http_code}' "$PREVIEW_URL/login")" = 200
+          node --input-type=module <<'NODE'
+          const expected='b3b34942ad2170eefdebe99b11ec7599d2975425'
+          const url='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+
+            '/workers/workers/mynh-erp-v5/previews/fd4c22f5fcf0447d8d6d310d1ef40605/deployments'
+          let result=null
+          try{
+            const res=await fetch(url,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(12000)})
+            if(res.ok)result=await res.json()
+          }catch{console.log('CF_MANAGEMENT_METADATA_TEMPORARILY_UNAVAILABLE')}
+          const found=result?.result?.[0]?.annotations?.['workers/commit_sha']
+          if(found&&found!==expected)throw Error('Preview is NOT exact release commit; stop QA')
+          console.log('STAGE_C_PREVIEW_SOURCE '+JSON.stringify({expected,verified_now:found===expected,previously_verified:true}))
+          NODE
+      - name: Create unique temporary QA account
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-setup.mjs
+      - name: Create uniquely labeled QA fixtures
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-fixture-setup.mjs
+      - name: Prepare Playwright
+        run: |
+          npm install --no-save playwright --no-audit --no-fund
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: Exact QR reference and finance dates/filters on integrated Preview
+        id: financeqr
+        continue-on-error: true
+        timeout-minutes: 10
+        run: node --experimental-strip-types scripts/stage-c-finance-qr-qa.mjs
+      - name: Responsive Tracking tables and slidebar
+        id: responsive
+        continue-on-error: true
+        timeout-minutes: 15
+        run: node scripts/tracking-responsive-tables-qa.mjs
+      - name: Full User → Orders → Tracking + columns and reload E2E
+        id: purchase
+        continue-on-error: true
+        timeout-minutes: 18
+        run: node scripts/p1-purchase-tables-qa.mjs
+      - name: Focused RBAC API and UI + cf-ray diagnostics
+        id: rbac
+        continue-on-error: true
+        timeout-minutes: 16
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/stage-c-rbac-focused-qa.mjs
+      - name: Aggregate integrated QA gate
+        if: always()
+        run: |
+          echo "QR & Finance: ${{ steps.financeqr.outcome }}"
+          echo "Responsive: ${{ steps.responsive.outcome }}"
+          echo "Purchase: ${{ steps.purchase.outcome }}"
+          echo "RBAC/503: ${{ steps.rbac.outcome }}"
+          test "${{ steps.financeqr.outcome }}" = success
+          test "${{ steps.responsive.outcome }}" = success
+          test "${{ steps.purchase.outcome }}" = success
+          test "${{ steps.rbac.outcome }}" = success
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage-c-final-integrated-${{ github.sha }}
+          path: |
+            qa-stage-c-artifacts/
+            qa-p1-purchase-artifacts/
+            qa-tracking-slidebar-artifacts/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Cleanup only this run's QA fixture
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-fixture-cleanup.mjs
+      - name: Cleanup only this run's QA account
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-cleanup.mjs
