@@ -49,7 +49,6 @@ export function AccountFilterDropdown({
   return <details className="p1-filter-dropdown p1-filter-details" ref={ref} onToggle={e=>{
     if(!e.currentTarget.open)setSearch('')
   }}>
-    <input type="hidden" name={name} value={value}/>
     <summary className="p1-filter-trigger" aria-label={label+': '+(active?.label??'Tất cả')}>
       <span title={active?.label}>{active?.label??label+': Tất cả'}</span>
       <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none"
@@ -57,6 +56,7 @@ export function AccountFilterDropdown({
         <path d="m6 9 6 6 6-6"/>
       </svg>
     </summary>
+    <input type="hidden" name={name} value={value}/>
     <div className="p1-filter-menu" role="group" aria-label={'Danh sách '+label}>
       {options.length>8&&<input type="search" aria-label={'Tìm '+label} className="p1-filter-search"
         placeholder="Tìm trong danh sách" value={search} onChange={e=>setSearch(e.target.value)}
@@ -68,7 +68,12 @@ export function AccountFilterDropdown({
             className={'p1-filter-option'+(value===option.value?' selected':'')}
             aria-current={value===option.value?'true':undefined}
             data-value={option.value}>
-            <span className="p1-filter-check" aria-hidden="true">{value===option.value?'✓':''}</span>
+            <span className="p1-filter-check" aria-hidden="true">{value===option.value
+              ?<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                 <path d="m5 12 4 4L19 6"/>
+               </svg>
+              :null}</span>
             <span>{option.label}</span>
           </a>)}
       </div>

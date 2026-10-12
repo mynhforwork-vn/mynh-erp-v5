@@ -593,9 +593,10 @@
   padding:0 9px!important;list-style:none!important;
   border:1px solid #dbe4eb!important;border-radius:7px!important;
   background:#fff!important;color:#344b5e!important;
-  font:500 11px/1.3 inherit!important;
-  font-family:inherit!important;font-size:11px!important;font-weight:500!important;
-  line-height:1.3!important;cursor:pointer!important;
+  font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  font-size:12px!important;font-weight:500!important;line-height:1.45!important;
+  letter-spacing:normal!important;text-transform:none!important;
+  cursor:pointer!important;
 }
 .brand-shell-v1 .p1-filter-dropdown summary.p1-filter-trigger::-webkit-details-marker{display:none!important}
 .brand-shell-v1 .p1-filter-dropdown summary.p1-filter-trigger>span{
@@ -606,6 +607,12 @@
 .brand-shell-v1 .p1-filter-dropdown[open] summary.p1-filter-trigger{
   border-color:#8bafc7!important;outline:0!important;
   box-shadow:0 0 0 2px rgba(65,118,154,.10)!important;
+}
+.brand-shell-v1 .p1-filter-details:not([open])>.p1-filter-menu{
+  display:none!important;
+}
+.brand-shell-v1 .p1-filter-details[open]>.p1-filter-menu{
+  display:flex!important;
 }
 .brand-shell-v1 .p1-filter-dropdown .p1-filter-menu{
   box-sizing:border-box!important;
@@ -640,8 +647,10 @@
   background:#fff!important;color:#405464!important;
   text-align:left!important;text-decoration:none!important;
   white-space:nowrap!important;
-  font-family:inherit!important;font-size:11px!important;font-weight:500!important;
-  line-height:1.35!important;cursor:pointer!important;
+  font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  font-size:12px!important;font-weight:500!important;line-height:1.45!important;
+  letter-spacing:normal!important;text-transform:none!important;
+  cursor:pointer!important;
 }
 .brand-shell-v1 .p1-filter-dropdown .p1-filter-option>span:last-child{
   min-width:0;overflow:hidden;text-overflow:ellipsis
@@ -653,7 +662,8 @@
   background:#e8f2f9!important;color:#255a82!important;font-weight:650!important
 }
 .brand-shell-v1 .p1-filter-dropdown .p1-filter-check{
-  flex:0 0 16px;text-align:center;color:#3275aa;font-size:13px
+  flex:0 0 16px;width:16px;display:inline-flex;align-items:center;justify-content:center;
+  color:#3275aa
 }
 .brand-shell-v1 .p1-filter-dropdown .p1-filter-empty{padding:10px;color:#718195;font-size:11px}
 @media(max-width:600px){
