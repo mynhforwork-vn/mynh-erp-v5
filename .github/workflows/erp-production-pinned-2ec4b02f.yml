@@ -1,0 +1,157 @@
+name: MYNH ERP V5 — Pinned Production Deployment 2ec4b02f
+
+on:
+  push:
+    branches:
+      - ops/erp-prod-pinned-2ec4b02f-20261013
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  deploy-erp-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TARGET_COMMIT: 2ec4b02f326fa8f76dfa9b8556a339b1dbed2dcb
+      EXPECTED_PRODUCTION_VERSION: a67c106a-c587-4108-9827-db6e711081fe
+      EXPECTED_TRACKING_VERSION: 6f26895d-5af0-43dc-978a-b761d7c39dd8
+      EXPECTED_GHN_VERSION: 619f6ffe-6e19-46b0-99cd-0a491fd5be3b
+    steps:
+      - name: Checkout exactly the approved main merge commit
+        uses: actions/checkout@v4
+        with:
+          ref: 2ec4b02f326fa8f76dfa9b8556a339b1dbed2dcb
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify exact source, approved main and Cloudflare production baseline
+        run: |
+          test "$(git rev-parse HEAD)" = "$TARGET_COMMIT"
+          git diff --exit-code 7811069b610908b3054e8a5c36a40032fd9f56ee "$TARGET_COMMIT"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs'
+          const env=process.env
+          const cfg=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'))
+          if(cfg.name!=='mynh-erp-v5'||cfg.keep_vars!==true||cfg.assets?.binding!=='ASSETS')
+            throw Error('Unexpected ERP production config; stopping')
+          const gh=await fetch('https://api.github.com/repos/mynhforwork-vn/mynh-erp-v5/branches/main',{
+            headers:{Authorization:'Bearer '+env.GITHUB_API_TOKEN,Accept:'application/vnd.github+json'},signal:AbortSignal.timeout(15000)})
+          if(!gh.ok)throw Error('GitHub main read failed '+gh.status)
+          const main=await gh.json()
+          if(main.commit?.sha!==env.TARGET_COMMIT)throw Error('Main moved: do not deploy mismatched SHA')
+          const base='https://api.cloudflare.com/client/v4/accounts/'+env.CLOUDFLARE_ACCOUNT_ID
+          async function get(path){
+            const r=await fetch(base+path,{headers:{Authorization:'Bearer '+env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(15000)})
+            if(!r.ok)throw Error('Cloudflare preflight HTTP '+r.status)
+            const data=await r.json()
+            if(!data.success)throw Error('Cloudflare preflight API failed')
+            return data.result
+          }
+          for(const [name,expected] of [
+            ['mynh-erp-v5',env.EXPECTED_PRODUCTION_VERSION],
+            ['erp-auto-tracking',env.EXPECTED_TRACKING_VERSION],
+            ['ghn-proxy',env.EXPECTED_GHN_VERSION]]){
+            const deployments=await get('/workers/scripts/'+name+'/deployments')
+            const active=deployments?.deployments?.[0]?.versions?.[0]?.version_id
+            if(active!==expected)throw Error('Worker production version drift: '+name)
+            console.log('PREFLIGHT_WORKER '+JSON.stringify({worker:name,version:active,matched:true}))
+          }
+          const settings=await get('/workers/scripts/mynh-erp-v5/settings')
+          const bindings=(settings.bindings||[]).map(x=>x.name).sort()
+          if(!bindings.includes('ASSETS')||settings.compatibility_date!=='2026-09-28')
+            throw Error('Unexpected ERP binding or compatibility configuration')
+          console.log('PREFLIGHT_RELEASE '+JSON.stringify({commit:env.TARGET_COMMIT,main_locked:true,
+            worker:'mynh-erp-v5',keep_vars:true,bindings}))
+          NODE
+
+      - name: Verify current primary and alias production endpoints
+        run: |
+          for base in https://mynh-erp-v5.mynh-forwork.workers.dev https://erp.mynh-forwork.workers.dev; do
+            test "$(curl --silent --show-error --max-time 25 -o /tmp/erp-health -w '%{http_code}' "$base/api/health")" = 200
+            grep -q '"ok":true' /tmp/erp-health
+            test "$(curl --silent --show-error --max-time 25 -o /tmp/erp-login -w '%{http_code}' "$base/login")" = 200
+            grep -q 'MYNH ERP' /tmp/erp-login
+          done
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Static release checks and typecheck
+        run: |
+          node scripts/remediation-static-qa.mjs
+          npm run typecheck
+
+      - name: Build OpenNext Worker from pinned source
+        run: npx opennextjs-cloudflare build
+
+      - name: Deploy ONLY mynh-erp-v5 production Worker
+        id: deploy
+        run: npx opennextjs-cloudflare deploy
+
+      - name: Verify ERP Production primary and alias HTTP smoke
+        id: smoke
+        run: |
+          for base in https://mynh-erp-v5.mynh-forwork.workers.dev https://erp.mynh-forwork.workers.dev; do
+            curl --fail --silent --show-error --retry 4 --retry-delay 3 --retry-connrefused --max-time 30 "$base/api/health" -o /tmp/erp-new-health
+            grep -q '"ok":true' /tmp/erp-new-health
+            curl --fail --silent --show-error --retry 4 --retry-delay 3 --max-time 30 "$base/login" -o /tmp/erp-new-login
+            grep -q 'MYNH ERP' /tmp/erp-new-login
+            echo "PROD_SMOKE_PASS $base health + login"
+          done
+
+      - name: Verify tracking and GHN workers were not redeployed
+        run: |
+          node --input-type=module <<'NODE'
+          const env=process.env,base='https://api.cloudflare.com/client/v4/accounts/'+env.CLOUDFLARE_ACCOUNT_ID
+          for(const [name,expected] of [['erp-auto-tracking',env.EXPECTED_TRACKING_VERSION],['ghn-proxy',env.EXPECTED_GHN_VERSION]]){
+            const response=await fetch(base+'/workers/scripts/'+name+'/deployments',{
+              headers:{Authorization:'Bearer '+env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(15000)})
+            if(!response.ok)throw Error(name+' version check HTTP '+response.status)
+            const j=await response.json()
+            const current=j.result?.deployments?.[0]?.versions?.[0]?.version_id
+            if(current!==expected)throw Error('Unexpected non-ERP deployment: '+name)
+            console.log('NON_ERP_UNCHANGED '+JSON.stringify({worker:name,version:current}))
+          }
+          NODE
+
+      - name: Roll back ONLY ERP Worker if post-deploy checks fail
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        run: |
+          node --input-type=module <<'NODE'
+          const env=process.env
+          const url='https://api.cloudflare.com/client/v4/accounts/'+env.CLOUDFLARE_ACCOUNT_ID+'/workers/scripts/mynh-erp-v5/deployments'
+          const response=await fetch(url,{
+            method:'POST',
+            headers:{Authorization:'Bearer '+env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'},
+            body:JSON.stringify({strategy:'percentage',versions:[{percentage:100,version_id:env.EXPECTED_PRODUCTION_VERSION}],
+              annotations:{'workers/message':'Automated ERP-only rollback after pinned release smoke failure'}}),
+            signal:AbortSignal.timeout(20000)})
+          const result=await response.json().catch(()=>null)
+          if(!response.ok||!result?.success)throw Error('ERP rollback failed; operator intervention required')
+          console.log('ERP_ROLLBACK '+JSON.stringify({restored:env.EXPECTED_PRODUCTION_VERSION,created:true}))
+          NODE
+
+      - name: Record production deployment evidence
+        if: always()
+        run: |
+          {
+            echo "## MYNH ERP V5 pinned Production deployment"
+            echo "- Requested commit: $TARGET_COMMIT"
+            echo "- ERP Worker only: mynh-erp-v5"
+            echo "- Baseline ERP version: $EXPECTED_PRODUCTION_VERSION"
+            echo "- GHN/Tracking/Telegram/Supabase: no write operations"
+            echo "- Checkout, build, deployment, post-smoke, rollback outcomes are recorded by job steps"
+          } >> "$GITHUB_STEP_SUMMARY"
