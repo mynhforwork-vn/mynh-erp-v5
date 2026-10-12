@@ -59,7 +59,7 @@ try{
     })
     const passed=Boolean(response?.ok())&&info.rows===5&&info.noTelegram&&info.noTelegramInput
       &&info.hasInApp&&info.hasAlert&&info.hasBatch&&info.fits
-      &&info.columnCount===(view.width<=760?2:5)&&!info.bodyOverflow
+      &&info.columnCount===(view.width<=1100?2:5)&&!info.bodyOverflow
       &&errors.length===0
     results.push({width:view.width,passed,response:response?.status(),...info,errors})
     console.log((passed?'PASS ':'FAIL ')+view.width+' in-app-only notification settings '+JSON.stringify({status:response?.status(),...info,errors}))
