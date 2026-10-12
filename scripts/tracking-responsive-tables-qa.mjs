@@ -272,10 +272,12 @@ try{
           &&hubHeader.tableScrollWidth>=hubHeader.tableLaneWidth),
         cols??{reason:'missing table columns'})
       check(view.width+' Tracking fits lane instead of wasting 1120px',
-        Boolean(hubHeader&&hubHeader.tableWidth<=Math.max(760,hubHeader.tableLaneWidth)+15
-          &&(hubHeader.tableLaneWidth>=760
+        Boolean(hubHeader&&// All seven readable Tracking columns require about 794px minimum;
+        // below that, horizontal scrolling is correct and must remain usable.
+        hubHeader.tableWidth<=Math.max(800,hubHeader.tableLaneWidth)+15
+          &&(hubHeader.tableLaneWidth>=800
             ?hubHeader.tableWidth<=hubHeader.tableLaneWidth+12
-            :hubHeader.tableWidth-hubHeader.tableLaneWidth<=760-hubHeader.tableLaneWidth+15)),
+            :hubHeader.tableWidth-hubHeader.tableLaneWidth<=800-hubHeader.tableLaneWidth+15)),
         {table:hubHeader?.tableWidth,lane:hubHeader?.tableLaneWidth})
       if(visible){
         if([320,390,768,1024,1440].includes(view.width)){
@@ -433,7 +435,10 @@ try{
         &&m.panelWidth>=350&&m.panelRight<=1444&&m.panelLeft>=-2
         &&m.overflowX!=='hidden'&&m.horizontalScrollWorks
         &&(m.tableWidth<=m.wrapWidth+8||m.scrollWidth>m.clientWidth+4)
-        &&(!['User','Đơn nhập','Công nợ'].includes(spec.label)||m.actionSticky)),
+        // A sticky action cell is necessary only when its table overflows.
+        // When the entire table fits, a non-sticky action remains fully accessible.
+        &&(!['User','Đơn nhập','Công nợ'].includes(spec.label)
+          ||m.scrollWidth<=m.clientWidth+4||m.actionSticky)),
       m??{visible:shown})
   }
   // Regression checks for screenshot-reported operational screens.
