@@ -104,7 +104,13 @@ async function browserFor(session,role){
   const page=await context.newPage()
   page.on('console',m=>{if(m.type()==='error')summary.consoleErrors.push({role,url:page.url(),text:m.text()})})
   page.on('pageerror',e=>summary.pageErrors.push({role,url:page.url(),text:String(e)}))
-  page.on('response',r=>{if(r.status()>=500)summary.network5xx.push({role,url:r.url(),status:r.status(),resourceType:r.request().resourceType()})})
+  page.on('response',r=>{
+    if(r.status()<500)return
+    const item={role,url:r.url().split('?')[0],status:r.status(),resourceType:r.request().resourceType(),
+      cfRay:r.headers()['cf-ray']??null,server:r.headers()['server']??null}
+    summary.network5xx.push(item)
+    console.log('QA_RBAC_HTTP_5XX '+JSON.stringify(item))
+  })
   return {browser,page}
 }
 async function go(page,role,path){
@@ -119,6 +125,10 @@ async function go(page,role,path){
   for(let attempt=1;attempt<=5;attempt++){
     try{
       const res=await page.goto(target,{waitUntil:'domcontentloaded',timeout:30000})
+      // Allow previous RSC/fetch work to settle before the next route.
+      // Unlike retries, this is a read-only QA request pacing measure,
+      // not a change to application or carrier polling.
+      await page.waitForLoadState('networkidle',{timeout:5000}).catch(()=>{})
       await page.waitForTimeout(attempt===1?500:1000)
       status=res?.status()??0
       finalUrl=page.url()
@@ -128,7 +138,7 @@ async function go(page,role,path){
       navigationError=''
 
       if(status>0&&status<500&&!login&&!serverError){
-        summary.network5xx=summary.network5xx.filter(x=>!(x.role===role&&x.resourceType==='document'&&x.url===target))
+        // Never erase 5xx evidence after a successful navigation retry.
         record('routes',role+' '+path,true,{status,finalUrl,attempt})
         return
       }
