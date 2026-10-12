@@ -41,7 +41,16 @@ export function AccountFilterDropdown({name,value,options,label,baseHref}:{
     <input type="hidden" name={name} value={value}/>
     <div id={id} popover="auto" className="p1-filter-menu p1-filter-top-layer"
       role="dialog" aria-label={'Danh sách '+label}
-      onToggle={e=>{if(!e.currentTarget.matches(':popover-open'))setSearch('')}}>
+      onToggle={e=>{if(!e.currentTarget.matches(':popover-open'))setSearch('')}}
+      onKeyDown={e=>{
+        // Search fields can consume Escape to clear text without closing the
+        // native popover. One Escape should always dismiss the filter.
+        if(e.key==='Escape'){
+          e.preventDefault()
+          e.stopPropagation()
+          e.currentTarget.hidePopover()
+        }
+      }}>
       {options.length>8&&<input type="search" className="p1-filter-search" value={search}
         aria-label={'Tìm '+label} placeholder="Tìm trong danh sách" autoComplete="off"
         onChange={e=>setSearch(e.target.value)}
