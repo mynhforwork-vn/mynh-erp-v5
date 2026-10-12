@@ -540,7 +540,7 @@ export function SalesPOSWorkspace({
       </div>
       <div className="head-actions">
         <Link className="button" href="/sales">Tổng quan bán hàng</Link>
-        <Link className="button" href="/sales/history">Lịch sử bán</Link>
+        <Link className="button" href="/sales/history" prefetch={false}>Lịch sử bán</Link>
         <span className="status-pill green pos-live-status"><i/>POS sẵn sàng</span>
       </div>
     </header>
@@ -893,7 +893,7 @@ export function SalesPOSWorkspace({
         </div>
         <div className="pos-success-actions">
           <button className="button" type="button" onClick={()=>printReceipt('final')}>In hóa đơn</button>
-          <Link className="button" href={'/sales/history?sale='+receipt.sale_id}>Xem hóa đơn</Link>
+          <Link className="button" href={'/sales/history?sale='+receipt.sale_id} prefetch={false}>Xem hóa đơn</Link>
           <button
             className="button primary"
             type="button"
