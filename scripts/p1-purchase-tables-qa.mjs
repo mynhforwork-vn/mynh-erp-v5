@@ -646,8 +646,33 @@ try {
           &&await page.locator('.account-detail-panel [name="device_name"],.account-detail-panel [name="device_type"],.account-detail-panel [name="browser_profile"]').count()===0)
         await page.locator('input[name="mobile_device_type"]').fill('iPhone QA 15')
         await page.locator('input[name="browser_name"]').fill('Chrome QA')
-        await page.locator('.account-detail-panel form button.primary').click()
-        await page.waitForURL(url=>url.searchParams.get('user')===fixture.erp_user_id&&!url.searchParams.get('mode'),{timeout:20000})
+        const saveResponses=[]
+        const captureSaveResponse=response=>{
+          if(response.status()<500)return
+          const record={status:response.status(),path:new URL(response.url()).pathname,
+            cf_ray:response.headers()['cf-ray']||null,resourceType:response.request().resourceType()}
+          saveResponses.push(record)
+        }
+        page.on('response',captureSaveResponse)
+        try{
+          await page.locator('.account-detail-panel form button.primary').click()
+          await page.waitForURL(url=>url.searchParams.get('user')===fixture.erp_user_id&&!url.searchParams.get('mode'),{timeout:30000})
+        }catch(error){
+          const state=await page.evaluate(()=>{
+            const panel=document.querySelector('.account-detail-panel')
+            const form=panel?.querySelector('form')
+            return {
+              pathname:location.pathname,
+              mode:new URL(location.href).searchParams.get('mode'),
+              formVisible:!!form,
+              submitDisabled:form?.querySelector('button.primary')?.disabled??null,
+              alertText:[...panel?.querySelectorAll('[role="alert"],.error-box,.notice,.form-error')||[]]
+                .map(el=>(el.textContent||'').slice(0,180)).slice(0,4)
+            }
+          }).catch(()=>({unavailable:true}))
+          console.log('STAGE_C_USER_DEVICE_SAVE_DIAGNOSTIC '+JSON.stringify({state,failures:saveResponses,error:String(error.message).slice(0,180)}))
+          throw error
+        }finally{page.off('response',captureSaveResponse)}
         await page.locator('.purchase-device-detail-grid').waitFor({state:'visible',timeout:15000})
         const detail=await page.locator('.purchase-device-detail-grid').innerText()
         check('User device details show Mobile type and Browser name',
