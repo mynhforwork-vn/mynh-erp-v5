@@ -1,9 +1,6 @@
 name: Stage C — Diagnose POS History RSC Prefetch 503
 
 on:
-  push:
-    branches:
-      - fix/stage-c-sales-history-prefetch-503
   workflow_dispatch:
 
 permissions:
