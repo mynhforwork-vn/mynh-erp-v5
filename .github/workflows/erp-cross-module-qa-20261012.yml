@@ -71,20 +71,35 @@ jobs:
         timeout-minutes: 18
         run: node scripts/erp-cross-module-smoke.mjs
       - name: "QA mutations round 1: warehouse receipt, POS debt and ledger persistence"
+        id: mutation1
+        continue-on-error: true
         timeout-minutes: 18
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/preview-mutation-qa.mjs
       - name: "QA mutations round 2: cancellation returns, transfer and finance persistence"
+        id: mutation2
+        continue-on-error: true
         timeout-minutes: 18
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/preview-mutation-qa-v2.mjs
       - name: "QA role-based access: Admin Operator Viewer, REST and UI"
+        id: rbac
+        continue-on-error: true
         timeout-minutes: 18
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/preview-rbac-qa.mjs
+      - name: Aggregate E2E release gate
+        if: always()
+        run: |
+          echo "Mutation 1: ${{ steps.mutation1.outcome }}"
+          echo "Mutation 2: ${{ steps.mutation2.outcome }}"
+          echo "RBAC: ${{ steps.rbac.outcome }}"
+          test "${{ steps.mutation1.outcome }}" = "success"
+          test "${{ steps.mutation2.outcome }}" = "success"
+          test "${{ steps.rbac.outcome }}" = "success"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
