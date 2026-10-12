@@ -1,0 +1,128 @@
+name: Stage C Sales 503 — Full Cross-Module Regression
+
+on:
+  push:
+    branches:
+      - fix/stage-c-sales-history-prefetch-503
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage-c-sales-503-full-qa
+  cancel-in-progress: true
+
+jobs:
+  cross-module-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+      SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
+      PREVIEW_URL: https://erp-stage-c-prefetch-qa-mynh-erp-v5.mynh-forwork.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: "Static regression: warehouse, finance, tracking and in-app notifications"
+        run: |
+          node scripts/remediation-static-qa.mjs
+          node --experimental-strip-types scripts/destination-hub-routing-qa.mjs
+          node --experimental-strip-types scripts/notification-production-qa.mjs
+          node --experimental-strip-types scripts/notification-in-app-only-qa.mjs
+          node --experimental-strip-types scripts/notification-order-tasks-qa.mjs
+          node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+          node --experimental-strip-types scripts/table-platform-p0-qa.mjs
+      - name: TypeScript typecheck
+        run: npm run typecheck
+      - name: Cloudflare OpenNext build (no Production deploy)
+        run: npx opennextjs-cloudflare build
+      - name: Verify previously deployed immutable isolated QA Preview (no upload)
+        run: |
+          node --input-type=module <<'NODE'
+          const path='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+
+            '/workers/workers/mynh-erp-v5/previews/ad4dae78eb534bc9b738e888eca28edc/deployments'
+          const r=await fetch(path,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}})
+          if(!r.ok)throw Error('Pinned Preview metadata unavailable: HTTP '+r.status)
+          const j=await r.json()
+          if(!j.success||j.result?.[0]?.annotations?.['workers/commit_sha']!=='9b4cc1a8e643d5cfd944f7e023c103e392a61fad')
+            throw Error('Pinned runtime mismatch: stop QA')
+          console.log('STAGE_C_SALES_503_PINNED 9b4cc1a8 (only QA scripts/workflows changed after)')
+          NODE
+      - name: Smoke isolated QA Preview
+        run: |
+          test "$(curl --silent --show-error --max-time 25 -o health.json -w '%{http_code}' "$PREVIEW_URL/api/health")" = "200"
+          grep -q '"ok":true' health.json
+          test "$(curl --silent --show-error --max-time 25 -o login.html -w '%{http_code}' "$PREVIEW_URL/login")" = "200"
+      - name: Create temporary QA operator
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-setup.mjs
+      - name: Create identifiable isolated QA fixtures
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-fixture-setup.mjs
+      - name: Prepare Playwright/Chromium
+        run: |
+          npm install --no-save playwright --no-audit --no-fund
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: "QA browser: Warehouse POS Finance mobile/tablet/desktop smoke"
+        timeout-minutes: 18
+        run: node scripts/erp-cross-module-smoke.mjs
+      - name: "QA mutations round 1: warehouse receipt, POS debt and ledger persistence"
+        id: mutation1
+        continue-on-error: true
+        timeout-minutes: 18
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-mutation-qa.mjs
+      - name: "QA mutations round 2: cancellation returns, transfer and finance persistence"
+        id: mutation2
+        continue-on-error: true
+        timeout-minutes: 18
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-mutation-qa-v2.mjs
+      - name: "QA role-based access: Admin Operator Viewer, REST and UI"
+        id: rbac
+        continue-on-error: true
+        timeout-minutes: 18
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-rbac-qa.mjs
+      - name: Aggregate E2E release gate
+        if: always()
+        run: |
+          echo "Mutation 1: ${{ steps.mutation1.outcome }}"
+          echo "Mutation 2: ${{ steps.mutation2.outcome }}"
+          echo "RBAC: ${{ steps.rbac.outcome }}"
+          test "${{ steps.mutation1.outcome }}" = "success"
+          test "${{ steps.mutation2.outcome }}" = "success"
+          test "${{ steps.rbac.outcome }}" = "success"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: erp-cross-module-qa-${{ github.sha }}
+          path: |
+            qa-browser-artifacts/
+            qa-cross-module-artifacts/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Cleanup ONLY isolated QA fixtures
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-fixture-cleanup.mjs
+      - name: Cleanup temporary QA operator
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-cleanup.mjs
