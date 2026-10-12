@@ -46,20 +46,20 @@ try {
   if(!onlyOrderColumns){
   await go('/purchase/accounts?range=all')
   const filter=page.locator('form.account-filter-bar')
-  const dropdown=name=>filter.locator('details.p1-filter-details').nth(
+  const dropdown=name=>filter.locator('.p1-filter-popover-control').nth(
     {Browser:0,SPC:1,'Số đơn':2,'Tag voucher':3}[name])
   check('Bốn bộ lọc là danh sách riêng của ERP, không phải native select',
-    await filter.locator('details.p1-filter-details').count()===4
+    await filter.locator('.p1-filter-popover-control').count()===4
     &&await filter.locator('select.p1-filter-native').count()===0
     &&await filter.locator('input[type="hidden"][name="browser"]').count()===1)
   const initialClosed=await dropdown('Browser').evaluate(el=>{
-    const summary=el.querySelector('summary')
-    const menu=el.querySelector('.p1-filter-menu')
+    const summary=el.querySelector('button.p1-filter-trigger')
+    const menu=el.querySelector('.p1-filter-top-layer')
     const style=getComputedStyle(summary)
     const b=menu.getBoundingClientRect()
     return {
       firstChild:el.firstElementChild===summary,
-      closed:!el.open,
+      closed:!el.querySelector('.p1-filter-top-layer').matches(':popover-open'),
       menuHidden:getComputedStyle(menu).display==='none'&&b.height===0,
       fontFamily:style.fontFamily,fontSize:parseFloat(style.fontSize),lineHeight:parseFloat(style.lineHeight),
       fontWeight:style.fontWeight,
@@ -73,8 +73,8 @@ try {
     &&initialClosed.fontFamily.toLowerCase().includes('inter')
     &&initialClosed.lineHeight>=16,
     initialClosed)
-  await dropdown('Browser').locator('summary').click()
-  const actualMenu=dropdown('Browser').locator('.p1-filter-menu')
+  await dropdown('Browser').locator('button.p1-filter-trigger').click()
+  const actualMenu=dropdown('Browser').locator('.p1-filter-top-layer')
   const menuHit=await actualMenu.locator('a[data-value^="name:"]').first().evaluate(el=>{
     const r=el.getBoundingClientRect()
     const top=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)
@@ -88,12 +88,12 @@ try {
     &&menuHit.fontFamily===initialClosed.fontFamily,
     menuHit)
   const browserMeta=await dropdown('Browser').evaluate(el=>{
-    const rect=el.querySelector('summary').getBoundingClientRect()
+    const rect=el.querySelector('button.p1-filter-trigger').getBoundingClientRect()
     const hit=document.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2)
     const choices=[...el.querySelectorAll('a.p1-filter-option')].map(x=>({
       value:x.getAttribute('data-value'),text:x.textContent.trim(),
     }))
-    return {open:el.open,hit:hit?.tagName,options:choices}
+    return {open:el.querySelector('.p1-filter-top-layer').matches(':popover-open'),hit:hit?.tagName,options:choices}
   })
   check('Browser mở được menu và giá trị từ data-list thực',
     browserMeta.open&&browserMeta.options.length>=2
@@ -111,7 +111,7 @@ try {
     filteredBrowsers.length>0&&filteredBrowsers.every(x=>x.trim().toLocaleLowerCase('vi')===browserName.toLocaleLowerCase('vi')),
     {browserName,visibleRowCount:filteredBrowsers.length,browsers:filteredBrowsers.slice(0,10)})
   check('Chọn Browser thực, giữ tham số GET và ô lọc',await filter.locator('input[name="browser"]').inputValue()===browserValue)
-  await dropdown('SPC').locator('summary').click()
+  await dropdown('SPC').locator('button.p1-filter-trigger').click()
   const spcAnchor=dropdown('SPC').locator('a.p1-filter-option[data-value]:not([data-value="all"])').first()
   const spcValue=await spcAnchor.getAttribute('data-value')
   assert.ok(spcValue,'Không có phân loại SPC trong dữ liệu')
@@ -120,7 +120,7 @@ try {
   check('SPC chọn từ trạng thái hiện có và giữ Browser',
     new URL(page.url()).searchParams.get('browser')===browserValue
     &&await filter.locator('input[name="session"]').inputValue()===spcValue)
-  await dropdown('Số đơn').locator('summary').click()
+  await dropdown('Số đơn').locator('button.p1-filter-trigger').click()
   const orderAnchor=dropdown('Số đơn').locator('a.p1-filter-option[data-value]:not([data-value="all"])').first()
   const orderValue=await orderAnchor.getAttribute('data-value')
   assert.ok(orderValue,'Không có số lượng đơn từ data-list')
@@ -129,7 +129,7 @@ try {
   check('Số đơn chọn từ số lượng trong data-list và giữ SPC',
     await filter.locator('input[name="orders"]').inputValue()===orderValue
     &&new URL(page.url()).searchParams.get('session')===spcValue)
-  await dropdown('Tag voucher').locator('summary').click()
+  await dropdown('Tag voucher').locator('button.p1-filter-trigger').click()
   const voucherAnchor=dropdown('Tag voucher').locator('a.p1-filter-option[data-value]:not([data-value="all"])').first()
   const voucherValue=await voucherAnchor.getAttribute('data-value')
   assert.ok(voucherValue,'Không có Tag voucher/chưa dùng từ data-list')
@@ -144,7 +144,7 @@ try {
     &&await filter.locator('input[name="session"]').inputValue()===spcValue
     &&await filter.locator('input[name="orders"]').inputValue()===orderValue
     &&await filter.locator('input[name="voucher"]').inputValue()===voucherValue)
-  await dropdown('Browser').locator('summary').click()
+  await dropdown('Browser').locator('button.p1-filter-trigger').click()
   if(await dropdown('Browser').locator('input.p1-filter-search').count()){
     await dropdown('Browser').locator('input.p1-filter-search').fill('không-có-trong-data')
     check('Data-list có thể tìm, báo khi không có kết quả',
@@ -152,15 +152,15 @@ try {
   }
   await page.keyboard.press('Escape')
   check('Esc đóng danh sách lựa chọn và menu không còn bắt cú nhấp',
-    await dropdown('Browser').evaluate(el=>!el.open
-      &&getComputedStyle(el.querySelector('.p1-filter-menu')).display==='none'))
-  await dropdown('SPC').locator('summary').click()
+    await dropdown('Browser').evaluate(el=>!el.querySelector('.p1-filter-top-layer').matches(':popover-open')
+      &&getComputedStyle(el.querySelector('.p1-filter-top-layer')).display==='none'))
+  await dropdown('SPC').locator('button.p1-filter-trigger').click()
   await page.locator('.entity-user-command .search').click()
   check('Nhấp ngoài đóng dropdown SPC',
-    await dropdown('SPC').evaluate(el=>!el.open))
+    await dropdown('SPC').evaluate(el=>!el.querySelector('.p1-filter-top-layer').matches(':popover-open')))
   for(const [w,h] of [[320,568],[390,844],[768,1024],[1440,900]]){
     await page.setViewportSize({width:w,height:h})
-    const trigger=dropdown('SPC').locator('summary')
+    const trigger=dropdown('SPC').locator('button.p1-filter-trigger')
     const geometry=await trigger.evaluate(el=>{
       const r=el.getBoundingClientRect()
       return {left:r.left,right:r.right,width:r.width,viewport:innerWidth}
@@ -168,7 +168,7 @@ try {
     check('Nút lọc SPC vừa màn '+w,geometry.left>=-1
       &&geometry.right<=w+2&&geometry.width>=90,geometry)
     await trigger.click()
-    const m=await dropdown('SPC').locator('.p1-filter-menu').evaluate(el=>{
+    const m=await dropdown('SPC').locator('.p1-filter-top-layer').evaluate(el=>{
       const r=el.getBoundingClientRect()
       return {left:r.left,right:r.right,width:r.width}
     })
