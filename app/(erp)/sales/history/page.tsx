@@ -162,7 +162,7 @@ export default async function SalesHistoryPage({searchParams}:{searchParams:Prom
       </div>
       <div className="head-actions">
         <Link className="button" href="/sales">Tổng quan</Link>
-        <Link className="button primary" href="/sales/pos">Mở POS</Link>
+        <Link className="button primary" prefetch={false} href="/sales/pos">Mở POS</Link>
       </div>
     </header>
 
