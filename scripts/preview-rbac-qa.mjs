@@ -299,10 +299,22 @@ for(const role of ['admin','operator','viewer']){
     const archiveTab=page.locator('.data-management-settings-v10 .settings-subtabs-v6')
       .getByRole('button',{name:/^Lưu trữ & dọn dẹp/}).first()
     const archiveTabVisible=await archiveTab.count()>0
-    if(archiveTabVisible)await archiveTab.click()
-    const permanentDelete=await page.locator('.data-management-settings-v10 .data-danger-confirm-v10')
-      .getByText('Xóa dữ liệu lưu trữ',{exact:true}).count()>0
-    record('ui',role+' permanent purge visibility',archiveTabVisible&&(role==='admin'?permanentDelete:!permanentDelete),{archiveTabVisible,permanentDelete})
+    let archiveTabActive=false
+    if(archiveTabVisible){
+      await page.waitForLoadState('load',{timeout:18000}).catch(()=>null)
+      for(let attempt=0;attempt<3&&!archiveTabActive;attempt++){
+        await archiveTab.click()
+        await page.waitForTimeout(500)
+        archiveTabActive=(await archiveTab.getAttribute('class')??'').split(/\s+/).includes('active')
+      }
+    }
+    // Do not infer a missing Admin purge control while React is still on Overview.
+    // The feature must exist for Admin and must not be visible to Operator/Viewer.
+    const permanentDelete=await page.locator('.data-management-settings-v10 details.data-danger-confirm-v10 > summary')
+      .filter({hasText:'Xóa dữ liệu lưu trữ'}).count()>0
+    record('ui',role+' permanent purge visibility',
+      archiveTabVisible&&archiveTabActive&&(role==='admin'?permanentDelete:!permanentDelete),
+      {archiveTabVisible,archiveTabActive,permanentDelete})
 
     await go(page,role,'/settings?section=shipping&shipping_tab=hubs')
     const hubSubtab=page.locator('.shipping-settings-v6 .settings-subtabs-v6').getByRole('button',{name:/^Kho đích/}).first()
