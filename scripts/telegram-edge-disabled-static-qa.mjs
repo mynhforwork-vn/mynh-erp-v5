@@ -13,7 +13,7 @@ const checks=[
  ["Tracking dispatcher is separate and still in repository",()=>{assert.ok(tracking.includes("runTracking")||tracking.includes("claim_due_shipments"));assert.ok(!source.includes("claim_due_shipments"))}],
 // Execute ONLY the retired handler in a constrained Node VM; no Supabase, bot or provider connections.
  ["All HTTP methods return 410; zero outbound calls",async()=>{
-  const body=source.replace(/^import\\s+"jsr:@supabase\\/functions-js\\/edge-runtime\\.d\\.ts";\\s*/,"");
+  const body=source.replace('import "jsr:@supabase/functions-js/edge-runtime.d.ts";', "")
   assert.notEqual(body,source,"Unknown Edge runtime import header");
   let handler=null;
   let outbound=0;
