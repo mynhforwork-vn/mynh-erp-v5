@@ -573,124 +573,90 @@
   }
   .brand-shell-v1 .p1-account-filter-actions{margin-left:auto}
 }
-/* Browser-native <details> disclosures (not OS select menus), populated
-   from the actual account list; summary and links work without hydration. */
-.brand-shell-v1 .p1-account-command-row{
-  position:relative!important;isolation:isolate;z-index:50!important;
-}
-/* Table cells can have z-index 120+ for sticky/interactive states.
-   Raise the whole filter toolbar only while a data-list is open, so the
-   actual clickable option stays above the data table, not just visible. */
-.brand-shell-v1 .p1-account-command-row:has(.p1-filter-details[open]){
-  z-index:3000!important;
-}
+/* Account data-list menus are native top-layer popovers: neither table
+   cells nor scroll containers can intercept their choices. */
 .brand-shell-v1 form.account-filter-bar.one-line.entity-user-command{
-  overflow:visible!important;align-items:center!important;gap:6px!important;
+  overflow:visible!important;align-items:center!important;gap:6px!important
 }
 .brand-shell-v1 .entity-user-command .p1-filter-dropdown{
   position:relative!important;flex:0 1 130px!important;
-  min-width:97px!important;max-width:180px!important;
-  z-index:18;
+  min-width:97px!important;max-width:180px!important
 }
-.brand-shell-v1 .entity-user-command .p1-filter-dropdown[open]{z-index:100!important}
-.brand-shell-v1 .p1-filter-dropdown summary.p1-filter-trigger{
-  box-sizing:border-box!important;
+.brand-shell-v1 .p1-filter-popover-control>button.p1-filter-trigger{
+  box-sizing:border-box!important;appearance:none!important;
+  width:100%!important;height:29px!important;min-height:29px!important;
   display:flex!important;align-items:center!important;justify-content:space-between!important;
-  gap:6px!important;
-  width:100%!important;height:29px!important;
-  padding:0 9px!important;list-style:none!important;
+  gap:6px!important;padding:0 9px!important;
   border:1px solid #dbe4eb!important;border-radius:7px!important;
   background:#fff!important;color:#344b5e!important;
   font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
   font-size:12px!important;font-weight:500!important;line-height:1.45!important;
-  letter-spacing:normal!important;text-transform:none!important;
-  cursor:pointer!important;
+  letter-spacing:normal!important;text-transform:none!important;text-align:left!important;
+  cursor:pointer!important
 }
-.brand-shell-v1 .p1-filter-dropdown summary.p1-filter-trigger::-webkit-details-marker{display:none!important}
-.brand-shell-v1 .p1-filter-dropdown summary.p1-filter-trigger>span{
+.brand-shell-v1 .p1-filter-popover-control>button.p1-filter-trigger>span{
   min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
 }
-.brand-shell-v1 .p1-filter-dropdown summary.p1-filter-trigger svg{flex:none;color:#647789}
-.brand-shell-v1 .p1-filter-dropdown summary.p1-filter-trigger:is(:hover,:focus-visible),
-.brand-shell-v1 .p1-filter-dropdown[open] summary.p1-filter-trigger{
-  border-color:#8bafc7!important;outline:0!important;
-  box-shadow:0 0 0 2px rgba(65,118,154,.10)!important;
+.brand-shell-v1 .p1-filter-popover-control>button.p1-filter-trigger svg{flex:none;color:#647789}
+.brand-shell-v1 .p1-filter-popover-control>button.p1-filter-trigger:is(:hover,:focus-visible){
+  border-color:#8bafc7!important;outline:0!important;box-shadow:0 0 0 2px rgba(65,118,154,.1)!important
 }
-.brand-shell-v1 .p1-filter-details:not([open])>.p1-filter-menu{
-  display:none!important;
-}
-.brand-shell-v1 .p1-filter-details[open]>.p1-filter-menu{
-  display:flex!important;
-}
-.brand-shell-v1 .p1-filter-dropdown .p1-filter-menu{
+.brand-shell-v1 .p1-filter-popover-control>.p1-filter-top-layer[popover]{
   box-sizing:border-box!important;
-  position:absolute!important;top:calc(100% + 5px)!important;left:0!important;
-  width:max(100%,190px)!important;min-width:190px!important;
-  max-width:min(260px,calc(100vw - 24px))!important;
-  max-height:min(290px,65dvh)!important;
-  display:flex!important;flex-direction:column!important;
-  padding:5px!important;overflow:hidden!important;
-  background:#fff!important;border:1px solid #dbe6ef!important;
-  border-radius:9px!important;
+  position:fixed!important;inset:auto!important;
+  top:var(--account-filter-y,285px)!important;left:var(--account-filter-x,8px)!important;
+  margin:0!important;right:auto!important;bottom:auto!important;
+  width:min(245px,calc(100vw - 16px))!important;
+  min-width:0!important;max-height:min(290px,65dvh)!important;
+  flex-direction:column!important;padding:5px!important;overflow:hidden!important;
+  background:#fff!important;color:#354b60!important;
+  border:1px solid #dbe6ef!important;border-radius:9px!important;
   box-shadow:0 12px 26px rgba(30,50,70,.16)!important;
-  z-index:120!important;
+  font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  font-size:12px!important;line-height:1.45!important
 }
-.brand-shell-v1 .p1-filter-dropdown .p1-filter-options{
-  flex:1 1 auto;min-height:0;overflow-y:auto!important;overscroll-behavior:contain;
+.brand-shell-v1 .p1-filter-top-layer[popover]:not(:popover-open){display:none!important}
+.brand-shell-v1 .p1-filter-top-layer[popover]:popover-open{display:flex!important}
+.brand-shell-v1 .p1-filter-top-layer .p1-filter-options{
+  flex:1 1 auto;min-height:0;overflow-y:auto!important;overscroll-behavior:contain
 }
-.brand-shell-v1 .p1-filter-dropdown .p1-filter-search{
-  box-sizing:border-box!important;flex:0 0 29px!important;
-  width:100%!important;height:29px!important;min-height:29px!important;
-  padding:0 8px!important;margin-bottom:4px!important;
+.brand-shell-v1 .p1-filter-top-layer .p1-filter-search{
+  box-sizing:border-box!important;flex:0 0 30px!important;
+  width:100%!important;height:30px!important;min-height:30px!important;
+  margin:0 0 4px!important;padding:0 8px!important;
   border:1px solid #dbe4eb!important;border-radius:6px!important;
   background:#fff!important;color:#354b60!important;
-  font-size:11px!important;
+  font-family:inherit!important;font-size:12px!important
 }
-.brand-shell-v1 .p1-filter-dropdown .p1-filter-option{
-  box-sizing:border-box!important;
-  display:flex!important;align-items:center!important;gap:7px!important;
-  width:100%!important;min-height:31px!important;
-  padding:4px 9px 4px 5px!important;
-  border:0!important;border-radius:5px!important;
-  background:#fff!important;color:#405464!important;
-  text-align:left!important;text-decoration:none!important;
-  white-space:nowrap!important;
-  font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
-  font-size:12px!important;font-weight:500!important;line-height:1.45!important;
-  letter-spacing:normal!important;text-transform:none!important;
-  cursor:pointer!important;
+.brand-shell-v1 .p1-filter-top-layer .p1-filter-option{
+  box-sizing:border-box!important;display:flex!important;align-items:center!important;gap:7px!important;
+  width:100%!important;min-height:32px!important;padding:5px 9px 5px 5px!important;
+  border:0!important;border-radius:5px!important;background:#fff!important;
+  color:#405464!important;text-align:left!important;text-decoration:none!important;
+  white-space:nowrap!important;font-family:inherit!important;font-size:12px!important;
+  font-weight:500!important;line-height:1.45!important;letter-spacing:normal!important;
+  cursor:pointer!important
 }
-.brand-shell-v1 .p1-filter-dropdown .p1-filter-option>span:last-child{
+.brand-shell-v1 .p1-filter-top-layer .p1-filter-option>span:last-child{
   min-width:0;overflow:hidden;text-overflow:ellipsis
 }
-.brand-shell-v1 .p1-filter-dropdown .p1-filter-option:is(:hover,:focus-visible){
+.brand-shell-v1 .p1-filter-top-layer .p1-filter-option:is(:hover,:focus-visible){
   background:#f1f6fa!important;outline:0!important
 }
-.brand-shell-v1 .p1-filter-dropdown .p1-filter-option.selected{
+.brand-shell-v1 .p1-filter-top-layer .p1-filter-option.selected{
   background:#e8f2f9!important;color:#255a82!important;font-weight:650!important
 }
-.brand-shell-v1 .p1-filter-dropdown .p1-filter-check{
-  flex:0 0 16px;width:16px;display:inline-flex;align-items:center;justify-content:center;
-  color:#3275aa
+.brand-shell-v1 .p1-filter-top-layer .p1-filter-check{
+  flex:0 0 16px;width:16px;display:inline-flex;align-items:center;justify-content:center;color:#3275aa
 }
-.brand-shell-v1 .p1-filter-dropdown .p1-filter-empty{padding:10px;color:#718195;font-size:11px}
-@media(max-width:600px){
-  /* In the 2-column mobile filter layout, right-hand dropdowns open inward. */
-  .brand-shell-v1 .entity-user-command details.p1-filter-dropdown:nth-of-type(even) .p1-filter-menu{
-    left:auto!important;right:0!important;
-  }
-}
+.brand-shell-v1 .p1-filter-top-layer .p1-filter-empty{padding:10px;color:#718195;font-size:12px}
 @media(max-width:900px){
-  .brand-shell-v1 form.account-filter-bar.one-line.entity-user-command{
-    height:auto!important;
-    min-height:36px!important;
-    flex-wrap:wrap!important;
-    padding-block:6px!important;
-  }
-  .brand-shell-v1 .entity-user-command .search{flex:1 1 100%!important;min-width:0!important}
-  .brand-shell-v1 .entity-user-command .p1-filter-dropdown{flex:1 1 42%!important;max-width:none!important}
+ .brand-shell-v1 form.account-filter-bar.one-line.entity-user-command{
+   height:auto!important;min-height:36px!important;flex-wrap:wrap!important;padding-block:6px!important
+ }
+ .brand-shell-v1 .entity-user-command .search{flex:1 1 100%!important;min-width:0!important}
+ .brand-shell-v1 .entity-user-command .p1-filter-dropdown{flex:1 1 42%!important;max-width:none!important}
 }
-
 /* Mobile: the order-column menu must not extend beyond the left screen edge.
    Right-align it to the viewport, not the narrow toolbar icon lane. */
 @media(max-width:600px){

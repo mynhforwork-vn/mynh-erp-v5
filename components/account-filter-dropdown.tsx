@@ -1,82 +1,63 @@
 'use client'
-
-import {useEffect,useRef,useState} from 'react'
-
+import {useId,useState} from 'react'
 export type AccountFilterOption={value:string;label:string}
 
-/** Data-driven, branded disclosure menu; works before React hydration.
- * Each option has a real GET link, so filters never depend on an onClick
- * handler being hydrated. Search and outside/Escape close are enhancements.
- */
-export function AccountFilterDropdown({
-  name,value,options,label,baseHref,
-}:{
+/** Native top-layer menu: real GET links, accessible without hydration,
+ * never intercepted by sticky table cells. */
+export function AccountFilterDropdown({name,value,options,label,baseHref}:{
   name:string;value:string;options:AccountFilterOption[];label:string;baseHref:string
 }){
-  const ref=useRef<HTMLDetailsElement|null>(null)
+  const id=useId()
   const [search,setSearch]=useState('')
-  useEffect(()=>{
-    const closeOutside=(event:PointerEvent)=>{
-      if(ref.current?.open&&event.target instanceof Node&&!ref.current.contains(event.target))
-        ref.current.open=false
-    }
-    const closeEscape=(event:KeyboardEvent)=>{
-      if(event.key==='Escape'&&ref.current?.open){
-        event.preventDefault()
-        ref.current.open=false
-        ref.current.querySelector<HTMLElement>('summary')?.focus()
-      }
-    }
-    document.addEventListener('pointerdown',closeOutside)
-    document.addEventListener('keydown',closeEscape)
-    return ()=>{
-      document.removeEventListener('pointerdown',closeOutside)
-      document.removeEventListener('keydown',closeEscape)
-    }
-  },[])
-  const active=options.find(option=>option.value===value)
-  const query=search.trim().toLocaleLowerCase('vi')
-  const menu=options.filter(option=>!query
-    ||option.label.toLocaleLowerCase('vi').includes(query))
-  function optionHref(nextValue:string){
+  const active=options.find(o=>o.value===value)
+  const q=search.trim().toLocaleLowerCase('vi')
+  const visible=options.filter(o=>!q||o.label.toLocaleLowerCase('vi').includes(q))
+  function href(next:string){
     const [,query='']=baseHref.split('?')
-    const params=new URLSearchParams(query)
-    if(nextValue==='all')params.delete(name)
-    else params.set(name,nextValue)
-    const qs=params.toString()
+    const p=new URLSearchParams(query)
+    if(next==='all')p.delete(name);else p.set(name,next)
+    const qs=p.toString()
     return '/purchase/accounts'+(qs?'?'+qs:'')
   }
-  return <details className="p1-filter-dropdown p1-filter-details" ref={ref} onToggle={e=>{
-    if(!e.currentTarget.open)setSearch('')
-  }}>
-    <summary className="p1-filter-trigger" aria-label={label+': '+(active?.label??'Tất cả')}>
+  function place(button:HTMLButtonElement){
+    const menu=document.getElementById(id)
+    if(!menu)return
+    const r=button.getBoundingClientRect()
+    const width=Math.min(245,window.innerWidth-16)
+    menu.style.setProperty('--account-filter-x',Math.max(8,Math.min(r.left,window.innerWidth-width-8))+'px')
+    menu.style.setProperty('--account-filter-y',Math.max(8,Math.min(r.bottom+5,window.innerHeight-260))+'px')
+  }
+  return <div className="p1-filter-dropdown p1-filter-popover-control">
+    <button type="button" className="p1-filter-trigger"
+      popoverTarget={id} aria-haspopup="dialog" aria-controls={id}
+      aria-label={label+': '+(active?.label??'Tất cả')}
+      onClick={e=>place(e.currentTarget)}>
       <span title={active?.label}>{active?.label??label+': Tất cả'}</span>
-      <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"
+        fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="m6 9 6 6 6-6"/>
       </svg>
-    </summary>
+    </button>
     <input type="hidden" name={name} value={value}/>
-    <div className="p1-filter-menu" role="group" aria-label={'Danh sách '+label}>
-      {options.length>8&&<input type="search" aria-label={'Tìm '+label} className="p1-filter-search"
-        placeholder="Tìm trong danh sách" value={search} onChange={e=>setSearch(e.target.value)}
-        autoComplete="off"/>}
+    <div id={id} popover="auto" className="p1-filter-menu p1-filter-top-layer"
+      role="dialog" aria-label={'Danh sách '+label}
+      onToggle={e=>{if(!e.currentTarget.matches(':popover-open'))setSearch('')}}>
+      {options.length>8&&<input type="search" className="p1-filter-search" value={search}
+        aria-label={'Tìm '+label} placeholder="Tìm trong danh sách" autoComplete="off"
+        onChange={e=>setSearch(e.target.value)}
+        onKeyDown={e=>{if(e.key==='Enter')e.preventDefault()}}/>}
       <div className="p1-filter-options">
-        {menu.length===0
-          ?<div className="p1-filter-empty">Không có lựa chọn phù hợp</div>
-          :menu.map(option=><a key={option.value} href={optionHref(option.value)}
-            className={'p1-filter-option'+(value===option.value?' selected':'')}
-            aria-current={value===option.value?'true':undefined}
-            data-value={option.value}>
-            <span className="p1-filter-check" aria-hidden="true">{value===option.value
-              ?<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                 <path d="m5 12 4 4L19 6"/>
-               </svg>
-              :null}</span>
-            <span>{option.label}</span>
+        {visible.length===0?<div className="p1-filter-empty">Không có lựa chọn phù hợp</div>
+          :visible.map(o=><a key={o.value} href={href(o.value)} data-value={o.value}
+            aria-current={value===o.value?'true':undefined}
+            className={'p1-filter-option'+(value===o.value?' selected':'')}>
+            <span className="p1-filter-check" aria-hidden="true">{value===o.value
+              ?<svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m5 12 4 4L19 6"/></svg>:null}</span>
+            <span>{o.label}</span>
           </a>)}
       </div>
     </div>
-  </details>
+  </div>
 }
