@@ -46,52 +46,89 @@ try {
   if(!onlyOrderColumns){
   await go('/purchase/accounts?range=all')
   const filter=page.locator('form.account-filter-bar')
-  const combobox=name=>filter.getByRole('combobox',{name})
-  check('Cả bốn bộ lọc là select thực, sử dụng được trước và sau hydration',
-    await filter.locator('select.p1-filter-native').count()===4
-    &&await combobox('Browser').count()===1
-    &&await combobox('SPC').count()===1
-    &&await combobox('Số đơn').count()===1
-    &&await combobox('Tag voucher').count()===1)
-  const nativeHit=await combobox('SPC').evaluate(el=>{
-    const rect=el.getBoundingClientRect()
+  const dropdown=name=>filter.locator('details.p1-filter-details').nth(
+    {Browser:0,SPC:1,'Số đơn':2,'Tag voucher':3}[name])
+  check('Bốn bộ lọc là danh sách riêng của ERP, không phải native select',
+    await filter.locator('details.p1-filter-details').count()===4
+    &&await filter.locator('select.p1-filter-native').count()===0
+    &&await filter.locator('input[type="hidden"][name="browser"]').count()===1)
+  await dropdown('Browser').locator('summary').click()
+  const browserMeta=await dropdown('Browser').evaluate(el=>{
+    const rect=el.querySelector('summary').getBoundingClientRect()
     const hit=document.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2)
-    return {hit:hit?.tagName??'',canClick:hit===el,
-      options:el.options?.length??0,width:rect.width}
+    const choices=[...el.querySelectorAll('a.p1-filter-option')].map(x=>({
+      value:x.getAttribute('data-value'),text:x.textContent.trim(),
+    }))
+    return {open:el.open,hit:hit?.tagName,options:choices}
   })
-  check('SPC nằm trên vùng có thể nhấp thật và có các lựa chọn',
-    nativeHit.canClick&&nativeHit.options>=5,nativeHit)
-  await combobox('Browser').selectOption('chrome')
-  await page.waitForURL(u=>u.pathname==='/purchase/accounts'&&u.searchParams.get('browser')==='chrome',{timeout:25000})
-  check('Browser chọn Chrome và lọc ngay',await combobox('Browser').inputValue()==='chrome')
-  await combobox('SPC').selectOption('st')
-  await page.waitForURL(u=>u.searchParams.get('session')==='st',{timeout:25000})
-  check('SPC chọn được và giữ lọc Browser',
-    await combobox('SPC').inputValue()==='st'
-    &&new URL(page.url()).searchParams.get('browser')==='chrome')
-  await combobox('Số đơn').selectOption('0')
-  await page.waitForURL(u=>u.searchParams.get('orders')==='0',{timeout:25000})
-  check('Số đơn chọn được, bảo toàn các điều kiện cũ',
-    await combobox('Số đơn').inputValue()==='0'
-    &&new URL(page.url()).searchParams.get('session')==='st')
-  await combobox('Tag voucher').selectOption('none')
-  await page.waitForURL(u=>u.searchParams.get('voucher')==='none',{timeout:25000})
-  check('Tag voucher chọn được và lọc đúng URL',
-    await combobox('Tag voucher').inputValue()==='none'
-    &&new URL(page.url()).searchParams.get('orders')==='0')
+  check('Browser mở được menu và giá trị từ data-list thực',
+    browserMeta.open&&browserMeta.options.length>=2
+    &&browserMeta.options.slice(1).every(x=>x.value.startsWith('name:')||x.value==='none'),
+    {open:browserMeta.open,values:browserMeta.options.slice(0,6)})
+  const browserAnchor=dropdown('Browser').locator('a[data-value^="name:"]').first()
+  const browserValue=await browserAnchor.getAttribute('data-value')
+  assert.ok(browserValue,'Không có browser thực để thử chọn')
+  await browserAnchor.click()
+  await page.waitForURL(u=>u.searchParams.get('browser')===browserValue,{timeout:25000})
+  check('Chọn Browser thực, giữ tham số GET và ô lọc',await filter.locator('input[name="browser"]').inputValue()===browserValue)
+  await dropdown('SPC').locator('summary').click()
+  const spcAnchor=dropdown('SPC').locator('a.p1-filter-option[data-value]:not([data-value="all"])').first()
+  const spcValue=await spcAnchor.getAttribute('data-value')
+  assert.ok(spcValue,'Không có phân loại SPC trong dữ liệu')
+  await spcAnchor.click()
+  await page.waitForURL(u=>u.searchParams.get('session')===spcValue,{timeout:25000})
+  check('SPC chọn từ trạng thái hiện có và giữ Browser',
+    new URL(page.url()).searchParams.get('browser')===browserValue
+    &&await filter.locator('input[name="session"]').inputValue()===spcValue)
+  await dropdown('Số đơn').locator('summary').click()
+  const orderAnchor=dropdown('Số đơn').locator('a.p1-filter-option[data-value]:not([data-value="all"])').first()
+  const orderValue=await orderAnchor.getAttribute('data-value')
+  assert.ok(orderValue,'Không có số lượng đơn từ data-list')
+  await orderAnchor.click()
+  await page.waitForURL(u=>u.searchParams.get('orders')===orderValue,{timeout:25000})
+  check('Số đơn chọn từ số lượng trong data-list và giữ SPC',
+    await filter.locator('input[name="orders"]').inputValue()===orderValue
+    &&new URL(page.url()).searchParams.get('session')===spcValue)
+  await dropdown('Tag voucher').locator('summary').click()
+  const voucherAnchor=dropdown('Tag voucher').locator('a.p1-filter-option[data-value]:not([data-value="all"])').first()
+  const voucherValue=await voucherAnchor.getAttribute('data-value')
+  assert.ok(voucherValue,'Không có Tag voucher/chưa dùng từ data-list')
+  await voucherAnchor.click()
+  await page.waitForURL(u=>u.searchParams.get('voucher')===voucherValue,{timeout:25000})
+  check('Tag voucher chọn được và giữ Số đơn',
+    await filter.locator('input[name="voucher"]').inputValue()===voucherValue
+    &&new URL(page.url()).searchParams.get('orders')===orderValue)
   await page.reload({waitUntil:'load'})
-  check('Bốn lựa chọn vẫn được giữ sau reload',
-    await combobox('Browser').inputValue()==='chrome'
-    &&await combobox('SPC').inputValue()==='st'
-    &&await combobox('Số đơn').inputValue()==='0'
-    &&await combobox('Tag voucher').inputValue()==='none')
+  check('Bốn lựa chọn giữ nguyên sau reload',
+    await filter.locator('input[name="browser"]').inputValue()===browserValue
+    &&await filter.locator('input[name="session"]').inputValue()===spcValue
+    &&await filter.locator('input[name="orders"]').inputValue()===orderValue
+    &&await filter.locator('input[name="voucher"]').inputValue()===voucherValue)
+  await dropdown('Browser').locator('summary').click()
+  if(await dropdown('Browser').locator('input.p1-filter-search').count()){
+    await dropdown('Browser').locator('input.p1-filter-search').fill('không-có-trong-data')
+    check('Data-list có thể tìm, báo khi không có kết quả',
+      await dropdown('Browser').locator('.p1-filter-empty').isVisible())
+  }
+  await page.keyboard.press('Escape')
+  check('Esc đóng danh sách lựa chọn',
+    await dropdown('Browser').evaluate(el=>!el.open))
   for(const [w,h] of [[320,568],[390,844],[768,1024],[1440,900]]){
     await page.setViewportSize({width:w,height:h})
-    const visible=await combobox('SPC').evaluate(el=>{
+    const trigger=dropdown('SPC').locator('summary')
+    const geometry=await trigger.evaluate(el=>{
       const r=el.getBoundingClientRect()
-      return r.width>=90&&r.width<=innerWidth&&r.left>=-1&&r.right<=innerWidth+2
+      return {left:r.left,right:r.right,width:r.width,viewport:innerWidth}
     })
-    check('SPC hiển thị và chọn được theo viewport '+w,visible,{width:w})
+    check('Nút lọc SPC vừa màn '+w,geometry.left>=-1
+      &&geometry.right<=w+2&&geometry.width>=90,geometry)
+    await trigger.click()
+    const m=await dropdown('SPC').locator('.p1-filter-menu').evaluate(el=>{
+      const r=el.getBoundingClientRect()
+      return {left:r.left,right:r.right,width:r.width}
+    })
+    check('Menu SPC không bị cắt ngang '+w,m.left>=-1&&m.right<=w+2,m)
+    await page.keyboard.press('Escape')
   }
   await page.setViewportSize({width:1440,height:900})
   await page.screenshot({path:'qa-purchase-filter-columns-artifacts/accounts-filter-1440.png',fullPage:false})

@@ -48,6 +48,7 @@ export function AccountFilterDropdown({
   return <details className="p1-filter-dropdown p1-filter-details" ref={ref} onToggle={e=>{
     if(!e.currentTarget.open)setSearch('')
   }}>
+    <input type="hidden" name={name} value={value}/>
     <summary className="p1-filter-trigger" aria-label={label+': '+(active?.label??'Tất cả')}>
       <span title={active?.label}>{active?.label??label+': Tất cả'}</span>
       <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none"
