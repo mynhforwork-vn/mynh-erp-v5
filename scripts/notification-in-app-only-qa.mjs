@@ -35,7 +35,7 @@ check('In-app notification center and API remain intact',()=>{
 check('Old Telegram UI removed, responsive in-app styles loaded',()=>{
   assert.ok(!fs.existsSync('components/tracking-telegram-settings.tsx'))
   assert.ok(styles.includes('notification-in-app-only.css'))
-  assert.ok(mobile.includes('@media(max-width:760px)'))
+  assert.ok(mobile.includes('@media(max-width:1100px)'))
   assert.ok(mobile.includes('notification-rule-row-v9'))
 })
 const failed=checks.filter(x=>!x.pass)
