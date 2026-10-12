@@ -364,7 +364,9 @@ try {
         await page.locator('.order-table td.product-cell .p1-product-lines').count()>0)
     }
     await menu.click()
-    const menuPanel=page.locator((spec.name==='User'?'.p1-account-filter-actions':'.p1-order-toolbar-actions')+' .column-manager-menu')
+    const menuPanel=spec.name==='User'
+      ?page.locator('.p1-account-filter-actions .column-manager-menu')
+      :page.getByRole('dialog',{name:'Sắp xếp, ẩn và hiện cột đơn nhập'})
     check(spec.name+' column manager opens',await menuPanel.isVisible())
     if(spec.name==='User')check('User extra title row removed',
       await page.locator('.p1-account-table-tools,.p1-account-table-tools-label').count()===0)
@@ -514,7 +516,7 @@ try {
       check('Old order column preferences receive new Device column once',
         await page.locator('.order-table th[data-order-col="device"]').count()===1)
       await page.locator('.p1-order-toolbar-actions .managed-column-button').click()
-      await page.locator('.p1-order-toolbar-actions .column-manager-row').filter({
+      await page.getByRole('dialog',{name:'Sắp xếp, ẩn và hiện cột đơn nhập'}).locator('.column-manager-row').filter({
         hasText:'Thiết bị',
       }).locator('input[type="checkbox"]').uncheck()
       await page.keyboard.press('Escape')
@@ -528,7 +530,7 @@ try {
       await page.reload({waitUntil:'load',timeout:35000})
       const columnButton=page.locator('.p1-order-toolbar-actions .managed-column-button')
       await columnButton.click()
-      const rows=page.locator('.p1-order-toolbar-actions .column-manager-row')
+      const rows=page.getByRole('dialog',{name:'Sắp xếp, ẩn và hiện cột đơn nhập'}).locator('.column-manager-row')
       const voucher=rows.filter({hasText:'Voucher'})
       await voucher.locator('input[type="checkbox"]').uncheck()
       check('Order column manager hides Voucher column and matching colgroup',
@@ -561,7 +563,7 @@ try {
         afterOrderReload.indexOf('time')===afterOrderReload.indexOf('device')-1,{afterOrderReload})
       // Restore default order before measuring live drag resize.
       await page.locator('.p1-order-toolbar-actions .managed-column-button').click()
-      await page.locator('.p1-order-toolbar-actions .column-manager-head button').click()
+      await page.getByRole('dialog',{name:'Sắp xếp, ẩn và hiện cột đơn nhập'}).locator('.column-manager-head button').click()
       await page.keyboard.press('Escape')
       await page.waitForTimeout(260)
       const deviceGrip=page.locator('.order-table th[data-order-col="device"] .mynh-column-resize-grip')
