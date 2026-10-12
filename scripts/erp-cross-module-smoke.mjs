@@ -53,11 +53,25 @@ try{
       const errors=[]
       const pageError=e=>errors.push(String(e.message))
       page.on('pageerror',pageError)
-      let status=0,visible=false,overflow=false,telegramControls=0,ruleCount=0,finalUrl=''
+      let status=0,visible=false,overflow=false,telegramControls=0,ruleCount=0,finalUrl='',httpDiagnostic=null
       try{
         const response=await page.goto(base+path,{waitUntil:'domcontentloaded',timeout:35000})
         status=response?.status()??0
         finalUrl=page.url()
+        if(status>=500&&response){
+          const body=await response.text().catch(()=> '')
+          httpDiagnostic={
+            cfRay:response.headers()['cf-ray']??null,
+            server:response.headers()['server']??null,
+            contentType:response.headers()['content-type']??null,
+            errorClass:/1102|exceeded resource limits/i.test(body)?'CF_CPU_LIMIT':
+              /1027|daily request limit/i.test(body)?'CF_DAILY_LIMIT':
+              /application error|server components render/i.test(body)?'NEXT_RENDER':
+              /<html|<!doctype/i.test(body)?'HTML_ERROR':'OTHER',
+            bodyLength:body.length
+          }
+          console.log('CROSS_MODULE_HTTP_5XX '+JSON.stringify({viewport:viewport.name,path,status,...httpDiagnostic}))
+        }
         await page.locator(selector).first().waitFor({state:'visible',timeout:18000})
         visible=true
         await page.waitForTimeout(250)
@@ -69,7 +83,7 @@ try{
       }catch(e){errors.push(String(e.message||e).slice(0,350))}
       const pass=status===200&&visible&&!overflow&&!finalUrl.includes('/login')
         &&errors.length===0&&(!path.includes('notifications')||(telegramControls===0&&ruleCount===5))
-      const item={viewport:viewport.name,path,pass,status,visible,overflow,telegramControls,ruleCount,errors}
+      const item={viewport:viewport.name,path,pass,status,visible,overflow,telegramControls,ruleCount,httpDiagnostic,errors}
       report.push(item)
       console.log((pass?'PASS ':'FAIL ')+viewport.name+' '+path+' '+JSON.stringify({status,visible,overflow,telegramControls,ruleCount,errors}))
       if(visible)await page.screenshot({path:folder+'/'+viewport.name+'-'+path.replace(/[^a-z0-9]+/gi,'-')+'.png',fullPage:false})
