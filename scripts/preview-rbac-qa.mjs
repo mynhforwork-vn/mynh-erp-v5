@@ -371,8 +371,11 @@ for(const role of ['admin','operator','viewer']){
       const found=await matching.count()>0
       record('ui','Delete-order QA fixture visible only by unique code',found,{orderCode})
       if(!found)throw new Error('Cannot locate unique QA deletion order')
-      await matching.getByRole('button',{name:'Mở thao tác'}).click()
-      await matching.getByRole('button',{name:'Xóa đơn',exact:true}).click()
+      // Purchase Orders uses the approved right-hand detail slidebar, not a row action popup.
+      await matching.getByRole('link',{name:orderCode,exact:true}).first().click()
+      const deleteEntry=page.locator('.permanent-delete-box')
+      await deleteEntry.waitFor({state:'visible',timeout:15000})
+      await deleteEntry.getByRole('button',{name:'Xóa vĩnh viễn đơn'}).click()
       const dialog=page.getByRole('dialog',{name:'Xóa vĩnh viễn đơn hàng'})
       await dialog.waitFor({state:'visible'})
       const noCredentials=await dialog.locator('input[type="password"],input[type="email"],input[name="confirm_text"]').count()===0
