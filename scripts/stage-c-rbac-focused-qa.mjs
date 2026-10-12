@@ -14,6 +14,7 @@ const qa=JSON.parse(fs.readFileSync('qa-session.json','utf8'))
 assert.ok(qa.user_id&&qa.fixtures?.erp_user_id&&qa.fixtures?.marker,'Disposable QA identifiers required')
 const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}})
 const results=[]
+const resourceErrors=[]
 function check(label,ok,meta={}){const item={label,pass:Boolean(ok),...meta};results.push(item);console.log('STAGE_C_RBAC_CHECK '+JSON.stringify(item))}
 let refreshToken=qa.refresh_token
 async function sessionFor(role){
@@ -56,7 +57,16 @@ async function browserFor(session){
   const ctx=await browser.newContext({viewport:{width:1440,height:900}})
   await ctx.addCookies([...cookies.values()].map(c=>({name:c.name,value:c.value,url:base,httpOnly:Boolean(c.options?.httpOnly),
     secure:c.options?.secure!==false,sameSite:'Lax'})))
-  return {browser,page:await ctx.newPage()}
+  const page=await ctx.newPage()
+  page.on('response',response=>{
+    if(response.status()<500)return
+    const item={status:response.status(),path:new URL(response.url()).pathname,
+      type:response.request().resourceType(),cf_ray:response.headers()['cf-ray']||null}
+    resourceErrors.push(item)
+    // No headers, cookies, response payload or credentials are logged.
+    console.log('STAGE_C_PREVIEW_RESOURCE_ERROR '+JSON.stringify(item))
+  })
+  return {browser,page}
 }
 async function navigate(page,role,path){
   let response
@@ -106,6 +116,8 @@ try{
         const shell=await page.locator('.order-table-card').count()>0
         check(role+' Orders authenticated UI',shell)
       }
+      await navigate(page,role,'/sales/pos')
+      await navigate(page,role,'/sales/history')
       if(await navigate(page,role,'/settings?section=notifications')){
         const area=await page.locator('.notification-in-app-only-v1')
         const count=await area.locator('form.notification-rule-row-v9').count()
@@ -122,6 +134,8 @@ try{
   try{await sessionFor('operator');fs.writeFileSync('qa-session.json',JSON.stringify(qa))}
   catch{console.log('STAGE_C_RBAC_CLEANUP_ERROR role not restored');failed=true}
 }
+check('No background HTTP 5xx during three-role Preview browser',resourceErrors.length===0,{count:resourceErrors.length})
+console.log('STAGE_C_PREVIEW_RESOURCE_SUMMARY '+JSON.stringify({errors:resourceErrors.length,items:resourceErrors.slice(0,10)}))
 const bad=results.filter(x=>!x.pass)
 fs.mkdirSync('qa-stage-c-artifacts',{recursive:true})
 fs.writeFileSync('qa-stage-c-artifacts/rbac.json',JSON.stringify({checks:results.length,passed:results.length-bad.length,failed:bad.length,results},null,2))
