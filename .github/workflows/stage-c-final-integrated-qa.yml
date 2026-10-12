@@ -1,9 +1,6 @@
 name: Stage C Final Integrated QA — RC b3b34942
 
 on:
-  push:
-    branches:
-      - qa/stage-c-final-b3b34942
   workflow_dispatch:
 
 permissions:
