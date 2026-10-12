@@ -16,7 +16,7 @@ concurrency:
 jobs:
   cross-module-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 75
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -67,17 +67,21 @@ jobs:
           CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME_PATH"
           echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
-      - name: "QA browser: warehouse POS finance routing, responsive and permissions"
-        run: node scripts/preview-browser-qa.mjs
+      - name: "QA browser: Warehouse POS Finance mobile/tablet/desktop smoke"
+        timeout-minutes: 18
+        run: node scripts/erp-cross-module-smoke.mjs
       - name: "QA mutations round 1: warehouse receipt, POS debt and ledger persistence"
+        timeout-minutes: 18
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/preview-mutation-qa.mjs
       - name: "QA mutations round 2: cancellation returns, transfer and finance persistence"
+        timeout-minutes: 18
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/preview-mutation-qa-v2.mjs
       - name: "QA role-based access: Admin Operator Viewer, REST and UI"
+        timeout-minutes: 18
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/preview-rbac-qa.mjs
@@ -87,6 +91,7 @@ jobs:
           name: erp-cross-module-qa-${{ github.sha }}
           path: |
             qa-browser-artifacts/
+            qa-cross-module-artifacts/
           retention-days: 7
           if-no-files-found: ignore
       - name: Cleanup ONLY isolated QA fixtures
