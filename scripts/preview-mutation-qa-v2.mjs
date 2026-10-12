@@ -70,7 +70,7 @@ await context.addCookies([...cookieMap.values()].map(c=>({
   sameSite:c.options?.sameSite==='strict'?'Strict':c.options?.sameSite==='none'?'None':'Lax',
 })))
 const page=await context.newPage()
-page.on('console',m=>{if(m.type()==='error')summary.consoleErrors.push({url:page.url(),text:m.text()})})
+page.on('console',m=>{if(m.type()==='error')summary.consoleErrors.push({url:page.url(),source:m.location().url,text:m.text()})})
 page.on('pageerror',e=>summary.pageErrors.push({url:page.url(),text:String(e)}))
 page.on('response',r=>{if(r.status()>=500)summary.network5xx.push({url:r.url(),status:r.status()})})
 
