@@ -1,0 +1,84 @@
+name: Stage C — Diagnose POS History RSC Prefetch 503
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage-c-sales-history-prefetch-503
+  cancel-in-progress: true
+
+jobs:
+  prefetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+      SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
+      BASELINE_PREVIEW_URL: https://erp-cross-module-qa-v1-mynh-erp-v5.mynh-forwork.workers.dev
+      PREVIEW_URL: https://erp-stage-c-prefetch-qa-mynh-erp-v5.mynh-forwork.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Verify limited change and TypeScript
+        run: |
+          npm run typecheck
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs'
+          const a=fs.readFileSync('components/sales-pos-workspace.tsx','utf8')
+          const b=fs.readFileSync('app/(erp)/sales/page.tsx','utf8')
+          if(!a.includes('href="/sales/history" prefetch={false}'))throw Error('POS history prefetch still enabled')
+          if(!b.includes('href="/sales/history" prefetch={false}'))throw Error('Sales dashboard history prefetch still enabled')
+          console.log('HISTORY_NO_PREFETCH_STATIC_PASS')
+          NODE
+      - name: Verify pinned QA Preview (no upload)
+        run: |
+          node --input-type=module <<'NODE'
+          const p='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+
+            '/workers/workers/mynh-erp-v5/previews/ad4dae78eb534bc9b738e888eca28edc/deployments'
+          const r=await fetch(p,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}})
+          if(!r.ok)throw Error('Cloudflare Preview deployment metadata unavailable')
+          const x=await r.json()
+          if(!x.success||x.result?.[0]?.annotations?.['workers/commit_sha']!=='9b4cc1a8e643d5cfd944f7e023c103e392a61fad')
+            throw Error('QA Preview no longer matches audited runtime')
+          console.log('QA_PREVIEW_IMMUTABLE_RUNTIME 9b4cc1a8 (only test script changed since)')
+          NODE
+      - name: Check Preview health
+        run: |
+          test "$(curl --silent --show-error --max-time 25 -o /tmp/qa-health.json -w '%{http_code}' "$PREVIEW_URL/api/health")" = 200
+          grep -q '"ok":true' /tmp/qa-health.json
+          test "$(curl --silent --show-error --max-time 25 -o /tmp/qa-login.html -w '%{http_code}' "$PREVIEW_URL/login")" = 200
+      - name: Create disposable login (no ERP fixture mutation)
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-setup.mjs
+      - name: Prepare Chromium
+        run: |
+          npm install --no-save playwright --no-audit --no-fund
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: Compare baseline and fixed idle RSC traffic, verify navigation
+        run: node scripts/stage-c-sales-history-prefetch-qa.mjs
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage-c-history-prefetch-${{ github.sha }}
+          path: qa-history-prefetch-artifacts/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Cleanup temporary QA login
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-cleanup.mjs
