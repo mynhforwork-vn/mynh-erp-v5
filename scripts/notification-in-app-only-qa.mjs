@@ -38,6 +38,13 @@ check('Old Telegram UI removed, responsive in-app styles loaded',()=>{
   assert.ok(mobile.includes('@media(max-width:1100px)'))
   assert.ok(mobile.includes('notification-rule-row-v9'))
 })
+check('Telegram Edge Function is a disabled compatibility endpoint',()=>{
+  const source=read('supabase/functions/telegram-alert-dispatcher/index.ts')
+  assert.ok(source.includes('status:410'))
+  assert.ok(!source.includes('api.telegram.org'))
+  assert.ok(!source.includes('sendMessage('))
+  assert.ok(!source.includes('claim_due_telegram_alerts'))
+})
 const failed=checks.filter(x=>!x.pass)
 console.log('IN_APP_ONLY_QA '+JSON.stringify({passed:checks.length-failed.length,failed:failed.length}))
 if(failed.length)process.exit(1)
