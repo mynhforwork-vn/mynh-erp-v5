@@ -1,0 +1,23 @@
+name: Stage C VietQR Reference Contract
+on:
+  push:
+    branches:
+      - fix/stage-c-vietqr-reference-20261012
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test QR bank reference without network or DB mutation
+        run: node --experimental-strip-types scripts/stage-c-vietqr-contract-qa.mjs
