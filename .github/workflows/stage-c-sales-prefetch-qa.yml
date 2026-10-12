@@ -42,13 +42,18 @@ jobs:
           if(!b.includes('href="/sales/history" prefetch={false}'))throw Error('Sales dashboard history prefetch still enabled')
           console.log('HISTORY_NO_PREFETCH_STATIC_PASS')
           NODE
-      - name: Build isolated Preview (never Production)
-        run: npx opennextjs-cloudflare build
-      - name: Upload isolated Preview only
+      - name: Verify pinned QA Preview (no upload)
         run: |
-          test -n "$CLOUDFLARE_API_TOKEN"
-          test -n "$CLOUDFLARE_ACCOUNT_ID"
-          npx wrangler preview --name erp-stage-c-prefetch-qa --worker-name mynh-erp-v5 --message "Stage C POS history RSC prefetch QA $GITHUB_SHA" --json > qa-preview-output.json
+          node --input-type=module <<'NODE'
+          const p='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+
+            '/workers/workers/mynh-erp-v5/previews/ad4dae78eb534bc9b738e888eca28edc/deployments'
+          const r=await fetch(p,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}})
+          if(!r.ok)throw Error('Cloudflare Preview deployment metadata unavailable')
+          const x=await r.json()
+          if(!x.success||x.result?.[0]?.annotations?.['workers/commit_sha']!=='9b4cc1a8e643d5cfd944f7e023c103e392a61fad')
+            throw Error('QA Preview no longer matches audited runtime')
+          console.log('QA_PREVIEW_IMMUTABLE_RUNTIME 9b4cc1a8 (only test script changed since)')
+          NODE
       - name: Check Preview health
         run: |
           test "$(curl --silent --show-error --max-time 25 -o /tmp/qa-health.json -w '%{http_code}' "$PREVIEW_URL/api/health")" = 200
