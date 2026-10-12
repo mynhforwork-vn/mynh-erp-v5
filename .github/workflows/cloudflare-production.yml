@@ -1,9 +1,8 @@
 name: Cloudflare Production
 
+# Bản Preview đã nghiệm thu được tích hợp vào main trước;
+# chỉ triển khai Production khi người vận hành kích hoạt thủ công.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 concurrency:
