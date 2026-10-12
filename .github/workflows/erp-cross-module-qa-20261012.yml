@@ -88,7 +88,6 @@ jobs:
           name: erp-cross-module-qa-${{ github.sha }}
           path: |
             qa-browser-artifacts/
-            qa-session.json
           retention-days: 7
           if-no-files-found: ignore
       - name: Cleanup ONLY isolated QA fixtures
