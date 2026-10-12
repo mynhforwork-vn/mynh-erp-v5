@@ -327,12 +327,28 @@ for(const role of ['admin','operator','viewer']){
     record('ui',role+' purchase order create visibility',role==='viewer'?!createOrderVisible:createOrderVisible,{createOrderVisible})
 
     await go(page,role,'/sales/pos')
+    // POS remembers the last selected warehouse (and prefers HN). Fixture SKU
+    // belongs to f.warehouse_id, so test the role only after selecting that
+    // exact warehouse instead of treating wrong-warehouse absence as RBAC.
+    const warehouseSelector=page.locator('.pos-warehouse select').first()
+    await warehouseSelector.selectOption(String(f.warehouse_id))
+    const selectedWarehouse=await warehouseSelector.inputValue()
     const search=page.getByRole('textbox',{name:'Tìm sản phẩm theo barcode, SKU hoặc tên'}).first()
     if(await search.count()){
-      await search.fill(f.sale_sku);await page.waitForTimeout(200)
+      await search.fill(f.sale_sku)
       const tile=page.locator('button.pos-product-tile-final').filter({hasText:f.sale_sku}).first()
-      const tileEnabled=await tile.count()>0&&!await tile.isDisabled()
-      record('ui',role+' POS sell control',role==='viewer'?!tileEnabled:tileEnabled,{tileEnabled})
+      await tile.waitFor({state:'visible',timeout:10000}).catch(()=>null)
+      const tilePresent=await tile.count()>0
+      const tileEnabled=tilePresent&&!await tile.isDisabled()
+      const stockText=tilePresent?await tile.locator('.pos-final-stock').innerText():''
+      record('ui',role+' POS fixture in selected warehouse',
+        selectedWarehouse===String(f.warehouse_id)&&tilePresent,
+        {selectedWarehouse,expectedWarehouse:String(f.warehouse_id),tilePresent,stockText})
+      record('ui',role+' POS sell control',
+        tilePresent&&(role==='viewer'?!tileEnabled:tileEnabled),
+        {tilePresent,tileEnabled,stockText})
+    }else{
+      record('ui',role+' POS fixture search present',false)
     }
 
     if(f.mutation_sale_id){
