@@ -4,10 +4,10 @@ import { ShippingSettings } from '@/components/shipping-settings'
 import { DataManagementSettings } from '@/components/data-management-settings'
 import { BankTransferSettings } from '@/components/bank-transfer-settings'
 import { SystemAccessSettings } from '@/components/system-access-settings'
-import { TrackingTelegramSettings } from '@/components/tracking-telegram-settings'
+import { TrackingNotificationSettings } from '@/components/tracking-notification-settings'
 import { TrackingSettings } from '@/components/tracking-settings'
 
-type SP={section?:string,shipping_tab?:'carriers'|'hubs'|'shippers',purged?:string,protected?:string,telegram_test?:string,telegram_message?:string,tracking_test?:string,tracking_message?:string}
+type SP={section?:string,shipping_tab?:'carriers'|'hubs'|'shippers',purged?:string,protected?:string,tracking_test?:string,tracking_message?:string}
 
 export default async function SettingsPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
@@ -46,8 +46,6 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     trackingMappingsResult,
     unknownTrackingEventsResult,
     alertRulesResult,
-    telegramSettingsResult,
-    telegramDestinationsResult,
   ]=await Promise.all([
     supabase.from('shipping_carrier_configs')
       .select('id,carrier_code,display_name,tracking_prefixes,supports_tracking,supports_destination_hub,priority,is_active,note')
@@ -97,15 +95,8 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
       .order('created_at',{ascending:false})
       .limit(500),
     supabase.from('alert_rule_configs')
-      .select('alert_type,label,enabled,in_app_enabled,telegram_enabled,batch_window_minutes,sort_order')
+      .select('alert_type,label,enabled,in_app_enabled,batch_window_minutes,sort_order')
       .order('sort_order',{ascending:true}),
-    supabase.from('telegram_alert_settings')
-      .select('enabled,default_chat_id,bot_token_secret_id,retry_minutes,max_attempts,enabled_at')
-      .eq('id','main')
-      .maybeSingle(),
-    supabase.from('telegram_alert_destinations')
-      .select('id,destination_hub,chat_id,alert_types,is_active')
-      .order('destination_hub',{ascending:true}),
   ])
 
   const assignments=(assignmentRows??[]) as any[]
@@ -140,7 +131,7 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
 
   const error=carrierError??hubError??shipperError??assignmentError
     ??activeOrdersResult.error??archivedOrdersResult.error??activeUsersResult.error??archivedUsersResult.error
-    ??bankTransferResult.error??printConfigsResult.error??trackingRuntimeResult.error??trackingRulesResult.error??trackingMappingsResult.error??unknownTrackingEventsResult.error??alertRulesResult.error??telegramSettingsResult.error??telegramDestinationsResult.error
+    ??bankTransferResult.error??printConfigsResult.error??trackingRuntimeResult.error??trackingRulesResult.error??trackingMappingsResult.error??unknownTrackingEventsResult.error??alertRulesResult.error
     ??systemUsersResult.error
 
   const unknownMap=new Map<string,{carrier:string;raw_code:string;raw_name:string|null;description:string|null;count:number}>()
@@ -209,14 +200,9 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
                 trackingMessage={sp.tracking_message??null}
               />
           : section==='notifications'
-            ? <TrackingTelegramSettings
-                telegram={(telegramSettingsResult.data??null) as any}
+            ? <TrackingNotificationSettings
                 rules={(alertRulesResult.data??[]) as any[]}
-                destinations={(telegramDestinationsResult.data??[]) as any[]}
-                hubs={(hubRows??[]).filter((x:any)=>x.is_active).map((x:any)=>String(x.hub_code))}
                 canEdit={canEditTracking}
-                telegramTest={sp.telegram_test??null}
-                telegramMessage={sp.telegram_message??null}
               />
             : section==='payments'
               ? <BankTransferSettings config={(bankTransferResult.data??null) as any} printConfigs={(printConfigsResult.data??[]) as any[]} canEdit={canEdit}/>
