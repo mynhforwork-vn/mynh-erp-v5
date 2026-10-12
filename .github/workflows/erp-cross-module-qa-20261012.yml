@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - qa/warehouse-pos-finance-rbac-spx-ghn-20261012
+      - qa/trace-preview-503-20261012
       - release/final-telegram-off-spx-20261012
   workflow_dispatch:
 
