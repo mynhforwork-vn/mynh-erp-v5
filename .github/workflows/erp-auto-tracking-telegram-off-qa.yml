@@ -37,6 +37,10 @@ jobs:
       - name: Assert safe isolated Worker Preview configuration
         run: |
           node -e "const c=JSON.parse(require('fs').readFileSync('workers/qa-telegram-off/wrangler.jsonc','utf8'));if(c.name!=='erp-auto-tracking-telegramoff-qa-v1'||!c.previews||c.services||c.triggers||c.vars||c.secrets||c.routes||c.route)throw Error('Unsafe Worker QA config')"
+      - name: Upload QA Worker baseline version without activating any traffic
+        timeout-minutes: 5
+        run: |
+          npx wrangler versions upload --config workers/qa-telegram-off/wrangler.jsonc --name erp-auto-tracking-telegramoff-qa-v1 --message "QA only, no bindings, no deployment $GITHUB_SHA" > qa-worker-artifacts/qa-version-upload.txt
       - name: Publish Cloudflare Preview with NO Supabase/GHN bindings or cron
         timeout-minutes: 6
         run: |
