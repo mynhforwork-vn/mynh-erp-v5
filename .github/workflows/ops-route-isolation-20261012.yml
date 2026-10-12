@@ -1,0 +1,44 @@
+name: Ops Finance 503 Isolation QA
+on:
+  push:
+    branches: [qa/ops-route-isolation-20261012]
+permissions:
+  contents: read
+concurrency:
+  group: ops-route-isolation-20261012
+  cancel-in-progress: false
+jobs:
+  route-isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PREVIEW_URL: https://ops-full-qa-v1-mynh-erp-v5.mynh-forwork.workers.dev
+      SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+      SUPABASE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS' }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Temporary QA operator
+        run: node scripts/preview-auth-setup.mjs
+      - name: Use existing Chrome
+        run: |
+          npm install --no-save playwright --no-audit --no-fund
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: Four isolated page visits and console/network tracing
+        run: node scripts/ops-route-isolation-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ops-isolation-${{ github.sha }}
+          path: qa-route-isolation-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Remove QA operator
+        if: always()
+        run: node scripts/preview-auth-cleanup.mjs
