@@ -47,7 +47,7 @@ const ui=fs.readFileSync('components/in-app-alert-center.tsx','utf8')
 const core=fs.readFileSync('lib/actions/core.ts','utf8')
 const css=fs.readFileSync('app/styles/notification-neo-soft-a.css','utf8')
 for(const x of [
- "buildOrderWorkNotices((taskOrders??[]) as TaskOrder[])",
+ "buildOrderWorkNotices(((taskOrders??[]) as TaskOrder[])",
  ".is('archived_at',null)",".order('order_date',{ascending:false})",
  "workNotices", "warehouse_status", "receiving_warehouses",
 ])assert.ok(api.includes(x),'missing operational feed: '+x)
