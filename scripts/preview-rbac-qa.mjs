@@ -387,8 +387,20 @@ for(const role of ['admin','operator','viewer']){
       const found=await matching.count()>0
       record('ui','Delete-order QA fixture visible only by unique code',found,{orderCode})
       if(!found)throw new Error('Cannot locate unique QA deletion order')
-      // Purchase Orders uses the approved right-hand detail slidebar, not a row action popup.
+      // Permanent deletion is only available after archiving the order.
+      // The QA fixture must follow the same active -> archived -> delete path as real users.
       await matching.getByRole('link',{name:orderCode,exact:true}).first().click()
+      const lifecycle=page.locator('.record-lifecycle-zone')
+      await lifecycle.getByRole('button',{name:'Lưu trữ'}).click()
+      let archived=false
+      for(let i=0;i<30;i++){
+        const rows=await adminRest('/rest/v1/orders?select=archived_at&id=eq.'+encodeURIComponent(orderId))
+        if(rows[0]?.archived_at){archived=true;break}
+        await new Promise(res=>setTimeout(res,400))
+      }
+      record('backend','QA delete order must be archived first',archived,{orderCode})
+      if(!archived)throw new Error('Isolated QA order archive did not persist')
+      await go(page,role,'/purchase/orders?range=all&archive=archived&order='+encodeURIComponent(orderId)+'&tab=info')
       const deleteEntry=page.locator('.permanent-delete-box')
       await deleteEntry.waitFor({state:'visible',timeout:15000})
       await deleteEntry.getByRole('button',{name:'Xóa vĩnh viễn đơn'}).click()
