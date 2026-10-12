@@ -57,7 +57,7 @@ async function audit(base,mode){
   try{
     const nav=await page.goto(base+'/sales/pos',{waitUntil:'domcontentloaded',timeout:35000})
     check(mode+' POS page loads',nav?.status()===200,{status:nav?.status()||0})
-    const link=page.getByRole('link',{name:'Lịch sử bán',exact:true})
+    const link=page.locator('a.button[href="/sales/history"]').first()
     check(mode+' visible Sales History link',await link.count()===1)
     await link.scrollIntoViewIfNeeded()
     await page.waitForTimeout(2000)
@@ -73,7 +73,7 @@ async function audit(base,mode){
       await page.goto(base+'/sales',{waitUntil:'domcontentloaded',timeout:30000})
       clicked=false
       background.length=0
-      const panelLink=page.getByRole('link',{name:'Lịch sử bán',exact:true}).first()
+      const panelLink=page.locator('a.button[href="/sales/history"]').first()
       await panelLink.scrollIntoViewIfNeeded()
       await page.waitForTimeout(1600)
       check('No idle Sales History RSC prefetch from Dashboard',background.length===0,{backgroundCount:background.length})
