@@ -170,14 +170,27 @@ try {
       check('User bulk archive hidden until checkbox selection',await page.locator('.user-bulk-bar').count()===0)
       const filterMenu=page.locator('.p1-filter-dropdown').filter({has:page.locator('input[name="orders"]')})
       await filterMenu.locator('.p1-filter-trigger').click()
-      check('User exact order-count preset options',await filterMenu.getByRole('option',{name:'2 đơn'}).count()===1)
-      await filterMenu.getByRole('option',{name:'2 đơn'}).click()
-      check('User order filter captures exact selection',await filterMenu.locator('input[name="orders"]').inputValue()==='2')
+      const countChoice=filterMenu.locator('.p1-filter-top-layer a.p1-filter-option[data-value]:not([data-value="all"])').first()
+      const exactCount=await countChoice.getAttribute('data-value')
+      const exactLabel=(await countChoice.innerText()).trim()
+      check('User order-count choices reflect data list rather than fixed presets',
+        Boolean(exactCount&&/^\d+$/.test(exactCount)&&exactLabel.includes(exactCount+' đơn')),
+        {exactCount,exactLabel})
+      await countChoice.click()
+      await page.waitForURL(url=>url.searchParams.get('orders')===exactCount,{timeout:25000})
+      check('User order filter captures exact selection',
+        await filterMenu.locator('input[name="orders"]').inputValue()===exactCount)
+      const countCells=await page.locator('.user-table tbody td[data-account-col="orders"]').allTextContents()
+      check('User order filter changes actual table rows',
+        countCells.length>0&&countCells.every(text=>Number(text.trim())===Number(exactCount)),
+        {exactCount,found:countCells.length})
       const voucherMenu=page.locator('.p1-filter-dropdown').filter({has:page.locator('input[name="voucher"]')})
       await voucherMenu.locator('.p1-filter-trigger').click()
-      check('User voucher filter displays real tags',await voucherMenu.getByRole('option',{name:'SHHD'}).count()===1)
+      const voucherOptions=await voucherMenu.locator('.p1-filter-top-layer a[data-value^="tag:"]').count()
+      check('User voucher filter displays actual voucher tags',voucherOptions>0,{voucherOptions})
       await page.keyboard.press('Escape')
-      check('User themed dropdown closes with Escape',!(await voucherMenu.getByRole('listbox').isVisible().catch(()=>false)))
+      check('User themed data-list closes with Escape',
+        await voucherMenu.locator('.p1-filter-top-layer').evaluate(el=>!el.matches(':popover-open')))
       const checkBox=page.locator('.user-table tbody input[type="checkbox"]').first()
       await checkBox.check()
       check('User selected-only archive toolbar visible',await page.locator('.user-bulk-bar').isVisible())
