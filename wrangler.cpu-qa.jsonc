@@ -1,0 +1,25 @@
+{
+  "name": "mynh-erp-v5",
+  "main": ".open-next/worker.js",
+  "keep_vars": true,
+  "compatibility_date": "2026-09-28",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "previews": {
+    "vars": {
+      "NEXT_PUBLIC_SUPABASE_URL": "https://nvgxwqapfaslavhtpauh.supabase.co",
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS"
+    },
+    "limits": {
+      "cpu_ms": 1000
+    }
+  }
+}
