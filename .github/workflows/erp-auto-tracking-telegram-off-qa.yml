@@ -1,0 +1,57 @@
+name: ERP Auto Tracking — Telegram Off QA
+
+on:
+  push:
+    branches:
+      - fix/erp-auto-tracking-disable-telegram-20261012
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: erp-auto-tracking-telegram-off-qa
+  cancel-in-progress: true
+
+jobs:
+  telegram-off:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify pinned Production Worker and build isolated candidate
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          node scripts/worker-telegram-off-build.mjs
+      - name: Check Worker JavaScript syntax
+        run: node --check qa-worker-artifacts/erp-auto-tracking-telegram-off.mjs
+      - name: Test retired Telegram endpoints and preserved Tracking
+        run: node scripts/worker-telegram-off-qa.mjs
+      - name: Assert safe isolated Worker Preview configuration
+        run: |
+          node -e "const c=JSON.parse(require('fs').readFileSync('workers/qa-telegram-off/wrangler.jsonc','utf8'));if(c.name!=='erp-auto-tracking-telegramoff-qa-v1'||c.workers_dev!==true||c.preview_urls!==true||!c.previews||c.services||c.triggers||c.vars||c.secrets||c.routes||c.route)throw Error('Unsafe Worker QA config')"
+      - name: Register QA-only workers.dev hostname with harmless bootstrap
+        timeout-minutes: 6
+        run: |
+          npx wrangler deploy workers/qa-telegram-off/bootstrap.mjs --config workers/qa-telegram-off/wrangler.jsonc --name erp-auto-tracking-telegramoff-qa-v1 --no-bundle --message "QA bootstrap only, no credentials $GITHUB_SHA" > qa-worker-artifacts/qa-bootstrap-deploy.txt
+      - name: Publish Cloudflare Preview with NO Supabase/GHN bindings or cron
+        timeout-minutes: 6
+        run: |
+          npx wrangler preview --config workers/qa-telegram-off/wrangler.jsonc --worker-name erp-auto-tracking-telegramoff-qa-v1 --name telegramoff-isolated-v1 --message "isolated Telegram-off QA $GITHUB_SHA" --json > qa-worker-artifacts/preview-deploy.json
+      - name: Test Cloudflare live Preview; refuse any provider or DB mutation
+        timeout-minutes: 5
+        run: node scripts/worker-telegram-off-remote-qa.mjs
+      - name: Upload audited candidate and isolated QA Preview evidence (no Production deployment)
+        uses: actions/upload-artifact@v4
+        with:
+          name: erp-auto-tracking-telegram-off-${{ github.sha }}
+          path: qa-worker-artifacts/
+          retention-days: 7
+          if-no-files-found: error
