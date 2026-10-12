@@ -575,7 +575,15 @@
 }
 /* Browser-native <details> disclosures (not OS select menus), populated
    from the actual account list; summary and links work without hydration. */
-.brand-shell-v1 .p1-account-command-row{isolation:isolate;z-index:50}
+.brand-shell-v1 .p1-account-command-row{
+  position:relative!important;isolation:isolate;z-index:50!important;
+}
+/* Table cells can have z-index 120+ for sticky/interactive states.
+   Raise the whole filter toolbar only while a data-list is open, so the
+   actual clickable option stays above the data table, not just visible. */
+.brand-shell-v1 .p1-account-command-row:has(.p1-filter-details[open]){
+  z-index:3000!important;
+}
 .brand-shell-v1 form.account-filter-bar.one-line.entity-user-command{
   overflow:visible!important;align-items:center!important;gap:6px!important;
 }
