@@ -168,16 +168,30 @@ try {
       await page.locator('.p1-account-filter-actions .column-manager-head button').click()
       await page.keyboard.press('Escape')
       check('User bulk archive hidden until checkbox selection',await page.locator('.user-bulk-bar').count()===0)
-      const filterMenu=page.locator('.p1-filter-dropdown').filter({has:page.locator('input[name="orders"]')})
-      await filterMenu.locator('.p1-filter-trigger').click()
-      check('User exact order-count preset options',await filterMenu.getByRole('option',{name:'2 đơn'}).count()===1)
-      await filterMenu.getByRole('option',{name:'2 đơn'}).click()
-      check('User order filter captures exact selection',await filterMenu.locator('input[name="orders"]').inputValue()==='2')
-      const voucherMenu=page.locator('.p1-filter-dropdown').filter({has:page.locator('input[name="voucher"]')})
-      await voucherMenu.locator('.p1-filter-trigger').click()
-      check('User voucher filter displays real tags',await voucherMenu.getByRole('option',{name:'SHHD'}).count()===1)
+      // List choices are derived from actual User data; there is no hardcoded
+      // legacy <select role=option> or fixed "2 đơn" / "SHHD" fixture.
+      const filterMenu=page.locator('.p1-filter-popover-control')
+        .filter({has:page.locator('input[name="orders"]')})
+      await filterMenu.locator('button.p1-filter-trigger').click()
+      const orderOptions=filterMenu.locator('a.p1-filter-option[data-value]:not([data-value="all"])')
+      check('User order-count datalist has options from actual records',
+        await orderOptions.count()>0)
+      const selectedOrders=await orderOptions.first().getAttribute('data-value')
+      assert.ok(selectedOrders,'Thiếu giá trị Số đơn từ data-list')
+      await orderOptions.first().click()
+      await page.waitForURL(u=>u.searchParams.get('orders')===selectedOrders,{timeout:20000})
+      check('User order-count filter captures actual data-list option',
+        await filterMenu.locator('input[name="orders"]').inputValue()===selectedOrders)
+      await page.goto(base+'/purchase/accounts?range=all',{waitUntil:'domcontentloaded',timeout:35000})
+      const voucherMenu=page.locator('.p1-filter-popover-control')
+        .filter({has:page.locator('input[name="voucher"]')})
+      await voucherMenu.locator('button.p1-filter-trigger').click()
+      const realTags=await voucherMenu.locator('a.p1-filter-option[data-value]:not([data-value="all"])').count()
+      check('User voucher datalist displays existing tags',realTags>0,{tags:realTags})
       await page.keyboard.press('Escape')
-      check('User themed dropdown closes with Escape',!(await voucherMenu.getByRole('listbox').isVisible().catch(()=>false)))
+      check('User themed dropdown closes with Escape',
+        await voucherMenu.locator('.p1-filter-top-layer').evaluate(
+          el=>!el.matches(':popover-open')&&getComputedStyle(el).display==='none'))
       const checkBox=page.locator('.user-table tbody input[type="checkbox"]').first()
       await checkBox.check()
       check('User selected-only archive toolbar visible',await page.locator('.user-bulk-bar').isVisible())
@@ -350,7 +364,9 @@ try {
         await page.locator('.order-table td.product-cell .p1-product-lines').count()>0)
     }
     await menu.click()
-    const menuPanel=page.locator((spec.name==='User'?'.p1-account-filter-actions':'.p1-order-toolbar-actions')+' .column-manager-menu')
+    const menuPanel=spec.name==='User'
+      ?page.locator('.p1-account-filter-actions .column-manager-menu')
+      :page.getByRole('dialog',{name:'Sắp xếp, ẩn và hiện cột đơn nhập'})
     check(spec.name+' column manager opens',await menuPanel.isVisible())
     if(spec.name==='User')check('User extra title row removed',
       await page.locator('.p1-account-table-tools,.p1-account-table-tools-label').count()===0)
@@ -500,7 +516,7 @@ try {
       check('Old order column preferences receive new Device column once',
         await page.locator('.order-table th[data-order-col="device"]').count()===1)
       await page.locator('.p1-order-toolbar-actions .managed-column-button').click()
-      await page.locator('.p1-order-toolbar-actions .column-manager-row').filter({
+      await page.getByRole('dialog',{name:'Sắp xếp, ẩn và hiện cột đơn nhập'}).locator('.column-manager-row').filter({
         hasText:'Thiết bị',
       }).locator('input[type="checkbox"]').uncheck()
       await page.keyboard.press('Escape')
@@ -514,7 +530,7 @@ try {
       await page.reload({waitUntil:'load',timeout:35000})
       const columnButton=page.locator('.p1-order-toolbar-actions .managed-column-button')
       await columnButton.click()
-      const rows=page.locator('.p1-order-toolbar-actions .column-manager-row')
+      const rows=page.getByRole('dialog',{name:'Sắp xếp, ẩn và hiện cột đơn nhập'}).locator('.column-manager-row')
       const voucher=rows.filter({hasText:'Voucher'})
       await voucher.locator('input[type="checkbox"]').uncheck()
       check('Order column manager hides Voucher column and matching colgroup',
@@ -547,7 +563,7 @@ try {
         afterOrderReload.indexOf('time')===afterOrderReload.indexOf('device')-1,{afterOrderReload})
       // Restore default order before measuring live drag resize.
       await page.locator('.p1-order-toolbar-actions .managed-column-button').click()
-      await page.locator('.p1-order-toolbar-actions .column-manager-head button').click()
+      await page.getByRole('dialog',{name:'Sắp xếp, ẩn và hiện cột đơn nhập'}).locator('.column-manager-head button').click()
       await page.keyboard.press('Escape')
       await page.waitForTimeout(260)
       const deviceGrip=page.locator('.order-table th[data-order-col="device"] .mynh-column-resize-grip')
