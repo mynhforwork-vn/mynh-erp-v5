@@ -34,11 +34,22 @@ jobs:
         run: |
           npm run typecheck
           npx opennextjs-cloudflare build
-      - name: Publish named Preview only
+      - name: Verify immutable isolated Preview (no API upload)
         run: |
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
-          npx wrangler preview --name erp-stage-c-interactions --worker-name mynh-erp-v5 --message "isolated stage C $GITHUB_SHA" --json > qa-stage-c-preview.json
+          node --input-type=module <<'NODE'
+          const worker='mynh-erp-v5'
+          const previewId='aa85945107ec49e7bee6e781a50f76f4'
+          const expected='efdf63bbaaceb9d60f744e1d89addb67efb2c409'
+          const api='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/workers/'+worker+'/previews/'+previewId+'/deployments'
+          const res=await fetch(api,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}})
+          if(!res.ok)throw Error('Preview metadata unavailable: HTTP '+res.status)
+          const json=await res.json()
+          const versions=Array.isArray(json.result)?json.result:[]
+          if(!json.success||versions[0]?.annotations?.['workers/commit_sha']!==expected)throw Error('Isolated Preview source changed; stop')
+          console.log('STAGE_C_PINNED_PREVIEW '+JSON.stringify({preview:'erp-stage-c-interactions',source_commit:expected,deployment:versions[0].id,production_changed:false}))
+          NODE
       - name: Preview health and login
         run: |
           test "$(curl --silent --show-error --max-time 25 -o /tmp/stage-c-health.json -w '%{http_code}' "$PREVIEW_URL/api/health")" = "200"
