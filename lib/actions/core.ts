@@ -1954,85 +1954,10 @@ export async function saveAlertRuleConfig(formData:FormData){
     p_alert_type:alertType,
     p_enabled:formData.get('enabled')==='on',
     p_in_app_enabled:formData.get('in_app_enabled')==='on',
-    p_telegram_enabled:formData.get('telegram_enabled')==='on',
+    p_telegram_enabled:false,
     p_batch_window_minutes:Number.isFinite(batchRaw)?Math.round(batchRaw):0,
   })
   if(error)throw new Error(error.message)
   revalidatePath('/settings')
 }
 
-export async function saveTelegramAlertSettings(formData:FormData){
-  const {supabase,role}=await actor()
-  requireAdmin(role)
-  const retry=keywordList(formData.get('retry_minutes'))
-    .map(v=>Number(v))
-    .filter(v=>Number.isFinite(v))
-    .map(v=>Math.round(v))
-  const maxAttemptsRaw=Number(text(formData.get('max_attempts'))||5)
-  const alertTypes=['PICKUP_FAILED','ARRIVED_DESTINATION_HUB','OUT_FOR_DELIVERY','DELIVERED','DELIVERY_FAILED']
-
-  const settingsResult=await supabase.rpc('save_telegram_alert_settings_secure',{
-    p_enabled:formData.get('enabled')==='on',
-    p_default_chat_id:text(formData.get('default_chat_id'))||null,
-    p_alert_types:alertTypes,
-    p_bot_token:text(formData.get('bot_token'))||null,
-    p_clear_token:formData.get('clear_token')==='on',
-  })
-  if(settingsResult.error)throw new Error(settingsResult.error.message)
-
-  const policyResult=await supabase.rpc('save_telegram_delivery_policy_secure',{
-    p_retry_minutes:retry.length?retry:[5,15,30,60],
-    p_max_attempts:Number.isFinite(maxAttemptsRaw)?Math.round(maxAttemptsRaw):5,
-  })
-  if(policyResult.error)throw new Error(policyResult.error.message)
-  revalidatePath('/settings')
-}
-
-export async function saveTelegramAlertDestination(formData:FormData){
-  const {supabase,role}=await actor()
-  requireAdmin(role)
-  const id=text(formData.get('destination_id'))
-  const destinationHub=text(formData.get('destination_hub'))
-  const chatId=text(formData.get('chat_id'))
-  if(!destinationHub||!chatId)throw new Error('Thiếu HUB hoặc Telegram Chat ID')
-  const payload={
-    destination_hub:destinationHub,
-    chat_id:chatId,
-    alert_types:formData.getAll('alert_types').map(v=>text(v)).filter(Boolean),
-    is_active:formData.get('is_active')==='on',
-    updated_at:new Date().toISOString(),
-  }
-  const mutation=id
-    ? supabase.from('telegram_alert_destinations').update(payload).eq('id',id)
-    : supabase.from('telegram_alert_destinations').upsert(payload,{onConflict:'destination_hub'})
-  const {error}=await mutation
-  if(error)throw new Error(error.message)
-  revalidatePath('/settings')
-}
-
-export async function deleteTelegramAlertDestination(formData:FormData){
-  const {supabase,role}=await actor()
-  requireAdmin(role)
-  const id=text(formData.get('destination_id'))
-  if(!id)throw new Error('Thiếu cấu hình Telegram HUB cần xoá')
-  const {error}=await supabase.from('telegram_alert_destinations').delete().eq('id',id)
-  if(error)throw new Error(error.message)
-  revalidatePath('/settings')
-}
-
-export async function testTelegramConnection(formData:FormData){
-  const {supabase,role}=await actor()
-  requireAdmin(role)
-  const chatId=text(formData.get('chat_id'))
-  const {data,error}=await supabase.functions.invoke('telegram-alert-dispatcher',{
-    body:{test:true,chat_id:chatId||undefined},
-  })
-  const params=new URLSearchParams({section:'tracking-alerts'})
-  if(error||data?.ok!==true){
-    params.set('telegram_test','fail')
-    params.set('telegram_message',String(error?.message??data?.error??'Không gửi được tin thử').slice(0,180))
-  }else{
-    params.set('telegram_test','ok')
-  }
-  redirect('/settings?'+params.toString())
-}

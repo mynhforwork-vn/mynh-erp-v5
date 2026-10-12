@@ -73,9 +73,31 @@ await context.addCookies([...cookieMap.values()].map(c=>({
   sameSite:c.options?.sameSite==='strict'?'Strict':c.options?.sameSite==='none'?'None':'Lax',
 })))
 const page=await context.newPage()
-page.on('console',m=>{if(m.type()==='error')summary.consoleErrors.push({url:page.url(),text:m.text()})})
+page.on('console',m=>{if(m.type()==='error')summary.consoleErrors.push({url:page.url(),source:m.location().url,text:m.text()})})
 page.on('pageerror',e=>summary.pageErrors.push({url:page.url(),text:String(e)}))
-page.on('response',r=>{if(r.status()>=500)summary.network5xx.push({url:r.url(),status:r.status()})})
+page.on('response',r=>{
+  if(r.status()>=400&&r.status()<500){
+    const url=new URL(r.url())
+    console.log('QA_NETWORK_4XX '+JSON.stringify({
+      status:r.status(),origin:url.origin,path:url.pathname,resourceType:r.request().resourceType(),
+    }))
+  }
+  if(r.status()>=500){
+    const item={path:new URL(r.url()).pathname,status:r.status(),
+      resourceType:r.request().resourceType(),cfRay:r.headers()['cf-ray']??null,
+      server:r.headers()['server']??null,contentType:r.headers()['content-type']??null}
+    summary.network5xx.push(item)
+    console.log('QA_MUTATION_HTTP_5XX '+JSON.stringify(item))
+    void r.text().then(body=>{
+      const errorClass=/1102|exceeded resource limits/i.test(body)?'CF_CPU_LIMIT':
+        /1027|daily request limit/i.test(body)?'CF_DAILY_LIMIT':
+        /application error|server components render/i.test(body)?'NEXT_RENDER':
+        /<html|<!doctype/i.test(body)?'HTML_ERROR':'OTHER'
+      item.errorClass=errorClass
+      console.log('QA_MUTATION_HTTP_5XX_CLASS '+JSON.stringify({path:item.path,status:item.status,cfRay:item.cfRay,errorClass}))
+    }).catch(()=>{})
+  }
+})
 
 async function go(path){
   let lastStatus=0

@@ -104,7 +104,13 @@ async function browserFor(session,role){
   const page=await context.newPage()
   page.on('console',m=>{if(m.type()==='error')summary.consoleErrors.push({role,url:page.url(),text:m.text()})})
   page.on('pageerror',e=>summary.pageErrors.push({role,url:page.url(),text:String(e)}))
-  page.on('response',r=>{if(r.status()>=500)summary.network5xx.push({role,url:r.url(),status:r.status(),resourceType:r.request().resourceType()})})
+  page.on('response',r=>{
+    if(r.status()<500)return
+    const item={role,url:r.url().split('?')[0],status:r.status(),resourceType:r.request().resourceType(),
+      cfRay:r.headers()['cf-ray']??null,server:r.headers()['server']??null}
+    summary.network5xx.push(item)
+    console.log('QA_RBAC_HTTP_5XX '+JSON.stringify(item))
+  })
   return {browser,page}
 }
 async function go(page,role,path){
@@ -119,6 +125,10 @@ async function go(page,role,path){
   for(let attempt=1;attempt<=5;attempt++){
     try{
       const res=await page.goto(target,{waitUntil:'domcontentloaded',timeout:30000})
+      // Allow previous RSC/fetch work to settle before the next route.
+      // Unlike retries, this is a read-only QA request pacing measure,
+      // not a change to application or carrier polling.
+      await page.waitForLoadState('networkidle',{timeout:5000}).catch(()=>{})
       await page.waitForTimeout(attempt===1?500:1000)
       status=res?.status()??0
       finalUrl=page.url()
@@ -128,7 +138,7 @@ async function go(page,role,path){
       navigationError=''
 
       if(status>0&&status<500&&!login&&!serverError){
-        summary.network5xx=summary.network5xx.filter(x=>!(x.role===role&&x.resourceType==='document'&&x.url===target))
+        // Never erase 5xx evidence after a successful navigation retry.
         record('routes',role+' '+path,true,{status,finalUrl,attempt})
         return
       }
@@ -159,7 +169,7 @@ function auditSourceGuards(){
     'updateSystemUserRole','sendSystemUserPasswordReset','resetERPSystemData','createSystemUserAccount',
     'setSystemUserTemporaryPassword','deleteSystemUserAccount',
     'saveTrackingProviderConfig','saveTrackingRuntimeSettings','saveTrackingRule','saveCarrierStatusMapping','testTrackingConnection',
-    'saveAlertRuleConfig','saveTelegramAlertSettings','saveTelegramAlertDestination','deleteTelegramAlertDestination','testTelegramConnection',
+    'saveAlertRuleConfig',
   ])
   for(const path of files){
     const src=fs.readFileSync(path,'utf8')
@@ -274,21 +284,23 @@ for(const role of ['admin','operator','viewer']){
     }
 
     await go(page,role,'/settings?section=notifications')
-    const telegramTabVisible=await page.locator('.settings-page-tabs-v3').getByRole('link',{name:'Thông báo',exact:true}).count()>0
-    const telegramWorkspace=await page.locator('.tracking-telegram-settings').count()>0
-    const telegramSubtab=page.locator('.notification-settings-v9 .settings-subtabs-v6').getByRole('button',{name:/^Kết nối Telegram/}).first()
-    if(await telegramSubtab.count())await telegramSubtab.click()
-    const telegramToken=page.locator('.telegram-settings-grid-v9 input[name="bot_token"]').first()
-    const telegramEditable=await telegramToken.count()>0&&!(await telegramToken.isDisabled())
-    const telegramSave=await page.locator('.telegram-settings-grid-v9').getByRole('button',{name:'Lưu Telegram'}).count()>0
+    const notificationTabVisible=await page.locator('.settings-page-tabs-v3').getByRole('link',{name:'Thông báo',exact:true}).count()>0
+    const notificationWorkspace=page.locator('.notification-in-app-only-v1')
+    const notificationVisible=await notificationWorkspace.count()>0
+    const notificationRows=notificationWorkspace.locator('form.notification-rule-row-v9')
+    const noticeRuleCount=await notificationRows.count()
+    const notificationSave=notificationWorkspace.getByRole('button',{name:'Lưu',exact:true})
+    const notificationCanSave=await notificationSave.count()>0&&await notificationSave.first().isEnabled()
+    const noTelegramControls=await page.locator('[name="telegram_enabled"],[name="bot_token"],[name="chat_id"],.tracking-telegram-settings').count()===0
+    record('ui',role+' Telegram settings removed',noTelegramControls)
     if(role==='viewer'){
-      record('ui',role+' Notification visibility',!telegramTabVisible&&!telegramWorkspace,{telegramTabVisible,telegramWorkspace})
+      record('ui',role+' Notification visibility',!notificationTabVisible&&!notificationVisible,{notificationTabVisible,notificationVisible})
     }else if(role==='admin'){
-      record('ui',role+' Alerts visibility',telegramTabVisible&&telegramWorkspace,{telegramTabVisible,telegramWorkspace})
-      record('ui',role+' Notification edit state',telegramEditable&&telegramSave,{telegramEditable,telegramSave})
+      record('ui',role+' Alerts visibility',notificationTabVisible&&notificationVisible&&noticeRuleCount===5,{notificationTabVisible,notificationVisible,noticeRuleCount})
+      record('ui',role+' Notification edit state',notificationCanSave,{notificationCanSave})
     }else{
-      record('ui',role+' Alerts visibility',telegramTabVisible&&telegramWorkspace,{telegramTabVisible,telegramWorkspace})
-      record('ui',role+' Notification read-only state',!telegramEditable&&!telegramSave,{telegramEditable,telegramSave})
+      record('ui',role+' Alerts visibility',notificationTabVisible&&notificationVisible&&noticeRuleCount===5,{notificationTabVisible,notificationVisible,noticeRuleCount})
+      record('ui',role+' Notification read-only state',!notificationCanSave,{notificationCanSave})
     }
 
     await go(page,role,'/settings?section=data-management')
@@ -297,10 +309,22 @@ for(const role of ['admin','operator','viewer']){
     const archiveTab=page.locator('.data-management-settings-v10 .settings-subtabs-v6')
       .getByRole('button',{name:/^Lưu trữ & dọn dẹp/}).first()
     const archiveTabVisible=await archiveTab.count()>0
-    if(archiveTabVisible)await archiveTab.click()
-    const permanentDelete=await page.locator('.data-management-settings-v10 .data-danger-confirm-v10')
-      .getByText('Xóa dữ liệu lưu trữ',{exact:true}).count()>0
-    record('ui',role+' permanent purge visibility',archiveTabVisible&&(role==='admin'?permanentDelete:!permanentDelete),{archiveTabVisible,permanentDelete})
+    let archiveTabActive=false
+    if(archiveTabVisible){
+      await page.waitForLoadState('load',{timeout:18000}).catch(()=>null)
+      for(let attempt=0;attempt<3&&!archiveTabActive;attempt++){
+        await archiveTab.click()
+        await page.waitForTimeout(500)
+        archiveTabActive=(await archiveTab.getAttribute('class')??'').split(/\s+/).includes('active')
+      }
+    }
+    // Do not infer a missing Admin purge control while React is still on Overview.
+    // The feature must exist for Admin and must not be visible to Operator/Viewer.
+    const permanentDelete=await page.locator('.data-management-settings-v10 details.data-danger-confirm-v10 > summary')
+      .filter({hasText:'Xóa dữ liệu lưu trữ'}).count()>0
+    record('ui',role+' permanent purge visibility',
+      archiveTabVisible&&archiveTabActive&&(role==='admin'?permanentDelete:!permanentDelete),
+      {archiveTabVisible,archiveTabActive,permanentDelete})
 
     await go(page,role,'/settings?section=shipping&shipping_tab=hubs')
     const hubSubtab=page.locator('.shipping-settings-v6 .settings-subtabs-v6').getByRole('button',{name:/^Kho đích/}).first()
@@ -325,12 +349,28 @@ for(const role of ['admin','operator','viewer']){
     record('ui',role+' purchase order create visibility',role==='viewer'?!createOrderVisible:createOrderVisible,{createOrderVisible})
 
     await go(page,role,'/sales/pos')
+    // POS remembers the last selected warehouse (and prefers HN). Fixture SKU
+    // belongs to f.warehouse_id, so test the role only after selecting that
+    // exact warehouse instead of treating wrong-warehouse absence as RBAC.
+    const warehouseSelector=page.locator('.pos-warehouse select').first()
+    await warehouseSelector.selectOption(String(f.warehouse_id))
+    const selectedWarehouse=await warehouseSelector.inputValue()
     const search=page.getByRole('textbox',{name:'Tìm sản phẩm theo barcode, SKU hoặc tên'}).first()
     if(await search.count()){
-      await search.fill(f.sale_sku);await page.waitForTimeout(200)
+      await search.fill(f.sale_sku)
       const tile=page.locator('button.pos-product-tile-final').filter({hasText:f.sale_sku}).first()
-      const tileEnabled=await tile.count()>0&&!await tile.isDisabled()
-      record('ui',role+' POS sell control',role==='viewer'?!tileEnabled:tileEnabled,{tileEnabled})
+      await tile.waitFor({state:'visible',timeout:10000}).catch(()=>null)
+      const tilePresent=await tile.count()>0
+      const tileEnabled=tilePresent&&!await tile.isDisabled()
+      const stockText=tilePresent?await tile.locator('.pos-final-stock').innerText():''
+      record('ui',role+' POS fixture in selected warehouse',
+        selectedWarehouse===String(f.warehouse_id)&&tilePresent,
+        {selectedWarehouse,expectedWarehouse:String(f.warehouse_id),tilePresent,stockText})
+      record('ui',role+' POS sell control',
+        tilePresent&&(role==='viewer'?!tileEnabled:tileEnabled),
+        {tilePresent,tileEnabled,stockText})
+    }else{
+      record('ui',role+' POS fixture search present',false)
     }
 
     if(f.mutation_sale_id){
@@ -369,8 +409,23 @@ for(const role of ['admin','operator','viewer']){
       const found=await matching.count()>0
       record('ui','Delete-order QA fixture visible only by unique code',found,{orderCode})
       if(!found)throw new Error('Cannot locate unique QA deletion order')
-      await matching.getByRole('button',{name:'Mở thao tác'}).click()
-      await matching.getByRole('button',{name:'Xóa đơn',exact:true}).click()
+      // Permanent deletion is only available after archiving the order.
+      // The QA fixture must follow the same active -> archived -> delete path as real users.
+      await matching.getByRole('link',{name:orderCode,exact:true}).first().click()
+      const lifecycle=page.locator('.record-lifecycle-zone')
+      await lifecycle.getByRole('button',{name:'Lưu trữ'}).click()
+      let archived=false
+      for(let i=0;i<30;i++){
+        const rows=await adminRest('/rest/v1/orders?select=archived_at&id=eq.'+encodeURIComponent(orderId))
+        if(rows[0]?.archived_at){archived=true;break}
+        await new Promise(res=>setTimeout(res,400))
+      }
+      record('backend','QA delete order must be archived first',archived,{orderCode})
+      if(!archived)throw new Error('Isolated QA order archive did not persist')
+      await go(page,role,'/purchase/orders?range=all&archive=archived&order='+encodeURIComponent(orderId)+'&tab=info')
+      const deleteEntry=page.locator('.permanent-delete-box')
+      await deleteEntry.waitFor({state:'visible',timeout:15000})
+      await deleteEntry.getByRole('button',{name:'Xóa vĩnh viễn đơn'}).click()
       const dialog=page.getByRole('dialog',{name:'Xóa vĩnh viễn đơn hàng'})
       await dialog.waitFor({state:'visible'})
       const noCredentials=await dialog.locator('input[type="password"],input[type="email"],input[name="confirm_text"]').count()===0
@@ -465,23 +520,6 @@ for(const role of ['admin','operator','viewer']){
     ? (!providerProbe.ok&&providerProbe.text.includes('HTTPS endpoint'))
     : expectDenied(providerProbe,'Admin role required')
   record('backend',role+' tracking provider admin RPC gate',providerProbePass,{status:providerProbe.status,body:providerProbe.text.slice(0,180)})
-
-  const runtimeProbe=await rest(session,'/rest/v1/rpc/get_telegram_alert_runtime_settings',{method:'POST',body:{}})
-  record('backend',role+' Telegram secret runtime RPC hidden',!runtimeProbe.ok,{status:runtimeProbe.status,body:runtimeProbe.text.slice(0,160)})
-
-  const destinationPayload={
-    destination_hub:f.shipper_hub,
-    chat_id:'0',
-    alert_types:['DELIVERED'],
-    is_active:false,
-  }
-  const destinationWrite=await rest(session,'/rest/v1/telegram_alert_destinations',{method:'POST',body:destinationPayload})
-  if(role==='admin'){
-    record('backend',role+' Telegram destination write RLS',destinationWrite.ok,{status:destinationWrite.status,body:destinationWrite.text.slice(0,160)})
-    await rest(session,'/rest/v1/telegram_alert_destinations?destination_hub=eq.'+encodeURIComponent(f.shipper_hub),{method:'DELETE'})
-  }else{
-    record('backend',role+' Telegram destination write RLS',!destinationWrite.ok,{status:destinationWrite.status,body:destinationWrite.text.slice(0,160)})
-  }
 
   const adminList=await rest(session,'/rest/v1/rpc/admin_list_system_users',{method:'POST',body:{}})
   record('backend',role+' admin_list_system_users',role==='admin'?adminList.ok:expectDenied(adminList,'Admin role required'),{status:adminList.status,body:adminList.text.slice(0,160)})

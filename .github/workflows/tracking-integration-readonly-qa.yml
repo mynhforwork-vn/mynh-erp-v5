@@ -1,0 +1,46 @@
+name: Tracking SPX GHN Telegram — Read-only Release Preflight
+
+on:
+  push:
+    branches:
+      - qa/tracking-spx-ghn-telegram-release-gate-20261012
+      - release/final-telegram-off-spx-20261012
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tracking-integration-readonly-20261012
+  cancel-in-progress: true
+
+jobs:
+  tracking-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check audit code syntax
+        run: node --check scripts/tracking-integration-readonly-qa.mjs
+      - name: "Read-only integration checks: Cloudflare binding, SPX/GHN and Telegram"
+        run: node scripts/tracking-integration-readonly-qa.mjs
+      - name: "Mock SPX/GHN proxy contracts without contacting real providers"
+        run: node scripts/ghn-proxy-offline-contract-qa.mjs
+      - name: "Verify Telegram Edge Function retired source — do not deploy"
+        run: node scripts/telegram-edge-disabled-static-qa.mjs
+      - name: Upload preflight evidence (without secrets)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tracking-integration-readonly-${{ github.sha }}
+          path: qa-tracking-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7

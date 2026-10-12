@@ -887,10 +887,16 @@ for(const name of ['Vận hành Tracking','Chu kỳ trạng thái','Mapping SPX'
   recordInteraction('Tracking subtab '+name,await sub.count()>0)
 }
 await go('/settings?section=notifications')
-for(const name of ['Quy tắc thông báo','Kết nối Telegram','Nhóm theo HUB']){
-  const sub=page.locator('.notification-settings-v9 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()
-  recordInteraction('Notification subtab '+name,await sub.count()>0)
-}
+const noticeWorkspace=page.locator('.notification-in-app-only-v1')
+const noticeRows=noticeWorkspace.locator('form.notification-rule-row-v9')
+const noticeRowCount=await noticeRows.count()
+recordInteraction('Five in-app alert rules visible',await noticeWorkspace.count()===1&&noticeRowCount===5,{noticeRowCount})
+recordInteraction('In-app rule toggles and grouping remain',noticeRowCount===5
+  &&await noticeWorkspace.locator('input[name="enabled"]').count()===5
+  &&await noticeWorkspace.locator('input[name="in_app_enabled"]').count()===5
+  &&await noticeWorkspace.locator('input[name="batch_window_minutes"]').count()===5)
+recordInteraction('Telegram UI completely absent',!await noticeWorkspace.locator('[name="telegram_enabled"],[name="bot_token"],[name="chat_id"]').count()
+  &&!(await noticeWorkspace.innerText()).toLowerCase().includes('telegram'))
 await go('/settings?section=payments')
 for(const name of ['Cấu hình thanh toán','Mẫu hóa đơn / phiếu thu']){
   const sub=page.locator('.payment-settings-v12 .settings-subtabs-v6').getByRole('button',{name:new RegExp('^'+name)}).first()

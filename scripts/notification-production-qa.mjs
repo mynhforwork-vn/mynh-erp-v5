@@ -48,7 +48,7 @@ assert.ok(!view.includes('fetch('+'\'/api/alerts/receive\'') ||
 
 for(const text of [
  'buildOrderNotices','order_items(product_name,variant,quantity)',
- 'shipments(tracking_number,carrier)','erp_users(username)',
+ 'shipments(','tracking_number,carrier','erp_users(username)',
  'recipient_phone:canViewRecipient',"order.receive_status==='RECEIVED'?'':",
 ])has(api,text)
 has(global,"@import './styles/notification-neo-soft-a.css'")

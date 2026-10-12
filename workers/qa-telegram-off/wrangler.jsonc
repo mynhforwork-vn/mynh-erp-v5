@@ -1,0 +1,16 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "erp-auto-tracking-telegramoff-qa-v1",
+  "main": "../../qa-worker-artifacts/erp-auto-tracking-telegram-off.mjs",
+  "compatibility_date": "2026-09-09",
+  "workers_dev": true,
+  "observability": {
+    "enabled": false
+  },
+  "previews": {
+    "vars": {
+      "QA_ENVIRONMENT": "isolated-no-provider-credentials"
+    }
+  },
+  "preview_urls": true
+}
