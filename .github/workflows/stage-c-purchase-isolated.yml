@@ -1,0 +1,78 @@
+name: Stage C — Isolated User Order Tracking Journey
+on:
+  push:
+    branches:
+      - qa/stage-c-purchase-isolated-20261012
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stage-c-purchase-20261012
+  cancel-in-progress: true
+jobs:
+  purchase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 34
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+      SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
+      PREVIEW_URL: https://erp-stage-c-interactions-mynh-erp-v5.mynh-forwork.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Verify pinned Preview without upload
+        run: |
+          node --input-type=module <<'NODE'
+          const url='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/workers/workers/mynh-erp-v5/previews/aa85945107ec49e7bee6e781a50f76f4/deployments'
+          const res=await fetch(url,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN}})
+          const data=await res.json()
+          if(!data.success||data.result?.[0]?.annotations?.['workers/commit_sha']!=='efdf63bbaaceb9d60f744e1d89addb67efb2c409')throw Error('Preview has unexpected app source')
+          console.log('Stage C Purchase pinned to release application source c41b17fc; isolated Preview')
+          NODE
+      - name: Create temporary QA login
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-setup.mjs
+      - name: Create identified QA User and orders
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-fixture-setup.mjs
+      - name: Prepare Chromium
+        run: |
+          npm install --no-save playwright --no-audit --no-fund
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: User detail → order → tracking, column actions and reload
+        id: journey
+        continue-on-error: true
+        timeout-minutes: 16
+        run: node scripts/p1-purchase-tables-qa.mjs
+      - name: Evaluate purchase E2E (not build)
+        if: always()
+        run: |
+          echo "Purchase E2E: ${{ steps.journey.outcome }}"
+          test "${{ steps.journey.outcome }}" = success
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage-c-purchase-${{ github.sha }}
+          path: qa-p1-purchase-artifacts/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Cleanup only labelled QA fixtures
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-fixture-cleanup.mjs
+      - name: Cleanup disposable QA login
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-cleanup.mjs
