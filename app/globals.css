@@ -26,3 +26,6 @@
 
 /* P1: scoped Purchase Accounts and Orders table fit; leaves Tracking intact. */
 @import './styles/p1-purchase-tables.css';
+
+/* Dedicated in-app alert rules layout (desktop/tablet/mobile). */
+@import './styles/notification-in-app-only.css';
