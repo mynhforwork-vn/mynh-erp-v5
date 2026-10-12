@@ -104,7 +104,16 @@ async function browserFor(session,role){
   const page=await context.newPage()
   page.on('console',m=>{if(m.type()==='error')summary.consoleErrors.push({role,url:page.url(),text:m.text()})})
   page.on('pageerror',e=>summary.pageErrors.push({role,url:page.url(),text:String(e)}))
-  page.on('response',r=>{if(r.status()>=500)summary.network5xx.push({role,url:r.url(),status:r.status(),resourceType:r.request().resourceType()})})
+  page.on('response',r=>{
+    if(r.status()<500)return
+    const req=r.request(),headers=r.headers()
+    const row={role,url:new URL(r.url()).pathname,status:r.status(),resourceType:req.resourceType(),
+      prefetch:req.headers()['next-router-prefetch']||null,
+      cfRay:headers['cf-ray']||null,cfCacheStatus:headers['cf-cache-status']||null,
+      contentType:headers['content-type']||null}
+    summary.network5xx.push(row)
+    console.log('QA_RBAC_HTTP_5XX_DIAGNOSTIC '+JSON.stringify(row))
+  })
   return {browser,page}
 }
 async function go(page,role,path){
