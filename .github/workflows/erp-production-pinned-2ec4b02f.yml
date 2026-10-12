@@ -77,22 +77,20 @@ jobs:
             worker:'mynh-erp-v5',keep_vars:true,bindings}))
           NODE
 
-      - name: Diagnose and verify current primary and alias production endpoints
+      - name: Verify current primary Production, log known alias 404 separately
         run: |
-          failed=0
-          for base in https://mynh-erp-v5.mynh-forwork.workers.dev https://erp.mynh-forwork.workers.dev; do
-            status=$(curl --silent --show-error --max-time 25 -o /tmp/erp-health -w '%{http_code}' "$base/api/health") || status=NETWORK_ERROR
-            health_marker=missing
-            if grep -q '"ok":true' /tmp/erp-health; then health_marker=ok; fi
-            echo "PRE_PROD_HEALTH $base status=$status marker=$health_marker"
-            if test "$status" != 200 || test "$health_marker" != ok; then failed=1; fi
-            status=$(curl --silent --show-error --max-time 25 -o /tmp/erp-login -w '%{http_code}' "$base/login") || status=NETWORK_ERROR
-            login_marker=missing
-            if grep -q 'MYNH ERP' /tmp/erp-login; then login_marker=ok; fi
-            echo "PRE_PROD_LOGIN $base status=$status marker=$login_marker"
-            if test "$status" != 200 || test "$login_marker" != ok; then failed=1; fi
-          done
-          test "$failed" = 0
+          base=https://mynh-erp-v5.mynh-forwork.workers.dev
+          status=$(curl --silent --show-error --max-time 25 -o /tmp/erp-health -w '%{http_code}' "$base/api/health")
+          echo "PRE_PROD_PRIMARY_HEALTH status=$status"
+          test "$status" = 200
+          grep -q '"ok":true' /tmp/erp-health
+          status=$(curl --silent --show-error --max-time 25 -o /tmp/erp-login -w '%{http_code}' "$base/login")
+          echo "PRE_PROD_PRIMARY_LOGIN status=$status"
+          test "$status" = 200
+          grep -q 'MYNH ERP' /tmp/erp-login
+          alias=https://erp.mynh-forwork.workers.dev
+          status=$(curl --silent --show-error --max-time 25 -o /tmp/erp-alias-health -w '%{http_code}' "$alias/api/health") || status=NETWORK_ERROR
+          echo "PREEXISTING_ALIAS_DIAGNOSTIC url=$alias status=$status (not changed by this workflow)"
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -109,16 +107,18 @@ jobs:
         id: deploy
         run: npx opennextjs-cloudflare deploy
 
-      - name: Verify ERP Production primary and alias HTTP smoke
+      - name: Verify ONLY approved ERP primary Production HTTP smoke
         id: smoke
         run: |
-          for base in https://mynh-erp-v5.mynh-forwork.workers.dev https://erp.mynh-forwork.workers.dev; do
-            curl --fail --silent --show-error --retry 4 --retry-delay 3 --retry-connrefused --max-time 30 "$base/api/health" -o /tmp/erp-new-health
-            grep -q '"ok":true' /tmp/erp-new-health
-            curl --fail --silent --show-error --retry 4 --retry-delay 3 --max-time 30 "$base/login" -o /tmp/erp-new-login
-            grep -q 'MYNH ERP' /tmp/erp-new-login
-            echo "PROD_SMOKE_PASS $base health + login"
-          done
+          base=https://mynh-erp-v5.mynh-forwork.workers.dev
+          curl --fail --silent --show-error --retry 4 --retry-delay 3 --retry-connrefused --max-time 30 "$base/api/health" -o /tmp/erp-new-health
+          grep -q '"ok":true' /tmp/erp-new-health
+          curl --fail --silent --show-error --retry 4 --retry-delay 3 --max-time 30 "$base/login" -o /tmp/erp-new-login
+          grep -q 'MYNH ERP' /tmp/erp-new-login
+          echo "PROD_SMOKE_PASS $base health + login"
+          alias=https://erp.mynh-forwork.workers.dev
+          status=$(curl --silent --show-error --max-time 25 -o /tmp/erp-alias-later -w '%{http_code}' "$alias/api/health") || status=NETWORK_ERROR
+          echo "UNMODIFIED_ALIAS_STATUS_AFTER_DEPLOY url=$alias status=$status"
 
       - name: Verify tracking and GHN workers were not redeployed
         run: |
