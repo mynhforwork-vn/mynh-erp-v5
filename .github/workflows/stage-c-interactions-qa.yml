@@ -1,0 +1,115 @@
+name: Stage C — Isolated Interactive UI Regression
+
+on:
+  push:
+    branches:
+      - qa/stage-c-interaction-20261012
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stage-c-interaction-20261012
+  cancel-in-progress: true
+
+jobs:
+  interactions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+      SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
+      PREVIEW_URL: https://erp-stage-c-interactions-mynh-erp-v5.mynh-forwork.workers.dev
+      QA_TRACKING_FOCUS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install application dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck and build isolated Preview (no Production deploy)
+        run: |
+          npm run typecheck
+          npx opennextjs-cloudflare build
+      - name: Publish named Preview only
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx wrangler preview --name erp-stage-c-interactions --worker-name mynh-erp-v5 --message "isolated stage C $GITHUB_SHA" --json > qa-stage-c-preview.json
+      - name: Preview health and login
+        run: |
+          test "$(curl --silent --show-error --max-time 25 -o /tmp/stage-c-health.json -w '%{http_code}' "$PREVIEW_URL/api/health")" = "200"
+          grep -q '"ok":true' /tmp/stage-c-health.json
+          test "$(curl --silent --show-error --max-time 25 -o /tmp/stage-c-login.html -w '%{http_code}' "$PREVIEW_URL/login")" = "200"
+      - name: Create disposable QA operator
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-setup.mjs
+      - name: Create isolated traceable QA fixture
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-fixture-setup.mjs
+      - name: Prepare browser
+        run: |
+          npm install --no-save playwright --no-audit --no-fund
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: Tracking slidebar and responsive 320 to 1920
+        id: trackingui
+        continue-on-error: true
+        timeout-minutes: 14
+        run: node scripts/tracking-responsive-tables-qa.mjs
+      - name: Purchase datalist, column controls and reload
+        id: purchase
+        continue-on-error: true
+        if: steps.trackingui.outcome == 'success'
+        timeout-minutes: 15
+        run: node scripts/purchase-filter-columns-e2e.mjs
+      - name: Purchase User / order / Tracking integrated tables
+        id: purchasetable
+        continue-on-error: true
+        if: steps.purchase.outcome == 'success'
+        timeout-minutes: 15
+        run: node scripts/p1-purchase-tables-qa.mjs
+      - name: In-app notifications five-rule responsive UI
+        id: notifications
+        continue-on-error: true
+        if: steps.purchasetable.outcome == 'success'
+        timeout-minutes: 10
+        run: node scripts/notification-in-app-only-browser-qa.mjs
+      - name: Evaluate UI QA gate
+        if: always()
+        run: |
+          echo "Tracking: ${{ steps.trackingui.outcome }}"
+          echo "Purchase filters: ${{ steps.purchase.outcome }}"
+          echo "Purchase flow: ${{ steps.purchasetable.outcome }}"
+          echo "Notifications: ${{ steps.notifications.outcome }}"
+          test "${{ steps.trackingui.outcome }}" = success
+          test "${{ steps.purchase.outcome }}" = success
+          test "${{ steps.purchasetable.outcome }}" = success
+          test "${{ steps.notifications.outcome }}" = success
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stage-c-interaction-${{ github.sha }}
+          path: |
+            qa-tracking-slidebar-artifacts/
+            qa-purchase-filter-columns-artifacts/
+            qa-p1-purchase-artifacts/
+            qa-notification-artifacts/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Cleanup only this isolated fixture
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-fixture-cleanup.mjs
+      - name: Cleanup disposable operator
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-cleanup.mjs
