@@ -104,7 +104,26 @@ async function browserFor(session,role){
   const page=await context.newPage()
   page.on('console',m=>{if(m.type()==='error')summary.consoleErrors.push({role,url:page.url(),text:m.text()})})
   page.on('pageerror',e=>summary.pageErrors.push({role,url:page.url(),text:String(e)}))
-  page.on('response',r=>{if(r.status()>=500)summary.network5xx.push({role,url:r.url(),status:r.status(),resourceType:r.request().resourceType()})})
+  page.on('response',r=>{
+    if(r.status()<500)return
+    const item={role,url:r.url().split('?')[0],status:r.status(),
+      resourceType:r.request().resourceType(),
+      cfRay:r.headers()['cf-ray']??null,
+      server:r.headers()['server']??null,
+      contentType:r.headers()['content-type']??null,
+      traceId:r.headers()['x-request-id']??null}
+    summary.network5xx.push(item)
+    console.log('QA_RBAC_5XX_DIAGNOSTIC '+JSON.stringify(item))
+    void r.text().then(body=>{
+      const marker=/1102|exceeded resource limits/i.test(body)?'CF_1102'
+        :/1027|daily request/i.test(body)?'CF_1027'
+        :/Application error|Server Components render/i.test(body)?'NEXT_RENDER'
+        :/<!doctype html|<html/i.test(body)?'HTML_ERROR':'OTHER'
+      item.errorClass=marker
+      item.bodyLength=body.length
+      console.log('QA_RBAC_5XX_CLASS '+JSON.stringify({role,item:item.url,status:item.status,cfRay:item.cfRay,errorClass:marker}))
+    }).catch(()=>{})
+  })
   return {browser,page}
 }
 async function go(page,role,path){
