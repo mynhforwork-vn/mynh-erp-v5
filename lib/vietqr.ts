@@ -48,7 +48,15 @@ export function buildVietQRUrl(
   const params=new URLSearchParams()
   const safeAmount=Math.max(0,Math.round(Number(amount)||0))
   if(safeAmount>0)params.set('amount',String(safeAmount))
-  const info=cleanPart(description,50)
+  // Preserve the '-' separators already displayed by buildTransferDescription.
+  // Otherwise the QR addInfo differs from the reference shown to the cashier.
+  const info=String(description??'')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^A-Za-z0-9 -]+/g,' ')
+    .replace(/\s+/g,' ')
+    .trim()
+    .slice(0,50)
   if(info)params.set('addInfo',info)
   const name=String(config.account_name||'').trim()
   if(name)params.set('accountName',name)
