@@ -129,10 +129,10 @@ function buildCandidate(source) {
   assert.ok(candidate.includes('async scheduled(event, env, ctx) {'), "Scheduled entry removed");
   assert.ok(candidate.includes("GHN_PROXY"), "GHN proxy service code removed");
   assert.equal(hash(functionBodyUntil(candidate,
-    "async function runTrackingCycle(", "async function runAutomationCycle(")), trackingCoreHash,
+    "async function runTrackingCycle(", "async function callExistingTrackingProxy(")), trackingCoreHash,
     "SPX/GHN tracking core changed");
   assert.equal(hash(functionBodyUntil(candidate,
-    "async function callExistingTrackingProxy(", "async function ")), trackingProxyHash,
+    "async function callExistingTrackingProxy(", "\nfunction ")), trackingProxyHash,
     "GHN/SPX proxy logic changed");
 
   const embeddedSecrets = candidate.match(
