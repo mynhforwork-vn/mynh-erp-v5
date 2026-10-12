@@ -35,8 +35,9 @@ export function AccountFilterDropdown({
     }
   },[])
   const active=options.find(option=>option.value===value)
-  const menu=options.filter(option=>option.value==='all'
-    ||option.label.toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi')))
+  const query=search.trim().toLocaleLowerCase('vi')
+  const menu=options.filter(option=>!query
+    ||option.label.toLocaleLowerCase('vi').includes(query))
   function optionHref(nextValue:string){
     const [,query='']=baseHref.split('?')
     const params=new URLSearchParams(query)

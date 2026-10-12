@@ -656,6 +656,12 @@
   flex:0 0 16px;text-align:center;color:#3275aa;font-size:13px
 }
 .brand-shell-v1 .p1-filter-dropdown .p1-filter-empty{padding:10px;color:#718195;font-size:11px}
+@media(max-width:600px){
+  /* In the 2-column mobile filter layout, right-hand dropdowns open inward. */
+  .brand-shell-v1 .entity-user-command details.p1-filter-dropdown:nth-of-type(even) .p1-filter-menu{
+    left:auto!important;right:0!important;
+  }
+}
 @media(max-width:900px){
   .brand-shell-v1 form.account-filter-bar.one-line.entity-user-command{
     height:auto!important;
