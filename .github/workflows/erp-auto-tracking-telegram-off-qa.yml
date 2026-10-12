@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/erp-auto-tracking-disable-telegram-20261012
+      - release/final-telegram-off-spx-20261012
   workflow_dispatch:
 
 permissions:
