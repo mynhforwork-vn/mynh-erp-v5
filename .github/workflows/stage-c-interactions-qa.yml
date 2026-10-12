@@ -1,9 +1,7 @@
 name: Stage C — Isolated Interactive UI Regression
 
 on:
-  push:
-    branches:
-      - qa/stage-c-interaction-20261012
+  workflow_dispatch:
 
 permissions:
   contents: read
