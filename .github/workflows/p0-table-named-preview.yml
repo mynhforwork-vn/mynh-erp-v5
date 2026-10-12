@@ -1,0 +1,80 @@
+name: P0 Table Platform Named Preview
+
+on:
+  push:
+    branches:
+      - chore/p0-table-contract-20261011
+    paths:
+      - .github/workflows/p0-table-named-preview.yml
+      - app/**
+      - components/**
+      - lib/**
+      - package.json
+      - package-lock.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p0-table-named-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  p0-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: TypeScript typecheck
+        run: npm run typecheck
+      - name: Build Cloudflare Worker
+        run: npx opennextjs-cloudflare build
+      - name: Publish isolated P0 Named Preview (not Production)
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx wrangler preview --name table-platform-p0-v1 --worker-name mynh-erp-v5 --message "PR60 P0 table platform $GITHUB_SHA" --json > p0-named-preview.json
+          echo "P0_PREVIEW=https://table-platform-p0-v1-mynh-erp-v5.mynh-forwork.workers.dev"
+      # User-requested: PR60 is stacked on PR59. Publish the P0 build to
+      # PR59's existing NAMED Preview alias, not the production Worker route.
+      # This intentionally replaces the version shown by tracking-kpi-v1,
+      # while preserving all existing /purchase/tracking query parameters.
+      - name: Publish PR60 onto existing PR59 Tracking Named Preview
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx wrangler preview --name tracking-kpi-v1 --worker-name mynh-erp-v5 --message "PR60 P0 based on PR59 $GITHUB_SHA" --json > tracking-kpi-pr60-preview.json
+          echo "PR60_ON_PR59_PREVIEW=https://tracking-kpi-v1-mynh-erp-v5.mynh-forwork.workers.dev"
+      - name: Verify PR60 on original Tracking Preview URL
+        shell: bash
+        run: |
+          BASE="https://tracking-kpi-v1-mynh-erp-v5.mynh-forwork.workers.dev"
+          code=$(curl --silent --show-error --max-time 25 -o tracking-health.json -w '%{http_code}' "$BASE/api/health")
+          echo "PR60_TRACKING_PREVIEW_HEALTH_HTTP=$code"
+          test "$code" = "200"
+          grep -q '"ok":true' tracking-health.json
+          code=$(curl --silent --show-error --max-time 25 -o tracking-login.html -w '%{http_code}' "$BASE/login")
+          echo "PR60_TRACKING_PREVIEW_LOGIN_HTTP=$code"
+          test "$code" = "200"
+      - name: P0 health and login smoke
+        shell: bash
+        run: |
+          BASE="https://table-platform-p0-v1-mynh-erp-v5.mynh-forwork.workers.dev"
+          code=$(curl --silent --show-error --max-time 25 -o p0-health.json -w '%{http_code}' "$BASE/api/health")
+          echo "P0_HEALTH_HTTP=$code"
+          test "$code" = "200"
+          grep -q '"ok":true' p0-health.json
+          code=$(curl --silent --show-error --max-time 25 -o p0-login.html -w '%{http_code}' "$BASE/login")
+          echo "P0_LOGIN_HTTP=$code"
+          test "$code" = "200"
