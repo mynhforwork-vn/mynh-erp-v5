@@ -4,8 +4,13 @@
   "main": "../../qa-worker-artifacts/erp-auto-tracking-telegram-off.mjs",
   "compatibility_date": "2026-09-09",
   "workers_dev": false,
-  "observability": { "enabled": false },
+  "observability": {
+    "enabled": false
+  },
   "previews": {
-    "vars": { "QA_ENVIRONMENT": "isolated-no-provider-credentials" }
-  }
+    "vars": {
+      "QA_ENVIRONMENT": "isolated-no-provider-credentials"
+    }
+  },
+  "preview_urls": true
 }
