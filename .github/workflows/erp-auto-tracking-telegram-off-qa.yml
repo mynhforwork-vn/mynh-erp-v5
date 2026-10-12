@@ -34,7 +34,17 @@ jobs:
         run: node --check qa-worker-artifacts/erp-auto-tracking-telegram-off.mjs
       - name: Test retired Telegram endpoints and preserved Tracking
         run: node scripts/worker-telegram-off-qa.mjs
-      - name: Upload audited candidate and manifest (no Production deployment)
+      - name: Assert safe isolated Worker Preview configuration
+        run: |
+          node -e "const c=JSON.parse(require('fs').readFileSync('workers/qa-telegram-off/wrangler.jsonc','utf8'));if(c.name!=='erp-auto-tracking-telegramoff-qa-v1'||!c.previews||c.services||c.triggers||c.vars||c.secrets||c.routes||c.route)throw Error('Unsafe Worker QA config')"
+      - name: Publish Cloudflare Preview with NO Supabase/GHN bindings or cron
+        timeout-minutes: 6
+        run: |
+          npx wrangler preview --config workers/qa-telegram-off/wrangler.jsonc --worker-name erp-auto-tracking-telegramoff-qa-v1 --name telegramoff-isolated-v1 --message "isolated Telegram-off QA $GITHUB_SHA" --json > qa-worker-artifacts/preview-deploy.json
+      - name: Test Cloudflare live Preview; refuse any provider or DB mutation
+        timeout-minutes: 5
+        run: node scripts/worker-telegram-off-remote-qa.mjs
+      - name: Upload audited candidate and isolated QA Preview evidence (no Production deployment)
         uses: actions/upload-artifact@v4
         with:
           name: erp-auto-tracking-telegram-off-${{ github.sha }}
