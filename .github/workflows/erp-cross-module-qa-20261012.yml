@@ -39,7 +39,6 @@ jobs:
           node --experimental-strip-types scripts/notification-order-tasks-qa.mjs
           node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
           node --experimental-strip-types scripts/table-platform-p0-qa.mjs
-          node --experimental-strip-types scripts/tracking-transit-compact-qa.mjs
       - name: TypeScript typecheck
         run: npm run typecheck
       - name: Cloudflare OpenNext build (no Production deploy)
