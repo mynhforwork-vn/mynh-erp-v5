@@ -33,6 +33,8 @@ jobs:
         run: node scripts/tracking-integration-readonly-qa.mjs
       - name: "Mock SPX/GHN proxy contracts without contacting real providers"
         run: node scripts/ghn-proxy-offline-contract-qa.mjs
+      - name: "Verify Telegram Edge Function retired source — do not deploy"
+        run: node scripts/telegram-edge-disabled-static-qa.mjs
       - name: Upload preflight evidence (without secrets)
         uses: actions/upload-artifact@v4
         if: always()
