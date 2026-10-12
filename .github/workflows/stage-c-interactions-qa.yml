@@ -89,7 +89,7 @@ jobs:
       - name: In-app notifications five-rule responsive UI
         id: notifications
         continue-on-error: true
-        if: steps.purchasetable.outcome == 'success'
+        if: always() && steps.trackingui.outcome == 'success'
         timeout-minutes: 10
         run: node scripts/notification-in-app-only-browser-qa.mjs
       - name: Evaluate UI QA gate
