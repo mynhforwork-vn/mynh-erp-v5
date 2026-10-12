@@ -207,7 +207,7 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
         <p>Doanh thu, hóa đơn POS, sản phẩm, tồn bán và công nợ theo HN / BG</p>
       </div>
       <div className="head-actions">
-        <Link className="button" href="/sales/history">Lịch sử bán</Link>
+        <Link className="button" href="/sales/history" prefetch={false}>Lịch sử bán</Link>
         <Link className="button primary" href="/sales/pos">Mở POS</Link>
       </div>
     </header>
@@ -252,7 +252,7 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
         </div>
         <div className="sales-control-links">
           <Link className="button small" href="/sales/pos">Mở POS</Link>
-          <Link className="button small" href="/sales/history">Lịch sử bán</Link>
+          <Link className="button small" href="/sales/history" prefetch={false}>Lịch sử bán</Link>
           <Link className="button small" href="/sales/debt">Công nợ</Link>
         </div>
       </div>
@@ -349,7 +349,7 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
       <div className="card">
         <div className="card-head">
           <div><h2>Giao dịch gần nhất</h2><span className="muted">Hóa đơn POS trong khoảng đang xem</span></div>
-          <Link className="button small" href="/sales/history">Lịch sử bán</Link>
+          <Link className="button small" href="/sales/history" prefetch={false}>Lịch sử bán</Link>
         </div>
         <div className="sales-recent-list">
           {visibleSales.slice(0,7).map(s=><div className="sales-recent-row" key={s.id}>
@@ -366,7 +366,7 @@ export default async function SalesDashboard({searchParams}:{searchParams:Promis
       <i>→</i>
       <Link href="/sales/pos"><span>2</span><div><b>POS</b><small>Quét / chọn SP · thanh toán</small></div></Link>
       <i>→</i>
-      <Link href="/sales/history"><span>3</span><div><b>Lịch sử bán</b><small>In lại · huỷ · hoàn hàng</small></div></Link>
+      <Link href="/sales/history" prefetch={false}><span>3</span><div><b>Lịch sử bán</b><small>In lại · huỷ · hoàn hàng</small></div></Link>
       <i>→</i>
       <Link href="/sales/customers"><span>4</span><div><b>Khách hàng</b><small>Hồ sơ · lịch sử mua</small></div></Link>
       <i>→</i>
