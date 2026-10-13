@@ -11,16 +11,26 @@ import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/
 import { archiveERPUsersBulk, restoreERPUsersBulk } from '@/lib/actions/core'
 
 type Row=Record<string,any>
-type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'mobile'|'browser'|'voucher'|'orders'|'createdAt'|'note'
+type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'mobile'|'browser'|'voucher'|'orders'|'deliveredOrders'|'createdAt'|'note'
 
-const ALL:ColKey[]=['number','username','platform','phone','email','status','mobile','browser','voucher','orders','createdAt','note']
+const ALL:ColKey[]=['number','username','platform','phone','email','status','mobile','browser','voucher','orders','deliveredOrders','createdAt','note']
 const LABELS:Record<ColKey,string>={
   number:'#',username:'Username',platform:'Nền tảng',phone:'SĐT',email:'Email',
-  status:'Trạng thái',mobile:'Mobile',browser:'Browser',voucher:'Voucher đã dùng',orders:'Số đơn',
+  status:'Trạng thái',mobile:'Mobile',browser:'Browser',voucher:'Voucher đã dùng',orders:'Số đơn',deliveredOrders:'Số đơn giao thành công',
   createdAt:'Thời gian tạo',note:'Ghi chú'
 }
 const STORAGE_KEY='mynh-v5-purchase-account-columns'
 const STORAGE_ORDER_KEY='mynh-v5-purchase-account-column-order'
+const DELIVERY_COL_MIGRATION_KEY='mynh-v5-account-delivered-column-v1'
+
+// Introduce the new visible column once for existing saved layouts. A user
+// who hides it afterwards keeps that preference across reloads.
+function insertAfterOrders(values:ColKey[]){
+  const without=values.filter(k=>k!=='deliveredOrders')
+  const at=without.indexOf('orders')
+  without.splice(at<0?without.length:at+1,0,'deliveredOrders')
+  return without
+}
 
 function statusClass(status?:string|null){
   if(status==='Active')return 'green'
@@ -77,24 +87,32 @@ export function PurchaseAccountTable({
 
   useEffect(()=>{
     try{
+      const firstDeliveryColumn=localStorage.getItem(DELIVERY_COL_MIGRATION_KEY)!=='1'
       const raw=localStorage.getItem(STORAGE_KEY)
       if(raw){
         const parsed=JSON.parse(raw)
         if(Array.isArray(parsed)){
-          setVisible(normalizeLegacyVisibleColumns<ColKey>(
+          const saved=normalizeLegacyVisibleColumns<ColKey>(
             parsed.flatMap((k:string)=>k==='device'?['mobile','browser']:[k]),ALL,['username']
-          ))
+          )
+          const next=firstDeliveryColumn&&!saved.includes('deliveredOrders')
+            ?insertAfterOrders(saved):saved
+          setVisible(next)
+          if(firstDeliveryColumn)localStorage.setItem(STORAGE_KEY,JSON.stringify(next))
         }
       }
       const rawOrder=localStorage.getItem(STORAGE_ORDER_KEY)
       if(rawOrder){
         const parsedOrder=JSON.parse(rawOrder)
         if(Array.isArray(parsedOrder)){
-          setColumnOrder(normalizeLegacyColumnOrder<ColKey>(
-            parsedOrder.flatMap((k:string)=>k==='device'?['mobile','browser']:[k]),ALL
-          ))
+          const mapped=parsedOrder.flatMap((k:string)=>k==='device'?['mobile','browser']:[k])
+          const next=normalizeLegacyColumnOrder<ColKey>(mapped,ALL)
+          const ordered=!mapped.includes('deliveredOrders')?insertAfterOrders(next):next
+          setColumnOrder(ordered)
+          if(!mapped.includes('deliveredOrders'))localStorage.setItem(STORAGE_ORDER_KEY,JSON.stringify(ordered))
         }
       }
+      if(firstDeliveryColumn)localStorage.setItem(DELIVERY_COL_MIGRATION_KEY,'1')
     }catch{}
   },[])
 
@@ -161,14 +179,14 @@ export function PurchaseAccountTable({
   const allSelected=rows.length>0&&rows.slice(0,200).every((row:any)=>selectedSet.has(String(row.id)))
   const colSpan=useMemo(()=>visible.length+(canManage?1:0),[visible,canManage])
   // Same visible-column full/panel width policy as Tracking/HUB.
-  const columnMinimums:Record<ColKey,number>={"number":32,"username":154,"platform":64,"phone":108,"email":155,"status":89,"mobile":104,"browser":96,"voucher":76,"orders":52,"createdAt":135,"note":90}
-  const panelMinimums:Record<ColKey,number>={"number":28,"username":125,"platform":58,"phone":96,"email":130,"status":80,"mobile":83,"browser":75,"voucher":70,"orders":44,"createdAt":125,"note":72}
+  const columnMinimums:Record<ColKey,number>={"number":32,"username":154,"platform":64,"phone":108,"email":155,"status":89,"mobile":104,"browser":96,"voucher":76,"orders":52,"deliveredOrders":96,"createdAt":135,"note":90}
+  const panelMinimums:Record<ColKey,number>={"number":28,"username":125,"platform":58,"phone":96,"email":130,"status":80,"mobile":83,"browser":75,"voucher":70,"orders":44,"deliveredOrders":88,"createdAt":125,"note":72}
   const shownColumns=columnOrder.filter(isVisible)
   // Compact panel sizing is relative to the real table lane. Every visible
   // column receives an explicit share, including when users hide/reorder.
   const panelFitWeights:Record<ColKey,number>={
     number:22,username:102,platform:53,phone:90,email:98,
-    status:72,mobile:81,browser:72,voucher:65,orders:40,createdAt:106,note:76
+    status:72,mobile:81,browser:72,voucher:65,orders:40,deliveredOrders:80,createdAt:106,note:76
   }
   // Content-informed desktop widths. Narrow metadata columns do not expand
   // merely because Username / Email / Note were previously set to auto.
@@ -192,6 +210,7 @@ export function PurchaseAccountTable({
     browser:range(16+maxLength(r=>accountDeviceFields(r).browserName)*6.1,101,140),
     voucher:84,
     orders:52,
+    deliveredOrders:96,
     createdAt:139,
     note:range(20+maxLength(r=>String(r.note??''))*4,146,190),
   }
@@ -288,6 +307,7 @@ export function PurchaseAccountTable({
     if(key==='browser')return <th key={key} data-account-col={key}>Browser</th>
     if(key==='voucher')return <th key={key} data-account-col={key} className="p1-user-voucher-head">Voucher đã dùng</th>
     if(key==='orders')return <th key={key} data-account-col={key}>Số đơn</th>
+    if(key==='deliveredOrders')return <th key={key} data-account-col={key} title="Số đơn giao thành công">Giao thành công</th>
     if(key==='createdAt')return <th key={key} data-account-col={key}><Link className="sortable-head" href={sortHref(detailQuery,timeNext)}>Thời gian tạo <span>{sort==='newest'?'↓':sort==='oldest'?'↑':'↕'}</span></Link></th>
     return <th key={key} data-account-col={key}>Ghi chú</th>
   }
@@ -313,6 +333,7 @@ export function PurchaseAccountTable({
     }
     if(key==='voucher')return <td key={key} data-account-col={key} className="voucher-cell"><VoucherTags value={u.voucher_used_summary} compact maxVisible={1}/></td>
     if(key==='orders')return <td key={key} data-account-col={key} className="count-cell">{u.order_count??0}</td>
+    if(key==='deliveredOrders')return <td key={key} data-account-col={key} className="count-cell" title="Số đơn giao thành công">{u.delivered_order_count??'—'}</td>
     if(key==='createdAt')return <td key={key} data-account-col={key} title={formatDateTime(u.effective_created_at??u.created_at)}>{formatDateTime(u.effective_created_at??u.created_at)}</td>
     return <td key={key} data-account-col={key} className="truncate p1-table-long-text" title={u.note??undefined}>{u.note??'—'}</td>
   }

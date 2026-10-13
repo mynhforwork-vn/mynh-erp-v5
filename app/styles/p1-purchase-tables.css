@@ -829,3 +829,26 @@
     width:min(244px,calc(100vw - 16px))!important;
   }
 }
+
+/* Purchase Accounts: distinct current-delivered count, aligned to existing counts.
+   Semantic identity persists across hidden/reordered columns and right slidebar. */
+.brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table)
+col.p1-account-col-deliveredOrders{width:96px!important}
+.brand-shell-v1 .account-workspace.with-panel .account-table-card
+table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table)
+col.p1-account-col-deliveredOrders{width:88px!important}
+@media(max-width:900px){
+  .brand-shell-v1 .account-workspace .account-table-card
+  table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table)
+  col.p1-account-col-deliveredOrders{width:88px!important}
+}
+.brand-shell-v1 .account-table-card table.user-table
+thead th[data-account-col="deliveredOrders"]{
+  white-space:normal!important;text-align:center!important;
+  font-size:9.5px!important;line-height:1.2!important;padding-inline:4px!important;
+}
+.brand-shell-v1 .account-table-card table.user-table
+tbody td[data-account-col="deliveredOrders"]{
+  text-align:center!important;font-variant-numeric:tabular-nums!important;
+  font-weight:720!important;color:#267c61!important;
+}

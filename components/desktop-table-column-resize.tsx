@@ -145,7 +145,7 @@ export function DesktopTableColumnResize() {
     // leaving the slidebar restores the manually saved full-table widths.
     const purchasePanelWeights={
       account:{number:22,username:102,platform:53,phone:90,email:98,
-        status:72,mobile:81,browser:72,voucher:65,orders:40,createdAt:106,note:76},
+        status:72,mobile:81,browser:72,voucher:65,orders:40,deliveredOrders:80,createdAt:106,note:76},
       order:{number:20,order:108,username:73,device:118,time:103,product:121,
         cod:60,tracking:145,voucher:57,status:91},
     }
@@ -275,7 +275,7 @@ export function DesktopTableColumnResize() {
         // The account sequence number, order count and voucher tags are
         // compact by business contract. Old stored widths must not resurrect
         // oversized cells whenever a User detail slidebar is toggled.
-        const accountCompact:Record<string,number>={number:33,orders:58,voucher:96}
+        const accountCompact:Record<string,number>={number:33,orders:58,deliveredOrders:100,voucher:96}
         const accountWidth=table.classList.contains('user-table')
           ?accountCompact[th.dataset.accountCol??'']:undefined
         const width = isOrder?assigned[i]:panelWidths ? assigned[i] : accountWidth??(th.classList.contains('tracking-action-head') ? 44 :
