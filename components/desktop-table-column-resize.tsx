@@ -283,62 +283,86 @@ export function DesktopTableColumnResize() {
         || visibleWidths[i])
       const panelWidths=fitPurchasePanel(table,ths)
       const isAccount=table.matches('.mynh-p1-semantic-table.user-table')
+      // Same lane-driven allocation contract as Đơn nhập/Tracking: the
+      // sum of rendered headers MUST equal the visible table width. No blank
+      // tail after collapsing the navigation sidebar, no overlapping headers.
       const accountFit=()=>{
-        const card=table.closest('.account-table-card') as HTMLElement|null
-        const target=Math.max(0,Math.floor(card?.clientWidth??0)-2)
-        const cols=Array.from(table.querySelectorAll(':scope > colgroup > col')) as HTMLElement[]
-        // React's semantic Auto Fit writes its CURRENT lane-aware width in the
-        // col's CSS custom property. Reading a previously pinned <th> width here
-        // was the source of stale sizing after toggling either sidebar.
-        const result=ths.map((th,i)=>{
-          const raw=cols[i]?.style.getPropertyValue('--p1-account-fit-col-width')??''
-          const natural=Number.parseFloat(raw)
-          const desired=overrides[headerName(th)]
-            ??(Number.isFinite(natural)&&natural>0?natural:visibleWidths[i])
-          return Math.max(th.classList.contains('bulk-select-col')?26:28,
-            Math.round(desired))
-        })
-        const flexible=['note','email','mobile','browser','username','voucher']
-        const minima:Record<string,number>={
-          username:128,email:132,mobile:86,browser:74,voucher:104,note:88,
-          phone:98,platform:56,status:76,createdAt:130,
-          orders:48,deliveredOrders:88,
+        const pane=table.closest('.account-table-card') as HTMLElement|null
+        const lane=Math.floor(pane?.clientWidth??table.parentElement?.clientWidth??0)
+        const min:Record<string,number>={
+          select:28,number:28,username:110,platform:56,phone:94,email:120,
+          status:75,mobile:80,browser:70,voucher:112,orders:62,
+          deliveredOrders:96,createdAt:128,note:78,
         }
-        const byKey=new Map(ths.map((th,i)=>[th.dataset.accountCol??'',i]))
-        // When the lane shrinks, compress ONLY unfixed columns toward their
-        // readable minima. Never override the user's manual width or compress
-        // all columns into an unreadable 300px table under two right panels.
-        let overflow=result.reduce((sum,w)=>sum+w,0)-target
-        if(overflow>0){
-          for(const key of [...flexible,'phone','platform','status','createdAt','deliveredOrders','orders']){
-            const i=byKey.get(key)
-            if(i===undefined||overrides[headerName(ths[i])]!==undefined)continue
-            const reduction=Math.min(overflow,Math.max(0,result[i]-(minima[key]??76)))
-            result[i]-=reduction
-            overflow-=reduction
-            if(overflow<=0)break
+        const base:Record<string,number>={
+          select:28,number:28,username:150,platform:64,phone:106,email:148,
+          status:82,mobile:95,browser:83,voucher:122,orders:66,
+          deliveredOrders:98,createdAt:138,note:96,
+        }
+        const max:Record<string,number>={
+          username:330,platform:80,phone:146,email:390,status:120,
+          mobile:240,browser:185,voucher:290,orders:110,
+          deliveredOrders:132,createdAt:170,note:390,
+        }
+        const keys=ths.map(th=>th.classList.contains('bulk-select-col')
+          ?'select':th.dataset.accountCol??'')
+        const widths=keys.map((key,i)=>{
+          const saved=overrides[headerName(ths[i])]
+          return Math.max(min[key]??76,Math.round(saved??base[key]??96))
+        })
+        const minimum=keys.reduce((sum,key)=>sum+(min[key]??76),0)
+        const target=Math.max(minimum,lane-2)
+        let remainder=target-widths.reduce((sum,w)=>sum+w,0)
+        if(remainder<0){
+          // Prefer shrinking non-customized text, then user-sized columns,
+          // and NEVER below their readable widths. Scroll within table if
+          // two right slidebars leave a narrower lane than the minimum.
+          for(const custom of [false,true]){
+            for(const key of ['note','email','username','mobile','browser',
+              'voucher','platform','phone','status','createdAt','deliveredOrders','orders']){
+              const i=keys.indexOf(key)
+              if(i<0||remainder>=0)continue
+              if((overrides[headerName(ths[i])]!==undefined)!==custom)continue
+              const reduction=Math.min(-remainder,Math.max(0,widths[i]-(min[key]??76)))
+              widths[i]-=reduction
+              remainder+=reduction
+            }
           }
         }
-        // When the lane grows again, expand the free content columns in place.
-        // Saved widths of Voucher/Số đơn are preserved across all panel states.
-        const expandable=flexible.map(key=>byKey.get(key)).filter((i):i is number=>
-          i!==undefined&&overrides[headerName(ths[i])]===undefined)
-        const spare=Math.max(0,target-result.reduce((sum,w)=>sum+w,0))
-        if(spare>0&&expandable.length){
-          const each=Math.floor(spare/expandable.length)
-          expandable.forEach((i,index)=>{result[i]+=index===expandable.length-1
-            ?spare-each*index:each})
+        if(remainder>0){
+          // Spend spare width on useful TEXT columns before numeric counters.
+          // Respect manually saved Voucher/Số đơn widths on every sidebar state.
+          for(const key of ['username','email','mobile','browser','voucher','note',
+            'phone','createdAt','status','platform']){
+            const i=keys.indexOf(key)
+            if(i<0||remainder<=0||overrides[headerName(ths[i])]!==undefined)continue
+            const increase=Math.min(remainder,Math.max(0,(max[key]??320)-widths[i]))
+            widths[i]+=increase
+            remainder-=increase
+          }
+          if(remainder>0){
+            const flexible=['username','email','mobile','browser','voucher','note']
+              .map(k=>keys.indexOf(k)).filter(i=>i>=0&&overrides[headerName(ths[i])]===undefined)
+            // When all visible text columns are user-sized, use the final
+            // available text column for the remaining lane rather than blank.
+            const recipients=flexible.length?flexible:
+              ['note','email','username','voucher'].map(k=>keys.indexOf(k)).filter(i=>i>=0)
+            if(recipients.length){
+              const each=Math.floor(remainder/recipients.length)
+              recipients.forEach((i,j)=>widths[i]+=j===recipients.length-1
+                ?remainder-each*j:each)
+            }
+          }
         }
-        return result
+        return widths
       }
       const assigned = isOrder?orderFit(table,ths,overrides)
         :isTracking ? fitTrackingPanel(table,ths,preferred,overrides)
         :isAccount ? accountFit() : panelWidths??preferred
       let total = 0
       ths.forEach((th,i) => {
-        // The account sequence number, order count and voucher tags are
-        // compact by business contract. Old stored widths must not resurrect
-        // oversized cells whenever a User detail slidebar is toggled.
+        // Semantic Account width comes from its real lane and current header
+        // key, never an obsolete CSS percentage or old frozen DOM cell.
         const width = isAccount||isOrder?assigned[i]:panelWidths?assigned[i]
           :th.classList.contains('tracking-action-head')?44
           :compactCol(th)?Math.max(24,Math.min(140,assigned[i]))
@@ -408,8 +432,8 @@ export function DesktopTableColumnResize() {
           +Math.round(purchasePane?.clientWidth??0)+':'
           +ths.map(th=>th.dataset.orderCol??th.dataset.accountCol??(th.classList.contains('bulk-select-col')?'select':'')).join(',')
         : 'general'
-      if ((table.matches('.mynh-p1-semantic-table.order-table')||Object.keys(saved).length)
-          &&trackingLayout.get(table)!==token) {
+      if ((table.matches('.mynh-p1-semantic-table.order-table,.mynh-p1-semantic-table.user-table')
+          ||Object.keys(saved).length)&&trackingLayout.get(table)!==token) {
         clearInlineWidths(table)
         freezeWidths(table,saved)
       }

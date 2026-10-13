@@ -41,19 +41,29 @@ async function snap(page){
     const width=e=>e.getBoundingClientRect().width
     const c=Object.fromEntries(heads.map(h=>[h.dataset.accountCol??'select',Math.round(width(h))]))
     const aligned=heads.length===cols.length&&heads.every((h,i)=>Math.abs(width(h)-width(cols[i]))<=5)
+    const tableRect=table.getBoundingClientRect()
+    const lastHeader=heads.at(-1)?.getBoundingClientRect()
+    const rightGap=lastHeader?Math.round(tableRect.right-lastHeader.right):999
+    const firstHeader=heads[0]?.getBoundingClientRect()
+    const leftGap=firstHeader?Math.round(firstHeader.left-tableRect.left):999
+    // Prevent green QA while column DOM stops 140px short of the card,
+    // exactly the regression reported by the real browser screenshots.
+    const headerCoverage=Math.abs(rightGap)<=5&&Math.abs(leftGap)<=5
+    const minCount=Number.isFinite(width(tableRect))
     return {panelCount:w.querySelectorAll(':scope>aside.system-slidebar-v1').length,
       leftCollapsed:shell.classList.contains('desktop-sidebar-collapsed'),
       lane:Math.round(card.clientWidth),table:Math.round(width(table)),
       pageOverflow:document.documentElement.scrollWidth>innerWidth+5,
       scroll:/auto|scroll/.test(getComputedStyle(card).overflowX),
-      aligned,customized:table.classList.contains('mynh-resizable-table'),
+      aligned,headerCoverage,leftGap,rightGap,
+      customized:table.classList.contains('mynh-resizable-table'),
       col:c,
     }
   })
 }
-function fit(s){return !!s&&!s.pageOverflow&&s.aligned&&s.scroll
+function fit(s){return !!s&&!s.pageOverflow&&s.aligned&&s.headerCoverage&&s.scroll
   &&s.table>=s.lane-8&&s.col.username>=118&&s.col.number<=48
-  &&s.col.voucher>=68&&s.col.orders>=38}
+  &&s.col.voucher>=110&&s.col.orders>=60}
 const ranges=[{width:1024,height:768},{width:1280,height:800},
   {width:1440,height:900},{width:1920,height:1080}]
 try{

@@ -950,3 +950,23 @@ table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-accoun
     width:100%!important;min-width:0!important;max-width:100%!important;
   }
 }
+
+/* Account headers use the same bounded-label contract as Đơn nhập:
+   an absolute resize handle must not let Voucher/Số đơn text paint into
+   the next header. The column fitter guarantees readable width floors. */
+@media(min-width:901px){
+  .brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table
+  thead th.mynh-column-resize-head{
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    padding-right:16px!important;
+  }
+  .brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table
+  thead th:is([data-account-col="voucher"],[data-account-col="orders"],
+    [data-account-col="deliveredOrders"]){
+    white-space:normal!important;
+    line-height:1.18!important;
+    overflow-wrap:normal!important;
+    vertical-align:middle!important;
+  }
+}
