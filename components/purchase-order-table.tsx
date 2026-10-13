@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
-import { orderIsCancelled } from '@/lib/purchase-order-cancellation'
+import { orderIsCancelled, trackingNumberMeansCancelled } from '@/lib/purchase-order-cancellation'
 import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
 import {
   archiveOrdersBulk,
@@ -127,11 +127,11 @@ function QuickTrackingEditor({
       autoFocus
       required
     />
-    {!isExpress&&<select name="carrier_config_id" value={carrierId} onChange={e=>setCarrierId(e.target.value)} required>
+    {!isExpress&&!trackingNumberMeansCancelled(trackingNumber)&&<select name="carrier_config_id" value={carrierId} onChange={e=>setCarrierId(e.target.value)} required>
       <option value="" disabled>ĐVVC</option>
       {carrierConfigs.map(row=><option key={row.id} value={row.id}>{row.carrier_code}</option>)}
     </select>}
-    <button type="submit" className="quick-tracking-save">Lưu</button>
+    <button type="submit" className="quick-tracking-save">{trackingNumberMeansCancelled(trackingNumber)?'Huỷ đơn':'Lưu'}</button>
     <button type="button" className="quick-tracking-cancel" onClick={()=>setEditing(false)} aria-label="Hủy">×</button>
   </form>
 }
