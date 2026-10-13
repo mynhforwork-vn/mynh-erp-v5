@@ -447,7 +447,7 @@ export function OrderEditorForm({
     )
   }
 
-  return <form action={action} className="panel-form panel-scroll order-editor" data-shopee-recognizer={mode==='create'?'pending-review-v3':undefined}>
+  return <form action={action} className="panel-form panel-scroll order-editor" data-shopee-recognizer={mode==='create'?'cancelled-v1':undefined}>
     <input type="hidden" name="return_query" value={returnQuery}/>
     <input type="hidden" name="erp_user_id" value={selectedUserId}/>
     <input type="hidden" name="shipping_service" value={shippingService}/>
@@ -548,8 +548,8 @@ export function OrderEditorForm({
       <div className="shipping-service-picker">
         <span>Dịch vụ vận chuyển</span>
         <div>
-          <button type="button" className={shippingService==='STANDARD'?'active':''} onClick={()=>setShippingMode('STANDARD')}>Tiêu chuẩn</button>
-          <button type="button" className={shippingService==='EXPRESS'?'active express':''} onClick={()=>setShippingMode('EXPRESS')}>Hỏa tốc</button>
+          <button type="button" disabled={shopeeCancelled} className={shippingService==='STANDARD'?'active':''} onClick={()=>setShippingMode('STANDARD')}>Tiêu chuẩn</button>
+          <button type="button" disabled={shopeeCancelled} className={shippingService==='EXPRESS'?'active express':''} onClick={()=>setShippingMode('EXPRESS')}>Hỏa tốc</button>
         </div>
       </div>
 
@@ -602,6 +602,7 @@ export function OrderEditorForm({
             <label>Mã vận đơn
               <input
                 name="tracking_number"
+                disabled={shopeeCancelled}
                 value={trackingNumber}
                 onChange={e=>setTrackingNumber(e.target.value)}
                 onBlur={()=>setTrackingNumber(v=>v.trim().toUpperCase())}
@@ -813,7 +814,7 @@ export function OrderEditorForm({
       <h3>Thanh toán & giá trị đơn hàng</h3>
       <small className="field-help">Dùng chung cho Tiêu chuẩn và Hỏa tốc; đổi dịch vụ không xóa dữ liệu thanh toán.</small>
       <label>Trạng thái thanh toán
-        <select name="payment_status" value={paymentStatus} onChange={e=>setPaymentStatus(e.target.value)}>
+        <select name="payment_status" disabled={shopeeCancelled} value={paymentStatus} onChange={e=>setPaymentStatus(e.target.value)}>
           <option value="UNPAID">Chưa thanh toán</option>
           <option value="PENDING">Đang chờ</option>
           <option value="PARTIAL">Thanh toán một phần</option>
