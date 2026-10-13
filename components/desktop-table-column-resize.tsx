@@ -290,7 +290,7 @@ export function DesktopTableColumnResize() {
         const pane=table.closest('.account-table-card') as HTMLElement|null
         const lane=Math.floor(pane?.clientWidth??table.parentElement?.clientWidth??0)
         const min:Record<string,number>={
-          select:28,number:28,username:110,platform:56,phone:94,email:120,
+          select:28,number:28,username:128,platform:56,phone:94,email:120,
           status:75,mobile:80,browser:70,voucher:112,orders:62,
           deliveredOrders:96,createdAt:128,note:78,
         }

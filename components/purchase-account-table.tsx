@@ -414,7 +414,7 @@ export function PurchaseAccountTable({
     </div>,toolbarRoot)}
 
     <div className="card table-card account-table-card" ref={tableCardRef}>
-      <table className="table user-table mynh-p1-semantic-table" data-auto-fit-version="3" style={tableWidths}>
+      <table className="table user-table mynh-p1-semantic-table" data-auto-fit-version="4" style={tableWidths}>
         <colgroup>
           {canManage&&<col className="p1-account-col p1-account-col-select" style={fitCol(28)}/>}
           {shownColumns.map(k=><col key={k} className={'p1-account-col p1-account-col-'+k}

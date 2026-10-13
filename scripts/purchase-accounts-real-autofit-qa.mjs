@@ -49,18 +49,27 @@ async function snap(page){
     // Prevent green QA while column DOM stops 140px short of the card,
     // exactly the regression reported by the real browser screenshots.
     const headerCoverage=Math.abs(rightGap)<=5&&Math.abs(leftGap)<=5
+    // Header isolation: Voucher/Số đơn text must not paint over the next
+    // label, even when the resize handle is absolutely positioned.
+    const guarded=['voucher','orders','deliveredOrders'].every(key=>{
+      const th=table.querySelector('thead th[data-account-col="'+key+'"]')
+      if(!th)return true // user explicitly hid it
+      const st=getComputedStyle(th)
+      const floor={voucher:110,orders:60,deliveredOrders:94}[key]
+      return st.overflowX==='hidden'&&th.getBoundingClientRect().width>=floor
+    })
     return {panelCount:w.querySelectorAll(':scope>aside.system-slidebar-v1').length,
       leftCollapsed:shell.classList.contains('desktop-sidebar-collapsed'),
       lane:Math.round(card.clientWidth),table:Math.round(width(table)),
       pageOverflow:document.documentElement.scrollWidth>innerWidth+5,
       scroll:/auto|scroll/.test(getComputedStyle(card).overflowX),
-      aligned,headerCoverage,leftGap,rightGap,
+      aligned,headerCoverage,guarded,leftGap,rightGap,
       customized:table.classList.contains('mynh-resizable-table'),
       col:c,
     }
   })
 }
-function fit(s){return !!s&&!s.pageOverflow&&s.aligned&&s.headerCoverage&&s.scroll
+function fit(s){return !!s&&!s.pageOverflow&&s.aligned&&s.headerCoverage&&s.guarded&&s.scroll
   &&s.table>=s.lane-8&&s.col.username>=118&&s.col.number<=48
   &&s.col.voucher>=110&&s.col.orders>=60}
 const ranges=[{width:1024,height:768},{width:1280,height:800},
@@ -75,7 +84,7 @@ try{
   })))
   const page=await ctx.newPage()
   await page.goto(base+'/purchase/accounts',{waitUntil:'domcontentloaded',timeout:45000})
-  await page.locator('.account-table-card table[data-auto-fit-version="3"]').waitFor({timeout:25000})
+  await page.locator('.account-table-card table[data-auto-fit-version="4"]').waitFor({timeout:25000})
   const initial=await snap(page)
   check(viewport.width+' initial 0 panels',fit(initial)&&initial.panelCount===0,initial??{})
   const toggle=page.locator('.desktop-sidebar-seam-handle .sidebar-collapse-toggle')
