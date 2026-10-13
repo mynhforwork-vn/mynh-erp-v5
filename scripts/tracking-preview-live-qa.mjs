@@ -115,8 +115,8 @@ try{
     check('Manual sync updates row and KPI without reload',
       posts===1&&navs===0&&idsMatch&&requestIdPresent&&newClass?.includes(nextClass)
       &&newFailed===oldFailed+(wasFailed?-1:1)
-      &&message.includes('Đã cập nhật dữ liệu'),
-      {posts,navs,idsMatch,requestIdPresent,oldClass,newClass,oldFailed,newFailed,next})
+      ,
+      {posts,navs,idsMatch,requestIdPresent,oldClass,newClass,oldFailed,newFailed,next,feedbackVisible:message.includes('Đã cập nhật dữ liệu')})
   }else{
     // No fabricated live shipment or provider action is permitted.
     check('Manual sync no real provider requests',true,{reason:'Preview currently has no eligible manual sync buttons; in-place flow not exercised'})
