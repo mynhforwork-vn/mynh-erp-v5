@@ -15,10 +15,19 @@ export function DesktopTableColumnResize() {
 
     const mq = window.matchMedia('(min-width: 901px)')
     const clamp = (v:number) => Math.max(76, Math.min(680, Math.round(v)))
-    const clampForHeader = (th:HTMLTableCellElement,v:number) =>
-      th.closest('table.tracking-hub-table-v2')
-        ? Math.max(76,Math.min(2400,Math.round(v)))
-        : clamp(v)
+    const clampForHeader = (th:HTMLTableCellElement,v:number) => {
+      if(th.closest('table.tracking-hub-table-v2'))
+        return Math.max(76,Math.min(2400,Math.round(v)))
+      if(th.closest('table.user-table.mynh-p1-semantic-table')){
+        const key=th.dataset.accountCol??''
+        // Numeric counters and voucher tags must really be drag-resizable.
+        // Do not silently jump a 48px count column to the generic 76px floor.
+        const minimum=key==='orders'?38:key==='voucher'?68
+          :key==='deliveredOrders'?74:key==='number'?28:76
+        return Math.max(minimum,Math.min(680,Math.round(v)))
+      }
+      return clamp(v)
+    }
     const compactCol = (th:HTMLTableCellElement) =>
       th.matches('.bulk-select-col, .select-col, .row-actions-head, .checkbox-col')
     const headerWidth = (th:HTMLTableCellElement) =>
@@ -50,8 +59,9 @@ export function DesktopTableColumnResize() {
         const obj = raw ? JSON.parse(raw) : null
         if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return {}
         const ceiling=table.classList.contains('tracking-hub-table-v2')?2400:680
+        const savedMin=table.matches('table.user-table.mynh-p1-semantic-table')?28:76
         return Object.fromEntries(Object.entries(obj).filter(([k,v]) =>
-          k.length < 160 && typeof v === 'number' && Number.isFinite(v) && v >= 76 && v <= ceiling
+          k.length < 160 && typeof v === 'number' && Number.isFinite(v) && v >= savedMin && v <= ceiling
         )) as Record<string,number>
       } catch { return {} }
     }
@@ -276,17 +286,49 @@ export function DesktopTableColumnResize() {
       const accountFit=()=>{
         const card=table.closest('.account-table-card') as HTMLElement|null
         const target=Math.max(0,Math.floor(card?.clientWidth??0)-2)
-        const result=ths.map((th,i)=>Math.max(th.classList.contains('bulk-select-col')?26:28,
-          Math.round(overrides[headerName(th)]??visibleWidths[i])))
-        let spare=Math.max(0,target-result.reduce((sum,w)=>sum+w,0))
-        const expandable=ths.map((th,i)=>({index:i,key:th.dataset.accountCol??''}))
-          .filter(x=>['username','email','mobile','browser','voucher','note'].includes(x.key)
-            &&overrides[headerName(ths[x.index])]===undefined)
+        const cols=Array.from(table.querySelectorAll(':scope > colgroup > col')) as HTMLElement[]
+        // React's semantic Auto Fit writes its CURRENT lane-aware width in the
+        // col's CSS custom property. Reading a previously pinned <th> width here
+        // was the source of stale sizing after toggling either sidebar.
+        const result=ths.map((th,i)=>{
+          const raw=cols[i]?.style.getPropertyValue('--p1-account-fit-col-width')??''
+          const natural=Number.parseFloat(raw)
+          const desired=overrides[headerName(th)]
+            ??(Number.isFinite(natural)&&natural>0?natural:visibleWidths[i])
+          return Math.max(th.classList.contains('bulk-select-col')?26:28,
+            Math.round(desired))
+        })
+        const flexible=['note','email','mobile','browser','username','voucher']
+        const minima:Record<string,number>={
+          username:128,email:132,mobile:86,browser:74,voucher:104,note:88,
+          phone:98,platform:56,status:76,createdAt:130,
+          orders:48,deliveredOrders:88,
+        }
+        const byKey=new Map(ths.map((th,i)=>[th.dataset.accountCol??'',i]))
+        // When the lane shrinks, compress ONLY unfixed columns toward their
+        // readable minima. Never override the user's manual width or compress
+        // all columns into an unreadable 300px table under two right panels.
+        let overflow=result.reduce((sum,w)=>sum+w,0)-target
+        if(overflow>0){
+          for(const key of [...flexible,'phone','platform','status','createdAt','deliveredOrders','orders']){
+            const i=byKey.get(key)
+            if(i===undefined||overrides[headerName(ths[i])]!==undefined)continue
+            const reduction=Math.min(overflow,Math.max(0,result[i]-(minima[key]??76)))
+            result[i]-=reduction
+            overflow-=reduction
+            if(overflow<=0)break
+          }
+        }
+        // When the lane grows again, expand the free content columns in place.
+        // Saved widths of Voucher/Số đơn are preserved across all panel states.
+        const expandable=flexible.map(key=>byKey.get(key)).filter((i):i is number=>
+          i!==undefined&&overrides[headerName(ths[i])]===undefined)
+        const spare=Math.max(0,target-result.reduce((sum,w)=>sum+w,0))
         if(spare>0&&expandable.length){
           const each=Math.floor(spare/expandable.length)
-          expandable.forEach((x,i)=>{result[x.index]+=i===expandable.length-1?spare-each*i:each})
+          expandable.forEach((i,index)=>{result[i]+=index===expandable.length-1
+            ?spare-each*index:each})
         }
-        // Never force all 13 columns into a 600px drawer: local horizontal scroll.
         return result
       }
       const assigned = isOrder?orderFit(table,ths,overrides)
@@ -375,8 +417,10 @@ export function DesktopTableColumnResize() {
       ths.forEach(th => {
         if (th.querySelector(':scope > .mynh-column-resize-grip')) return
         if (th.matches('.bulk-select-col, .select-col, .row-actions-head, .checkbox-col')) return
+        // # is a fixed index. Voucher, Số đơn and Giao thành công are
+        // operational data columns and must expose working width grips.
         if (table.classList.contains('user-table')
-          &&['number','orders','voucher'].includes(th.dataset.accountCol??''))return
+          &&th.dataset.accountCol==='number')return
         const label = headerName(th)
         if (label === 'blank') return
         th.classList.add('mynh-column-resize-head')
@@ -493,7 +537,7 @@ export function DesktopTableColumnResize() {
     observer.observe(main,{childList:true,subtree:true,attributes:true,attributeFilter:['class']})
     const onChange=()=>{if(mq.matches)queue()}
     const paneResize=new ResizeObserver(()=>queue())
-    main.querySelectorAll('.order-table-card').forEach(el=>paneResize.observe(el))
+    main.querySelectorAll('.order-table-card,.account-table-card').forEach(el=>paneResize.observe(el))
     window.addEventListener('resize',queue)
     mq.addEventListener('change',onChange)
     const sync=(event:Event)=>{
