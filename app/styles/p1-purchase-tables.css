@@ -970,3 +970,33 @@ table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-accoun
     vertical-align:middle!important;
   }
 }
+
+/* Shopee recognition: show the full delivery address in the review area
+   instead of hiding it several sections below the recognizer. */
+.brand-shell-v1 .order-editor .shopee-recipient-preview{
+  min-width:0;margin-top:9px;padding:10px 12px;border-radius:8px;
+  background:#f3f7fb;color:#29485f;display:flex;flex-direction:column;gap:7px;
+}
+.brand-shell-v1 .order-editor .shopee-recipient-preview-head{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:7px;
+}
+.brand-shell-v1 .order-editor .shopee-recipient-preview-head strong{
+  font-size:12px;color:#173f65;
+}
+.brand-shell-v1 .order-editor .shopee-recipient-preview-head button{
+  border:0;background:transparent;color:#175e9b;font-size:11px;
+  font-weight:650;padding:4px 2px;cursor:pointer;
+}
+.brand-shell-v1 .order-editor .shopee-recipient-preview-person{
+  display:flex;flex-wrap:wrap;gap:5px 14px;font-size:11px;
+}
+.brand-shell-v1 .order-editor .shopee-recipient-preview-address{
+  margin:0;font-size:12px;font-weight:600;line-height:1.5;
+  white-space:pre-wrap;overflow-wrap:anywhere;
+}
+.brand-shell-v1 .order-editor .shopee-recipient-preview-missing{
+  margin:0;font-size:11px;line-height:1.5;color:#a34e19;
+}
+.brand-shell-v1 .order-editor .shopee-recipient-preview>small{
+  font-size:10px;line-height:1.4;color:#64748b;
+}

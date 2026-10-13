@@ -181,6 +181,9 @@ export function OrderEditorForm({
   const [cod,setCod]=useState<number|string>(mode==='create'?'':values.cod??0)
   const [orderText,setOrderText]=useState('')
   const [recognitionMessage,setRecognitionMessage]=useState('')
+  const [recognizedRecipient,setRecognizedRecipient]=useState<{
+    name:boolean;phone:boolean;address:boolean
+  }|null>(null)
   const [shopeeReviewPending,setShopeeReviewPending]=useState(false)
   const [items,setItems]=useState<Item[]>(initialItems.length?initialItems:[emptyItem()])
   const [vouchers,setVouchers]=useState<Voucher[]>(initialVouchers.length?initialVouchers:[emptyVoucher()])
@@ -352,11 +355,17 @@ export function OrderEditorForm({
   function recognizeOrderText(){
     const parsed=parseShopeeOrderText(orderText)
     const summary=formatParsedOrderSummary(parsed)
+    setRecognizedRecipient(null)
     if(!summary){
       setRecognitionMessage('Chưa nhận diện được dữ liệu đơn Shopee. Hãy dán nội dung trang Chi tiết đơn hàng.')
       return
     }
 
+    setRecognizedRecipient({
+      name:Boolean(parsed.recipient_name),
+      phone:Boolean(parsed.recipient_phone),
+      address:Boolean(parsed.recipient_address),
+    })
     setShopeeReviewPending(parsed.detected_status==='PENDING_SHOPEE_CONFIRMATION')
     if(parsed.payment_status==='UNPAID'&&mode==='create')setPaymentStatus('UNPAID')
     if(parsed.shopee_order_id)setShopeeOrderId(parsed.shopee_order_id)
@@ -441,13 +450,37 @@ export function OrderEditorForm({
       <textarea
         rows={5}
         value={orderText}
-        onChange={e=>{setOrderText(e.target.value);setRecognitionMessage('')}}
+        onChange={e=>{
+          setOrderText(e.target.value)
+          setRecognitionMessage('')
+          setRecognizedRecipient(null)
+        }}
         placeholder="Dán nội dung Chi tiết đơn hàng Shopee vào đây..."
       />
       <div className="order-text-recognizer-actions">
         <span className={recognitionMessage.startsWith('Đã')?'success':''}>{recognitionMessage||'Không tự tạo đơn cho đến khi bạn kiểm tra và bấm Tạo đơn.'}</span>
         <button type="button" className="button small primary" disabled={!orderText.trim()} onClick={recognizeOrderText}>Nhận diện đơn</button>
       </div>
+      {recognizedRecipient&&recognitionMessage.startsWith('Đã')&&
+        <div className="shopee-recipient-preview" data-shopee-recipient-preview="true"
+          data-address-detected={recognizedRecipient.address?'true':'false'} aria-live="polite">
+          <div className="shopee-recipient-preview-head">
+            <strong>Địa chỉ nhận hàng</strong>
+            <button type="button" onClick={()=>{
+              const field=document.querySelector<HTMLTextAreaElement>('form.order-editor textarea[name="recipient_address"]')
+              field?.scrollIntoView({behavior:'smooth',block:'center'})
+              field?.focus()
+            }}>Kiểm tra / sửa</button>
+          </div>
+          <div className="shopee-recipient-preview-person">
+            <span>Người nhận: <b>{recognizedRecipient.name?recipientName:'Chưa nhận diện'}</b></span>
+            <span>SĐT: <b>{recognizedRecipient.phone?recipientPhone:'Chưa nhận diện'}</b></span>
+          </div>
+          {recognizedRecipient.address
+            ? <p className="shopee-recipient-preview-address">{recipientAddress}</p>
+            : <p className="shopee-recipient-preview-missing">Chưa nhận diện được địa chỉ nhận hàng. Vui lòng nhập và kiểm tra ở mục Người nhận trước khi tạo đơn.</p>}
+          <small>Thông tin lấy từ văn bản Shopee. Kiểm tra lại tại mục Người nhận bên dưới trước khi lưu.</small>
+        </div>}
     </section>}
 
     <section className="form-section">
@@ -616,7 +649,7 @@ export function OrderEditorForm({
           {selectedUser?.phone&&recipientPhoneAuto&&<small className="field-help">Đã tự điền từ SĐT liên kết của Username; có thể sửa.</small>}
         </label>
       </div>
-      <label>Địa chỉ nhận
+      <label>Địa chỉ nhận hàng
         <textarea
           name="recipient_address"
           rows={3}

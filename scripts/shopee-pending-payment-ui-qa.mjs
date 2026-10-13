@@ -57,7 +57,18 @@ for(const vp of [{width:360,height:800},{width:768,height:1024},{width:1440,heig
  await page.waitForFunction(()=>document.querySelectorAll('form.order-editor input[name="item_product_name"]').length===2,null,{timeout:16000})
  const values=async(name)=>form.locator('[name="'+name+'"]').evaluateAll(nodes=>nodes.map(x=>x.value))
  check(vp.width+' order code',(await values('shopee_order_id'))[0]==='261013TESTQA01')
- check(vp.width+' recipient',(await values('recipient_name'))[0]==='Nguyễn Thị Mẫu'&&(await values('recipient_phone'))[0]==='0900123456'&&(await values('recipient_address'))[0]?.startsWith('Số 10, Đường Mẫu'))
+ check(vp.width+' recipient fields filled exactly',
+   (await values('recipient_name'))[0]==='Nguyễn Thị Mẫu'
+   &&(await values('recipient_phone'))[0]==='0900123456'
+   &&(await values('recipient_address'))[0]==='Số 10, Đường Mẫu, Phường Cửa Nam, Thành phố Hà Nội')
+ const recipientPreview=form.locator('[data-shopee-recipient-preview="true"]')
+ check(vp.width+' full delivery address immediately visible after recognition',
+   await recipientPreview.count()===1
+   &&await recipientPreview.getAttribute('data-address-detected')==='true'
+   &&(await recipientPreview.innerText()).includes('Số 10, Đường Mẫu, Phường Cửa Nam, Thành phố Hà Nội'))
+ check(vp.width+' recipient name and phone clearly shown in recognition preview',
+   (await recipientPreview.innerText()).includes('Nguyễn Thị Mẫu')
+   &&(await recipientPreview.innerText()).includes('0900123456'))
  check(vp.width+' product prices',JSON.stringify(await values('item_original_price'))==='["19800","80700"]')
  check(vp.width+' product variants',JSON.stringify(await values('item_variant'))===JSON.stringify(['1 Thanh','Đậu Nành 1 Lít,1 Chai']))
  check(vp.width+' voucher tags',JSON.stringify(await values('voucher_tag'))===JSON.stringify(['Phí vận chuyển','Shopee']))
@@ -65,6 +76,11 @@ for(const vp of [{width:360,height:800},{width:768,height:1024},{width:1440,heig
  check(vp.width+' Shopee pending review',(await form.locator('.derived-order-state').innerText()).includes('Chờ Shopee xác nhận'))
  check(vp.width+' missing order date explicitly flagged',(await values('order_date'))[0]===''&&(await form.locator('.order-text-recognizer-actions').innerText()).includes('Chưa có ngày đặt'))
  check(vp.width+' payable 500',(await form.locator('.order-value-summary strong').innerText()).includes('500'))
+ if(vp.width===1440){
+   await recipientPreview.getByRole('button',{name:'Kiểm tra / sửa'}).click()
+   check('1440 edit delivery address control focuses real editable field',
+     await form.locator('textarea[name="recipient_address"]').evaluate(el=>document.activeElement===el))
+ }
  check(vp.width+' no document overflow',await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+6))
  if(vp.width===1440)await page.screenshot({path:'qa-shopee-pending-artifacts/pending-review-form-1440.png',fullPage:false})
  await ctx.close()
