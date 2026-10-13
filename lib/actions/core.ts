@@ -1968,7 +1968,10 @@ export async function saveTrackingRule(formData:FormData){
 export async function saveCarrierStatusMapping(formData:FormData){
   const {supabase,role}=await actor()
   requireAdmin(role)
-  const carrier=text(formData.get('carrier')).toUpperCase()
+  // The resolver normalizes the display name "SPX Express" to canonical carrier "SPX".
+  // Persist under the same code, otherwise mappings appear saved but are never applied.
+  const selectedCarrier=text(formData.get('carrier')).toUpperCase()
+  const carrier=selectedCarrier==='SPX EXPRESS'?'SPX':selectedCarrier
   const rawCode=text(formData.get('raw_code')).toUpperCase()
   const canonical=text(formData.get('canonical_status')).toUpperCase()
   if(!carrier||!rawCode||!canonical)throw new Error('Thiếu Carrier, raw code hoặc trạng thái chuẩn')
