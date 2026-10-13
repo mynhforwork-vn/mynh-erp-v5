@@ -131,7 +131,7 @@ try{
         groupsCorrect=groupsCorrect&&actual===expected&&hrefsValid&&await button.getAttribute('aria-pressed')==='true'
       }
       await page.getByRole('button',{name:'Tất cả',exact:true}).click()
-      groupsCorrect=groupsCorrect&&await groups.filter({has:page.locator('[aria-pressed="true"]')}).count()===0
+      groupsCorrect=groupsCorrect&&await page.locator('.pd-action-primary button[aria-pressed="true"],.pd-queue-secondary button[aria-pressed="true"]').count()===0
       // Both missing-location and exempt express issues must open lists of matching orders.
       const issueButtons=page.locator('.pd-quality-footer button')
       for(let i=0;i<await issueButtons.count();i++){

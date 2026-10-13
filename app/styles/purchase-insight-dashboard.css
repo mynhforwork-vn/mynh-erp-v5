@@ -123,3 +123,33 @@
 @media(min-width:961px){.pd-workspace{grid-template-columns:minmax(0,41fr) minmax(0,59fr)}}
 @media(max-width:1180px) and (min-width:961px){.pd-workspace{grid-template-columns:minmax(0,45fr) minmax(0,55fr)}}
 @media(max-width:700px){.pd-action-primary{grid-template-columns:repeat(3,minmax(0,1fr))}.pd-status-table tbody td{font-size:10px}}
+
+/* Tablet/mobile: match the Đơn nhập KPI strip, scroll within the strip without wrapping. */
+@media(max-width:960px){
+  .pd-insight .pd-metrics.kpi-grid.order-kpi-grid-v2.entity-status-strip{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    align-items:stretch!important;
+    gap:6px!important;
+    min-width:0!important;
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    overscroll-behavior-x:contain;
+    scrollbar-width:thin;
+  }
+  .pd-insight .pd-metrics > .pd-kpi-card.kpi-card.entity-status-metric{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    justify-content:center!important;
+    flex:1 0 123px!important;
+    min-width:123px!important;
+    width:123px!important;
+    height:68px!important;
+    min-height:68px!important;
+    gap:3px!important;
+    border-radius:6px!important;
+  }
+}
