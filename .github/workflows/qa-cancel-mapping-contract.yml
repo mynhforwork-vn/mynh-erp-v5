@@ -1,0 +1,34 @@
+name: Huỷ đơn và Tracking Mapping — kiểm thử độc lập
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - lib/actions/core.ts
+      - lib/purchase-order-cancellation.ts
+      - components/purchase-order-table.tsx
+      - components/order-editor-form.tsx
+      - components/tracking-settings.tsx
+      - app/(erp)/settings/page.tsx
+      - scripts/qa-cancel-mapping-contract.mjs
+      - .github/workflows/qa-cancel-mapping-contract.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-and-typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Cài dependencies
+        run: npm install --no-audit --no-fund
+      - name: Kiểm tra huỷ đơn và điều hướng Mapping
+        run: node --experimental-strip-types scripts/qa-cancel-mapping-contract.mjs
+      - name: Kiểm tra kiểu TypeScript
+        run: npm run typecheck
