@@ -33,8 +33,20 @@ for(const vp of [{width:360,height:800},{width:768,height:1024},{width:1440,heig
  check(vp.width+' correct deployed UI revision',deployed)
  if(!deployed)throw Error('New Shopee recognizer revision not yet deployed to sole Preview')
  await form.waitFor({timeout:12000})
- await form.locator('.order-text-recognizer textarea').fill(sample)
- await form.getByRole('button',{name:'Nhận diện đơn'}).click()
+ const input=form.locator('.order-text-recognizer textarea')
+ const action=form.getByRole('button',{name:'Nhận diện đơn'})
+ // SSR can paint the form before React has hydrated its controlled textarea.
+ // Retry typing until React state actually enables the recognizer button.
+ let interactive=false
+ for(let n=0;n<9;n++){
+   await input.fill('')
+   await input.fill(sample)
+   if(await action.isEnabled()){interactive=true;break}
+   await page.waitForTimeout(900)
+ }
+ check(vp.width+' hydrated recognizer enables button',interactive)
+ if(!interactive)throw Error('Shopee recognizer remained disabled after hydration')
+ await action.click()
  await page.waitForFunction(()=>document.querySelectorAll('form.order-editor input[name="item_product_name"]').length===2,null,{timeout:16000})
  const values=async(name)=>form.locator('[name="'+name+'"]').evaluateAll(nodes=>nodes.map(x=>x.value))
  check(vp.width+' order code',(await values('shopee_order_id'))[0]==='261013TESTQA01')
