@@ -331,7 +331,7 @@ export function PurchaseAccountTable({
       const value=key==='mobile'?fields.mobileType:fields.browserName
       return <td key={key} data-account-col={key} className="p1-device-text-cell" title={value||undefined}>{value||'—'}</td>
     }
-    if(key==='voucher')return <td key={key} data-account-col={key} className="voucher-cell"><VoucherTags value={u.voucher_used_summary} compact maxVisible={1}/></td>
+    if(key==='voucher')return <td key={key} data-account-col={key} className="voucher-cell" data-voucher-count={u.voucher_tags?.length??0}><VoucherTags value={u.voucher_used_summary} compact showAll/></td>
     if(key==='orders')return <td key={key} data-account-col={key} className="count-cell">{u.order_count??0}</td>
     if(key==='deliveredOrders')return <td key={key} data-account-col={key} className="count-cell" title="Số đơn giao thành công">{u.delivered_order_count??'—'}</td>
     if(key==='createdAt')return <td key={key} data-account-col={key} title={formatDateTime(u.effective_created_at??u.created_at)}>{formatDateTime(u.effective_created_at??u.created_at)}</td>

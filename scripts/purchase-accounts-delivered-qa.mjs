@@ -40,14 +40,22 @@ try{
   await page.locator('.account-table-card .user-table').waitFor({timeout:15000})
   check('Account Preview authenticated',res?.status()===200&&!page.url().includes('/login'),{status:res?.status()})
   const header=page.locator('.account-table-card th[data-account-col="deliveredOrders"]')
+  // A Cloudflare Preview build can finish seconds after CI boots.
+  // Check the deployed page, not only that the health endpoint responds.
+  for(let i=0;i<12&&!(await header.count());i++){
+    await page.waitForTimeout(5000)
+    await page.reload({waitUntil:'domcontentloaded',timeout:45000})
+  }
   check('New column visible by default',await header.count()===1
     &&(await header.innerText()).includes('Giao thành công'))
   const sampled=await page.locator('.account-table-card tbody tr[data-account-id]').evaluateAll(
-    els=>els.slice(0,3).map(tr=>({
+    els=>els.map(tr=>({
       id:tr.getAttribute('data-account-id'),
       shown:Number(tr.querySelector('td[data-account-col="deliveredOrders"]')?.textContent?.trim()),
-    }))
+    })).sort((a,b)=>b.shown-a.shown).slice(0,3)
   )
+  check('Contains a sample of delivered orders',sampled.some(row=>row.shown>0),
+    {samples:sampled.length,nonzero:sampled.filter(row=>row.shown>0).length})
   let compared=0,allAgree=true
   for(const sample of sampled){
     if(!sample.id)continue
@@ -93,7 +101,7 @@ try{
         header:head.textContent.trim(),
         inTable:!!col,
         cells:cells.length,
-        numeric:cells.every(el=>/^(\\d+|—)$/.test(el.textContent?.trim()??'')),
+        numeric:cells.every(el=>/^([0-9]+|—)$/.test(el.textContent?.trim()??'')),
         width:Math.round(rect(head).width),
         clipped:cells.some(el=>rect(el).right>rect(table).right+3),
         overflow:document.documentElement.scrollWidth>innerWidth+6,
@@ -112,6 +120,24 @@ try{
   }
   await page.setViewportSize(widths[6])
   await page.waitForLoadState('load',{timeout:15000}).catch(()=>{})
+  const voucherInspection=await page.locator('.account-table-card tbody tr[data-account-id]')
+    .evaluateAll(rows=>rows.map(row=>{
+      const cell=row.querySelector('td[data-account-col="voucher"]')
+      if(!cell)return null
+      const tags=[...cell.querySelectorAll('[data-voucher-tag]')]
+      const expected=Number(cell.getAttribute('data-voucher-count')||0)
+      return {
+        expected,rendered:tags.length,more:cell.querySelectorAll('.voucher-tag.more').length,
+        fits:tags.every(tag=>tag.getBoundingClientRect().right<=cell.getBoundingClientRect().right+2),
+        wrap:expected>1?getComputedStyle(cell.querySelector('.voucher-tags')).flexWrap:null,
+      }
+    }).filter(Boolean))
+  check('All Voucher tags render without +N',voucherInspection.every(x=>x.more===0
+    &&(x.expected===0?x.rendered===0:x.rendered===x.expected)
+    &&x.fits&&(!x.wrap||x.wrap==='wrap')),
+    {rows:voucherInspection.length,multiTagRows:voucherInspection.filter(x=>x.expected>1).length})
+  check('Real multi-tag Voucher case visible',voucherInspection.some(x=>x.expected>1),
+    {multiTagRows:voucherInspection.filter(x=>x.expected>1).length})
   const control=page.locator('.p1-account-filter-actions .managed-column-button')
   await control.click()
   const toggle=page.locator('.p1-account-filter-actions .column-manager-row[data-column-key="deliveredOrders"] input[type="checkbox"]')

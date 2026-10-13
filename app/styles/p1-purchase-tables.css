@@ -852,3 +852,23 @@ tbody td[data-account-col="deliveredOrders"]{
   text-align:center!important;font-variant-numeric:tabular-nums!important;
   font-weight:720!important;color:#267c61!important;
 }
+
+/* Purchase Accounts only: show every distinct voucher tag, never "+N".
+   Wrap inside the existing column, so a slidebar cannot force page overflow. */
+.brand-shell-v1 .account-table-card table.user-table td[data-account-col="voucher"]{
+  height:auto!important;white-space:normal!important;
+  overflow:hidden!important;text-overflow:clip!important;
+}
+.brand-shell-v1 .account-table-card table.user-table .voucher-cell .voucher-tags{
+  box-sizing:border-box!important;display:flex!important;align-items:flex-start!important;
+  justify-content:flex-start!important;flex-wrap:wrap!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  gap:3px!important;overflow:visible!important;white-space:normal!important;
+  padding-block:2px!important;
+}
+.brand-shell-v1 .account-table-card table.user-table .voucher-cell .voucher-tag{
+  flex:0 1 auto!important;max-width:100%!important;min-width:0!important;
+  font-size:8px!important;line-height:1.18!important;
+  text-overflow:ellipsis!important;overflow:hidden!important;
+  white-space:nowrap!important;
+}

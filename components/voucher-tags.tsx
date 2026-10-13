@@ -41,10 +41,12 @@ export function VoucherTags({
   value,
   compact=false,
   maxVisible,
+  showAll=false,
 }:{
   value?:string|null
   compact?:boolean
   maxVisible?:number
+  showAll?:boolean
 }){
   const raw=String(value??'').trim()
   const normalized=raw.toLowerCase()
@@ -53,7 +55,7 @@ export function VoucherTags({
   }
 
   const tags=[...new Set(raw.split(/[·,;|]+/).map(x=>x.trim()).filter(Boolean))]
-  const limit=maxVisible??(compact?2:tags.length)
+  const limit=showAll?tags.length:(maxVisible??(compact?2:tags.length))
   const visible=tags.slice(0,limit)
   const hidden=Math.max(0,tags.length-visible.length)
 
@@ -64,6 +66,7 @@ export function VoucherTags({
         style={voucherStyle(tag)}
         key={tag+'-'+i}
         data-voucher-tag={tag}
+        title={tag}
       >{tag}</span>
     )}
     {hidden>0&&<span className="voucher-tag more">+{hidden}</span>}
