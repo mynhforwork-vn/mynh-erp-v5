@@ -457,7 +457,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       <div id="p1-account-filter-actions" className="p1-account-filter-actions"/>
     </div>
 
-    <div className={`split-view account-workspace ${panelOpen?'with-panel':''}`}>
+    <div className={`split-view account-workspace ${panelOpen?'with-panel':''} ${selected&&!isEdit&&contextOrder?'with-two-panels':''}`}>
       <section className="account-list-pane">
         {error&&<div className="error-box">Không thể tải dữ liệu tài khoản: {error.message}</div>}
         {orderStatsError&&<div className="error-box" role="alert">Không thể tính số đơn giao thành công: {orderStatsError.message}</div>}
@@ -527,7 +527,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         />
       }
 
-      {selected&&!isEdit&&!contextOrder&&
+      {selected&&!isEdit&&
         <SystemSlidebar className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT USER</span><h2>{selected.username}</h2></div>

@@ -894,3 +894,46 @@ table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-accoun
 .brand-shell-v1 .account-workspace .account-table-card{
   overflow-x:auto!important;overscroll-behavior-x:contain;
 }
+
+/* Accounts contextual slidebar stack. Preserve the User panel while inspecting
+   its Order; do not replace a slidebar with a modal or force a full page reload.
+   Table Auto Fit measures the actual remaining .account-table-card lane. */
+@media(min-width:1200px){
+  .brand-shell-v1 .account-screen .account-workspace.with-two-panels{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(278px, min(29vw,342px)) minmax(300px,min(30vw,360px))!important;
+    gap:7px!important;align-items:stretch!important;
+    min-width:0!important;max-width:100%!important;
+  }
+  .brand-shell-v1 .account-workspace.with-two-panels>.account-list-pane{
+    grid-column:1!important;min-width:0!important;overflow:hidden!important;
+  }
+  .brand-shell-v1 .account-workspace.with-two-panels>.account-detail-panel{
+    grid-column:2!important;grid-row:1!important;min-width:0!important;
+  }
+  .brand-shell-v1 .account-workspace.with-two-panels>.context-order-panel{
+    grid-column:3!important;grid-row:1!important;min-width:0!important;
+  }
+}
+@media(min-width:901px) and (max-width:1199px){
+  /* Three narrow columns would make the two detail panels unreadable.
+     Keep the parent panel underneath; Back reveals it without closing User. */
+  .brand-shell-v1 .account-screen .account-workspace.with-two-panels{
+    grid-template-columns:minmax(0,1fr) var(--mynh-slidebar-width)!important;
+  }
+  .brand-shell-v1 .account-workspace.with-two-panels>.account-detail-panel,
+  .brand-shell-v1 .account-workspace.with-two-panels>.context-order-panel{
+    grid-column:2!important;grid-row:1!important;
+  }
+  .brand-shell-v1 .account-workspace.with-two-panels>.context-order-panel{
+    z-index:3!important;
+  }
+}
+@media(max-width:900px){
+  .brand-shell-v1 .account-workspace.with-two-panels>.account-detail-panel{
+    z-index:1100!important;
+  }
+  .brand-shell-v1 .account-workspace.with-two-panels>.context-order-panel{
+    z-index:1101!important;
+  }
+}
