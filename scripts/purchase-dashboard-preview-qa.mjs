@@ -112,7 +112,7 @@ try{
       oneRow=!!layout&&layout.kpiOneRow
       compactPanels=!!layout&&layout.footerGap>=0&&layout.footerGap<=25 &&
         (viewport.width<=960||(layout.sameHeight&&layout.sameTop&&layout.leftWidth<layout.rightWidth&&
-          layout.leftHeight>=408&&Math.abs(viewport.height-layout.footerBottom-26)<=30))
+          layout.leftHeight>=408&&(viewport.height-layout.footerBottom)>=0&&(viewport.height-layout.footerBottom)<=16))
       scrollIsolated=!!layout&&layout.fixedHeads&&layout.primaryRow&&
         layout.leftScroll!=='visible'&&layout.rightScroll!=='visible'&&layout.labelsAligned
       timeToolbar=!!layout&&(viewport.width<=1080||layout.timeRows===1)

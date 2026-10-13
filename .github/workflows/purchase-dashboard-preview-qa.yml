@@ -1,4 +1,4 @@
-name: Purchase Dashboard — Sole Preview Responsive QA
+name: Purchase + Tracking — Sole Preview Responsive QA
 
 on:
   push:
@@ -6,6 +6,14 @@ on:
       - preview/production-v227-baseline-20261013
     paths:
       - 'app/(erp)/purchase/page.tsx'
+      - 'app/(erp)/tracking/page.tsx'
+      - 'components/tracking-live-kpis.tsx'
+      - 'components/tracking-hub-group.tsx'
+      - 'components/manual-sync-button.tsx'
+      - 'app/api/tracking/manual/route.ts'
+      - 'lib/tracking/live-snapshot.ts'
+      - 'app/styles/tracking-dashboard-parity.css'
+      - 'scripts/tracking-preview-live-qa.mjs'
       - 'app/styles/purchase-insight-dashboard.css'
       - 'components/purchase-insight-chart.tsx'
       - 'lib/purchase-dashboard-insights.ts'
@@ -66,13 +74,17 @@ jobs:
           CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME_PATH"
           echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
-      - name: Check KPI parity, zero charts, group navigation and 8 viewports
+      - name: Check Dashboard KPI parity, zero charts, groups, footer, 8 viewports
         run: node scripts/purchase-dashboard-preview-qa.mjs
+      - name: Check Tracking layout and local data update without page reload
+        run: node scripts/tracking-preview-live-qa.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: purchase-dashboard-visual-${{ github.sha }}
-          path: qa-purchase-dashboard-artifacts/
+          path: |
+            qa-purchase-dashboard-artifacts/
+            qa-tracking-preview-live-artifacts/
           retention-days: 3
           if-no-files-found: ignore
       - name: Cleanup only temporary QA login

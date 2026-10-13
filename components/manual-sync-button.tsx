@@ -49,7 +49,7 @@ export function ManualSyncButton({shipmentId,iconOnly=false}:{shipmentId:string,
 
   const busy=state==='busy'
   const label=busy?'Đang đồng bộ vận chuyển':state==='error'?'Thử đồng bộ vận chuyển lại':'Đồng bộ vận chuyển'
-  return <div className={'inline-action'+(iconOnly?' tracking-sync-icon-wrap':'')}>
+  return <div data-shipment-id={shipmentId} className={'inline-action'+(iconOnly?' tracking-sync-icon-wrap':'')}>
     <button
       type="button"
       className={iconOnly?'tracking-sync-icon-button':'button small'}
