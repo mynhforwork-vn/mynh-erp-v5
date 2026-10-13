@@ -113,8 +113,8 @@ export function groupInsightOrders(rows:InsightOrder[],getName:(o:InsightOrder)=
     groups.set(name,x)
   }
   return [...groups.values()].sort((a,b)=>{
-    const aActive=a.missing+a.shipping+a.destination+a.out+a.delivered+a.cancelled
-    const bActive=b.missing+b.shipping+b.destination+b.out+b.delivered+b.cancelled
+    const aActive=a.missing+a.shipping+a.destination+a.out+a.delivered
+    const bActive=b.missing+b.shipping+b.destination+b.out+b.delivered
     return bActive-aActive||b.total-a.total||collator.compare(a.name,b.name)
   })
 }
