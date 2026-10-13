@@ -50,7 +50,7 @@ try{
     const errors=[]
     page.on('pageerror',e=>errors.push(String(e.message).slice(0,160)))
     let status=0,finalUrl='',metrics=[],charts=0,filterRemoved=false,oneRow=false,overflow=false,
-      chartTotal=[],isChartRendered=false,datesVisible=false,quarterRemoved=false,tablePresent=false,groupedActions=false,chartValuesAgree=false,tableValuesAgree=false,
+      chartTotal=[],isChartRendered=false,datesVisible=false,quarterRemoved=false,tablePresent=false,groupedActions=false,chartValuesAgree=false,tableValuesAgree=false,tableScrollIsolated=false,actionScrollIsolated=false,narrowerLeft=false,
       layout=null,panelBalance=false,leftAligned=false,kpiShape=false,compactToolbar=false;
     try{
       const response=await page.goto(base+'/purchase?range=all',{waitUntil:'domcontentloaded',timeout:40000})
@@ -77,33 +77,66 @@ try{
       tablePresent=await page.locator('.pd-left-rail .pd-status-table').count()===1
         && await page.locator('.pd-status-table tbody tr th[scope="row"]').count()>=1
         && await page.locator('.pd-status-table tbody tr.pd-table-section').count()===0
-      groupedActions=await page.locator('.pd-right-rail .action-queue-summary').count()===3
-        && await page.locator('.pd-right-rail .pd-queue-mini').count()===3
-        && await page.locator('.pd-right-rail .action-queue-orders').count()===1
+      groupedActions=await page.locator('.pd-right-rail button.action-queue-summary').count()===3
+        && await page.locator('.pd-right-rail button.pd-queue-mini').count()===3
+        && await page.locator('.pd-right-rail .pd-action-orders-scroll').count()===1
         && await page.locator('.pd-left-rail .action-queue-summary').count()===0
       layout=await page.evaluate(()=>{
         const left=document.querySelector('.pd-summary-table')
         const right=document.querySelector('.pd-action-panel')
-        const table=document.querySelector('.pd-status-table')
+        const bodyTable=document.querySelector('.pd-status-table')
+        const headTable=document.querySelector('.pd-summary-head-table')
+        const scroll=document.querySelector('.pd-summary-table .pd-table-scroll')
+        const actionScroll=document.querySelector('.pd-action-orders-scroll')
+        const actionCards=document.querySelector('.pd-action-primary')
         const kpi=document.querySelector('.pd-metric')
-        const time=document.querySelector('.pd-time-filter')
         const toolbar=document.querySelector('.pd-time-calendar')
         const quick=document.querySelector('.pd-time-quick')
-        if(!(left&&right&&table&&kpi&&time&&toolbar&&quick))return null
+        if(!(left&&right&&bodyTable&&headTable&&scroll&&actionScroll&&actionCards&&kpi&&toolbar&&quick))return null
         const lr=left.getBoundingClientRect(),rr=right.getBoundingClientRect()
-        const tds=[...table.querySelectorAll('tbody td:not([colspan]),tbody th[scope="row"], thead th')]
-        const allLeft=tds.every(cell=>getComputedStyle(cell).textAlign==='left'||getComputedStyle(cell).textAlign==='start')
+        const labels=[...bodyTable.querySelectorAll('tbody th[scope="row"]')]
+        const nums=[...bodyTable.querySelectorAll('tbody td:not([colspan])')]
+        const hds=[...headTable.querySelectorAll('thead th')]
+        const labelLeft=labels.every(el=>getComputedStyle(el).textAlign==='left')
+        const numsCentered=nums.every(el=>getComputedStyle(el).textAlign==='center')
+        const headerAligned=hds[0]&&getComputedStyle(hds[0]).textAlign==='left'&&hds.slice(1).every(el=>getComputedStyle(el).textAlign==='center')
         const kpiRadius=parseFloat(getComputedStyle(kpi).borderTopLeftRadius)
         const aligned=Math.abs(lr.top-rr.top)<3&&Math.abs(lr.height-rr.height)<3
         const toolbarVisible=toolbar.getBoundingClientRect().height>=28
-        return {aligned,allLeft,kpiRadius,toolbarVisible,
+        const scrollCss=getComputedStyle(scroll).overflowY
+        const actionCss=getComputedStyle(actionScroll).overflowY
+        const actionCardsTop=actionCards.getBoundingClientRect().top
+        const headerTop=headTable.getBoundingClientRect().top
+        const leftScrollPossible=scroll.scrollHeight>scroll.clientHeight+1
+        const beforeL=scroll.scrollTop,beforeR=actionScroll.scrollTop
+        scroll.scrollTop=120
+        actionScroll.scrollTop=120
+        const fixedTable=Math.abs(headTable.getBoundingClientRect().top-headerTop)<=1
+        const fixedCards=Math.abs(actionCards.getBoundingClientRect().top-actionCardsTop)<=1
+        scroll.scrollTop=beforeL;actionScroll.scrollTop=beforeR
+        return {
+          aligned,leftWidth:Math.round(lr.width),rightWidth:Math.round(rr.width),
           leftHeight:Math.round(lr.height),rightHeight:Math.round(rr.height),
-          timeRows:Math.abs(quick.getBoundingClientRect().top-toolbar.getBoundingClientRect().top)<10?1:2}
+          labelLeft,numsCentered,headerAligned,fixedTable,fixedCards,leftScrollPossible,
+          scrollCss,actionCss,headingOutsideScroll:!scroll.contains(headTable),
+          actionCardsOutsideScroll:!actionScroll.contains(actionCards),
+          kpiRadius,toolbarVisible,
+          timeRows:Math.abs(quick.getBoundingClientRect().top-toolbar.getBoundingClientRect().top)<10?1:2,
+          primaryInRow:(()=>{
+            const items=[...actionCards.querySelectorAll('button')]
+            if(items.length!==3)return false
+            const tops=items.map(el=>el.getBoundingClientRect().top)
+            return Math.max(...tops)-Math.min(...tops)<=2
+          })()
+        }
       })
       panelBalance=!!layout&&(viewport.width<=960||layout.aligned)
-      leftAligned=!!layout&&layout.allLeft
+      leftAligned=!!layout&&layout.labelLeft&&layout.numsCentered&&layout.headerAligned
       kpiShape=!!layout&&layout.kpiRadius<=5
       compactToolbar=!!layout&&layout.toolbarVisible&&(viewport.width<=1080||layout.timeRows===1)
+      const tableScrollIsolated=!!layout&&layout.headingOutsideScroll&&layout.fixedTable&&layout.scrollCss!=='visible'
+      const actionScrollIsolated=!!layout&&layout.actionCardsOutsideScroll&&layout.fixedCards&&layout.actionCss!=='visible'&&layout.primaryInRow
+      const narrowerLeft=!!layout&&(viewport.width<=960||layout.leftWidth<layout.rightWidth)
       const tableSums=await page.locator('.pd-status-table').evaluate(table=>{
         const rows=[...table.querySelectorAll('tbody tr')]
         const sums={area:[0,0,0]}
@@ -115,12 +148,32 @@ try{
         return sums
       })
       tableValuesAgree=tableSums.area[0]===kpis[2]&&tableSums.area[1]===kpis[3]&&tableSums.area[2]===kpis[6]
+      // Nhấp từng nhóm phải hiện đúng danh sách; đóng lọc phải trả về tất cả.
+      const firstGroup=page.locator('.pd-action-primary button').first()
+      const primaryCount=Number(await firstGroup.locator('.pd-primary-count').textContent())
+      await firstGroup.click()
+      const selectedCount=await page.locator('.pd-action-orders-scroll .action-queue-orders>a').count()
+      const selectedCorrect=selectedCount===primaryCount&&
+        await firstGroup.getAttribute('aria-pressed')==='true'
+      await page.getByRole('button',{name:'Tất cả',exact:true}).click()
+      const allRestored=await page.locator('.pd-action-primary button[aria-pressed="true"]').count()===0
+      // Đơn Hỏa tốc không áp dụng HUB hiện được liên kết để xem chi tiết, không xem là lỗi.
+      const exempt=page.locator('.pd-quality-neutral')
+      const exemptCount=await exempt.count()
+      let exemptClickable=true
+      if(exemptCount>0){
+        await exempt.click()
+        const issueLinks=await page.locator('.pd-action-orders-scroll .action-queue-orders>a').count()
+        exemptClickable=issueLinks>0&&await exempt.getAttribute('aria-pressed')==='true'
+        await page.getByRole('button',{name:'Tất cả',exact:true}).click()
+      }
+      groupedActions=groupedActions&&selectedCorrect&&allRestored&&exemptClickable
       isChartRendered=await page.locator('.pd-chart-bars .pd-chart-bar-track, .pd-chart-columns .pd-chart-column-space, .pd-chart-empty').count()>=5
       if(charts===5)await page.screenshot({path:folder+'/'+viewport.name+'.png',fullPage:false})
     }catch(e){errors.push(String(e.message??e).slice(0,260))}
     check(viewport.name,status===200&&!finalUrl.includes('/login')&&metrics.length===9&&charts===5&&
-      filterRemoved&&oneRow&&!overflow&&chartValuesAgree&&datesVisible&&quarterRemoved&&tablePresent&&groupedActions&&tableValuesAgree&&panelBalance&&leftAligned&&kpiShape&&compactToolbar&&isChartRendered&&errors.length===0,{
-      status,metricCount:metrics.length,chartCount:charts,oneRow,overflow,filterRemoved,chartValuesAgree,datesVisible,quarterRemoved,tablePresent,groupedActions,tableValuesAgree,panelBalance,leftAligned,kpiShape,compactToolbar,layout,
+      filterRemoved&&oneRow&&!overflow&&chartValuesAgree&&datesVisible&&quarterRemoved&&tablePresent&&groupedActions&&tableValuesAgree&&panelBalance&&leftAligned&&kpiShape&&compactToolbar&&tableScrollIsolated&&actionScrollIsolated&&narrowerLeft&&isChartRendered&&errors.length===0,{
+      status,metricCount:metrics.length,chartCount:charts,oneRow,overflow,filterRemoved,chartValuesAgree,datesVisible,quarterRemoved,tablePresent,groupedActions,tableValuesAgree,panelBalance,leftAligned,kpiShape,compactToolbar,tableScrollIsolated,actionScrollIsolated,narrowerLeft,layout,
       isChartRendered,chartTotal,errors
     })
     if(viewport.name==='desktop-1440'&&status===200&&charts===5){
