@@ -82,7 +82,7 @@ async function clean(){
 }
 if(process.argv.includes('--cleanup')){await clean();process.exit(0)}
 
-let browser=null,thrown=null
+let browser=null,thrown=null,activePage=null
 try{
   const suffix=randomBytes(4).toString('hex').toUpperCase()
   const marker='QA-PR75-'+suffix
@@ -117,6 +117,7 @@ try{
   })
   const context=await browser.newContext({viewport:{width:1440,height:900}})
   const page=await context.newPage()
+  activePage=page
   page.on('pageerror',e=>result.pageErrors.push(String(e)))
   page.on('response',r=>{if(r.status()>=500)result.http5xx.push({path:new URL(r.url()).pathname,status:r.status()})})
   const goto=async path=>{
@@ -197,11 +198,18 @@ try{
   const edit=page.locator('form.tracking-mapping-row-v7.editing').filter({hasText:q.mappingCode})
   await edit.locator('select[name=canonical_status]').selectOption('PICKED_UP')
   await edit.getByRole('button',{name:'Lưu'}).click()
-  await page.waitForURL(u=>u.searchParams.get('tracking_tab')==='mapping'&&u.searchParams.get('mapped')==='1',{timeout:35000})
+  // Mapping is saved in place: no full navigation/redirect to a different app or Worker.
+  await page.getByRole('status').filter({hasText:'Đã lưu mapping'}).waitFor({state:'visible',timeout:15000})
+  const mappingUrl=new URL(page.url())
+  check(mappingUrl.origin===new URL(URL_BASE).origin&&mappingUrl.pathname==='/settings'&&
+    mappingUrl.searchParams.get('section')==='tracking'&&mappingUrl.searchParams.get('tracking_tab')==='mapping',
+    'Mapping remains on the same ERP Preview origin and in its selected tab',
+    {origin:mappingUrl.origin,path:mappingUrl.pathname})
   await until('mapping save',async()=>{
     const {data}=await db.from('carrier_status_mappings').select('canonical_status').eq('id',mapId).single()
     return data?.canonical_status==='PICKED_UP'
   })
+  await page.locator('#tracking-mapping-content-v9').waitFor({state:'visible',timeout:15000})
   check(await page.locator('#tracking-mapping-content-v9').getAttribute('aria-hidden')==='false','Mapping tab remains open after save')
   check((await page.locator('body').innerText()).includes('Đã lưu mapping'),'Mapping displays confirmation')
   await page.reload({waitUntil:'domcontentloaded'})
@@ -222,6 +230,16 @@ try{
 }catch(e){
   thrown=e
   console.error('PR75_QA_FAILURE '+String(e?.stack??e))
+  if(activePage){
+    const info={
+      url:activePage.url(),
+      mappingCount:await activePage.locator('#tracking-mapping-content-v9').count().catch(()=>-1),
+      trackingTabs:await activePage.getByRole('button',{name:/Mapping SPX/}).count().catch(()=>-1),
+      loginInputs:await activePage.locator('input[type=password]').count().catch(()=>-1),
+      applicationError:await activePage.locator('body').innerText().then(s=>/Application error|Internal Server Error|404:/.test(s)).catch(()=>null),
+    }
+    console.error('PR75_QA_NAV_DIAGNOSTIC '+JSON.stringify(info))
+  }
 }finally{
   if(browser)await browser.close().catch(()=>{})
   try{await clean()}catch(e){console.error('PR75_QA_CLEANUP_FAILURE '+String(e?.message??e));thrown??=e}

@@ -4,10 +4,8 @@ on:
   push:
     branches:
       - fix/qa-cleanup-cancel-marker-tracking-mapping-20261013
+    # E2E runs only when its own test/runner changes; no repeated QA on every source edit.
     paths:
-      - 'app/**'
-      - 'components/**'
-      - 'lib/**'
       - 'scripts/pr75-preview-e2e.mjs'
       - '.github/workflows/pr75-preview-e2e.yml'
   workflow_dispatch:
