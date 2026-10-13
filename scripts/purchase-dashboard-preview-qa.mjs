@@ -76,8 +76,33 @@ try{
       tablePresent=await page.locator('.pd-left-rail .pd-status-table').count()===1
         && await page.locator('.pd-status-table tbody tr th[scope="row"]').count()>=1
         && await page.locator('.pd-status-table tbody tr.pd-table-section').count()===0
-      groupedActions=await page.locator('.pd-right-rail .pd-action-group').count()===6
-        && await page.locator('.pd-left-rail .pd-action-group').count()===0
+      groupedActions=await page.locator('.pd-right-rail .action-queue-summary').count()===3
+        && await page.locator('.pd-right-rail .pd-queue-mini').count()===3
+        && await page.locator('.pd-right-rail .action-queue-orders').count()===1
+        && await page.locator('.pd-left-rail .action-queue-summary').count()===0
+      const layout=await page.evaluate(()=>{
+        const left=document.querySelector('.pd-summary-table')
+        const right=document.querySelector('.pd-action-panel')
+        const table=document.querySelector('.pd-status-table')
+        const kpi=document.querySelector('.pd-metric')
+        const time=document.querySelector('.pd-time-filter')
+        const toolbar=document.querySelector('.pd-time-calendar')
+        const quick=document.querySelector('.pd-time-quick')
+        if(!(left&&right&&table&&kpi&&time&&toolbar&&quick))return null
+        const lr=left.getBoundingClientRect(),rr=right.getBoundingClientRect()
+        const tds=[...table.querySelectorAll('tbody td:not([colspan]),tbody th[scope="row"], thead th')]
+        const allLeft=tds.every(cell=>getComputedStyle(cell).textAlign==='left'||getComputedStyle(cell).textAlign==='start')
+        const kpiRadius=parseFloat(getComputedStyle(kpi).borderTopLeftRadius)
+        const aligned=Math.abs(lr.top-rr.top)<3&&Math.abs(lr.height-rr.height)<3
+        const toolbarVisible=toolbar.getBoundingClientRect().height>=28
+        return {aligned,allLeft,kpiRadius,toolbarVisible,
+          leftHeight:Math.round(lr.height),rightHeight:Math.round(rr.height),
+          timeRows:Math.abs(quick.getBoundingClientRect().top-toolbar.getBoundingClientRect().top)<10?1:2}
+      })
+      const panelBalance=!!layout&&(viewport.width<=960||layout.aligned)
+      const leftAligned=!!layout&&layout.allLeft
+      const kpiShape=!!layout&&layout.kpiRadius<=5
+      const compactToolbar=!!layout&&layout.toolbarVisible&&(viewport.width<=1080||layout.timeRows===1)
       const tableSums=await page.locator('.pd-status-table').evaluate(table=>{
         const rows=[...table.querySelectorAll('tbody tr')]
         const sums={area:[0,0,0]}
@@ -93,8 +118,8 @@ try{
       if(charts===5)await page.screenshot({path:folder+'/'+viewport.name+'.png',fullPage:false})
     }catch(e){errors.push(String(e.message??e).slice(0,260))}
     check(viewport.name,status===200&&!finalUrl.includes('/login')&&metrics.length===9&&charts===5&&
-      filterRemoved&&oneRow&&!overflow&&chartValuesAgree&&datesVisible&&quarterRemoved&&tablePresent&&groupedActions&&tableValuesAgree&&isChartRendered&&errors.length===0,{
-      status,metricCount:metrics.length,chartCount:charts,oneRow,overflow,filterRemoved,chartValuesAgree,datesVisible,quarterRemoved,tablePresent,groupedActions,tableValuesAgree,
+      filterRemoved&&oneRow&&!overflow&&chartValuesAgree&&datesVisible&&quarterRemoved&&tablePresent&&groupedActions&&tableValuesAgree&&panelBalance&&leftAligned&&kpiShape&&compactToolbar&&isChartRendered&&errors.length===0,{
+      status,metricCount:metrics.length,chartCount:charts,oneRow,overflow,filterRemoved,chartValuesAgree,datesVisible,quarterRemoved,tablePresent,groupedActions,tableValuesAgree,panelBalance,leftAligned,kpiShape,compactToolbar,layout,
       isChartRendered,chartTotal,errors
     })
     if(viewport.name==='desktop-1440'&&status===200&&charts===5){
