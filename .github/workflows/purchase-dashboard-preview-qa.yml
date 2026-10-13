@@ -37,6 +37,14 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: TypeScript QA
         run: npm run typecheck
+      - name: Resolve existing public QA key (without printing it)
+        run: |
+          if [ -z "$SUPABASE_KEY" ]; then
+            key=$(node -e "const fs=require('fs');const y=fs.readFileSync('.github/workflows/pos-503-main-preview-qa.yml','utf8');const m=y.match(/SUPABASE_KEY:\\s*(sb_publishable_[A-Za-z0-9_-]+)/);if(!m)process.exit(2);process.stdout.write(m[1])")
+            test -n "$key"
+            echo "::add-mask::$key"
+            echo "SUPABASE_KEY=$key" >> "$GITHUB_ENV"
+          fi
       - name: Ensure sole Preview responds
         run: |
           test -n "$PREVIEW_URL"
