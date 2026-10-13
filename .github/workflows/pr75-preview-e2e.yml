@@ -1,0 +1,87 @@
+name: PR75 E2E — huỷ đơn và Mapping trên Preview
+
+on:
+  push:
+    branches:
+      - fix/qa-cleanup-cancel-marker-tracking-mapping-20261013
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'scripts/pr75-preview-e2e.mjs'
+      - '.github/workflows/pr75-preview-e2e.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr75-isolated-preview-e2e
+  cancel-in-progress: false
+
+jobs:
+  preview-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      PREVIEW_URL: https://pr75-cancel-mapping-qa-v1-mynh-erp-v5.mynh-forwork.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Kiểm tra credentials QA qua presence only
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+      - name: Cài dependencies
+        run: npm install --no-audit --no-fund
+      - name: TypeScript + contract
+        run: |
+          npm run typecheck
+          node --experimental-strip-types scripts/qa-cancel-mapping-contract.mjs
+      - name: Build OpenNext dành riêng Preview
+        run: npx opennextjs-cloudflare build
+      - name: Publish Preview độc lập không thay Production
+        run: |
+          npx wrangler preview \
+            --name pr75-cancel-mapping-qa-v1 \
+            --worker-name mynh-erp-v5 \
+            --message "PR75 E2E $GITHUB_SHA" \
+            --json > pr75-preview-result.json
+      - name: Smoke Preview health/login
+        shell: bash
+        run: |
+          test "$(curl -sS --max-time 25 -o pr75-health.json -w '%{http_code}' "$PREVIEW_URL/api/health")" = "200"
+          grep -q '"ok":true' pr75-health.json
+          test "$(curl -sS --max-time 25 -o pr75-login.html -w '%{http_code}' "$PREVIEW_URL/login")" = "200"
+          grep -q 'MYNH ERP' pr75-login.html
+      - name: Cài Playwright sử dụng Chrome runner
+        run: |
+          npm install --no-save playwright --no-audit --no-fund
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: E2E thao tác KHÔNG CÓ, Mapping, reload, responsive
+        run: node scripts/pr75-preview-e2e.mjs
+      - name: Cleanup QA dự phòng và hậu kiểm
+        if: always()
+        run: |
+          if [ -f qa-pr75-session.json ]; then
+            node scripts/pr75-preview-e2e.mjs --cleanup
+          fi
+      - name: Báo cáo và bằng chứng (không chứa auth/token)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr75-e2e-evidence-${{ github.sha }}
+          path: qa-pr75-results.json
+          retention-days: 7
+          if-no-files-found: ignore
