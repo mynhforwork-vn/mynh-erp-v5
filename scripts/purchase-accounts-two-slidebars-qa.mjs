@@ -117,13 +117,19 @@ try{
   }
   const tracking=page.locator('.account-workspace>.context-order-panel .context-order-tabs a').filter({hasText:'Tracking'})
   if(await tracking.count()){
+    const trackingHref=await tracking.first().getAttribute('href')
     await tracking.click()
-    // Wait for real RSC tab selection, not merely the still-mounted panel.
-    await page.locator('.account-workspace>.context-order-panel .context-order-tabs a.active')
-      .filter({hasText:'Tracking'}).waitFor({state:'visible',timeout:20000})
+    // Navigation could be delayed by RSC data. Keep collecting evidence for
+    // subsequent Back/Close transitions even if Tracking tab never activates.
+    let selectedTracking=true
+    try{
+      await page.locator('.account-workspace>.context-order-panel .context-order-tabs a.active')
+        .filter({hasText:'Tracking'}).waitFor({state:'visible',timeout:12000})
+    }catch{selectedTracking=false}
     const trackingTwo=await metrics(page)
     check(viewport.width+' 2 slidebars: Tracking tab',fit(trackingTwo)&&panels(trackingTwo,2)
-      &&trackingTwo.tab==='Tracking',trackingTwo??{})
+      &&selectedTracking&&trackingTwo.tab==='Tracking',
+      {...(trackingTwo??{}),url:page.url(),trackingHref,selectedTracking})
   }
   await page.locator('.account-workspace>.context-order-panel .context-stack-back').click()
   await page.locator('.account-workspace>.context-order-panel').waitFor({state:'detached',timeout:20000})
