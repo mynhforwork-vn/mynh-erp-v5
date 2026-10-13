@@ -29,3 +29,6 @@
 
 /* Dedicated in-app alert rules layout (desktop/tablet/mobile). */
 @import './styles/notification-in-app-only.css';
+
+/* Dashboard nhập hàng — chỉ phạm vi Preview /purchase. */
+@import './styles/purchase-insight-dashboard.css';
