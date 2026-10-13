@@ -102,8 +102,13 @@ try{
         }
       })})
     })
-    await row.locator('.tracking-sync-icon-button').click()
-    await page.waitForTimeout(150)
+    // Next.js streams RSC/JS; wait for hydration before testing the event handler.
+    await page.waitForLoadState('load',{timeout:20000}).catch(()=>{})
+    for(let attempt=0;attempt<3&&posts===0;attempt++){
+      if(attempt>0)await page.waitForTimeout(1100)
+      await row.locator('.tracking-sync-icon-button').click()
+      await page.waitForTimeout(300)
+    }
     const newClass=await row.locator('.tracking-data-col-status .status-pill').first().getAttribute('class')
     const newFailed=Number((await danger.textContent())?.trim())
     const message=await wrap.innerText()
