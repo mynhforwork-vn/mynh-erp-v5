@@ -116,6 +116,13 @@ export function groupInsightOrders(rows:InsightOrder[],getName:(o:InsightOrder)=
     return bActive-aActive||b.total-a.total||collator.compare(a.name,b.name)
   })
 }
+/** Hỏa tốc là tồn đọng xác nhận giao, không phải lượng đặt đơn theo ngày. */
+export function isExpressAwaitingDeliveryConfirmation(order:PurchaseInsightOrder){
+  if(order.shipping_service!=='EXPRESS'||orderIsCancelled(order))return false
+  // Khi đã ghi giao thành công hoặc đã bước sang xác nhận nhận hàng thì không đếm.
+  if(String(order.express_delivery_status??'').toUpperCase()==='DELIVERED')return false
+  return !['WAITING_RECEIVE','RECEIVED'].includes(String(order.receive_status??'').toUpperCase())
+}
 export function isAwaitingReceipt(o:InsightOrder){
   return o.stage==='delivered' && o.receive_status==='WAITING_RECEIVE'
 }
@@ -145,7 +152,7 @@ export function sumInsightCounts(rows:InsightOrder[]){
     waiting:0,unknownRegion:0,unknownHub:0,
   }
   for(const o of rows){
-    if(o.isExpress)counters.express++
+    if(isExpressAwaitingDeliveryConfirmation(o))counters.express++
     if(o.stage in counters){
       const k=o.stage as keyof typeof counters
       counters[k]++
