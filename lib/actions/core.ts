@@ -1451,49 +1451,71 @@ export async function retryExpressDelivery(formData:FormData){
 // Never submit this marker to carrier detection, HUB detection or tracking scheduling.
 async function cancelOrderFromTrackingMarker(supabase:any,user:any,orderId:string,returnQuery:string){
   const {data:order,error:orderError}=await supabase.from('orders')
-    .select('id,order_status,archived_at')
+    .select('id,order_status,archived_at,receive_status,warehouse_status')
     .eq('id',orderId).maybeSingle()
   if(orderError)throw new Error(orderError.message)
   if(!order)throw new Error('Đơn hàng không tồn tại')
   if(order.archived_at)throw new Error('Không thể huỷ đơn đã lưu trữ')
+  // A late cancellation must not silently invalidate an actual warehouse receipt,
+  // inventory posting, or a finished order.
+  if(String(order.receive_status??'NOT_READY')!=='NOT_READY' ||
+     String(order.warehouse_status??'NOT_READY')!=='NOT_READY' ||
+     String(order.order_status??'').toUpperCase()==='COMPLETED'){
+    throw new Error('Đơn đã giao/nhận hoặc xử lý kho; cần kiểm tra nghiệp vụ trước khi huỷ')
+  }
+  if(String(order.order_status??'').toUpperCase()==='CANCELLED'){
+    throw new Error('Đơn đã bị huỷ trước đó')
+  }
 
   const {data:activeRows,error:activeError}=await supabase.from('shipments')
-    .select('id,tracking_number,carrier,current_tracking_status,tracking_enabled,next_track_at,locked_until')
+    .select('id,tracking_number,carrier,current_tracking_status,tracking_enabled,next_track_at,locked_until,queue_status,replaced_at')
     .eq('order_id',orderId).eq('is_active',true)
   if(activeError)throw new Error(activeError.message)
   if((activeRows??[]).length>1)throw new Error('Có nhiều vận đơn đang hoạt động; cần xử lý trước khi huỷ')
   const active=(activeRows??[])[0]??null
-  let newShipmentId:string|null=null
-  const cancelledShipment={
-    tracking_number:'KHÔNG CÓ',carrier:null,current_tracking_status:'CANCELLED',
-    tracking_enabled:false,next_track_at:null,locked_until:null,queue_status:'READY',
+  if(['DELIVERED','RETURNED'].includes(String(active?.current_tracking_status??''))){
+    throw new Error('Vận đơn đã giao/trả; không thể chuyển trực tiếp thành đơn bị huỷ')
+  }
+
+  // Preserve the old tracking number, events and status as an inactive shipment.
+  // The new active marker represents the user's cancellation instruction.
+  async function restoreOldShipment(){
+    if(!active)return null
+    const {error}=await supabase.from('shipments').update({
+      is_active:true,replaced_at:active.replaced_at,
+      tracking_enabled:active.tracking_enabled,
+      next_track_at:active.next_track_at,locked_until:active.locked_until,
+      queue_status:active.queue_status,
+    }).eq('id',active.id)
+    return error
   }
   if(active){
-    const {error}=await supabase.from('shipments').update(cancelledShipment).eq('id',active.id)
+    const {error}=await supabase.from('shipments').update({
+      is_active:false,replaced_at:new Date().toISOString(),
+      tracking_enabled:false,next_track_at:null,locked_until:null,
+    }).eq('id',active.id)
     if(error)throw new Error(error.message)
-  }else{
-    const {data,error}=await supabase.from('shipments').insert({
-      order_id:orderId,is_active:true,...cancelledShipment,
-    }).select('id').single()
-    if(error)throw new Error(error.message)
-    newShipmentId=String(data.id)
+  }
+  const {data:newShipment,error:insertError}=await supabase.from('shipments').insert({
+    order_id:orderId,is_active:true,
+    tracking_number:'KHÔNG CÓ',carrier:null,current_tracking_status:'CANCELLED',
+    tracking_enabled:false,next_track_at:null,locked_until:null,queue_status:'READY',
+  }).select('id').single()
+  if(insertError){
+    const rollbackError=await restoreOldShipment()
+    throw new Error('Không lưu được mã KHÔNG CÓ: '+insertError.message+
+      (rollbackError?' (khôi phục vận đơn cũ lỗi: '+rollbackError.message+')':''))
   }
 
   const {error:statusError}=await supabase.from('orders')
     .update({order_status:'CANCELLED'}).eq('id',orderId)
   if(statusError){
-    // Best-effort compensation: do not leave a partially applied cancellation silently.
-    if(active){
-      await supabase.from('shipments').update({
-        tracking_number:active.tracking_number,carrier:active.carrier,
-        current_tracking_status:active.current_tracking_status,
-        tracking_enabled:active.tracking_enabled,next_track_at:active.next_track_at,
-        locked_until:active.locked_until,
-      }).eq('id',active.id)
-    }else if(newShipmentId){
-      await supabase.from('shipments').delete().eq('id',newShipmentId)
-    }
-    throw new Error('Không lưu được trạng thái Đơn bị huỷ: '+statusError.message)
+    // Best-effort compensation if a write fails; all successful paths preserve history.
+    const {error:removeError}=await supabase.from('shipments').delete().eq('id',newShipment.id)
+    const rollbackError=await restoreOldShipment()
+    throw new Error('Không lưu được trạng thái Đơn bị huỷ: '+statusError.message+
+      (removeError?' (gỡ mã QA huỷ lỗi: '+removeError.message+')':'')+
+      (rollbackError?' (khôi phục vận đơn cũ lỗi: '+rollbackError.message+')':''))
   }
 
   await supabase.from('audit_logs').insert({
