@@ -96,23 +96,25 @@ export type InsightCount={
   destination:number
   out:number
   delivered:number
+  cancelled:number
 }
 export function groupInsightOrders(rows:InsightOrder[],getName:(o:InsightOrder)=>string){
   const groups=new Map<string,InsightCount>()
   for(const o of rows){
     const name=getName(o)
-    const x=groups.get(name)??{name,total:0,missing:0,shipping:0,destination:0,out:0,delivered:0}
+    const x=groups.get(name)??{name,total:0,missing:0,shipping:0,destination:0,out:0,delivered:0,cancelled:0}
     x.total++
     if(o.stage==='missing')x.missing++
     if(o.stage==='shipping')x.shipping++
     if(o.stage==='destination')x.destination++
     if(o.stage==='out')x.out++
     if(o.stage==='delivered')x.delivered++
+    if(o.stage==='cancelled')x.cancelled++
     groups.set(name,x)
   }
   return [...groups.values()].sort((a,b)=>{
-    const aActive=a.missing+a.shipping+a.destination+a.out+a.delivered
-    const bActive=b.missing+b.shipping+b.destination+b.out+b.delivered
+    const aActive=a.missing+a.shipping+a.destination+a.out+a.delivered+a.cancelled
+    const bActive=b.missing+b.shipping+b.destination+b.out+b.delivered+b.cancelled
     return bActive-aActive||b.total-a.total||collator.compare(a.name,b.name)
   })
 }
