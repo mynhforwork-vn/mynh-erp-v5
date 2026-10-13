@@ -104,20 +104,56 @@ try{
           fixedHeads:!scroller.contains(header)&&!actions.contains(cards),
           primaryRow:groupTops.length===3&&Math.max(...groupTops)-Math.min(...groupTops)<=2,
           footerGap:Math.round(foot.getBoundingClientRect().top-work.getBoundingClientRect().bottom),
+          footerBottom:Math.round(foot.getBoundingClientRect().bottom),
+          leftHeight:Math.round(a.height),rightHeight:Math.round(b.height),
           timeRows:Math.abs(quick.getBoundingClientRect().top-calendar.getBoundingClientRect().top)<10?1:2,
         }
       })
       oneRow=!!layout&&layout.kpiOneRow
       compactPanels=!!layout&&layout.footerGap>=0&&layout.footerGap<=25 &&
-        (viewport.width<=960||(layout.sameHeight&&layout.sameTop&&layout.leftWidth<layout.rightWidth))
+        (viewport.width<=960||(layout.sameHeight&&layout.sameTop&&layout.leftWidth<layout.rightWidth&&
+          layout.leftHeight>=408&&Math.abs(viewport.height-layout.footerBottom-26)<=30))
       scrollIsolated=!!layout&&layout.fixedHeads&&layout.primaryRow&&
         layout.leftScroll!=='visible'&&layout.rightScroll!=='visible'&&layout.labelsAligned
       timeToolbar=!!layout&&(viewport.width<=1080||layout.timeRows===1)
       kpiContract=kpiContract&&!!layout&&layout.kpiRadius>=5&&layout.kpiRadius<=8&&layout.kpiHeight>=60&&layout.kpiHeight<=80
-      tableCorrect=await page.locator('.pd-status-table').evaluate(table=>{
-        const rows=[...table.querySelectorAll('tbody tr')];
-        return rows.every(row=>row.querySelectorAll('td').length===3 || row.querySelector('td[colspan="4"]'))
+      // Xác minh hai chế độ bảng và đối chiếu tổng theo ba trạng thái.
+      const tableCounters=async () => page.locator('.pd-status-table').evaluate(table=>{
+        const rows=[...table.querySelectorAll('tbody tr')]
+        const totals=[0,0,0]
+        for(const row of rows){
+          const cells=[...row.querySelectorAll('td:not([colspan])')]
+          if(cells.length===0)continue
+          if(cells.length!==3)return {valid:false,totals,rowCount:rows.length}
+          cells.forEach((td,i)=>totals[i]+=Number(td.textContent?.trim()??0))
+        }
+        return {valid:true,totals,rowCount:rows.filter(row=>row.querySelector('th[scope="row"]')).length}
       })
+      const areaCount=await page.locator('.pd-summary-tabs #pd-tab-area small').textContent()
+      const hubCount=await page.locator('.pd-summary-tabs #pd-tab-hub small').textContent()
+      const areaRows=await tableCounters()
+      const areaHeading=await page.locator('.pd-summary-head-table thead th').first().textContent()
+      const areaCorrect=areaRows.valid&&areaRows.rowCount===Number(areaCount)&&
+        areaHeading?.includes('Phường/Xã')&&areaRows.totals[0]===metrics[2]&&
+        areaRows.totals[1]===metrics[3]&&areaRows.totals[2]===metrics[6]
+      await page.locator('#pd-tab-hub').click()
+      const hubRows=await tableCounters()
+      const hubHeading=await page.locator('.pd-summary-head-table thead th').first().textContent()
+      const hubCorrect=hubRows.valid&&hubRows.rowCount===Number(hubCount)&&
+        hubHeading?.includes('HUB đích')&&
+        hubRows.totals.every((value,i)=>value<=areaRows.totals[i])&&
+        await page.locator('#pd-tab-hub').getAttribute('aria-selected')==='true'
+      // Header và bộ chọn nhóm nằm ngoài vùng cuộn cả ở chế độ HUB.
+      const tabOutside=await page.evaluate(()=>{
+        const tabs=document.querySelector('.pd-summary-tabs')
+        const scroller=document.querySelector('.pd-summary-table .pd-table-scroll')
+        const header=document.querySelector('.pd-summary-head-table')
+        return !!tabs&&!!scroller&&!!header&&!scroller.contains(tabs)&&!scroller.contains(header)
+      })
+      await page.locator('#pd-tab-area').click()
+      tableCorrect=areaCorrect&&hubCorrect&&tabOutside&&
+        await page.locator('#pd-tab-area').getAttribute('aria-selected')==='true'
+
       const groups=page.locator('.pd-action-primary button,.pd-queue-secondary button')
       groupsCorrect=await groups.count()===6
       const tested=viewport.name==='desktop-1440'?6:1

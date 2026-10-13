@@ -29,6 +29,14 @@
 /* Tiêu đề vùng và hàng cột là các khối cố định; chỉ tbody cuộn. */
 .pd-summary-table .pd-side-head{flex:0 0 auto;padding:9px 11px 8px}
 .pd-action-panel .pd-side-head{flex:0 0 auto;padding:9px 11px 8px}
+/* Bộ chọn Phường/Xã — HUB đích luôn nằm ngoài vùng cuộn dữ liệu. */
+.pd-summary-tabs{display:flex;align-items:center;gap:4px;min-height:36px;padding:4px 9px;background:#fff;flex:0 0 auto}
+.pd-summary-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:0;padding:5px 10px;font:inherit;font-size:10px;font-weight:700;line-height:1.3;color:#587185;border:1px solid transparent;border-radius:4px;background:transparent;cursor:pointer}
+.pd-summary-tabs button small{font-size:9px;font-weight:700;color:#7890a1}
+.pd-summary-tabs button:hover{background:#f3f7fa}
+.pd-summary-tabs button.is-selected{color:#245d88;background:#eef5fa;border-color:#d5e5f0}
+.pd-summary-tabs button.is-selected small{color:#326b95}
+.pd-summary-tabs button:focus-visible{outline:2px solid #498cc2;outline-offset:1px}
 .pd-summary-table .pd-table-head{flex:0 0 auto;min-width:0;border-top:1px solid #edf2f6;border-bottom:1px solid #dce7ef;background:#f1f6fa}
 .pd-summary-table .pd-table-scroll{flex:1 1 auto;min-height:0;width:100%;max-width:100%;max-height:none;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin}
 .pd-table{border-collapse:collapse;width:100%;font-size:10px;line-height:1.35}
@@ -152,4 +160,11 @@
     gap:3px!important;
     border-radius:6px!important;
   }
+}
+
+/* Chiếm chiều cao khả dụng từ cuối KPI đến sát chân trang trên Desktop. */
+@media(min-width:961px){
+  .pd-insight{min-height:calc(100dvh - 42px);display:flex;flex-direction:column}
+  .pd-insight .pd-workspace{flex:1 1 408px;min-height:408px}
+  .pd-insight .pd-summary-table,.pd-insight .pd-action-panel{height:100%}
 }

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { PurchaseActionQueue,type PurchaseActionItem,type PurchaseActionGroup,type PurchaseDataIssue } from '@/components/purchase-action-queue'
+import { PurchaseAreaHubTable } from '@/components/purchase-area-hub-table'
 import {
   toInsightOrder,groupInsightOrders,sumInsightCounts,issueLabel,issuePriority,
   isExpressAwaitingDeliveryConfirmation,insightUnknownLabels,type InsightOrder,
@@ -99,6 +100,9 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   // Chỉ KPI Hỏa tốc là tồn đọng mọi thời gian, không phụ thuộc ngày đặt đơn.
   numbers.express=pendingExpress.length
   const areaGroups=groupInsightOrders(filtered,o=>o.ward+' · '+o.province)
+  // HUB đích chỉ áp dụng cho vận chuyển tiêu chuẩn. Không suy đoán HUB cho Hỏa tốc.
+  const hubGroups=groupInsightOrders(filtered.filter(o=>!o.isExpress),
+    o=>o.destination_hub?.trim()||insightUnknownLabels.hub)
   // Công việc Hỏa tốc hiện tại không bị bỏ sót vì khác khoảng ngày đặt đơn.
   const datedIds=new Set(filtered.map(o=>o.id))
   const workOrders=[...filtered,...pendingExpress.filter(o=>!datedIds.has(o.id))]
@@ -197,31 +201,11 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
         <section className="pd-summary-table" aria-labelledby="pd-summary-heading">
           <header className="pd-side-head">
             <div><span className="module-eyebrow">BẢNG TỔNG HỢP</span>
-              <h2 id="pd-summary-heading">Đơn hàng theo Phường/Xã – Tỉnh/TP</h2>
+              <h2 id="pd-summary-heading">Đơn hàng theo địa bàn và HUB đích</h2>
               <p>Chưa có MVĐ · Đang vận chuyển · Giao thành công</p></div>
           </header>
-          <div className="pd-table-head" aria-hidden="false">
-            <table className="pd-table pd-summary-head-table" aria-label="Tiêu đề bảng khu vực">
-              <colgroup><col className="pd-area-col"/><col/><col/><col/></colgroup>
-              <thead><tr><th scope="col">Phường/Xã · Tỉnh/TP</th><th scope="col">Chờ MVĐ</th>
-                <th scope="col">Vận chuyển</th><th scope="col">Giao TC</th></tr></thead>
-            </table>
-          </div>
-          <div className="pd-table-scroll" tabIndex={0} aria-label="Danh sách số liệu theo Phường/Xã">
-            <table className="pd-table pd-status-table" aria-label="Số đơn theo khu vực">
-              <colgroup><col className="pd-area-col"/><col/><col/><col/></colgroup>
-              <tbody>
-                {!areaGroups.length&&<tr><td colSpan={4} className="pd-empty">Chưa có đơn trong khoảng lọc.</td></tr>}
-                {areaGroups.map(group=><tr key={'area-'+group.name}>
-                  <th scope="row" title={group.name}>{group.name}</th>
-                  <td className="pd-cell-warning">{group.missing}</td>
-                  <td className="pd-cell-blue">{group.shipping}</td>
-                  <td className="pd-cell-green">{group.delivered}</td>
-                </tr>)}
-              </tbody>
-            </table>
-          </div>
-          <p className="pd-table-help">Địa bàn lấy từ địa chỉ người nhận; không suy đoán dữ liệu thiếu hoặc HUB.</p>
+          <PurchaseAreaHubTable areaGroups={areaGroups} hubGroups={hubGroups}/>
+          <p className="pd-table-help">HUB lấy từ đơn vận chuyển tiêu chuẩn; Hỏa tốc không áp dụng HUB. Không tự điền dữ liệu thiếu.</p>
         </section>
 
       </div>
