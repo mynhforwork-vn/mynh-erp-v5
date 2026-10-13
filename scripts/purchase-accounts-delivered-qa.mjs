@@ -89,6 +89,35 @@ try{
     console.log('ACCOUNT_DELIVERED_COUNT '+JSON.stringify({actual:sample.shown,expected,match:ok}))
   }
   check('Delivered count matches latest saved order state',allAgree&&compared>0,{compared})
+  // Distinguish true Auto Fit from merely having no document overflow.
+  // Check semantic colgroup/header agreement and readable minima.
+  async function inspectAccountFit(){
+    return page.evaluate(()=>{
+      const card=document.querySelector('.account-table-card')
+      const table=card?.querySelector('table.user-table')
+      if(!card||!table)return null
+      const ths=[...table.querySelectorAll('thead th')]
+      const cols=[...table.querySelectorAll('colgroup col')]
+      const box=x=>x.getBoundingClientRect()
+      const widths=ths.map(th=>({key:th.dataset.accountCol||'select',
+        width:box(th).width,rectRight:box(th).right}))
+      const colWidths=cols.map(col=>box(col).width)
+      const find=k=>widths.find(x=>x.key===k)?.width||0
+      const tableWidth=box(table).width,laneWidth=card.clientWidth
+      return {mode:table.closest('.account-workspace.with-panel')?'panel':'full',
+        tableWidth:Math.round(tableWidth),laneWidth,
+        pageOverflow:document.documentElement.scrollWidth>innerWidth+6,
+        localOverflow:tableWidth>laneWidth+6,
+        localScroll:getComputedStyle(card).overflowX==='auto',
+        fillsLane:tableWidth>=laneWidth-8,
+        aligned:colWidths.length===widths.length&&widths.every((x,i)=>Math.abs(x.width-colWidths[i])<=7),
+        readable:find('username')>=122&&find('voucher')>=100&&find('email')>=126
+          &&find('deliveredOrders')>=86,
+        compact:find('number')<=46&&find('orders')<=74&&find('deliveredOrders')<=125,
+        widths:Object.fromEntries(widths.map(x=>[x.key,Math.round(x.width)])),
+      }
+    })
+  }
   for(const viewport of widths){
     await page.setViewportSize(viewport)
     await page.waitForTimeout(100)
@@ -118,6 +147,10 @@ try{
       &&result.cells===sampled.length+Math.max(0,result.cells-sampled.length)
       &&result.numeric&&!result.clipped&&!result.overflow&&result.cardFits&&result.internalScroll),
       result??{reason:'Missing column'})
+    const auto=await inspectAccountFit()
+    check(viewport.width+'x'+viewport.height+' Accounts Auto Fit',Boolean(auto&&
+      !auto.pageOverflow&&auto.localScroll&&auto.fillsLane&&auto.aligned&&
+      auto.readable&&auto.compact),auto??{reason:'No fit measurements'})
     if([320,390,768,1440].includes(viewport.width))
       await page.screenshot({path:'qa-accounts-delivered-artifacts/accounts-'+viewport.width+'.png',fullPage:false})
   }
@@ -153,7 +186,43 @@ try{
   await control.click()
   await toggle.check()
   check('Column can be shown again',await header.count()===1)
-  // UI-only column state test does not mutate ERP rows or browser login state.
+  // Right slidebar: do not compress 13 columns into illegible fragments.
+  const firstUser=page.locator('.account-table-card tr[data-account-id] td[data-account-col="username"] .table-link').first()
+  await firstUser.click()
+  await page.locator('.account-workspace.with-panel').waitFor({timeout:15000})
+  const drawer=await inspectAccountFit()
+  check('Accounts Auto Fit with right slidebar open',Boolean(drawer&&
+    drawer.mode==='panel'&&drawer.aligned&&drawer.readable&&drawer.compact&&
+    drawer.fillsLane&&drawer.localOverflow&&drawer.localScroll&&!drawer.pageOverflow),
+    drawer??{reason:'Drawer table missing'})
+  await page.screenshot({path:'qa-accounts-delivered-artifacts/accounts-with-slidebar-1440.png',fullPage:false})
+  await page.goto(base+'/purchase/accounts',{waitUntil:'domcontentloaded',timeout:45000})
+  await page.locator('.account-table-card .user-table').waitFor()
+  // Width grip persists per-user; colgroup and headers must stay synchronized.
+  const emailHead=page.locator('.account-table-card th[data-account-col="email"]')
+  const grip=emailHead.locator('.mynh-column-resize-grip')
+  await grip.waitFor({state:'visible',timeout:12000})
+  const emailBefore=await emailHead.evaluate(x=>x.getBoundingClientRect().width)
+  const gripRect=await grip.boundingBox()
+  if(!gripRect)throw Error('Account column resize grip missing')
+  const x=gripRect.x+gripRect.width/2,y=gripRect.y+gripRect.height/2
+  await page.mouse.move(x,y);await page.mouse.down()
+  await page.mouse.move(x+34,y,{steps:5});await page.mouse.up()
+  await page.waitForTimeout(250)
+  const emailAfter=await emailHead.evaluate(x=>x.getBoundingClientRect().width)
+  const resized=await inspectAccountFit()
+  check('Accounts manual width grip aligns with colgroup',Boolean(resized&&
+    emailAfter>emailBefore+14&&resized.aligned&&!resized.pageOverflow),
+    {emailBefore:Math.round(emailBefore),emailAfter:Math.round(emailAfter),resized})
+  await page.reload({waitUntil:'domcontentloaded',timeout:45000})
+  await page.locator('.account-table-card .user-table').waitFor()
+  await page.waitForTimeout(500)
+  const persistedEmail=await emailHead.evaluate(x=>x.getBoundingClientRect().width)
+  const persistedFit=await inspectAccountFit()
+  check('Account column saved width survives reload',Boolean(persistedFit&&
+    Math.abs(persistedEmail-emailAfter)<10&&persistedFit.aligned),
+    {saved:Math.round(emailAfter),reloaded:Math.round(persistedEmail),persistedFit})
+    // UI-only column state test does not mutate ERP rows or browser login state.
   await ctx.close()
 }finally{await browser.close()}
 console.log('ACCOUNT_DELIVERED_QA_SUMMARY '+JSON.stringify({passed,failed}))
