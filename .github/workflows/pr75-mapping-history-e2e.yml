@@ -1,12 +1,6 @@
 name: PR75 Mapping lịch sử — E2E chỉ chạy khi được phê duyệt
 
 on:
-  # One-off approved E2E run. Remove push trigger again after inspection.
-  push:
-    branches:
-      - fix/qa-cleanup-cancel-marker-tracking-mapping-20261013
-    paths:
-      - '.github/workflows/pr75-mapping-history-e2e.yml'
   workflow_dispatch:
     inputs:
       rpc_applied:
@@ -23,7 +17,7 @@ concurrency:
 
 jobs:
   mapping-history-e2e:
-    if: ${{ inputs.rpc_applied == true || github.event_name == 'push' }}
+    if: ${{ inputs.rpc_applied == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
