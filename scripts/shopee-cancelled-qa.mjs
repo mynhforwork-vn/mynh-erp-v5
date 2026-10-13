@@ -50,8 +50,8 @@ Thanh toán khi nhận hàng`
 
 let passed=0
 function check(name,actual,expected){assert.deepEqual(actual,expected,name);passed++}
-const plain=markdown.replace(/\\[([^\\]]+)\\]\\(https?:\\/\\/[^)]+\\)/g,'$1').replace(/\\*\\*/g,'')
-for(const [kind,input] of [['markdown',markdown],['plain',plain],['escaped-lines',markdown.replaceAll('\\n','\\\\\\n')]]){
+const plain=markdown.replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/g,'$1').replace(/\*\*/g,'')
+for(const [kind,input] of [['markdown',markdown],['plain',plain],['escaped-lines',markdown.replaceAll('\n',String.fromCharCode(92)+'\n')]]){
   const p=parseShopeeOrderText(input)
   check(kind+' order id with pipe',p.shopee_order_id,'261011QA12345')
   check(kind+' currently cancelled, not placed/delivered',p.detected_status,'CANCELLED')
