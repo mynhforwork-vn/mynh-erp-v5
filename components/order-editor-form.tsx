@@ -433,7 +433,7 @@ export function OrderEditorForm({
     )
   }
 
-  return <form action={action} className="panel-form panel-scroll order-editor" data-shopee-recognizer={mode==='create'?'pending-review-v1':undefined}>
+  return <form action={action} className="panel-form panel-scroll order-editor" data-shopee-recognizer={mode==='create'?'pending-review-v2':undefined}>
     <input type="hidden" name="return_query" value={returnQuery}/>
     <input type="hidden" name="erp_user_id" value={selectedUserId}/>
     <input type="hidden" name="shipping_service" value={shippingService}/>
