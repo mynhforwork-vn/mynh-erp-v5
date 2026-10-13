@@ -21,7 +21,7 @@ for(const vp of [{width:360,height:800},{width:768,height:1024},{width:1440,heig
    sameSite:c.options?.sameSite==='strict'?'Strict':c.options?.sameSite==='none'?'None':'Lax'})))
  const page=await ctx.newPage()
  await page.goto(base+'/purchase/orders?range=all&mode=create',{waitUntil:'domcontentloaded',timeout:45000})
- const form=page.locator('form.order-editor[data-shopee-recognizer="pending-review-v3"]')
+ const form=page.locator('form.order-editor[data-shopee-recognizer="cancelled-v1"]')
  // Sole Preview can still serve the previous bundle while Git-connected
  // Cloudflare Builds compiles the target SHA. Do not run UI QA against it.
  const input=form.locator('.order-text-recognizer textarea')
