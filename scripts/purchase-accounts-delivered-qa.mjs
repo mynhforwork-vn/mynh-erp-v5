@@ -181,9 +181,17 @@ try{
   check('Delivered column participates in managed column menu',await toggle.count()===1&&await toggle.isChecked())
   await toggle.uncheck()
   check('Column can be hidden',await header.count()===0)
-  await page.reload({waitUntil:'domcontentloaded',timeout:45000})
-  await page.waitForLoadState('load',{timeout:15000}).catch(()=>{})
-  check('Hidden column preference persists after reload',await header.count()===0)
+  // Busy Cloudflare Preview may transiently return its unavailable shell.
+  // Inspect the actual authenticated Accounts DOM before testing persistence.
+  for(let retry=0;retry<5;retry++){
+    await page.reload({waitUntil:'domcontentloaded',timeout:45000})
+    await page.waitForLoadState('load',{timeout:15000}).catch(()=>{})
+    if(await control.count()&&await page.locator('.account-table-card .user-table').count())break
+    await page.waitForTimeout(1500)
+  }
+  check('Hidden column preference persists after reload',
+    await control.count()===1&&await page.locator('.account-table-card .user-table').count()===1
+      &&await header.count()===0)
   await control.click()
   await toggle.check()
   check('Column can be shown again',await header.count()===1)
