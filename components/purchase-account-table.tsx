@@ -26,7 +26,7 @@ const DELIVERY_COL_MIGRATION_KEY='mynh-v5-account-delivered-column-v1'
 // Introduce the new visible column once for existing saved layouts. A user
 // who hides it afterwards keeps that preference across reloads.
 function insertAfterOrders(values:ColKey[]){
-  const without=values.filter(k=>k!=='deliveredOrders')
+  const without:ColKey[]=values.filter(k=>k!=='deliveredOrders')
   const at=without.indexOf('orders')
   without.splice(at<0?without.length:at+1,0,'deliveredOrders')
   return without
