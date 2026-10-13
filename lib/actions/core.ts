@@ -2005,8 +2005,11 @@ export async function saveCarrierStatusMapping(formData:FormData){
     p_is_active:formData.get('is_active')==='on',
   })
   if(error)throw new Error(error.message)
+  // Do not redirect a same-route Server Action to /settings: that can dispose the
+  // client-side Mapping panel before its refreshed React tree is committed.
+  // The caller keeps the active Mapping tab and refreshes data in place.
   revalidatePath('/settings')
-  redirect('/settings?section=tracking&tracking_tab=mapping&mapped=1')
+
 }
 
 export async function testTrackingConnection(formData:FormData){
