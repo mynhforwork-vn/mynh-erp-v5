@@ -61,6 +61,23 @@ try{
         if(status===200 && await page.locator('.pd-kpi-card').count()===9)break
         if(retry<11)await page.waitForTimeout(15000)
       }
+      // A 200 SSR response is not a visual-ready Next.js page: CSS/assets
+      // can still be pending during Cloudflare deployment. Wait for the
+      // actual approved KPI/list layout, retrying page load if needed.
+      const ready=()=>page.waitForFunction(()=>{
+        const cards=[...document.querySelectorAll('.pd-kpi-card')]
+        const actions=document.querySelector('.pd-action-primary')
+        const lists=document.querySelector('.pd-action-orders-scroll')
+        return cards.length===9&&cards[0].getBoundingClientRect().height>=60
+          &&!!actions&&!!lists&&getComputedStyle(lists).overflowY==='auto'
+          &&document.querySelectorAll('.pd-action-primary button,.pd-queue-secondary button').length===6
+      },null,{timeout:12000})
+      try{await page.waitForLoadState('load',{timeout:20000});await ready()}
+      catch{
+        const response=await page.reload({waitUntil:'load',timeout:40000})
+        status=response?.status()??0;finalUrl=page.url()
+        await ready()
+      }
       metrics=(await page.locator('.pd-kpi-card>b').allTextContents()).map(s=>Number(s.trim()))
       const container=page.locator('.pd-metrics.kpi-grid.order-kpi-grid-v2.entity-status-strip')
       kpiContract=await container.count()===1 &&

@@ -80,14 +80,14 @@ jobs:
           CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME_PATH"
           echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: Check Accounts Auto Fit with User and Order stacked slidebars
+        run: node scripts/purchase-accounts-two-slidebars-qa.mjs
+      - name: Check Accounts delivered counts, column preferences and responsive layout
+        run: node scripts/purchase-accounts-delivered-qa.mjs
       - name: Check Dashboard KPI parity, zero charts, groups, footer, 8 viewports
         run: node scripts/purchase-dashboard-preview-qa.mjs
       - name: Check Tracking layout and local data update without page reload
         run: node scripts/tracking-preview-live-qa.mjs
-      - name: Check Accounts delivered counts, column preferences and responsive layout
-        run: node scripts/purchase-accounts-delivered-qa.mjs
-      - name: Check Accounts Auto Fit with User and Order stacked slidebars
-        run: node scripts/purchase-accounts-two-slidebars-qa.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
