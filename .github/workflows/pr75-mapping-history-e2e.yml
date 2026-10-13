@@ -1,0 +1,60 @@
+name: PR75 Mapping lịch sử — E2E chỉ chạy khi được phê duyệt
+
+on:
+  workflow_dispatch:
+    inputs:
+      rpc_applied:
+        description: 'Đã phê duyệt và áp dụng migration 0069 trên Supabase?'
+        required: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr75-mapping-history-e2e
+  cancel-in-progress: false
+
+jobs:
+  mapping-history-e2e:
+    if: ${{ inputs.rpc_applied == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      PREVIEW_URL: https://pr75-cancel-mapping-qa-v1-mynh-erp-v5.mynh-forwork.workers.dev
+      MAPPING_HISTORY_RPC_READY: 'yes'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build độc lập trên Preview, không triển khai Production
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$SUPABASE_SERVICE_ROLE_KEY"
+          npm install --no-audit --no-fund
+          node --experimental-strip-types scripts/qa-cancel-mapping-contract.mjs
+          npm run typecheck
+          npx opennextjs-cloudflare build
+          npx wrangler preview --name pr75-cancel-mapping-qa-v1 --worker-name mynh-erp-v5 --message "PR75 mapping backfill E2E $GITHUB_SHA" --json > pr75-mapping-preview.json
+      - name: Chuẩn bị Chrome
+        run: |
+          npm install --no-save playwright --no-audit --no-fund
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: Kiểm tra tạo Mapping, cập nhật lịch sử, quyền dữ liệu và reload
+        run: node scripts/pr75-mapping-history-e2e.mjs
+      - name: Bằng chứng
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr75-mapping-history-qa-${{ github.sha }}
+          path: qa-mapping-history-result.json
+          retention-days: 7
+          if-no-files-found: ignore
