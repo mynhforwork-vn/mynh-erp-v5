@@ -202,7 +202,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
           <header className="pd-side-head">
             <div><span className="module-eyebrow">BẢNG TỔNG HỢP</span>
               <h2 id="pd-summary-heading">Đơn hàng theo địa bàn và HUB đích</h2>
-              <p>Chưa có MVĐ · Đang vận chuyển · Giao thành công</p></div>
+              <p>Chưa có MVĐ · Đang vận chuyển · Giao thành công · Đơn bị huỷ</p></div>
           </header>
           <PurchaseAreaHubTable areaGroups={areaGroups} hubGroups={hubGroups}/>
           <p className="pd-table-help">HUB lấy từ đơn vận chuyển tiêu chuẩn; Hỏa tốc không áp dụng HUB. Không tự điền dữ liệu thiếu.</p>
