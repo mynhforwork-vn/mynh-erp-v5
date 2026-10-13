@@ -75,7 +75,7 @@ try{
   })))
   const page=await ctx.newPage()
   await page.goto(base+'/purchase/accounts',{waitUntil:'domcontentloaded',timeout:45000})
-  await page.locator('.account-table-card table[data-auto-fit-version="2"]').waitFor({timeout:25000})
+  await page.locator('.account-table-card table[data-auto-fit-version="3"]').waitFor({timeout:25000})
   const initial=await snap(page)
   check(viewport.width+' initial 0 panels',fit(initial)&&initial.panelCount===0,initial??{})
   const toggle=page.locator('.desktop-sidebar-seam-handle .sidebar-collapse-toggle')
