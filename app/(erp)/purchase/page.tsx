@@ -146,12 +146,11 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       </div>
       <form className="pd-time-calendar" action="/purchase" method="GET" aria-label="Lọc khoảng ngày tùy chỉnh">
         <input type="hidden" name="range" value="custom"/>
-        <label><span>Từ ngày</span><input type="date" name="from" defaultValue={range.key==='all'?'':range.from} required aria-label="Từ ngày"/></label>
+        <label><span>Từ</span><input type="date" name="from" defaultValue={range.key==='all'?'':range.from} required aria-label="Từ ngày"/></label>
         <span className="pd-date-separator" aria-hidden="true">→</span>
-        <label><span>Đến ngày</span><input type="date" name="to" defaultValue={range.key==='all'?'':range.to} required aria-label="Đến ngày"/></label>
-        <button type="submit" className="button primary">Lọc ngày</button>
+        <label><span>Đến</span><input type="date" name="to" defaultValue={range.key==='all'?'':range.to} required aria-label="Đến ngày"/></label>
+        <button type="submit" className="button primary">Áp dụng</button>
       </form>
-      <span className="pd-time-explain">Theo ngày đặt · Hỏa tốc là tồn đọng</span>
     </nav>
 
     {(result.error||expressResult.error)&&<div className="error-box" role="alert">Không tải đủ đơn nhập: {result.error||expressResult.error}. Không sử dụng tổng số khi nguồn dữ liệu lỗi.</div>}
@@ -199,22 +198,35 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
               <p>Phân nhóm theo nghiệp vụ, không cần mở bộ lọc</p></div>
             <span className="pd-action-total">{activeIssues} <small>đơn</small></span>
           </header>
-          <div className="pd-action-groups">
-            {actionGroups.map(group=><div key={group.id} className={'pd-action-group pd-action-'+group.tone}>
-              <div className="pd-group-heading">
-                <span className="pd-group-dot" aria-hidden="true"/>
-                <span className="pd-group-name"><b>{group.title}</b><small>{group.hint}</small></span>
-                <strong>{group.orders.length}</strong>
-              </div>
-              {group.orders.length>0&&<div className="pd-group-orders">
-                {group.orders.slice(0,3).map(o=><Link key={o.id} href={orderHref(o)} prefetch={false} className="pd-group-order">
-                  <b>{o.shopee_order_id||o.id.slice(0,8)}</b><span>{issueLabel(o)}</span><span aria-hidden="true">→</span>
-                </Link>)}
-                {group.orders.length>3&&<div className="pd-group-more">Còn {group.orders.length-3} đơn trong nhóm</div>}
-              </div>}
+          <div className="action-queue-list pd-action-queue-body">
+            {actionGroups.slice(0,3).map(group=><div key={group.id}
+              className={'action-queue-summary pd-action-'+group.tone}>
+              <div><b>{group.orders.length}</b><span>{group.title}</span></div>
+              <small>{group.hint}</small>
             </div>)}
+            <div className="pd-queue-secondary" aria-label="Nhóm vận hành tiếp theo">
+              {actionGroups.slice(3).map(group=><div key={group.id} className={'pd-queue-mini pd-action-'+group.tone}>
+                <span>{group.title}</span><b>{group.orders.length}</b>
+              </div>)}
+            </div>
+            <div className="pd-action-order-heading">
+              <strong>Đơn ưu tiên xử lý</strong>
+              <small>{actions.length} đơn trong danh sách</small>
+            </div>
+            <div className="action-queue-orders">
+              {actions.slice(0,6).map(o=><Link href={orderHref(o)} key={o.id} prefetch={false}>
+                <div><b>{o.shopee_order_id||o.id.slice(0,8)}</b>
+                  <span>{o.destination_hub?.trim()||o.ward+' · '+o.province}</span>
+                </div>
+                <div><span className={'pd-action-status'+(issuePriority(o)<=1?' is-urgent':'')}>{issueLabel(o)}</span>
+                  <small>{o.order_date?new Date(o.order_date).toLocaleDateString('vi-VN',{timeZone:'Asia/Bangkok'}):'—'}</small>
+                </div>
+              </Link>)}
+              {!actions.length&&<p className="pd-action-empty">Không có đơn cần xử lý trong phạm vi hiện tại.</p>}
+              {actions.length>6&&<p className="pd-group-more">Còn {actions.length-6} đơn, xem trong Đơn nhập.</p>}
+            </div>
             {(missingGeo>0||missingHubs>0)&&<p className="pd-data-warning">
-              <b>Thiếu dữ liệu địa bàn</b> · {missingGeo} đơn thiếu địa chỉ; {missingHubs} đơn đang/đã giao thiếu HUB đích
+              <b>Thiếu dữ liệu địa bàn:</b> {missingGeo} đơn thiếu Phường/Xã hoặc tỉnh; {missingHubs} đơn đang/đã giao thiếu HUB đích.
             </p>}
           </div>
         </section>
