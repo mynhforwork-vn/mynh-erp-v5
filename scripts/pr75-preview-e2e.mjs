@@ -120,9 +120,24 @@ try{
   page.on('pageerror',e=>result.pageErrors.push(String(e)))
   page.on('response',r=>{if(r.status()>=500)result.http5xx.push({path:new URL(r.url()).pathname,status:r.status()})})
   const goto=async path=>{
-    const res=await page.goto(URL_BASE+path,{waitUntil:'domcontentloaded',timeout:45000})
+    // Next.js server actions may still be completing their redirect immediately
+    // after DB persistence is observed. Retry only interrupted navigations.
+    let res=null
+    for(let attempt=1;attempt<=3;attempt++){
+      try{
+        res=await page.goto(URL_BASE+path,{waitUntil:'domcontentloaded',timeout:45000})
+        break
+      }catch(error){
+        const message=String(error instanceof Error?error.message:error)
+        if(!message.includes('net::ERR_ABORTED')||attempt===3)throw error
+        console.log('PR75_QA_NAV_RETRY attempt='+attempt+' reason=interrupted-server-action-redirect')
+        await page.waitForTimeout(750*attempt)
+      }
+    }
     await page.waitForTimeout(750)
-    check((res?.status()??0)<500&&!(await page.locator('body').innerText()).includes('Application error'),'HTTP & app page '+path,{status:res?.status(),finalPath:new URL(page.url()).pathname})
+    check((res?.status()??0)>=200&&(res?.status()??0)<500&&
+      !(await page.locator('body').innerText()).includes('Application error'),
+      'HTTP & app page '+path,{status:res?.status(),finalPath:new URL(page.url()).pathname})
   }
   async function until(label,fn){
     for(let i=0;i<25;i++){if(await fn())return;await page.waitForTimeout(400)}
