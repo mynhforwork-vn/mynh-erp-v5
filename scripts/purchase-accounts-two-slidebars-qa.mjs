@@ -1,6 +1,6 @@
 /**
  * Read-only QA for the real Account → User → Orders → Order detail → Tracking
- * → Back → close sequence. Covers 0/1/2 simultaneous slidebars.
+ * → Back → close sequence. Enforces at most ONE slidebar in all states.
  * No writes: data read using QA operator; URL changes and localStorage only.
  */
 import fs from 'node:fs'
@@ -47,6 +47,7 @@ async function metrics(page){
     const tab=order?.querySelector('.context-order-tabs a.active')?.textContent?.trim()||null
     return {
       count:Number(Boolean(user))+Number(Boolean(order)),
+      domCount:workspace.querySelectorAll('[data-system-slidebar="true"]').length,
       panelClass:workspace.classList.contains('with-two-panels'),
       viewport:innerWidth,bodyOverflow:document.documentElement.scrollWidth>innerWidth+5,
       lane:rect(card),table:rect(table),user:rect(user),order:rect(order),
@@ -66,16 +67,15 @@ function fit(m){return !!(m&&!m.bodyOverflow&&m.aligned&&m.localScroll&&m.fitted
   &&m.widths.number<=48&&m.widths.orders<=76
   &&m.lane.right<=m.viewport+4
   &&(m.viewport>900||m.lane.width>=Math.max(190,m.viewport-110)))}
-function panels(m,expected){
-  if(!m||m.count!==expected)return false
+function panels(m,expected,kind=null){
+  if(!m||m.count!==expected||m.domCount!==expected||m.panelClass)return false
   if(expected===0)return !m.user&&!m.order
-  if(expected===1)return Boolean(m.user&&!m.order)
-  if(!m.user||!m.order||!m.panelClass)return false
-  if(m.viewport>=1200)return m.user.right<=m.order.left+3&&m.lane.right<=m.user.left+3
-    &&m.user.width>=270&&m.order.width>=290
-  // tablet/mobile use parent underlay; contextual Order has the active focus.
-  return m.orderStack>m.userStack
+  if(expected!==1||Boolean(m.user)===Boolean(m.order))return false
+  if(kind==='user')return Boolean(m.user&&!m.order)
+  if(kind==='order')return Boolean(m.order&&!m.user)
+  return true
 }
+
 try{
  for(const viewport of contexts){
   const ctx=await browser.newContext({viewport})
@@ -100,20 +100,20 @@ try{
   await link.click()
   await page.locator('.account-workspace>.account-detail-panel').waitFor({timeout:20000})
   const one=await metrics(page)
-  check(viewport.width+' 1 slidebar: User detail',fit(one)&&panels(one,1)
+  check(viewport.width+' 1 slidebar: User detail',fit(one)&&panels(one,1,'user')
     &&(viewport.width<=900||one.lane.width<initial.lane.width-80),one??{})
   await page.locator('.account-workspace>.account-detail-panel .user-panel-tabs a').filter({hasText:'Đơn hàng'}).click()
   await page.locator('.account-workspace>.account-detail-panel .user-order-list a.user-order-card').first().waitFor({timeout:25000})
   const ordersTab=await metrics(page)
-  check(viewport.width+' 1 slidebar: User orders tab',fit(ordersTab)&&panels(ordersTab,1),ordersTab??{})
+  check(viewport.width+' 1 slidebar: User orders tab',fit(ordersTab)&&panels(ordersTab,1,'user'),ordersTab??{})
   await page.locator('.account-workspace>.account-detail-panel .user-order-list a.user-order-card').first().click()
-  await page.locator('.account-workspace.with-two-panels>.context-order-panel').waitFor({timeout:20000})
-  await page.locator('.account-workspace.with-two-panels>.account-detail-panel').waitFor({timeout:20000})
-  const two=await metrics(page)
-  check(viewport.width+' 2 slidebars: User + Order detail',fit(two)&&panels(two,2)
-    &&(viewport.width<1200||two.lane.width<one.lane.width-50),two??{})
+  await page.locator('.account-workspace>.context-order-panel').waitFor({timeout:20000})
+  await page.locator('.account-workspace>.account-detail-panel').waitFor({state:'detached',timeout:20000})
+  const orderDetail=await metrics(page)
+  check(viewport.width+' 1 slidebar: Order detail replaces User',fit(orderDetail)&&panels(orderDetail,1,'order')
+    &&(viewport.width<=900||Math.abs(orderDetail.lane.width-one.lane.width)<16),orderDetail??{})
   if([320,390,1280,1440,1920].includes(viewport.width)){
-    await page.screenshot({path:folder+'/accounts-'+viewport.width+'-two-panels.png',fullPage:false})
+    await page.screenshot({path:folder+'/accounts-'+viewport.width+'-single-panel.png',fullPage:false})
   }
   const tracking=page.locator('.account-workspace>.context-order-panel .context-order-tabs a').filter({hasText:'Tracking'})
   if(await tracking.count()){
@@ -126,25 +126,25 @@ try{
       await page.locator('.account-workspace>.context-order-panel .context-order-tabs a.active')
         .filter({hasText:'Tracking'}).waitFor({state:'visible',timeout:12000})
     }catch{selectedTracking=false}
-    const trackingTwo=await metrics(page)
-    check(viewport.width+' 2 slidebars: Tracking tab',fit(trackingTwo)&&panels(trackingTwo,2)
-      &&selectedTracking&&trackingTwo.tab==='Tracking',
-      {...(trackingTwo??{}),url:page.url(),trackingHref,selectedTracking})
+    const trackingOne=await metrics(page)
+    check(viewport.width+' 1 slidebar: Tracking tab',fit(trackingOne)&&panels(trackingOne,1,'order')
+      &&selectedTracking&&trackingOne.tab==='Tracking',
+      {...(trackingOne??{}),url:page.url(),trackingHref,selectedTracking})
     if(selectedTracking){
       // Back #1 from Tracking returns to the Order's Info tab, not to User.
       await page.locator('.account-workspace>.context-order-panel .context-stack-back').click()
       await page.locator('.account-workspace>.context-order-panel .context-order-tabs a.active')
         .filter({hasText:'Thông tin'}).waitFor({state:'visible',timeout:20000})
       const orderInfo=await metrics(page)
-      check(viewport.width+' Back Tracking to Order Info (still 2 slidebars)',
-        fit(orderInfo)&&panels(orderInfo,2)&&orderInfo.tab==='Thông tin',orderInfo??{})
+      check(viewport.width+' Back Tracking to Order Info (1 slidebar)',
+        fit(orderInfo)&&panels(orderInfo,1,'order')&&orderInfo.tab==='Thông tin',orderInfo??{})
     }
   }
-  // Back #2 returns from Order Info to User Orders (1 slidebar).
+  // Back #2 returns from Order Info to User Orders (1 slidebar), without overlay stacking.
   await page.locator('.account-workspace>.context-order-panel .context-stack-back').click()
   await page.locator('.account-workspace>.context-order-panel').waitFor({state:'detached',timeout:20000})
   const back=await metrics(page)
-  check(viewport.width+' back to User (1 slidebar)',fit(back)&&panels(back,1)
+  check(viewport.width+' back to User (1 slidebar)',fit(back)&&panels(back,1,'user')
     &&(viewport.width<=900||Math.abs(back.lane.width-one.lane.width)<16),back??{})
   await page.locator('.account-workspace>.account-detail-panel a.close').click()
   await page.locator('.account-workspace>.account-detail-panel').waitFor({state:'detached',timeout:20000})
@@ -160,7 +160,7 @@ try{
   await page.locator('.account-workspace>.context-order-panel a[aria-label="Đóng toàn bộ"]').click()
   await page.locator('.account-workspace>.context-order-panel').waitFor({state:'detached',timeout:20000})
   const allClosed=await metrics(page)
-  check(viewport.width+' close both slidebars restores table',fit(allClosed)&&panels(allClosed,0),allClosed??{})
+  check(viewport.width+' close Order slidebar restores table',fit(allClosed)&&panels(allClosed,0),allClosed??{})
   await ctx.close()
  }
 }finally{await browser.close()}
