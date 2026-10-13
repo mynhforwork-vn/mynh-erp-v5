@@ -12,6 +12,7 @@ on:
       - 'components/desktop-table-column-resize.tsx'
       - 'app/styles/p1-purchase-tables.css'
       - 'scripts/purchase-accounts-delivered-qa.mjs'
+      - 'scripts/purchase-accounts-two-slidebars-qa.mjs'
       - 'components/tracking-live-kpis.tsx'
       - 'components/tracking-hub-group.tsx'
       - 'components/manual-sync-button.tsx'
@@ -85,6 +86,8 @@ jobs:
         run: node scripts/tracking-preview-live-qa.mjs
       - name: Check Accounts delivered counts, column preferences and responsive layout
         run: node scripts/purchase-accounts-delivered-qa.mjs
+      - name: Check Accounts Auto Fit with User and Order stacked slidebars
+        run: node scripts/purchase-accounts-two-slidebars-qa.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -93,6 +96,7 @@ jobs:
             qa-purchase-dashboard-artifacts/
             qa-tracking-preview-live-artifacts/
             qa-accounts-delivered-artifacts/
+            qa-accounts-two-slidebars-artifacts/
           retention-days: 3
           if-no-files-found: ignore
       - name: Cleanup only temporary QA login
