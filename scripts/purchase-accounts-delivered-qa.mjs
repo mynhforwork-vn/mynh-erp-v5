@@ -40,12 +40,15 @@ try{
   await page.locator('.account-table-card .user-table').waitFor({timeout:15000})
   check('Account Preview authenticated',res?.status()===200&&!page.url().includes('/login'),{status:res?.status()})
   const header=page.locator('.account-table-card th[data-account-col="deliveredOrders"]')
-  // A Cloudflare Preview build can finish seconds after CI boots.
-  // Check the deployed page, not only that the health endpoint responds.
-  for(let i=0;i<12&&!(await header.count());i++){
+  // Cloudflare may finish its build after CI starts. The new count header
+  // also existed in an earlier commit: wait for the Voucher cell's NEW marker
+  // to ensure we test the exact UI revision, not a still-serving old build.
+  const voucherMarker=page.locator('.account-table-card .voucher-cell[data-voucher-count]')
+  for(let i=0;i<15&&(!(await header.count())||!(await voucherMarker.count()));i++){
     await page.waitForTimeout(5000)
     await page.reload({waitUntil:'domcontentloaded',timeout:45000})
   }
+  check('Correct deployed revision: voucher-tag data marker',await voucherMarker.count()>0)
   check('New column visible by default',await header.count()===1
     &&(await header.innerText()).includes('Giao thành công'))
   const sampled=await page.locator('.account-table-card tbody tr[data-account-id]').evaluateAll(
