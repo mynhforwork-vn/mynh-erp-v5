@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime } from '@/lib/format'
 import { PurchaseInsightChart } from '@/components/purchase-insight-chart'
+import { PurchaseActionQueue,type PurchaseActionItem,type PurchaseActionGroup,type PurchaseDataIssue } from '@/components/purchase-action-queue'
 import {
   toInsightOrder,groupInsightOrders,sumInsightCounts,issueLabel,issuePriority,
   isAwaitingReceipt,isExpressAwaitingDeliveryConfirmation,insightUnknownLabels,type InsightOrder,
@@ -108,8 +109,14 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
     .sort((a,b)=>issuePriority(a)-issuePriority(b)||String(a.order_date??'').localeCompare(String(b.order_date??'')))
   const waitingOrders=filtered.filter(isAwaitingReceipt)
   const activeIssues=actions.length
-  const missingGeo=filtered.filter(o=>o.stage!=='cancelled'&&(o.province===insightUnknownLabels.province||o.ward===insightUnknownLabels.ward)).length
-  const missingHubs=filtered.filter(o=>['shipping','destination','out','delivered'].includes(o.stage)&&!o.destination_hub?.trim()).length
+  const missingGeoOrders=filtered.filter(o=>o.stage!=='cancelled'&&(o.province===insightUnknownLabels.province||o.ward===insightUnknownLabels.ward))
+  // Hỏa tốc không áp dụng HUB đích: không phát cảnh báo sai thiếu HUB.
+  const missingHubOrders=filtered.filter(o=>o.shipping_service!=='EXPRESS'
+    &&['shipping','destination','out','delivered'].includes(o.stage)&&!o.destination_hub?.trim())
+  const expressWithoutHubOrders=filtered.filter(o=>o.shipping_service==='EXPRESS'
+    &&o.stage==='delivered'&&!o.destination_hub?.trim())
+  const missingGeo=missingGeoOrders.length
+  const missingHubs=missingHubOrders.length
   const actionGroups=[
     {id:'received',title:'Chờ xác nhận nhận hàng',hint:'Đã giao, cần kiểm tra hàng và xác nhận',tone:'green',priority:0},
     {id:'failed',title:'Sự cố giao hàng',hint:'Giao lỗi hoặc lấy hàng thất bại',tone:'red',priority:1},
@@ -125,6 +132,30 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
     if(range.key==='custom'){p.set('from',range.from);p.set('to',range.to)}
     return '/purchase/orders?'+p.toString()
   }
+  const issueById=new Map<string,PurchaseDataIssue>()
+  for(const o of missingGeoOrders){
+    issueById.set(o.id,{id:o.id,code:o.shopee_order_id||o.id.slice(0,8),
+      detailHref:orderHref(o),reason:'Thiếu thông tin Phường/Xã hoặc Tỉnh/TP'})
+  }
+  for(const o of missingHubOrders){
+    issueById.set(o.id,{id:o.id,code:o.shopee_order_id||o.id.slice(0,8),
+      detailHref:orderHref(o),reason:issueById.has(o.id)?'Thiếu địa chỉ và HUB đích':'Đơn tiêu chuẩn chưa có HUB đích'})
+  }
+  const dataIssues=[...issueById.values()]
+  const expressWithoutHub:PurchaseDataIssue[]=expressWithoutHubOrders.map(o=>({
+    id:o.id,code:o.shopee_order_id||o.id.slice(0,8),
+    detailHref:orderHref(o),reason:'Đơn Hỏa tốc đã giao, không dùng phát hiện HUB'
+  }))
+  const queueGroups:PurchaseActionGroup[]=actionGroups.map(g=>({
+    id:g.id,title:g.title,hint:g.hint,tone:g.tone,priority:g.priority,count:g.orders.length
+  }))
+  const queueOrders:PurchaseActionItem[]=actions.map(o=>({
+    id:o.id,code:o.shopee_order_id||o.id.slice(0,8),detailHref:orderHref(o),
+    detail:o.destination_hub?.trim()||o.ward+' · '+o.province,
+    status:issueLabel(o),
+    date:o.order_date?new Date(o.order_date).toLocaleDateString('vi-VN',{timeZone:'Asia/Bangkok'}):'—',
+    priority:issuePriority(o),
+  }))
   return <div className="pd-insight">
     <header className="page-head pd-topbar">
       <div>
@@ -174,14 +205,22 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
               <h2 id="pd-summary-heading">Đơn hàng theo Phường/Xã – Tỉnh/TP</h2>
               <p>Chưa có MVĐ · Đang vận chuyển · Giao thành công</p></div>
           </header>
-          <div className="pd-table-scroll">
-            <table className="pd-table pd-status-table">
-              <thead><tr><th scope="col">Phường/Xã · Tỉnh/TP</th><th scope="col">Chờ MVĐ</th><th scope="col">Vận chuyển</th><th scope="col">Giao TC</th></tr></thead>
+          <div className="pd-table-head" aria-hidden="false">
+            <table className="pd-table pd-summary-head-table" aria-label="Tiêu đề bảng khu vực">
+              <colgroup><col className="pd-area-col"/><col/><col/><col/></colgroup>
+              <thead><tr><th scope="col">Phường/Xã · Tỉnh/TP</th><th scope="col">Chờ MVĐ</th>
+                <th scope="col">Vận chuyển</th><th scope="col">Giao TC</th></tr></thead>
+            </table>
+          </div>
+          <div className="pd-table-scroll" tabIndex={0} aria-label="Danh sách số liệu theo Phường/Xã">
+            <table className="pd-table pd-status-table" aria-label="Số đơn theo khu vực">
+              <colgroup><col className="pd-area-col"/><col/><col/><col/></colgroup>
               <tbody>
                 {!areaGroups.length&&<tr><td colSpan={4} className="pd-empty">Chưa có đơn trong khoảng lọc.</td></tr>}
                 {areaGroups.map(group=><tr key={'area-'+group.name}>
                   <th scope="row" title={group.name}>{group.name}</th>
-                  <td className="pd-cell-warning">{group.missing}</td><td className="pd-cell-blue">{group.shipping}</td>
+                  <td className="pd-cell-warning">{group.missing}</td>
+                  <td className="pd-cell-blue">{group.shipping}</td>
                   <td className="pd-cell-green">{group.delivered}</td>
                 </tr>)}
               </tbody>
@@ -192,44 +231,9 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
 
       </div>
       <div className="pd-right-rail">
-        <section className="pd-action-panel" aria-labelledby="pd-action-heading">
-          <header className="pd-side-head">
-            <div><span className="module-eyebrow">ƯU TIÊN VẬN HÀNH</span><h2 id="pd-action-heading">Công việc cần xử lý ngay</h2>
-              <p>Phân nhóm theo nghiệp vụ, không cần mở bộ lọc</p></div>
-            <span className="pd-action-total">{activeIssues} <small>đơn</small></span>
-          </header>
-          <div className="action-queue-list pd-action-queue-body">
-            {actionGroups.slice(0,3).map(group=><div key={group.id}
-              className={'action-queue-summary pd-action-'+group.tone}>
-              <div><b>{group.orders.length}</b><span>{group.title}</span></div>
-              <small>{group.hint}</small>
-            </div>)}
-            <div className="pd-queue-secondary" aria-label="Nhóm vận hành tiếp theo">
-              {actionGroups.slice(3).map(group=><div key={group.id} className={'pd-queue-mini pd-action-'+group.tone}>
-                <span>{group.title}</span><b>{group.orders.length}</b>
-              </div>)}
-            </div>
-            <div className="pd-action-order-heading">
-              <strong>Đơn ưu tiên xử lý</strong>
-              <small>{actions.length} đơn trong danh sách</small>
-            </div>
-            <div className="action-queue-orders">
-              {actions.slice(0,6).map(o=><Link href={orderHref(o)} key={o.id} prefetch={false}>
-                <div><b>{o.shopee_order_id||o.id.slice(0,8)}</b>
-                  <span>{o.destination_hub?.trim()||o.ward+' · '+o.province}</span>
-                </div>
-                <div><span className={'pd-action-status'+(issuePriority(o)<=1?' is-urgent':'')}>{issueLabel(o)}</span>
-                  <small>{o.order_date?new Date(o.order_date).toLocaleDateString('vi-VN',{timeZone:'Asia/Bangkok'}):'—'}</small>
-                </div>
-              </Link>)}
-              {!actions.length&&<p className="pd-action-empty">Không có đơn cần xử lý trong phạm vi hiện tại.</p>}
-              {actions.length>6&&<p className="pd-group-more">Còn {actions.length-6} đơn, xem trong Đơn nhập.</p>}
-            </div>
-            {(missingGeo>0||missingHubs>0)&&<p className="pd-data-warning">
-              <b>Thiếu dữ liệu địa bàn:</b> {missingGeo} đơn thiếu Phường/Xã hoặc tỉnh; {missingHubs} đơn đang/đã giao thiếu HUB đích.
-            </p>}
-          </div>
-        </section>
+        <PurchaseActionQueue groups={queueGroups} orders={queueOrders} total={activeIssues}
+          dataIssues={dataIssues} expressWithoutHub={expressWithoutHub}
+          missingGeoCount={missingGeo} missingHubCount={missingHubs}/>
       </div>
     </div>
       <section className="pd-chart-section" aria-labelledby="pd-chart-heading">
