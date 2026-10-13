@@ -314,19 +314,17 @@ export function DesktopTableColumnResize() {
         const target=Math.max(minimum,lane-2)
         let remainder=target-widths.reduce((sum,w)=>sum+w,0)
         if(remainder<0){
-          // Prefer shrinking non-customized text, then user-sized columns,
-          // and NEVER below their readable widths. Scroll within table if
-          // two right slidebars leave a narrower lane than the minimum.
-          for(const custom of [false,true]){
-            for(const key of ['note','email','username','mobile','browser',
-              'voucher','platform','phone','status','createdAt','deliveredOrders','orders']){
-              const i=keys.indexOf(key)
-              if(i<0||remainder>=0)continue
-              if((overrides[headerName(ths[i])]!==undefined)!==custom)continue
-              const reduction=Math.min(-remainder,Math.max(0,widths[i]-(min[key]??76)))
-              widths[i]-=reduction
-              remainder+=reduction
-            }
+          // Custom widths are user choices, NOT candidates for Auto Fit
+          // compression. Shrink only free columns; a narrower lane scrolls
+          // locally rather than undoing a manual Voucher/Số đơn drag.
+          for(const key of ['note','email','username','mobile','browser',
+            'voucher','platform','phone','status','createdAt','deliveredOrders','orders']){
+            const i=keys.indexOf(key)
+            if(i<0||remainder>=0)continue
+            if(overrides[headerName(ths[i])]!==undefined)continue
+            const reduction=Math.min(-remainder,Math.max(0,widths[i]-(min[key]??76)))
+            widths[i]-=reduction
+            remainder+=reduction
           }
         }
         if(remainder>0){
@@ -473,7 +471,10 @@ export function DesktopTableColumnResize() {
             })
           }
           const initial = th.getBoundingClientRect().width
-          freezeWidths(table,{})
+          // Freezing an Account table must retain EXISTING manual widths at
+          // drag start, or the first pointermove causes a visible column jump.
+          freezeWidths(table,table.matches('table.user-table.mynh-p1-semantic-table')
+            ?readSaved(table):{})
           const baseline = headerCells(table).map(headerWidth)
           const idx = headerCells(table).indexOf(th)
           if (idx < 0) return
@@ -523,7 +524,7 @@ export function DesktopTableColumnResize() {
           delete widths[label]
           // Measure the natural width again before re-applying any other custom widths.
           clearInlineWidths(table)
-          if(Object.keys(widths).length||table.matches('.mynh-p1-semantic-table.order-table'))freezeWidths(table,widths)
+          if(Object.keys(widths).length||table.matches('.mynh-p1-semantic-table.order-table,.mynh-p1-semantic-table.user-table'))freezeWidths(table,widths)
           save(table,widths)
         })
         grip.addEventListener('keydown',e=>{

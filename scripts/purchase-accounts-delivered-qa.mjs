@@ -44,7 +44,7 @@ try{
   // also existed in an earlier commit: wait for the Voucher cell's NEW marker
   // to ensure we test the exact UI revision, not a still-serving old build.
   const voucherMarker=page.locator('.account-table-card .voucher-cell[data-voucher-count]')
-  const autoFitMarker=page.locator('.account-table-card .user-table[data-auto-fit-version="4"]')
+  const autoFitMarker=page.locator('.account-table-card .user-table[data-auto-fit-version="5"]')
   for(let i=0;i<15&&(!(await header.count())||!(await voucherMarker.count())||!(await autoFitMarker.count()));i++){
     await page.waitForTimeout(5000)
     await page.reload({waitUntil:'domcontentloaded',timeout:45000})
