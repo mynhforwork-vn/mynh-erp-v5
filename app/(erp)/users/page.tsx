@@ -390,7 +390,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   }
   const selectedVoucherSummary=[...voucherCounts.keys()].join(' · ')
 
-  const panelOpen=(canOperate&&sp.mode==='create')||Boolean(selected)
+  const creating=canOperate&&sp.mode==='create'
+  const panelOpen=creating||Boolean(selected)
   const isEdit=Boolean(canOperate&&selected&&sp.mode==='edit'&&!selected.archived_at)
   const filtersActive=Boolean(queryText||state!=='all'||session!=='all'||voucher!=='all'||orders!=='all'||browser!=='all'||sort!=='newest')
 
@@ -470,7 +471,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         />} 
       </section>
 
-      {canOperate&&sp.mode==='create'&&
+      {creating&&
         <SystemSlidebar className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Thêm tài khoản</h2></div>
@@ -504,7 +505,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         </SystemSlidebar>
       }
 
-      {selected&&!isEdit&&contextOrder&&
+      {selected&&!isEdit&&!creating&&contextOrder&&
         <ContextOrderPanel
           order={contextOrder}
           items={contextOrderItems}
@@ -527,7 +528,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         />
       }
 
-      {selected&&!isEdit&&!contextOrder&&
+      {selected&&!isEdit&&!creating&&!contextOrder&&
         <SystemSlidebar className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT USER</span><h2>{selected.username}</h2></div>
