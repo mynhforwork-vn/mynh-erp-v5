@@ -7,7 +7,7 @@ import { SystemAccessSettings } from '@/components/system-access-settings'
 import { TrackingNotificationSettings } from '@/components/tracking-notification-settings'
 import { TrackingSettings } from '@/components/tracking-settings'
 
-type SP={section?:string,shipping_tab?:'carriers'|'hubs'|'shippers',purged?:string,protected?:string,tracking_test?:string,tracking_message?:string}
+type SP={section?:string,shipping_tab?:'carriers'|'hubs'|'shippers',purged?:string,protected?:string,tracking_test?:string,tracking_message?:string,tracking_tab?:'operation'|'cycle'|'mapping',mapped?:string}
 
 export default async function SettingsPage({searchParams}:{searchParams:Promise<SP>}){
   const sp=await searchParams
@@ -139,8 +139,16 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
     const rawCode=String(row.raw_status_code??'').trim()
     if(!rawCode)continue
     const joined=Array.isArray(row.shipment)?row.shipment[0]:row.shipment
-    const carrier=String(joined?.carrier??'UNKNOWN').trim().toUpperCase()||'UNKNOWN'
-    const key=carrier+'|'+rawCode
+    const provider=String(joined?.carrier??'UNKNOWN').trim().toUpperCase()||'UNKNOWN'
+    const config=(carrierRows??[]).find(x=>
+      String(x.display_name??'').trim().toUpperCase()===provider ||
+      String(x.carrier_code??'').trim().toUpperCase()===provider
+    )
+    const carrier=String(config?.carrier_code??provider).trim().toUpperCase()
+    const key=carrier+'|'+rawCode.toUpperCase()
+    if((trackingMappingsResult.data??[]).some(m=>m.is_active&&
+      String(m.carrier??'').trim().toUpperCase()===carrier&&
+      String(m.raw_code??'').trim().toUpperCase()===rawCode.toUpperCase()))continue
     const current=unknownMap.get(key)
     if(current)current.count+=1
     else unknownMap.set(key,{
@@ -198,6 +206,8 @@ export default async function SettingsPage({searchParams}:{searchParams:Promise<
                 canEdit={canEditTracking}
                 trackingTest={sp.tracking_test??null}
                 trackingMessage={sp.tracking_message??null}
+                initialTab={sp.tracking_tab==='mapping'?'mapping':sp.tracking_tab==='cycle'?'cycle':'operation'}
+                mapped={sp.mapped==='1'}
               />
           : section==='notifications'
             ? <TrackingNotificationSettings
