@@ -134,9 +134,9 @@ try{
       leftAligned=!!layout&&layout.labelLeft&&layout.numsCentered&&layout.headerAligned
       kpiShape=!!layout&&layout.kpiRadius<=5
       compactToolbar=!!layout&&layout.toolbarVisible&&(viewport.width<=1080||layout.timeRows===1)
-      const tableScrollIsolated=!!layout&&layout.headingOutsideScroll&&layout.fixedTable&&layout.scrollCss!=='visible'
-      const actionScrollIsolated=!!layout&&layout.actionCardsOutsideScroll&&layout.fixedCards&&layout.actionCss!=='visible'&&layout.primaryInRow
-      const narrowerLeft=!!layout&&(viewport.width<=960||layout.leftWidth<layout.rightWidth)
+      tableScrollIsolated=!!layout&&layout.headingOutsideScroll&&layout.fixedTable&&layout.scrollCss!=='visible'
+      actionScrollIsolated=!!layout&&layout.actionCardsOutsideScroll&&layout.fixedCards&&layout.actionCss!=='visible'&&layout.primaryInRow
+      narrowerLeft=!!layout&&(viewport.width<=960||layout.leftWidth<layout.rightWidth)
       const tableSums=await page.locator('.pd-status-table').evaluate(table=>{
         const rows=[...table.querySelectorAll('tbody tr')]
         const sums={area:[0,0,0]}
