@@ -86,15 +86,17 @@ try{
     const nextClass='status-'+next.toLowerCase()
     const danger=page.locator('.tracking-status-strip-v2>.tracking-status-metric.danger>b')
     const oldFailed=Number((await danger.textContent())?.trim())
-    let posts=0,navs=0
+    let posts=0,navs=0,idsMatch=true,requestIdPresent=false
     page.on('framenavigated',frame=>{if(frame===page.mainFrame())navs++})
     await page.route('**/api/tracking/manual',async route=>{
       posts++
       const body=route.request().postDataJSON()
-      if(body.shipment_id!==id)throw Error('Wrong shipment id in mocked sync')
+      idsMatch=body.shipment_id===id
+      requestIdPresent=typeof body.shipment_id==='string'&&body.shipment_id.length>0
+      console.log('TRACKING_SYNC_REQUEST_QA '+JSON.stringify({domIdPresent:!!id,requestIdPresent,idsMatch}))
       await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({
         result:{event_count:1,ok:true},snapshot:{
-          shipment_id:id,tracking_number:null,current_tracking_status:next,
+          shipment_id:body.shipment_id,tracking_number:null,current_tracking_status:next,
           tracking_detail:'Sự kiện kiểm thử giao diện, không lưu DB',
           tracking_event_time:'2026-10-13T10:00:00Z',receive_status:'NOT_READY',
         }
@@ -106,10 +108,10 @@ try{
     const newFailed=Number((await danger.textContent())?.trim())
     const message=await wrap.innerText()
     check('Manual sync updates row and KPI without reload',
-      posts===1&&navs===0&&newClass?.includes(nextClass)
+      posts===1&&navs===0&&idsMatch&&requestIdPresent&&newClass?.includes(nextClass)
       &&newFailed===oldFailed+(wasFailed?-1:1)
       &&message.includes('Đã cập nhật dữ liệu'),
-      {posts,navs,oldClass,newClass,oldFailed,newFailed,next})
+      {posts,navs,idsMatch,requestIdPresent,oldClass,newClass,oldFailed,newFailed,next})
   }else{
     // No fabricated live shipment or provider action is permitted.
     check('Manual sync no real provider requests',true,{reason:'Preview currently has no eligible manual sync buttons; in-place flow not exercised'})
