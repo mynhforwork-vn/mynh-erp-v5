@@ -1981,6 +1981,7 @@ export async function saveCarrierStatusMapping(formData:FormData){
   })
   if(error)throw new Error(error.message)
   revalidatePath('/settings')
+  redirect('/settings?section=tracking&tracking_tab=mapping&mapped=1')
 }
 
 export async function testTrackingConnection(formData:FormData){
