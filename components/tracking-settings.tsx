@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo,useState } from 'react'
+import { useEffect,useMemo,useState } from 'react'
 import Link from 'next/link'
 import {
   saveCarrierStatusMapping,
@@ -60,6 +60,8 @@ export function TrackingSettings({
   canEdit,
   trackingTest,
   trackingMessage,
+  initialTab='operation',
+  mapped=false,
 }:{
   runtime:RuntimeSettings|null
   rules:Rule[]
@@ -68,6 +70,8 @@ export function TrackingSettings({
   canEdit:boolean
   trackingTest?:string|null
   trackingMessage?:string|null
+  initialTab?:Tab
+  mapped?:boolean
 }){
   // Broadcast only after Supabase accepts the Auto Tracking setting.
   async function saveRuntimeAndNotify(formData:FormData){
@@ -82,11 +86,15 @@ export function TrackingSettings({
     window.dispatchEvent(new CustomEvent('mynh-erp-tracking-changed',{detail:runtime}))
   }
 
-  const [tab,setTab]=useState<Tab>('operation')
+  const [tab,setTab]=useState<Tab>(initialTab)
   const [editingMapping,setEditingMapping]=useState<string|null>(null)
   // Keep the pending-provider codes visible; open the mapping catalogue on demand.
   const [unknownExpanded,setUnknownExpanded]=useState(true)
-  const [mappingExpanded,setMappingExpanded]=useState(false)
+  const [mappingExpanded,setMappingExpanded]=useState(initialTab==='mapping')
+  useEffect(()=>{
+    if(tab!=='mapping')return
+    document.getElementById('tracking-mapping-content-v9')?.scrollIntoView({behavior:'smooth',block:'start'})
+  },[tab])
 
   const canonicalOptions=rules.filter(x=>x.is_active)
   const canonicalMap=useMemo(()=>new Map(rules.map(x=>[x.status_code,x])),[rules])
@@ -94,6 +102,7 @@ export function TrackingSettings({
   const autoStatusCount=sortedRules.filter(x=>!x.terminal&&x.auto_tracking).length
 
   return <div className="tracking-settings tracking-settings-v9">
+    {mapped&&<div className="settings-result success">Đã lưu mapping. Các sự kiện lịch sử chưa tự động được phân loại lại.</div>}
     {trackingTest==='ok'&&<div className="settings-result success">Tracking test thành công: {trackingMessage}</div>}
     {trackingTest==='fail'&&<div className="settings-result error">Tracking test thất bại: {trackingMessage||'Không xác định'}</div>}
 
@@ -104,7 +113,7 @@ export function TrackingSettings({
       <button type="button" className={tab==='cycle'?'active':''} onClick={()=>setTab('cycle')}>
         Chu kỳ trạng thái <span>{sortedRules.length}</span>
       </button>
-      <button type="button" className={tab==='mapping'?'active':''} onClick={()=>setTab('mapping')}>
+      <button type="button" className={tab==='mapping'?'active':''} onClick={()=>{setMappingExpanded(true);setTab('mapping')}}>
         Mapping SPX <span>{mappings.length}</span>
       </button>
     </div>
