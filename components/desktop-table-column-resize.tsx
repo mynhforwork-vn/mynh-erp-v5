@@ -62,7 +62,7 @@ export function DesktopTableColumnResize() {
       table.style.removeProperty('width')
       table.style.removeProperty('min-width')
       table.classList.remove('mynh-resizable-table')
-      if(table.matches('.mynh-p1-semantic-table.order-table')){
+      if(table.matches('.mynh-p1-semantic-table.order-table,.mynh-p1-semantic-table.user-table')){
         table.querySelectorAll('colgroup col').forEach(col=>{
           ;(col as HTMLElement).style.removeProperty('width')
           ;(col as HTMLElement).style.removeProperty('min-width')
@@ -268,24 +268,41 @@ export function DesktopTableColumnResize() {
           : undefined)
         || visibleWidths[i])
       const panelWidths=fitPurchasePanel(table,ths)
+      const isAccount=table.matches('.mynh-p1-semantic-table.user-table')
+      const accountFit=()=>{
+        const card=table.closest('.account-table-card') as HTMLElement|null
+        const target=Math.max(0,Math.floor(card?.clientWidth??0)-2)
+        const result=ths.map((th,i)=>Math.max(th.classList.contains('bulk-select-col')?26:28,
+          Math.round(overrides[headerName(th)]??visibleWidths[i])))
+        let spare=Math.max(0,target-result.reduce((sum,w)=>sum+w,0))
+        const expandable=ths.map((th,i)=>({index:i,key:th.dataset.accountCol??''}))
+          .filter(x=>['username','email','mobile','browser','voucher','note'].includes(x.key)
+            &&overrides[headerName(ths[x.index])]===undefined)
+        if(spare>0&&expandable.length){
+          const each=Math.floor(spare/expandable.length)
+          expandable.forEach((x,i)=>{result[x.index]+=i===expandable.length-1?spare-each*i:each})
+        }
+        // Never force all 13 columns into a 600px drawer: local horizontal scroll.
+        return result
+      }
       const assigned = isOrder?orderFit(table,ths,overrides)
-        :isTracking ? fitTrackingPanel(table,ths,preferred,overrides) : panelWidths??preferred
+        :isTracking ? fitTrackingPanel(table,ths,preferred,overrides)
+        :isAccount ? accountFit() : panelWidths??preferred
       let total = 0
       ths.forEach((th,i) => {
         // The account sequence number, order count and voucher tags are
         // compact by business contract. Old stored widths must not resurrect
         // oversized cells whenever a User detail slidebar is toggled.
-        const accountCompact:Record<string,number>={number:33,orders:58,deliveredOrders:100,voucher:96}
-        const accountWidth=table.classList.contains('user-table')
-          ?accountCompact[th.dataset.accountCol??'']:undefined
-        const width = isOrder?assigned[i]:panelWidths ? assigned[i] : accountWidth??(th.classList.contains('tracking-action-head') ? 44 :
-          compactCol(th) ? Math.max(24, Math.min(140, assigned[i])) : clampForHeader(th,assigned[i]))
+        const width = isAccount||isOrder?assigned[i]:panelWidths?assigned[i]
+          :th.classList.contains('tracking-action-head')?44
+          :compactCol(th)?Math.max(24,Math.min(140,assigned[i]))
+          :clampForHeader(th,assigned[i])
         total += width
         th.style.setProperty('width', width+'px', 'important')
         th.style.setProperty('min-width', width+'px', 'important')
         th.style.setProperty('max-width', width+'px', 'important')
       })
-      if(isOrder){
+      if(isOrder||isAccount){
         const cols=Array.from(table.querySelectorAll(':scope > colgroup > col')) as HTMLElement[]
         cols.forEach((col,i)=>{
           const width=assigned[i]
@@ -396,7 +413,7 @@ export function DesktopTableColumnResize() {
           grip.classList.add('resizing')
           const move = (event:PointerEvent) => {
             const colWidth = clampForHeader(th,before+event.clientX-startX)
-            if(orderTable){
+            if(orderTable||table.classList.contains('user-table')){
               freezeWidths(table,{...priorSaved,[label]:colWidth})
               return
             }

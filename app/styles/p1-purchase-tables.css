@@ -872,3 +872,25 @@ tbody td[data-account-col="deliveredOrders"]{
   text-overflow:ellipsis!important;overflow:hidden!important;
   white-space:nowrap!important;
 }
+
+/* Accounts Auto Fit V2: calculated semantic widths are the only source.
+   The local table pane scrolls if readable minimums do not fit a drawer.
+   All older percent, fixed and media-specific col widths are overridden here. */
+.brand-shell-v1 .account-workspace:not(.with-panel) .account-table-card
+table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table),
+.brand-shell-v1 .account-workspace.with-panel .account-table-card
+table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table){
+  box-sizing:border-box!important;table-layout:fixed!important;
+  width:var(--p1-account-fit-table-width)!important;
+  min-width:var(--p1-account-fit-table-width)!important;
+  max-width:none!important;
+}
+.brand-shell-v1 .account-workspace:not(.with-panel) .account-table-card
+table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col,
+.brand-shell-v1 .account-workspace.with-panel .account-table-card
+table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-account-col{
+  width:var(--p1-account-fit-col-width)!important;
+}
+.brand-shell-v1 .account-workspace .account-table-card{
+  overflow-x:auto!important;overscroll-behavior-x:contain;
+}
