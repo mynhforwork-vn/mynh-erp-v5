@@ -50,7 +50,8 @@ try{
     const errors=[]
     page.on('pageerror',e=>errors.push(String(e.message).slice(0,160)))
     let status=0,finalUrl='',metrics=[],charts=0,filterRemoved=false,oneRow=false,overflow=false,
-      chartTotal=[],isChartRendered=false,datesVisible=false,quarterRemoved=false,tablePresent=false,groupedActions=false,chartValuesAgree=false,tableValuesAgree=false;
+      chartTotal=[],isChartRendered=false,datesVisible=false,quarterRemoved=false,tablePresent=false,groupedActions=false,chartValuesAgree=false,tableValuesAgree=false,
+      layout=null,panelBalance=false,leftAligned=false,kpiShape=false,compactToolbar=false;
     try{
       const response=await page.goto(base+'/purchase?range=all',{waitUntil:'domcontentloaded',timeout:40000})
       status=response?.status()??0;finalUrl=page.url()
@@ -80,7 +81,7 @@ try{
         && await page.locator('.pd-right-rail .pd-queue-mini').count()===3
         && await page.locator('.pd-right-rail .action-queue-orders').count()===1
         && await page.locator('.pd-left-rail .action-queue-summary').count()===0
-      const layout=await page.evaluate(()=>{
+      layout=await page.evaluate(()=>{
         const left=document.querySelector('.pd-summary-table')
         const right=document.querySelector('.pd-action-panel')
         const table=document.querySelector('.pd-status-table')
@@ -99,10 +100,10 @@ try{
           leftHeight:Math.round(lr.height),rightHeight:Math.round(rr.height),
           timeRows:Math.abs(quick.getBoundingClientRect().top-toolbar.getBoundingClientRect().top)<10?1:2}
       })
-      const panelBalance=!!layout&&(viewport.width<=960||layout.aligned)
-      const leftAligned=!!layout&&layout.allLeft
-      const kpiShape=!!layout&&layout.kpiRadius<=5
-      const compactToolbar=!!layout&&layout.toolbarVisible&&(viewport.width<=1080||layout.timeRows===1)
+      panelBalance=!!layout&&(viewport.width<=960||layout.aligned)
+      leftAligned=!!layout&&layout.allLeft
+      kpiShape=!!layout&&layout.kpiRadius<=5
+      compactToolbar=!!layout&&layout.toolbarVisible&&(viewport.width<=1080||layout.timeRows===1)
       const tableSums=await page.locator('.pd-status-table').evaluate(table=>{
         const rows=[...table.querySelectorAll('tbody tr')]
         const sums={area:[0,0,0]}
