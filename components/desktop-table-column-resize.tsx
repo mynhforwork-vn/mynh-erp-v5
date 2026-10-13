@@ -91,15 +91,15 @@ export function DesktopTableColumnResize() {
       // Older per-user saved widths can predate the detail column. Protect the
       // status/detail headers even when those legacy preferences are restored.
       const fitted=preferred.map((value,i)=>ths[i].classList.contains('tracking-col-status')
-        ? Math.max(withPanel?132:150,value)
+        ? Math.max(76,value)
         : ths[i].classList.contains('tracking-col-detail')
           ? Math.max(withPanel?155:174,value)
           : value)
       let excess=fitted.reduce((sum,v)=>sum+v,0)-target
       if(excess>0){
         const minByColumn:Record<string,number>=withPanel
-          ? {product:92,recipient:110,status:132,detail:155,order:120,cod:70}
-          : {product:114,recipient:148,status:150,detail:174,order:135,cod:78}
+          ? {product:92,recipient:110,status:76,detail:155,order:120,cod:70}
+          : {product:114,recipient:148,status:76,detail:174,order:135,cod:78}
         // Compress uncustomized cells first; only shrink a custom width as needed.
         const priority=['product','recipient','detail','status','order','cod']
         for(const custom of [false,true]){
@@ -249,7 +249,7 @@ export function DesktopTableColumnResize() {
     const trackingDefaults:Record<string,number>={
       'tracking-col-order':166,'tracking-col-product':250,
       'tracking-col-cod':94,'tracking-col-recipient':245,
-      'tracking-col-status':150,'tracking-col-detail':180,'tracking-col-actions':44,
+      'tracking-col-status':110,'tracking-col-detail':180,'tracking-col-actions':44,
     }
     const trackingLayout=new WeakMap<HTMLTableElement,string>()
     // Only take control of fixed widths once a user has customized this table.

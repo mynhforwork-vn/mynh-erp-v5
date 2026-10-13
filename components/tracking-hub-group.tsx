@@ -83,10 +83,10 @@ export function TrackingHubGroup({
   // Derive the table's readable floor from actual visible column identities.
   // The floor changes immediately after hide/show/reorder, never from nth-child.
   const minWidth=25+columns.visible.reduce((sum,key)=>sum+({
-    order:155,product:150,cod:85,recipient:180,status:150,detail:175,actions:44
+    order:155,product:150,cod:85,recipient:180,status:110,detail:175,actions:44
   } satisfies Record<ColKey,number>)[key],0)
   const panelMinWidth=25+columns.visible.reduce((sum,key)=>sum+({
-    order:125,product:115,cod:70,recipient:130,status:130,detail:155,actions:44
+    order:125,product:115,cod:70,recipient:130,status:90,detail:155,actions:44
   } satisfies Record<ColKey,number>)[key],0)
   const tableWidthVars={
     '--tracking-table-min-width':minWidth+'px',
@@ -237,7 +237,7 @@ export function TrackingHubGroup({
                 if(col==='product')return <td key={col} className="tracking-data-col-product tracking-product-cell" title={r.product_summary??''}><span className="tracking-product-lines">{r.product_summary??'—'}</span></td>
                 if(col==='cod')return <td key={col} className="money tracking-data-col-cod">{formatMoney(r.cod)}</td>
                 if(col==='recipient')return <td key={col} className="tracking-data-col-recipient"><div className="tracking-recipient tracking-recipient-v2"><b>{r.recipient_name??'—'} <small>{formatPhone(r.recipient_phone)}</small></b><span title={r.recipient_address??''}>{r.recipient_address??'Chưa có địa chỉ'}</span></div></td>
-                if(col==='status')return <td key={col} className="tracking-data-col-status"><div className="order-state-cell tracking-state-cell-v2"><span className={'status-pill status-'+String(r.tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(r.tracking_status)}</span>{r.receive_status!=='NOT_READY'&&<span className={'status-pill '+(r.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(r.receive_status)}</span>}</div></td>
+                if(col==='status')return <td key={col} className="tracking-data-col-status"><div className="order-state-cell tracking-state-cell-v2"><span title={statusLabel(r.tracking_status)} className={'status-pill status-'+String(r.tracking_status??'UNKNOWN').toLowerCase()}>{statusLabel(r.tracking_status)}</span>{r.receive_status!=='NOT_READY'&&<span title={statusLabel(r.receive_status)} className={'status-pill '+(r.receive_status==='RECEIVED'?'green':'orange')}>{statusLabel(r.receive_status)}</span>}</div></td>
                 if(col==='detail')return <td key={col} className="tracking-col-detail-cell tracking-data-col-detail"><div className="tracking-detail-cell-v1" title={r.tracking_detail??'Chưa có nội dung Tracking'}><span>{r.tracking_detail??'Chưa có nội dung Tracking'}</span>{r.tracking_event_time&&<small>{new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric',hour12:false}).format(new Date(r.tracking_event_time))}</small>}</div></td>
                 return <td key={col} className="tracking-col-actions tracking-action-cell tracking-data-col-actions"><div className="tracking-row-actions">{r.shipment_id&&!['DELIVERED','CANCELLED','RETURNED'].includes(String(r.tracking_status))&&<ManualSyncButton shipmentId={r.shipment_id} iconOnly/>}</div></td>
               }

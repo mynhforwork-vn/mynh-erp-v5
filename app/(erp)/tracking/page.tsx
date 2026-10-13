@@ -387,11 +387,6 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
         ]}
       />
       <div className="tracking-control-row-v2">
-        <div className="tracking-console-title">
-          <b>Console theo HUB</b>
-          <span>{rows.length} vận đơn · {grouped.length} HUB · {range.label}</span>
-        </div>
-
         <div className="tracking-filter-segments tracking-filter-segments-v2">
           <Link className={!sp.status&&!sp.receive?'active':''} href={trackingHref({status:null,receive:null})}>Tất cả</Link>
           <Link className={sp.status==='PRE_DESTINATION'?'active':''} href={trackingHref({status:'PRE_DESTINATION',receive:null})}>Đang vận chuyển</Link>

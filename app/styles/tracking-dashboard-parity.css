@@ -1,6 +1,6 @@
 /* Tracking only: remove nested KPI chrome and use Dashboard spacing. */
 .tracking-screen-v2 .tracking-command-center-v2{
-  display:flex!important;flex-direction:column!important;gap:6px!important;
+  display:flex!important;flex-direction:column!important;gap:3px!important;
   border:0!important;box-shadow:none!important;border-radius:0!important;
   padding:0!important;background:transparent!important;overflow:visible!important;
 }
@@ -8,7 +8,7 @@
 .tracking-screen-v2 .tracking-date-row-v2 .purchase-date-filter.flat{
   display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;
   min-width:0!important;max-width:100%!important;
-  padding:5px 7px!important;gap:8px!important;min-height:43px!important;margin-bottom:7px!important;
+  padding:5px 7px!important;gap:6px!important;min-height:40px!important;margin-bottom:3px!important;
   background:#fff!important;border:1px solid #d9e3eb!important;
   box-shadow:0 1px 4px rgba(26,52,78,.035)!important;border-radius:5px!important;
 }
@@ -40,7 +40,7 @@
   display:inline!important;font-size:9.5px!important;font-weight:680!important;
 }
 .tracking-screen-v2 .tracking-date-row-v2 .purchase-date-inline-form input{
-  min-width:0!important;width:109px!important;height:26px!important;
+  min-width:128px!important;width:128px!important;height:26px!important;
   padding:0 2px!important;font-size:10px!important;border:0!important;background:transparent!important;
 }
 .tracking-screen-v2 .tracking-date-row-v2 .purchase-date-inline-form .button{
@@ -49,8 +49,8 @@
 .tracking-screen-v2 .tracking-date-row-v2 .range-meta{display:none!important}
 .tracking-screen-v2 .tracking-status-strip-v2{
   width:100%!important;max-width:100%!important;min-width:0!important;
-  display:flex!important;flex-wrap:nowrap!important;align-items:stretch!important;gap:6px!important;
-  margin:0!important;padding:1px 1px 7px!important;background:transparent!important;
+  display:flex!important;flex-wrap:nowrap!important;align-items:stretch!important;gap:5px!important;
+  margin:0!important;padding:1px 1px 3px!important;background:transparent!important;
   border:0!important;border-radius:0!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:thin!important;
 }
 .tracking-screen-v2 .tracking-status-strip-v2>.tracking-status-metric{
@@ -71,14 +71,10 @@
 .tracking-screen-v2 .tracking-status-metric>b{font-size:19px!important;line-height:1.05!important}
 .tracking-screen-v2 .tracking-status-metric>small{font-size:8.1px!important;line-height:1.2!important}
 .tracking-screen-v2 .tracking-control-row-v2{
-  display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:6px 8px!important;
+  display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:3px 6px!important;
   width:100%!important;min-width:0!important;align-items:center!important;
-  padding:7px 9px!important;background:#fff!important;
+  padding:4px 7px!important;background:#fff!important;
   border:1px solid #dce6ee!important;border-radius:5px!important;
-}
-.tracking-screen-v2 .tracking-console-title{
-  grid-column:1/-1!important;display:flex!important;flex-direction:row!important;
-  gap:7px!important;align-items:baseline!important;min-width:0!important;
 }
 .tracking-screen-v2 .tracking-filter-segments-v2{
   grid-column:1!important;display:flex!important;flex-wrap:nowrap!important;
@@ -108,9 +104,47 @@
   .tracking-screen-v2 .tracking-date-row-v2 .purchase-date-inline-form label{
     flex:1 1 0!important;min-width:0!important;gap:2px!important;padding:0 3px 0 5px!important;
   }
-  .tracking-screen-v2 .tracking-date-row-v2 .purchase-date-inline-form input{width:100%!important;min-width:0!important;font-size:9px!important}
+  .tracking-screen-v2 .tracking-date-row-v2 .purchase-date-inline-form{
+    display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:5px!important;align-items:stretch!important;
+  }
+  .tracking-screen-v2 .tracking-date-row-v2 .purchase-date-inline-form label{
+    display:flex!important;flex-direction:column!important;align-items:stretch!important;
+    height:auto!important;min-width:0!important;gap:2px!important;padding:3px 5px!important;
+  }
+  .tracking-screen-v2 .tracking-date-row-v2 .purchase-date-inline-form label>span{
+    font-size:9px!important;
+  }
+  .tracking-screen-v2 .tracking-date-row-v2 .purchase-date-inline-form input{
+    width:100%!important;min-width:0!important;font-size:10px!important;
+  }
+  .tracking-screen-v2 .tracking-date-row-v2 .purchase-date-inline-form .date-range-arrow{display:none!important}
   .tracking-screen-v2 .tracking-date-row-v2 .purchase-date-inline-form .button{
-    flex:0 0 auto!important;padding:0 6px!important;font-size:9px!important;
+    grid-column:1/-1!important;width:100%!important;font-size:10px!important;padding:0 7px!important;
   }
   .tracking-screen-v2 .tracking-date-filter-v2 select{max-width:min(100%,150px)!important}
 }
+
+/* Operational layout: only the intended controls consume vertical space. */
+.tracking-screen-v2 .tracking-page-head-v2{margin-bottom:3px!important}
+.tracking-screen-v2 .tracking-command-center-v2{margin-bottom:3px!important}
+.tracking-screen-v2 .tracking-filter-segments-v2>a{height:26px!important;min-height:26px!important}
+.tracking-screen-v2 .tracking-date-filter-v2 :is(select,input[type="date"],.button){height:27px!important;min-height:27px!important}
+.tracking-screen-v2 .tracking-content-workspace{gap:5px!important}
+.tracking-screen-v2 .tracking-hub-stack-v2{gap:4px!important}
+@media(min-width:901px){
+  /* Tracking's resizable column remains readable down to 76px; other columns unchanged. */
+  .brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table) col.tracking-colgroup-status{width:110px!important}
+  .brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2:not(.mynh-resizable-table) th.tracking-col-status{width:110px!important;min-width:0!important}
+}
+/* Compact status tags. Full label remains available as a hover tooltip. */
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2 .tracking-state-cell-v2{
+  display:flex!important;flex-wrap:wrap!important;gap:2px!important;min-width:0!important;max-width:100%!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2 .tracking-state-cell-v2 .status-pill{
+  display:inline-block!important;box-sizing:border-box!important;max-width:100%!important;min-width:0!important;
+  min-height:18px!important;height:auto!important;padding:3px 4px!important;
+  font-size:8px!important;line-height:1.15!important;font-weight:650!important;
+  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-hub-table-v2 td.tracking-data-col-status{padding-left:4px!important;padding-right:4px!important}
