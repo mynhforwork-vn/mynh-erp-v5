@@ -24,16 +24,23 @@ for(const vp of [{width:360,height:800},{width:768,height:1024},{width:1440,heig
  const form=page.locator('form.order-editor[data-shopee-recognizer="pending-review-v1"]')
  // Sole Preview can still serve the previous bundle while Git-connected
  // Cloudflare Builds compiles the target SHA. Do not run UI QA against it.
- let deployed=false
- for(let attempt=0;attempt<35;attempt++){
-   if(await form.count()===1){deployed=true;break}
-   await page.waitForTimeout(5000)
-   await page.reload({waitUntil:'domcontentloaded',timeout:45000})
- }
- check(vp.width+' correct deployed UI revision',deployed)
- if(!deployed)throw Error('New Shopee recognizer revision not yet deployed to sole Preview')
- await form.waitFor({timeout:12000})
  const input=form.locator('.order-text-recognizer textarea')
+ let deployed=false
+ let lastEvidence={}
+ for(let attempt=0;attempt<35;attempt++){
+   if(await form.count()===1&&await input.count()===1){deployed=true;break}
+   lastEvidence={url:page.url(),
+     orderForms:await page.locator('form.order-editor').count(),
+     createModeInputs:await page.locator('form.order-editor .order-text-recognizer textarea').count(),
+     markerForms:await form.count()}
+   await page.waitForTimeout(5000)
+   // Navigate back to the explicit create URL, not a stale edited order.
+   await page.goto(base+'/purchase/orders?range=all&mode=create',
+     {waitUntil:'domcontentloaded',timeout:45000})
+ }
+ check(vp.width+' correct deployed CREATE UI revision',deployed,lastEvidence)
+ if(!deployed)throw Error('New Shopee create recognizer not available '+JSON.stringify(lastEvidence))
+ await input.waitFor({state:'visible',timeout:12000})
  const action=form.getByRole('button',{name:'Nhận diện đơn'})
  // SSR can paint the form before React has hydrated its controlled textarea.
  // Retry typing until React state actually enables the recognizer button.
