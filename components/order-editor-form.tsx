@@ -181,6 +181,7 @@ export function OrderEditorForm({
   const [cod,setCod]=useState<number|string>(mode==='create'?'':values.cod??0)
   const [orderText,setOrderText]=useState('')
   const [recognitionMessage,setRecognitionMessage]=useState('')
+  const [shopeeReviewPending,setShopeeReviewPending]=useState(false)
   const [items,setItems]=useState<Item[]>(initialItems.length?initialItems:[emptyItem()])
   const [vouchers,setVouchers]=useState<Voucher[]>(initialVouchers.length?initialVouchers:[emptyVoucher()])
   const [trackingNumber,setTrackingNumber]=useState(String(values.tracking_number??''))
@@ -356,6 +357,8 @@ export function OrderEditorForm({
       return
     }
 
+    setShopeeReviewPending(parsed.detected_status==='PENDING_SHOPEE_CONFIRMATION')
+    if(parsed.payment_status==='UNPAID'&&mode==='create')setPaymentStatus('UNPAID')
     if(parsed.shopee_order_id)setShopeeOrderId(parsed.shopee_order_id)
     if(parsed.order_date_local)setOrderDateLocal(parsed.order_date_local)
 
@@ -415,7 +418,9 @@ export function OrderEditorForm({
     setRecognitionMessage(
       'Đã nhận diện: '+summary+
       goodsCheck+
-      (parsed.detected_status==='DELIVERED'?' · trạng thái Shopee: Giao thành công':'')
+      (parsed.detected_status==='DELIVERED'?' · trạng thái Shopee: Giao thành công':'')+
+      (!parsed.order_date_local?' · Chưa có ngày đặt, vui lòng kiểm tra':'')+
+      (parsed.warnings.length?' · CẢNH BÁO: '+parsed.warnings.join('; '):'')
     )
   }
 
@@ -489,12 +494,14 @@ export function OrderEditorForm({
           <b>{trackingNumberMeansCancelled(trackingNumber)?'Đơn bị huỷ'
             :shippingService==='EXPRESS'
               ? trackingNumber.trim()?'Đang xử lý · Hỏa tốc':'Hỏa tốc · Chưa có MVĐ'
-              : trackingNumber.trim()?'Đang xử lý · Theo Tracking':'Đang chờ duyệt'}</b>
+              : trackingNumber.trim()?'Đang xử lý · Theo Tracking'
+                : shopeeReviewPending?'Chờ Shopee xác nhận':'Đang chờ duyệt'}</b>
           <small>{trackingNumberMeansCancelled(trackingNumber)
             ? 'Mã KHÔNG CÓ sẽ huỷ đơn và tắt Tracking/HUB.'
             : shippingService==='EXPRESS'
               ? trackingNumber.trim()?'Có MVĐ · trạng thái giao cập nhật thủ công · không Tracking/HUB':'Cần bổ sung Mã vận đơn Hỏa tốc'
-              : trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ':'Chờ mã vận đơn'}</small>
+              : trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ'
+                : shopeeReviewPending?'Shopee đang xét duyệt; chưa có MVĐ, không tự Tracking':'Chờ mã vận đơn'}</small>
         </div>
       </div>
     </section>

@@ -9,6 +9,11 @@ on:
       - 'app/(erp)/tracking/page.tsx'
       - 'app/(erp)/users/page.tsx'
       - 'components/purchase-account-table.tsx'
+      - 'components/order-editor-form.tsx'
+      - 'lib/shopee-order-text-parser.ts'
+      - 'scripts/shopee-pending-payment-qa.mjs'
+      - 'scripts/shopee-pending-payment-ui-qa.mjs'
+      - 'scripts/fixtures/shopee-pending-payment-sample.mjs'
       - 'components/desktop-table-column-resize.tsx'
       - 'app/styles/p1-purchase-tables.css'
       - 'scripts/purchase-accounts-delivered-qa.mjs'
@@ -50,6 +55,8 @@ jobs:
           node-version: 22
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
+      - name: Shopee pending payment parser QA
+        run: node --experimental-strip-types scripts/shopee-pending-payment-qa.mjs
       - name: TypeScript QA
         run: npm run typecheck
       - name: Resolve existing public QA key (without printing it)
@@ -81,6 +88,8 @@ jobs:
           CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME_PATH"
           echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: Check Shopee pending-review recognition in create form (read-only)
+        run: node scripts/shopee-pending-payment-ui-qa.mjs
       - name: Check Accounts Auto Fit with User and Order stacked slidebars
         run: node scripts/purchase-accounts-two-slidebars-qa.mjs
       - name: Check left sidebar Auto Fit and real mouse drag on Voucher and Số đơn
@@ -101,6 +110,7 @@ jobs:
             qa-accounts-delivered-artifacts/
             qa-accounts-two-slidebars-artifacts/
             qa-accounts-real-autofit-artifacts/
+            qa-shopee-pending-artifacts/
           retention-days: 3
           if-no-files-found: ignore
       - name: Cleanup only temporary QA login

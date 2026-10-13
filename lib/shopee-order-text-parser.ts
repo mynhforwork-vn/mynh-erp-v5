@@ -23,6 +23,12 @@ export type ParsedShopeeOrderText={
   order_date_local?:string
   cod?:number
   total_goods?:number
+  shipping_fee?:number
+  shipping_discount?:number
+  shopee_voucher_discount?:number
+  payment_method?:'COD'
+  payment_status?:'UNPAID'
+  warnings:string[]
   products:ParsedShopeeOrderItem[]
   vouchers:ParsedShopeeVoucher[]
   detected_status?:string
@@ -56,6 +62,11 @@ function money(value:string){
   return Number.isFinite(n)?n:null
 }
 
+function validVietnamPhone(value:string){
+  const normalized=normalizeVietnamPhone(value)
+  return /^0\d{9}$/.test(normalized)?normalized:null
+}
+
 function normalizeVietnamPhone(value:string){
   let digits=value.replace(/[^0-9+]/g,'')
   if(digits.startsWith('+84'))digits='0'+digits.slice(3)
@@ -77,6 +88,42 @@ function precedingTimestamp(lines:string[],index:number){
     if(parsed)return parsed
   }
   return null
+}
+
+function phoneFromLine(value:string){
+  const matches=value.match(/(?:\+?84|0)[\s().-]*\d{2,3}[\s().-]*\d{3}[\s().-]*\d{3,4}/g)??[]
+  for(const candidate of matches){
+    const phone=validVietnamPhone(candidate)
+    if(phone)return phone
+  }
+  return null
+}
+
+function isNoise(line:string){
+  return /^odp_accessibility_component_\d+$/i.test(line)
+}
+
+function recipientWithoutTracking(lines:string[]){
+  const start=lines.findIndex(line=>/^Địa chỉ nhận hàng\s*:?$/i.test(line))
+  if(start<0)return null
+  const stop=/^(?:chat|Xem Shop|MÃ\s*ĐƠN\s*HÀNG|Liên hệ Người bán|Hủy đơn hàng|Phương thức Thanh toán)$/i
+  const data:string[]=[]
+  for(let i=start+1;i<Math.min(lines.length,start+14);i++){
+    const line=visibleLabel(lines[i])
+    if(stop.test(line)||/^MÃ\s*ĐƠN\s*HÀNG[.:]/i.test(line))break
+    if(isNoise(line))continue
+    // Text immediately before the shop's 'chat / Xem Shop' controls is
+    // the seller label, never a continuation of the delivery address.
+    if(/^chat$/i.test(lines[i+1]??'')||(/^Xem Shop$/i.test(lines[i+2]??'')&&/^chat$/i.test(lines[i+1]??'')))continue
+    data.push(line)
+  }
+  const idx=data.findIndex(line=>Boolean(phoneFromLine(line)))
+  if(idx<1)return null
+  const phone=phoneFromLine(data[idx])
+  const name=data.slice(0,idx).find(line=>line.length>=2&&!/^[\d\s()+.-]+$/.test(line))
+  const address=data.slice(idx+1).filter(line=>!phoneFromLine(line))
+  if(!name||!phone||!address.length)return null
+  return {name,phone,address:address.join(', ')}
 }
 
 function nextMoney(lines:string[],index:number){
@@ -133,6 +180,7 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
   const result:ParsedShopeeOrderText={
     products:[],
     vouchers:[],
+    warnings:[],
     confidence:{order:false,tracking:false,recipient:false,products:0,cod:false},
   }
 
@@ -152,7 +200,9 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
   const sellerMatch=joined.match(/https?:\/\/shopee\.vn\/([A-Za-z0-9._-]+)\?entryPoint=OrderDetail/i)
   if(sellerMatch)result.seller_username=sellerMatch[1]
 
-  if(/Giao hàng thành công|\*\*Đã giao\*\*|\bĐã giao\b/i.test(joined))result.detected_status='DELIVERED'
+  if(/Đang chờ hệ thống xác nhận đơn hàng/i.test(joined)&&/Chờ thanh toán/i.test(joined))
+    result.detected_status='PENDING_SHOPEE_CONFIRMATION'
+  else if(/Giao hàng thành công|\*\*Đã giao\*\*|\bĐã giao\b/i.test(joined))result.detected_status='DELIVERED'
   else if(/Giao hàng không thành công/i.test(joined))result.detected_status='DELIVERY_FAILED'
   else if(/Đang giao|sớm được giao/i.test(joined))result.detected_status='OUT_FOR_DELIVERY'
   else if(/Đang vận chuyển/i.test(joined))result.detected_status='IN_TRANSIT'
@@ -167,7 +217,7 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
           continue
         }
         if(!result.recipient_phone&&/(?:\+?84|0)[\s().-]*\d{2,3}[\s.-]*\d{3}[\s.-]*\d{3,4}/.test(line)){
-          result.recipient_phone=normalizeVietnamPhone(line)
+          result.recipient_phone=validVietnamPhone(line)??undefined
           continue
         }
         if(result.recipient_name&&result.recipient_phone&&!result.recipient_address){
@@ -179,7 +229,26 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
     }
   }
 
-  if(result.recipient_name&&result.recipient_phone)result.confidence.recipient=true
+  // Orders awaiting Shopee's system approval have NO tracking number, but
+  // the independent 'Địa chỉ nhận hàng' section is still authoritative.
+  if(!result.recipient_name||!result.recipient_phone||!result.recipient_address){
+    const block=recipientWithoutTracking(lines)
+    if(block){
+      result.recipient_name=result.recipient_name??block.name
+      result.recipient_phone=result.recipient_phone??block.phone
+      result.recipient_address=result.recipient_address??block.address
+    }
+  }
+  if(result.recipient_name&&result.recipient_phone&&result.recipient_address)
+    result.confidence.recipient=true
+
+  // COD describes the payment method, not an already-paid transaction.
+  const methodIndex=lines.findIndex(line=>/^Phương thức Thanh toán\s*:?$/i.test(line))
+  const paymentLine=methodIndex>=0?lines.slice(methodIndex+1,methodIndex+4).find(line=>!isNoise(line))??'':''
+  if(/^Cash on Delivery\b/i.test(paymentLine)){
+    result.payment_method='COD'
+    result.payment_status='UNPAID'
+  }
 
   const placedIndex=lines.findIndex(line=>/Đơn hàng đã được đặt/i.test(line))
   if(placedIndex>=0){
@@ -204,6 +273,13 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
       result.confidence.cod=true
     }
   }
+
+  const shippingIndex=lines.findIndex(line=>/^Phí vận chuyển$/i.test(line))
+  const shippingDiscountIndex=lines.findIndex(line=>/^Giảm giá phí vận chuyển$/i.test(line))
+  const shopeeDiscountIndex=lines.findIndex(line=>/^Voucher từ Shopee$/i.test(line))
+  if(shippingIndex>=0)result.shipping_fee=nextMoney(lines,shippingIndex)??undefined
+  if(shippingDiscountIndex>=0)result.shipping_discount=nextMoney(lines,shippingDiscountIndex)??undefined
+  if(shopeeDiscountIndex>=0)result.shopee_voucher_discount=nextMoney(lines,shopeeDiscountIndex)??undefined
 
   const seenProductKeys=new Set<string>()
   for(let i=0;i<lines.length;i++){
@@ -347,6 +423,13 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
     }
   }
 
+  if([result.total_goods,result.shipping_fee,result.shipping_discount,
+      result.shopee_voucher_discount,result.cod].every(value=>value!==undefined)){
+    const expected=result.total_goods!+result.shipping_fee!
+      -result.shipping_discount!-result.shopee_voucher_discount!
+    if(expected!==result.cod)
+      result.warnings.push('Thành tiền không khớp tổng tiền hàng, phí vận chuyển và voucher')
+  }
   return result
 }
 
@@ -358,5 +441,7 @@ export function formatParsedOrderSummary(parsed:ParsedShopeeOrderText){
   if(parsed.products.length)parts.push(parsed.products.length+' sản phẩm')
   if(parsed.total_goods!==undefined)parts.push('Tổng tiền hàng')
   if(parsed.cod!==undefined)parts.push('Thành tiền')
+  if(parsed.detected_status==='PENDING_SHOPEE_CONFIRMATION')parts.push('Shopee đang xét duyệt')
+  if(parsed.payment_method==='COD')parts.push('Thanh toán khi nhận hàng')
   return parts.join(' · ')
 }
