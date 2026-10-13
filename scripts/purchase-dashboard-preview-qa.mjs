@@ -50,7 +50,7 @@ try{
     const errors=[]
     page.on('pageerror',e=>errors.push(String(e.message).slice(0,160)))
     let status=0,finalUrl='',metrics=[],charts=0,filterRemoved=false,oneRow=false,overflow=false,
-      chartTotal=[],isChartRendered=false,customPresent=false,chartValuesAgree=false;
+      chartTotal=[],isChartRendered=false,datesVisible=false,quarterRemoved=false,tablePresent=false,groupedActions=false,chartValuesAgree=false,tableValuesAgree=false;
     try{
       const response=await page.goto(base+'/purchase?range=all',{waitUntil:'domcontentloaded',timeout:40000})
       status=response?.status()??0;finalUrl=page.url()
@@ -71,13 +71,28 @@ try{
       chartValuesAgree=chartTotal.length===5&&
         chartTotal[0]===kpis[2]&&chartTotal[1]===kpis[3]&&chartTotal[2]===kpis[3]&&
         chartTotal[3]===kpis[6]&&chartTotal[4]===kpis[6]
-      customPresent=await page.locator('.pd-time-custom summary').count()===1
+      datesVisible=await page.locator('.pd-time-calendar input[type="date"]:visible').count()===2
+      quarterRemoved=await page.getByRole('link',{name:'Quý này',exact:true}).count()===0
+      tablePresent=await page.locator('.pd-left-rail .pd-status-table').count()===1
+      groupedActions=await page.locator('.pd-left-rail .pd-action-group').count()===6
+      const tableSums=await page.locator('.pd-status-table').evaluate(table=>{
+        const rows=[...table.querySelectorAll('tbody tr')]
+        let section='';const sums={area:[0,0,0],hub:[0,0,0]}
+        for(const row of rows){
+          if(row.classList.contains('pd-table-section')){section=row.textContent?.includes('HUB đích')?'hub':'area';continue}
+          const vals=[...row.querySelectorAll('td')].map(td=>Number(td.textContent?.trim()))
+          if(vals.length===3&&section){for(let j=0;j<3;j++)sums[section][j]+=vals[j]}
+        }
+        return sums
+      })
+      tableValuesAgree=['area','hub'].every(k=>
+        tableSums[k][0]===kpis[2]&&tableSums[k][1]===kpis[3]&&tableSums[k][2]===kpis[6])
       isChartRendered=await page.locator('.pd-chart-bars .pd-chart-bar-track, .pd-chart-columns .pd-chart-column-space, .pd-chart-empty').count()>=5
       if(charts===5)await page.screenshot({path:folder+'/'+viewport.name+'.png',fullPage:false})
     }catch(e){errors.push(String(e.message??e).slice(0,260))}
     check(viewport.name,status===200&&!finalUrl.includes('/login')&&metrics.length===9&&charts===5&&
-      filterRemoved&&oneRow&&!overflow&&chartValuesAgree&&customPresent&&isChartRendered&&errors.length===0,{
-      status,metricCount:metrics.length,chartCount:charts,oneRow,overflow,filterRemoved,chartValuesAgree,customPresent,
+      filterRemoved&&oneRow&&!overflow&&chartValuesAgree&&datesVisible&&quarterRemoved&&tablePresent&&groupedActions&&tableValuesAgree&&isChartRendered&&errors.length===0,{
+      status,metricCount:metrics.length,chartCount:charts,oneRow,overflow,filterRemoved,chartValuesAgree,datesVisible,quarterRemoved,tablePresent,groupedActions,tableValuesAgree,
       isChartRendered,chartTotal,errors
     })
     if(viewport.name==='desktop-1440'&&status===200&&charts===5){
