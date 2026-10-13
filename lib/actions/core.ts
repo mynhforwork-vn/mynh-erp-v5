@@ -438,18 +438,23 @@ export async function createOrder(formData:FormData){
   const isExpress=shippingService==='EXPRESS'
   const trackingNumber=text(formData.get('tracking_number'))
   const cancelledByMarker=trackingNumberMeansCancelled(trackingNumber)
-  const carrier=cancelledByMarker?null:isExpress
-    ? (trackingNumber?'Hỏa tốc':null)
-    : await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
-  const usesDestinationHub=!cancelledByMarker&&!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
+  const cancelledByShopee=text(formData.get('recognized_shopee_status'))==='CANCELLED'
+  const cancelled=cancelledByMarker||cancelledByShopee
+  // Không ghi MVĐ cho đơn Shopee đã hủy; giữ nguyên marker KHÔNG CÓ cũ.
+  const effectiveTrackingNumber=cancelledByShopee?'':trackingNumber
+  const carrier=cancelled?null:isExpress
+    ? (effectiveTrackingNumber?'Hỏa tốc':null)
+    : await resolveCarrierName(supabase,effectiveTrackingNumber,text(formData.get('carrier')))
+  const usesDestinationHub=!cancelled&&!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const matchedHub=usesDestinationHub?await destinationHubFromAddress(
     supabase,text(formData.get('recipient_address')),carrier):null
   const effectiveHub=usesDestinationHub
     ?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''): ''
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
-  const orderStatus=cancelledByMarker?'CANCELLED':isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
+  const orderStatus=cancelled?'CANCELLED':isExpress?'PROCESSING':(effectiveTrackingNumber?'PROCESSING':'PENDING')
+  const paymentStatus=cancelledByShopee?'UNPAID':(text(formData.get('payment_status'))||'UNPAID')
   const prepaid=parsePrepaidMetadata({
-    paymentStatus:text(formData.get('payment_status'))||'UNPAID',
+    paymentStatus,
     amount:formData.get('prepaid_amount'),
     sourceType:formData.get('prepaid_source_type'),
     sourceLabel:formData.get('prepaid_source_label'),
@@ -464,10 +469,10 @@ export async function createOrder(formData:FormData){
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
     p_destination_hub:effectiveHub||null,
-    p_cod:resolveOrderCod(text(formData.get('payment_status'))||'UNPAID',formData.get('cod')),
+    p_cod:cancelledByShopee?0:resolveOrderCod(paymentStatus,formData.get('cod')),
     p_order_status:orderStatus,
-    p_payment_status:text(formData.get('payment_status'))||'UNPAID',
-    p_tracking_number:trackingNumber||null,
+    p_payment_status:paymentStatus,
+    p_tracking_number:effectiveTrackingNumber||null,
     p_carrier:carrier,
     p_shipping_service:shippingService,
     p_items:itemPayload(formData),
@@ -485,13 +490,13 @@ export async function createOrder(formData:FormData){
       express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
     }).eq('id',data)
     if(orderMetaError)throw new Error(orderMetaError.message)
-    if(cancelledByMarker){
+    if(cancelled){
       const {error:cancelError}=await supabase.from('shipments').update({
         current_tracking_status:'CANCELLED',tracking_enabled:false,next_track_at:null,locked_until:null,
       }).eq('order_id',data).eq('is_active',true)
       if(cancelError)throw new Error(cancelError.message)
     }
-    if(isExpress&&trackingNumber&&!cancelledByMarker){
+    if(isExpress&&effectiveTrackingNumber&&!cancelled){
       const {error:shipmentError}=await supabase.from('shipments').update({
         carrier:'Hỏa tốc',
         is_active:true,
@@ -503,7 +508,7 @@ export async function createOrder(formData:FormData){
       if(shipmentError)throw new Error(shipmentError.message)
     }
   }
-  if(data&&trackingNumber&&!isExpress&&!cancelledByMarker)await queueFirstTracking(supabase,String(data))
+  if(data&&effectiveTrackingNumber&&!isExpress&&!cancelled)await queueFirstTracking(supabase,String(data))
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
 }
@@ -518,18 +523,23 @@ export async function updateOrder(formData:FormData){
   const isExpress=shippingService==='EXPRESS'
   const trackingNumber=text(formData.get('tracking_number'))
   const cancelledByMarker=trackingNumberMeansCancelled(trackingNumber)
-  const carrier=cancelledByMarker?null:isExpress
-    ? (trackingNumber?'Hỏa tốc':null)
-    : await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
-  const usesDestinationHub=!cancelledByMarker&&!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
+  const cancelledByShopee=text(formData.get('recognized_shopee_status'))==='CANCELLED'
+  const cancelled=cancelledByMarker||cancelledByShopee
+  // Không ghi MVĐ cho đơn Shopee đã hủy; giữ nguyên marker KHÔNG CÓ cũ.
+  const effectiveTrackingNumber=cancelledByShopee?'':trackingNumber
+  const carrier=cancelled?null:isExpress
+    ? (effectiveTrackingNumber?'Hỏa tốc':null)
+    : await resolveCarrierName(supabase,effectiveTrackingNumber,text(formData.get('carrier')))
+  const usesDestinationHub=!cancelled&&!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const matchedHub=usesDestinationHub?await destinationHubFromAddress(
     supabase,text(formData.get('recipient_address')),carrier):null
   const effectiveHub=usesDestinationHub
     ?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''): ''
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
-  const orderStatus=cancelledByMarker?'CANCELLED':isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
+  const orderStatus=cancelled?'CANCELLED':isExpress?'PROCESSING':(effectiveTrackingNumber?'PROCESSING':'PENDING')
+  const paymentStatus=cancelledByShopee?'UNPAID':(text(formData.get('payment_status'))||'UNPAID')
   const prepaid=parsePrepaidMetadata({
-    paymentStatus:text(formData.get('payment_status'))||'UNPAID',
+    paymentStatus,
     amount:formData.get('prepaid_amount'),
     sourceType:formData.get('prepaid_source_type'),
     sourceLabel:formData.get('prepaid_source_label'),
@@ -545,10 +555,10 @@ export async function updateOrder(formData:FormData){
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
     p_destination_hub:effectiveHub||null,
-    p_cod:resolveOrderCod(text(formData.get('payment_status'))||'UNPAID',formData.get('cod')),
+    p_cod:cancelledByShopee?0:resolveOrderCod(paymentStatus,formData.get('cod')),
     p_order_status:orderStatus,
-    p_payment_status:text(formData.get('payment_status'))||'UNPAID',
-    p_tracking_number:trackingNumber||null,
+    p_payment_status:paymentStatus,
+    p_tracking_number:effectiveTrackingNumber||null,
     p_carrier:carrier,
     p_shipping_service:shippingService,
     p_items:itemPayload(formData),
@@ -565,8 +575,8 @@ export async function updateOrder(formData:FormData){
     express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
   }).eq('id',orderId)
   if(orderMetaError)throw new Error(orderMetaError.message)
-  if(isExpress){
-    const {error:shipmentError}=trackingNumber
+  if(isExpress&&!cancelled){
+    const {error:shipmentError}=effectiveTrackingNumber
       ? await supabase.from('shipments').update({
           carrier:'Hỏa tốc',
           is_active:true,
@@ -585,13 +595,13 @@ export async function updateOrder(formData:FormData){
         }).eq('order_id',orderId).eq('is_active',true)
     if(shipmentError)throw new Error(shipmentError.message)
   }
-  if(cancelledByMarker){
+  if(cancelled){
     const {error:cancelError}=await supabase.from('shipments').update({
       current_tracking_status:'CANCELLED',tracking_enabled:false,next_track_at:null,locked_until:null,
     }).eq('order_id',orderId).eq('is_active',true)
     if(cancelError)throw new Error(cancelError.message)
   }
-  if(trackingNumber&&!isExpress&&!cancelledByMarker)await queueFirstTracking(supabase,orderId)
+  if(effectiveTrackingNumber&&!isExpress&&!cancelled)await queueFirstTracking(supabase,orderId)
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
 }
