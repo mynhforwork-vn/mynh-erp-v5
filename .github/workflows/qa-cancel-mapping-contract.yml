@@ -11,6 +11,8 @@ on:
       - components/tracking-settings.tsx
       - app/(erp)/settings/page.tsx
       - scripts/qa-cancel-mapping-contract.mjs
+      - scripts/pr75-mapping-history-e2e.mjs
+      - supabase/migrations/0069_mapping_unknown_history_secure.sql
       - .github/workflows/qa-cancel-mapping-contract.yml
   workflow_dispatch:
 
@@ -30,5 +32,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Kiểm tra huỷ đơn và điều hướng Mapping
         run: node --experimental-strip-types scripts/qa-cancel-mapping-contract.mjs
+      - name: Kiểm tra cú pháp bài E2E Mapping lịch sử trước khi được phê duyệt chạy
+        run: node --check scripts/pr75-mapping-history-e2e.mjs
       - name: Kiểm tra kiểu TypeScript
         run: npm run typecheck
