@@ -441,7 +441,7 @@ export function PurchaseAccountTable({
         <tbody>
           {!rows.length
             ? <tr><td colSpan={colSpan} className="empty">Không có tài khoản phù hợp với bộ lọc hiện tại.</td></tr>
-            : rows.map((u,i)=><tr key={u.id} className={selectedId===u.id?'selected-row':''}>
+            : rows.map((u,i)=><tr key={u.id} data-account-id={u.id} className={selectedId===u.id?'selected-row':''}>
                 {canManage&&<td className="bulk-select-col">
                   <input
                     type="checkbox"
