@@ -4,6 +4,7 @@ import {suggestDestinationHub} from '@/lib/destination-hub-resolution'
 
 import { useMemo, useState } from 'react'
 import { createOrder, updateOrder } from '@/lib/actions/core'
+import { trackingNumberMeansCancelled } from '@/lib/purchase-order-cancellation'
 import { formatParsedOrderSummary, parseShopeeOrderText } from '@/lib/shopee-order-text-parser'
 import { PREPAID_SOURCE_OPTIONS,resolveOrderValue } from '@/lib/order-prepaid'
 
@@ -485,12 +486,15 @@ export function OrderEditorForm({
       <div className="form-grid">
         <div className="derived-order-state">
           <span>Trạng thái đơn</span>
-          <b>{shippingService==='EXPRESS'
-            ? trackingNumber.trim()?'Đang xử lý · Hỏa tốc':'Hỏa tốc · Chưa có MVĐ'
-            : trackingNumber.trim()?'Đang xử lý · Theo Tracking':'Đang chờ duyệt'}</b>
-          <small>{shippingService==='EXPRESS'
-            ? trackingNumber.trim()?'Có MVĐ · trạng thái giao cập nhật thủ công · không Tracking/HUB':'Cần bổ sung Mã vận đơn Hỏa tốc'
-            : trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ':'Chờ mã vận đơn'}</small>
+          <b>{trackingNumberMeansCancelled(trackingNumber)?'Đơn bị huỷ'
+            :shippingService==='EXPRESS'
+              ? trackingNumber.trim()?'Đang xử lý · Hỏa tốc':'Hỏa tốc · Chưa có MVĐ'
+              : trackingNumber.trim()?'Đang xử lý · Theo Tracking':'Đang chờ duyệt'}</b>
+          <small>{trackingNumberMeansCancelled(trackingNumber)
+            ? 'Mã KHÔNG CÓ sẽ huỷ đơn và tắt Tracking/HUB.'
+            : shippingService==='EXPRESS'
+              ? trackingNumber.trim()?'Có MVĐ · trạng thái giao cập nhật thủ công · không Tracking/HUB':'Cần bổ sung Mã vận đơn Hỏa tốc'
+              : trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ':'Chờ mã vận đơn'}</small>
         </div>
       </div>
     </section>

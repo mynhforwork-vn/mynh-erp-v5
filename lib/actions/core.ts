@@ -1447,6 +1447,92 @@ export async function retryExpressDelivery(formData:FormData){
   }))
 }
 
+// "KHÔNG CÓ" is a deliberate cancellation command in both quick-add and replacement flows.
+// Never submit this marker to carrier detection, HUB detection or tracking scheduling.
+async function cancelOrderFromTrackingMarker(supabase:any,user:any,orderId:string,returnQuery:string){
+  const {data:order,error:orderError}=await supabase.from('orders')
+    .select('id,order_status,archived_at,receive_status,warehouse_status')
+    .eq('id',orderId).maybeSingle()
+  if(orderError)throw new Error(orderError.message)
+  if(!order)throw new Error('Đơn hàng không tồn tại')
+  if(order.archived_at)throw new Error('Không thể huỷ đơn đã lưu trữ')
+  // A late cancellation must not silently invalidate an actual warehouse receipt,
+  // inventory posting, or a finished order.
+  if(String(order.receive_status??'NOT_READY')!=='NOT_READY' ||
+     String(order.warehouse_status??'NOT_READY')!=='NOT_READY' ||
+     String(order.order_status??'').toUpperCase()==='COMPLETED'){
+    throw new Error('Đơn đã giao/nhận hoặc xử lý kho; cần kiểm tra nghiệp vụ trước khi huỷ')
+  }
+  if(String(order.order_status??'').toUpperCase()==='CANCELLED'){
+    throw new Error('Đơn đã bị huỷ trước đó')
+  }
+
+  const {data:activeRows,error:activeError}=await supabase.from('shipments')
+    .select('id,tracking_number,carrier,current_tracking_status,tracking_enabled,next_track_at,locked_until,queue_status,replaced_at')
+    .eq('order_id',orderId).eq('is_active',true)
+  if(activeError)throw new Error(activeError.message)
+  if((activeRows??[]).length>1)throw new Error('Có nhiều vận đơn đang hoạt động; cần xử lý trước khi huỷ')
+  const active=(activeRows??[])[0]??null
+  if(['DELIVERED','RETURNED'].includes(String(active?.current_tracking_status??''))){
+    throw new Error('Vận đơn đã giao/trả; không thể chuyển trực tiếp thành đơn bị huỷ')
+  }
+
+  // Preserve the old tracking number, events and status as an inactive shipment.
+  // The new active marker represents the user's cancellation instruction.
+  async function restoreOldShipment(){
+    if(!active)return null
+    const {error}=await supabase.from('shipments').update({
+      is_active:true,replaced_at:active.replaced_at,
+      tracking_enabled:active.tracking_enabled,
+      next_track_at:active.next_track_at,locked_until:active.locked_until,
+      queue_status:active.queue_status,
+    }).eq('id',active.id)
+    return error
+  }
+  if(active){
+    const {error}=await supabase.from('shipments').update({
+      is_active:false,replaced_at:new Date().toISOString(),
+      tracking_enabled:false,next_track_at:null,locked_until:null,
+    }).eq('id',active.id)
+    if(error)throw new Error(error.message)
+  }
+  const {data:newShipment,error:insertError}=await supabase.from('shipments').insert({
+    order_id:orderId,is_active:true,
+    tracking_number:'KHÔNG CÓ',carrier:null,current_tracking_status:'CANCELLED',
+    tracking_enabled:false,next_track_at:null,locked_until:null,queue_status:'READY',
+  }).select('id').single()
+  if(insertError){
+    const rollbackError=await restoreOldShipment()
+    throw new Error('Không lưu được mã KHÔNG CÓ: '+insertError.message+
+      (rollbackError?' (khôi phục vận đơn cũ lỗi: '+rollbackError.message+')':''))
+  }
+
+  const {error:statusError}=await supabase.from('orders')
+    .update({order_status:'CANCELLED'}).eq('id',orderId)
+  if(statusError){
+    // Best-effort compensation if a write fails; all successful paths preserve history.
+    const {error:removeError}=await supabase.from('shipments').delete().eq('id',newShipment.id)
+    const rollbackError=await restoreOldShipment()
+    throw new Error('Không lưu được trạng thái Đơn bị huỷ: '+statusError.message+
+      (removeError?' (gỡ mã QA huỷ lỗi: '+removeError.message+')':'')+
+      (rollbackError?' (khôi phục vận đơn cũ lỗi: '+rollbackError.message+')':''))
+  }
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,module:'ORDERS',action:'CANCEL_ORDER_NO_TRACKING',
+    entity_type:'ORDER',entity_id:orderId,
+    old_value:{order_status:order.order_status,tracking_number:active?.tracking_number??null},
+    new_value:{order_status:'CANCELLED',tracking_number:'KHÔNG CÓ',tracking_enabled:false},
+    source:'USER',
+  })
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase/tracking')
+  revalidatePath('/purchase/accounts')
+  revalidatePath('/purchase')
+  revalidatePath('/')
+  redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,settings:null,tab:'info'}))
+}
+
 export async function quickAddTrackingNumber(formData:FormData){
   const {supabase,user}=await actor()
   const returnQuery=text(formData.get('return_query'))
@@ -1455,7 +1541,7 @@ export async function quickAddTrackingNumber(formData:FormData){
   const carrierConfigId=text(formData.get('carrier_config_id'))
   if(!orderId||!trackingNumber)throw new Error('Thiếu đơn hàng hoặc mã vận đơn')
   if(trackingNumberMeansCancelled(trackingNumber))
-    throw new Error('Mã KHÔNG CÓ nghĩa là đơn bị huỷ. Hãy dùng Sửa đơn để xác nhận huỷ.')
+    return cancelOrderFromTrackingMarker(supabase,user,orderId,returnQuery)
 
   const {data:order,error:orderError}=await supabase
     .from('orders')
@@ -1561,7 +1647,7 @@ export async function replaceShipment(formData:FormData){
   const trackingNumber=text(formData.get('tracking_number'))
   if(!orderId||!trackingNumber)throw new Error('Thiếu đơn hàng hoặc mã vận đơn')
   if(trackingNumberMeansCancelled(trackingNumber))
-    throw new Error('Mã KHÔNG CÓ nghĩa là đơn bị huỷ. Hãy dùng Sửa đơn để xác nhận huỷ.')
+    return cancelOrderFromTrackingMarker(supabase,user,orderId,returnQuery)
 
   const {data:order,error:orderError}=await supabase
     .from('orders')
@@ -1901,22 +1987,32 @@ export async function saveTrackingRule(formData:FormData){
   revalidatePath('/settings')
 }
 
-export async function saveCarrierStatusMapping(formData:FormData){
+export async function saveCarrierStatusMapping(formData:FormData):Promise<{updatedEvents:number}>{
   const {supabase,role}=await actor()
   requireAdmin(role)
-  const carrier=text(formData.get('carrier')).toUpperCase()
+  const selectedCarrier=text(formData.get('carrier')).toUpperCase()
+  const carrier=selectedCarrier==='SPX EXPRESS'?'SPX':selectedCarrier
   const rawCode=text(formData.get('raw_code')).toUpperCase()
   const canonical=text(formData.get('canonical_status')).toUpperCase()
-  if(!carrier||!rawCode||!canonical)throw new Error('Thiếu Carrier, raw code hoặc trạng thái chuẩn')
-  const {error}=await supabase.rpc('save_carrier_status_mapping_secure',{
+  if(!carrier||!rawCode||!canonical||canonical==='UNKNOWN')
+    throw new Error('Vui lòng chọn trạng thái MYNH ERP hợp lệ trước khi lưu Mapping')
+  // Single database transaction: save mapping and backfill only UNKNOWN events.
+  // Historical backfill is SPX-only; F599 stays location/HUB-dependent.
+  // Do not mutate shipments, orders, notification history or the tracking queue.
+  const {data,error}=await supabase.rpc('save_carrier_status_mapping_with_history_secure',{
     p_carrier:carrier,
     p_raw_code:rawCode,
     p_raw_name:text(formData.get('raw_name'))||null,
     p_canonical_status:canonical,
     p_is_active:formData.get('is_active')==='on',
   })
-  if(error)throw new Error(error.message)
+  if(error)throw new Error('Không thể lưu Mapping và cập nhật lịch sử: '+error.message)
+  const count=Number(data??0)
+  if(!Number.isSafeInteger(count)||count<0)throw new Error('Không đọc được số sự kiện lịch sử đã cập nhật')
   revalidatePath('/settings')
+  revalidatePath('/purchase/tracking')
+  revalidatePath('/purchase/orders')
+  return {updatedEvents:count}
 }
 
 export async function testTrackingConnection(formData:FormData){
