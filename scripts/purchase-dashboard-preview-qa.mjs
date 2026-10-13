@@ -74,19 +74,21 @@ try{
       datesVisible=await page.locator('.pd-time-calendar input[type="date"]:visible').count()===2
       quarterRemoved=await page.getByRole('link',{name:'Quý này',exact:true}).count()===0
       tablePresent=await page.locator('.pd-left-rail .pd-status-table').count()===1
-      groupedActions=await page.locator('.pd-left-rail .pd-action-group').count()===6
+        && await page.locator('.pd-status-table tbody tr th[scope="row"]').count()>=1
+        && await page.locator('.pd-status-table tbody tr.pd-table-section').count()===0
+      groupedActions=await page.locator('.pd-right-rail .pd-action-group').count()===6
+        && await page.locator('.pd-left-rail .pd-action-group').count()===0
       const tableSums=await page.locator('.pd-status-table').evaluate(table=>{
         const rows=[...table.querySelectorAll('tbody tr')]
-        let section='';const sums={area:[0,0,0],hub:[0,0,0]}
+        const sums={area:[0,0,0]}
         for(const row of rows){
-          if(row.classList.contains('pd-table-section')){section=row.textContent?.includes('HUB đích')?'hub':'area';continue}
+          if(row.classList.contains('pd-table-section'))continue
           const vals=[...row.querySelectorAll('td')].map(td=>Number(td.textContent?.trim()))
-          if(vals.length===3&&section){for(let j=0;j<3;j++)sums[section][j]+=vals[j]}
+          if(vals.length===3){for(let j=0;j<3;j++)sums.area[j]+=vals[j]}
         }
         return sums
       })
-      tableValuesAgree=['area','hub'].every(k=>
-        tableSums[k][0]===kpis[2]&&tableSums[k][1]===kpis[3]&&tableSums[k][2]===kpis[6])
+      tableValuesAgree=tableSums.area[0]===kpis[2]&&tableSums.area[1]===kpis[3]&&tableSums.area[2]===kpis[6]
       isChartRendered=await page.locator('.pd-chart-bars .pd-chart-bar-track, .pd-chart-columns .pd-chart-column-space, .pd-chart-empty').count()>=5
       if(charts===5)await page.screenshot({path:folder+'/'+viewport.name+'.png',fullPage:false})
     }catch(e){errors.push(String(e.message??e).slice(0,260))}
