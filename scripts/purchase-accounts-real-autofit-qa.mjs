@@ -49,7 +49,6 @@ async function snap(page){
     // Prevent green QA while column DOM stops 140px short of the card,
     // exactly the regression reported by the real browser screenshots.
     const headerCoverage=Math.abs(rightGap)<=5&&Math.abs(leftGap)<=5
-    const minCount=Number.isFinite(width(tableRect))
     return {panelCount:w.querySelectorAll(':scope>aside.system-slidebar-v1').length,
       leftCollapsed:shell.classList.contains('desktop-sidebar-collapsed'),
       lane:Math.round(card.clientWidth),table:Math.round(width(table)),
