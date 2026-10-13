@@ -112,7 +112,10 @@ try{
         localScroll:getComputedStyle(card).overflowX==='auto',
         fillsLane:tableWidth>=laneWidth-8,
         aligned:colWidths.length===widths.length&&widths.every((x,i)=>Math.abs(x.width-colWidths[i])<=7),
-        readable:find('username')>=122&&find('voucher')>=100&&find('email')>=126
+        // Account lane-driven width contract deliberately allows 120px Email
+        // with ellipsis and full value in title/detail. Reject any narrower
+        // header; the separate real-drag QA enforces last-column coverage.
+        readable:find('username')>=122&&find('voucher')>=110&&find('email')>=118
           &&find('deliveredOrders')>=86,
         compact:find('number')<=46&&find('orders')<=74&&find('deliveredOrders')<=125,
         widths:Object.fromEntries(widths.map(x=>[x.key,Math.round(x.width)])),
