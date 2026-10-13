@@ -1447,6 +1447,70 @@ export async function retryExpressDelivery(formData:FormData){
   }))
 }
 
+// "KHÔNG CÓ" is a deliberate cancellation command in both quick-add and replacement flows.
+// Never submit this marker to carrier detection, HUB detection or tracking scheduling.
+async function cancelOrderFromTrackingMarker(supabase:any,user:any,orderId:string,returnQuery:string){
+  const {data:order,error:orderError}=await supabase.from('orders')
+    .select('id,order_status,archived_at')
+    .eq('id',orderId).maybeSingle()
+  if(orderError)throw new Error(orderError.message)
+  if(!order)throw new Error('Đơn hàng không tồn tại')
+  if(order.archived_at)throw new Error('Không thể huỷ đơn đã lưu trữ')
+
+  const {data:activeRows,error:activeError}=await supabase.from('shipments')
+    .select('id,tracking_number,carrier,current_tracking_status,tracking_enabled,next_track_at,locked_until')
+    .eq('order_id',orderId).eq('is_active',true)
+  if(activeError)throw new Error(activeError.message)
+  if((activeRows??[]).length>1)throw new Error('Có nhiều vận đơn đang hoạt động; cần xử lý trước khi huỷ')
+  const active=(activeRows??[])[0]??null
+  let newShipmentId:string|null=null
+  const cancelledShipment={
+    tracking_number:'KHÔNG CÓ',carrier:null,current_tracking_status:'CANCELLED',
+    tracking_enabled:false,next_track_at:null,locked_until:null,queue_status:'READY',
+  }
+  if(active){
+    const {error}=await supabase.from('shipments').update(cancelledShipment).eq('id',active.id)
+    if(error)throw new Error(error.message)
+  }else{
+    const {data,error}=await supabase.from('shipments').insert({
+      order_id:orderId,is_active:true,...cancelledShipment,
+    }).select('id').single()
+    if(error)throw new Error(error.message)
+    newShipmentId=String(data.id)
+  }
+
+  const {error:statusError}=await supabase.from('orders')
+    .update({order_status:'CANCELLED'}).eq('id',orderId)
+  if(statusError){
+    // Best-effort compensation: do not leave a partially applied cancellation silently.
+    if(active){
+      await supabase.from('shipments').update({
+        tracking_number:active.tracking_number,carrier:active.carrier,
+        current_tracking_status:active.current_tracking_status,
+        tracking_enabled:active.tracking_enabled,next_track_at:active.next_track_at,
+        locked_until:active.locked_until,
+      }).eq('id',active.id)
+    }else if(newShipmentId){
+      await supabase.from('shipments').delete().eq('id',newShipmentId)
+    }
+    throw new Error('Không lưu được trạng thái Đơn bị huỷ: '+statusError.message)
+  }
+
+  await supabase.from('audit_logs').insert({
+    actor_user_id:user.id,module:'ORDERS',action:'CANCEL_ORDER_NO_TRACKING',
+    entity_type:'ORDER',entity_id:orderId,
+    old_value:{order_status:order.order_status,tracking_number:active?.tracking_number??null},
+    new_value:{order_status:'CANCELLED',tracking_number:'KHÔNG CÓ',tracking_enabled:false},
+    source:'USER',
+  })
+  revalidatePath('/purchase/orders')
+  revalidatePath('/purchase/tracking')
+  revalidatePath('/purchase/accounts')
+  revalidatePath('/purchase')
+  revalidatePath('/')
+  redirect(returnHref('/purchase/orders',returnQuery,{order:orderId,mode:null,settings:null,tab:'info'}))
+}
+
 export async function quickAddTrackingNumber(formData:FormData){
   const {supabase,user}=await actor()
   const returnQuery=text(formData.get('return_query'))
@@ -1455,7 +1519,7 @@ export async function quickAddTrackingNumber(formData:FormData){
   const carrierConfigId=text(formData.get('carrier_config_id'))
   if(!orderId||!trackingNumber)throw new Error('Thiếu đơn hàng hoặc mã vận đơn')
   if(trackingNumberMeansCancelled(trackingNumber))
-    throw new Error('Mã KHÔNG CÓ nghĩa là đơn bị huỷ. Hãy dùng Sửa đơn để xác nhận huỷ.')
+    return cancelOrderFromTrackingMarker(supabase,user,orderId,returnQuery)
 
   const {data:order,error:orderError}=await supabase
     .from('orders')
@@ -1561,7 +1625,7 @@ export async function replaceShipment(formData:FormData){
   const trackingNumber=text(formData.get('tracking_number'))
   if(!orderId||!trackingNumber)throw new Error('Thiếu đơn hàng hoặc mã vận đơn')
   if(trackingNumberMeansCancelled(trackingNumber))
-    throw new Error('Mã KHÔNG CÓ nghĩa là đơn bị huỷ. Hãy dùng Sửa đơn để xác nhận huỷ.')
+    return cancelOrderFromTrackingMarker(supabase,user,orderId,returnQuery)
 
   const {data:order,error:orderError}=await supabase
     .from('orders')
