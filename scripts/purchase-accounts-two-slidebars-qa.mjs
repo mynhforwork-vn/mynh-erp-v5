@@ -31,6 +31,29 @@ const contexts=[
   {width:1440,height:900},{width:1920,height:1080},
 ]
 async function metrics(page){
+  // Next.js can swap the route content before its responsive stylesheet finishes
+  // loading. Assert only settled geometry (bounded wait), never a transient
+  // half-hydrated grid, and still FAIL if the correct layout never appears.
+  try{
+    await page.waitForFunction(()=>{
+      const workspace=document.querySelector('.account-workspace')
+      const card=workspace?.querySelector('.account-table-card')
+      if(!workspace||!card)return false
+      const rect=card.getBoundingClientRect()
+      const vw=document.documentElement.clientWidth
+      const horizontal=/auto|scroll/.test(getComputedStyle(card).overflowX)
+      const withinViewport=rect.left>=-2&&rect.right<=vw+5
+        &&document.documentElement.scrollWidth<=vw+5
+      if(!horizontal||!withinViewport)return false
+      if(innerWidth<=900&&workspace.classList.contains('with-panel')){
+        return getComputedStyle(workspace).display==='block'
+          &&rect.width>=Math.max(190,innerWidth-110)
+      }
+      return rect.width>=Math.min(180,innerWidth-110)
+    },null,{timeout:12000})
+  }catch{
+    // Return the failed geometry below for diagnostics instead of hiding it.
+  }
   await page.waitForTimeout(180)
   return page.evaluate(()=>{
     const workspace=document.querySelector('.account-workspace')
