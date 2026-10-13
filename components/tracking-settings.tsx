@@ -2,6 +2,7 @@
 
 import { useEffect,useMemo,useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   saveCarrierStatusMapping,
   saveTrackingRule,
@@ -86,11 +87,46 @@ export function TrackingSettings({
     window.dispatchEvent(new CustomEvent('mynh-erp-tracking-changed',{detail:runtime}))
   }
 
+  const router=useRouter()
   const [tab,setTab]=useState<Tab>(initialTab)
+  const [mappingSaving,setMappingSaving]=useState(false)
+  const [mappingFeedback,setMappingFeedback]=useState<{success:boolean;message:string}|null>(null)
+  function changeTab(nextTab:Tab){
+    setTab(nextTab)
+    if(nextTab==='mapping')setMappingExpanded(true)
+    // Same-origin history only: preserve the active subtab across refresh/reload
+    // without navigating to a different Worker or reloading the page.
+    const url=new URL(window.location.href)
+    if(url.pathname==='/settings'&&url.searchParams.get('section')==='tracking'){
+      url.searchParams.set('tracking_tab',nextTab)
+      url.searchParams.delete('mapped')
+      window.history.replaceState(window.history.state,'',url.pathname+url.search+url.hash)
+    }
+  }
+  async function submitMapping(formData:FormData){
+    if(!canEdit)return
+    setMappingSaving(true)
+    setMappingFeedback(null)
+    try{
+      await saveCarrierStatusMapping(formData)
+      setEditingMapping(null)
+      changeTab('mapping')
+      setMappingFeedback({success:true,message:'Đã lưu mapping. Trạng thái lịch sử chưa được phân loại lại.'})
+      router.refresh()
+    }catch(error){
+      setMappingFeedback({success:false,message:'Không lưu được mapping: '+(error instanceof Error?error.message:'Có lỗi xảy ra')})
+    }finally{
+      setMappingSaving(false)
+    }
+  }
   const [editingMapping,setEditingMapping]=useState<string|null>(null)
   // Keep the pending-provider codes visible; open the mapping catalogue on demand.
   const [unknownExpanded,setUnknownExpanded]=useState(true)
   const [mappingExpanded,setMappingExpanded]=useState(initialTab==='mapping')
+  useEffect(()=>{
+    setTab(initialTab)
+    if(initialTab==='mapping')setMappingExpanded(true)
+  },[initialTab])
   useEffect(()=>{
     if(tab!=='mapping')return
     document.getElementById('tracking-mapping-content-v9')?.scrollIntoView({behavior:'smooth',block:'start'})
@@ -102,18 +138,19 @@ export function TrackingSettings({
   const autoStatusCount=sortedRules.filter(x=>!x.terminal&&x.auto_tracking).length
 
   return <div className="tracking-settings tracking-settings-v9">
+    {mappingFeedback&&<div role="status" className={'settings-result '+(mappingFeedback.success?'success':'error')}>{mappingFeedback.message}</div>}
     {mapped&&<div className="settings-result success">Đã lưu mapping. Các sự kiện lịch sử chưa tự động được phân loại lại.</div>}
     {trackingTest==='ok'&&<div className="settings-result success">Tracking test thành công: {trackingMessage}</div>}
     {trackingTest==='fail'&&<div className="settings-result error">Tracking test thất bại: {trackingMessage||'Không xác định'}</div>}
 
     <div className="destination-detail-tabs settings-subtabs-v6 tracking-subtabs-v9">
-      <button type="button" className={tab==='operation'?'active':''} onClick={()=>setTab('operation')}>
+      <button type="button" className={tab==='operation'?'active':''} onClick={()=>changeTab('operation')}>
         Vận hành Tracking
       </button>
-      <button type="button" className={tab==='cycle'?'active':''} onClick={()=>setTab('cycle')}>
+      <button type="button" className={tab==='cycle'?'active':''} onClick={()=>changeTab('cycle')}>
         Chu kỳ trạng thái <span>{sortedRules.length}</span>
       </button>
-      <button type="button" className={tab==='mapping'?'active':''} onClick={()=>{setMappingExpanded(true);setTab('mapping')}}>
+      <button type="button" className={tab==='mapping'?'active':''} onClick={()=>changeTab('mapping')}>
         Mapping SPX <span>{mappings.length}</span>
       </button>
     </div>
@@ -244,7 +281,7 @@ export function TrackingSettings({
           </div>
         </div>
         <div id="tracking-unknown-content-v9" className="tracking-unknown-list-v7" aria-hidden={!unknownExpanded}>
-          {unknownRaw.map(row=><form action={saveCarrierStatusMapping} className="tracking-unknown-row-v7" key={row.carrier+'-'+row.raw_code}>
+          {unknownRaw.map(row=><form action={submitMapping} className="tracking-unknown-row-v7" key={row.carrier+'-'+row.raw_code}>
             <input type="hidden" name="carrier" value={row.carrier}/>
             <input type="hidden" name="raw_code" value={row.raw_code}/>
             <input type="hidden" name="raw_name" value={row.raw_name??''}/>
@@ -256,7 +293,7 @@ export function TrackingSettings({
               {canonicalOptions.map(x=><option value={x.status_code} key={x.status_code}>{x.label} · {x.status_code}</option>)}
             </select>
             <input type="hidden" name="is_active" value="on"/>
-            {canEdit&&<button className="button small primary" type="submit">Tạo mapping</button>}
+            {canEdit&&<button className="button small primary" type="submit" disabled={mappingSaving}>{mappingSaving?'Đang lưu…':'Tạo mapping'}</button>}
           </form>)}
         </div>
       </section>}
@@ -293,7 +330,7 @@ export function TrackingSettings({
               const editing=editingMapping===row.id
 
               if(editing){
-                return <form action={saveCarrierStatusMapping} className="tracking-mapping-row-v7 editing" key={row.id}>
+                return <form action={submitMapping} className="tracking-mapping-row-v7 editing" key={row.id}>
                   <input type="hidden" name="carrier" value={row.carrier}/>
                   <input type="hidden" name="raw_code" value={row.raw_code}/>
                   <div className="tracking-raw-code-v7"><b>{row.carrier} · {row.raw_code}</b><small>{row.note||'—'}</small></div>
@@ -306,7 +343,7 @@ export function TrackingSettings({
                     <span>{row.is_active?'Bật':'Tắt'}</span>
                   </label>
                   <div className="tracking-mapping-actions-v7">
-                    <button className="button small primary" type="submit">Lưu</button>
+                    <button className="button small primary" type="submit" disabled={mappingSaving}>{mappingSaving?'Đang lưu…':'Lưu'}</button>
                     <button className="button small" type="button" onClick={()=>setEditingMapping(null)}>Huỷ</button>
                   </div>
                 </form>
