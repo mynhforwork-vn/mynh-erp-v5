@@ -130,7 +130,17 @@ try{
     check(viewport.width+' 2 slidebars: Tracking tab',fit(trackingTwo)&&panels(trackingTwo,2)
       &&selectedTracking&&trackingTwo.tab==='Tracking',
       {...(trackingTwo??{}),url:page.url(),trackingHref,selectedTracking})
+    if(selectedTracking){
+      // Back #1 from Tracking returns to the Order's Info tab, not to User.
+      await page.locator('.account-workspace>.context-order-panel .context-stack-back').click()
+      await page.locator('.account-workspace>.context-order-panel .context-order-tabs a.active')
+        .filter({hasText:'Thông tin'}).waitFor({state:'visible',timeout:20000})
+      const orderInfo=await metrics(page)
+      check(viewport.width+' Back Tracking to Order Info (still 2 slidebars)',
+        fit(orderInfo)&&panels(orderInfo,2)&&orderInfo.tab==='Thông tin',orderInfo??{})
+    }
   }
+  // Back #2 returns from Order Info to User Orders (1 slidebar).
   await page.locator('.account-workspace>.context-order-panel .context-stack-back').click()
   await page.locator('.account-workspace>.context-order-panel').waitFor({state:'detached',timeout:20000})
   const back=await metrics(page)
