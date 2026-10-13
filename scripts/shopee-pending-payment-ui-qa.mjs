@@ -21,8 +21,18 @@ for(const vp of [{width:360,height:800},{width:768,height:1024},{width:1440,heig
    sameSite:c.options?.sameSite==='strict'?'Strict':c.options?.sameSite==='none'?'None':'Lax'})))
  const page=await ctx.newPage()
  await page.goto(base+'/purchase/orders?range=all&mode=create',{waitUntil:'domcontentloaded',timeout:45000})
- const form=page.locator('form.order-editor')
- await form.waitFor({timeout:25000})
+ const form=page.locator('form.order-editor[data-shopee-recognizer="pending-review-v1"]')
+ // Sole Preview can still serve the previous bundle while Git-connected
+ // Cloudflare Builds compiles the target SHA. Do not run UI QA against it.
+ let deployed=false
+ for(let attempt=0;attempt<35;attempt++){
+   if(await form.count()===1){deployed=true;break}
+   await page.waitForTimeout(5000)
+   await page.reload({waitUntil:'domcontentloaded',timeout:45000})
+ }
+ check(vp.width+' correct deployed UI revision',deployed)
+ if(!deployed)throw Error('New Shopee recognizer revision not yet deployed to sole Preview')
+ await form.waitFor({timeout:12000})
  await form.locator('.order-text-recognizer textarea').fill(sample)
  await form.getByRole('button',{name:'Nhận diện đơn'}).click()
  await page.waitForFunction(()=>document.querySelectorAll('form.order-editor input[name="item_product_name"]').length===2,null,{timeout:16000})
