@@ -165,6 +165,11 @@ try{
     return data?.order_status==='CANCELLED'&&s?.tracking_number==='KHÔNG CÓ'&&s?.current_tracking_status==='CANCELLED'&&s?.tracking_enabled===false&&s?.next_track_at===null
   })
   check(true,'Replace KHÔNG CÓ persisted CANCELLED, tracking disabled')
+  const {data:history,error:historyError}=await db.from('shipments')
+    .select('tracking_number,is_active,tracking_enabled,replaced_at').eq('id',shipment2).single()
+  check(!historyError&&history?.tracking_number===marker+'-OLD'&&
+    history.is_active===false&&history.tracking_enabled===false&&Boolean(history.replaced_at),
+    'Old shipment tracking code and history preserved after cancellation')
   await goto('/purchase/orders?range=all&order='+order2+'&tab=info')
   check((await page.locator('body').innerText()).includes('Đơn bị huỷ'),'Cancelled replacement displayed after reload')
 
