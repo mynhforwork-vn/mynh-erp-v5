@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
-import { formatDateTime, formatMoney } from '@/lib/format'
+import { formatDateTime } from '@/lib/format'
 import { PurchaseInsightChart } from '@/components/purchase-insight-chart'
 import {
   toInsightOrder,groupInsightOrders,sumInsightCounts,issueLabel,issuePriority,
@@ -8,7 +8,7 @@ import {
   type PurchaseInsightOrder,
 } from '@/lib/purchase-dashboard-insights'
 
-type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
+type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'year'|'all'
 type SP={range?:RangeKey,from?:string,to?:string,province?:string,ward?:string,hub?:string,stage?:string}
 const HOUR=60*60*1000
 const DAY=24*HOUR
@@ -22,7 +22,7 @@ function shiftDays(y:number,m:number,d:number,days:number){
   return ymd(t.getUTCFullYear(),t.getUTCMonth()+1,t.getUTCDate())
 }
 function resolveRange(sp:SP){
-  const keys:RangeKey[]=['today','week','month','custom','7d','30d','quarter','year','all']
+  const keys:RangeKey[]=['today','week','month','custom','7d','30d','year','all']
   const key:RangeKey=keys.includes(sp.range as RangeKey)?sp.range as RangeKey:'all'
   const p=vnDateParts()
   const today=ymd(p.year,p.month,p.day)
@@ -37,7 +37,6 @@ function resolveRange(sp:SP){
   if(key==='7d'){from=shiftDays(p.year,p.month,p.day,-6);label='7 ngày'}
   if(key==='30d'){from=shiftDays(p.year,p.month,p.day,-29);label='30 ngày'}
   if(key==='month'){from=ymd(p.year,p.month,1);label='Tháng này'}
-  if(key==='quarter'){from=ymd(p.year,Math.floor((p.month-1)/3)*3+1,1);label='Quý này'}
   if(key==='year'){from=ymd(p.year,1,1);label='Năm nay'}
   if(key==='all'){from='1970-01-01';to='9999-12-31';label='Toàn thời gian'}
   if(key==='custom'){
@@ -62,7 +61,7 @@ const metrics:{key:string,label:string,description:string,tone:string}[]=[
 const quickRanges:{key:RangeKey,label:string}[]=[
   {key:'all',label:'Tất cả'},{key:'today',label:'Hôm nay'},{key:'week',label:'Tuần này'},
   {key:'7d',label:'7 ngày'},{key:'30d',label:'30 ngày'},
-  {key:'month',label:'Tháng này'},{key:'quarter',label:'Quý này'},
+  {key:'month',label:'Tháng này'},
   {key:'year',label:'Năm nay'},
 ]
 
@@ -108,10 +107,17 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   const actions=workOrders.filter(o=>issuePriority(o)<99)
     .sort((a,b)=>issuePriority(a)-issuePriority(b)||String(a.order_date??'').localeCompare(String(b.order_date??'')))
   const waitingOrders=filtered.filter(isAwaitingReceipt)
-  const waitingCod=waitingOrders.reduce((sum,o)=>sum+Number(o.cod??0),0)
   const activeIssues=actions.length
   const missingGeo=filtered.filter(o=>o.stage!=='cancelled'&&(o.province===insightUnknownLabels.province||o.ward===insightUnknownLabels.ward)).length
   const missingHubs=filtered.filter(o=>['shipping','destination','out','delivered'].includes(o.stage)&&!o.destination_hub?.trim()).length
+  const actionGroups=[
+    {id:'received',title:'Chờ xác nhận nhận hàng',hint:'Đã giao, cần kiểm tra hàng và xác nhận',tone:'green',priority:0},
+    {id:'failed',title:'Sự cố giao hàng',hint:'Giao lỗi hoặc lấy hàng thất bại',tone:'red',priority:1},
+    {id:'missing',title:'Chưa có mã vận đơn',hint:'Cần bổ sung MVĐ',tone:'amber',priority:2},
+    {id:'hub',title:'Đã đến HUB đích',hint:'Đối chiếu HUB và thông tin giao',tone:'blue',priority:3},
+    {id:'out',title:'Đang giao hàng',hint:'Theo dõi tiến độ giao',tone:'blue',priority:4},
+    {id:'express',title:'Hỏa tốc chờ xác nhận giao',hint:'Kiểm tra thủ công, không tự tracking',tone:'teal',priority:5},
+  ].map(group=>({...group,orders:actions.filter(o=>issuePriority(o)===group.priority)}))
   function timeHref(key:RangeKey){
     return '/purchase?'+new URLSearchParams({range:key}).toString()
   }
@@ -138,16 +144,14 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
           prefetch={false} aria-current={range.key===option.key?'page':undefined}
           className={'pd-time-option'+(range.key===option.key?' is-selected':'')}>{option.label}</Link>)}
       </div>
-      <details className="pd-time-custom" open={range.key==='custom'}>
-        <summary aria-label="Chọn khoảng ngày tùy ý"> <span aria-hidden="true">▦</span> {range.key==='custom'?range.label:'Tùy chọn'} </summary>
-        <form className="pd-time-calendar" action="/purchase" method="GET">
-          <input type="hidden" name="range" value="custom"/>
-          <label><span>Từ ngày</span><input type="date" name="from" defaultValue={range.key==='all'?'':range.from} required/></label>
-          <label><span>Đến ngày</span><input type="date" name="to" defaultValue={range.key==='all'?'':range.to} required/></label>
-          <button type="submit" className="button primary">Áp dụng</button>
-        </form>
-      </details>
-      <span className="pd-time-explain">Ngày đặt đơn · Hỏa tốc là tồn đọng hiện tại</span>
+      <form className="pd-time-calendar" action="/purchase" method="GET" aria-label="Lọc khoảng ngày tùy chỉnh">
+        <input type="hidden" name="range" value="custom"/>
+        <label><span>Từ ngày</span><input type="date" name="from" defaultValue={range.key==='all'?'':range.from} required aria-label="Từ ngày"/></label>
+        <span className="pd-date-separator" aria-hidden="true">→</span>
+        <label><span>Đến ngày</span><input type="date" name="to" defaultValue={range.key==='all'?'':range.to} required aria-label="Đến ngày"/></label>
+        <button type="submit" className="button primary">Lọc ngày</button>
+      </form>
+      <span className="pd-time-explain">Theo ngày đặt · Hỏa tốc là tồn đọng</span>
     </nav>
 
     {(result.error||expressResult.error)&&<div className="error-box" role="alert">Không tải đủ đơn nhập: {result.error||expressResult.error}. Không sử dụng tổng số khi nguồn dữ liệu lỗi.</div>}
@@ -156,79 +160,96 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       <div className="pd-metrics">
         {metrics.map(metric=><div key={metric.key}
           className={'pd-metric pd-tone-'+metric.tone}>
-          <span>{metric.label}</span><strong>{numbers[metric.key as keyof typeof numbers]}</strong>
+          <span className="pd-metric-label">{metric.label}</span>
+          <strong>{numbers[metric.key as keyof typeof numbers]}</strong>
           <small>{metric.description}</small>
+          <i className="pd-metric-accent" aria-hidden="true"/>
         </div>)}
       </div>
     </section>
-    <section className="pd-visual-head" aria-label="Biểu đồ phân bổ đơn nhập">
-      <div><span className="module-eyebrow">PHÂN BỔ VẬN HÀNH</span>
-        <h2>Đơn hàng theo khu vực và HUB</h2>
-        <p>So sánh ngay trạng thái mới nhất của đơn đặt trong {range.label.toLowerCase()} · không cần lọc thêm</p>
-      </div>
-      <div className="pd-visual-legend"><span className="pd-legend-missing">Chờ MVĐ</span><span className="pd-legend-shipping">Vận chuyển</span><span className="pd-legend-delivered">Giao thành công</span></div>
-    </section>
-    <section className="pd-chart-grid">
-      <PurchaseInsightChart title="Chưa có mã vận đơn · Theo khu vực"
-        description="Phường/Xã — Tỉnh/Thành phố, không gồm đơn hủy và Hỏa tốc"
-        groups={areaGroups} metric="missing" geography="area"/>
-      <PurchaseInsightChart title="Đang vận chuyển · Theo khu vực"
-        description="Đã lấy hàng, đang di chuyển hoặc ở HUB trung chuyển"
-        groups={areaGroups} metric="shipping" geography="area"/>
-      <PurchaseInsightChart title="Đang vận chuyển · Theo HUB đích"
-        description="So sánh các HUB đích được khai báo trên đơn"
-        groups={hubGroups} metric="shipping" variant="column" geography="hub"/>
-      <PurchaseInsightChart title="Giao thành công · Theo khu vực"
-        description="Đã xác nhận giao, bao gồm đơn đang chờ xác nhận nhận"
-        groups={areaGroups} metric="delivered" geography="area"/>
-      <PurchaseInsightChart title="Giao thành công · Theo HUB đích"
-        description="Số đơn được xác nhận giao theo HUB đích"
-        groups={hubGroups} metric="delivered" variant="column" geography="hub"/>
-    </section>
+    <div className="pd-workspace">
+      <div className="pd-left-rail">
+        <section className="pd-summary-table" aria-labelledby="pd-summary-heading">
+          <header className="pd-side-head">
+            <div><span className="module-eyebrow">BẢNG TỔNG HỢP</span>
+              <h2 id="pd-summary-heading">Đơn hàng theo địa bàn</h2>
+              <p>Ba trạng thái quan trọng · Phường/Xã và HUB đích</p></div>
+          </header>
+          <div className="pd-table-scroll">
+            <table className="pd-table pd-status-table">
+              <thead><tr><th scope="col">Khu vực / HUB đích</th><th scope="col">Chờ MVĐ</th><th scope="col">Vận chuyển</th><th scope="col">Giao TC</th></tr></thead>
+              <tbody>
+                <tr className="pd-table-section"><th colSpan={4} scope="rowgroup">Phường/Xã · Tỉnh/Thành phố</th></tr>
+                {!areaGroups.length&&<tr><td colSpan={4} className="pd-empty">Chưa có đơn trong khoảng lọc.</td></tr>}
+                {areaGroups.map(group=><tr key={'area-'+group.name}>
+                  <th scope="row" title={group.name}>{group.name}</th>
+                  <td className="pd-cell-warning">{group.missing}</td><td className="pd-cell-blue">{group.shipping}</td>
+                  <td className="pd-cell-green">{group.delivered}</td>
+                </tr>)}
+                <tr className="pd-table-section"><th colSpan={4} scope="rowgroup">HUB đích</th></tr>
+                {!hubGroups.length&&<tr><td colSpan={4} className="pd-empty">Chưa có HUB trong khoảng lọc.</td></tr>}
+                {hubGroups.map(group=><tr key={'hub-'+group.name}>
+                  <th scope="row" title={group.name}>{group.name}</th>
+                  <td className="pd-cell-warning">{group.missing}</td><td className="pd-cell-blue">{group.shipping}</td>
+                  <td className="pd-cell-green">{group.delivered}</td>
+                </tr>)}
+              </tbody>
+            </table>
+          </div>
+          <p className="pd-table-help">Số liệu tại thời điểm hiện tại của các đơn đặt trong kỳ. Nhóm thiếu địa chỉ/HUB được hiển thị riêng, không tự suy đoán.</p>
+        </section>
 
-    <section className="pd-action-head" id="pd-action">
-      <div><span className="module-eyebrow">CẦN XỬ LÝ NGAY</span><h2>Hàng đợi công việc</h2><p>Sắp theo mức độ ưu tiên · Bấm mã đơn để mở chi tiết</p></div>
-      <div className="pd-head-stat"><b>{activeIssues}</b><span>đơn cần theo dõi/xử lý</span></div>
-    </section>
-    <section className="pd-action-layout">
-      <div className="pd-work-summary">
-        <div className="pd-work-item">
-          <span className="pd-work-dot green"/><span><b>Chờ xác nhận nhận hàng</b><small>{formatMoney(waitingCod)} COD chưa xác nhận</small></span><strong>{numbers.waiting}</strong>
-        </div>
-        <div className="pd-work-item">
-          <span className="pd-work-dot red"/><span><b>Giao thất bại</b><small>Kiểm tra hành trình, liên hệ shipper</small></span><strong>{numbers.failed+numbers.pickup_failed}</strong>
-        </div>
-        <div className="pd-work-item">
-          <span className="pd-work-dot amber"/><span><b>Chưa có mã vận đơn</b><small>Loại Hỏa tốc và đơn bị hủy</small></span><strong>{numbers.missing}</strong>
-        </div>
-        <div className="pd-work-item">
-          <span className="pd-work-dot blue"/><span><b>Đã đến HUB đích</b><small>Đối chiếu vị trí giao nhận</small></span><strong>{numbers.destination}</strong>
-        </div>
-        <div className="pd-work-item">
-          <span className="pd-work-dot blue"/><span><b>Đang giao hàng</b><small>Theo dõi cho tới lúc giao xong</small></span><strong>{numbers.out}</strong>
-        </div>
-        {(missingGeo>0||missingHubs>0)&&<div className="pd-data-warning">
-          <b>Cần chuẩn hóa dữ liệu địa bàn</b>
-          <small>{missingGeo} đơn thiếu Phường/Xã hoặc Tỉnh/TP · {missingHubs} đơn đang/đã giao chưa có HUB đích</small>
-        </div>}
+        <section className="pd-action-panel" aria-labelledby="pd-action-heading">
+          <header className="pd-side-head">
+            <div><span className="module-eyebrow">ƯU TIÊN VẬN HÀNH</span><h2 id="pd-action-heading">Công việc cần xử lý ngay</h2>
+              <p>Phân nhóm theo nghiệp vụ, không cần mở bộ lọc</p></div>
+            <span className="pd-action-total">{activeIssues} <small>đơn</small></span>
+          </header>
+          <div className="pd-action-groups">
+            {actionGroups.map(group=><div key={group.id} className={'pd-action-group pd-action-'+group.tone}>
+              <div className="pd-group-heading">
+                <span className="pd-group-dot" aria-hidden="true"/>
+                <span className="pd-group-name"><b>{group.title}</b><small>{group.hint}</small></span>
+                <strong>{group.orders.length}</strong>
+              </div>
+              {group.orders.length>0&&<div className="pd-group-orders">
+                {group.orders.slice(0,3).map(o=><Link key={o.id} href={orderHref(o)} prefetch={false} className="pd-group-order">
+                  <b>{o.shopee_order_id||o.id.slice(0,8)}</b><span>{issueLabel(o)}</span><span aria-hidden="true">→</span>
+                </Link>)}
+                {group.orders.length>3&&<div className="pd-group-more">Còn {group.orders.length-3} đơn trong nhóm</div>}
+              </div>}
+            </div>)}
+            {(missingGeo>0||missingHubs>0)&&<p className="pd-data-warning">
+              <b>Thiếu dữ liệu địa bàn</b> · {missingGeo} đơn thiếu địa chỉ; {missingHubs} đơn đang/đã giao thiếu HUB đích
+            </p>}
+          </div>
+        </section>
       </div>
-      <div className="pd-surface pd-urgent-orders">
-        <div className="pd-surface-title"><h3>Đơn ưu tiên</h3><Link href="/purchase/orders">Mở Đơn nhập →</Link></div>
-        <div className="pd-table-scroll"><table className="pd-table">
-          <thead><tr><th>Mã đơn</th><th>Cần xử lý</th><th>Phường / Tỉnh</th><th>HUB đích</th><th>Đặt đơn</th></tr></thead>
-          <tbody>{!actions.length?<tr><td colSpan={5} className="pd-empty">Không có công việc cần xử lý trong phạm vi lọc.</td></tr>
-          :actions.slice(0,12).map(o=><tr key={o.id}>
-            <td className="pd-table-strong"><Link href={orderHref(o)}>{o.shopee_order_id||o.id.slice(0,8)}</Link></td>
-            <td><span className={'pd-task-tag '+(issuePriority(o)<=1?'high':'')}>{issueLabel(o)}</span></td>
-            <td><span className="pd-ward-label">{o.ward}</span><small className="pd-cell-subtitle">{o.province}</small></td>
-            <td>{o.destination_hub||'Chưa xác định'}</td>
-            <td>{o.order_date?formatDateTime(o.order_date):'—'}</td>
-          </tr>)}</tbody>
-        </table></div>
-        {actions.length>12&&<p className="pd-table-help">Hiển thị 12/{actions.length} đơn ưu tiên; mở Đơn nhập để xem danh sách đầy đủ.</p>}
-      </div>
-    </section>
-
+      <section className="pd-right-rail" aria-labelledby="pd-chart-heading">
+        <header className="pd-chart-section-head">
+          <div><span className="module-eyebrow">BIỂU ĐỒ TRỰC QUAN</span><h2 id="pd-chart-heading">Phân bổ vận chuyển và giao hàng</h2>
+            <p>Đối chiếu theo khu vực và HUB đích</p></div>
+          <div className="pd-visual-legend"><span className="pd-legend-missing">Chờ MVĐ</span><span className="pd-legend-shipping">Vận chuyển</span><span className="pd-legend-delivered">Giao thành công</span></div>
+        </header>
+        <div className="pd-chart-grid">
+          <PurchaseInsightChart title="Chưa có mã vận đơn · Theo khu vực"
+            description="Phường/Xã — Tỉnh/Thành, loại đơn hủy/Hỏa tốc"
+            groups={areaGroups} metric="missing" geography="area"/>
+          <PurchaseInsightChart title="Đang vận chuyển · Theo khu vực"
+            description="Đã lấy hàng, đang vận chuyển/trung chuyển"
+            groups={areaGroups} metric="shipping" geography="area"/>
+          <PurchaseInsightChart title="Đang vận chuyển · Theo HUB đích"
+            description="HUB đích trên đơn, không dùng HUB trung chuyển"
+            groups={hubGroups} metric="shipping" variant="column" geography="hub"/>
+          <PurchaseInsightChart title="Giao thành công · Theo khu vực"
+            description="Đã giao, gồm các đơn chờ xác nhận nhận"
+            groups={areaGroups} metric="delivered" geography="area"/>
+          <PurchaseInsightChart title="Giao thành công · Theo HUB đích"
+            description="Đơn đã giao theo HUB đích"
+            groups={hubGroups} metric="delivered" variant="column" geography="hub"/>
+        </div>
+      </section>
+    </div>
     <footer className="pd-footer">
       <span>Đơn thuộc khoảng ngày đặt, tính theo trạng thái mới nhất. Riêng Hỏa tốc là tồn đọng toàn thời gian.</span>
       <div><Link href="/purchase/orders">Quản lý đơn nhập →</Link><Link href="/purchase/tracking">Theo dõi &amp; nhận hàng →</Link></div>
