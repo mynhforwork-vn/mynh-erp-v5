@@ -4,7 +4,7 @@ import { formatDateTime, formatMoney } from '@/lib/format'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import {
   toInsightOrder,groupInsightOrders,sumInsightCounts,issueLabel,issuePriority,
-  isAwaitingReceipt,insightUnknownLabels,type InsightOrder,type InsightStage,
+  isAwaitingReceipt,isExpressAwaitingDeliveryConfirmation,insightUnknownLabels,type InsightOrder,type InsightStage,
   type PurchaseInsightOrder,
 } from '@/lib/purchase-dashboard-insights'
 
@@ -51,7 +51,7 @@ function resolveRange(sp:SP){
 const stageKeys:InsightStage[]=['missing','shipping','destination','out','delivered','cancelled','failed','pickup_failed','ready','express_pending','other']
 const metrics:{key:string,label:string,description:string,tone:string}[]=[
   {key:'total',label:'Tổng đơn nhập',description:'Đặt trong khoảng lọc',tone:'neutral'},
-  {key:'express',label:'Đơn Hỏa tốc',description:'Theo ngày đặt đơn',tone:'express'},
+  {key:'express',label:'Hỏa tốc chờ xác nhận giao',description:'Tồn đọng hiện tại · không theo ngày',tone:'express'},
   {key:'missing',label:'Chờ mã vận đơn',description:'Chưa có MVĐ hiện tại',tone:'warning'},
   {key:'shipping',label:'Đang vận chuyển',description:'Đã lấy / đang trung chuyển',tone:'info'},
   {key:'destination',label:'Đến HUB đích',description:'Trạng thái mới nhất',tone:'indigo'},
@@ -62,15 +62,16 @@ const metrics:{key:string,label:string,description:string,tone:string}[]=[
 ]
 
 /** Phân trang để tránh trần 1.000 dòng của PostgREST làm sai tổng số. */
-async function loadOrders(supabase:any,start:string,end:string){
+async function loadOrders(supabase:any,start:string,end:string,expressAcrossDates=false){
   const limit=500
   const all:PurchaseInsightOrder[]=[]
   for(let i=0;i<20;i++){
-    const {data,error}=await supabase.from('orders')
+    let query=supabase.from('orders')
       .select('id,shopee_order_id,order_date,recipient_address,area,destination_hub,cod,shipping_service,express_delivery_status,order_status,receive_status,shipments(id,tracking_number,carrier,current_tracking_status,is_active,created_at)')
       .is('archived_at',null)
-      .gte('order_date',start).lte('order_date',end)
-      .order('order_date',{ascending:false})
+    // Hỏa tốc chờ xác nhận giao là snapshot toàn thời gian, không giới hạn ngày đặt.
+    query=expressAcrossDates?query.eq('shipping_service','EXPRESS'):query.gte('order_date',start).lte('order_date',end)
+    const {data,error}=await query.order('order_date',{ascending:false})
       .range(i*limit,(i+1)*limit-1)
     if(error)return {rows:all,error:error.message,truncated:false}
     const batch=(data??[]) as PurchaseInsightOrder[]
@@ -84,23 +85,33 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   const params=await searchParams
   const range=resolveRange(params)
   const {supabase}=await requireUser()
-  const result=await loadOrders(supabase,range.start,range.end)
+  const [result,expressResult]=await Promise.all([
+    loadOrders(supabase,range.start,range.end),
+    loadOrders(supabase,range.start,range.end,true),
+  ])
   const datedOrders=result.rows.map(toInsightOrder)
+  const pendingExpress=expressResult.rows.map(toInsightOrder).filter(isExpressAwaitingDeliveryConfirmation)
+  // Phạm vi khác theo ngày đặt; chỉ KPI Hỏa tốc là công việc tồn hiện tại.
+  const locationSource=[...datedOrders,...pendingExpress]
   const sortVi=(a:string,b:string)=>a.localeCompare(b,'vi')
-  const provinces=[...new Set(datedOrders.map(x=>x.province))].sort(sortVi)
-  const hubs=[...new Set(datedOrders.map(x=>x.destination_hub?.trim()||insightUnknownLabels.hub))].sort(sortVi)
+  const provinces=[...new Set(locationSource.map(x=>x.province))].sort(sortVi)
+  const hubs=[...new Set(locationSource.map(x=>x.destination_hub?.trim()||insightUnknownLabels.hub))].sort(sortVi)
   const selectedProvince=provinces.includes(params.province??'')?params.province??'':''
-  const scopedWards=[...new Set(datedOrders.filter(o=>!selectedProvince||o.province===selectedProvince).map(o=>o.ward))].sort(sortVi)
+  const scopedWards=[...new Set(locationSource.filter(o=>!selectedProvince||o.province===selectedProvince).map(o=>o.ward))].sort(sortVi)
   const selectedWard=scopedWards.includes(params.ward??'')?params.ward??'':''
   const selectedHub=hubs.includes(params.hub??'')?params.hub??'':''
   const selectedStage=stageKeys.includes(params.stage as InsightStage)?params.stage??'':params.stage==='express'?'express':''
-  const filtered=datedOrders.filter(o=>
+  const matchesGeography=(o:InsightOrder)=>
     (!selectedProvince||o.province===selectedProvince)
     &&(!selectedWard||o.ward===selectedWard)
     &&(!selectedHub||(o.destination_hub?.trim()||insightUnknownLabels.hub)===selectedHub)
-    &&(!selectedStage||(selectedStage==='express'?o.isExpress:o.stage===selectedStage))
-  )
+  const expressPendingScope=pendingExpress.filter(matchesGeography)
+  // Khi bấm riêng KPI Hỏa tốc, hiển thị chính danh sách tồn đọng toàn thời gian.
+  const source=selectedStage==='express'?expressPendingScope:datedOrders
+  const filtered=source.filter(o=>matchesGeography(o)
+    &&(!selectedStage||selectedStage==='express'||o.stage===selectedStage))
   const numbers=sumInsightCounts(filtered)
+  numbers.express=expressPendingScope.length
   const countryGroups=groupInsightOrders(filtered,o=>o.province)
   const wards=groupInsightOrders(filtered,o=>o.province+'|'+o.ward)
   const hubGroups=groupInsightOrders(filtered,o=>o.destination_hub?.trim()||insightUnknownLabels.hub)
@@ -173,11 +184,11 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
         <button className="button primary" type="submit">Áp dụng</button>
         {activeFilters>0&&<Link href={dashboardHref({province:null,ward:null,hub:null,stage:null})} className="pd-reset">Xóa lọc ({activeFilters})</Link>}
       </form>
-      <p className="pd-filter-note">Khoảng ngày áp dụng cho <strong>thời điểm đặt đơn</strong>. Trạng thái giao hàng, MVĐ và công việc phản ánh <strong>dữ liệu mới nhất</strong> của những đơn trong khoảng chọn.</p>
+      <p className="pd-filter-note">Khoảng ngày áp dụng cho <strong>thời điểm đặt đơn</strong> của các KPI thông thường. <strong>Riêng Hỏa tốc chưa xác nhận giao</strong> được đếm toàn thời gian, theo tình trạng hiện tại và bộ lọc khu vực/HUB.</p>
     </div>
 
-    {result.error&&<div className="error-box" role="alert">Không tải đủ đơn nhập: {result.error}. Không sử dụng tổng số khi nguồn dữ liệu lỗi.</div>}
-    {result.truncated&&<div className="error-box" role="alert">Danh sách vượt giới hạn 10.000 đơn. Đổi phạm vi ngày để có số liệu chính xác.</div>}
+    {(result.error||expressResult.error)&&<div className="error-box" role="alert">Không tải đủ đơn nhập: {result.error||expressResult.error}. Không sử dụng tổng số khi nguồn dữ liệu lỗi.</div>}
+    {(result.truncated||expressResult.truncated)&&<div className="error-box" role="alert">Danh sách vượt giới hạn 10.000 đơn. Thu hẹp phạm vi hoặc bổ sung truy vấn tổng hợp trước khi sử dụng kết quả.</div>}
     <section className="pd-metrics" aria-label="Số liệu nhập hàng trong phạm vi lọc">
       {metrics.map(metric=>{
         const value=numbers[metric.key as keyof typeof numbers]
@@ -193,8 +204,8 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
     </section>
 
     <div className="pd-context-line">
-      <span><b>{numbers.total}</b> đơn trong phạm vi · <b>{numbers.express}</b> Hỏa tốc</span>
-      <span><b>{numbers.ready}</b> chờ lấy hàng · <b>{numbers.pickup_failed}</b> lấy hàng lỗi · <b>{numbers.express_pending}</b> Hỏa tốc đang xử lý</span>
+      <span><b>{numbers.total}</b> đơn trong phạm vi · <b>{numbers.express}</b> Hỏa tốc chưa xác nhận giao (toàn thời gian)</span>
+      <span><b>{numbers.ready}</b> chờ lấy hàng · <b>{numbers.pickup_failed}</b> lấy hàng lỗi · <b>{numbers.express_pending}</b> Hỏa tốc đang xử lý trong phạm vi hiển thị</span>
       <span>{range.label}</span>
     </div>
 
@@ -275,7 +286,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
     </section>
 
     <footer className="pd-footer">
-      <span>Trạng thái hiện tại không phải số đơn phát sinh trạng thái trong khoảng ngày.</span>
+      <span>Trạng thái hiện tại của đơn theo khoảng đặt; Hỏa tốc chờ xác nhận giao là tồn đọng mọi thời điểm.</span>
       <div><Link href="/purchase/orders">Quản lý đơn nhập →</Link><Link href="/purchase/tracking">Theo dõi &amp; nhận hàng →</Link></div>
     </footer>
   </div>
