@@ -49,6 +49,10 @@ try{
       const filter=root?.querySelector('.tracking-date-row-v2 .purchase-date-filter')
       const control=root?.querySelector('.tracking-control-row-v2')
       const dates=[...(filter?.querySelectorAll('input[type="date"]')??[])]
+      const labels=[...(filter?.querySelectorAll('.purchase-date-inline-form label')??[])]
+      const dateForm=filter?.querySelector('.purchase-date-inline-form')
+      const apply=dateForm?.querySelector('button[type="submit"]')
+      const hubList=root?.querySelector('.tracking-content-workspace')
       if(!root||!status||!filter||!control||cards.length!==5)return null
       const rect=x=>x.getBoundingClientRect()
       const first=rect(cards[0])
@@ -65,16 +69,52 @@ try{
         overflow:document.documentElement.scrollWidth>innerWidth+5,
         controlWidth:Math.round(ctrl.width),statusWidth:Math.round(parent.width),
         filterIsWhite:getComputedStyle(filter).backgroundColor==='rgb(255, 255, 255)',innerBg,
+        consoleRemoved:!root.querySelector('.tracking-console-title'),
+        dateFieldsFit:dates.length===2&&labels.length===2&&!!dateForm&&!!apply&&
+          dates.every((d,i)=>rect(d).width>=(innerWidth<=480?90:123)&&
+            rect(d).left>=rect(labels[i]).left-2&&rect(d).right<=rect(labels[i]).right+2&&
+            rect(labels[i]).left>=rect(dateForm).left-2&&rect(labels[i]).right<=rect(dateForm).right+2)&&
+          rect(apply).left>=rect(dateForm).left-2&&rect(apply).right<=rect(dateForm).right+2,
+        dateGap:Math.round(rect(status).top-rect(filter).bottom),
+        kpiGap:Math.round(rect(control).top-rect(status).bottom),
+        hubGap:hubList?Math.round(rect(hubList).top-rect(control).bottom):null,
       }
     })
     const ok=Boolean(result&&result.oneRow&&result.height>=60&&result.height<=80
       &&result.radius>=5&&result.radius<=8&&result.noDoubleCard&&result.independent
-      &&result.dates===2&&result.mobileScroll&&!result.overflow&&result.filterIsWhite)
+      &&result.dates===2&&result.mobileScroll&&!result.overflow&&result.filterIsWhite
+      &&result.consoleRemoved&&result.dateFieldsFit&&result.dateGap>=-1&&result.dateGap<=10
+      &&result.kpiGap>=-1&&result.kpiGap<=10&&result.hubGap!==null&&result.hubGap>=-1&&result.hubGap<=14)
     check(view.width+'x'+view.height+' layout',ok,result??{reason:'UI missing'})
     if([320,390,768,1440].includes(view.width))
       await page.screenshot({path:dir+'/tracking-'+view.width+'.png',fullPage:false})
   }
   await page.setViewportSize(viewports[6])
+  // Confirm existing desktop resize grip can make Status substantially narrower.
+  const statusHead=page.locator('.tracking-hub-table-v2 th.tracking-col-status').first()
+  if(await statusHead.count()){
+    const grip=statusHead.locator('.mynh-column-resize-grip')
+    await grip.waitFor({state:'visible',timeout:12000})
+    const before=await statusHead.evaluate(x=>x.getBoundingClientRect().width)
+    const rect=await grip.boundingBox()
+    if(!rect)throw Error('Status column resize grip missing bounding box')
+    const centerX=rect.x+rect.width/2,centerY=rect.y+rect.height/2
+    await page.mouse.move(centerX,centerY)
+    await page.mouse.down()
+    await page.mouse.move(centerX-72,centerY,{steps:6})
+    await page.mouse.up()
+    await page.waitForTimeout(300)
+    const after=await statusHead.evaluate(x=>x.getBoundingClientRect().width)
+    const compactTag=await page.locator('.tracking-hub-table-v2 .tracking-data-col-status .status-pill').first().evaluate(el=>({
+      font:parseFloat(getComputedStyle(el).fontSize),
+      maxWidth:parseFloat(getComputedStyle(el).maxWidth),
+      title:el.getAttribute('title'),
+      fits:el.getBoundingClientRect().width<=el.closest('td').getBoundingClientRect().width,
+    }))
+    check('Status pill compact and desktop drag-resize works',
+      before>after+10&&after>=75&&after<=125&&compactTag.font<=8.2&&compactTag.fits&&Boolean(compactTag.title),
+      {before:Math.round(before),after:Math.round(after),compactTag})
+  }else check('Status column present',false,{reason:'No HUB table available'})
   // Intercept the write endpoint: an in-memory response tests the exact UI handler.
   const row=page.locator('.tracking-hub-table-v2 tr:has(.tracking-sync-icon-button)').first()
   if(await row.count()){
