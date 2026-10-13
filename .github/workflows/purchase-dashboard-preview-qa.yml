@@ -90,7 +90,7 @@ jobs:
           echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
       - name: Check Shopee pending-review recognition in create form (read-only)
         run: node scripts/shopee-pending-payment-ui-qa.mjs
-      - name: Check Accounts Auto Fit with User and Order stacked slidebars
+      - name: Check Accounts single slidebar User to Order to Tracking and Back
         run: node scripts/purchase-accounts-two-slidebars-qa.mjs
       - name: Check left sidebar Auto Fit and real mouse drag on Voucher and Số đơn
         run: node scripts/purchase-accounts-real-autofit-qa.mjs
