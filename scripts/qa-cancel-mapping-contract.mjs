@@ -18,6 +18,7 @@ assert.match(action,/tracking_number:'KHÔNG CÓ',carrier:null,current_tracking_
 assert.match(action,/tracking_enabled:false,next_track_at:null/)
 assert.match(action,/order_status:'CANCELLED'/)
 assert.match(action,/redirect\('\/settings\?section=tracking&tracking_tab=mapping&mapped=1'\)/)
+assert.match(action,/selectedCarrier==='SPX EXPRESS'\?'SPX':selectedCarrier/)
 
 const orderTable=fs.readFileSync('components/purchase-order-table.tsx','utf8')
 assert.match(orderTable,/!trackingNumberMeansCancelled\(trackingNumber\)&&<select name="carrier_config_id"/)
