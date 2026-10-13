@@ -1,58 +1,51 @@
--- CHỈ ĐỀ XUẤT — KHÔNG chạy tự động hoặc deploy từ CI.
--- Chỉ thực thi riêng sau khi duyệt phạm vi sửa mapping Production.
--- Nguyên nhân: shipping_carrier_configs chuẩn hóa "SPX Express" -> "SPX"
--- nhưng ba mapping cũ tồn tại dưới carrier "SPX EXPRESS".
--- KHÔNG thay F599 (đến HUB đích phụ thuộc vị trí thực tế).
-BEGIN;
+-- MYNH ERP V5 — BIEN BAN KIEM TRA SAU HIEU CHINH LICH SU SPX (13/10/2026)
+-- TRANG THAI: DA THUC HIEN TREN SUPABASE PRODUCTION, KHONG CHAY LAI BAN VA.
+-- File hien tai CHI DOC. Khong UPDATE, INSERT, DELETE, MIGRATE hoac DEPLOY.
+--
+-- Thay doi da duoc xac nhan:
+-- 1) Doi carrier cua 3 mapping hien co tu 'SPX EXPRESS' thanh 'SPX',
+--    GIU NGUYEN id/priority/raw_name/canonical_status, khong tao mapping trung.
+-- 2) Chuyen 38 tracking_events.normalized_status:
+--    F100 UNKNOWN -> PICKED_UP    (24 events)
+--    F596 UNKNOWN -> IN_TRANSIT   (13 events)
+--    F098 UNKNOWN -> IN_TRANSIT   (1 event)
+-- 3) KHONG thay shipments, orders, alerts, F599, GHN, Telegram, polling/cron.
+-- 4) 7 su kien UNKNOWN thuoc cac ma F099, F200, F206, F230, F239, F299,
+--    F300 nam ngoai pham vi; KHONG tu doan mapping.
+-- 5) E2E PR #75 can kiem thu/merge/deploy RIENG, khong duoc xem ban va DB
+--    la bang chung E2E ung dung tren Production.
 
-DO $guard$
-DECLARE missing integer;
-BEGIN
-  SELECT count(*) INTO missing
-  FROM (VALUES ('F100','PICKED_UP'),('F596','IN_TRANSIT'),('F098','IN_TRANSIT')) expected(raw_code,canonical_status)
-  LEFT JOIN public.carrier_status_mappings m
-    ON m.carrier='SPX EXPRESS' AND m.raw_code=expected.raw_code
-      AND m.canonical_status=expected.canonical_status AND m.is_active
-  WHERE m.raw_code IS NULL;
-  IF missing<>0 THEN
-    RAISE EXCEPTION 'Không đủ 3 mapping gốc SPX EXPRESS đã xác minh, dừng sửa: %',missing;
-  END IF;
+-- 1. Ba mapping goc, khong con ban sao 'SPX EXPRESS'.
+SELECT carrier,raw_code,raw_name,canonical_status,is_active,priority
+FROM public.carrier_status_mappings
+WHERE raw_code IN ('F100','F596','F098','F599')
+ORDER BY raw_code,carrier;
 
-  IF EXISTS (
-    SELECT 1
-    FROM (VALUES ('F100','PICKED_UP'),('F596','IN_TRANSIT'),('F098','IN_TRANSIT')) expected(raw_code,canonical_status)
-    JOIN public.carrier_status_mappings m ON m.carrier='SPX' AND m.raw_code=expected.raw_code
-    WHERE m.canonical_status<>expected.canonical_status
-  ) THEN
-    RAISE EXCEPTION 'SPX mapping đã thay đổi khác dữ liệu tiền kiểm, dừng để rà soát';
-  END IF;
-END $guard$;
-
-INSERT INTO public.carrier_status_mappings(carrier,raw_code,raw_name,canonical_status,is_active,updated_at)
-SELECT 'SPX',m.raw_code,m.raw_name,m.canonical_status,true,now()
-FROM public.carrier_status_mappings m
-WHERE m.carrier='SPX EXPRESS' AND m.raw_code IN ('F100','F596','F098')
-ON CONFLICT (carrier,raw_code) DO NOTHING;
-
--- Chỉ chuẩn hóa sự kiện lịch sử UNKNOWN có mã và nhà vận chuyển xác định chắc chắn.
--- Không động đến F599, không sinh cảnh báo lại, không thay trạng thái shipment mới nhất.
-UPDATE public.tracking_events e
-SET normalized_status=m.canonical_status::public.tracking_status
-FROM public.shipments s, public.carrier_status_mappings m
-WHERE e.shipment_id=s.id
-  AND upper(btrim(s.carrier))='SPX EXPRESS'
-  AND m.carrier='SPX'
-  AND m.is_active
-  AND m.raw_code IN ('F100','F596','F098')
-  AND upper(btrim(coalesce(e.raw_status_code,'')))=m.raw_code
-  AND e.normalized_status='UNKNOWN';
-
--- Đối chiếu số còn sai; cần kiểm tra thực tế trước khi thực thi.
-SELECT m.raw_code,m.canonical_status,e.normalized_status::text,count(*) AS rows
+-- 2. Dem su kien theo trang thai sau hieu chinh.
+SELECT upper(btrim(s.carrier)) carrier,e.raw_status_code,
+       e.normalized_status::text normalized_status,count(*)::int events
 FROM public.tracking_events e
 JOIN public.shipments s ON s.id=e.shipment_id
-JOIN public.carrier_status_mappings m ON m.raw_code=e.raw_status_code AND m.carrier='SPX' AND m.is_active
 WHERE upper(btrim(s.carrier))='SPX EXPRESS'
-  AND e.raw_status_code IN ('F100','F596','F098')
-GROUP BY 1,2,3 ORDER BY 1,3;
-COMMIT;
+  AND upper(btrim(e.raw_status_code)) IN ('F100','F596','F098')
+GROUP BY 1,2,3 ORDER BY e.raw_status_code,normalized_status;
+
+-- 3. Confirm resolver applies canonical SPX mapping for future events.
+SELECT x.raw_code,r.normalized_status::text as normalized_status,r.mapping_source
+FROM (VALUES ('F100','Pickup From Domestic Seller'),
+             ('F596','Packed in Last Mile Hub'),
+             ('F098','Dropoff Done By Domestic Seller')) AS x(raw_code,raw_name)
+CROSS JOIN LATERAL
+  public.resolve_tracking_status('SPX Express',x.raw_code,x.raw_name,'','') r
+ORDER BY x.raw_code;
+
+-- 4. Other UNKNOWN events remain pending separate business confirmation.
+SELECT upper(btrim(s.carrier)) carrier,coalesce(e.raw_status_code,'(null)') raw_code,
+       count(*)::int unknown_events
+FROM public.tracking_events e
+JOIN public.shipments s ON s.id=e.shipment_id
+WHERE e.normalized_status='UNKNOWN'
+GROUP BY 1,2
+ORDER BY unknown_events DESC,raw_code;
+
+-- KHONG tu dong chay lai dau ghi du lieu voi file nay.
