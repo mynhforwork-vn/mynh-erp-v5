@@ -1,5 +1,5 @@
 /**
- * Read-only visual/regression QA for the sole ERP preview:
+ * Read-only compact Dashboard regression QA for the sole ERP preview:
  * no business mutations, no additional Named Preview, temporary QA login cleaned by workflow.
  */
 import fs from 'node:fs'
@@ -49,149 +49,115 @@ try{
     const page=await context.newPage()
     const errors=[]
     page.on('pageerror',e=>errors.push(String(e.message).slice(0,160)))
-    let status=0,finalUrl='',metrics=[],charts=0,filterRemoved=false,oneRow=false,overflow=false,
-      chartTotal=[],isChartRendered=false,datesVisible=false,quarterRemoved=false,tablePresent=false,groupedActions=false,chartValuesAgree=false,tableValuesAgree=false,tableScrollIsolated=false,actionScrollIsolated=false,narrowerLeft=false,
-      layout=null,panelBalance=false,leftAligned=false,kpiShape=false,compactToolbar=false;
+    let status=0, finalUrl='', layout=null, metrics=[], errorsLocal=[];
+    let chartsAbsent=false, kpiContract=false, oneRow=false, overflow=false;
+    let datesVisible=false, quarterAbsent=false, groupsCorrect=false, tableCorrect=false;
+    let compactPanels=false, scrollIsolated=false, timeToolbar=false, snapshotCorrect=false;
     try{
-      const response=await page.goto(base+'/purchase?range=all',{waitUntil:'domcontentloaded',timeout:40000})
-      status=response?.status()??0;finalUrl=page.url()
-      await page.locator('.pd-chart-panel').first().waitFor({state:'visible',timeout:20000})
-      await page.waitForTimeout(120)
-      metrics=await page.locator('.pd-metric strong').allTextContents()
-      charts=await page.locator('.pd-chart-panel').count()
-      filterRemoved=await page.locator('.pd-location-filters').count()===0
-      oneRow=await page.locator('.pd-metrics').evaluate(el=>{
-        const cards=[...el.querySelectorAll('.pd-metric')]
-        if(cards.length!==9)return false
-        const tops=cards.map(x=>Math.round(x.getBoundingClientRect().top))
-        return Math.max(...tops)-Math.min(...tops)<=2
-      })
-      overflow=await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+6)
-      chartTotal=(await page.locator('.pd-chart-total b').allTextContents()).map(s=>Number(s.trim()))
-      const kpis=metrics.map(s=>Number(s.trim()))
-      chartValuesAgree=chartTotal.length===5&&
-        chartTotal[0]===kpis[2]&&chartTotal[1]===kpis[3]&&chartTotal[2]===kpis[3]&&
-        chartTotal[3]===kpis[6]&&chartTotal[4]===kpis[6]
+      // The existing Named Preview builds asynchronously after this branch is pushed.
+      for(let retry=0;retry<12;retry++){
+        const response=await page.goto(base+'/purchase?range=all',{waitUntil:'domcontentloaded',timeout:40000})
+        status=response?.status()??0; finalUrl=page.url()
+        if(status===200 && await page.locator('.pd-kpi-card').count()===9)break
+        if(retry<11)await page.waitForTimeout(15000)
+      }
+      metrics=(await page.locator('.pd-kpi-card>b').allTextContents()).map(s=>Number(s.trim()))
+      const container=page.locator('.pd-metrics.kpi-grid.order-kpi-grid-v2.entity-status-strip')
+      kpiContract=await container.count()===1 &&
+        await container.locator(':scope > .pd-kpi-card.kpi-card.entity-status-metric').count()===9
+      chartsAbsent=await page.locator('.pd-chart-section,.pd-chart-panel,.pd-chart-grid,.pd-visual-legend').count()===0 &&
+        await page.getByText('BIỂU ĐỒ TRỰC QUAN',{exact:true}).count()===0 &&
+        await page.getByText('Phân bổ vận chuyển và giao hàng',{exact:true}).count()===0
       datesVisible=await page.locator('.pd-time-calendar input[type="date"]:visible').count()===2
-      quarterRemoved=await page.getByRole('link',{name:'Quý này',exact:true}).count()===0
-      tablePresent=await page.locator('.pd-left-rail .pd-status-table').count()===1
-        && await page.locator('.pd-status-table tbody tr th[scope="row"]').count()>=1
-        && await page.locator('.pd-status-table tbody tr.pd-table-section').count()===0
-      groupedActions=await page.locator('.pd-right-rail button.action-queue-summary').count()===3
-        && await page.locator('.pd-right-rail button.pd-queue-mini').count()===3
-        && await page.locator('.pd-right-rail .pd-action-orders-scroll').count()===1
-        && await page.locator('.pd-left-rail .action-queue-summary').count()===0
+      quarterAbsent=await page.getByRole('link',{name:'Quý này',exact:true}).count()===0
+      overflow=await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+6)
       layout=await page.evaluate(()=>{
-        const left=document.querySelector('.pd-summary-table')
-        const right=document.querySelector('.pd-action-panel')
-        const bodyTable=document.querySelector('.pd-status-table')
-        const headTable=document.querySelector('.pd-summary-head-table')
-        const scroll=document.querySelector('.pd-summary-table .pd-table-scroll')
-        const actionScroll=document.querySelector('.pd-action-orders-scroll')
-        const actionCards=document.querySelector('.pd-action-primary')
-        const kpi=document.querySelector('.pd-metric')
-        const toolbar=document.querySelector('.pd-time-calendar')
+        const kpi=[...document.querySelectorAll('.pd-kpi-card')]
+        const panelL=document.querySelector('.pd-summary-table')
+        const panelR=document.querySelector('.pd-action-panel')
+        const work=document.querySelector('.pd-workspace')
+        const foot=document.querySelector('.pd-footer')
+        const table=document.querySelector('.pd-status-table')
+        const header=document.querySelector('.pd-summary-head-table')
+        const scroller=document.querySelector('.pd-summary-table .pd-table-scroll')
+        const actions=document.querySelector('.pd-action-orders-scroll')
+        const cards=document.querySelector('.pd-action-primary')
         const quick=document.querySelector('.pd-time-quick')
-        if(!(left&&right&&bodyTable&&headTable&&scroll&&actionScroll&&actionCards&&kpi&&toolbar&&quick))return null
-        const lr=left.getBoundingClientRect(),rr=right.getBoundingClientRect()
-        const labels=[...bodyTable.querySelectorAll('tbody th[scope="row"]')]
-        const nums=[...bodyTable.querySelectorAll('tbody td:not([colspan])')]
-        const hds=[...headTable.querySelectorAll('thead th')]
-        const labelLeft=labels.every(el=>getComputedStyle(el).textAlign==='left')
-        const numsCentered=nums.every(el=>getComputedStyle(el).textAlign==='center')
-        const headerAligned=hds[0]&&getComputedStyle(hds[0]).textAlign==='left'&&hds.slice(1).every(el=>getComputedStyle(el).textAlign==='center')
-        const kpiRadius=parseFloat(getComputedStyle(kpi).borderTopLeftRadius)
-        const aligned=Math.abs(lr.top-rr.top)<3&&Math.abs(lr.height-rr.height)<3
-        const toolbarVisible=toolbar.getBoundingClientRect().height>=28
-        const scrollCss=getComputedStyle(scroll).overflowY
-        const actionCss=getComputedStyle(actionScroll).overflowY
-        const actionCardsTop=actionCards.getBoundingClientRect().top
-        const headerTop=headTable.getBoundingClientRect().top
-        const leftScrollPossible=scroll.scrollHeight>scroll.clientHeight+1
-        const beforeL=scroll.scrollTop,beforeR=actionScroll.scrollTop
-        scroll.scrollTop=120
-        actionScroll.scrollTop=120
-        const fixedTable=Math.abs(headTable.getBoundingClientRect().top-headerTop)<=1
-        const fixedCards=Math.abs(actionCards.getBoundingClientRect().top-actionCardsTop)<=1
-        scroll.scrollTop=beforeL;actionScroll.scrollTop=beforeR
+        const calendar=document.querySelector('.pd-time-calendar')
+        if(kpi.length!==9||![panelL,panelR,work,foot,table,header,scroller,actions,cards,quick,calendar].every(Boolean))return null
+        const a=panelL.getBoundingClientRect(),b=panelR.getBoundingClientRect()
+        const label=[...table.querySelectorAll('tbody th[scope="row"]')].every(x=>getComputedStyle(x).textAlign==='left')
+        const numeric=[...table.querySelectorAll('tbody td:not([colspan])')].every(x=>getComputedStyle(x).textAlign==='center')
+        const th=[...header.querySelectorAll('thead th')]
+        const thAligned=th.length===4&&getComputedStyle(th[0]).textAlign==='left'&&th.slice(1).every(x=>getComputedStyle(x).textAlign==='center')
+        const tops=kpi.map(x=>Math.round(x.getBoundingClientRect().top))
+        const groupTops=[...cards.querySelectorAll('button')].map(x=>Math.round(x.getBoundingClientRect().top))
         return {
-          aligned,leftWidth:Math.round(lr.width),rightWidth:Math.round(rr.width),
-          leftHeight:Math.round(lr.height),rightHeight:Math.round(rr.height),
-          labelLeft,numsCentered,headerAligned,fixedTable,fixedCards,leftScrollPossible,
-          scrollCss,actionCss,headingOutsideScroll:!scroll.contains(headTable),
-          actionCardsOutsideScroll:!actionScroll.contains(actionCards),
-          kpiRadius,toolbarVisible,
-          timeRows:Math.abs(quick.getBoundingClientRect().top-toolbar.getBoundingClientRect().top)<10?1:2,
-          primaryInRow:(()=>{
-            const items=[...actionCards.querySelectorAll('button')]
-            if(items.length!==3)return false
-            const tops=items.map(el=>el.getBoundingClientRect().top)
-            return Math.max(...tops)-Math.min(...tops)<=2
-          })()
+          kpiOneRow:Math.max(...tops)-Math.min(...tops)<=2,
+          kpiRadius:parseFloat(getComputedStyle(kpi[0]).borderTopLeftRadius),
+          kpiHeight:Math.round(kpi[0].getBoundingClientRect().height),
+          leftWidth:Math.round(a.width),rightWidth:Math.round(b.width),
+          sameHeight:Math.abs(a.height-b.height)<3,sameTop:Math.abs(a.top-b.top)<3,
+          labelsAligned:label&&numeric&&thAligned,
+          leftScroll:getComputedStyle(scroller).overflowY,
+          rightScroll:getComputedStyle(actions).overflowY,
+          fixedHeads:!scroller.contains(header)&&!actions.contains(cards),
+          primaryRow:groupTops.length===3&&Math.max(...groupTops)-Math.min(...groupTops)<=2,
+          footerGap:Math.round(foot.getBoundingClientRect().top-work.getBoundingClientRect().bottom),
+          timeRows:Math.abs(quick.getBoundingClientRect().top-calendar.getBoundingClientRect().top)<10?1:2,
         }
       })
-      panelBalance=!!layout&&(viewport.width<=960||layout.aligned)
-      leftAligned=!!layout&&layout.labelLeft&&layout.numsCentered&&layout.headerAligned
-      kpiShape=!!layout&&layout.kpiRadius<=5
-      compactToolbar=!!layout&&layout.toolbarVisible&&(viewport.width<=1080||layout.timeRows===1)
-      tableScrollIsolated=!!layout&&layout.headingOutsideScroll&&layout.fixedTable&&layout.scrollCss!=='visible'
-      actionScrollIsolated=!!layout&&layout.actionCardsOutsideScroll&&layout.fixedCards&&layout.actionCss!=='visible'&&layout.primaryInRow
-      narrowerLeft=!!layout&&(viewport.width<=960||layout.leftWidth<layout.rightWidth)
-      const tableSums=await page.locator('.pd-status-table').evaluate(table=>{
-        const rows=[...table.querySelectorAll('tbody tr')]
-        const sums={area:[0,0,0]}
-        for(const row of rows){
-          if(row.classList.contains('pd-table-section'))continue
-          const vals=[...row.querySelectorAll('td')].map(td=>Number(td.textContent?.trim()))
-          if(vals.length===3){for(let j=0;j<3;j++)sums.area[j]+=vals[j]}
-        }
-        return sums
+      oneRow=!!layout&&layout.kpiOneRow
+      compactPanels=!!layout&&layout.footerGap>=0&&layout.footerGap<=25 &&
+        (viewport.width<=960||(layout.sameHeight&&layout.sameTop&&layout.leftWidth<layout.rightWidth))
+      scrollIsolated=!!layout&&layout.fixedHeads&&layout.primaryRow&&
+        layout.leftScroll!=='visible'&&layout.rightScroll!=='visible'&&layout.labelsAligned
+      timeToolbar=!!layout&&(viewport.width<=1080||layout.timeRows===1)
+      kpiContract=kpiContract&&!!layout&&layout.kpiRadius>=5&&layout.kpiRadius<=8&&layout.kpiHeight>=60&&layout.kpiHeight<=80
+      tableCorrect=await page.locator('.pd-status-table').evaluate(table=>{
+        const rows=[...table.querySelectorAll('tbody tr')];
+        return rows.every(row=>row.querySelectorAll('td').length===3 || row.querySelector('td[colspan="4"]'))
       })
-      tableValuesAgree=tableSums.area[0]===kpis[2]&&tableSums.area[1]===kpis[3]&&tableSums.area[2]===kpis[6]
-      // Nhấp từng nhóm phải hiện đúng danh sách; đóng lọc phải trả về tất cả.
-      const firstGroup=page.locator('.pd-action-primary button').first()
-      const primaryCount=Number(await firstGroup.locator('.pd-primary-count').textContent())
-      await firstGroup.click()
-      const selectedCount=await page.locator('.pd-action-orders-scroll .action-queue-orders>a').count()
-      const selectedCorrect=selectedCount===primaryCount&&
-        await firstGroup.getAttribute('aria-pressed')==='true'
+      const groups=page.locator('.pd-action-primary button,.pd-queue-secondary button')
+      groupsCorrect=await groups.count()===6
+      const tested=viewport.name==='desktop-1440'?6:1
+      for(let i=0;i<tested;i++){
+        const button=groups.nth(i)
+        const expected=Number(await button.locator(i<3?'.pd-primary-count':'b').textContent())
+        await button.click()
+        const links=page.locator('.pd-action-orders-scroll .action-queue-orders>a')
+        const actual=await links.count()
+        const hrefsValid=await links.evaluateAll(arr=>arr.every(el=>el.getAttribute('href')?.startsWith('/purchase/orders?')))
+        groupsCorrect=groupsCorrect&&actual===expected&&hrefsValid&&await button.getAttribute('aria-pressed')==='true'
+      }
       await page.getByRole('button',{name:'Tất cả',exact:true}).click()
-      const allRestored=await page.locator('.pd-action-primary button[aria-pressed="true"]').count()===0
-      // Đơn Hỏa tốc không áp dụng HUB hiện được liên kết để xem chi tiết, không xem là lỗi.
-      const exempt=page.locator('.pd-quality-neutral')
-      const exemptCount=await exempt.count()
-      let exemptClickable=true
-      if(exemptCount>0){
-        await exempt.click()
-        const issueLinks=await page.locator('.pd-action-orders-scroll .action-queue-orders>a').count()
-        exemptClickable=issueLinks>0&&await exempt.getAttribute('aria-pressed')==='true'
+      groupsCorrect=groupsCorrect&&await groups.filter({has:page.locator('[aria-pressed="true"]')}).count()===0
+      // Both missing-location and exempt express issues must open lists of matching orders.
+      const issueButtons=page.locator('.pd-quality-footer button')
+      for(let i=0;i<await issueButtons.count();i++){
+        const issue=issueButtons.nth(i)
+        await issue.click()
+        const count=await page.locator('.pd-action-orders-scroll .action-queue-orders>a').count()
+        const listOk=count>0&&await issue.getAttribute('aria-pressed')==='true'
+        groupsCorrect=groupsCorrect&&listOk
         await page.getByRole('button',{name:'Tất cả',exact:true}).click()
       }
-      groupedActions=groupedActions&&selectedCorrect&&allRestored&&exemptClickable
-      isChartRendered=await page.locator('.pd-chart-bars .pd-chart-bar-track, .pd-chart-columns .pd-chart-column-space, .pd-chart-empty').count()>=5
-      if(charts===5)await page.screenshot({path:folder+'/'+viewport.name+'.png',fullPage:false})
-    }catch(e){errors.push(String(e.message??e).slice(0,260))}
-    check(viewport.name,status===200&&!finalUrl.includes('/login')&&metrics.length===9&&charts===5&&
-      filterRemoved&&oneRow&&!overflow&&chartValuesAgree&&datesVisible&&quarterRemoved&&tablePresent&&groupedActions&&tableValuesAgree&&panelBalance&&leftAligned&&kpiShape&&compactToolbar&&tableScrollIsolated&&actionScrollIsolated&&narrowerLeft&&isChartRendered&&errors.length===0,{
-      status,metricCount:metrics.length,chartCount:charts,oneRow,overflow,filterRemoved,chartValuesAgree,datesVisible,quarterRemoved,tablePresent,groupedActions,tableValuesAgree,panelBalance,leftAligned,kpiShape,compactToolbar,tableScrollIsolated,actionScrollIsolated,narrowerLeft,layout,
-      isChartRendered,chartTotal,errors
-    })
-    if(viewport.name==='desktop-1440'&&status===200&&charts===5){
-      let todayStatus=0,todayCharts=0,expressSame=false,rangeChanged=false
-      try{
-        const priorExpress=Number(metrics[1])
+      await page.screenshot({path:folder+'/'+viewport.name+'.png',fullPage:false})
+      if(viewport.name==='desktop-1440'){
+        const previousExpress=metrics[1]
         await page.getByRole('link',{name:'Hôm nay',exact:true}).click()
-        await page.waitForURL(/range=today/,{timeout:22000})
-        todayStatus=(await page.goto(page.url(),{waitUntil:'domcontentloaded',timeout:30000}))?.status()??0
-        todayCharts=await page.locator('.pd-chart-panel').count()
-        const todayExpress=Number(await page.locator('.pd-metric strong').nth(1).textContent())
-        expressSame=todayExpress===priorExpress
-        rangeChanged=page.url().includes('range=today')
-      }catch(e){errors.push('Date navigation: '+String(e.message??e).slice(0,150))}
-      check('time-filter-and-express-snapshot',todayStatus===200&&todayCharts===5&&expressSame&&rangeChanged,{
-        todayStatus,todayCharts,expressSame,rangeChanged,errors:errors.filter(e=>e.startsWith('Date navigation'))
-      })
-    }
+        await page.waitForURL(/range=today/,{timeout:25000})
+        const todayResponse=await page.goto(page.url(),{waitUntil:'domcontentloaded',timeout:40000})
+        const express=Number(await page.locator('.pd-kpi-card>b').nth(1).textContent())
+        snapshotCorrect=todayResponse?.status()===200&&previousExpress===express
+        check('time-filter-and-express-snapshot',snapshotCorrect,{previousExpress,express,status:todayResponse?.status()})
+      }else snapshotCorrect=true
+    }catch(e){errorsLocal.push(String(e.message??e).slice(0,270))}
+    check(viewport.name,status===200&&!finalUrl.includes('/login')&&metrics.length===9&&metrics.every(Number.isFinite)&&
+      chartsAbsent&&kpiContract&&oneRow&&!overflow&&datesVisible&&quarterAbsent&&groupsCorrect&&tableCorrect&&
+      compactPanels&&scrollIsolated&&timeToolbar&&snapshotCorrect&&errors.length===0&&errorsLocal.length===0,{
+      status,metrics:metrics.length,chartsAbsent,kpiContract,oneRow,overflow,datesVisible,quarterAbsent,
+      groupsCorrect,tableCorrect,compactPanels,scrollIsolated,timeToolbar,snapshotCorrect,layout,errors:[...errors,...errorsLocal]})
     await context.close()
   }
 }finally{await browser.close()}

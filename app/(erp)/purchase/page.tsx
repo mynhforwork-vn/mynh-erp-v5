@@ -1,11 +1,9 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
-import { formatDateTime } from '@/lib/format'
-import { PurchaseInsightChart } from '@/components/purchase-insight-chart'
 import { PurchaseActionQueue,type PurchaseActionItem,type PurchaseActionGroup,type PurchaseDataIssue } from '@/components/purchase-action-queue'
 import {
   toInsightOrder,groupInsightOrders,sumInsightCounts,issueLabel,issuePriority,
-  isAwaitingReceipt,isExpressAwaitingDeliveryConfirmation,insightUnknownLabels,type InsightOrder,
+  isExpressAwaitingDeliveryConfirmation,insightUnknownLabels,type InsightOrder,
   type PurchaseInsightOrder,
 } from '@/lib/purchase-dashboard-insights'
 
@@ -101,13 +99,11 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   // Chỉ KPI Hỏa tốc là tồn đọng mọi thời gian, không phụ thuộc ngày đặt đơn.
   numbers.express=pendingExpress.length
   const areaGroups=groupInsightOrders(filtered,o=>o.ward+' · '+o.province)
-  const hubGroups=groupInsightOrders(filtered,o=>o.destination_hub?.trim()||insightUnknownLabels.hub)
   // Công việc Hỏa tốc hiện tại không bị bỏ sót vì khác khoảng ngày đặt đơn.
   const datedIds=new Set(filtered.map(o=>o.id))
   const workOrders=[...filtered,...pendingExpress.filter(o=>!datedIds.has(o.id))]
   const actions=workOrders.filter(o=>issuePriority(o)<99)
     .sort((a,b)=>issuePriority(a)-issuePriority(b)||String(a.order_date??'').localeCompare(String(b.order_date??'')))
-  const waitingOrders=filtered.filter(isAwaitingReceipt)
   const activeIssues=actions.length
   const missingGeoOrders=filtered.filter(o=>o.stage!=='cancelled'&&(o.province===insightUnknownLabels.province||o.ward===insightUnknownLabels.ward))
   // Hỏa tốc không áp dụng HUB đích: không phát cảnh báo sai thiếu HUB.
@@ -187,13 +183,12 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
     {(result.error||expressResult.error)&&<div className="error-box" role="alert">Không tải đủ đơn nhập: {result.error||expressResult.error}. Không sử dụng tổng số khi nguồn dữ liệu lỗi.</div>}
     {(result.truncated||expressResult.truncated)&&<div className="error-box" role="alert">Danh sách vượt giới hạn 10.000 đơn. Thu hẹp phạm vi hoặc bổ sung truy vấn tổng hợp trước khi sử dụng kết quả.</div>}
     <section className="pd-kpi-viewport" aria-label="Tổng quan đơn nhập">
-      <div className="pd-metrics">
+      <div className="pd-metrics kpi-grid order-kpi-grid-v2 entity-status-strip">
         {metrics.map(metric=><div key={metric.key}
-          className={'pd-metric pd-tone-'+metric.tone}>
-          <span className="pd-metric-label">{metric.label}</span>
-          <strong>{numbers[metric.key as keyof typeof numbers]}</strong>
+          className={'pd-kpi-card kpi-card entity-status-metric '+(metric.tone==='neutral'?'':metric.tone==='indigo'?'info':metric.tone)}>
+          <span>{metric.label}</span>
+          <b>{numbers[metric.key as keyof typeof numbers]}</b>
           <small>{metric.description}</small>
-          <i className="pd-metric-accent" aria-hidden="true"/>
         </div>)}
       </div>
     </section>
@@ -236,30 +231,6 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
           missingGeoCount={missingGeo} missingHubCount={missingHubs}/>
       </div>
     </div>
-      <section className="pd-chart-section" aria-labelledby="pd-chart-heading">
-        <header className="pd-chart-section-head">
-          <div><span className="module-eyebrow">BIỂU ĐỒ TRỰC QUAN</span><h2 id="pd-chart-heading">Phân bổ vận chuyển và giao hàng</h2>
-            <p>Đối chiếu theo khu vực và HUB đích</p></div>
-          <div className="pd-visual-legend"><span className="pd-legend-missing">Chờ MVĐ</span><span className="pd-legend-shipping">Vận chuyển</span><span className="pd-legend-delivered">Giao thành công</span></div>
-        </header>
-        <div className="pd-chart-grid">
-          <PurchaseInsightChart title="Chưa có mã vận đơn · Theo khu vực"
-            description="Phường/Xã — Tỉnh/Thành, loại đơn hủy/Hỏa tốc"
-            groups={areaGroups} metric="missing" geography="area"/>
-          <PurchaseInsightChart title="Đang vận chuyển · Theo khu vực"
-            description="Đã lấy hàng, đang vận chuyển/trung chuyển"
-            groups={areaGroups} metric="shipping" geography="area"/>
-          <PurchaseInsightChart title="Đang vận chuyển · Theo HUB đích"
-            description="HUB đích trên đơn, không dùng HUB trung chuyển"
-            groups={hubGroups} metric="shipping" variant="column" geography="hub"/>
-          <PurchaseInsightChart title="Giao thành công · Theo khu vực"
-            description="Đã giao, gồm các đơn chờ xác nhận nhận"
-            groups={areaGroups} metric="delivered" geography="area"/>
-          <PurchaseInsightChart title="Giao thành công · Theo HUB đích"
-            description="Đơn đã giao theo HUB đích"
-            groups={hubGroups} metric="delivered" variant="column" geography="hub"/>
-        </div>
-    </section>
     <footer className="pd-footer">
       <span>Đơn thuộc khoảng ngày đặt, tính theo trạng thái mới nhất. Riêng Hỏa tốc là tồn đọng toàn thời gian.</span>
       <div><Link href="/purchase/orders">Quản lý đơn nhập →</Link><Link href="/purchase/tracking">Theo dõi &amp; nhận hàng →</Link></div>
