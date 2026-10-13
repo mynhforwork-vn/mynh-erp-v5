@@ -17,6 +17,10 @@ assert.match(replace,/trackingNumberMeansCancelled\(trackingNumber\)[\s\S]*?canc
 assert.match(action,/tracking_number:'KHÔNG CÓ',carrier:null,current_tracking_status:'CANCELLED'/)
 assert.match(action,/tracking_enabled:false,next_track_at:null/)
 assert.match(action,/order_status:'CANCELLED'/)
+assert.match(action,/warehouse_status\?\?'NOT_READY'/)
+assert.match(action,/receive_status\?\?'NOT_READY'/)
+assert.match(action,/is_active:false,replaced_at:new Date\(\)\.toISOString\(\)/)
+assert.match(action,/async function restoreOldShipment\(\)/)
 assert.match(action,/redirect\('\/settings\?section=tracking&tracking_tab=mapping&mapped=1'\)/)
 assert.match(action,/selectedCarrier==='SPX EXPRESS'\?'SPX':selectedCarrier/)
 
