@@ -970,3 +970,12 @@ table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-accoun
     vertical-align:middle!important;
   }
 }
+
+/* Nhận diện đơn Shopee đã hủy: giữ xác nhận gọn trong biểu mẫu cũ. */
+.brand-shell-v1 .order-editor .shopee-cancel-review{
+  display:flex;align-items:flex-start;gap:8px;margin-top:9px;
+  font-size:12px;line-height:1.45;color:#41566d;cursor:pointer;
+}
+.brand-shell-v1 .order-editor .shopee-cancel-review input[type="checkbox"]{
+  width:15px;height:15px;min-width:15px;flex:none;margin:1px 0 0;accent-color:#2563a0;
+}
