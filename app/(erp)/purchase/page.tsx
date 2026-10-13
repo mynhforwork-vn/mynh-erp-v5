@@ -1,10 +1,10 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatDateTime, formatMoney } from '@/lib/format'
-import { PurchaseDateFilter } from '@/components/purchase-date-filter'
+import { PurchaseInsightChart } from '@/components/purchase-insight-chart'
 import {
   toInsightOrder,groupInsightOrders,sumInsightCounts,issueLabel,issuePriority,
-  isAwaitingReceipt,isExpressAwaitingDeliveryConfirmation,insightUnknownLabels,type InsightOrder,type InsightStage,
+  isAwaitingReceipt,isExpressAwaitingDeliveryConfirmation,insightUnknownLabels,type InsightOrder,
   type PurchaseInsightOrder,
 } from '@/lib/purchase-dashboard-insights'
 
@@ -48,17 +48,22 @@ function resolveRange(sp:SP){
   }
   return {key,from,to,label,start:new Date(`${from}T00:00:00+07:00`).toISOString(),end:new Date(`${to}T23:59:59.999+07:00`).toISOString()}
 }
-const stageKeys:InsightStage[]=['missing','shipping','destination','out','delivered','cancelled','failed','pickup_failed','ready','express_pending','other']
 const metrics:{key:string,label:string,description:string,tone:string}[]=[
-  {key:'total',label:'Tổng đơn nhập',description:'Đặt trong khoảng lọc',tone:'neutral'},
-  {key:'express',label:'Hỏa tốc chờ xác nhận giao',description:'Tồn đọng hiện tại · không theo ngày',tone:'express'},
-  {key:'missing',label:'Chờ mã vận đơn',description:'Chưa có MVĐ hiện tại',tone:'warning'},
-  {key:'shipping',label:'Đang vận chuyển',description:'Đã lấy / đang trung chuyển',tone:'info'},
-  {key:'destination',label:'Đến HUB đích',description:'Trạng thái mới nhất',tone:'indigo'},
-  {key:'out',label:'Đang giao hàng',description:'Trạng thái mới nhất',tone:'info'},
-  {key:'delivered',label:'Giao thành công',description:'Gồm đơn chờ xác nhận nhận',tone:'success'},
-  {key:'cancelled',label:'Đơn bị hủy',description:'Đơn hoặc vận đơn đã hủy',tone:'danger'},
-  {key:'failed',label:'Giao thất bại',description:'Cần kiểm tra và xử lý',tone:'danger'},
+  {key:'total',label:'Tổng đơn',description:'Theo ngày đặt',tone:'neutral'},
+  {key:'express',label:'Hỏa tốc chờ giao',description:'Tồn hiện tại',tone:'express'},
+  {key:'missing',label:'Chờ MVĐ',description:'Chưa có mã',tone:'warning'},
+  {key:'shipping',label:'Vận chuyển',description:'Đang trung chuyển',tone:'info'},
+  {key:'destination',label:'Đến HUB đích',description:'Trạng thái mới',tone:'indigo'},
+  {key:'out',label:'Đang giao',description:'Trạng thái mới',tone:'info'},
+  {key:'delivered',label:'Giao thành công',description:'Đã xác nhận giao',tone:'success'},
+  {key:'cancelled',label:'Đã hủy',description:'Đơn đã hủy',tone:'danger'},
+  {key:'failed',label:'Giao lỗi',description:'Cần xử lý',tone:'danger'},
+]
+const quickRanges:{key:RangeKey,label:string}[]=[
+  {key:'all',label:'Tất cả'},{key:'today',label:'Hôm nay'},{key:'week',label:'Tuần này'},
+  {key:'7d',label:'7 ngày'},{key:'30d',label:'30 ngày'},
+  {key:'month',label:'Tháng này'},{key:'quarter',label:'Quý này'},
+  {key:'year',label:'Năm nay'},
 ]
 
 /** Phân trang để tránh trần 1.000 dòng của PostgREST làm sai tổng số. */
@@ -91,57 +96,29 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
   ])
   const datedOrders=result.rows.map(toInsightOrder)
   const pendingExpress=expressResult.rows.map(toInsightOrder).filter(isExpressAwaitingDeliveryConfirmation)
-  // Phạm vi khác theo ngày đặt; chỉ KPI Hỏa tốc là công việc tồn hiện tại.
-  const locationSource=[...datedOrders,...pendingExpress]
-  const sortVi=(a:string,b:string)=>a.localeCompare(b,'vi')
-  const provinces=[...new Set(locationSource.map(x=>x.province))].sort(sortVi)
-  const hubs=[...new Set(locationSource.map(x=>x.destination_hub?.trim()||insightUnknownLabels.hub))].sort(sortVi)
-  const selectedProvince=provinces.includes(params.province??'')?params.province??'':''
-  const scopedWards=[...new Set(locationSource.filter(o=>!selectedProvince||o.province===selectedProvince).map(o=>o.ward))].sort(sortVi)
-  const selectedWard=scopedWards.includes(params.ward??'')?params.ward??'':''
-  const selectedHub=hubs.includes(params.hub??'')?params.hub??'':''
-  const selectedStage=stageKeys.includes(params.stage as InsightStage)?params.stage??'':params.stage==='express'?'express':''
-  const matchesGeography=(o:InsightOrder)=>
-    (!selectedProvince||o.province===selectedProvince)
-    &&(!selectedWard||o.ward===selectedWard)
-    &&(!selectedHub||(o.destination_hub?.trim()||insightUnknownLabels.hub)===selectedHub)
-  const expressPendingScope=pendingExpress.filter(matchesGeography)
-  // Khi bấm riêng KPI Hỏa tốc, hiển thị chính danh sách tồn đọng toàn thời gian.
-  const source=selectedStage==='express'?expressPendingScope:datedOrders
-  const filtered=source.filter(o=>matchesGeography(o)
-    &&(!selectedStage||selectedStage==='express'||o.stage===selectedStage))
+  const filtered=datedOrders
   const numbers=sumInsightCounts(filtered)
-  numbers.express=expressPendingScope.length
-  const countryGroups=groupInsightOrders(filtered,o=>o.province)
-  const wards=groupInsightOrders(filtered,o=>o.province+'|'+o.ward)
+  // Chỉ KPI Hỏa tốc là tồn đọng mọi thời gian, không phụ thuộc ngày đặt đơn.
+  numbers.express=pendingExpress.length
+  const areaGroups=groupInsightOrders(filtered,o=>o.ward+' · '+o.province)
   const hubGroups=groupInsightOrders(filtered,o=>o.destination_hub?.trim()||insightUnknownLabels.hub)
-  const actions=filtered.filter(o=>issuePriority(o)<99)
+  // Công việc Hỏa tốc hiện tại không bị bỏ sót vì khác khoảng ngày đặt đơn.
+  const datedIds=new Set(filtered.map(o=>o.id))
+  const workOrders=[...filtered,...pendingExpress.filter(o=>!datedIds.has(o.id))]
+  const actions=workOrders.filter(o=>issuePriority(o)<99)
     .sort((a,b)=>issuePriority(a)-issuePriority(b)||String(a.order_date??'').localeCompare(String(b.order_date??'')))
   const waitingOrders=filtered.filter(isAwaitingReceipt)
   const waitingCod=waitingOrders.reduce((sum,o)=>sum+Number(o.cod??0),0)
   const activeIssues=actions.length
   const missingGeo=filtered.filter(o=>o.stage!=='cancelled'&&(o.province===insightUnknownLabels.province||o.ward===insightUnknownLabels.ward)).length
   const missingHubs=filtered.filter(o=>['shipping','destination','out','delivered'].includes(o.stage)&&!o.destination_hub?.trim()).length
-
-  function dashboardHref(updates:Record<string,string|undefined|null>={}){
-    const p=new URLSearchParams()
-    p.set('range',range.key)
-    if(range.key==='custom'){p.set('from',range.from);p.set('to',range.to)}
-    for(const [k,v] of Object.entries({province:selectedProvince,ward:selectedWard,hub:selectedHub,stage:selectedStage,...updates})){
-      if(v)p.set(k,v)
-    }
-    return '/purchase?'+p.toString()
+  function timeHref(key:RangeKey){
+    return '/purchase?'+new URLSearchParams({range:key}).toString()
   }
   function orderHref(o:InsightOrder){const p=new URLSearchParams({order:o.id,range:range.key})
     if(range.key==='custom'){p.set('from',range.from);p.set('to',range.to)}
     return '/purchase/orders?'+p.toString()
   }
-  const activeFilters=[selectedProvince,selectedWard,selectedHub,selectedStage].filter(Boolean).length
-  const dateHidden=<>
-    <input name="range" type="hidden" value={range.key}/>
-    {range.key==='custom'&&<><input type="hidden" name="from" value={range.from}/><input type="hidden" name="to" value={range.to}/></>}
-  </>
-
   return <div className="pd-insight">
     <header className="page-head pd-topbar">
       <div>
@@ -155,91 +132,58 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       </div>
     </header>
 
-    <div className="pd-filter-wrap">
-      <PurchaseDateFilter activeRange={range.key} from={range.from} to={range.to}
-        label={range.label} showAll
-        preserveParams={{province:selectedProvince,ward:selectedWard,hub:selectedHub,stage:selectedStage}}/>
-      <form className="pd-location-filters" action="/purchase">
-        {dateHidden}
-        <label><span>Tỉnh / Thành phố</span><select name="province" defaultValue={selectedProvince} key={'province-'+selectedProvince}>
-          <option value="">Tất cả tỉnh/thành</option>
-          {provinces.map(s=><option key={s} value={s}>{s}</option>)}
-        </select></label>
-        <label><span>Phường / Xã</span><select name="ward" defaultValue={selectedWard} key={'ward-'+selectedProvince+'-'+selectedWard}>
-          <option value="">Tất cả phường/xã</option>
-          {scopedWards.map(s=><option key={s} value={s}>{s}</option>)}
-        </select></label>
-        <label><span>HUB đích</span><select name="hub" defaultValue={selectedHub}>
-          <option value="">Tất cả HUB</option>
-          {hubs.map(s=><option key={s} value={s}>{s}</option>)}
-        </select></label>
-        <label><span>Tiến trình</span><select name="stage" defaultValue={selectedStage}>
-          <option value="">Tất cả trạng thái</option>
-          {metrics.filter(m=>m.key!=='total').map(m=><option key={m.key} value={m.key}>{m.label}</option>)}
-          <option value="pickup_failed">Lấy hàng thất bại</option>
-          <option value="ready">Chờ lấy hàng</option>
-          <option value="express_pending">Hỏa tốc đang xử lý</option>
-          <option value="other">Trạng thái khác</option>
-        </select></label>
-        <button className="button primary" type="submit">Áp dụng</button>
-        {activeFilters>0&&<Link href={dashboardHref({province:null,ward:null,hub:null,stage:null})} className="pd-reset">Xóa lọc ({activeFilters})</Link>}
-      </form>
-      <p className="pd-filter-note">Khoảng ngày áp dụng cho <strong>thời điểm đặt đơn</strong> của các KPI thông thường. <strong>Riêng Hỏa tốc chưa xác nhận giao</strong> được đếm toàn thời gian, theo tình trạng hiện tại và bộ lọc khu vực/HUB.</p>
-    </div>
+    <nav className="pd-time-filter" aria-label="Lọc theo ngày đặt đơn">
+      <div className="pd-time-quick" role="group" aria-label="Chọn khoảng thời gian">
+        {quickRanges.map(option=><Link key={option.key} href={timeHref(option.key)}
+          prefetch={false} aria-current={range.key===option.key?'page':undefined}
+          className={'pd-time-option'+(range.key===option.key?' is-selected':'')}>{option.label}</Link>)}
+      </div>
+      <details className="pd-time-custom" open={range.key==='custom'}>
+        <summary aria-label="Chọn khoảng ngày tùy ý"> <span aria-hidden="true">▦</span> {range.key==='custom'?range.label:'Tùy chọn'} </summary>
+        <form className="pd-time-calendar" action="/purchase" method="GET">
+          <input type="hidden" name="range" value="custom"/>
+          <label><span>Từ ngày</span><input type="date" name="from" defaultValue={range.key==='all'?'':range.from} required/></label>
+          <label><span>Đến ngày</span><input type="date" name="to" defaultValue={range.key==='all'?'':range.to} required/></label>
+          <button type="submit" className="button primary">Áp dụng</button>
+        </form>
+      </details>
+      <span className="pd-time-explain">Ngày đặt đơn · Hỏa tốc là tồn đọng hiện tại</span>
+    </nav>
 
     {(result.error||expressResult.error)&&<div className="error-box" role="alert">Không tải đủ đơn nhập: {result.error||expressResult.error}. Không sử dụng tổng số khi nguồn dữ liệu lỗi.</div>}
     {(result.truncated||expressResult.truncated)&&<div className="error-box" role="alert">Danh sách vượt giới hạn 10.000 đơn. Thu hẹp phạm vi hoặc bổ sung truy vấn tổng hợp trước khi sử dụng kết quả.</div>}
-    <section className="pd-metrics" aria-label="Số liệu nhập hàng trong phạm vi lọc">
-      {metrics.map(metric=>{
-        const value=numbers[metric.key as keyof typeof numbers]
-        const isActive=selectedStage===metric.key
-        return <Link href={dashboardHref({stage:isActive?null:metric.key==='total'?null:metric.key})}
-          key={metric.key}
-          className={'pd-metric pd-tone-'+metric.tone+(isActive?' is-active':'')}>
-          <span>{metric.label}</span>
-          <strong>{value}</strong>
+    <section className="pd-kpi-viewport" aria-label="Tổng quan đơn nhập">
+      <div className="pd-metrics">
+        {metrics.map(metric=><div key={metric.key}
+          className={'pd-metric pd-tone-'+metric.tone}>
+          <span>{metric.label}</span><strong>{numbers[metric.key as keyof typeof numbers]}</strong>
           <small>{metric.description}</small>
-        </Link>
-      })}
-    </section>
-
-    <div className="pd-context-line">
-      <span><b>{numbers.total}</b> đơn trong phạm vi · <b>{numbers.express}</b> Hỏa tốc chưa xác nhận giao (toàn thời gian)</span>
-      <span><b>{numbers.ready}</b> chờ lấy hàng · <b>{numbers.pickup_failed}</b> lấy hàng lỗi · <b>{numbers.express_pending}</b> Hỏa tốc đang xử lý trong phạm vi hiển thị</span>
-      <span>{range.label}</span>
-    </div>
-
-    <section className="pd-area-head" id="pd-region">
-      <div><span className="module-eyebrow">PHÂN BỔ ĐỊA BÀN</span><h2>Phường/Xã · Tỉnh/Thành phố</h2><p>Đơn thiếu MVĐ, đang trung chuyển và đã giao thành công theo địa chỉ người nhận</p></div>
-      <div className="pd-head-stat"><b>{countryGroups.length}</b><span>tỉnh/thành trong bộ lọc</span></div>
-    </section>
-    <section className="pd-two-columns">
-      <div className="pd-surface">
-        <div className="pd-surface-title"><h3>Chi tiết theo Phường/Xã</h3><span>{wards.length} nhóm khu vực</span></div>
-        <div className="pd-table-scroll"><table className="pd-table">
-          <thead><tr><th scope="col">Tỉnh/Thành · Phường/Xã</th><th scope="col">Đơn</th><th scope="col">Chờ MVĐ</th><th scope="col">Vận chuyển</th><th scope="col">Giao thành công</th></tr></thead>
-          <tbody>
-            {!countryGroups.length&&<tr><td colSpan={5} className="pd-empty">Không có đơn thuộc phạm vi lọc.</td></tr>}
-            {countryGroups.map(province=>{
-              const children=wards.filter(w=>w.name.startsWith(province.name+'|'))
-              return <FragmentProvince key={province.name} province={province} wards={children} href={dashboardHref({province:province.name,ward:null})}/>
-            })}
-          </tbody>
-        </table></div>
-        <p className="pd-table-help">Phường/Xã được đọc từ địa chỉ; thông tin thiếu được hiển thị riêng, không suy đoán theo HUB.</p>
+        </div>)}
       </div>
-      <div className="pd-surface" id="pd-hub">
-        <div className="pd-surface-title"><h3>Phân bổ theo HUB đích</h3><span>{hubGroups.length} HUB / nhóm</span></div>
-        <div className="pd-table-scroll"><table className="pd-table">
-          <thead><tr><th>HUB đích</th><th>Đơn</th><th>Vận chuyển</th><th>Đến HUB</th><th>Đang giao</th><th>Giao TC</th></tr></thead>
-          <tbody>{!hubGroups.length?<tr><td colSpan={6} className="pd-empty">Chưa có dữ liệu HUB.</td></tr>
-          :hubGroups.map(h=><tr key={h.name}>
-            <td className="pd-table-strong"><Link href={dashboardHref({hub:h.name})}>{h.name}</Link></td>
-            <td>{h.total}</td><td>{h.shipping}</td><td>{h.destination}</td><td>{h.out}</td><td className="pd-num-success">{h.delivered}</td>
-          </tr>)}</tbody>
-        </table></div>
-        <p className="pd-table-help">HUB đích lấy từ đơn hàng, không sử dụng HUB trung chuyển quốc tế làm HUB đích.</p>
+    </section>
+    <section className="pd-visual-head" aria-label="Biểu đồ phân bổ đơn nhập">
+      <div><span className="module-eyebrow">PHÂN BỔ VẬN HÀNH</span>
+        <h2>Đơn hàng theo khu vực và HUB</h2>
+        <p>So sánh ngay trạng thái mới nhất của đơn đặt trong {range.label.toLowerCase()} · không cần lọc thêm</p>
       </div>
+      <div className="pd-visual-legend"><span className="pd-legend-missing">Chờ MVĐ</span><span className="pd-legend-shipping">Vận chuyển</span><span className="pd-legend-delivered">Giao thành công</span></div>
+    </section>
+    <section className="pd-chart-grid">
+      <PurchaseInsightChart title="Chưa có mã vận đơn · Theo khu vực"
+        description="Phường/Xã — Tỉnh/Thành phố, không gồm đơn hủy và Hỏa tốc"
+        groups={areaGroups} metric="missing" geography="area"/>
+      <PurchaseInsightChart title="Đang vận chuyển · Theo khu vực"
+        description="Đã lấy hàng, đang di chuyển hoặc ở HUB trung chuyển"
+        groups={areaGroups} metric="shipping" geography="area"/>
+      <PurchaseInsightChart title="Đang vận chuyển · Theo HUB đích"
+        description="So sánh các HUB đích được khai báo trên đơn"
+        groups={hubGroups} metric="shipping" variant="column" geography="hub"/>
+      <PurchaseInsightChart title="Giao thành công · Theo khu vực"
+        description="Đã xác nhận giao, bao gồm đơn đang chờ xác nhận nhận"
+        groups={areaGroups} metric="delivered" geography="area"/>
+      <PurchaseInsightChart title="Giao thành công · Theo HUB đích"
+        description="Số đơn được xác nhận giao theo HUB đích"
+        groups={hubGroups} metric="delivered" variant="column" geography="hub"/>
     </section>
 
     <section className="pd-action-head" id="pd-action">
@@ -248,21 +192,21 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
     </section>
     <section className="pd-action-layout">
       <div className="pd-work-summary">
-        <Link href={dashboardHref({stage:'delivered'})} className="pd-work-item">
+        <div className="pd-work-item">
           <span className="pd-work-dot green"/><span><b>Chờ xác nhận nhận hàng</b><small>{formatMoney(waitingCod)} COD chưa xác nhận</small></span><strong>{numbers.waiting}</strong>
-        </Link>
-        <Link href={dashboardHref({stage:'failed'})} className="pd-work-item">
+        </div>
+        <div className="pd-work-item">
           <span className="pd-work-dot red"/><span><b>Giao thất bại</b><small>Kiểm tra hành trình, liên hệ shipper</small></span><strong>{numbers.failed+numbers.pickup_failed}</strong>
-        </Link>
-        <Link href={dashboardHref({stage:'missing'})} className="pd-work-item">
+        </div>
+        <div className="pd-work-item">
           <span className="pd-work-dot amber"/><span><b>Chưa có mã vận đơn</b><small>Loại Hỏa tốc và đơn bị hủy</small></span><strong>{numbers.missing}</strong>
-        </Link>
-        <Link href={dashboardHref({stage:'destination'})} className="pd-work-item">
+        </div>
+        <div className="pd-work-item">
           <span className="pd-work-dot blue"/><span><b>Đã đến HUB đích</b><small>Đối chiếu vị trí giao nhận</small></span><strong>{numbers.destination}</strong>
-        </Link>
-        <Link href={dashboardHref({stage:'out'})} className="pd-work-item">
+        </div>
+        <div className="pd-work-item">
           <span className="pd-work-dot blue"/><span><b>Đang giao hàng</b><small>Theo dõi cho tới lúc giao xong</small></span><strong>{numbers.out}</strong>
-        </Link>
+        </div>
         {(missingGeo>0||missingHubs>0)&&<div className="pd-data-warning">
           <b>Cần chuẩn hóa dữ liệu địa bàn</b>
           <small>{missingGeo} đơn thiếu Phường/Xã hoặc Tỉnh/TP · {missingHubs} đơn đang/đã giao chưa có HUB đích</small>
@@ -281,27 +225,14 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
             <td>{o.order_date?formatDateTime(o.order_date):'—'}</td>
           </tr>)}</tbody>
         </table></div>
-        {actions.length>12&&<p className="pd-table-help">Hiển thị 12/{actions.length} đơn ưu tiên; dùng bộ lọc trạng thái và vùng để thu hẹp.</p>}
+        {actions.length>12&&<p className="pd-table-help">Hiển thị 12/{actions.length} đơn ưu tiên; mở Đơn nhập để xem danh sách đầy đủ.</p>}
       </div>
     </section>
 
     <footer className="pd-footer">
-      <span>Trạng thái hiện tại của đơn theo khoảng đặt; Hỏa tốc chờ xác nhận giao là tồn đọng mọi thời điểm.</span>
+      <span>Đơn thuộc khoảng ngày đặt, tính theo trạng thái mới nhất. Riêng Hỏa tốc là tồn đọng toàn thời gian.</span>
       <div><Link href="/purchase/orders">Quản lý đơn nhập →</Link><Link href="/purchase/tracking">Theo dõi &amp; nhận hàng →</Link></div>
     </footer>
   </div>
 }
 
-function FragmentProvince({province,wards,href}:{province:{name:string,total:number,missing:number,shipping:number,delivered:number},wards:{name:string,total:number,missing:number,shipping:number,delivered:number}[],href:string}){
-  return <>
-    <tr className="pd-province-row">
-      <td><Link href={href}>{province.name}</Link></td>
-      <td><strong>{province.total}</strong></td><td><strong>{province.missing}</strong></td>
-      <td><strong>{province.shipping}</strong></td><td><strong>{province.delivered}</strong></td>
-    </tr>
-    {wards.map(w=><tr key={w.name} className="pd-ward-row">
-      <td>{w.name.slice(w.name.indexOf('|')+1)}</td>
-      <td>{w.total}</td><td>{w.missing}</td><td>{w.shipping}</td><td className="pd-num-success">{w.delivered}</td>
-    </tr>)}
-  </>
-}
