@@ -164,7 +164,10 @@
 
 /* Chiếm chiều cao khả dụng từ cuối KPI đến sát chân trang trên Desktop. */
 @media(min-width:961px){
-  .pd-insight{min-height:calc(100dvh - 42px);display:flex;flex-direction:column}
+  .pd-insight{min-height:calc(100dvh - 24px);display:flex;flex-direction:column;padding-bottom:0}
   .pd-insight .pd-workspace{flex:1 1 408px;min-height:408px}
   .pd-insight .pd-summary-table,.pd-insight .pd-action-panel{height:100%}
 }
+
+/* Dashboard footer fills available viewport, keeping its note above the bottom margin. */
+@media(min-width:961px){.brand-shell-v1>.main:has(>.pd-insight){padding-bottom:8px!important}}

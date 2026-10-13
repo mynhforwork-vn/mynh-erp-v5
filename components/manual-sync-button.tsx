@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { TRACKING_LIVE_EVENT,type TrackingSyncSnapshot } from '@/lib/tracking/live-snapshot'
 
 type SyncPayload={
   error?:string
   detail?:string|null
+  snapshot?:TrackingSyncSnapshot|null
   result?:{event_count?:number;ok?:boolean}
 }
 
@@ -34,9 +36,11 @@ export function ManualSyncButton({shipmentId,iconOnly=false}:{shipmentId:string,
         throw new Error(data.error??`Đồng bộ thất bại (HTTP ${response.status})`)
       }
 
-      setState('ok')
-      setMsg(`Đã đồng bộ${data.result?.event_count!=null?` · ${data.result.event_count} sự kiện`:''}`)
-      setTimeout(()=>location.reload(),600)
+      if(data.snapshot)window.dispatchEvent(new CustomEvent(TRACKING_LIVE_EVENT,{detail:data.snapshot}))
+       setState('ok')
+       setMsg(data.snapshot
+         ?`Đã cập nhật dữ liệu${data.result?.event_count!=null?` · ${data.result.event_count} sự kiện`:''}`
+         :'Đã gửi đồng bộ; chưa đọc được trạng thái mới')
     }catch(error){
       setState('error')
       setMsg(error instanceof Error?error.message:'Đồng bộ thất bại')

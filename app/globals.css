@@ -32,3 +32,6 @@
 
 /* Dashboard nhập hàng — chỉ phạm vi Preview /purchase. */
 @import './styles/purchase-insight-dashboard.css';
+
+/* Sole Preview Tracking: Dashboard filter and independent KPI tiles. */
+@import './styles/tracking-dashboard-parity.css';

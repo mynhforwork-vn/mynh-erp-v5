@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { confirmReceiveOrders } from '@/lib/actions/core'
 import { ManualSyncButton } from '@/components/manual-sync-button'
+import { TRACKING_LIVE_EVENT,type TrackingSyncSnapshot } from '@/lib/tracking/live-snapshot'
 import { formatMoney, formatPhone, statusLabel } from '@/lib/format'
 import { suggestReceivingWarehouseForAddresses } from '@/lib/warehouse-routing'
 import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
@@ -51,12 +52,29 @@ export function TrackingHubGroup({
   orderBasePath?:string
   defaultOpen?:boolean
 }){
-  const eligible=rows.filter(r=>r.receive_status==='WAITING_RECEIVE'&&r.tracking_status==='DELIVERED')
-  const atHub=rows.filter(r=>r.tracking_status==='ARRIVED_DESTINATION_HUB').length
-  const outForDelivery=rows.filter(r=>r.tracking_status==='OUT_FOR_DELIVERY').length
-  const failed=rows.filter(r=>r.tracking_status==='DELIVERY_FAILED').length
-  const delivered=rows.filter(r=>r.tracking_status==='DELIVERED').length
-  const totalCod=rows.reduce((sum,r)=>sum+Number(r.cod??0),0)
+  const [liveRows,setLiveRows]=useState(rows)
+  useEffect(()=>setLiveRows(rows),[rows])
+  useEffect(()=>{
+    const update=(event:Event)=>{
+      const value=(event as CustomEvent<TrackingSyncSnapshot>).detail
+      if(!value?.shipment_id)return
+      setLiveRows(current=>current.map(row=>row.shipment_id===value.shipment_id
+        ?{...row,tracking_number:value.tracking_number,
+          tracking_status:value.current_tracking_status,
+          tracking_detail:value.tracking_detail,
+          tracking_event_time:value.tracking_event_time,
+          receive_status:value.receive_status}
+        :row))
+    }
+    window.addEventListener(TRACKING_LIVE_EVENT,update)
+    return ()=>window.removeEventListener(TRACKING_LIVE_EVENT,update)
+  },[])
+  const eligible=liveRows.filter(r=>r.receive_status==='WAITING_RECEIVE'&&r.tracking_status==='DELIVERED')
+  const atHub=liveRows.filter(r=>r.tracking_status==='ARRIVED_DESTINATION_HUB').length
+  const outForDelivery=liveRows.filter(r=>r.tracking_status==='OUT_FOR_DELIVERY').length
+  const failed=liveRows.filter(r=>r.tracking_status==='DELIVERY_FAILED').length
+  const delivered=liveRows.filter(r=>r.tracking_status==='DELIVERED').length
+  const totalCod=liveRows.reduce((sum,r)=>sum+Number(r.cod??0),0)
   const urgentCount=eligible.length+failed+atHub+outForDelivery
 
   const [open,setOpen]=useState(defaultOpen??urgentCount>0)
@@ -75,7 +93,7 @@ export function TrackingHubGroup({
     '--tracking-table-panel-min-width':panelMinWidth+'px'
   } as CSSProperties
   const sortedRows=useMemo(()=>{
-    const next=[...rows]
+    const next=[...liveRows]
     const value=(row:OrderRow,key:ColKey)=>{
       if(key==='order')return String(row.shopee_order_id??row.id)
       if(key==='product')return String(row.product_summary??'')
@@ -91,7 +109,7 @@ export function TrackingHubGroup({
       return sort.dir==='asc'?cmp:-cmp
     })
     return next
-  },[rows,sort.key,sort.dir])
+  },[liveRows,sort.key,sort.dir])
   const [selected,setSelected]=useState<string[]>([])
   const selectedSet=useMemo(()=>new Set(selected),[selected])
   const selectedRows=eligible.filter(r=>selectedSet.has(r.id))
@@ -182,7 +200,7 @@ export function TrackingHubGroup({
       </div>
 
       <div className="tracking-hub-metrics-v2" tabIndex={0} role="region" aria-label={'Thống kê HUB '+hub}>
-        <span><b>{rows.length}</b> đơn</span>
+        <span><b>{liveRows.length}</b> đơn</span>
         <span className={eligible.length?'warning':''}><b>{eligible.length}</b> chờ nhận</span>
         <span className={atHub?'info':''}><b>{atHub}</b> đến HUB</span>
         <span className={outForDelivery?'info':''}><b>{outForDelivery}</b> đang giao</span>
