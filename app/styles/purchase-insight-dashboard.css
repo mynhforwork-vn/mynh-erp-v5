@@ -1,0 +1,173 @@
+/* Neo Enterprise Light — Dashboard nhập hàng Preview only. */
+.pd-insight{--pd-ink:#1e3448;--pd-sub:#586f82;--pd-line:#dce6ee;--pd-blue:#367aa9;--pd-green:#218569;--pd-amber:#ba8533;--pd-red:#b45463;display:grid;gap:7px;min-width:0;max-width:100%;padding-bottom:12px;color:var(--pd-ink)}
+.pd-insight *{box-sizing:border-box}
+.pd-insight .pd-topbar{margin:0;min-width:0;padding-bottom:0;gap:7px}
+.pd-insight .pd-topbar h1{font-size:24px;letter-spacing:-.025em}
+.pd-insight .pd-topbar p{font-size:11px;color:var(--pd-sub)}
+.pd-time-filter{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;min-width:0;min-height:43px;padding:5px 7px;border:1px solid #d9e3eb;border-radius:5px;background:#fff;box-shadow:0 1px 4px rgba(26,52,78,.035)}
+.pd-time-quick{display:flex;align-items:center;gap:2px;min-width:0;overflow-x:auto;overflow-y:hidden;white-space:nowrap;scrollbar-width:thin}
+.pd-time-option{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:0 9px;font-size:10px;font-weight:660;color:#52697b!important;text-decoration:none!important;border-radius:4px;white-space:nowrap}
+.pd-time-option:hover{background:#f0f5fa}
+.pd-time-option.is-selected{background:#2a64a5;color:#fff!important;box-shadow:none}
+.pd-time-calendar{display:flex;align-items:center;justify-content:flex-end;flex:0 0 auto;gap:5px;min-width:0;border-left:1px solid #e2e9ef;padding-left:9px;background:transparent}
+.pd-time-calendar label{display:flex;align-items:center;gap:5px;min-width:0;height:30px;padding:0 5px 0 8px;background:#f8fafc;border:1px solid #d7e2eb;border-radius:4px;color:#667c8e;font-size:9.5px;font-weight:680;white-space:nowrap}
+.pd-time-calendar input{height:26px;width:109px;min-width:0;padding:0 2px;color:#24445f;background:transparent;border:0;border-radius:0;font-family:inherit;font-size:10px}
+.pd-time-calendar .pd-date-separator{align-self:center;padding:0;color:#8fa2b3;font-size:12px}
+.pd-time-calendar .button{height:30px;min-height:30px;align-self:center;padding:0 10px;border-radius:4px;font-size:10px;white-space:nowrap}
+.pd-insight :is(a,button,input):focus-visible{outline:2px solid #498cc2;outline-offset:2px}
+.pd-kpi-viewport{min-width:0;max-width:100%;overflow:hidden}
+/* Shared Đơn nhập KPI classes; only constrain strip width on Dashboard. */
+.pd-insight .pd-metrics{min-width:0;max-width:100%;width:100%}
+.pd-insight .pd-kpi-card{font-variant-numeric:tabular-nums}
+.pd-workspace{display:grid;grid-template-columns:minmax(0,41fr) minmax(0,59fr);align-items:stretch;gap:9px;min-width:0}
+.pd-left-rail,.pd-right-rail{display:flex;flex-direction:column;min-width:0;min-height:0}
+.pd-summary-table,.pd-action-panel{display:flex;flex-direction:column;height:408px;min-height:0;min-width:0;background:#fff;border:1px solid var(--pd-line);border-radius:5px;overflow:hidden}
+.pd-side-head{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:0;padding:12px 13px 10px}
+.pd-side-head h2{font-size:14px;line-height:1.3;font-weight:770;margin:4px 0 3px}
+.pd-side-head p{font-size:10px;color:var(--pd-sub);line-height:1.35;margin:0}
+.pd-insight .module-eyebrow{font-size:9px;letter-spacing:.07em;color:#6087a4;font-weight:730}
+/* Tiêu đề vùng và hàng cột là các khối cố định; chỉ tbody cuộn. */
+.pd-summary-table .pd-side-head{flex:0 0 auto;padding:9px 11px 8px}
+.pd-action-panel .pd-side-head{flex:0 0 auto;padding:9px 11px 8px}
+/* Bộ chọn Phường/Xã — HUB đích luôn nằm ngoài vùng cuộn dữ liệu. */
+.pd-summary-tabs{display:flex;align-items:center;gap:4px;min-height:36px;padding:4px 9px;background:#fff;flex:0 0 auto}
+.pd-summary-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:0;padding:5px 10px;font:inherit;font-size:10px;font-weight:700;line-height:1.3;color:#587185;border:1px solid transparent;border-radius:4px;background:transparent;cursor:pointer}
+.pd-summary-tabs button small{font-size:9px;font-weight:700;color:#7890a1}
+.pd-summary-tabs button:hover{background:#f3f7fa}
+.pd-summary-tabs button.is-selected{color:#245d88;background:#eef5fa;border-color:#d5e5f0}
+.pd-summary-tabs button.is-selected small{color:#326b95}
+.pd-summary-tabs button:focus-visible{outline:2px solid #498cc2;outline-offset:1px}
+.pd-summary-table .pd-table-head{flex:0 0 auto;min-width:0;border-top:1px solid #edf2f6;border-bottom:1px solid #dce7ef;background:#f1f6fa}
+.pd-summary-table .pd-table-scroll{flex:1 1 auto;min-height:0;width:100%;max-width:100%;max-height:none;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin}
+.pd-table{border-collapse:collapse;width:100%;font-size:10px;line-height:1.35}
+.pd-status-table,.pd-summary-head-table{min-width:0;table-layout:fixed;width:100%}
+.pd-summary-head-table .pd-area-col,.pd-status-table .pd-area-col{width:42%}
+.pd-summary-head-table th{padding:9px 4px;background:#f1f6fa;color:#597184;text-align:center;font-size:9px;line-height:1.15;font-weight:730;white-space:normal}
+.pd-summary-head-table th:first-child{text-align:left;padding-left:10px}
+.pd-status-table tbody tr>th:first-child,.pd-status-table tbody td{border-bottom:1px solid #edf2f5;padding:9px 4px}
+.pd-status-table tbody tr>th:first-child{text-align:left;white-space:normal;overflow-wrap:anywhere;color:#3d586f;padding-left:10px;font-size:9.5px;font-weight:640;vertical-align:middle}
+.pd-status-table tbody td{text-align:center;font-variant-numeric:tabular-nums;font-size:11px;font-weight:740;vertical-align:middle}
+.pd-cell-warning{color:#ad792b}.pd-cell-blue{color:#367bab}.pd-cell-green{color:#248767}
+.pd-status-table tbody tr:hover{background:#fafcff}
+.pd-empty{padding:18px 10px!important;color:#8799a6!important;text-align:center!important}
+.pd-table-help{flex:0 0 auto;font-size:9px;color:#748b9c;line-height:1.35;border-top:1px solid #edf2f5;padding:7px 10px;margin:0}
+.pd-action-total{display:flex;align-items:baseline;gap:4px;min-width:45px;justify-content:center;background:#eff4f8;color:#286486;border-radius:4px;padding:6px 8px;font-weight:750;font-size:17px;font-variant-numeric:tabular-nums}
+.pd-action-total small{font-size:9px;font-weight:620;color:#5c809b}
+/* Nhóm cố định bên trên; CHỈ danh sách đơn ưu tiên được cuộn. */
+.pd-insight .pd-action-queue-body{display:flex;flex-direction:column;flex:1 1 auto;gap:6px;min-height:0;overflow:hidden;padding:0 10px}
+.pd-insight .pd-action-primary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;flex:0 0 auto}
+.pd-insight .action-queue-summary{display:flex;align-items:center;flex-direction:column;justify-content:center;gap:5px;min-height:66px;min-width:0;padding:8px 5px;text-align:center;border:1px solid #e2e9ef;border-radius:4px;background:#f7f9fb;color:#456075;cursor:pointer;font:inherit}
+.pd-insight .action-queue-summary .pd-primary-count{font-size:22px;line-height:1;font-weight:760;font-variant-numeric:tabular-nums;color:#29485d}
+.pd-insight .action-queue-summary .pd-primary-name{font-size:10px;line-height:1.25;font-weight:710}
+.pd-insight .action-queue-summary.pd-action-green{background:#f1f9f4;border-color:#d9eadf}
+.pd-insight .action-queue-summary.pd-action-red{background:#fff7f7;border-color:#efdede}
+.pd-insight .action-queue-summary.pd-action-amber{background:#fffbf4;border-color:#eddfc9}
+.pd-insight .action-queue-summary:hover,.pd-insight .action-queue-summary.is-active{border-color:#6697bb;box-shadow:inset 0 -2px 0 #377cab}
+.pd-insight .pd-queue-secondary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;flex:0 0 auto}
+.pd-insight .pd-queue-mini{display:flex;gap:5px;align-items:center;justify-content:space-between;min-width:0;padding:7px 8px;text-align:left;border:1px solid #e3eaf0;border-radius:4px;background:#fff;cursor:pointer;font:inherit}
+.pd-insight .pd-queue-mini span{min-width:0;font-size:9px;color:#61788a;line-height:1.25}
+.pd-insight .pd-queue-mini b{color:#2f5776;font-size:14px;font-weight:750;font-variant-numeric:tabular-nums}
+.pd-insight .pd-queue-mini:hover,.pd-insight .pd-queue-mini.is-active{background:#f1f7fb;border-color:#8db4d1}
+.pd-insight .pd-action-order-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 1px 5px;border-bottom:1px solid #e7edf2;flex:0 0 auto}
+.pd-insight .pd-action-order-heading strong{font-size:10px;color:#3d5367;font-weight:740}
+.pd-insight .pd-action-heading-right{display:flex;align-items:center;gap:8px}
+.pd-insight .pd-action-order-heading small{font-size:9px;color:#8192a1}
+.pd-insight .pd-action-viewall{font:inherit;cursor:pointer;font-size:9px;color:#2a70a3;border:0;background:none;padding:1px 2px}
+.pd-insight .pd-action-orders-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin}
+.pd-insight .action-queue-orders{margin:0;min-width:0;border:0}
+.pd-insight .action-queue-orders>a{min-height:37px;padding:6px 1px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;text-decoration:none;border-bottom:1px solid #eef2f5}
+.pd-insight .action-queue-orders>a>div{min-width:0;display:flex;flex-direction:column;gap:3px}
+.pd-insight .action-queue-orders>a>div:last-child{align-items:flex-end}
+.pd-insight .action-queue-orders b{font-size:10px;font-weight:730;color:#276f9e}
+.pd-insight .action-queue-orders span:not(.pd-action-status),.pd-insight .action-queue-orders small{font-size:9px;color:#8294a4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.pd-insight .pd-action-status{font-size:9px;color:#4a7895;font-weight:710;white-space:nowrap}
+.pd-insight .pd-action-status.is-urgent{color:#b35761}
+.pd-insight .pd-action-empty{font-size:10px;color:#8194a2;padding:14px 2px;text-align:center;margin:0}
+.pd-insight .pd-order-arrow{color:#527f9a;font-size:13px}
+.pd-insight .pd-quality-footer{flex:0 0 auto;display:grid;gap:2px;padding:5px 10px;border-top:1px solid #edf1f4;background:#fff}
+.pd-insight .pd-quality-link{cursor:pointer;text-align:left;font:inherit;font-size:9px;line-height:1.4;padding:3px 5px;border:0;border-radius:3px;background:#fffbf4;color:#90692a}
+.pd-insight .pd-quality-link.is-active,.pd-insight .pd-quality-link:hover{background:#f6ebd6}
+.pd-insight .pd-quality-neutral{background:#f4f8fb;color:#56778e}
+.pd-insight .pd-quality-neutral.is-active,.pd-insight .pd-quality-neutral:hover{background:#e6f0f8}
+.pd-footer{border-top:1px solid #e4ebf1;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;padding-top:9px;font-size:10px;color:#73899a}
+.pd-footer div{display:flex;flex-wrap:wrap;gap:13px}
+.pd-footer a{color:#367cad;text-decoration:none;font-weight:700}
+@media(max-width:1320px){
+ .pd-time-filter{grid-template-columns:minmax(0,1fr) auto}
+ .pd-time-option{padding:0 7px;font-size:9.5px}
+ .pd-time-calendar input{width:103px}
+}
+@media(max-width:1080px){
+ .pd-time-filter{grid-template-columns:1fr;gap:5px}
+ .pd-time-calendar{border-left:0;border-top:1px solid #e8edf2;padding:5px 0 0;justify-content:flex-start}
+ .pd-queue-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:960px){
+ .pd-workspace{grid-template-columns:1fr}
+ .pd-summary-table,.pd-action-panel{height:380px}
+}
+@media(max-width:700px){
+ .pd-insight .pd-topbar{flex-direction:column;align-items:start;gap:8px}
+ .pd-insight .pd-topbar .head-actions{display:flex;gap:6px;flex-wrap:wrap;width:100%}
+ .pd-insight .pd-topbar .head-actions>a{flex:1;text-align:center}
+ .pd-time-filter{gap:5px;padding:6px}
+ .pd-time-option{padding:0 8px;font-size:10px}
+ .pd-time-calendar{width:100%;gap:4px}
+ .pd-time-calendar label{min-width:0;flex:1 1 0;padding:0 3px 0 6px;gap:2px}
+ .pd-time-calendar input{width:100%;min-width:0}
+ .pd-time-calendar .button{flex:0 0 auto}
+ .pd-workspace{gap:10px}
+ .pd-status-table{min-width:0}
+}
+@media(max-width:390px){
+ .pd-time-calendar .button{font-size:9px;padding:0 6px}
+ .pd-time-calendar .pd-date-separator{font-size:11px}
+ .pd-time-calendar input{font-size:9px;padding:0}
+ .pd-queue-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .pd-insight .pd-topbar h1{font-size:21px}
+}
+
+/* Thích ứng cột trái hẹp và giảm khoảng cách giữa các hàng Dashboard. */
+@media(min-width:961px){.pd-workspace{grid-template-columns:minmax(0,41fr) minmax(0,59fr)}}
+@media(max-width:1180px) and (min-width:961px){.pd-workspace{grid-template-columns:minmax(0,45fr) minmax(0,55fr)}}
+@media(max-width:700px){.pd-action-primary{grid-template-columns:repeat(3,minmax(0,1fr))}.pd-status-table tbody td{font-size:10px}}
+
+/* Tablet/mobile: match the Đơn nhập KPI strip, scroll within the strip without wrapping. */
+@media(max-width:960px){
+  .pd-insight .pd-metrics.kpi-grid.order-kpi-grid-v2.entity-status-strip{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    align-items:stretch!important;
+    gap:6px!important;
+    min-width:0!important;
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    overscroll-behavior-x:contain;
+    scrollbar-width:thin;
+  }
+  .pd-insight .pd-metrics > .pd-kpi-card.kpi-card.entity-status-metric{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    justify-content:center!important;
+    flex:1 0 123px!important;
+    min-width:123px!important;
+    width:123px!important;
+    height:68px!important;
+    min-height:68px!important;
+    gap:3px!important;
+    border-radius:6px!important;
+  }
+}
+
+/* Chiếm chiều cao khả dụng từ cuối KPI đến sát chân trang trên Desktop. */
+@media(min-width:961px){
+  .pd-insight{min-height:calc(100dvh - 24px);display:flex;flex-direction:column;padding-bottom:0}
+  .pd-insight .pd-workspace{flex:1 1 408px;min-height:408px}
+  .pd-insight .pd-summary-table,.pd-insight .pd-action-panel{height:100%}
+}
+
+/* Dashboard footer fills available viewport, keeping its note above the bottom margin. */
+@media(min-width:961px){.brand-shell-v1>.main:has(>.pd-insight){padding-bottom:8px!important}}

@@ -15,17 +15,30 @@ export function DesktopTableColumnResize() {
 
     const mq = window.matchMedia('(min-width: 901px)')
     const clamp = (v:number) => Math.max(76, Math.min(680, Math.round(v)))
-    const clampForHeader = (th:HTMLTableCellElement,v:number) =>
-      th.closest('table.tracking-hub-table-v2')
-        ? Math.max(76,Math.min(2400,Math.round(v)))
-        : clamp(v)
+    const clampForHeader = (th:HTMLTableCellElement,v:number) => {
+      if(th.closest('table.tracking-hub-table-v2'))
+        return Math.max(76,Math.min(2400,Math.round(v)))
+      if(th.closest('table.user-table.mynh-p1-semantic-table')){
+        const key=th.dataset.accountCol??''
+        // Numeric counters and voucher tags must really be drag-resizable.
+        // Do not silently jump a 48px count column to the generic 76px floor.
+        const minimum=key==='orders'?38:key==='voucher'?68
+          :key==='deliveredOrders'?74:key==='number'?28:76
+        return Math.max(minimum,Math.min(680,Math.round(v)))
+      }
+      return clamp(v)
+    }
     const compactCol = (th:HTMLTableCellElement) =>
       th.matches('.bulk-select-col, .select-col, .row-actions-head, .checkbox-col')
     const headerWidth = (th:HTMLTableCellElement) =>
       th.classList.contains('tracking-action-head') ? 44 :
-      compactCol(th)
-        ? Math.max(24, Math.min(140, Math.round(th.getBoundingClientRect().width)))
-        : clampForHeader(th,th.getBoundingClientRect().width)
+      th.closest('table.user-table.mynh-p1-semantic-table')
+        // Account counters must not inflate to the generic 76px drag floor
+        // when another column is resized or when the right panel opens.
+        ? Math.max(24, Math.round(th.getBoundingClientRect().width))
+        : compactCol(th)
+          ? Math.max(24, Math.min(140, Math.round(th.getBoundingClientRect().width)))
+          : clampForHeader(th,th.getBoundingClientRect().width)
     const headerName = (th:HTMLTableCellElement) => {
       const clone = th.cloneNode(true) as HTMLElement
       clone.querySelectorAll('.mynh-column-resize-grip').forEach(x => x.remove())
@@ -46,8 +59,9 @@ export function DesktopTableColumnResize() {
         const obj = raw ? JSON.parse(raw) : null
         if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return {}
         const ceiling=table.classList.contains('tracking-hub-table-v2')?2400:680
+        const savedMin=table.matches('table.user-table.mynh-p1-semantic-table')?28:76
         return Object.fromEntries(Object.entries(obj).filter(([k,v]) =>
-          k.length < 160 && typeof v === 'number' && Number.isFinite(v) && v >= 76 && v <= ceiling
+          k.length < 160 && typeof v === 'number' && Number.isFinite(v) && v >= savedMin && v <= ceiling
         )) as Record<string,number>
       } catch { return {} }
     }
@@ -62,7 +76,7 @@ export function DesktopTableColumnResize() {
       table.style.removeProperty('width')
       table.style.removeProperty('min-width')
       table.classList.remove('mynh-resizable-table')
-      if(table.matches('.mynh-p1-semantic-table.order-table')){
+      if(table.matches('.mynh-p1-semantic-table.order-table,.mynh-p1-semantic-table.user-table')){
         table.querySelectorAll('colgroup col').forEach(col=>{
           ;(col as HTMLElement).style.removeProperty('width')
           ;(col as HTMLElement).style.removeProperty('min-width')
@@ -91,15 +105,15 @@ export function DesktopTableColumnResize() {
       // Older per-user saved widths can predate the detail column. Protect the
       // status/detail headers even when those legacy preferences are restored.
       const fitted=preferred.map((value,i)=>ths[i].classList.contains('tracking-col-status')
-        ? Math.max(withPanel?132:150,value)
+        ? Math.max(76,value)
         : ths[i].classList.contains('tracking-col-detail')
           ? Math.max(withPanel?155:174,value)
           : value)
       let excess=fitted.reduce((sum,v)=>sum+v,0)-target
       if(excess>0){
         const minByColumn:Record<string,number>=withPanel
-          ? {product:92,recipient:110,status:132,detail:155,order:120,cod:70}
-          : {product:114,recipient:148,status:150,detail:174,order:135,cod:78}
+          ? {product:92,recipient:110,status:76,detail:155,order:120,cod:70}
+          : {product:114,recipient:148,status:76,detail:174,order:135,cod:78}
         // Compress uncustomized cells first; only shrink a custom width as needed.
         const priority=['product','recipient','detail','status','order','cod']
         for(const custom of [false,true]){
@@ -145,7 +159,7 @@ export function DesktopTableColumnResize() {
     // leaving the slidebar restores the manually saved full-table widths.
     const purchasePanelWeights={
       account:{number:22,username:102,platform:53,phone:90,email:98,
-        status:72,mobile:81,browser:72,voucher:65,orders:40,createdAt:106,note:76},
+        status:72,mobile:81,browser:72,voucher:65,orders:40,deliveredOrders:80,createdAt:106,note:76},
       order:{number:20,order:108,username:73,device:118,time:103,product:121,
         cod:60,tracking:145,voucher:57,status:91},
     }
@@ -249,7 +263,7 @@ export function DesktopTableColumnResize() {
     const trackingDefaults:Record<string,number>={
       'tracking-col-order':166,'tracking-col-product':250,
       'tracking-col-cod':94,'tracking-col-recipient':245,
-      'tracking-col-status':150,'tracking-col-detail':180,'tracking-col-actions':44,
+      'tracking-col-status':110,'tracking-col-detail':180,'tracking-col-actions':44,
     }
     const trackingLayout=new WeakMap<HTMLTableElement,string>()
     // Only take control of fixed widths once a user has customized this table.
@@ -268,24 +282,95 @@ export function DesktopTableColumnResize() {
           : undefined)
         || visibleWidths[i])
       const panelWidths=fitPurchasePanel(table,ths)
+      const isAccount=table.matches('.mynh-p1-semantic-table.user-table')
+      // Same lane-driven allocation contract as Đơn nhập/Tracking: the
+      // sum of rendered headers MUST equal the visible table width. No blank
+      // tail after collapsing the navigation sidebar, no overlapping headers.
+      const accountFit=()=>{
+        const pane=table.closest('.account-table-card') as HTMLElement|null
+        const lane=Math.floor(pane?.clientWidth??table.parentElement?.clientWidth??0)
+        const min:Record<string,number>={
+          select:28,number:28,username:128,platform:56,phone:94,email:120,
+          status:75,mobile:80,browser:70,voucher:112,orders:62,
+          deliveredOrders:96,createdAt:128,note:78,
+        }
+        const base:Record<string,number>={
+          select:28,number:28,username:150,platform:64,phone:106,email:148,
+          status:82,mobile:95,browser:83,voucher:122,orders:66,
+          deliveredOrders:98,createdAt:138,note:96,
+        }
+        const max:Record<string,number>={
+          username:330,platform:80,phone:146,email:390,status:120,
+          mobile:240,browser:185,voucher:290,orders:110,
+          deliveredOrders:132,createdAt:170,note:390,
+        }
+        const keys=ths.map(th=>th.classList.contains('bulk-select-col')
+          ?'select':th.dataset.accountCol??'')
+        const widths=keys.map((key,i)=>{
+          const saved=overrides[headerName(ths[i])]
+          return Math.max(min[key]??76,Math.round(saved??base[key]??96))
+        })
+        const minimum=keys.reduce((sum,key)=>sum+(min[key]??76),0)
+        const target=Math.max(minimum,lane-2)
+        let remainder=target-widths.reduce((sum,w)=>sum+w,0)
+        if(remainder<0){
+          // Custom widths are user choices, NOT candidates for Auto Fit
+          // compression. Shrink only free columns; a narrower lane scrolls
+          // locally rather than undoing a manual Voucher/Số đơn drag.
+          for(const key of ['note','email','username','mobile','browser',
+            'voucher','platform','phone','status','createdAt','deliveredOrders','orders']){
+            const i=keys.indexOf(key)
+            if(i<0||remainder>=0)continue
+            if(overrides[headerName(ths[i])]!==undefined)continue
+            const reduction=Math.min(-remainder,Math.max(0,widths[i]-(min[key]??76)))
+            widths[i]-=reduction
+            remainder+=reduction
+          }
+        }
+        if(remainder>0){
+          // Spend spare width on useful TEXT columns before numeric counters.
+          // Respect manually saved Voucher/Số đơn widths on every sidebar state.
+          for(const key of ['username','email','mobile','browser','voucher','note',
+            'phone','createdAt','status','platform']){
+            const i=keys.indexOf(key)
+            if(i<0||remainder<=0||overrides[headerName(ths[i])]!==undefined)continue
+            const increase=Math.min(remainder,Math.max(0,(max[key]??320)-widths[i]))
+            widths[i]+=increase
+            remainder-=increase
+          }
+          if(remainder>0){
+            const flexible=['username','email','mobile','browser','voucher','note']
+              .map(k=>keys.indexOf(k)).filter(i=>i>=0&&overrides[headerName(ths[i])]===undefined)
+            // When all visible text columns are user-sized, use the final
+            // available text column for the remaining lane rather than blank.
+            const recipients=flexible.length?flexible:
+              ['note','email','username','voucher'].map(k=>keys.indexOf(k)).filter(i=>i>=0)
+            if(recipients.length){
+              const each=Math.floor(remainder/recipients.length)
+              recipients.forEach((i,j)=>widths[i]+=j===recipients.length-1
+                ?remainder-each*j:each)
+            }
+          }
+        }
+        return widths
+      }
       const assigned = isOrder?orderFit(table,ths,overrides)
-        :isTracking ? fitTrackingPanel(table,ths,preferred,overrides) : panelWidths??preferred
+        :isTracking ? fitTrackingPanel(table,ths,preferred,overrides)
+        :isAccount ? accountFit() : panelWidths??preferred
       let total = 0
       ths.forEach((th,i) => {
-        // The account sequence number, order count and voucher tags are
-        // compact by business contract. Old stored widths must not resurrect
-        // oversized cells whenever a User detail slidebar is toggled.
-        const accountCompact:Record<string,number>={number:33,orders:58,voucher:96}
-        const accountWidth=table.classList.contains('user-table')
-          ?accountCompact[th.dataset.accountCol??'']:undefined
-        const width = isOrder?assigned[i]:panelWidths ? assigned[i] : accountWidth??(th.classList.contains('tracking-action-head') ? 44 :
-          compactCol(th) ? Math.max(24, Math.min(140, assigned[i])) : clampForHeader(th,assigned[i]))
+        // Semantic Account width comes from its real lane and current header
+        // key, never an obsolete CSS percentage or old frozen DOM cell.
+        const width = isAccount||isOrder?assigned[i]:panelWidths?assigned[i]
+          :th.classList.contains('tracking-action-head')?44
+          :compactCol(th)?Math.max(24,Math.min(140,assigned[i]))
+          :clampForHeader(th,assigned[i])
         total += width
         th.style.setProperty('width', width+'px', 'important')
         th.style.setProperty('min-width', width+'px', 'important')
         th.style.setProperty('max-width', width+'px', 'important')
       })
-      if(isOrder){
+      if(isOrder||isAccount){
         const cols=Array.from(table.querySelectorAll(':scope > colgroup > col')) as HTMLElement[]
         cols.forEach((col,i)=>{
           const width=assigned[i]
@@ -345,8 +430,8 @@ export function DesktopTableColumnResize() {
           +Math.round(purchasePane?.clientWidth??0)+':'
           +ths.map(th=>th.dataset.orderCol??th.dataset.accountCol??(th.classList.contains('bulk-select-col')?'select':'')).join(',')
         : 'general'
-      if ((table.matches('.mynh-p1-semantic-table.order-table')||Object.keys(saved).length)
-          &&trackingLayout.get(table)!==token) {
+      if ((table.matches('.mynh-p1-semantic-table.order-table,.mynh-p1-semantic-table.user-table')
+          ||Object.keys(saved).length)&&trackingLayout.get(table)!==token) {
         clearInlineWidths(table)
         freezeWidths(table,saved)
       }
@@ -354,8 +439,10 @@ export function DesktopTableColumnResize() {
       ths.forEach(th => {
         if (th.querySelector(':scope > .mynh-column-resize-grip')) return
         if (th.matches('.bulk-select-col, .select-col, .row-actions-head, .checkbox-col')) return
+        // # is a fixed index. Voucher, Số đơn and Giao thành công are
+        // operational data columns and must expose working width grips.
         if (table.classList.contains('user-table')
-          &&['number','orders','voucher'].includes(th.dataset.accountCol??''))return
+          &&th.dataset.accountCol==='number')return
         const label = headerName(th)
         if (label === 'blank') return
         th.classList.add('mynh-column-resize-head')
@@ -384,7 +471,10 @@ export function DesktopTableColumnResize() {
             })
           }
           const initial = th.getBoundingClientRect().width
-          freezeWidths(table,{})
+          // Freezing an Account table must retain EXISTING manual widths at
+          // drag start, or the first pointermove causes a visible column jump.
+          freezeWidths(table,table.matches('table.user-table.mynh-p1-semantic-table')
+            ?readSaved(table):{})
           const baseline = headerCells(table).map(headerWidth)
           const idx = headerCells(table).indexOf(th)
           if (idx < 0) return
@@ -396,7 +486,7 @@ export function DesktopTableColumnResize() {
           grip.classList.add('resizing')
           const move = (event:PointerEvent) => {
             const colWidth = clampForHeader(th,before+event.clientX-startX)
-            if(orderTable){
+            if(orderTable||table.classList.contains('user-table')){
               freezeWidths(table,{...priorSaved,[label]:colWidth})
               return
             }
@@ -434,7 +524,7 @@ export function DesktopTableColumnResize() {
           delete widths[label]
           // Measure the natural width again before re-applying any other custom widths.
           clearInlineWidths(table)
-          if(Object.keys(widths).length||table.matches('.mynh-p1-semantic-table.order-table'))freezeWidths(table,widths)
+          if(Object.keys(widths).length||table.matches('.mynh-p1-semantic-table.order-table,.mynh-p1-semantic-table.user-table'))freezeWidths(table,widths)
           save(table,widths)
         })
         grip.addEventListener('keydown',e=>{
@@ -472,7 +562,7 @@ export function DesktopTableColumnResize() {
     observer.observe(main,{childList:true,subtree:true,attributes:true,attributeFilter:['class']})
     const onChange=()=>{if(mq.matches)queue()}
     const paneResize=new ResizeObserver(()=>queue())
-    main.querySelectorAll('.order-table-card').forEach(el=>paneResize.observe(el))
+    main.querySelectorAll('.order-table-card,.account-table-card').forEach(el=>paneResize.observe(el))
     window.addEventListener('resize',queue)
     mq.addEventListener('change',onChange)
     const sync=(event:Event)=>{

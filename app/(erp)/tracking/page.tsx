@@ -4,9 +4,10 @@ import { formatDateTime, formatMoney, sourceLabel, statusLabel } from '@/lib/for
 import { TrackingHubGroup } from '@/components/tracking-hub-group'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import { ContextOrderPanel } from '@/components/context-order-panel'
-import { isDeliveredAwaitingReceipt, isPreDestinationTransit } from '@/lib/tracking/status-groups'
+import { isPreDestinationTransit } from '@/lib/tracking/status-groups'
 import { trackingNumberMeansCancelled } from '@/lib/purchase-order-cancellation'
 import { TrackingSuccessToast } from '@/components/tracking-success-toast'
+import { TrackingLiveKpis } from '@/components/tracking-live-kpis'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
 type SP={
@@ -221,15 +222,6 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     ? dueRows.filter((r:any)=>localDate(r.last_status_change_at)===sp.receiveDate)
     : dueRows
 
-  const transit=scopeRows.filter((r:any)=>isPreDestinationTransit(r.tracking_number,r.tracking_status)).length
-  const atHub=scopeRows.filter((r:any)=>r.tracking_status==='ARRIVED_DESTINATION_HUB').length
-  const outForDelivery=scopeRows.filter((r:any)=>r.tracking_status==='OUT_FOR_DELIVERY').length
-  const failed=scopeRows.filter((r:any)=>r.tracking_status==='DELIVERY_FAILED').length
-  const waitingRows=scopeRows.filter((r:any)=>isDeliveredAwaitingReceipt(r.tracking_status,r.receive_status))
-  const waiting=waitingRows.length
-  const waitingCod=waitingRows.reduce((sum:number,r:any)=>sum+Number(r.cod??0),0)
-  const waitingHubCount=new Set(waitingRows.map((r:any)=>r.destination_hub).filter(Boolean)).size
-
   let rows=[...scopeRows]
   if(sp.status==='PRE_DESTINATION')rows=rows.filter((r:any)=>isPreDestinationTransit(r.tracking_number,r.tracking_status))
   else if(sp.status)rows=rows.filter((r:any)=>r.tracking_status===sp.status)
@@ -379,47 +371,22 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     {error&&<div className="error-box" role="alert">Không thể tải dữ liệu vận chuyển: {error.message}</div>}
 
     <section className="tracking-command-center-v2">
-      <div className="tracking-status-strip-v2">
-        <Link
-          href={trackingHref({status:'PRE_DESTINATION',receive:null})}
-          className={'tracking-status-metric info '+(sp.status==='PRE_DESTINATION'?'active':'')}
-          title="Có mã vận đơn, đang vận chuyển nhưng chưa đến HUB kho đích"
-        >
-          <span>Đang vận chuyển</span><b>{transit}</b><small>Có MVD · Chưa đến HUB</small>
-        </Link>
-        <Link
-          href={trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null})}
-          className={'tracking-status-metric amber '+(sp.status==='ARRIVED_DESTINATION_HUB'?'active':'')}
-        >
-          <span>Đến HUB</span><b>{atHub}</b><small>Cần theo dõi</small>
-        </Link>
-        <Link
-          href={trackingHref({status:'OUT_FOR_DELIVERY',receive:null})}
-          className={'tracking-status-metric info '+(sp.status==='OUT_FOR_DELIVERY'?'active':'')}
-        >
-          <span>Đang giao</span><b>{outForDelivery}</b><small>Shipper đang xử lý</small>
-        </Link>
-        <Link
-          href={trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE'})}
-          className={'tracking-status-metric success '+(sp.status==='DELIVERED'&&sp.receive==='WAITING_RECEIVE'?'active':'')}
-          title={`Đã giao thành công, chờ xác nhận nhận hàng · COD ${formatMoney(waitingCod)} · ${waitingHubCount} HUB`}
-        >
-          <span>Giao thành công</span><b>{waiting}</b><small>Chờ nhận · {formatMoney(waitingCod)} · {waitingHubCount} HUB</small>
-        </Link>
-        <Link
-          href={trackingHref({status:'DELIVERY_FAILED',receive:null})}
-          className={'tracking-status-metric danger '+(sp.status==='DELIVERY_FAILED'?'active':'')}
-        >
-          <span>Giao lỗi</span><b>{failed}</b><small>Cần xử lý</small>
-        </Link>
-      </div>
-
+      <TrackingLiveKpis
+        rows={scopeRows.map(r=>({
+          shipment_id:r.shipment_id,tracking_number:r.tracking_number,
+          tracking_status:r.tracking_status,receive_status:r.receive_status,
+          destination_hub:r.destination_hub,cod:r.cod,
+        }))}
+        active={sp.status==='DELIVERED'&&sp.receive!=='WAITING_RECEIVE'?'':sp.status??''}
+        links={[
+          trackingHref({status:'PRE_DESTINATION',receive:null}),
+          trackingHref({status:'ARRIVED_DESTINATION_HUB',receive:null}),
+          trackingHref({status:'OUT_FOR_DELIVERY',receive:null}),
+          trackingHref({status:'DELIVERED',receive:'WAITING_RECEIVE'}),
+          trackingHref({status:'DELIVERY_FAILED',receive:null}),
+        ]}
+      />
       <div className="tracking-control-row-v2">
-        <div className="tracking-console-title">
-          <b>Console theo HUB</b>
-          <span>{rows.length} vận đơn · {grouped.length} HUB · {range.label}</span>
-        </div>
-
         <div className="tracking-filter-segments tracking-filter-segments-v2">
           <Link className={!sp.status&&!sp.receive?'active':''} href={trackingHref({status:null,receive:null})}>Tất cả</Link>
           <Link className={sp.status==='PRE_DESTINATION'?'active':''} href={trackingHref({status:'PRE_DESTINATION',receive:null})}>Đang vận chuyển</Link>

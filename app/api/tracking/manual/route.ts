@@ -79,7 +79,27 @@ export async function POST(req:Request){
       return apiError(friendly,response.status,message)
     }
 
-    return NextResponse.json(data,{status:response.status})
+    // Read the latest persisted shipment, not the entire Tracking page.
+    const {data:updated}=await supabase.from('shipments')
+      .select('id,tracking_number,current_tracking_status,tracking_events(event_time,raw_description,raw_status_name,raw_status,reason_description),orders(receive_status)')
+      .eq('id',body.shipment_id)
+      .order('event_time',{referencedTable:'tracking_events',ascending:false})
+      .limit(1,{referencedTable:'tracking_events'})
+      .maybeSingle()
+    const event=(updated?.tracking_events??[])[0]??null
+    const detail=event
+      ?[event.raw_description,event.raw_status_name,event.reason_description,event.raw_status]
+        .map(value=>typeof value==='string'?value.trim():'').find(Boolean)??null
+      :null
+    const snapshot=updated?{
+      shipment_id:updated.id,
+      tracking_number:updated.tracking_number,
+      current_tracking_status:updated.current_tracking_status,
+      tracking_detail:detail,
+      tracking_event_time:event?.event_time??null,
+      receive_status:(updated.orders as any)?.receive_status??null,
+    }:null
+    return NextResponse.json({...data,snapshot},{status:response.status})
   }catch(error){
     return apiError(
       'Không thể đồng bộ vận chuyển',

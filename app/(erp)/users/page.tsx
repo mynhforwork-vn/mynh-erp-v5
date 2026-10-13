@@ -9,6 +9,7 @@ import { VoucherTags } from '@/components/voucher-tags'
 import { UserBulkImport } from '@/components/user-bulk-import'
 import { ContextOrderPanel } from '@/components/context-order-panel'
 import { prepaidSourceLabel,resolveOrderValue } from '@/lib/order-prepaid'
+import { classifyPurchaseOrder } from '@/lib/purchase-dashboard-insights'
 import Link from 'next/link'
 
 type SP={
@@ -78,16 +79,34 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     : userListQuery.is('archived_at',null)
   userListQuery=userListQuery.limit(2000)
 
-  const [{data:userData,error},{data:deviceData},{data:voucherOrderData}]=await Promise.all([
+  // The account table needs a current-state delivery count, not historical
+  // tracking events. Reuse the Dashboard's classifier, including Hỏa tốc.
+  // Page through order rows: a single 5,000 limit may be silently capped by
+  // PostgREST max_rows and would undercount users with older orders.
+  async function loadAccountOrders(){
+    const all:any[]=[]
+    const batch=1000
+    for(let page=0;page<25;page++){
+      const {data,error:orderError}=await supabase.from('orders')
+        .select('erp_user_id,order_date,order_status,shipping_service,express_delivery_status,archived_at,shipments(id,tracking_number,current_tracking_status,is_active),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)')
+        .not('erp_user_id','is',null)
+        .order('id',{ascending:true})
+        .range(page*batch,(page+1)*batch-1)
+      if(orderError)return {data:[],error:orderError}
+      all.push(...(data??[]))
+      if((data??[]).length<batch)return {data:all,error:null}
+    }
+    // Fail closed instead of presenting a misleading partial total.
+    return {data:[],error:{message:'Số lượng đơn vượt giới hạn thống kê. Cần tối ưu truy vấn tổng hợp.'}}
+  }
+
+  const [{data:userData,error},{data:deviceData},{data:voucherOrderData,error:orderStatsError}]=await Promise.all([
     userListQuery,
     supabase.from('purchase_account_devices')
       .select('id,erp_user_id,device_key,device_name,device_type,browser_name,browser_profile,is_active,last_seen_at,source,note')
       .order('last_seen_at',{ascending:false,nullsFirst:false})
       .limit(5000),
-    supabase.from('orders')
-      .select('erp_user_id,order_date,order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)')
-      .not('erp_user_id','is',null)
-      .limit(5000),
+    loadAccountOrders(),
   ])
 
   const allRows=(userData??[]) as any[]
@@ -103,7 +122,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
   const voucherMap=new Map<string,any[]>()
   const firstOrderDate=new Map<string,string>()
+  const deliveredByUser=new Map<string,number>()
   for(const o of voucherOrders){
+    if(o.erp_user_id&&!o.archived_at&&classifyPurchaseOrder(o)==='delivered'){
+      deliveredByUser.set(o.erp_user_id,(deliveredByUser.get(o.erp_user_id)??0)+1)
+    }
     if(o.order_date&&Number.isFinite(Date.parse(o.order_date))){
       const prev=firstOrderDate.get(o.erp_user_id)
       if(!prev||Date.parse(o.order_date)<Date.parse(prev))firstOrderDate.set(o.erp_user_id,o.order_date)
@@ -125,6 +148,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       voucher_used_rows:voucherRows,
       voucher_used_summary:uniqueVoucherLabels.join(' · '),
       voucher_tags:uniqueVoucherLabels,
+      delivered_order_count:orderStatsError?null:(deliveredByUser.get(u.id)??0),
       effective_created_at:(firstOrderDate.get(u.id)&&Date.parse(firstOrderDate.get(u.id)!)<Date.parse(u.created_at))
         ?firstOrderDate.get(u.id):u.created_at,
     }
@@ -433,9 +457,10 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       <div id="p1-account-filter-actions" className="p1-account-filter-actions"/>
     </div>
 
-    <div className={`split-view account-workspace ${panelOpen?'with-panel':''}`}>
+    <div className={`split-view account-workspace ${panelOpen?'with-panel':''} ${selected&&!isEdit&&contextOrder?'with-two-panels':''}`}>
       <section className="account-list-pane">
         {error&&<div className="error-box">Không thể tải dữ liệu tài khoản: {error.message}</div>}
+        {orderStatsError&&<div className="error-box" role="alert">Không thể tính số đơn giao thành công: {orderStatsError.message}</div>}
         {!error&&<PurchaseAccountTable
           rows={displayRows}
           selectedId={selected?.id}
@@ -502,7 +527,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         />
       }
 
-      {selected&&!isEdit&&!contextOrder&&
+      {selected&&!isEdit&&
         <SystemSlidebar className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT USER</span><h2>{selected.username}</h2></div>

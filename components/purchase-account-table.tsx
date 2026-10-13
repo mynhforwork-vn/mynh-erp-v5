@@ -11,16 +11,26 @@ import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/
 import { archiveERPUsersBulk, restoreERPUsersBulk } from '@/lib/actions/core'
 
 type Row=Record<string,any>
-type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'mobile'|'browser'|'voucher'|'orders'|'createdAt'|'note'
+type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'mobile'|'browser'|'voucher'|'orders'|'deliveredOrders'|'createdAt'|'note'
 
-const ALL:ColKey[]=['number','username','platform','phone','email','status','mobile','browser','voucher','orders','createdAt','note']
+const ALL:ColKey[]=['number','username','platform','phone','email','status','mobile','browser','voucher','orders','deliveredOrders','createdAt','note']
 const LABELS:Record<ColKey,string>={
   number:'#',username:'Username',platform:'Nền tảng',phone:'SĐT',email:'Email',
-  status:'Trạng thái',mobile:'Mobile',browser:'Browser',voucher:'Voucher đã dùng',orders:'Số đơn',
+  status:'Trạng thái',mobile:'Mobile',browser:'Browser',voucher:'Voucher đã dùng',orders:'Số đơn',deliveredOrders:'Số đơn giao thành công',
   createdAt:'Thời gian tạo',note:'Ghi chú'
 }
 const STORAGE_KEY='mynh-v5-purchase-account-columns'
 const STORAGE_ORDER_KEY='mynh-v5-purchase-account-column-order'
+const DELIVERY_COL_MIGRATION_KEY='mynh-v5-account-delivered-column-v1'
+
+// Introduce the new visible column once for existing saved layouts. A user
+// who hides it afterwards keeps that preference across reloads.
+function insertAfterOrders(values:ColKey[]){
+  const without:ColKey[]=values.filter(k=>k!=='deliveredOrders')
+  const at=without.indexOf('orders')
+  without.splice(at<0?without.length:at+1,0,'deliveredOrders')
+  return without
+}
 
 function statusClass(status?:string|null){
   if(status==='Active')return 'green'
@@ -77,24 +87,32 @@ export function PurchaseAccountTable({
 
   useEffect(()=>{
     try{
+      const firstDeliveryColumn=localStorage.getItem(DELIVERY_COL_MIGRATION_KEY)!=='1'
       const raw=localStorage.getItem(STORAGE_KEY)
       if(raw){
         const parsed=JSON.parse(raw)
         if(Array.isArray(parsed)){
-          setVisible(normalizeLegacyVisibleColumns<ColKey>(
+          const saved=normalizeLegacyVisibleColumns<ColKey>(
             parsed.flatMap((k:string)=>k==='device'?['mobile','browser']:[k]),ALL,['username']
-          ))
+          )
+          const next=firstDeliveryColumn&&!saved.includes('deliveredOrders')
+            ?insertAfterOrders(saved):saved
+          setVisible(next)
+          if(firstDeliveryColumn)localStorage.setItem(STORAGE_KEY,JSON.stringify(next))
         }
       }
       const rawOrder=localStorage.getItem(STORAGE_ORDER_KEY)
       if(rawOrder){
         const parsedOrder=JSON.parse(rawOrder)
         if(Array.isArray(parsedOrder)){
-          setColumnOrder(normalizeLegacyColumnOrder<ColKey>(
-            parsedOrder.flatMap((k:string)=>k==='device'?['mobile','browser']:[k]),ALL
-          ))
+          const mapped=parsedOrder.flatMap((k:string)=>k==='device'?['mobile','browser']:[k])
+          const next=normalizeLegacyColumnOrder<ColKey>(mapped,ALL)
+          const ordered=!mapped.includes('deliveredOrders')?insertAfterOrders(next):next
+          setColumnOrder(ordered)
+          if(!mapped.includes('deliveredOrders'))localStorage.setItem(STORAGE_ORDER_KEY,JSON.stringify(ordered))
         }
       }
+      if(firstDeliveryColumn)localStorage.setItem(DELIVERY_COL_MIGRATION_KEY,'1')
     }catch{}
   },[])
 
@@ -160,87 +178,76 @@ export function PurchaseAccountTable({
   const selectedArchived=selectedRows.length>0&&selectedRows.every((row:any)=>Boolean(row.archived_at))
   const allSelected=rows.length>0&&rows.slice(0,200).every((row:any)=>selectedSet.has(String(row.id)))
   const colSpan=useMemo(()=>visible.length+(canManage?1:0),[visible,canManage])
-  // Same visible-column full/panel width policy as Tracking/HUB.
-  const columnMinimums:Record<ColKey,number>={"number":32,"username":154,"platform":64,"phone":108,"email":155,"status":89,"mobile":104,"browser":96,"voucher":76,"orders":52,"createdAt":135,"note":90}
-  const panelMinimums:Record<ColKey,number>={"number":28,"username":125,"platform":58,"phone":96,"email":130,"status":80,"mobile":83,"browser":75,"voucher":70,"orders":44,"createdAt":125,"note":72}
+  // Auto Fit: one width allocation for Desktop, Tablet, Mobile and right drawer.
+  // Numeric fields stay compact; meaningful text and Voucher expand as space permits.
   const shownColumns=columnOrder.filter(isVisible)
-  // Compact panel sizing is relative to the real table lane. Every visible
-  // column receives an explicit share, including when users hide/reorder.
-  const panelFitWeights:Record<ColKey,number>={
-    number:22,username:102,platform:53,phone:90,email:98,
-    status:72,mobile:81,browser:72,voucher:65,orders:40,createdAt:106,note:76
+  const sampleMax=(pick:(row:Row)=>string)=>{
+    let n=0
+    for(const row of rows.slice(0,150))n=Math.max(n,pick(row).trim().length)
+    return n
   }
-  // Content-informed desktop widths. Narrow metadata columns do not expand
-  // merely because Username / Email / Note were previously set to auto.
-  // Only displayed column IDs participate, so hidden/reordered columns are safe.
-  const maxLength=(read:(row:Row)=>string)=>{
-    let max=0
-    for(const row of rows.slice(0,150)){
-      max=Math.max(max,read(row).trim().length)
+  const clamp=(n:number,low:number,high:number)=>Math.max(low,Math.min(high,n))
+  const longestTag=sampleMax(r=>String(r.voucher_used_summary??'')
+    .split('·').map(s=>s.trim()).sort((a,b)=>b.length-a.length)[0]??'')
+  const minimum:Record<ColKey,number>={
+    number:28,username:128,platform:56,phone:98,email:132,status:76,
+    mobile:86,browser:74,voucher:104,orders:48,deliveredOrders:88,
+    createdAt:130,note:88,
+  }
+  const widths:Record<ColKey,number>={
+    number:28,username:clamp(45+sampleMax(r=>String(r.username??''))*6.4,144,214),
+    platform:64,phone:110,
+    email:clamp(18+sampleMax(r=>String(r.email??''))*5.7,148,248),
+    status:86,mobile:clamp(18+sampleMax(r=>accountDeviceFields(r).mobileType)*5.8,94,152),
+    browser:clamp(18+sampleMax(r=>accountDeviceFields(r).browserName)*5.8,82,145),
+    voucher:clamp(22+longestTag*5.8,106,182),
+    orders:52,deliveredOrders:94,createdAt:137,
+    note:clamp(26+sampleMax(r=>String(r.note??''))*4.8,103,185),
+  }
+  const flex:ColKey[]=['username','email','mobile','browser','voucher','note']
+  const panelWidth=tableLaneWidth>0?Math.max(0,Math.floor(tableLaneWidth)-2):0
+  const allocated=()=> (canManage?28:0)+shownColumns.reduce((sum,key)=>sum+widths[key],0)
+  if(panelWidth>0&&allocated()>panelWidth){
+    let deficit=allocated()-panelWidth
+    for(const key of ['note','email','mobile','browser','username','voucher'] as ColKey[]){
+      if(!shownColumns.includes(key))continue
+      const cut=Math.min(deficit,widths[key]-minimum[key])
+      widths[key]-=cut
+      deficit-=cut
+      if(deficit<=0)break
     }
-    return max
-  }
-  const range=(n:number,low:number,high:number)=>Math.min(high,Math.max(low,n))
-  const contentWeights:Record<ColKey,number>={
-    number:32,
-    username:range(48+maxLength(r=>String(r.username??''))*6.5,148,194),
-    platform:66,
-    phone:119,
-    email:range(18+maxLength(r=>String(r.email??''))*6.2,196,276),
-    status:88,
-    mobile:range(17+maxLength(r=>accountDeviceFields(r).mobileType)*6.1,118,175),
-    browser:range(16+maxLength(r=>accountDeviceFields(r).browserName)*6.1,101,140),
-    voucher:84,
-    orders:52,
-    createdAt:139,
-    note:range(20+maxLength(r=>String(r.note??''))*4,146,190),
-  }
-  const flexKeys=new Set<ColKey>(['username','email','mobile','browser','note'])
-  const fixedWidth=(canManage?32:0)+shownColumns.filter(k=>!flexKeys.has(k))
-    .reduce((sum,key)=>sum+contentWeights[key],0)
-  const flexible=shownColumns.filter(k=>flexKeys.has(k))
-  const flexibleWeights=flexible.reduce((sum,key)=>sum+contentWeights[key],0)
-  const minimumText:Partial<Record<ColKey,number>>={
-    username:124,email:151,mobile:94,browser:78,note:103,
-  }
-  const minimumBudget=flexible.reduce((sum,key)=>sum+(minimumText[key]??0),0)
-  const widthBudget=tableLaneWidth>0
-    ?Math.max(minimumBudget,tableLaneWidth-fixedWidth)
-    :flexibleWeights
-  const computedFullWidths:Record<ColKey,number>={...contentWeights}
-  for(const key of flexible){
-    computedFullWidths[key]=Math.max(minimumText[key]??0,
-      widthBudget*contentWeights[key]/Math.max(1,flexibleWeights))
-  }
-  let overage=flexible.reduce((sum,key)=>sum+computedFullWidths[key],0)-widthBudget
-  if(overage>0){
-    // Respect minimum readable text widths while compressing other columns.
-    for(let pass=0;pass<2&&overage>0.1;pass++){
-      const remaining=flexible.filter(key=>computedFullWidths[key]>(minimumText[key]??0)+0.1)
-      const room=remaining.reduce((sum,key)=>sum+computedFullWidths[key]-(minimumText[key]??0),0)
-      if(room<=0)break
-      for(const key of remaining){
-        const available=computedFullWidths[key]-(minimumText[key]??0)
-        const reduction=Math.min(available,overage*available/room)
-        computedFullWidths[key]-=reduction
+    // Short metadata fields also have safe lower bounds. Spend those few
+    // pixels before creating an avoidable horizontal scroll at 1440px.
+    if(deficit>0){
+      for(const key of ['phone','platform','status','createdAt','deliveredOrders','orders'] as ColKey[]){
+        if(!shownColumns.includes(key))continue
+        const cut=Math.min(deficit,widths[key]-minimum[key])
+        widths[key]-=cut
+        deficit-=cut
+        if(deficit<=0)break
       }
-      overage=flexible.reduce((sum,key)=>sum+computedFullWidths[key],0)-widthBudget
     }
   }
-  const tableTarget=fixedWidth+flexible.reduce((sum,key)=>sum+computedFullWidths[key],0)
-  // The full-width table uses fixed pixels for counts/tags/metadata.
-  // Only long meaningful text fields share remaining space.
-  const fullColumnStyle=(width:number)=>({
-    '--p1-full-col-width':Math.round(width*100)/100+'px',
+  const availableExtra=panelWidth>0?Math.max(0,panelWidth-allocated()):0
+  const expanding=flex.filter(key=>shownColumns.includes(key))
+  if(availableExtra>0&&expanding.length){
+    const importance:Partial<Record<ColKey,number>>={
+      username:1.3,email:1.4,mobile:.5,browser:.5,voucher:1,note:1,
+    }
+    const total=expanding.reduce((n,key)=>n+(importance[key]??1),0)
+    let consumed=0
+    expanding.forEach((key,i)=>{
+      const bonus=i===expanding.length-1?availableExtra-consumed:
+        Math.floor(availableExtra*(importance[key]??1)/total)
+      widths[key]+=bonus
+      consumed+=bonus
+    })
+  }
+  const fitCol=(px:number)=>({
+    '--p1-account-fit-col-width':Math.round(px*100)/100+'px',
   }) as CSSProperties
-  const panelFitTotal=(canManage?24:0)+shownColumns.reduce((sum,key)=>sum+panelFitWeights[key],0)
-  const panelShare=(weight:number)=>({ '--p1-panel-col-width':(weight/panelFitTotal*100)+'%' }) as CSSProperties
-  const fullFloor=(canManage?32:0)+shownColumns.reduce((sum,k)=>sum+columnMinimums[k],0)
-  const panelFloor=(canManage?28:0)+shownColumns.reduce((sum,k)=>sum+panelMinimums[k],0)
   const tableWidths={
-    '--p1-account-min-width':fullFloor+'px',
-    '--p1-account-panel-min-width':panelFloor+'px',
-    '--p1-account-computed-table-width':Math.max(fullFloor,tableTarget)+'px',
+    '--p1-account-fit-table-width':Math.ceil(allocated())+'px',
   } as CSSProperties
 
   function hrefFor(id:string){
@@ -288,6 +295,7 @@ export function PurchaseAccountTable({
     if(key==='browser')return <th key={key} data-account-col={key}>Browser</th>
     if(key==='voucher')return <th key={key} data-account-col={key} className="p1-user-voucher-head">Voucher đã dùng</th>
     if(key==='orders')return <th key={key} data-account-col={key}>Số đơn</th>
+    if(key==='deliveredOrders')return <th key={key} data-account-col={key} title="Số đơn giao thành công">Giao thành công</th>
     if(key==='createdAt')return <th key={key} data-account-col={key}><Link className="sortable-head" href={sortHref(detailQuery,timeNext)}>Thời gian tạo <span>{sort==='newest'?'↓':sort==='oldest'?'↑':'↕'}</span></Link></th>
     return <th key={key} data-account-col={key}>Ghi chú</th>
   }
@@ -311,8 +319,9 @@ export function PurchaseAccountTable({
       const value=key==='mobile'?fields.mobileType:fields.browserName
       return <td key={key} data-account-col={key} className="p1-device-text-cell" title={value||undefined}>{value||'—'}</td>
     }
-    if(key==='voucher')return <td key={key} data-account-col={key} className="voucher-cell"><VoucherTags value={u.voucher_used_summary} compact maxVisible={1}/></td>
+    if(key==='voucher')return <td key={key} data-account-col={key} className="voucher-cell" data-voucher-count={u.voucher_tags?.length??0}><VoucherTags value={u.voucher_used_summary} compact showAll/></td>
     if(key==='orders')return <td key={key} data-account-col={key} className="count-cell">{u.order_count??0}</td>
+    if(key==='deliveredOrders')return <td key={key} data-account-col={key} className="count-cell" title="Số đơn giao thành công">{u.delivered_order_count??'—'}</td>
     if(key==='createdAt')return <td key={key} data-account-col={key} title={formatDateTime(u.effective_created_at??u.created_at)}>{formatDateTime(u.effective_created_at??u.created_at)}</td>
     return <td key={key} data-account-col={key} className="truncate p1-table-long-text" title={u.note??undefined}>{u.note??'—'}</td>
   }
@@ -405,11 +414,11 @@ export function PurchaseAccountTable({
     </div>,toolbarRoot)}
 
     <div className="card table-card account-table-card" ref={tableCardRef}>
-      <table className="table user-table mynh-p1-semantic-table" style={tableWidths}>
+      <table className="table user-table mynh-p1-semantic-table" data-auto-fit-version="5" style={tableWidths}>
         <colgroup>
-          {canManage&&<col className="p1-account-col p1-account-col-select" style={{...panelShare(24),...fullColumnStyle(32)}}/>}
+          {canManage&&<col className="p1-account-col p1-account-col-select" style={fitCol(28)}/>}
           {shownColumns.map(k=><col key={k} className={'p1-account-col p1-account-col-'+k}
-            style={{...panelShare(panelFitWeights[k]),...fullColumnStyle(computedFullWidths[k])}}/>)}
+            style={fitCol(widths[k])}/>)}
         </colgroup>
         <thead><tr>
           {canManage&&<th className="bulk-select-col">
@@ -420,7 +429,7 @@ export function PurchaseAccountTable({
         <tbody>
           {!rows.length
             ? <tr><td colSpan={colSpan} className="empty">Không có tài khoản phù hợp với bộ lọc hiện tại.</td></tr>
-            : rows.map((u,i)=><tr key={u.id} className={selectedId===u.id?'selected-row':''}>
+            : rows.map((u,i)=><tr key={u.id} data-account-id={u.id} className={selectedId===u.id?'selected-row':''}>
                 {canManage&&<td className="bulk-select-col">
                   <input
                     type="checkbox"
