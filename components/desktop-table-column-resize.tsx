@@ -23,9 +23,13 @@ export function DesktopTableColumnResize() {
       th.matches('.bulk-select-col, .select-col, .row-actions-head, .checkbox-col')
     const headerWidth = (th:HTMLTableCellElement) =>
       th.classList.contains('tracking-action-head') ? 44 :
-      compactCol(th)
-        ? Math.max(24, Math.min(140, Math.round(th.getBoundingClientRect().width)))
-        : clampForHeader(th,th.getBoundingClientRect().width)
+      th.closest('table.user-table.mynh-p1-semantic-table')
+        // Account counters must not inflate to the generic 76px drag floor
+        // when another column is resized or when the right panel opens.
+        ? Math.max(24, Math.round(th.getBoundingClientRect().width))
+        : compactCol(th)
+          ? Math.max(24, Math.min(140, Math.round(th.getBoundingClientRect().width)))
+          : clampForHeader(th,th.getBoundingClientRect().width)
     const headerName = (th:HTMLTableCellElement) => {
       const clone = th.cloneNode(true) as HTMLElement
       clone.querySelectorAll('.mynh-column-resize-grip').forEach(x => x.remove())

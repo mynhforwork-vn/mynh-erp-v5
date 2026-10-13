@@ -190,9 +190,9 @@ export function PurchaseAccountTable({
   const longestTag=sampleMax(r=>String(r.voucher_used_summary??'')
     .split('·').map(s=>s.trim()).sort((a,b)=>b.length-a.length)[0]??'')
   const minimum:Record<ColKey,number>={
-    number:28,username:130,platform:57,phone:100,email:132,status:78,
-    mobile:86,browser:76,voucher:106,orders:50,deliveredOrders:90,
-    createdAt:132,note:90,
+    number:28,username:128,platform:56,phone:98,email:132,status:76,
+    mobile:86,browser:74,voucher:104,orders:48,deliveredOrders:88,
+    createdAt:130,note:88,
   }
   const widths:Record<ColKey,number>={
     number:28,username:clamp(45+sampleMax(r=>String(r.username??''))*6.4,144,214),
@@ -215,6 +215,17 @@ export function PurchaseAccountTable({
       widths[key]-=cut
       deficit-=cut
       if(deficit<=0)break
+    }
+    // Short metadata fields also have safe lower bounds. Spend those few
+    // pixels before creating an avoidable horizontal scroll at 1440px.
+    if(deficit>0){
+      for(const key of ['phone','platform','status','createdAt','deliveredOrders','orders'] as ColKey[]){
+        if(!shownColumns.includes(key))continue
+        const cut=Math.min(deficit,widths[key]-minimum[key])
+        widths[key]-=cut
+        deficit-=cut
+        if(deficit<=0)break
+      }
     }
   }
   const availableExtra=panelWidth>0?Math.max(0,panelWidth-allocated()):0

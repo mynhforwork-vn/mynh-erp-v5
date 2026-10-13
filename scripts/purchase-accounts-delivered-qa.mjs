@@ -213,7 +213,7 @@ try{
   const emailAfter=await emailHead.evaluate(x=>x.getBoundingClientRect().width)
   const resized=await inspectAccountFit()
   check('Accounts manual width grip aligns with colgroup',Boolean(resized&&
-    emailAfter>emailBefore+14&&resized.aligned&&!resized.pageOverflow),
+    emailAfter>emailBefore+14&&resized.aligned&&resized.compact&&!resized.pageOverflow),
     {emailBefore:Math.round(emailBefore),emailAfter:Math.round(emailAfter),resized})
   await page.reload({waitUntil:'domcontentloaded',timeout:45000})
   await page.locator('.account-table-card .user-table').waitFor()
@@ -221,7 +221,7 @@ try{
   const persistedEmail=await emailHead.evaluate(x=>x.getBoundingClientRect().width)
   const persistedFit=await inspectAccountFit()
   check('Account column saved width survives reload',Boolean(persistedFit&&
-    Math.abs(persistedEmail-emailAfter)<10&&persistedFit.aligned),
+    Math.abs(persistedEmail-emailAfter)<10&&persistedFit.aligned&&persistedFit.compact),
     {saved:Math.round(emailAfter),reloaded:Math.round(persistedEmail),persistedFit})
     // UI-only column state test does not mutate ERP rows or browser login state.
   await ctx.close()
