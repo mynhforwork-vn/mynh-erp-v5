@@ -146,6 +146,8 @@ function productLink(line:string){
   if(!md)return null
   if(!/^https?:\/\/shopee\.vn\//i.test(md.url))return null
   if(!/(?:^|[-/])i\.\d+\.\d+(?:[/?#]|$)/i.test(md.url))return null
+  // Link giá/SL/phân loại cùng URL sản phẩm không phải tên sản phẩm.
+  if(moneyValues(md.label).length)return null
   if(/^(image|svg|x\d+|phân loại hàng:|phan loai hang:)/i.test(md.label))return null
   return md
 }
