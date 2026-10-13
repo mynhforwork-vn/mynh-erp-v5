@@ -101,7 +101,7 @@ try{
   await page.waitForURL(u=>!u.pathname.includes('login'))
   res=await page.goto(root+'/settings?section=tracking&tracking_tab=mapping',{waitUntil:'domcontentloaded'})
   check(res?.status()===200,'Open Tracking Mapping')
-  const form=page.locator('form.tracking-unknown-row-v7').filter({hasText:state.code+' ·'})
+  const form=page.locator('form.tracking-unknown-row-v7').filter({has:page.locator('input[name="raw_code"][value="'+state.code+'"]')})
   check(await form.count()===1,'New UNKNOWN code shown in raw list')
   await form.locator('select[name=canonical_status]').selectOption('IN_TRANSIT')
   await form.getByRole('button',{name:'Tạo mapping'}).click()
