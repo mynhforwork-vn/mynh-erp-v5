@@ -106,7 +106,8 @@ try{
         const label=[...table.querySelectorAll('tbody th[scope="row"]')].every(x=>getComputedStyle(x).textAlign==='left')
         const numeric=[...table.querySelectorAll('tbody td:not([colspan])')].every(x=>getComputedStyle(x).textAlign==='center')
         const th=[...header.querySelectorAll('thead th')]
-        const thAligned=th.length===4&&getComputedStyle(th[0]).textAlign==='left'&&th.slice(1).every(x=>getComputedStyle(x).textAlign==='center')
+        const thAligned=th.length===5&&getComputedStyle(th[0]).textAlign==='left'&&th.slice(1).every(x=>getComputedStyle(x).textAlign==='center')
+          &&th[4].textContent.trim()==='Đơn bị huỷ'
         const tops=kpi.map(x=>Math.round(x.getBoundingClientRect().top))
         const groupTops=[...cards.querySelectorAll('button')].map(x=>Math.round(x.getBoundingClientRect().top))
         return {
@@ -134,14 +135,14 @@ try{
         layout.leftScroll!=='visible'&&layout.rightScroll!=='visible'&&layout.labelsAligned
       timeToolbar=!!layout&&(viewport.width<=1080||layout.timeRows===1)
       kpiContract=kpiContract&&!!layout&&layout.kpiRadius>=5&&layout.kpiRadius<=8&&layout.kpiHeight>=60&&layout.kpiHeight<=80
-      // Xác minh hai chế độ bảng và đối chiếu tổng theo ba trạng thái.
+      // Xác minh hai chế độ bảng, gồm cột Đơn bị huỷ và KPI tổng tương ứng.
       const tableCounters=async () => page.locator('.pd-status-table').evaluate(table=>{
         const rows=[...table.querySelectorAll('tbody tr')]
-        const totals=[0,0,0]
+        const totals=[0,0,0,0]
         for(const row of rows){
           const cells=[...row.querySelectorAll('td:not([colspan])')]
           if(cells.length===0)continue
-          if(cells.length!==3)return {valid:false,totals,rowCount:rows.length}
+          if(cells.length!==4)return {valid:false,totals,rowCount:rows.length}
           cells.forEach((td,i)=>totals[i]+=Number(td.textContent?.trim()??0))
         }
         return {valid:true,totals,rowCount:rows.filter(row=>row.querySelector('th[scope="row"]')).length}
@@ -152,12 +153,14 @@ try{
       const areaHeading=await page.locator('.pd-summary-head-table thead th').first().textContent()
       const areaCorrect=areaRows.valid&&areaRows.rowCount===Number(areaCount)&&
         areaHeading?.includes('Phường/Xã')&&areaRows.totals[0]===metrics[2]&&
-        areaRows.totals[1]===metrics[3]&&areaRows.totals[2]===metrics[6]
+        areaRows.totals[1]===metrics[3]&&areaRows.totals[2]===metrics[6]&&
+        areaRows.totals[3]===metrics[7]
       await page.locator('#pd-tab-hub').click()
       const hubRows=await tableCounters()
       const hubHeading=await page.locator('.pd-summary-head-table thead th').first().textContent()
       const hubCorrect=hubRows.valid&&hubRows.rowCount===Number(hubCount)&&
         hubHeading?.includes('HUB đích')&&
+        await page.locator('.pd-summary-head-table thead th').last().textContent()==='Đơn bị huỷ'&&
         hubRows.totals.every((value,i)=>value<=areaRows.totals[i])&&
         await page.locator('#pd-tab-hub').getAttribute('aria-selected')==='true'
       // Header và bộ chọn nhóm nằm ngoài vùng cuộn cả ở chế độ HUB.
