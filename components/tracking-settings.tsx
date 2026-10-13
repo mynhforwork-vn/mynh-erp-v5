@@ -108,10 +108,10 @@ export function TrackingSettings({
     setMappingSaving(true)
     setMappingFeedback(null)
     try{
-      await saveCarrierStatusMapping(formData)
+      const result=await saveCarrierStatusMapping(formData)
       setEditingMapping(null)
       changeTab('mapping')
-      setMappingFeedback({success:true,message:'Đã lưu mapping. Trạng thái lịch sử chưa được phân loại lại.'})
+      setMappingFeedback({success:true,message:'Đã lưu mapping. Đã phân loại lại '+result.updatedEvents+' sự kiện lịch sử UNKNOWN phù hợp.'})
       router.refresh()
     }catch(error){
       setMappingFeedback({success:false,message:'Không lưu được mapping: '+(error instanceof Error?error.message:'Có lỗi xảy ra')})
@@ -268,7 +268,7 @@ export function TrackingSettings({
         <div className="tracking-table-title-v7">
           <div>
             <h3>Raw status chưa nhận diện</h3>
-            <p>Chỉ xuất hiện khi SPX trả về mã mới chưa có mapping.</p>
+            <p>Chọn trạng thái chính xác rồi tạo Mapping; hệ thống sẽ cập nhật cả các sự kiện lịch sử UNKNOWN cùng mã.</p>
           </div>
           <div className="tracking-section-actions-v9">
             <span className="tracking-section-count-v9">{unknownRaw.length} cần xử lý</span>
@@ -289,8 +289,9 @@ export function TrackingSettings({
               <b>{row.carrier} · {row.raw_code}</b>
               <span>{row.raw_name||row.description||'Raw status mới'} · {row.count} event</span>
             </div>
-            <select name="canonical_status" defaultValue="UNKNOWN" disabled={!canEdit}>
-              {canonicalOptions.map(x=><option value={x.status_code} key={x.status_code}>{x.label} · {x.status_code}</option>)}
+            <select name="canonical_status" defaultValue="" required disabled={!canEdit}>
+              <option value="" disabled>Chọn trạng thái MYNH ERP…</option>
+              {canonicalOptions.filter(x=>x.status_code!=='UNKNOWN').map(x=><option value={x.status_code} key={x.status_code}>{x.label} · {x.status_code}</option>)}
             </select>
             <input type="hidden" name="is_active" value="on"/>
             {canEdit&&<button className="button small primary" type="submit" disabled={mappingSaving}>{mappingSaving?'Đang lưu…':'Tạo mapping'}</button>}
@@ -302,7 +303,7 @@ export function TrackingSettings({
         <div className="tracking-table-title-v7">
           <div>
             <h3>Mapping SPX → MYNH ERP</h3>
-            <p>Đọc trước, chỉ dòng bấm Sửa mới chuyển sang form chỉnh sửa.</p>
+            <p>Chỉ dòng bấm Sửa mới cho thay đổi. Khi lưu sẽ phân loại lại sự kiện lịch sử UNKNOWN khớp mã; không đổi trạng thái vận đơn. Riêng F599 giữ quy tắc HUB.</p>
           </div>
           <div className="tracking-section-actions-v9">
             <span className="tracking-section-count-v9">{mappings.length} mapping</span>

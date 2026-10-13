@@ -1987,29 +1987,32 @@ export async function saveTrackingRule(formData:FormData){
   revalidatePath('/settings')
 }
 
-export async function saveCarrierStatusMapping(formData:FormData){
+export async function saveCarrierStatusMapping(formData:FormData):Promise<{updatedEvents:number}>{
   const {supabase,role}=await actor()
   requireAdmin(role)
-  // The resolver normalizes the display name "SPX Express" to canonical carrier "SPX".
-  // Persist under the same code, otherwise mappings appear saved but are never applied.
   const selectedCarrier=text(formData.get('carrier')).toUpperCase()
   const carrier=selectedCarrier==='SPX EXPRESS'?'SPX':selectedCarrier
   const rawCode=text(formData.get('raw_code')).toUpperCase()
   const canonical=text(formData.get('canonical_status')).toUpperCase()
-  if(!carrier||!rawCode||!canonical)throw new Error('Thiếu Carrier, raw code hoặc trạng thái chuẩn')
-  const {error}=await supabase.rpc('save_carrier_status_mapping_secure',{
+  if(!carrier||!rawCode||!canonical||canonical==='UNKNOWN')
+    throw new Error('Vui lòng chọn trạng thái MYNH ERP hợp lệ trước khi lưu Mapping')
+  // Single database transaction: save mapping and backfill only UNKNOWN events.
+  // Historical backfill is SPX-only; F599 stays location/HUB-dependent.
+  // Do not mutate shipments, orders, notification history or the tracking queue.
+  const {data,error}=await supabase.rpc('save_carrier_status_mapping_with_history_secure',{
     p_carrier:carrier,
     p_raw_code:rawCode,
     p_raw_name:text(formData.get('raw_name'))||null,
     p_canonical_status:canonical,
     p_is_active:formData.get('is_active')==='on',
   })
-  if(error)throw new Error(error.message)
-  // Do not redirect a same-route Server Action to /settings: that can dispose the
-  // client-side Mapping panel before its refreshed React tree is committed.
-  // The caller keeps the active Mapping tab and refreshes data in place.
+  if(error)throw new Error('Không thể lưu Mapping và cập nhật lịch sử: '+error.message)
+  const count=Number(data??0)
+  if(!Number.isSafeInteger(count)||count<0)throw new Error('Không đọc được số sự kiện lịch sử đã cập nhật')
   revalidatePath('/settings')
-
+  revalidatePath('/purchase/tracking')
+  revalidatePath('/purchase/orders')
+  return {updatedEvents:count}
 }
 
 export async function testTrackingConnection(formData:FormData){
