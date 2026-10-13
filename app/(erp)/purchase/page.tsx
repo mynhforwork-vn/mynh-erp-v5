@@ -172,23 +172,15 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
         <section className="pd-summary-table" aria-labelledby="pd-summary-heading">
           <header className="pd-side-head">
             <div><span className="module-eyebrow">BẢNG TỔNG HỢP</span>
-              <h2 id="pd-summary-heading">Đơn hàng theo địa bàn</h2>
-              <p>Ba trạng thái quan trọng · Phường/Xã và HUB đích</p></div>
+              <h2 id="pd-summary-heading">Đơn hàng theo Phường/Xã – Tỉnh/TP</h2>
+              <p>Chưa có MVĐ · Đang vận chuyển · Giao thành công</p></div>
           </header>
           <div className="pd-table-scroll">
             <table className="pd-table pd-status-table">
-              <thead><tr><th scope="col">Khu vực / HUB đích</th><th scope="col">Chờ MVĐ</th><th scope="col">Vận chuyển</th><th scope="col">Giao TC</th></tr></thead>
+              <thead><tr><th scope="col">Phường/Xã · Tỉnh/TP</th><th scope="col">Chờ MVĐ</th><th scope="col">Vận chuyển</th><th scope="col">Giao TC</th></tr></thead>
               <tbody>
-                <tr className="pd-table-section"><th colSpan={4} scope="rowgroup">Phường/Xã · Tỉnh/Thành phố</th></tr>
                 {!areaGroups.length&&<tr><td colSpan={4} className="pd-empty">Chưa có đơn trong khoảng lọc.</td></tr>}
                 {areaGroups.map(group=><tr key={'area-'+group.name}>
-                  <th scope="row" title={group.name}>{group.name}</th>
-                  <td className="pd-cell-warning">{group.missing}</td><td className="pd-cell-blue">{group.shipping}</td>
-                  <td className="pd-cell-green">{group.delivered}</td>
-                </tr>)}
-                <tr className="pd-table-section"><th colSpan={4} scope="rowgroup">HUB đích</th></tr>
-                {!hubGroups.length&&<tr><td colSpan={4} className="pd-empty">Chưa có HUB trong khoảng lọc.</td></tr>}
-                {hubGroups.map(group=><tr key={'hub-'+group.name}>
                   <th scope="row" title={group.name}>{group.name}</th>
                   <td className="pd-cell-warning">{group.missing}</td><td className="pd-cell-blue">{group.shipping}</td>
                   <td className="pd-cell-green">{group.delivered}</td>
@@ -196,9 +188,11 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
               </tbody>
             </table>
           </div>
-          <p className="pd-table-help">Số liệu tại thời điểm hiện tại của các đơn đặt trong kỳ. Nhóm thiếu địa chỉ/HUB được hiển thị riêng, không tự suy đoán.</p>
+          <p className="pd-table-help">Địa bàn lấy từ địa chỉ người nhận; không suy đoán dữ liệu thiếu hoặc HUB.</p>
         </section>
 
+      </div>
+      <div className="pd-right-rail">
         <section className="pd-action-panel" aria-labelledby="pd-action-heading">
           <header className="pd-side-head">
             <div><span className="module-eyebrow">ƯU TIÊN VẬN HÀNH</span><h2 id="pd-action-heading">Công việc cần xử lý ngay</h2>
@@ -225,7 +219,8 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
           </div>
         </section>
       </div>
-      <section className="pd-right-rail" aria-labelledby="pd-chart-heading">
+    </div>
+      <section className="pd-chart-section" aria-labelledby="pd-chart-heading">
         <header className="pd-chart-section-head">
           <div><span className="module-eyebrow">BIỂU ĐỒ TRỰC QUAN</span><h2 id="pd-chart-heading">Phân bổ vận chuyển và giao hàng</h2>
             <p>Đối chiếu theo khu vực và HUB đích</p></div>
@@ -248,8 +243,7 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
             description="Đơn đã giao theo HUB đích"
             groups={hubGroups} metric="delivered" variant="column" geography="hub"/>
         </div>
-      </section>
-    </div>
+    </section>
     <footer className="pd-footer">
       <span>Đơn thuộc khoảng ngày đặt, tính theo trạng thái mới nhất. Riêng Hỏa tốc là tồn đọng toàn thời gian.</span>
       <div><Link href="/purchase/orders">Quản lý đơn nhập →</Link><Link href="/purchase/tracking">Theo dõi &amp; nhận hàng →</Link></div>
