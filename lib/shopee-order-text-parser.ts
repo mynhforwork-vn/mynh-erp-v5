@@ -317,6 +317,8 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
 
       const md=labelFromMarkdown(line)
       const label=(md?.label??line).trim()
+      // Không nuốt số tiền đơn / phí / voucher sau sản phẩm cuối cùng.
+      if(/^(?:Tổng tiền hàng|Phí vận chuyển|Giảm giá phí vận chuyển|Voucher từ Shopee|Thành tiền|Phương thức Thanh toán)$/i.test(label))break
 
       const variantMatch=label.match(/^Phân loại hàng\s*:\s*(.+)$/i)
       if(variantMatch&&!variant)variant=variantMatch[1].trim()
