@@ -214,7 +214,7 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
     result.detected_status='CANCELLED'
   else if(/Đang chờ hệ thống xác nhận đơn hàng/i.test(joined)&&/Chờ thanh toán/i.test(joined))
     result.detected_status='PENDING_SHOPEE_CONFIRMATION'
-  else if(/Giao hàng thành công|\*\*Đã giao\*\*|\bĐã giao\b/i.test(joined))result.detected_status='DELIVERED'
+  else if(/Giao hàng thành công|Đã giao/i.test(joined))result.detected_status='DELIVERED'
   else if(/Giao hàng không thành công/i.test(joined))result.detected_status='DELIVERY_FAILED'
   else if(/Đang giao|sớm được giao/i.test(joined))result.detected_status='OUT_FOR_DELIVERY'
   else if(/Đang vận chuyển/i.test(joined))result.detected_status='IN_TRANSIT'
