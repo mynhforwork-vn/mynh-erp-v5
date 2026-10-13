@@ -24,7 +24,7 @@
 .pd-metric strong{font-size:25px;line-height:1.05;font-weight:780;font-variant-numeric:tabular-nums;letter-spacing:-.03em;color:#213b50}
 .pd-metric small{font-size:9px;line-height:1.15;color:#74899b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pd-tone-express{--pd-tone:#0b969e}.pd-tone-warning{--pd-tone:#c38c34}.pd-tone-info{--pd-tone:#3987bd}.pd-tone-indigo{--pd-tone:#747bbd}.pd-tone-success{--pd-tone:#22916c}.pd-tone-danger{--pd-tone:#bc616e}
-.pd-workspace{display:grid;grid-template-columns:minmax(340px,41%) minmax(0,1fr);align-items:start;gap:12px;min-width:0}
+.pd-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:12px;min-width:0}
 .pd-left-rail,.pd-right-rail{display:grid;gap:11px;min-width:0}
 .pd-summary-table,.pd-action-panel{min-width:0;background:#fff;border:1px solid var(--pd-line);border-radius:10px;overflow:hidden}
 .pd-side-head,.pd-chart-section-head{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:0;padding:12px 13px 10px}
@@ -67,7 +67,8 @@
 .pd-group-order span:nth-child(2){color:#6c8395;white-space:nowrap}
 .pd-group-more{font-size:9px;color:#758da0;padding:3px 0}
 .pd-data-warning{padding:9px;border:1px solid #e9d8b8;border-radius:7px;background:#fffaf1;font-size:9px;line-height:1.5;color:#95743f}
-.pd-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;min-width:0}
+.pd-chart-section{display:grid;gap:8px;min-width:0}
+.pd-chart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;min-width:0}
 
 .pd-chart-panel{
  --pd-chart-color:var(--pd-blue);display:flex;flex-direction:column;min-width:0;min-height:242px;
@@ -102,7 +103,7 @@
 .pd-chart-foot{margin-top:auto;padding-top:8px;color:#8496a4;font-size:9px}
 
 
-.pd-chart-panel:last-child{grid-column:1/-1}
+.pd-chart-panel:last-child{grid-column:auto}
 .pd-footer{border-top:1px solid #e4ebf1;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;padding-top:9px;font-size:10px;color:#73899a}
 .pd-footer div{display:flex;flex-wrap:wrap;gap:13px}
 .pd-footer a{color:#367cad;text-decoration:none;font-weight:700}
@@ -110,9 +111,9 @@
 @media(max-width:1260px){
 .pd-time-filter{flex-wrap:wrap}.pd-time-quick{flex:1 1 100%;order:0}.pd-time-calendar{flex:1 0 auto;justify-content:flex-start;order:1}
 .pd-chart-grid{grid-template-columns:1fr}.pd-chart-panel:last-child{grid-column:auto}
-.pd-workspace{grid-template-columns:minmax(300px,42%) minmax(0,1fr)}
+.pd-workspace{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-@media(max-width:960px){.pd-workspace{grid-template-columns:1fr}.pd-chart-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-chart-panel:last-child{grid-column:1/-1}}
+@media(max-width:960px){.pd-workspace{grid-template-columns:1fr}.pd-chart-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pd-chart-panel:last-child{grid-column:auto}}
 @media(max-width:700px){
 .pd-insight .pd-topbar{flex-direction:column;align-items:start;gap:8px}
 .pd-insight .pd-topbar .head-actions{display:flex;gap:6px;flex-wrap:wrap;width:100%}
@@ -128,3 +129,8 @@
 .pd-time-calendar .button{font-size:9px;padding:4px 6px}.pd-time-calendar .pd-date-separator{font-size:11px}.pd-time-calendar input{font-size:10px;padding:0 2px}
 .pd-group-order span:nth-child(2){display:none}.pd-insight .pd-topbar h1{font-size:21px}
 }
+
+/* Màn rộng: bảng địa bàn trái, nhóm xử lý phải. Biểu đồ thành hàng riêng dưới. */
+@media(min-width:961px){.pd-action-panel{min-height:320px}.pd-chart-grid .pd-chart-panel{min-height:230px}}
+@media(min-width:1261px) and (max-width:1490px){.pd-chart-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.pd-status-table{min-width:375px}.pd-chart-grid{grid-template-columns:1fr}}
