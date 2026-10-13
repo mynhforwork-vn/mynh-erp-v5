@@ -85,6 +85,21 @@ try{
   const page=await ctx.newPage()
   await page.goto(base+'/purchase/accounts',{waitUntil:'domcontentloaded',timeout:45000})
   await page.locator('.account-table-card table[data-auto-fit-version="5"]').waitFor({timeout:25000})
+  // Server HTML paints before the shared width manager hydrates. Testing its
+  // temporary intrinsic widths produces a false red initial-only result.
+  // Wait until the REAL Account manager has finished its first recalibration;
+  // never relax the 110px Voucher / 60px order-count acceptance thresholds.
+  await page.waitForFunction(()=>{
+    const table=document.querySelector('.account-table-card table[data-auto-fit-version="5"]')
+    const voucher=table?.querySelector('th[data-account-col="voucher"]')
+    const orders=table?.querySelector('th[data-account-col="orders"]')
+    const delivered=table?.querySelector('th[data-account-col="deliveredOrders"]')
+    if(!voucher||!orders||!delivered)return false
+    return voucher.getBoundingClientRect().width>=110
+      &&orders.getBoundingClientRect().width>=60
+      &&delivered.getBoundingClientRect().width>=94
+      &&getComputedStyle(voucher).overflowX==='hidden'
+  },null,{timeout:20000})
   const initial=await snap(page)
   check(viewport.width+' initial 0 panels',fit(initial)&&initial.panelCount===0,initial??{})
   const toggle=page.locator('.desktop-sidebar-seam-handle .sidebar-collapse-toggle')
