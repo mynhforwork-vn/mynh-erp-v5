@@ -64,7 +64,8 @@ async function metrics(page){
 function fit(m){return !!(m&&!m.bodyOverflow&&m.aligned&&m.localScroll&&m.fitted
   &&m.tableWithinScroll&&m.widths.username>=118&&m.widths.voucher>=99
   &&m.widths.number<=48&&m.widths.orders<=76
-  &&m.lane.right<=m.viewport+4)}
+  &&m.lane.right<=m.viewport+4
+  &&(m.viewport>900||m.lane.width>=Math.max(190,m.viewport-110)))}
 function panels(m,expected){
   if(!m||m.count!==expected)return false
   if(expected===0)return !m.user&&!m.order
@@ -117,7 +118,9 @@ try{
   const tracking=page.locator('.account-workspace>.context-order-panel .context-order-tabs a').filter({hasText:'Tracking'})
   if(await tracking.count()){
     await tracking.click()
-    await page.locator('.account-workspace>.context-order-panel').waitFor()
+    // Wait for real RSC tab selection, not merely the still-mounted panel.
+    await page.locator('.account-workspace>.context-order-panel .context-order-tabs a.active')
+      .filter({hasText:'Tracking'}).waitFor({state:'visible',timeout:20000})
     const trackingTwo=await metrics(page)
     check(viewport.width+' 2 slidebars: Tracking tab',fit(trackingTwo)&&panels(trackingTwo,2)
       &&trackingTwo.tab==='Tracking',trackingTwo??{})

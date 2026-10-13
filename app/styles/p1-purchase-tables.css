@@ -937,3 +937,16 @@ table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-accoun
     z-index:1101!important;
   }
 }
+
+/* Mobile slidebars are overlays, not table-grid columns. */
+@media(max-width:900px){
+  .brand-shell-v1 .account-screen .account-workspace.with-panel{
+    display:block!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    width:100%!important;min-width:0!important;max-width:100%!important;
+  }
+  .brand-shell-v1 .account-screen .account-workspace.with-panel>.account-list-pane{
+    display:block!important;
+    width:100%!important;min-width:0!important;max-width:100%!important;
+  }
+}
