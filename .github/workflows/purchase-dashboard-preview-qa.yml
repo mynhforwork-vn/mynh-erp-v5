@@ -9,6 +9,10 @@ on:
       - 'app/(erp)/tracking/page.tsx'
       - 'app/(erp)/users/page.tsx'
       - 'components/purchase-account-table.tsx'
+      - 'components/erp-user-inline-form.tsx'
+      - 'components/order-account-detail-panel.tsx'
+      - 'lib/actions/core.ts'
+      - 'scripts/account-inline-fit-static-qa.mjs'
       - 'components/order-editor-form.tsx'
       - 'lib/shopee-order-text-parser.ts'
       - 'scripts/shopee-pending-payment-qa.mjs'
@@ -57,6 +61,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Shopee pending payment parser QA
         run: node --experimental-strip-types scripts/shopee-pending-payment-qa.mjs
+      - name: User actions and responsive Auto Fit contract QA
+        run: node scripts/account-inline-fit-static-qa.mjs
       - name: TypeScript QA
         run: npm run typecheck
       - name: Resolve existing public QA key (without printing it)
