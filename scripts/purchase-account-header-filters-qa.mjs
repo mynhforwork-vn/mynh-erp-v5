@@ -56,8 +56,8 @@ try{
     const table=document.querySelector('.account-table-card table.user-table')
     const card=document.querySelector('.account-table-card')
     const manager=document.querySelector('.p1-account-filter-actions .managed-column-button')
-    return table?.classList.contains('mynh-resizable-table')
-      &&card&&manager&&card.clientWidth>100
+    const desktopGrips=innerWidth<768||table?.classList.contains('mynh-resizable-table')
+    return desktopGrips&&table&&card&&manager&&card.clientWidth>100
       &&Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8
       &&card.scrollWidth<=card.clientWidth+4
   },null,{timeout:20000})
