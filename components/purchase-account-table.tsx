@@ -108,10 +108,13 @@ export function PurchaseAccountTable({
     if(workspace)observer.observe(workspace)
     const onPaneAnimation=()=>measure()
     workspace?.addEventListener('transitionend',onPaneAnimation)
+    const paneObserver=new MutationObserver(measure)
+    if(workspace)paneObserver.observe(workspace,{childList:true,attributes:true,attributeFilter:['class']})
     window.addEventListener('mynh-sidebar-resized',measure)
     return ()=>{
       observer.disconnect()
       workspace?.removeEventListener('transitionend',onPaneAnimation)
+      paneObserver.disconnect()
       window.removeEventListener('mynh-sidebar-resized',measure)
       if(raf)window.cancelAnimationFrame(raf)
     }
