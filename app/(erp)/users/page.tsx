@@ -1,6 +1,7 @@
 import { requireUser } from '@/lib/supabase/auth'
 import { SystemSlidebar } from '@/components/system-slidebar'
 import { ERPUserInlineForm } from '@/components/erp-user-inline-form'
+import { ERPAccountFilterForm } from '@/components/erp-account-filter-form'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
 import { deleteERPUserPermanent } from '@/lib/actions/core'
@@ -419,7 +420,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     </section>
 
     <div className="p1-account-command-row">
-    <form className="account-filter-bar one-line entity-command-bar entity-user-command" action="/purchase/accounts">
+    <ERPAccountFilterForm className="account-filter-bar one-line entity-command-bar entity-user-command">
       <input className="search" name="q" defaultValue={sp.q??''} placeholder="Tìm User / SĐT / Email / máy / voucher"/>
       <AccountFilterDropdown name="browser" value={browser} label="Browser" baseHref={filterHref()} options={[
         {value:'all',label:'Browser: Tất cả'},...browserOptions,
@@ -455,7 +456,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         <Link className={archiveView?'active':''} href={filterHref({archive:'archived',user:null,mode:null,tab:null})}>Đã lưu trữ</Link>
       </div>
       <div className="entity-result-meta"><b>{rows.length}</b><span>/ {counts.all} User{selectedOutsideFilter?' · +1 đang mở':''}</span></div>
-    </form>
+    </ERPAccountFilterForm>
       <div id="p1-account-filter-actions" className="p1-account-filter-actions"/>
     </div>
 
