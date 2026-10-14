@@ -154,7 +154,11 @@ try{
   await page.locator('.account-workspace>.account-detail-panel').waitFor({timeout:20000})
   const one=await metrics(page)
   check(viewport.width+' 1 slidebar: User detail',fit(one)&&panels(one,1,'user')
-    &&(viewport.width<=900||one.lane.width<initial.lane.width-80),one??{})
+    &&(viewport.width<=900
+      ||(viewport.width<=1180
+        ?Math.abs(one.lane.width-initial.lane.width)<=8
+          &&one.user.left<one.lane.right&&one.user.right<=viewport.width+4
+        :one.lane.width<initial.lane.width-80)),one??{})
   if(viewport.width===1440){
     // Read-only navigation QA: never submit a real account form. Successful
     // persistence belongs to a separately approved isolated fixture test.
