@@ -72,7 +72,7 @@ try{
         const card=document.querySelector('.account-table-card')
         const manager=document.querySelector('.p1-account-filter-actions .managed-column-button')
         return table&&card&&manager&&card.clientWidth>100
-          &&(innerWidth<768||table.classList.contains('mynh-resizable-table'))
+          &&(table.dataset.accountLayout==='stacked'||table.classList.contains('mynh-resizable-table'))
           &&Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8
           &&card.scrollWidth<=card.clientWidth+4
       },null,{timeout:18000})
@@ -107,7 +107,7 @@ try{
     }
   })
   check(viewport.width+' all available column headers and no scroll',
-    geo.count>=3&&geo.unfiltered===0&&geo.noScroll&&geo.fit
+    geo.count===13&&geo.unfiltered===0&&geo.noScroll&&geo.fit
     &&geo.toolbarSearch&&geo.toolbarArchive&&geo.columnIcon&&geo.hydrated,geo)
 
   const username=await openFilter(page,'username')
