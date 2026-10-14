@@ -63,18 +63,28 @@ try{
   })))
   const page=await ctx.newPage()
   let response
-  // Cloudflare can queue the existing sole Preview after GitHub CI starts.
-  // Wait for the exact new table marker before judging real browser geometry.
-  for(let attempt=0;attempt<20;attempt++){
+  // Validate an actual hydrated page, not a transient SSR/503 response.
+  // Cloudflare may serve a temporary error or an older Preview build during
+  // deployment; retry the same sole Preview without modifying business data.
+  for(let attempt=0;attempt<18;attempt++){
     response=await page.goto(base+'/purchase/accounts?range=all',
       {waitUntil:'domcontentloaded',timeout:45000})
-    if(response?.status()===200
-      &&await page.locator('.account-table-card table[data-auto-fit-version="6"]').count()===1)
-      break
-    if(attempt===19)throw Error('Preview is still serving old Account Auto Fit; no QA conclusion')
-    await page.waitForTimeout(15000)
+    if(response?.status()===200){
+      try{
+        await page.locator('.account-table-card table[data-auto-fit-version="6"]')
+          .waitFor({state:'visible',timeout:8000})
+        await page.waitForFunction(()=>{
+          const card=document.querySelector('.account-table-card')
+          const table=card?.querySelector('table.user-table')
+          return card&&table&&card.clientWidth>120
+            &&table.querySelectorAll('thead th').length>=2
+        },null,{timeout:6000})
+        break
+      }catch{}
+    }
+    if(attempt===17)throw Error('Account Preview not stable/updated after retries; cannot claim QA PASS')
+    await page.waitForTimeout(12000)
   }
-  await page.locator('.account-table-card table[data-auto-fit-version="6"]').waitFor({timeout:25000})
   await page.evaluate(()=>{window.__mynhQaDoc=true})
   try{
     await page.waitForFunction(()=>{
