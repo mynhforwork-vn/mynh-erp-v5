@@ -48,17 +48,17 @@ const tests=[
    assert.match(manager,/trackingLayout\.delete\(table as HTMLTableElement\)/)
    assert.match(manager,/window\.addEventListener\('mynh-account-fit-changed',refitAccount\)/)
  }],
- ['Account Auto Fit follows Purchase Orders semantic lane and safe width profile',()=>{
+ ['Account Auto Fit follows Orders and prevents horizontal scroll at 780/800px',()=>{
+   const fit=read('lib/account-table-autofit.ts')
+   assert.match(accountTable,/fitAccountColumnWidths\(keys,original,tableLaneWidth\)/)
+   assert.match(manager,/return fitAccountColumnWidths\(keys,preferred,lane,manual\)/)
    assert.match(manager,/const orderFit=\(table:HTMLTableElement,ths:HTMLTableCellElement\[\],saved:Record<string,number>\)=>/)
    assert.match(manager,/const accountFit=\(\)=>/)
-   assert.match(manager,/const compact=withPanel\|\|lane<1200/)
-   assert.match(manager,/const target=Math\.max\(minimum,lane-2\)/)
-   assert.match(manager,/if\(i<0\|\|customized\[i\]\|\|spare>=0\)continue/)
-   assert.match(manager,/if\(i<0\|\|customized\[i\]\|\|spare<=0\)continue/)
    assert.match(manager,/const assigned = isOrder\?orderFit\(table,ths,overrides\)/)
-   assert.match(manager,/isAccount \? accountFit\(\)/)
    assert.match(manager,/col\.style\.setProperty\('width',width\+'px','important'\)/)
    assert.match(manager,/table\.style\.setProperty\('width', total\+'px', 'important'\)/)
+   assert.match(fit,/const target=Math\.max\(keys\.length\*12,Math\.floor\(lane\)-2\)/)
+   assert.match(fit,/reduceTo\(TIGHT_FLOORS,false\)/)
  }],
  ['Account filters and TSV imports never reload the document',()=>{
    assert.match(accounts,/<ERPAccountFilterForm/)
