@@ -9,6 +9,8 @@ on:
       - 'app/(erp)/tracking/page.tsx'
       - 'app/(erp)/users/page.tsx'
       - 'components/purchase-account-table.tsx'
+      - 'lib/account-table-autofit.ts'
+      - 'scripts/purchase-account-no-scroll-qa.mjs'
       - 'components/purchase-date-filter.tsx'
       - 'app/styles/desktop-column-resize.css'
       - 'scripts/purchase-time-filter-parity-qa.mjs'
@@ -99,6 +101,8 @@ jobs:
           CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME_PATH"
           echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: Check Accounts no horizontal scroll and Orders-style column control (320-1440px)
+        run: node scripts/purchase-account-no-scroll-qa.mjs
       - name: Check Accounts single slidebar User to Order to Tracking and Back
         run: node scripts/purchase-accounts-two-slidebars-qa.mjs
       - name: Check left sidebar Auto Fit and real mouse drag on Voucher and Số đơn
