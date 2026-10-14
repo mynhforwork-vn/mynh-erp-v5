@@ -61,7 +61,18 @@ try{
     sameSite:c.options?.sameSite==='strict'?'Strict':c.options?.sameSite==='none'?'None':'Lax',
   })))
   const page=await ctx.newPage()
-  const response=await page.goto(base+'/purchase/accounts?range=all',{waitUntil:'domcontentloaded',timeout:45000})
+  let response
+  // Cloudflare can queue the existing sole Preview after GitHub CI starts.
+  // Wait for the exact new table marker before judging real browser geometry.
+  for(let attempt=0;attempt<20;attempt++){
+    response=await page.goto(base+'/purchase/accounts?range=all',
+      {waitUntil:'domcontentloaded',timeout:45000})
+    if(response?.status()===200
+      &&await page.locator('.account-table-card table[data-auto-fit-version="6"]').count()===1)
+      break
+    if(attempt===19)throw Error('Preview is still serving old Account Auto Fit; no QA conclusion')
+    await page.waitForTimeout(15000)
+  }
   await page.locator('.account-table-card table[data-auto-fit-version="6"]').waitFor({timeout:25000})
   await page.evaluate(()=>{window.__mynhQaDoc=true})
   try{
