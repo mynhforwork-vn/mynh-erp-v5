@@ -229,7 +229,9 @@ try{
     const now=await snap(page)
     check(viewport.width+' '+label,
       fit(now)&&now.panelCount===(open?1:0)&&now.leftCollapsed===previous.leftCollapsed
-      &&Math.abs(now.lane-previous.lane)>=180
+      &&(viewport.width<=1180
+        ?Math.abs(now.lane-previous.lane)<=8
+        :Math.abs(now.lane-previous.lane)>=180)
       &&[...custom].every(([k,v])=>Math.abs(Number(now.storedManual[k])-v)<=7),
       {before:previous,...now,manual:Object.fromEntries(custom)})
     return now
