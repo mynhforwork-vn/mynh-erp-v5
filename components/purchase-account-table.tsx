@@ -77,11 +77,29 @@ export function PurchaseAccountTable({
   useEffect(()=>{
     const card=tableCardRef.current
     if(!card)return
-    const measure=()=>setTableLaneWidth(w=>Math.abs(w-card.clientWidth)<1?w:card.clientWidth)
+    let raf=0
+    const measure=()=>{
+      if(raf)window.cancelAnimationFrame(raf)
+      raf=window.requestAnimationFrame(()=>{
+        raf=0
+        const next=card.clientWidth
+        setTableLaneWidth(w=>Math.abs(w-next)<1?w:next)
+        window.dispatchEvent(new Event('mynh-account-fit-changed'))
+      })
+    }
     measure()
+    // Sidebar trái, slidebar phải và bản thân bảng đều có thể đổi độ rộng
+    // mà component không unmount. Theo dõi cả workspace để không giữ fit cũ.
     const observer=new ResizeObserver(measure)
     observer.observe(card)
-    return ()=>observer.disconnect()
+    const workspace=card.closest('.account-workspace')
+    if(workspace)observer.observe(workspace)
+    window.addEventListener('mynh-sidebar-resized',measure)
+    return ()=>{
+      observer.disconnect()
+      window.removeEventListener('mynh-sidebar-resized',measure)
+      if(raf)window.cancelAnimationFrame(raf)
+    }
   },[])
   const toolbarRoot=usePurchaseToolbarRoot('p1-account-filter-actions')
 
