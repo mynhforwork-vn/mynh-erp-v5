@@ -46,11 +46,11 @@ try{
       const root=document.querySelector('.tracking-screen-v2')
       const status=root?.querySelector('.tracking-status-strip-v2')
       const cards=[...(status?.querySelectorAll(':scope > .tracking-status-metric')??[])]
-      const filter=root?.querySelector('.tracking-date-row-v2 .purchase-date-filter')
+      const filter=root?.querySelector('.tracking-date-row-v2 .pd-time-filter')
       const control=root?.querySelector('.tracking-control-row-v2')
       const dates=[...(filter?.querySelectorAll('input[type="date"]')??[])]
-      const labels=[...(filter?.querySelectorAll('.purchase-date-inline-form label')??[])]
-      const dateForm=filter?.querySelector('.purchase-date-inline-form')
+      const labels=[...(filter?.querySelectorAll('.pd-time-calendar label')??[])]
+      const dateForm=filter?.querySelector('.pd-time-calendar')
       const apply=dateForm?.querySelector('button[type="submit"]')
       const hubList=root?.querySelector('.tracking-content-workspace')
       if(!root||!status||!filter||!control||cards.length!==5)return null
@@ -71,7 +71,7 @@ try{
         filterIsWhite:getComputedStyle(filter).backgroundColor==='rgb(255, 255, 255)',innerBg,
         consoleRemoved:!root.querySelector('.tracking-console-title'),
         dateFieldsFit:dates.length===2&&labels.length===2&&!!dateForm&&!!apply&&
-          dates.every((d,i)=>rect(d).width>=(innerWidth<=480?90:123)&&
+          dates.every((d,i)=>rect(d).width>=(innerWidth<=360?70:90)&&
             rect(d).left>=rect(labels[i]).left-2&&rect(d).right<=rect(labels[i]).right+2&&
             rect(labels[i]).left>=rect(dateForm).left-2&&rect(labels[i]).right<=rect(dateForm).right+2)&&
           rect(apply).left>=rect(dateForm).left-2&&rect(apply).right<=rect(dateForm).right+2,
