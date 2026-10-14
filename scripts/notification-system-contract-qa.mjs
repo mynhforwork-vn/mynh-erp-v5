@@ -13,7 +13,7 @@ check('Latest active cron failure',sql.includes("'TRACKING_CRON_FAILED'")&&sql.i
 check('Recovered delivery or cancellation excluded',sql.includes("not in ('DELIVERED','CANCELLED','RETURNED')")&&sql.includes("'KHÔNG CÓ'"))
 check('System feed RPC implemented',sql.includes('public.get_notification_feed('))
 check('Read one/all and resolve RPCs implemented', ['mark_system_notification_read','mark_all_system_notifications_read','resolve_system_notification'].every(v=>sql.includes('public.'+v+'(')))
-check('Role gate and read RLS',sql.includes("current_erp_role() not in ('admin','operator')")&&sql.includes('user_id=(select auth.uid())'))
+check('Role gate and read RLS',sql.includes("coalesce(public.current_erp_role(),'') not in ('admin','operator')")&&sql.includes('user_id=(select auth.uid())'))
 check('No public/anonymous execute on system procedures',sql.includes('revoke all on function public.get_notification_feed(integer,integer,text,text) from public,anon'))
 check('Current operational incident cannot be falsely resolved',sql.includes('Lỗi vẫn tồn tại; cần xử lý nguồn lỗi trước'))
 check('All API-backed system handlers present', ['get_notification_feed','mark_system_notification_read','mark_all_system_notifications_read','resolve_system_notification'].every(v=>api.includes("'"+v+"'")))
