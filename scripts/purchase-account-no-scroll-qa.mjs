@@ -21,9 +21,12 @@ const {error}=await sb.auth.setSession({access_token:session.access_token,refres
 if(error)throw error
 const browser=await chromium.launch({headless:true,...(process.env.CHROME_BIN?{executablePath:process.env.CHROME_BIN}:{})})
 const viewports=[
-  {width:320,height:568},{width:390,height:844},
-  {width:768,height:1024},{width:780,height:1024},{width:800,height:1024},
-  {width:1024,height:768},{width:1280,height:800},{width:1440,height:900},
+  // The screenshot defect is Desktop 1440 with the right User drawer.
+  // Exercise it FIRST so other responsive failures cannot hide its result.
+  {width:1440,height:900},{width:1024,height:768},
+  {width:780,height:1024},{width:800,height:1024},
+  {width:1280,height:800},{width:768,height:1024},
+  {width:390,height:844},{width:320,height:568},
 ]
 let passed=0,failed=0
 function check(name,ok,extra={}){
@@ -93,29 +96,47 @@ try{
     sameSite:c.options?.sameSite==='strict'?'Strict':c.options?.sameSite==='none'?'None':'Lax',
   })))
   const page=await ctx.newPage()
+  const mainFrameDocuments=[]
+  page.on('request',request=>{
+    if(request.isNavigationRequest()&&request.frame()===page.mainFrame())
+      mainFrameDocuments.push(request.url().split('?')[0])
+  })
   let response
-  // Validate an actual hydrated page, not a transient SSR/503 response.
-  // Cloudflare may serve a temporary error or an older Preview build during
-  // deployment; retry the same sole Preview without modifying business data.
-  for(let attempt=0;attempt<18;attempt++){
-    response=await page.goto(base+'/purchase/accounts?range=all',
-      {waitUntil:'domcontentloaded',timeout:45000})
-    if(response?.status()===200){
-      try{
+  // These are QA-only navigations; unlike user actions they may reload to
+  // classify transient Preview 503/auth responses. Record safe diagnostics
+  // rather than silently looping on absent table selectors.
+  let previewReady=false
+  for(let attempt=0;attempt<7;attempt++){
+    let reason=''
+    try{
+      response=await page.goto(base+'/purchase/accounts?range=all',
+        {waitUntil:'domcontentloaded',timeout:45000})
+      if(response?.status()===200){
         await page.locator('.account-table-card table[data-auto-fit-version="7"]')
-          .waitFor({state:'visible',timeout:8000})
+          .waitFor({state:'visible',timeout:8500})
         await page.waitForFunction(()=>{
           const card=document.querySelector('.account-table-card')
           const table=card?.querySelector('table.user-table')
           return card&&table&&card.clientWidth>120
             &&table.querySelectorAll('thead th').length>=2
         },null,{timeout:6000})
+        previewReady=true
         break
-      }catch{}
-    }
-    if(attempt===17)throw Error('Account Preview not stable/updated after retries; cannot claim QA PASS')
-    await page.waitForTimeout(12000)
+      }
+      reason='HTTP '+response?.status()
+    }catch(error){reason=String(error).slice(0,230)}
+    const pageStatus=await page.evaluate(()=>({
+      path:location.pathname,
+      title:document.title.slice(0,100),
+      marker:!!document.querySelector('.account-table-card table[data-auto-fit-version="7"]'),
+      table:!!document.querySelector('.account-table-card table.user-table'),
+    })).catch(()=>null)
+    console.log('ACCOUNT_NO_SCROLL_PREVIEW_PROBE '+JSON.stringify({
+      width:viewport.width,attempt,reason,response:response?.status(),pageStatus,
+    }))
+    if(attempt<6)await page.waitForTimeout(10000)
   }
+  if(!previewReady)throw Error('Account Preview response/route not ready at '+viewport.width)
   // A 200 SSR response can precede stalled/failed client JS asset loads.
   // Only measure after the managed resize system (Tablet/Desktop) and
   // toolbar portal hydrate. Retry transient Preview script failures, but
@@ -202,6 +223,9 @@ try{
     await page.locator('.account-workspace>.account-detail-panel').waitFor({timeout:20000})
     await page.waitForTimeout(250)
     const afterPanel=await state(page)
+    console.log('ACCOUNT_NO_SCROLL_NAVIGATION '+JSON.stringify({
+      width:viewport.width,mainFrameDocuments,afterPanel,
+    }))
     check(viewport.width+' right User slidebar keeps table within lane',
       afterPanel?.noScroll&&afterPanel?.fits&&afterPanel?.aligned
       &&afterPanel?.allFields&&afterPanel?.semantic
