@@ -81,6 +81,8 @@ export function PurchaseAccountTable({
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
   const columnMenuRef=useRef<HTMLDivElement|null>(null)
   const tableCardRef=useRef<HTMLDivElement|null>(null)
+  // An invisible readiness marker separates SSR markup from hydrated controls.
+  useEffect(()=>{tableCardRef.current?.setAttribute('data-client-ready','true')},[])
   // One pending query for ALL header menus prevents a later filter tick from
   // restoring stale selections while the previous router transition is pending.
   const filterQueryRef=useRef(detailQuery)

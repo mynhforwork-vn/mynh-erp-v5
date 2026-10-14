@@ -87,6 +87,8 @@ try{
     }
   }
   if(!ready)throw Error('Preview not ready at '+viewport.width)
+  // React hydration must complete before asserting strict client-side navigation.
+  await page.locator('.account-table-card[data-client-ready="true"]').waitFor({timeout:25000})
   await page.evaluate(()=>window.__accountHeaderNoReload=true)
 
   const geo=await page.evaluate(()=>{
