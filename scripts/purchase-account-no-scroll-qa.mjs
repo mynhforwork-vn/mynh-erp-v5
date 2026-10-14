@@ -39,11 +39,23 @@ async function state(page){
     const cols=[...table.querySelectorAll('colgroup col')]
     const heads=[...table.querySelectorAll('thead th')]
     const width=e=>e.getBoundingClientRect().width
+    const stacked=table.dataset.accountLayout==='stacked'
+    const canonical=['number','username','platform','phone','email','status',
+      'mobile','browser','voucher','orders','deliveredOrders','createdAt','note']
+    const allFields=canonical.every(k=>table.querySelector('th[data-account-col="'+k+'"]'))
+      &&[...table.querySelectorAll('tbody tr[data-account-id]')].every(tr=>
+        canonical.every(k=>tr.querySelector('td[data-account-col="'+k+'"]')))
+    const labeled=stacked&&[...table.querySelectorAll('tbody tr[data-account-id]')]
+      .every(tr=>canonical.every(k=>tr.querySelector('td[data-account-col="'+k+'"]')
+        ?.getAttribute('data-account-label')))
     return {
+      stacked,allFields,labeled,
       lane:card.clientWidth,scrollWidth:card.scrollWidth,table:width(table),
       noScroll:card.scrollWidth<=card.clientWidth+4,
       fits:Math.abs(width(table)-card.clientWidth)<=8,
-      aligned:cols.length===heads.length&&cols.every((col,i)=>Math.abs(width(col)-width(heads[i]))<=5),
+      aligned:stacked?Boolean(labeled)
+        :cols.length===heads.length&&cols.every((col,i)=>
+          Math.abs(width(col)-width(heads[i]))<=5),
       pageNoOverflow:document.documentElement.scrollWidth<=innerWidth+5,
       count:heads.length,
       voucher:table.querySelector('th[data-account-col="voucher"]')
@@ -71,7 +83,7 @@ try{
       {waitUntil:'domcontentloaded',timeout:45000})
     if(response?.status()===200){
       try{
-        await page.locator('.account-table-card table[data-auto-fit-version="6"]')
+        await page.locator('.account-table-card table[data-auto-fit-version="7"]')
           .waitFor({state:'visible',timeout:8000})
         await page.waitForFunction(()=>{
           const card=document.querySelector('.account-table-card')
@@ -99,7 +111,8 @@ try{
         const table=card?.querySelector('table.user-table')
         const manager=document.querySelector('.p1-account-filter-actions .managed-column-button')
         return card&&table&&manager
-          &&(innerWidth<768||table.classList.contains('mynh-resizable-table'))
+          &&(table.dataset.accountLayout==='stacked'
+            ||table.classList.contains('mynh-resizable-table'))
           &&Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8
           &&card.scrollWidth<=card.clientWidth+4
       },null,{timeout:15000})
@@ -112,7 +125,7 @@ try{
       }))
       if(attempt<3){
         response=await page.reload({waitUntil:'domcontentloaded',timeout:45000})
-        await page.locator('.account-table-card table[data-auto-fit-version="6"]')
+        await page.locator('.account-table-card table[data-auto-fit-version="7"]')
           .waitFor({state:'visible',timeout:20000})
       }
     }
@@ -124,6 +137,7 @@ try{
   const initial=await state(page)
   check(viewport.width+' Auto Fit without horizontal scroll',
     response?.status()===200&&initial?.noScroll&&initial?.fits&&initial?.aligned
+    &&initial?.allFields&&(!initial.stacked||initial.labeled)
     &&initial?.pageNoOverflow&&initial?.documentUnchanged,{initial})
 
   const button=page.locator('.p1-account-filter-actions .managed-column-button')
@@ -142,7 +156,7 @@ try{
   await page.keyboard.press('Escape')
   check(viewport.width+' Esc closes column menu',await dialog.count()===0)
 
-  if(viewport.width===780||viewport.width===800||viewport.width===1280){
+  if(viewport.width===1280){
     const grip=page.locator('.account-table-card th[data-account-col="voucher"] .mynh-column-resize-grip')
     const present=await grip.count()===1
     check(viewport.width+' manual resize grip available',present)
@@ -170,7 +184,9 @@ try{
     await page.waitForTimeout(250)
     const afterPanel=await state(page)
     check(viewport.width+' right User slidebar keeps table within lane',
-      afterPanel?.noScroll&&afterPanel?.fits&&afterPanel?.aligned&&afterPanel?.documentUnchanged,{afterPanel})
+      afterPanel?.noScroll&&afterPanel?.fits&&afterPanel?.aligned
+      &&afterPanel?.allFields&&afterPanel?.labeled&&afterPanel?.stacked
+      &&afterPanel?.documentUnchanged,{afterPanel})
   }
   await ctx.close()
  }
