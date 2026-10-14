@@ -30,6 +30,26 @@
     background:rgba(67,124,190,.07)!important;
     outline:none!important;
   }
+  /* Tài khoản: luôn nhìn thấy mép nắm kéo và tăng vùng bắt chuột.
+     Không thay chính sách resize của module khác. */
+  .brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table
+  thead th.mynh-column-resize-head>.mynh-column-resize-grip{
+    right:1px!important;
+    width:14px!important;
+    min-width:14px!important;
+    z-index:25!important;
+    pointer-events:auto!important;
+    cursor:col-resize!important;
+    border-right:2px solid #b8cbdc!important;
+    background:linear-gradient(90deg,transparent 0,transparent 67%,rgba(114,152,181,.07) 67%)!important;
+  }
+  .brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table
+  thead th.mynh-column-resize-head:hover>.mynh-column-resize-grip,
+  .brand-shell-v1 .account-table-card table.user-table.mynh-p1-semantic-table
+  thead th.mynh-column-resize-head>.mynh-column-resize-grip:is(:hover,:focus-visible,.resizing){
+    border-right-color:#347fba!important;
+    background:rgba(67,124,190,.10)!important;
+  }
   .brand-shell-v1>.main table.table.mynh-resizable-table{
     max-width:none!important;
   }
