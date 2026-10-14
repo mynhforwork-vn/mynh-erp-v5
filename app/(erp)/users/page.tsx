@@ -6,7 +6,6 @@ import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
 import { deleteERPUserPermanent } from '@/lib/actions/core'
 import { PurchaseAccountTable } from '@/components/purchase-account-table'
-import { AccountFilterDropdown } from '@/components/account-filter-dropdown'
 import { VoucherTags } from '@/components/voucher-tags'
 import { UserBulkImport } from '@/components/user-bulk-import'
 import { ContextOrderPanel } from '@/components/context-order-panel'
@@ -18,7 +17,8 @@ type SP={
   mode?:string,user?:string,tab?:string,q?:string,state?:string,platform?:string,
   device?:string,session?:string,voucher?:string,orders?:string,browser?:string,sort?:string,
   range?:string,from?:string,to?:string,archive?:string,
-  order?:string,orderTab?:string
+  order?:string,orderTab?:string,
+  [key:string]:string|undefined
 }
 
 function hasST(row:any){return Boolean(row?.spc_st_secret_id||row?.spc_st_encrypted)}
@@ -74,6 +74,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const browser=sp.browser??'all'
   const sort=sp.sort??'newest'
   const queryText=String(sp.q??'').trim().toLowerCase()
+  const headerFilterKeys=['number','username','platform','phone','email','status',
+    'mobile','deliveredOrders','createdAt','note'] as const
+  const columnFilterEntries=Object.fromEntries(headerFilterKeys.map(key=>[
+    'cf_'+key,String(sp['cf_'+key]??'').trim(),
+  ]))
 
   let userListQuery=supabase.from('erp_users').select(fields).eq('platform',platform)
   userListQuery=archiveView
@@ -221,7 +226,71 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     .sort((a,b)=>a.localeCompare(b,'vi')).map(tag=>({value:'tag:'+tag,label:tag}))
   const hasNoVoucher=enriched.some((u:any)=>!u.voucher_tags?.length)
 
-  const scopeRows=enriched.filter(matchesAccountScope)
+  // Mọi bộ lọc tiêu đề chạy trên toàn bộ danh sách User đã nạp, không chỉ
+  // những dòng đang hiển thị hoặc hàng mới được tạo sau khi mở slidebar.
+  const norm=(v:unknown)=>String(v??'').trim().toLocaleLowerCase('vi')
+  function matchesHeadingFilters(u:any){
+    const device=accountDeviceFields(u)
+    const textColumns:Record<string,unknown>={
+      username:u.username,phone:String(u.phone??'').replace(/\\D/g,''),
+      email:u.email,note:u.note,
+    }
+    for(const key of ['username','email','note']){
+      const val=norm(sp['cf_'+key])
+      if(val&&!norm(textColumns[key]).includes(val))return false
+    }
+    const phoneSearch=String(sp.cf_phone??'').replace(/\\D/g,'')
+    if(phoneSearch&&!String(textColumns.phone).includes(phoneSearch))return false
+    const exact:Record<string,string>={
+      platform:String(u.platform??'SHOPEE'),status:String(u.status??''),
+      mobile:device.mobileType,
+    }
+    for(const key of Object.keys(exact)){
+      const val=norm(sp['cf_'+key])
+      if(val&&norm(exact[key])!==val)return false
+    }
+    if(/^\\d+$/.test(sp.cf_deliveredOrders??'')
+      &&Number(u.delivered_order_count??0)!==Number(sp.cf_deliveredOrders))return false
+    const date=new Date(u.effective_created_at??u.created_at)
+    const dateLocal=Number.isFinite(date.getTime())
+      ?new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',
+        month:'2-digit',day:'2-digit'}).format(date):''
+    const dateFrom=sp.cf_createdAt_from??''
+    const dateTo=sp.cf_createdAt_to??''
+    if(/^\\d{4}-\\d{2}-\\d{2}$/.test(dateFrom)&&dateLocal<dateFrom)return false
+    if(/^\\d{4}-\\d{2}-\\d{2}$/.test(dateTo)&&dateLocal>dateTo)return false
+    return true
+  }
+
+  const listOptions=(values:unknown[],limit=300)=>{
+    const list=[...new Map(values.map(item=>String(item??'').trim()).filter(Boolean)
+      .map(item=>[item.toLocaleLowerCase('vi'),item] as const)).values()]
+      .sort((a,b)=>a.localeCompare(b,'vi'))
+    return list.slice(0,limit).map(item=>({value:item,label:item}))
+  }
+  const headingOptions={
+    username:listOptions(enriched.map((u:any)=>u.username)),
+    platform:listOptions(enriched.map((u:any)=>u.platform??'SHOPEE')),
+    phone:listOptions(enriched.map((u:any)=>u.phone)),
+    email:listOptions(enriched.map((u:any)=>u.email)),
+    status:[...new Set(enriched.map((u:any)=>String(u.status??'')))].filter(Boolean)
+      .sort((a,b)=>a.localeCompare(b,'vi'))
+      .map(value=>({value,label:statusLabel(value)})),
+    mobile:listOptions(enriched.map((u:any)=>accountDeviceFields(u).mobileType)),
+    browser:browserOptions,
+    voucher:[...(hasNoVoucher?[{value:'none',label:'Chưa dùng voucher'}]:[]),...voucherOptions],
+    orders:orderOptions,
+    deliveredOrders:[...new Set(enriched.map((u:any)=>Number(u.delivered_order_count??0)))]
+      .sort((a,b)=>a-b).map(n=>({value:String(n),label:n+' đơn'})),
+    note:listOptions(enriched.map((u:any)=>u.note),100),
+  }
+  const headingValues:Record<string,string>={
+    ...columnFilterEntries,browser,voucher,orders,session,
+    cf_createdAt_from:sp.cf_createdAt_from??'',
+    cf_createdAt_to:sp.cf_createdAt_to??'',
+  }
+
+  const scopeRows=enriched.filter(matchesAccountScope).filter(matchesHeadingFilters)
   const counts={
     all:scopeRows.length,
     active:scopeRows.filter(x=>x.status==='Active').length,
@@ -244,6 +313,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     if(sort==='oldest')return new Date(a.effective_created_at).getTime()-new Date(b.effective_created_at).getTime()
     return new Date(b.effective_created_at).getTime()-new Date(a.effective_created_at).getTime()
   })
+  // STT là thứ tự theo danh sách đã sắp xếp, giữ ổn định khi lọc riêng STT.
+  rows=rows.map((u:any,i:number)=>({...u,account_row_number:i+1}))
+  if(/^\\d+$/.test(sp.cf_number??'')){
+    rows=rows.filter((u:any)=>u.account_row_number===Number(sp.cf_number))
+  }
 
   function filterHref(overrides:Record<string,string|null|undefined>={}){
     const p=new URLSearchParams()
@@ -257,6 +331,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       order:sp.order,orderTab:sp.orderTab,
     }
     for(const [k,v] of Object.entries(current))if(v)p.set(k,v)
+    for(const [k,v] of Object.entries(columnFilterEntries))if(v)p.set(k,v)
+    for(const k of ['cf_createdAt_from','cf_createdAt_to'])if(sp[k])p.set(k,sp[k])
     for(const [k,v] of Object.entries(overrides)){
       if(v===null||v===undefined||v==='all'||v==='')p.delete(k)
       else p.set(k,v)
@@ -267,6 +343,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
   const detailParams=new URLSearchParams()
   if(sp.q)detailParams.set('q',sp.q)
+  for(const [k,v] of Object.entries(columnFilterEntries))if(v)detailParams.set(k,v)
+  for(const k of ['cf_createdAt_from','cf_createdAt_to'])if(sp[k])detailParams.set(k,sp[k])
   if(state!=='all')detailParams.set('state',state)
   if(session!=='all')detailParams.set('session',session)
   if(voucher!=='all')detailParams.set('voucher',voucher)
@@ -422,20 +500,9 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     <div className="p1-account-command-row">
     <ERPAccountFilterForm className="account-filter-bar one-line entity-command-bar entity-user-command">
       <input className="search" name="q" defaultValue={sp.q??''} placeholder="Tìm User / SĐT / Email / máy / voucher"/>
-      <AccountFilterDropdown name="browser" value={browser} label="Browser" baseHref={filterHref()} options={[
-        {value:'all',label:'Browser: Tất cả'},...browserOptions,
-      ]}/>
-      <AccountFilterDropdown name="session" value={session} label="SPC" baseHref={filterHref()} options={[
-        {value:'all',label:'SPC: Tất cả'},...sessionOptions,
-      ]}/>
-      <AccountFilterDropdown name="orders" value={orders} label="Số đơn" baseHref={filterHref()} options={[
-        {value:'all',label:'Số đơn: Tất cả'},...orderOptions,
-      ]}/>
-      <AccountFilterDropdown name="voucher" value={voucher} label="Tag voucher" baseHref={filterHref()} options={[
-        {value:'all',label:'Tag: Tất cả'},
-        ...(hasNoVoucher?[{value:'none',label:'Chưa dùng voucher'}]:[]),
-        ...voucherOptions,
-      ]}/>
+      {Object.entries(headingValues)
+        .filter(([key,value])=>Boolean(value)&&value!=='all'&&key!=='q')
+        .map(([key,value])=><input key={key} type="hidden" name={key} value={value}/>)}
       {state!=='all'&&<input type="hidden" name="state" value={state}/>}
       {sort!=='newest'&&<input type="hidden" name="sort" value={sort}/>}
       {sp.range&&<input type="hidden" name="range" value={sp.range}/>}
@@ -447,10 +514,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       {sp.archive&&<input type="hidden" name="archive" value={sp.archive}/>}
       {sp.order&&<input type="hidden" name="order" value={sp.order}/>}
       {sp.orderTab&&<input type="hidden" name="orderTab" value={sp.orderTab}/>}
-      <button className="button primary small">Lọc</button>
-      {filtersActive&&<Link className="button small filter-clear" href={filterHref({
-        q:null,state:null,device:null,session:null,voucher:null,orders:null,browser:null,sort:null,platform:null,
-      })}>×</Link>}
+      <button className="button primary small">Tìm</button>
       <div className="archive-view-toggle">
         <Link className={!archiveView?'active':''} href={filterHref({archive:null,user:null,mode:null,tab:null})}>Đang dùng</Link>
         <Link className={archiveView?'active':''} href={filterHref({archive:'archived',user:null,mode:null,tab:null})}>Đã lưu trữ</Link>
@@ -470,6 +534,9 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
           detailQuery={detailQuery}
           sort={sort}
           canManage={canOperate}
+          headingOptions={headingOptions}
+          headingValues={headingValues}
+          sessionOptions={sessionOptions}
         />} 
       </section>
 
