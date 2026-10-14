@@ -18,10 +18,12 @@ function FilterIcon(){
 /** Tìm trong các giá trị hiện có; tick chọn nhiều và áp dụng tức thì qua Router. */
 export function AccountHeadingFilter({
   name,label,kind='choices',value='',options=[],baseQuery='',secondary,from='',to='',
+  navigationRef,
 }:{
   name:string,label:string,kind?:AccountHeadingFilterKind,value?:string,
   options?:AccountHeadingOption[],baseQuery?:string,from?:string,to?:string,
   secondary?:{name:string,label:string,value:string,options:AccountHeadingOption[]},
+  navigationRef?:{current:string},
 }){
   const router=useRouter()
   const id=useId()
@@ -47,7 +49,7 @@ export function AccountHeadingFilter({
   ):[]
 
   function navigate(next:string[],nextSecondary:string[]=secondarySelected){
-    const q=new URLSearchParams(pending.current||(
+    const q=new URLSearchParams(navigationRef?.current||pending.current||(
       typeof window!=='undefined'?window.location.search:baseQuery
     ))
     const encoded=writeAccountFilterValues(next)
@@ -64,6 +66,7 @@ export function AccountHeadingFilter({
       else q.delete(secondary.name)
     }
     pending.current=q.toString()
+    if(navigationRef)navigationRef.current=pending.current
     router.push('/purchase/accounts'+(pending.current?'?'+pending.current:''),{scroll:false})
   }
   function toggle(val:string,isSecondary=false){
