@@ -22,5 +22,5 @@ check('Long-lived failures survive the 30-day window in staged RPC migration',mi
 check('Legacy RPC keeps security definer',migration.includes('SECURITY DEFINER'))
 check('Unresolved failures rank ahead of newer settled notices at RPC cap',migration.includes('order by g.persistent_failure desc'))
 check('Migration is independently gated and has no mutation of alert rows',!migration.includes('UPDATE public.alert_events')&&!migration.includes('DELETE FROM public.alert_events'))
-check('SQL function delimiter closes with statement terminator',migration.includes('$function$;\\nCOMMIT;'))
+check('SQL function delimiter closes with statement terminator',migration.includes('$function$;\nCOMMIT;'))
 console.log('DELIVERY_FAILURE_CONTRACT_QA_SUMMARY '+JSON.stringify({passed,failed:0}))
