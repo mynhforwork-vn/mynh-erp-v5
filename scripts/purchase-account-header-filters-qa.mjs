@@ -99,8 +99,25 @@ try{
   check(viewport.width+' Username offers existing data only',
     await usernameMenu.count()===1&&usernameChoices>=1&&manualInputs===0,
     {usernameChoices,manualInputs})
-  await page.keyboard.press('Escape')
-  check(viewport.width+' Esc closes header filter',await usernameMenu.count()===0)
+  if(viewport.width===390&&usernameChoices>=2){
+    const labels=usernameMenu.locator('.account-heading-filter-option input[type="radio"]')
+    const selectedUsername=await labels.nth(1).evaluate(el=>
+      el.closest('label')?.textContent?.trim()||'')
+    await labels.nth(1).check()
+    await usernameMenu.locator('button[type="submit"]').click()
+    await page.waitForURL(u=>u.searchParams.get('cf_username')===selectedUsername,
+      {timeout:25000})
+    check('390 selecting real Username filters without document reload',
+      await page.evaluate(()=>window.__accountHeaderNoReload===true)
+      &&await page.locator('tbody tr[data-account-id]').count()===1)
+    await username.click()
+    await page.locator('.account-heading-filter-menu[popover]:popover-open button[type="button"]')
+      .filter({hasText:'Xóa lọc'}).click()
+    await page.waitForURL(u=>!u.searchParams.has('cf_username'),{timeout:25000})
+  }else{
+    await page.keyboard.press('Escape')
+    check(viewport.width+' Esc closes header filter',await usernameMenu.count()===0)
+  }
 
   if(viewport.width===780||viewport.width===800){
     const browserButton=page.locator('th[data-account-col="browser"] .account-heading-filter-trigger')
@@ -108,7 +125,12 @@ try{
     const menu=page.locator('.account-heading-filter-menu[popover]:popover-open')
     const radio=menu.locator('.account-heading-filter-option input[type="radio"]').nth(1)
     const options=await menu.locator('.account-heading-filter-option input[type="radio"]').count()
-    check(viewport.width+' Browser choices from live User data',options>=2)
+    const realBrowserTexts=await page.locator(
+      '.account-table-card tbody td[data-account-col="browser"]').allTextContents()
+    const nonEmpty=realBrowserTexts.filter(t=>t.trim()&&!['—','-'].includes(t.trim())).length
+    check(viewport.width+' Browser options match actual available data',
+      options>=2||(options===1&&nonEmpty===0),
+      {options,visibleBrowserValues:nonEmpty})
     if(options>=2){
       await radio.check()
       await menu.locator('button[type="submit"]').click()
@@ -146,9 +168,13 @@ try{
     const dialog=page.locator('.account-heading-filter-menu[popover]:popover-open')
     const dateOptions=dialog.locator('.account-heading-filter-option input[type="radio"]')
     const available=await dateOptions.count()
-    check('1440 dates are selectable without typing',
-      available>=2&&await dialog.locator('input[type="date"],input[type="search"]').count()===0,
-      {available})
+    const realDateTexts=await page.locator(
+      '.account-table-card tbody td[data-account-col="createdAt"]').allTextContents()
+    const presentDates=realDateTexts.filter(t=>t.trim()&&!['—','-'].includes(t.trim())).length
+    check('1440 dates list actual data; no manual input',
+      (available>=2||(available===1&&presentDates===0))
+       &&await dialog.locator('input[type="date"],input[type="search"]').count()===0,
+      {available,presentDates})
     if(available>=2){
       const label=await dateOptions.nth(1).evaluate(el=>
         el.closest('label')?.textContent?.trim()||'')
