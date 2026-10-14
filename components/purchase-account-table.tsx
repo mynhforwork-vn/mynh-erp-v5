@@ -86,6 +86,17 @@ export function PurchaseAccountTable({
   const filterQueryRef=useRef(detailQuery)
   useEffect(()=>{filterQueryRef.current=detailQuery},[detailQuery])
   const [tableLaneWidth,setTableLaneWidth]=useState(0)
+  // Responsive stacked rows belong ONLY to true narrow mobile screens.
+  // Desktop/Tablet must remain a semantic, one-row-per-User table even
+  // when the right detail slidebar reduces the list pane below 980px.
+  const [mobileViewport,setMobileViewport]=useState(false)
+  useEffect(()=>{
+    const query=window.matchMedia('(max-width:767px)')
+    const sync=()=>setMobileViewport(query.matches)
+    sync()
+    query.addEventListener('change',sync)
+    return ()=>query.removeEventListener('change',sync)
+  },[])
   useEffect(()=>{
     const card=tableCardRef.current
     if(!card)return
@@ -254,9 +265,9 @@ export function PurchaseAccountTable({
   // A narrow lane displays every selected field in labeled responsive rows.
   // This preserves the user's column visibility and order preferences.
   const shownColumns=allShownColumns
-  // 1280px Desktop retains the standard resizable table when its list
-  // lane is usable; the right drawer still switches to full labeled rows.
-  const stacked=tableLaneWidth>0&&tableLaneWidth<980
+  // Never infer mobile card mode from pane width alone: the Desktop right
+  // drawer can create a 750-960px lane even in a 1440px desktop viewport.
+  const stacked=mobileViewport&&tableLaneWidth>0&&tableLaneWidth<980
   const colSpan=shownColumns.length+(canManage?1:0)
   // Hydration/column preferences may overwrite an earlier DOM-level fit.
   // Force a second lane-based measurement after React has committed the
