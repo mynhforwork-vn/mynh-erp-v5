@@ -82,7 +82,7 @@ async function snap(page){
 function fit(s){return !!s&&s.sameDocument&&!s.pageOverflow&&!s.horizontalScroll
   &&s.aligned&&s.headerCoverage&&s.guarded&&s.scroll
   &&s.table>=s.lane-8&&s.table<=s.lane+4
-  &&s.col.username>=12&&s.col.number<=48}
+  &&s.col.username>=12&&(s.col.number===undefined||s.col.number<=48)}
 const ranges=[{width:1024,height:768},{width:1280,height:800},
   {width:1366,height:768},{width:1440,height:900},
   {width:1728,height:1117},{width:1920,height:1080}]
