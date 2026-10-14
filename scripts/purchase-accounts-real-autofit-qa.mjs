@@ -134,6 +134,9 @@ try{
     const present=await grip.count()===1
     check(viewport.width+' '+key+' resize grip installed',present)
     if(!present)return
+    // Đúng mẫu Đơn nhập: tay nắm hiện đường phân cách khi hover, không
+    // vẽ viền thường trực. Rê chuột thật trước khi kiểm tra khả năng kéo.
+    await grip.hover()
     const visible=await grip.evaluate(el=>{
       const style=getComputedStyle(el)
       const box=el.getBoundingClientRect()
