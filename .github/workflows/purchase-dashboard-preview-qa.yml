@@ -9,6 +9,9 @@ on:
       - 'app/(erp)/tracking/page.tsx'
       - 'app/(erp)/users/page.tsx'
       - 'components/purchase-account-table.tsx'
+      - 'components/purchase-date-filter.tsx'
+      - 'app/styles/desktop-column-resize.css'
+      - 'scripts/purchase-time-filter-parity-qa.mjs'
       - 'components/erp-user-inline-form.tsx'
       - 'components/erp-account-filter-form.tsx'
       - 'components/user-bulk-import.tsx'
@@ -102,6 +105,8 @@ jobs:
         run: node scripts/purchase-accounts-real-autofit-qa.mjs
       - name: Check Shopee pending-review recognition in create form (read-only)
         run: node scripts/shopee-pending-payment-ui-qa.mjs
+      - name: Check Dashboard date filter parity in Orders and Tracking (7 viewports, no reload)
+        run: node scripts/purchase-time-filter-parity-qa.mjs
       - name: Check Accounts delivered counts, column preferences and responsive layout
         run: node scripts/purchase-accounts-delivered-qa.mjs
       - name: Check Dashboard KPI parity, zero charts, groups, footer, 8 viewports
