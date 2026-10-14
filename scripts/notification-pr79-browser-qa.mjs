@@ -26,8 +26,20 @@ try{
     sameSite:c.options?.sameSite==='strict'?'Strict':c.options?.sameSite==='none'?'None':'Lax',
   })))
   const page=await ctx.newPage()
-  const errors=[],alerts=[]
+  await page.addInitScript(()=>{
+    const requests=[]
+    Object.defineProperty(window,'__qaNotifyFetch',{value:requests})
+    const nativeFetch=window.fetch.bind(window)
+    window.fetch=(...args)=>{
+      const input=String(typeof args[0]==='string'?args[0]:args[0]?.url??'')
+      if(input.includes('/api/alerts/in-app'))requests.push(input)
+      return nativeFetch(...args)
+    }
+  })
+  const errors=[],alerts=[],requests=[]
   page.on('pageerror',e=>errors.push('runtime:'+String(e.message)))
+  page.on('request',r=>{if(r.url().includes('/api/alerts/in-app'))requests.push('request:'+r.url())})
+  page.on('requestfailed',r=>{if(r.url().includes('/api/alerts/in-app'))requests.push('failed:'+r.failure()?.errorText)})
   page.on('response',response=>{
     if(response.url().includes('/api/alerts/in-app?'))alerts.push({status:response.status()})
     if(response.status()>=500)errors.push('http:'+response.status()+':'+new URL(response.url()).pathname)
@@ -64,6 +76,8 @@ try{
       switchTitle:panel.querySelector('[title="Bật thông báo"],[title="Tắt thông báo"]')?.getAttribute('title')??null,
       localTime:new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit'}).format(new Date()),
       panelHasError:Boolean(panel.querySelector('.neo-soft-error')),
+      fetchAttemptCount:(window.__qaNotifyFetch??[]).length,
+      fetchSamples:(window.__qaNotifyFetch??[]).slice(0,3),
       wideBody:body.scrollWidth>body.clientWidth+8,
       hasWorkPanel:!!panel.querySelector('.app-alert-list-v2'),
     }
@@ -72,7 +86,16 @@ try{
      data.selectedCategory==='all'&&data.panelWidth<=width+3&&
      data.panelRight<=width+3&&data.panelLeft>=-3&&data.hasWorkPanel&&
      errors.length===0&&alerts.some(r=>r.status===200)
-   results.push({width,height,pass,apiStatus:alerts.map(x=>x.status),...data,errors})
+   let probe=null
+   if(width===390&&alerts.length===0) {
+     try{probe=await page.evaluate(async()=>{
+       const response=await fetch('/api/alerts/in-app?view=all&category=all&limit=40&offset=0',{cache:'no-store'})
+       const body=await response.json().catch(()=>null)
+       return {status:response.status,total:body?.total,unread:body?.unread_total,
+         migrationPending:body?.migration_pending,error:body?.error??null}
+     })}catch(e){probe={error:String(e)}}
+   }
+   results.push({width,height,pass,apiStatus:alerts.map(x=>x.status),requests:requests.slice(0,6),probe,...data,errors})
    console.log((pass?'PASS ':'FAIL ')+width+'x'+height+' '+JSON.stringify(results.at(-1)))
    await page.screenshot({path:dir+'/notification-'+width+'x'+height+'.png',fullPage:true})
   }catch(e){results.push({width,height,pass:false,error:String(e),errors});console.error('FAIL '+width+'x'+height+' '+String(e))}
