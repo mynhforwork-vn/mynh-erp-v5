@@ -42,6 +42,17 @@ async function snap(page){
     const width=e=>e.getBoundingClientRect().width
     const c=Object.fromEntries(heads.map(h=>[h.dataset.accountCol??'select',Math.round(width(h))]))
     const stacked=table.dataset.accountLayout==='stacked'
+    const firstData=table.querySelector('tbody tr[data-account-id]')
+    const semanticDesktop=!stacked
+      &&getComputedStyle(table).display==='table'
+      &&getComputedStyle(table.tHead).display==='table-header-group'
+      &&getComputedStyle(table.tHead.rows[0]).display==='table-row'
+      &&(!firstData||getComputedStyle(firstData).display==='table-row')
+      &&(!firstData?.querySelector('td')
+        ||getComputedStyle(firstData.querySelector('td')).display==='table-cell')
+    const headerRowHeight=Math.round(table.tHead.rows[0].getBoundingClientRect().height)
+    const firstDataHeight=firstData
+      ?Math.round(firstData.getBoundingClientRect().height):0
     const expected=['number','username','platform','phone','email','status',
       'mobile','browser','voucher','orders','deliveredOrders','createdAt','note']
     const allFields=expected.every(key=>table.querySelector('thead th[data-account-col="'+key+'"]'))
@@ -76,7 +87,8 @@ async function snap(page){
       horizontalScroll:card.scrollWidth>card.clientWidth+4,
       scroll:stacked?/auto|scroll/.test(getComputedStyle(card).overflowY)
         :/auto|scroll/.test(getComputedStyle(card).overflowX),
-      stacked,allFields,labeled,aligned,headerCoverage,guarded,leftGap,rightGap,
+      stacked,semanticDesktop,headerRowHeight,firstDataHeight,
+      allFields,labeled,aligned,headerCoverage,guarded,leftGap,rightGap,
       customized:table.classList.contains('mynh-resizable-table'),
       sameDocument:window.__mynhAccountQaDocument==='no-reload',
       storedManual:(()=>{
@@ -92,7 +104,8 @@ async function snap(page){
   })
 }
 function fit(s){return !!s&&s.sameDocument&&!s.pageOverflow&&!s.horizontalScroll
-  &&s.allFields&&(!s.stacked||s.labeled)
+  &&s.semanticDesktop&&!s.stacked&&s.headerRowHeight<=85
+  &&s.firstDataHeight<=95&&s.allFields
   &&s.aligned&&s.headerCoverage&&s.guarded&&s.scroll
   &&s.table>=s.lane-8&&s.table<=s.lane+4
   &&s.col.username>=56&&(s.stacked||s.col.number<=48)}
