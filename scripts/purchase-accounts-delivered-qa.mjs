@@ -46,7 +46,7 @@ try{
   // also existed in an earlier commit: wait for the Voucher cell's NEW marker
   // to ensure we test the exact UI revision, not a still-serving old build.
   const voucherMarker=page.locator('.account-table-card .voucher-cell[data-voucher-count]')
-  const autoFitMarker=page.locator('.account-table-card .user-table[data-auto-fit-version="6"]')
+  const autoFitMarker=page.locator('.account-table-card .user-table[data-auto-fit-version="7"]')
   for(let i=0;i<15&&(!(await header.count())||!(await voucherMarker.count())||!(await autoFitMarker.count()));i++){
     await page.waitForTimeout(5000)
     await page.reload({waitUntil:'domcontentloaded',timeout:45000})
@@ -107,23 +107,38 @@ try{
         width:box(th).width,rectRight:box(th).right}))
       const colWidths=cols.map(col=>box(col).width)
       const find=k=>widths.find(x=>x.key===k)?.width||0
+      const stacked=table.dataset.accountLayout==='stacked'
+      const expected=['number','username','platform','phone','email','status',
+        'mobile','browser','voucher','orders','deliveredOrders','createdAt','note']
+      const visible=widths.filter(x=>x.key!=='select').map(x=>x.key)
+      const allPresent=expected.every(key=>visible.includes(key))
+        &&[...table.querySelectorAll('tbody tr[data-account-id]')].every(row=>
+          expected.every(key=>row.querySelector('td[data-account-col="'+key+'"]')))
+      const labeled=stacked&&[...table.querySelectorAll('tbody tr[data-account-id]')].every(row=>
+        expected.every(key=>row.querySelector('td[data-account-col="'+key+'"]')
+          ?.getAttribute('data-account-label')))
       const tableWidth=box(table).width,laneWidth=card.clientWidth
       return {mode:table.closest('.account-workspace.with-panel')?'panel':'full',
+        stacked,allPresent,labeled,visibleCount:visible.length,
         tableWidth:Math.round(tableWidth),laneWidth,
         pageOverflow:document.documentElement.scrollWidth>innerWidth+6,
         localOverflow:tableWidth>laneWidth+6,
         noHorizontalScroll:card.scrollWidth<=card.clientWidth+4,
-        localScroll:/auto|scroll/.test(getComputedStyle(card).overflowX),
+        localScroll:stacked
+          ?!/auto|scroll/.test(getComputedStyle(card).overflowX)
+             &&/auto|scroll/.test(getComputedStyle(card).overflowY)
+          :/auto|scroll/.test(getComputedStyle(card).overflowX),
         fillsLane:tableWidth>=laneWidth-8&&tableWidth<=laneWidth+4,
-        aligned:colWidths.length===widths.length&&widths.every((x,i)=>Math.abs(x.width-colWidths[i])<=7),
+        aligned:stacked?Boolean(labeled):colWidths.length===widths.length
+          &&widths.every((x,i)=>Math.abs(x.width-colWidths[i])<=7),
         // Account lane-driven width contract deliberately allows 120px Email
         // with ellipsis and full value in title/detail. Reject any narrower
         // header; the separate real-drag QA enforces last-column coverage.
-        readable:find('username')>=56
-          &&(!widths.some(x=>x.key==='voucher')||find('voucher')>=24)
-          &&(!widths.some(x=>x.key==='email')||find('email')>=42)
-          &&(!widths.some(x=>x.key==='deliveredOrders')||find('deliveredOrders')>=32),
-        compact:find('number')<=48&&find('orders')<=85&&find('deliveredOrders')<=140,
+        readable:stacked?allPresent&&find('username')>=75
+          :find('username')>=56&&find('voucher')>=24
+            &&find('email')>=42&&find('deliveredOrders')>=32,
+        compact:stacked?allPresent
+          :find('number')<=48&&find('orders')<=85&&find('deliveredOrders')<=140,
         widths:Object.fromEntries(widths.map(x=>[x.key,Math.round(x.width)])),
       }
     })
@@ -139,12 +154,16 @@ try{
         const head=(key)=>table.querySelector('thead th[data-account-col="'+key+'"]')
         const size=(el)=>el?.getBoundingClientRect().width??0
         const number=head('number'),orders=head('orders'),delivered=head('deliveredOrders')
+        const stacked=table.dataset.accountLayout==='stacked'
+        const expected=['number','username','platform','phone','email','status',
+          'mobile','browser','voucher','orders','deliveredOrders','createdAt','note']
         return Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8
           &&card.scrollWidth<=card.clientWidth+4
-          &&(innerWidth<768||table.classList.contains('mynh-resizable-table'))
-          &&(!number||size(number)<=48)
-          &&(!orders||size(orders)<=85)
-          &&(!delivered||size(delivered)<=140)
+          &&(stacked?expected.every(key=>Boolean(head(key)))
+            :table.classList.contains('mynh-resizable-table')
+              &&(!number||size(number)<=48)
+              &&(!orders||size(orders)<=85)
+              &&(!delivered||size(delivered)<=140))
       },null,{timeout:15000})
     }catch(error){
       const geometry=await page.evaluate(()=>{
@@ -184,7 +203,7 @@ try{
       return {
         header:head?.textContent?.trim()??null,
         inTable:!!col,
-        intentionallyCompact:!head&&card.clientWidth<1020,
+        intentionallyCompact:false,
         cells:cells.length,
         numeric:cells.every(el=>/^([0-9]+|—)$/.test(el.textContent?.trim()??'')),
         width:head?Math.round(rect(head).width):0,
@@ -197,14 +216,13 @@ try{
       }
     })
     check(viewport.width+'x'+viewport.height+' Accounts column layout',Boolean(result
-      &&(result.inTable||result.intentionallyCompact)
-      &&(result.intentionallyCompact||result.cells>=sampled.length)
+      &&result.inTable&&result.cells>=sampled.length
       &&result.numeric&&!result.clipped&&!result.overflow&&result.cardFits&&result.internalScroll),
       result??{reason:'Missing column'})
     const auto=await inspectAccountFit()
     check(viewport.width+'x'+viewport.height+' Accounts Auto Fit',Boolean(auto&&
       !auto.pageOverflow&&auto.noHorizontalScroll&&auto.localScroll
-      &&auto.fillsLane&&auto.aligned&&auto.readable&&auto.compact),auto??{reason:'No fit measurements'})
+      &&auto.fillsLane&&auto.aligned&&auto.readable&&auto.compact&&auto.allPresent),auto??{reason:'No fit measurements'})
     if([320,390,768,1440].includes(viewport.width))
       await page.screenshot({path:'qa-accounts-delivered-artifacts/accounts-'+viewport.width+'.png',fullPage:false})
   }
@@ -253,8 +271,9 @@ try{
   await firstUser.click()
   await page.locator('.account-workspace.with-panel').waitFor({timeout:15000})
   const drawer=await inspectAccountFit()
-  check('Accounts Auto Fit with right slidebar open',Boolean(drawer&&
-    drawer.mode==='panel'&&drawer.aligned&&drawer.readable&&drawer.compact&&
+  check('Accounts Auto Fit with right slidebar open: every enabled field stays visible',Boolean(drawer&&
+    drawer.mode==='panel'&&drawer.stacked&&drawer.allPresent&&drawer.labeled
+    &&drawer.aligned&&drawer.readable&&drawer.compact&&
     drawer.fillsLane&&drawer.noHorizontalScroll&&drawer.localScroll&&!drawer.pageOverflow),
     drawer??{reason:'Drawer table missing'})
   await page.screenshot({path:'qa-accounts-delivered-artifacts/accounts-with-slidebar-1440.png',fullPage:false})
