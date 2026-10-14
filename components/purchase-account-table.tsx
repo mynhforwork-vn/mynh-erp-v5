@@ -355,7 +355,12 @@ export function PurchaseAccountTable({
           Thời gian tạo <span>{sort==='newest'?'↓':sort==='oldest'?'↑':'↕'}</span>
         </Link>
         :label
-    return <th key={key} data-account-col={key}
+    const shortLabels:Record<ColKey,string>={
+      number:'#',username:'User',platform:'Nền',phone:'SĐT',email:'Mail',
+      status:'TT',mobile:'Mob',browser:'Trình',voucher:'Vou',orders:'Đơn',
+      deliveredOrders:'Giao',createdAt:'Ngày',note:'Ghi',
+    }
+    return <th key={key} data-account-col={key} data-short-label={shortLabels[key]}
       className={'account-heading-filter-cell'+
         (key==='username'?' p1-user-identity-head':'')+
         (key==='voucher'?' p1-user-voucher-head':'')}
