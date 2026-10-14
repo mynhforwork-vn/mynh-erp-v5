@@ -129,12 +129,28 @@ try{
   for(const viewport of widths){
     await page.setViewportSize(viewport)
     // Width-changing sidebars & breakpoints may need two animation frames.
-    await page.waitForFunction(()=>{
-      const card=document.querySelector('.account-table-card')
-      const table=card?.querySelector('table.user-table')
-      return card&&table&&Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8
-        &&card.scrollWidth<=card.clientWidth+4
-    },null,{timeout:15000})
+    try{
+      await page.waitForFunction(()=>{
+        const card=document.querySelector('.account-table-card')
+        const table=card?.querySelector('table.user-table')
+        return card&&table&&Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8
+          &&card.scrollWidth<=card.clientWidth+4
+      },null,{timeout:15000})
+    }catch(error){
+      const geometry=await page.evaluate(()=>{
+        const card=document.querySelector('.account-table-card')
+        const table=card?.querySelector('table.user-table')
+        return {lane:card?.clientWidth,scroll:card?.scrollWidth,
+          table:table?.getBoundingClientRect().width,
+          managed:table?.classList.contains('mynh-resizable-table'),
+          pane:!!card?.closest('.account-workspace.with-panel'),
+          columns:table?.querySelectorAll('thead th').length}
+      })
+      console.log('ACCOUNT_DELIVERED_BREAKPOINT_FAIL '+JSON.stringify({
+        viewport:viewport.width,geometry,
+      }))
+      throw error
+    }
     const result=await page.evaluate(()=>{
       const card=document.querySelector('.account-table-card')
       const table=card?.querySelector('table.user-table')
