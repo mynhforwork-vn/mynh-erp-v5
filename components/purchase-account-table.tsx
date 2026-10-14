@@ -8,7 +8,7 @@ import { formatDateTime, formatPhone, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
-import { archiveERPUsersBulk, restoreERPUsersBulk } from '@/lib/actions/core'
+import { ERPUserInlineForm } from '@/components/erp-user-inline-form'
 
 type Row=Record<string,any>
 type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'mobile'|'browser'|'voucher'|'orders'|'deliveredOrders'|'createdAt'|'note'
@@ -349,16 +349,16 @@ export function PurchaseAccountTable({
         <button type="button" onClick={()=>setSelected([])}>Bỏ chọn</button>
       </div>
       {selectedArchived
-        ? <form action={restoreERPUsersBulk} className="order-bulk-form">
+        ? <ERPUserInlineForm operation="restoreBulk" className="order-bulk-form">
             <input type="hidden" name="return_query" value={detailQuery}/>
             {selected.map(id=><input key={id} type="hidden" name="user_ids" value={id}/>)}
             <button className="button small primary" type="submit">Khôi phục đã chọn</button>
-          </form>
-        : <form action={archiveERPUsersBulk} className="order-bulk-form">
+          </ERPUserInlineForm>
+        : <ERPUserInlineForm operation="archiveBulk" className="order-bulk-form">
             <input type="hidden" name="return_query" value={detailQuery}/>
             {selected.map(id=><input key={id} type="hidden" name="user_ids" value={id}/>)}
             <button className="button small archive-button" type="submit">Lưu trữ đã chọn</button>
-          </form>}
+          </ERPUserInlineForm>}
     </div>}
 
     {toolbarRoot&&createPortal(<div className="column-manager managed-column-wrap" ref={columnManagerRef}>
