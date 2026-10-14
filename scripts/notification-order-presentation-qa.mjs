@@ -45,7 +45,65 @@ assert.equal(received.is_read,false,'unread event is not lost by grouping')
 const failed=out.find(x=>x.order_code==='2610000XYZTEST')
 assert.equal(failed.requires_action,true)
 assert.equal(failed.severity,'critical')
-assert.equal(failed.is_read,true,'read and needs action are independent')
-assert.equal(out.filter(x=>!x.is_read).length,1)
+assert.equal(failed.is_read,false,'failure stays unread after acknowledgement until successful delivery/cancellation')
+assert.equal(failed.reminder_active,true,'failure remains actionable while the order is unresolved')
+assert.equal(out.filter(x=>!x.is_read).length,2)
 assert.equal(out.filter(x=>x.requires_action).length,2)
 console.log('PASS: R00 hidden, events grouped by order, latest stage, timeline retained, unread independent from action')
+
+const retryCode='QA-DELIVERY-RETRY'
+const deliveredCode='QA-DELIVERY-SUCCESS'
+const cancelledCode='QA-DELIVERY-CANCELLED'
+const returnedCode='QA-DELIVERY-RETURNED'
+const ongoingCode='QA-DELIVERY-ONGOING'
+const priorFailure=(code,base)=>[
+  row('DELIVERY_FAILED',code,base+'-failed',true,'Giao không thành công','2026-10-13T06:00:00.000Z'),
+  row('OUT_FOR_DELIVERY',code,base+'-retry',true,'Đang giao lại','2026-10-14T06:00:00.000Z'),
+]
+const replay=[
+  ...priorFailure(retryCode,'retry'),
+  ...priorFailure(deliveredCode,'success'),
+  row('DELIVERED',deliveredCode,'success-delivered',true,'Đã giao','2026-10-14T07:00:00.000Z'),
+  ...priorFailure(cancelledCode,'cancel'),
+  ...priorFailure(returnedCode,'returned'),
+  ...priorFailure(ongoingCode,'ongoing'),
+]
+const order=(code,status,order_status='PROCESSING')=>({
+  id:'44444444-4444-4444-4444-444444444444',
+  shopee_order_id:code,receive_status:'NOT_READY',order_status,
+  shipments:[{is_active:true,current_tracking_status:status}],
+})
+const replayOut=buildOrderNotices(replay,[
+  order(retryCode,'OUT_FOR_DELIVERY'),
+  order(deliveredCode,'DELIVERED'),
+  order(cancelledCode,'CANCELLED','CANCELLED'),
+  order(returnedCode,'RETURNED'),
+  order(ongoingCode,'DELIVERY_FAILED'),
+])
+assert.equal(replayOut.length,4,'cancelled orders stay absent')
+const retried=replayOut.find(x=>x.order_code===retryCode)
+assert.equal(retried.event_type,'DELIVERY_FAILED','failed delivery remains prioritized during repeated delivery')
+assert.equal(retried.reminder_active,true)
+assert.equal(retried.is_read,false,'mark all as read cannot silence unresolved delivery failure')
+assert.equal(retried.requires_action,true)
+assert.equal(retried.timeline.length,2,'historical failed/retry events retained')
+const succeeded=replayOut.find(x=>x.order_code===deliveredCode)
+assert.equal(succeeded.event_type,'DELIVERED','successful delivery wins over prior failure')
+assert.equal(succeeded.reminder_active,false)
+assert.equal(succeeded.is_read,true,'success removes persistent unread override')
+assert.equal(succeeded.requires_action,false)
+assert.equal(succeeded.timeline.length,3,'failure remains in history after delivery')
+const returned=replayOut.find(x=>x.order_code===returnedCode)
+assert.equal(returned.reminder_active,true,'a returned package is not successful delivery nor cancellation')
+const ongoing=replayOut.find(x=>x.order_code===ongoingCode)
+assert.equal(ongoing.reminder_active,true)
+const noDeliveredEvent=buildOrderNotices(priorFailure('QA-LIVE-SUCCESS','ld'),[
+  order('QA-LIVE-SUCCESS','DELIVERED'),
+])[0]
+assert.equal(noDeliveredEvent.event_type,'DELIVERED','live shipment state is authoritative')
+assert.equal(noDeliveredEvent.reminder_active,false)
+
+console.log('DELIVERY_FAILURE_PERSISTENCE_QA_SUMMARY '+JSON.stringify({
+  failedReminder:true,retryReminder:true,succeededClears:true,cancelledClears:true,
+  returnedRemains:true,readAllCannotSilence:true,unchangedPolling:true,
+}))

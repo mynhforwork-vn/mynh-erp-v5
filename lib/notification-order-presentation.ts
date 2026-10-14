@@ -1,3 +1,5 @@
+import {orderIsCancelled} from './purchase-order-cancellation'
+
 /**
  * Pure presentation model for legacy tracking alerts.
  * Groups by Shopee order, not by status or HUB; read != requires action.
@@ -8,12 +10,21 @@ export type LegacyAlert={
   alert_count:number;order_codes:string[];primary_order_id:string|null;
   reason_summary:string|null;created_at:string;is_read:boolean;
 }
-export type OrderLink={id:string;shopee_order_id:string;receive_status:string}
+export type OrderLink={
+  id:string;shopee_order_id:string;receive_status:string;
+  order_status?:string|null;
+  shipments?:{
+    is_active?:boolean|null;tracking_number?:string|null;
+    current_tracking_status?:string|null;
+  }[]|null;
+}
 export type AlertStep={
   id:string;type:string;label:string;created_at:string;is_read:boolean;reason:string|null;
 }
 export type TrackingOrderNotice={
   id:string;source:'tracking';category:'tracking';severity:'info'|'warning'|'critical';
+  // A past delivery failure remains actionable until actual delivery or cancellation.
+  reminder_active:boolean;
   title:string;message:string;event_type:string;created_at:string;is_read:boolean;
   requires_action:boolean;is_resolved:false;legacy_ids:string[];notification_id:null;
   order_id:string|null;order_code:string;destination_hub:string;
@@ -22,7 +33,7 @@ export type TrackingOrderNotice={
 
 const codeOnly=/^(?:R[0-9]{2,4}|M[0-9]{2,4}|[A-Z]{1,4}[0-9]{2,4}|N\/?A|NULL|UNDEFINED)$/i
 const priority:Record<string,number>={
-  PICKUP_FAILED:90,DELIVERY_FAILED:90,DELIVERED:80,OUT_FOR_DELIVERY:70,
+  DELIVERED:100,PICKUP_FAILED:90,DELIVERY_FAILED:90,OUT_FOR_DELIVERY:70,
   ARRIVED_DESTINATION_HUB:60,PICKED_UP:50,IN_TRANSIT:40,
 }
 const fallback:Record<string,string>={
@@ -62,19 +73,31 @@ export function buildOrderNotices(rows:LegacyAlert[],orderLinks:OrderLink[]):Tra
   }
   const output:TrackingOrderNotice[]=[]
   for(const {code,events,hub} of groups.values()){
-    // Stage priority is more reliable than time of RPC batching, which is the
-    // max(created_at) for several events in the same time bucket.
+    const link=orderByCode.get(code)
+    if(link&&orderIsCancelled(link))continue
+    const activeShipment=link?.shipments?.find(s=>s.is_active)??link?.shipments?.[0]
+    const liveStatus=String(activeShipment?.current_tracking_status??'').toUpperCase()
+    // DELIVERED is definitive even when an older failure alert has higher
+    // historical severity. Keep the complete history, without inventing events.
     const ordered=[...events].sort((a,b)=>(priority[b.type]??0)-(priority[a.type]??0)||
       Date.parse(b.created_at)-Date.parse(a.created_at))
-    const latest=ordered[0]
-    const link=orderByCode.get(code)
-    const isRead=events.every(x=>x.is_read)
-    const failed=latest.type==='PICKUP_FAILED'||latest.type==='DELIVERY_FAILED'
+    const first=ordered[0]
+    const latest=liveStatus==='DELIVERED'&&first.type!=='DELIVERED'
+      ?{...first,type:'DELIVERED',label:fallback.DELIVERED}
+      :first
+    // A failure remains unresolved through re-delivery attempts (OUT_FOR_DELIVERY)
+    // and even after a user marks the old event as read. Only success/cancellation
+    // clears the reminder, not merely a repeated tracking poll or 'read all'.
+    const reminderActive=Boolean(link)&&events.some(x=>x.type==='DELIVERY_FAILED')
+      &&latest.type!=='DELIVERED'&&liveStatus!=='DELIVERED'
+    const isRead=!reminderActive&&events.every(x=>x.is_read)
+    const failed=reminderActive||latest.type==='PICKUP_FAILED'||latest.type==='DELIVERY_FAILED'
     const waitingReceive=latest.type==='DELIVERED'&&link?.receive_status==='WAITING_RECEIVE'
     const requiresAction=failed||waitingReceive
     const title=waitingReceive?'Chờ xác nhận nhận hàng':latest.label
     output.push({
       id:'tracking-order:'+code,source:'tracking',category:'tracking',
+      reminder_active:reminderActive,
       severity:failed?'critical':requiresAction?'warning':latest.type==='DELIVERED'?'info':'warning',
       title,message:code+(hub?' · '+hub:''),
       event_type:latest.type,created_at:latest.created_at,

@@ -39,6 +39,7 @@ jobs:
       - name: Verify notification grouping, status and security
         run: |
           node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+          node scripts/delivery-failure-notification-contract-qa.mjs
           node --experimental-strip-types scripts/notification-quiet-hours-qa.mjs
           node --experimental-strip-types scripts/notification-order-tasks-qa.mjs
           node --experimental-strip-types scripts/destination-hub-routing-qa.mjs

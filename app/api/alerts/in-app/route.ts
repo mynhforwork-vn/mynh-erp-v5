@@ -29,7 +29,7 @@ export async function GET(request:Request){
   const legacyRows=(legacy.data??[]) as LegacyAlert[]
   const orderCodes=[...new Set(legacyRows.flatMap(row=>row.order_codes??[]).filter(Boolean))]
   const orderResult=orderCodes.length
-    ?await supabase.from('orders').select('id,shopee_order_id,receive_status,shipping_service,destination_hub,cod,recipient_name,recipient_phone,recipient_address,order_status,erp_users(username),order_items(product_name,variant,quantity),shipments(tracking_number,carrier,is_active)')
+    ?await supabase.from('orders').select('id,shopee_order_id,receive_status,shipping_service,destination_hub,cod,recipient_name,recipient_phone,recipient_address,order_status,erp_users(username),order_items(product_name,variant,quantity),shipments(tracking_number,carrier,is_active,current_tracking_status)')
       .in('shopee_order_id',orderCodes).is('archived_at',null)
     :{data:[],error:null}
   const role=String(user.app_metadata?.role??'viewer')
@@ -100,7 +100,12 @@ export async function GET(request:Request){
     ?newer.data.items.filter((x:Record<string,unknown>)=>x.source==='system')
     :[]) as SystemNotice[]
   const combined:(TrackingOrderNotice|SystemNotice|typeof workNotices[number])[]=[...enriched,...workNotices,...systems]
-  const newest=combined.sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))
+  // Keep unresolved delivery failures within the bounded first page,
+  // even when newer non-critical notices accumulate.
+  const newest=combined.sort((a,b)=>
+    Number(b.source==='tracking'&&b.reminder_active===true)-
+    Number(a.source==='tracking'&&a.reminder_active===true)||
+    Date.parse(b.created_at)-Date.parse(a.created_at))
   const relevant=newest.filter(x=>category==='all'||x.category===category)
     .filter(x=>view==='all'||(view==='unread'&&!x.is_read)||
       (view==='action'&&x.requires_action&&!x.is_resolved))

@@ -9,7 +9,8 @@ type Step={id:string;type:string;label:string;created_at:string;is_read:boolean;
 type ProductSummary={product_name:string;variant:string|null;quantity:number}
 type ReceivingWarehouse={id:string;code?:string|null;name?:string|null;address?:string|null}
 type Notice={
-  id:string;source:'tracking'|'system'|'work';category:string;work_type?:'tracking_missing'|'warehouse_intake';warehouse_status?:string;severity:'info'|'warning'|'critical';
+  id:string;source:'tracking'|'system'|'work';category:string;work_type?:'tracking_missing'|'warehouse_intake';
+  reminder_active?:boolean;warehouse_status?:string;severity:'info'|'warning'|'critical';
   title:string;message:string;event_type:string;created_at:string;is_read:boolean;
   requires_action:boolean;is_resolved:boolean;legacy_ids:string[];notification_id:string|null;
   order_id:string|null;order_code?:string;destination_hub:string;group_count:number;
@@ -484,8 +485,9 @@ export function InAppAlertCenter({
         ?{action:'read',source:'tracking',alert_ids:row.legacy_ids}
         :{action:'read',source:'system',notification_id:row.notification_id})
       setFeed(current=>({...current,
-        items:current.items.map(x=>x.id===row.id?{...x,is_read:true}:x),
-        unread_total:Math.max(0,current.unread_total-1),
+        items:current.items.map(x=>x.id===row.id
+          ?{...x,is_read:x.reminder_active===true?false:true}:x),
+        unread_total:Math.max(0,current.unread_total-(row.reminder_active?0:1)),
       }))
       setError('')
     }catch{setError('Không thể đánh dấu đã đọc.')}
@@ -496,8 +498,11 @@ export function InAppAlertCenter({
     setPending(true)
     try{
       await changeStatus({action:'read_all'})
-      setFeed(current=>({...current,unread_total:0,
-        items:current.items.map(x=>({...x,is_read:true}))}))
+      // Acknowledging the list does not resolve a delivery failure.
+      setFeed(current=>({...current,
+        unread_total:current.items.filter(x=>x.reminder_active===true).length,
+        items:current.items.map(x=>({...x,is_read:x.reminder_active===true?false:true})),
+      }))
       setError('')
     }catch{setError('Không thể đánh dấu đã đọc tất cả.')}
     finally{setPending(false)}
@@ -727,6 +732,9 @@ export function InAppAlertCenter({
                 </button>
                 {selectedId===row.id&&<div className="neo-soft-expanded" id={'neo-soft-inline-'+row.id}
                   role="region" aria-label={'Thông tin chi tiết đơn '+(row.order_code??row.title)}>
+                  {row.reminder_active&&<p className="neo-soft-receive-tip">
+                    Tiếp tục nhắc đến khi giao thành công hoặc đơn bị hủy.
+                  </p>}
                   <div className="neo-soft-expanded-kv">
                     {row.username&&<div><span>Username</span><span>{row.username}</span></div>}
                     {row.carrier&&<div><span>ĐVVC</span><span>{row.carrier}</span></div>}
