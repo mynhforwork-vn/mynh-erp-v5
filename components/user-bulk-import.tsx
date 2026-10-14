@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect,useMemo,useState,useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { bulkImportERPUsers } from '@/lib/actions/core'
 
 const STATUSES=new Set(['Active','M01','M02','M03','M04','Captcha','Auto Hủy','Blocked','Không xác định'])
@@ -12,7 +11,6 @@ function boolValue(value:string){
 }
 
 export function UserBulkImport(){
-  const router=useRouter()
   const [open,setOpen]=useState(false)
   const [raw,setRaw]=useState('')
   const [message,setMessage]=useState('')
@@ -83,7 +81,8 @@ export function UserBulkImport(){
       if(!result.ok){setMessage(result.error);return}
       setMessage(`Đã import ${parsed.length} User.`)
       setRaw('')
-      router.refresh()
+      // bulkImportERPUsers already revalidates Accounts via its Server Action.
+      // No additional route refresh or document navigation is necessary.
     })
   }
 
