@@ -537,7 +537,21 @@ export function DesktopTableColumnResize() {
       }))queue()
     })
     observer.observe(main,{childList:true,subtree:true,attributes:true,attributeFilter:['class']})
-    const onChange=()=>{if(mq.matches)queue()}
+    const onChange=()=>{
+      if(mq.matches){
+        queue()
+        return
+      }
+      // Leaving Desktop/Tablet with a right drawer open must release the
+      // inline header, colgroup and table widths managed by this enhancer.
+      // React's lane-driven Auto Fit owns the compact Mobile layout. Keep
+      // saved drag preferences in localStorage for when Desktop returns.
+      main.querySelectorAll('table.user-table.mynh-p1-semantic-table').forEach(el=>{
+        const table=el as HTMLTableElement
+        clearInlineWidths(table)
+        trackingLayout.delete(table)
+      })
+    }
     const observedPanes=new WeakSet<Element>()
     const paneResize=new ResizeObserver(()=>queue())
     // Column table width can be overwritten after hydration even when the
