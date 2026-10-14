@@ -1679,3 +1679,44 @@ table.table.user-table.mynh-p1-semantic-table.account-table-stacked{
     scroll-margin-top:100px;
   }
 }
+
+
+/* Tablet landscape / compact Desktop: do NOT squeeze thirteen Account
+   columns beside a 390px right drawer into an unreadable ~377px lane.
+   Keep the underlying semantic table full-width and overlay exactly one
+   detail slidebar INSIDE the post-KPI workspace. Wide Desktop >=1181px
+   retains the side-by-side table + slidebar contract. */
+@media(min-width:901px) and (max-width:1180px){
+  .brand-shell-v1 .account-screen .account-workspace.with-panel{
+    position:relative!important;
+    display:block!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  .brand-shell-v1 .account-screen .account-workspace.with-panel
+  >.account-list-pane{
+    display:block!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:100%!important;
+  }
+  .brand-shell-v1 .account-screen .account-workspace.with-panel
+  >aside.system-slidebar-v1{
+    position:absolute!important;
+    top:0!important;
+    bottom:0!important;
+    right:0!important;
+    left:auto!important;
+    z-index:30!important;
+    width:min(390px,100%)!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    box-shadow:-8px 0 20px rgba(36,55,74,.13)!important;
+  }
+}
