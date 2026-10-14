@@ -1415,3 +1415,173 @@ thead th.account-heading-filter-cell>.account-heading-filter-trigger{
   min-width:0!important;
   max-width:100%!important;
 }
+
+
+/* Account Responsive: preserve EVERY enabled column when a right slidebar
+   reduces the list lane. Column visibility comes only from user settings,
+   never from viewport width. Labeled row cells use the available width
+   without horizontal scroll; wide Desktop keeps standard resizable columns. */
+.brand-shell-v1 .account-table-card:has(>table.account-table-stacked){
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  min-width:0!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked{
+  display:block!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  table-layout:auto!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked>colgroup{
+  display:none!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked>thead{
+  display:block!important;
+  position:sticky!important;
+  top:0!important;
+  z-index:12!important;
+  width:100%!important;
+  background:#eff4f8!important;
+  border-bottom:1px solid #cedce7!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked>thead>tr{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  align-items:stretch!important;
+  gap:0!important;
+  width:100%!important;
+  background:#eff4f8!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked>thead>tr>th{
+  position:relative!important;
+  top:auto!important;
+  display:flex!important;
+  flex:1 1 120px!important;
+  box-sizing:border-box!important;
+  width:auto!important;
+  min-width:75px!important;
+  max-width:none!important;
+  padding:5px 27px 5px 7px!important;
+  border-right:1px solid #e0e8ef!important;
+  border-bottom:1px solid #e4ebf1!important;
+  background:#eff4f8!important;
+  font-size:10px!important;
+  font-weight:600!important;
+  line-height:1.2!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked>thead>tr>th.bulk-select-col{
+  flex:0 0 32px!important;
+  min-width:32px!important;
+  max-width:32px!important;
+  padding:5px!important;
+  justify-content:center!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked>thead
+th.account-heading-filter-cell>.account-heading-filter-caption{
+  white-space:normal!important;
+  max-height:none!important;
+  overflow-wrap:break-word!important;
+  word-break:normal!important;
+  text-overflow:clip!important;
+  font-size:10px!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+.mynh-column-resize-grip{
+  display:none!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked>tbody{
+  display:block!important;
+  width:100%!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked>tbody>tr{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:0 10px!important;
+  width:100%!important;
+  margin:0!important;
+  padding:6px 9px!important;
+  border-bottom:1px solid #dfe8f0!important;
+  background:inherit!important;
+  box-sizing:border-box!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked>tbody>tr>td{
+  display:flex!important;
+  position:relative!important;
+  grid-column:auto!important;
+  flex-wrap:wrap!important;
+  align-items:flex-start!important;
+  gap:4px!important;
+  min-width:0!important;
+  max-width:100%!important;
+  width:auto!important;
+  min-height:29px!important;
+  padding:6px 4px!important;
+  border-bottom:1px solid #f0f3f6!important;
+  font-size:11px!important;
+  font-weight:400!important;
+  line-height:1.35!important;
+  white-space:normal!important;
+  text-align:left!important;
+  overflow-wrap:anywhere!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  box-sizing:border-box!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+>tbody>tr>td[data-account-label]::before{
+  content:attr(data-account-label);
+  display:block;
+  flex:0 0 100%!important;
+  color:#6a8092!important;
+  font-size:10px!important;
+  font-weight:500!important;
+  line-height:1.12!important;
+  white-space:normal!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+>tbody>tr>td[data-account-col="username"]{
+  grid-column:1 / -1!important;
+  min-height:34px!important;
+  font-weight:600!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+>tbody>tr>td.bulk-select-col{
+  grid-column:1 / -1!important;
+  min-height:24px!important;
+  padding-block:2px!important;
+  border:0!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+>tbody>tr>td.empty{
+  grid-column:1 / -1!important;
+  display:block!important;
+  text-align:center!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+>tbody>tr>td .p1-table-long-text,
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+>tbody>tr>td .user-name-actions,
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+>tbody>tr>td .table-link{
+  max-width:100%!important;
+  min-width:0!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+}
+.brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+>tbody>tr>td[data-account-col="voucher"]{
+  word-break:break-word!important;
+}
+@media(max-width:700px){
+  .brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+  >tbody>tr{grid-template-columns:minmax(0,1fr)!important}
+  .brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+  >thead>tr>th{
+    flex:1 1 100px!important;
+    min-width:75px!important;
+  }
+}
