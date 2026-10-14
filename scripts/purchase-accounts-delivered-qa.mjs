@@ -135,8 +135,16 @@ try{
       await page.waitForFunction(()=>{
         const card=document.querySelector('.account-table-card')
         const table=card?.querySelector('table.user-table')
-        return card&&table&&Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8
+        if(!card||!table)return false
+        const head=(key)=>table.querySelector('thead th[data-account-col="'+key+'"]')
+        const size=(el)=>el?.getBoundingClientRect().width??0
+        const number=head('number'),orders=head('orders'),delivered=head('deliveredOrders')
+        return Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8
           &&card.scrollWidth<=card.clientWidth+4
+          &&(innerWidth<768||table.classList.contains('mynh-resizable-table'))
+          &&(!number||size(number)<=48)
+          &&(!orders||size(orders)<=85)
+          &&(!delivered||size(delivered)<=140)
       },null,{timeout:15000})
     }catch(error){
       const geometry=await page.evaluate(()=>{
