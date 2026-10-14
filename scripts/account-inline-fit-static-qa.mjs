@@ -10,6 +10,8 @@ const linkedUser=read('components/order-account-detail-panel.tsx')
 const accountTable=read('components/purchase-account-table.tsx')
 const manager=read('components/desktop-table-column-resize.tsx')
 const qa=read('scripts/purchase-accounts-real-autofit-qa.mjs')
+const filter=read('components/erp-account-filter-form.tsx')
+const bulkImport=read('components/user-bulk-import.tsx')
 const tests=[
  ['All User mutations preserve direct server actions and RBAC',()=>{
    for(const name of ['createERPUser','updateERPUser','archiveERPUser','restoreERPUser','archiveERPUsersBulk','restoreERPUsersBulk'])
@@ -45,6 +47,14 @@ const tests=[
    assert.match(manager,/paneResize\.observe\(pane\)/)
    assert.match(manager,/trackingLayout\.delete\(table as HTMLTableElement\)/)
    assert.match(manager,/window\.addEventListener\('mynh-account-fit-changed',refitAccount\)/)
+ }],
+ ['Account filters and TSV imports never reload the document',()=>{
+   assert.match(accounts,/<ERPAccountFilterForm/)
+   assert.match(filter,/event\.preventDefault\(\)/)
+   assert.match(filter,/router\.push\('\/purchase\/accounts'/)
+   assert.match(filter,/scroll:false/)
+   assert.doesNotMatch(bulkImport,/router\.refresh\(/)
+   assert.doesNotMatch(bulkImport,/(?:window\.|location\.)reload\(/)
  }],
  ['Auto Fit QA checks 0 and 1 slidebar and both left sidebar states',()=>{
    assert.doesNotMatch(qa,/2 right panels opened|with-two-panels/)
