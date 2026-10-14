@@ -49,6 +49,18 @@ try{
     if(attempt===17)throw Error('Preview has not deployed per-header filter code')
     await page.waitForTimeout(10000)
   }
+  // Hydration and responsive sidebar measures update column widths on
+  // subsequent animation frames. Sample only after the grip enhancer
+  // has bound the live table, never from the first SSR document.
+  await page.waitForFunction(()=>{
+    const table=document.querySelector('.account-table-card table.user-table')
+    const card=document.querySelector('.account-table-card')
+    const manager=document.querySelector('.p1-account-filter-actions .managed-column-button')
+    return table?.classList.contains('mynh-resizable-table')
+      &&card&&manager&&card.clientWidth>100
+      &&Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8
+      &&card.scrollWidth<=card.clientWidth+4
+  },null,{timeout:20000})
   await page.evaluate(()=>{window.__accountHeaderNoReload=true})
   const geometry=await page.evaluate(()=>{
     const table=document.querySelector('.account-table-card table.user-table')
@@ -80,8 +92,13 @@ try{
   const username=page.locator('th[data-account-col="username"] .account-heading-filter-trigger')
   await username.click()
   const usernameMenu=page.locator('.account-heading-filter-menu[popover]:popover-open')
-  check(viewport.width+' Username filter opens on header',
-    await usernameMenu.count()===1&&await usernameMenu.locator('input[type="search"]').count()===1)
+  const usernameChoices=await usernameMenu.locator(
+    '.account-heading-filter-option input[type="radio"]').count()
+  const manualInputs=await usernameMenu.locator(
+    'input[type="search"],input[type="text"],input[type="number"],input[type="date"]').count()
+  check(viewport.width+' Username offers existing data only',
+    await usernameMenu.count()===1&&usernameChoices>=1&&manualInputs===0,
+    {usernameChoices,manualInputs})
   await page.keyboard.press('Escape')
   check(viewport.width+' Esc closes header filter',await usernameMenu.count()===0)
 
@@ -93,7 +110,6 @@ try{
     const options=await menu.locator('.account-heading-filter-option input[type="radio"]').count()
     check(viewport.width+' Browser choices from live User data',options>=2)
     if(options>=2){
-      const optionValue=await radio.evaluate(el=>el.closest('label')?.innerText?.trim()||'')
       await radio.check()
       await menu.locator('button[type="submit"]').click()
       await page.waitForURL(u=>u.searchParams.has('browser')&&u.searchParams.get('range')==='all',
@@ -119,17 +135,27 @@ try{
     const allHeaders=await page.locator('th[data-account-col]').count()
     check('1440 all 13 data headings have filters',allHeaders===13)
 
-    // Test the existing sorting header and date range filter independently.
+    // Time filter is also choice-only: available day labels come from
+    // actual User data; no manual date input is permitted.
     const dateButton=page.locator('th[data-account-col="createdAt"] .account-heading-filter-trigger')
     await dateButton.click()
     const dialog=page.locator('.account-heading-filter-menu[popover]:popover-open')
-    await dialog.locator('input[type="date"]').first().fill('2026-10-01')
-    await dialog.locator('input[type="date"]').last().fill('2026-10-14')
-    await dialog.locator('button[type="submit"]').click()
-    await page.waitForURL(u=>u.searchParams.get('cf_createdAt_from')==='2026-10-01'
-      &&u.searchParams.get('cf_createdAt_to')==='2026-10-14',{timeout:25000})
-    check('1440 date range filter without document reload',
-      await page.evaluate(()=>window.__accountHeaderNoReload===true))
+    const dateOptions=dialog.locator('.account-heading-filter-option input[type="radio"]')
+    const available=await dateOptions.count()
+    check('1440 dates are selectable without typing',
+      available>=2&&await dialog.locator('input[type="date"],input[type="search"]').count()===0,
+      {available})
+    if(available>=2){
+      const label=await dateOptions.nth(1).evaluate(el=>
+        el.closest('label')?.textContent?.trim()||'')
+      const [day,month,year]=label.split('/')
+      await dateOptions.nth(1).check()
+      await dialog.locator('button[type="submit"]').click()
+      await page.waitForURL(u=>u.searchParams.get('cf_createdAt_from')===year+'-'+month+'-'+day
+        &&u.searchParams.get('cf_createdAt_to')===year+'-'+month+'-'+day,{timeout:25000})
+      check('1440 actual date selected without document reload',
+        await page.evaluate(()=>window.__accountHeaderNoReload===true))
+    }else await page.keyboard.press('Escape')
 
     // Status filter still exposes the previous SPC options as secondary scope.
     await page.locator('th[data-account-col="status"] .account-heading-filter-trigger').click()
@@ -138,6 +164,23 @@ try{
       await statusMenu.locator('select').count()===1
       &&await statusMenu.locator('option').count()>=2)
     await page.keyboard.press('Escape')
+  }
+  if(viewport.width===1280){
+    // Read-only: selecting a row must move bulk operations into the SAME
+    // toolbar without adding any extra vertical band below.
+    const first=page.locator('.account-table-card tbody tr[data-account-id] input[type="checkbox"]').first()
+    if(await first.count()){
+      await first.check()
+      const inline=page.locator('.p1-account-filter-actions .user-bulk-toolbar')
+      await inline.waitFor({timeout:10000})
+      const form=await inline.locator('form.user-bulk-toolbar-form').count()
+      check('1280 selected User actions live on existing toolbar',
+        form===1&&await inline.locator('button[type="submit"]').count()===1
+          &&await page.locator('.order-bulk-bar.user-bulk-bar').count()===0)
+      await inline.locator('button.user-bulk-clear').click()
+      check('1280 clearing selection removes bulk actions',
+        await page.locator('.p1-account-filter-actions .user-bulk-toolbar').count()===0)
+    }else check('1280 has User row to test selection without data write',false)
   }
   await context.close()
  }
