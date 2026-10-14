@@ -1610,3 +1610,72 @@ table.table.user-table.mynh-p1-semantic-table.account-table-stacked{
   overflow-y:auto!important;
   overscroll-behavior-x:contain!important;
 }
+
+/* Compact sticky filter header on very narrow Mobile lanes.
+   All thirteen filters remain accessible; only the visual labels are
+   abbreviated so the header cannot blanket the first User row. */
+@media(max-width:700px){
+  .brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+  >thead>tr{
+    display:grid!important;
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    width:100%!important;
+    gap:0!important;
+    align-items:stretch!important;
+  }
+  .brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+  >thead>tr>th{
+    display:flex!important;
+    width:100%!important;
+    height:31px!important;
+    min-height:31px!important;
+    min-width:0!important;
+    max-width:100%!important;
+    flex:none!important;
+    padding:4px 18px 4px 3px!important;
+    align-items:center!important;
+    border-right:1px solid #dee7ee!important;
+    white-space:nowrap!important;
+    font-size:9px!important;
+    overflow:hidden!important;
+  }
+  .brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+  >thead>tr>th.bulk-select-col{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    justify-content:center!important;
+    padding:4px!important;
+  }
+  .brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+  >thead>tr>th.account-heading-filter-cell>.account-heading-filter-caption{
+    display:none!important;
+  }
+  .brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+  >thead>tr>th.account-heading-filter-cell::before{
+    content:attr(data-short-label);
+    display:block!important;
+    width:100%!important;
+    overflow:hidden!important;
+    text-overflow:clip!important;
+    font-size:9px!important;
+    font-weight:600!important;
+    line-height:1.2!important;
+    color:#4a657a!important;
+  }
+  .brand-shell-v1>.main .account-table-card table.user-table.account-table-stacked
+  >thead>tr>th.account-heading-filter-cell>.account-heading-filter-trigger{
+    right:2px!important;
+    width:16px!important;
+    height:22px!important;
+    min-width:16px!important;
+    min-height:22px!important;
+  }
+  .brand-shell-v1 .account-table-card:has(>table.account-table-stacked){
+    scroll-padding-top:100px;
+  }
+  .brand-shell-v1 .account-table-card table.user-table.account-table-stacked
+  td[data-account-col="username"] .table-link{
+    scroll-margin-top:100px;
+  }
+}
