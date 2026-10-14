@@ -250,19 +250,11 @@ export function PurchaseAccountTable({
   // Auto Fit: one width allocation for Desktop, Tablet, Mobile and right drawer.
   // Numeric fields stay compact; meaningful text and Voucher expand as space permits.
   const allShownColumns=columnOrder.filter(isVisible)
-  // Vùng rất hẹp phải giữ các thao tác thiết yếu còn dùng được: không ép
-  // 14 cột xuống 12px. Cột khác vẫn có ở User detail và tự trở lại
-  // khi sidebar/slidebar đóng, không ghi đè lựa chọn ẩn/hiện đã lưu.
-  const compactKeys=tableLaneWidth>0&&tableLaneWidth<330
-    ?['username','phone','orders']
-    :tableLaneWidth>0&&tableLaneWidth<650
-      ?['username','phone','status','orders','voucher']
-      :tableLaneWidth>0&&tableLaneWidth<1020
-        ?['number','username','phone','status','mobile','browser','voucher','orders']
-        :null
-  const shownColumns=compactKeys
-    ?allShownColumns.filter(key=>compactKeys.includes(key))
-    :allShownColumns
+  // Never hide an enabled column merely because a right slidebar opened.
+  // A narrow lane displays every selected field in labeled responsive rows.
+  // This preserves the user's column visibility and order preferences.
+  const shownColumns=allShownColumns
+  const stacked=tableLaneWidth>0&&tableLaneWidth<1020
   const colSpan=shownColumns.length+(canManage?1:0)
   // Hydration/column preferences may overwrite an earlier DOM-level fit.
   // Force a second lane-based measurement after React has committed the
@@ -381,29 +373,29 @@ export function PurchaseAccountTable({
   }
 
   function renderCell(key:ColKey,u:any,i:number){
-    if(key==='number')return <td key={key} data-account-col={key}>{u.account_row_number??i+1}</td>
-    if(key==='username')return <td key={key} data-account-col={key} className="p1-user-identity-cell">
+    if(key==='number')return <td key={key} data-account-col={key} data-account-label={LABELS[key]}>{u.account_row_number??i+1}</td>
+    if(key==='username')return <td key={key} data-account-col={key} data-account-label={LABELS[key]} className="p1-user-identity-cell">
       <div className="user-name-actions">
         <Link className="table-link" prefetch={false} href={hrefFor(u.id)} title={u.username}>{u.username}</Link>
         {!u.archived_at&&u.status!=='Blocked'&&<Link className="quick-order-link" href={createOrderHref(u.id)} title="Tạo đơn từ User" aria-label={'Tạo đơn từ '+u.username}>+</Link>}
       </div>
     </td>
-    if(key==='platform')return <td key={key} data-account-col={key} className="p1-user-platform-cell"><span className="platform-cell">{u.platform??'SHOPEE'}</span></td>
-    if(key==='phone')return <td key={key} data-account-col={key}>{formatPhone(u.phone)}</td>
-    if(key==='email')return <td key={key} data-account-col={key} title={u.email??undefined} className="p1-table-long-text">{u.email??'—'}</td>
-    if(key==='status')return <td key={key} data-account-col={key}>{u.archived_at
+    if(key==='platform')return <td key={key} data-account-col={key} data-account-label={LABELS[key]} className="p1-user-platform-cell"><span className="platform-cell">{u.platform??'SHOPEE'}</span></td>
+    if(key==='phone')return <td key={key} data-account-col={key} data-account-label={LABELS[key]}>{formatPhone(u.phone)}</td>
+    if(key==='email')return <td key={key} data-account-col={key} data-account-label={LABELS[key]} title={u.email??undefined} className="p1-table-long-text">{u.email??'—'}</td>
+    if(key==='status')return <td key={key} data-account-col={key} data-account-label={LABELS[key]}>{u.archived_at
       ? <span className="status-pill archived">Lưu trữ</span>
       : <span className={'status-pill '+statusClass(u.status)}>{statusLabel(u.status)}</span>}</td>
     if(key==='mobile'||key==='browser'){
       const fields=accountDeviceFields(u)
       const value=key==='mobile'?fields.mobileType:fields.browserName
-      return <td key={key} data-account-col={key} className="p1-device-text-cell" title={value||undefined}>{value||'—'}</td>
+      return <td key={key} data-account-col={key} data-account-label={LABELS[key]} className="p1-device-text-cell" title={value||undefined}>{value||'—'}</td>
     }
-    if(key==='voucher')return <td key={key} data-account-col={key} className="voucher-cell" data-voucher-count={u.voucher_tags?.length??0}><VoucherTags value={u.voucher_used_summary} compact showAll/></td>
-    if(key==='orders')return <td key={key} data-account-col={key} className="count-cell">{u.order_count??0}</td>
-    if(key==='deliveredOrders')return <td key={key} data-account-col={key} className="count-cell" title="Số đơn giao thành công">{u.delivered_order_count??'—'}</td>
-    if(key==='createdAt')return <td key={key} data-account-col={key} title={formatDateTime(u.effective_created_at??u.created_at)}>{formatDateTime(u.effective_created_at??u.created_at)}</td>
-    return <td key={key} data-account-col={key} className="truncate p1-table-long-text" title={u.note??undefined}>{u.note??'—'}</td>
+    if(key==='voucher')return <td key={key} data-account-col={key} data-account-label={LABELS[key]} className="voucher-cell" data-voucher-count={u.voucher_tags?.length??0}><VoucherTags value={u.voucher_used_summary} compact showAll/></td>
+    if(key==='orders')return <td key={key} data-account-col={key} data-account-label={LABELS[key]} className="count-cell">{u.order_count??0}</td>
+    if(key==='deliveredOrders')return <td key={key} data-account-col={key} data-account-label={LABELS[key]} className="count-cell" title="Số đơn giao thành công">{u.delivered_order_count??'—'}</td>
+    if(key==='createdAt')return <td key={key} data-account-col={key} data-account-label={LABELS[key]} title={formatDateTime(u.effective_created_at??u.created_at)}>{formatDateTime(u.effective_created_at??u.created_at)}</td>
+    return <td key={key} data-account-col={key} data-account-label={LABELS[key]} className="truncate p1-table-long-text" title={u.note??undefined}>{u.note??'—'}</td>
   }
 
   return <div className="account-table-shell p1-account-table-shell">
@@ -507,8 +499,9 @@ export function PurchaseAccountTable({
       </div>,document.body)}
 
     <div className="card table-card account-table-card" ref={tableCardRef}>
-      <table className="table user-table mynh-p1-semantic-table" data-auto-fit-version="6" data-account-filter-version="header-v3" style={tableWidths}
-        title={compactKeys?'Bảng gọn theo vùng hiển thị. Mở chi tiết User để xem đầy đủ thông tin.':undefined}>
+      <table className={'table user-table mynh-p1-semantic-table'+(stacked?' account-table-stacked':'')}
+        data-auto-fit-version="7" data-account-filter-version="header-v3"
+        data-account-layout={stacked?'stacked':'columns'} style={tableWidths}>
         <colgroup>
           {canManage&&<col className="p1-account-col p1-account-col-select" style={fitCol(fitted[0])}/>}
           {shownColumns.map(k=><col key={k} className={'p1-account-col p1-account-col-'+k}
