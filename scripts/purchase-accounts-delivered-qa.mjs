@@ -312,11 +312,28 @@ try{
     drawer??{reason:'Drawer table missing'})
   await page.screenshot({path:'qa-accounts-delivered-artifacts/accounts-with-slidebar-1440.png',fullPage:false})
   await page.goto(base+'/purchase/accounts',{waitUntil:'domcontentloaded',timeout:45000})
-  await page.locator('.account-table-card .user-table').waitFor()
-  // Width grip persists per-user; colgroup and headers must stay synchronized.
+  // Width grip is added by client hydration; SSR table alone is not readiness.
+  // Allow bounded retry for transient Preview assets. Never treat a missing
+  // resize grip as PASS: the final attempt still throws.
   const emailHead=page.locator('.account-table-card th[data-account-col="email"]')
   const grip=emailHead.locator('.mynh-column-resize-grip')
-  await grip.waitFor({state:'visible',timeout:12000})
+  for(let attempt=0;attempt<3;attempt++){
+    await page.locator('.account-table-card .user-table').waitFor({timeout:15000})
+    try{
+      await grip.waitFor({state:'visible',timeout:12000})
+      break
+    }catch(error){
+      console.log('ACCOUNT_DELIVERED_GRIP_READINESS '+JSON.stringify({
+        attempt:attempt+1,
+        table:await page.locator('.account-table-card .user-table').count(),
+        hydrated:await page.locator('.account-table-card .user-table.mynh-resizable-table').count(),
+        grip:await grip.count(),
+      }))
+      if(attempt===2)throw error
+      await page.reload({waitUntil:'domcontentloaded',timeout:45000})
+    }
+  }
+  // The actual pointer drag below remains mandatory for PASS.
   const emailBefore=await emailHead.evaluate(x=>x.getBoundingClientRect().width)
   const gripRect=await grip.boundingBox()
   if(!gripRect)throw Error('Account column resize grip missing')
