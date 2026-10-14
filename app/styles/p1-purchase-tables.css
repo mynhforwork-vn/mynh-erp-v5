@@ -1189,3 +1189,19 @@ thead th.account-heading-filter-cell>.account-heading-filter-trigger:is(:hover,:
     padding-inline:5px!important;
   }
 }
+
+/* Mobile: khi chọn User, thanh công cụ chuyển sang chế độ thao tác
+   hàng loạt trên một hàng; trả lại Tìm kiếm/Lưu trữ khi bỏ chọn. */
+@media(max-width:700px){
+  .brand-shell-v1 .p1-account-command-row:has(.user-bulk-toolbar)
+  >form.account-filter-bar{
+    display:none!important;
+  }
+  .brand-shell-v1 .p1-account-command-row:has(.user-bulk-toolbar)
+  >.p1-account-filter-actions{
+    flex:1 1 100%!important;
+    width:100%!important;
+    max-width:100%!important;
+    justify-content:space-between!important;
+  }
+}
