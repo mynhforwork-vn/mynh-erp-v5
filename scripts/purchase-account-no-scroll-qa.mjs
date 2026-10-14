@@ -46,8 +46,15 @@ async function state(page){
       &&[...table.querySelectorAll('tbody tr[data-account-id]')].every(tr=>
         canonical.every(k=>tr.querySelector('td[data-account-col="'+k+'"]')))
     const labeled=stacked&&[...table.querySelectorAll('tbody tr[data-account-id]')]
-      .every(tr=>canonical.every(k=>tr.querySelector('td[data-account-col="'+k+'"]')
-        ?.getAttribute('data-account-label')))
+      .every(tr=>canonical.every(k=>{
+        const td=tr.querySelector('td[data-account-col="'+k+'"]')
+        if(!td?.getAttribute('data-account-label'))return false
+        const style=getComputedStyle(td)
+        const box=td.getBoundingClientRect()
+        return style.display!=='none'&&style.visibility==='visible'
+          &&box.width>=55&&box.height>=17
+          &&getComputedStyle(td,'::before').content!=='none'
+      }))
     return {
       stacked,allFields,labeled,
       lane:card.clientWidth,scrollWidth:card.scrollWidth,table:width(table),
