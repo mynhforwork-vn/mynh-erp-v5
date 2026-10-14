@@ -69,6 +69,14 @@ async function metrics(page){
     const cols=[...table.querySelectorAll('colgroup col')]
     const widths=Object.fromEntries(heads.map(el=>[el.dataset.accountCol??'select',Math.round(rect(el).width)]))
     const stacked=table.dataset.accountLayout==='stacked'
+    const desktopSemantic=innerWidth<768||(!stacked
+      &&getComputedStyle(table).display==='table'
+      &&getComputedStyle(table.tHead).display==='table-header-group'
+      &&getComputedStyle(table.tHead.rows[0]).display==='table-row'
+      &&[...table.querySelectorAll('tbody tr[data-account-id]')].every(tr=>
+        getComputedStyle(tr).display==='table-row'
+        &&[...tr.children].every(td=>getComputedStyle(td).display==='table-cell')))
+    const headerRowHeight=Math.round(table.tHead.rows[0].getBoundingClientRect().height)
     const expected=['number','username','platform','phone','email','status',
       'mobile','browser','voucher','orders','deliveredOrders','createdAt','note']
     const rendered=heads.filter(th=>th.dataset.accountCol).map(th=>th.dataset.accountCol)
@@ -91,7 +99,7 @@ async function metrics(page){
       panelVisible:user?getComputedStyle(user).visibility!=='hidden':null,
       orderStack:order?parseInt(getComputedStyle(order).zIndex)||0:0,
       userStack:user?parseInt(getComputedStyle(user).zIndex)||0:0,
-      stacked,allFields,labeled,
+      stacked,desktopSemantic,headerRowHeight,allFields,labeled,
       localScroll:stacked?/auto|scroll/.test(getComputedStyle(card).overflowY)
         :/auto|scroll/.test(getComputedStyle(card).overflowX),
       noHorizontalScroll:card.scrollWidth<=card.clientWidth+4,
@@ -103,6 +111,7 @@ async function metrics(page){
   })
 }
 function fit(m){return !!(m&&!m.bodyOverflow&&m.aligned&&m.localScroll
+  &&m.desktopSemantic&&m.headerRowHeight<=85
   &&m.allFields&&(!m.stacked||m.labeled)
   &&m.fitted&&m.noHorizontalScroll&&m.table.width<=m.lane.width+4
   &&m.tableWithinScroll&&m.widths.username>=56
