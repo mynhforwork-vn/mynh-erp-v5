@@ -32,6 +32,16 @@
   }
   /* Tài khoản cũng cho phép kéo tay từ Tablet 768px; các module khác
      chỉ được gắn grip theo logic hiện có (Desktop từ 901px). */
+  /* Tablet: last header grip must not add an invisible 11px scroll tail.
+     Keep the handle inside its own 12px edge and retain its pointer events. */
+  @media(max-width:900px){
+    .brand-shell-v1>.main .account-table-card table.user-table
+    thead th.mynh-column-resize-head{
+      overflow:hidden!important;
+      text-overflow:ellipsis!important;
+      padding-right:13px!important;
+    }
+  }
   .brand-shell-v1>.main table.table.mynh-resizable-table{
     max-width:none!important;
   }
