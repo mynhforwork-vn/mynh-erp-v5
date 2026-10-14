@@ -8,7 +8,9 @@ import { formatDateTime, formatPhone, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
-import { archiveERPUsersBulk, restoreERPUsersBulk } from '@/lib/actions/core'
+import { ERPUserInlineForm } from '@/components/erp-user-inline-form'
+import {fitAccountColumnWidths} from '@/lib/account-table-autofit'
+import {AccountHeadingFilter,type AccountHeadingOption,type AccountHeadingFilterKind} from '@/components/account-heading-filter'
 
 type Row=Record<string,any>
 type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'mobile'|'browser'|'voucher'|'orders'|'deliveredOrders'|'createdAt'|'note'
@@ -16,7 +18,7 @@ type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'mobile'|'br
 const ALL:ColKey[]=['number','username','platform','phone','email','status','mobile','browser','voucher','orders','deliveredOrders','createdAt','note']
 const LABELS:Record<ColKey,string>={
   number:'#',username:'Username',platform:'Nền tảng',phone:'SĐT',email:'Email',
-  status:'Trạng thái',mobile:'Mobile',browser:'Browser',voucher:'Voucher đã dùng',orders:'Số đơn',deliveredOrders:'Số đơn giao thành công',
+  status:'Trạng thái',mobile:'Mobile',browser:'Browser',voucher:'Voucher',orders:'Số đơn',deliveredOrders:'Số đơn giao thành công',
   createdAt:'Thời gian tạo',note:'Ghi chú'
 }
 const STORAGE_KEY='mynh-v5-purchase-account-columns'
@@ -59,30 +61,100 @@ export function PurchaseAccountTable({
   detailQuery='',
   sort='newest',
   canManage=false,
+  headingOptions={},headingValues={},sessionOptions=[],
 }:{
   rows:Row[]
   selectedId?:string|null
   detailQuery?:string
   sort?:string
   canManage?:boolean
+  headingOptions?:Partial<Record<ColKey,AccountHeadingOption[]>>
+  headingValues?:Record<string,string>
+  sessionOptions?:AccountHeadingOption[]
 }){
   const [visible,setVisible]=useState<ColKey[]>(ALL)
   const [columnOrder,setColumnOrder]=useState<ColKey[]>(ALL)
   const [open,setOpen]=useState(false)
+  const [menuPosition,setMenuPosition]=useState({top:64,right:8})
   const [selected,setSelected]=useState<string[]>([])
   const draggingRef=useRef<ColKey|null>(null)
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
+  const columnMenuRef=useRef<HTMLDivElement|null>(null)
   const tableCardRef=useRef<HTMLDivElement|null>(null)
+  // Declarative marker: React renders it only after the account table hydrates.
+  const [clientReady,setClientReady]=useState(false)
+  useEffect(()=>{setClientReady(true)},[])
+  // One pending query for ALL header menus prevents a later filter tick from
+  // restoring stale selections while the previous router transition is pending.
+  const filterQueryRef=useRef(detailQuery)
+  useEffect(()=>{filterQueryRef.current=detailQuery},[detailQuery])
   const [tableLaneWidth,setTableLaneWidth]=useState(0)
+  // Responsive stacked rows belong ONLY to true narrow mobile screens.
+  // Desktop/Tablet must remain a semantic, one-row-per-User table even
+  // when the right detail slidebar reduces the list pane below 980px.
+  const [mobileViewport,setMobileViewport]=useState(false)
+  useEffect(()=>{
+    const query=window.matchMedia('(max-width:767px)')
+    const sync=()=>setMobileViewport(query.matches)
+    sync()
+    query.addEventListener('change',sync)
+    return ()=>query.removeEventListener('change',sync)
+  },[])
   useEffect(()=>{
     const card=tableCardRef.current
     if(!card)return
-    const measure=()=>setTableLaneWidth(w=>Math.abs(w-card.clientWidth)<1?w:card.clientWidth)
+    let raf=0
+    const measure=()=>{
+      if(raf)window.cancelAnimationFrame(raf)
+      raf=window.requestAnimationFrame(()=>{
+        raf=0
+        const next=card.clientWidth
+        setTableLaneWidth(w=>Math.abs(w-next)<1?w:next)
+        window.dispatchEvent(new Event('mynh-account-fit-changed'))
+      })
+    }
     measure()
+    // Sidebar trái, slidebar phải và bản thân bảng đều có thể đổi độ rộng
+    // mà component không unmount. Theo dõi cả workspace để không giữ fit cũ.
     const observer=new ResizeObserver(measure)
     observer.observe(card)
-    return ()=>observer.disconnect()
+    const workspace=card.closest('.account-workspace')
+    if(workspace)observer.observe(workspace)
+    const onPaneAnimation=()=>measure()
+    workspace?.addEventListener('transitionend',onPaneAnimation)
+    const paneObserver=new MutationObserver(measure)
+    if(workspace)paneObserver.observe(workspace,{childList:true,attributes:true,attributeFilter:['class']})
+    window.addEventListener('mynh-sidebar-resized',measure)
+    return ()=>{
+      observer.disconnect()
+      workspace?.removeEventListener('transitionend',onPaneAnimation)
+      paneObserver.disconnect()
+      window.removeEventListener('mynh-sidebar-resized',measure)
+      if(raf)window.cancelAnimationFrame(raf)
+    }
   },[])
+  // Lưu User bằng Server Action làm mới RSC, nhưng không được đặt lại vị trí
+  // cuộn ngang/dọc của bảng. Khôi phục sau khi hàng mới được React render.
+  useEffect(()=>{
+    const card=tableCardRef.current
+    if(!card)return
+    let raw=''
+    try{raw=sessionStorage.getItem('mynh-account-scroll-on-save')??''}catch{}
+    if(!raw)return
+    try{
+      const saved=JSON.parse(raw) as {x:number,y:number,at:number}
+      if(Date.now()-saved.at<15000){
+        const frame=window.requestAnimationFrame(()=>{
+          card.scrollLeft=saved.x
+          card.scrollTop=saved.y
+        })
+        try{sessionStorage.removeItem('mynh-account-scroll-on-save')}catch{}
+        return ()=>window.cancelAnimationFrame(frame)
+      }
+    }catch{}
+    try{sessionStorage.removeItem('mynh-account-scroll-on-save')}catch{}
+  },[rows,selectedId])
+
   const toolbarRoot=usePurchaseToolbarRoot('p1-account-filter-actions')
 
   useEffect(()=>{
@@ -125,16 +197,28 @@ export function PurchaseAccountTable({
     if(!open)return
     function onPointerDown(event:PointerEvent){
       const target=event.target as Node|null
-      if(target&&!columnManagerRef.current?.contains(target))setOpen(false)
+      if(target&&!columnManagerRef.current?.contains(target)
+        &&!columnMenuRef.current?.contains(target))setOpen(false)
     }
     function onKeyDown(event:KeyboardEvent){
       if(event.key==='Escape')setOpen(false)
     }
+    const reposition=()=>{
+      const button=columnManagerRef.current?.querySelector<HTMLButtonElement>('.managed-column-button')
+      if(!button)return
+      const rect=button.getBoundingClientRect()
+      setMenuPosition({top:Math.max(8,Math.min(rect.bottom+5,window.innerHeight-245)),
+        right:Math.max(8,window.innerWidth-rect.right)})
+    }
     document.addEventListener('pointerdown',onPointerDown)
     document.addEventListener('keydown',onKeyDown)
+    window.addEventListener('resize',reposition)
+    window.addEventListener('scroll',reposition,true)
     return ()=>{
       document.removeEventListener('pointerdown',onPointerDown)
       document.removeEventListener('keydown',onKeyDown)
+      window.removeEventListener('resize',reposition)
+      window.removeEventListener('scroll',reposition,true)
     }
   },[open])
 
@@ -177,10 +261,32 @@ export function PurchaseAccountTable({
   const selectedRows=useMemo(()=>rows.filter((row:any)=>selectedSet.has(String(row.id))),[rows,selectedSet])
   const selectedArchived=selectedRows.length>0&&selectedRows.every((row:any)=>Boolean(row.archived_at))
   const allSelected=rows.length>0&&rows.slice(0,200).every((row:any)=>selectedSet.has(String(row.id)))
-  const colSpan=useMemo(()=>visible.length+(canManage?1:0),[visible,canManage])
   // Auto Fit: one width allocation for Desktop, Tablet, Mobile and right drawer.
   // Numeric fields stay compact; meaningful text and Voucher expand as space permits.
-  const shownColumns=columnOrder.filter(isVisible)
+  const allShownColumns=columnOrder.filter(isVisible)
+  // Never hide an enabled column merely because a right slidebar opened.
+  // A narrow lane displays every selected field in labeled responsive rows.
+  // This preserves the user's column visibility and order preferences.
+  const shownColumns=allShownColumns
+  // Never infer mobile card mode from pane width alone: the Desktop right
+  // drawer can create a 750-960px lane even in a 1440px desktop viewport.
+  const stacked=mobileViewport&&tableLaneWidth>0&&tableLaneWidth<980
+  const colSpan=shownColumns.length+(canManage?1:0)
+  // Hydration/column preferences may overwrite an earlier DOM-level fit.
+  // Force a second lane-based measurement after React has committed the
+  // responsive widths; never reuse widths from the previous sidebar state.
+  useEffect(()=>{
+    let second=0
+    const first=window.requestAnimationFrame(()=>{
+      second=window.requestAnimationFrame(
+        ()=>window.dispatchEvent(new Event('mynh-account-fit-changed'))
+      )
+    })
+    return ()=>{
+      window.cancelAnimationFrame(first)
+      if(second)window.cancelAnimationFrame(second)
+    }
+  },[tableLaneWidth,visible,columnOrder,canManage])
   const sampleMax=(pick:(row:Row)=>string)=>{
     let n=0
     for(const row of rows.slice(0,150))n=Math.max(n,pick(row).trim().length)
@@ -189,12 +295,9 @@ export function PurchaseAccountTable({
   const clamp=(n:number,low:number,high:number)=>Math.max(low,Math.min(high,n))
   const longestTag=sampleMax(r=>String(r.voucher_used_summary??'')
     .split('·').map(s=>s.trim()).sort((a,b)=>b.length-a.length)[0]??'')
-  const minimum:Record<ColKey,number>={
-    number:28,username:128,platform:56,phone:98,email:132,status:76,
-    mobile:86,browser:74,voucher:104,orders:48,deliveredOrders:88,
-    createdAt:130,note:88,
-  }
-  const widths:Record<ColKey,number>={
+  // Content-aware preferences; the same no-scroll allocator is also
+  // used by DesktopTableColumnResize when the User/Order pane moves.
+  const preferred:Record<ColKey,number>={
     number:28,username:clamp(45+sampleMax(r=>String(r.username??''))*6.4,144,214),
     platform:64,phone:110,
     email:clamp(18+sampleMax(r=>String(r.email??''))*5.7,148,248),
@@ -204,50 +307,14 @@ export function PurchaseAccountTable({
     orders:52,deliveredOrders:94,createdAt:137,
     note:clamp(26+sampleMax(r=>String(r.note??''))*4.8,103,185),
   }
-  const flex:ColKey[]=['username','email','mobile','browser','voucher','note']
-  const panelWidth=tableLaneWidth>0?Math.max(0,Math.floor(tableLaneWidth)-2):0
-  const allocated=()=> (canManage?28:0)+shownColumns.reduce((sum,key)=>sum+widths[key],0)
-  if(panelWidth>0&&allocated()>panelWidth){
-    let deficit=allocated()-panelWidth
-    for(const key of ['note','email','mobile','browser','username','voucher'] as ColKey[]){
-      if(!shownColumns.includes(key))continue
-      const cut=Math.min(deficit,widths[key]-minimum[key])
-      widths[key]-=cut
-      deficit-=cut
-      if(deficit<=0)break
-    }
-    // Short metadata fields also have safe lower bounds. Spend those few
-    // pixels before creating an avoidable horizontal scroll at 1440px.
-    if(deficit>0){
-      for(const key of ['phone','platform','status','createdAt','deliveredOrders','orders'] as ColKey[]){
-        if(!shownColumns.includes(key))continue
-        const cut=Math.min(deficit,widths[key]-minimum[key])
-        widths[key]-=cut
-        deficit-=cut
-        if(deficit<=0)break
-      }
-    }
-  }
-  const availableExtra=panelWidth>0?Math.max(0,panelWidth-allocated()):0
-  const expanding=flex.filter(key=>shownColumns.includes(key))
-  if(availableExtra>0&&expanding.length){
-    const importance:Partial<Record<ColKey,number>>={
-      username:1.3,email:1.4,mobile:.5,browser:.5,voucher:1,note:1,
-    }
-    const total=expanding.reduce((n,key)=>n+(importance[key]??1),0)
-    let consumed=0
-    expanding.forEach((key,i)=>{
-      const bonus=i===expanding.length-1?availableExtra-consumed:
-        Math.floor(availableExtra*(importance[key]??1)/total)
-      widths[key]+=bonus
-      consumed+=bonus
-    })
-  }
+  const keys=[...(canManage?['select']:[]),...shownColumns]
+  const original=[...(canManage?[28]:[]),...shownColumns.map(key=>preferred[key])]
+  const fitted=fitAccountColumnWidths(keys,original,tableLaneWidth)
   const fitCol=(px:number)=>({
-    '--p1-account-fit-col-width':Math.round(px*100)/100+'px',
+    '--p1-account-fit-col-width':px+'px',
   }) as CSSProperties
   const tableWidths={
-    '--p1-account-fit-table-width':Math.ceil(allocated())+'px',
+    '--p1-account-fit-table-width':fitted.reduce((sum,px)=>sum+px,0)+'px',
   } as CSSProperties
 
   function hrefFor(id:string){
@@ -285,72 +352,112 @@ export function PurchaseAccountTable({
   }
 
   function renderHeader(key:ColKey){
-    if(key==='number')return <th key={key} data-account-col={key}>#</th>
-    if(key==='username')return <th key={key} data-account-col={key} className="p1-user-identity-head"><Link className="sortable-head" href={sortHref(detailQuery,nameNext)}>Username <span>{sort==='name_asc'?'↑':sort==='name_desc'?'↓':'↕'}</span></Link></th>
-    if(key==='platform')return <th key={key} data-account-col={key}>Nền tảng</th>
-    if(key==='phone')return <th key={key} data-account-col={key}>SĐT</th>
-    if(key==='email')return <th key={key} data-account-col={key}>Email</th>
-    if(key==='status')return <th key={key} data-account-col={key}>Trạng thái</th>
-    if(key==='mobile')return <th key={key} data-account-col={key}>Mobile</th>
-    if(key==='browser')return <th key={key} data-account-col={key}>Browser</th>
-    if(key==='voucher')return <th key={key} data-account-col={key} className="p1-user-voucher-head">Voucher đã dùng</th>
-    if(key==='orders')return <th key={key} data-account-col={key}>Số đơn</th>
-    if(key==='deliveredOrders')return <th key={key} data-account-col={key} title="Số đơn giao thành công">Giao thành công</th>
-    if(key==='createdAt')return <th key={key} data-account-col={key}><Link className="sortable-head" href={sortHref(detailQuery,timeNext)}>Thời gian tạo <span>{sort==='newest'?'↓':sort==='oldest'?'↑':'↕'}</span></Link></th>
-    return <th key={key} data-account-col={key}>Ghi chú</th>
+    const label=key==='username'?'Username':key==='createdAt'?'Thời gian tạo'
+      :key==='deliveredOrders'?'Giao thành công':LABELS[key]
+    const param=key==='browser'?'browser':key==='voucher'?'voucher'
+      :key==='orders'?'orders':'cf_'+key
+    const kind:AccountHeadingFilterKind=
+      key==='username'||key==='phone'||key==='email'||key==='note'?'text'
+      :key==='number'||key==='deliveredOrders'?'numeric'
+      :key==='createdAt'?'date':'choices'
+    const content=key==='username'
+      ?<Link className="sortable-head" href={sortHref(detailQuery,nameNext)}>
+        Username <span>{sort==='name_asc'?'↑':sort==='name_desc'?'↓':'↕'}</span>
+      </Link>
+      :key==='createdAt'
+        ?<Link className="sortable-head" href={sortHref(detailQuery,timeNext)}>
+          Thời gian tạo <span>{sort==='newest'?'↓':sort==='oldest'?'↑':'↕'}</span>
+        </Link>
+        :label
+    const shortLabels:Record<ColKey,string>={
+      number:'#',username:'User',platform:'Nền',phone:'SĐT',email:'Mail',
+      status:'TT',mobile:'Mob',browser:'Trình',voucher:'Vou',orders:'Đơn',
+      deliveredOrders:'Giao',createdAt:'Ngày',note:'Ghi',
+    }
+    return <th key={key} data-account-col={key} data-short-label={shortLabels[key]}
+      className={'account-heading-filter-cell'+
+        (key==='username'?' p1-user-identity-head':'')+
+        (key==='voucher'?' p1-user-voucher-head':'')}
+      title={label}>
+      <span className="account-heading-filter-caption">{content}</span>
+      <AccountHeadingFilter name={param} label={label} kind={kind}
+        value={headingValues[param]??''} options={headingOptions[key]??[]}
+        baseQuery={detailQuery}
+        navigationRef={filterQueryRef}
+        from={key==='createdAt'?headingValues.cf_createdAt_from:''}
+        to={key==='createdAt'?headingValues.cf_createdAt_to:''}
+        secondary={key==='status'?{
+          name:'session',label:'Trạng thái phiên SPC',
+          value:headingValues.session??'all',options:sessionOptions,
+        }:undefined}/>
+    </th>
   }
 
   function renderCell(key:ColKey,u:any,i:number){
-    if(key==='number')return <td key={key} data-account-col={key}>{i+1}</td>
-    if(key==='username')return <td key={key} data-account-col={key} className="p1-user-identity-cell">
+    if(key==='number')return <td key={key} data-account-col={key} data-account-label={LABELS[key]}>{u.account_row_number??i+1}</td>
+    if(key==='username')return <td key={key} data-account-col={key} data-account-label={LABELS[key]} className="p1-user-identity-cell">
       <div className="user-name-actions">
         <Link className="table-link" prefetch={false} href={hrefFor(u.id)} title={u.username}>{u.username}</Link>
         {!u.archived_at&&u.status!=='Blocked'&&<Link className="quick-order-link" href={createOrderHref(u.id)} title="Tạo đơn từ User" aria-label={'Tạo đơn từ '+u.username}>+</Link>}
       </div>
     </td>
-    if(key==='platform')return <td key={key} data-account-col={key} className="p1-user-platform-cell"><span className="platform-cell">{u.platform??'SHOPEE'}</span></td>
-    if(key==='phone')return <td key={key} data-account-col={key}>{formatPhone(u.phone)}</td>
-    if(key==='email')return <td key={key} data-account-col={key} title={u.email??undefined} className="p1-table-long-text">{u.email??'—'}</td>
-    if(key==='status')return <td key={key} data-account-col={key}>{u.archived_at
+    if(key==='platform')return <td key={key} data-account-col={key} data-account-label={LABELS[key]} className="p1-user-platform-cell"><span className="platform-cell">{u.platform??'SHOPEE'}</span></td>
+    if(key==='phone')return <td key={key} data-account-col={key} data-account-label={LABELS[key]}>{formatPhone(u.phone)}</td>
+    if(key==='email')return <td key={key} data-account-col={key} data-account-label={LABELS[key]} title={u.email??undefined} className="p1-table-long-text">{u.email??'—'}</td>
+    if(key==='status')return <td key={key} data-account-col={key} data-account-label={LABELS[key]}>{u.archived_at
       ? <span className="status-pill archived">Lưu trữ</span>
       : <span className={'status-pill '+statusClass(u.status)}>{statusLabel(u.status)}</span>}</td>
     if(key==='mobile'||key==='browser'){
       const fields=accountDeviceFields(u)
       const value=key==='mobile'?fields.mobileType:fields.browserName
-      return <td key={key} data-account-col={key} className="p1-device-text-cell" title={value||undefined}>{value||'—'}</td>
+      return <td key={key} data-account-col={key} data-account-label={LABELS[key]} className="p1-device-text-cell" title={value||undefined}>{value||'—'}</td>
     }
-    if(key==='voucher')return <td key={key} data-account-col={key} className="voucher-cell" data-voucher-count={u.voucher_tags?.length??0}><VoucherTags value={u.voucher_used_summary} compact showAll/></td>
-    if(key==='orders')return <td key={key} data-account-col={key} className="count-cell">{u.order_count??0}</td>
-    if(key==='deliveredOrders')return <td key={key} data-account-col={key} className="count-cell" title="Số đơn giao thành công">{u.delivered_order_count??'—'}</td>
-    if(key==='createdAt')return <td key={key} data-account-col={key} title={formatDateTime(u.effective_created_at??u.created_at)}>{formatDateTime(u.effective_created_at??u.created_at)}</td>
-    return <td key={key} data-account-col={key} className="truncate p1-table-long-text" title={u.note??undefined}>{u.note??'—'}</td>
+    if(key==='voucher')return <td key={key} data-account-col={key} data-account-label={LABELS[key]} className="voucher-cell" data-voucher-count={u.voucher_tags?.length??0}><VoucherTags value={u.voucher_used_summary} compact showAll/></td>
+    if(key==='orders')return <td key={key} data-account-col={key} data-account-label={LABELS[key]} className="count-cell">{u.order_count??0}</td>
+    if(key==='deliveredOrders')return <td key={key} data-account-col={key} data-account-label={LABELS[key]} className="count-cell" title="Số đơn giao thành công">{u.delivered_order_count??'—'}</td>
+    if(key==='createdAt')return <td key={key} data-account-col={key} data-account-label={LABELS[key]} title={formatDateTime(u.effective_created_at??u.created_at)}>{formatDateTime(u.effective_created_at??u.created_at)}</td>
+    return <td key={key} data-account-col={key} data-account-label={LABELS[key]} className="truncate p1-table-long-text" title={u.note??undefined}>{u.note??'—'}</td>
   }
 
   return <div className="account-table-shell p1-account-table-shell">
-    {canManage&&selected.length>0&&<div className="order-bulk-bar user-bulk-bar">
-      <div className="order-bulk-summary">
-        <b>{selected.length}</b>
-        <span>User đã chọn{rows.length>200?' · tối đa 200/lần':''}</span>
-        <button type="button" onClick={()=>setSelected([])}>Bỏ chọn</button>
-      </div>
-      {selectedArchived
-        ? <form action={restoreERPUsersBulk} className="order-bulk-form">
+    {canManage&&selected.length>0&&toolbarRoot&&createPortal(
+      <div className="user-bulk-toolbar" role="group" aria-label="Thao tác User đã chọn">
+        <span className="user-bulk-count"><b>{selected.length}</b> đã chọn</span>
+        {selectedArchived
+          ?<ERPUserInlineForm operation="restoreBulk" className="user-bulk-toolbar-form">
             <input type="hidden" name="return_query" value={detailQuery}/>
             {selected.map(id=><input key={id} type="hidden" name="user_ids" value={id}/>)}
-            <button className="button small primary" type="submit">Khôi phục đã chọn</button>
-          </form>
-        : <form action={archiveERPUsersBulk} className="order-bulk-form">
+            <button type="submit" className="button small primary">Khôi phục</button>
+          </ERPUserInlineForm>
+          :<ERPUserInlineForm operation="archiveBulk" className="user-bulk-toolbar-form">
             <input type="hidden" name="return_query" value={detailQuery}/>
             {selected.map(id=><input key={id} type="hidden" name="user_ids" value={id}/>)}
-            <button className="button small archive-button" type="submit">Lưu trữ đã chọn</button>
-          </form>}
-    </div>}
+            <button type="submit" className="button small archive-button">Lưu trữ</button>
+          </ERPUserInlineForm>}
+        <button className="user-bulk-clear" type="button" onClick={()=>setSelected([])}
+          aria-label="Bỏ chọn User">Bỏ chọn</button>
+      </div>,toolbarRoot)}
 
     {toolbarRoot&&createPortal(<div className="column-manager managed-column-wrap" ref={columnManagerRef}>
-      <button className="icon-button managed-column-button" type="button" onClick={()=>setOpen(v=>!v)} aria-expanded={open} title="Cột & thứ tự">
-        <ColumnIcon/><span>Cột</span>
+      <button className="icon-button managed-column-button" type="button"
+        onClick={event=>{
+          const rect=event.currentTarget.getBoundingClientRect()
+          setMenuPosition({top:Math.max(8,Math.min(rect.bottom+5,window.innerHeight-245)),
+            right:Math.max(8,window.innerWidth-rect.right)})
+          setOpen(value=>!value)
+        }}
+        aria-expanded={open} aria-haspopup="dialog" aria-label="Sắp xếp cột tài khoản"
+        title="Sắp xếp, ẩn và hiện cột tài khoản">
+        <ColumnIcon/>
       </button>
-      {open&&<div className="column-manager-menu">
+    </div>,toolbarRoot)}
+    {open&&typeof document!=='undefined'&&createPortal(
+      <div ref={columnMenuRef} className="column-manager-menu p1-order-floating-menu p1-account-floating-menu"
+        role="dialog" aria-label="Sắp xếp, ẩn và hiện cột tài khoản"
+        style={{
+          '--p1-order-menu-top':menuPosition.top+'px',
+          '--p1-order-menu-right':menuPosition.right+'px',
+        } as CSSProperties}>
         <div className="column-manager-head"><b>Cột & thứ tự</b><button type="button" onClick={reset}>↺ Mặc định</button></div>
         {columnOrder.map(k=><div
           key={k}
@@ -410,21 +517,22 @@ export function PurchaseAccountTable({
               onClick={()=>moveColumn(k,1)}>↓</button>
           </div>
         </div>)}
-      </div>}
-    </div>,toolbarRoot)}
+      </div>,document.body)}
 
-    <div className="card table-card account-table-card" ref={tableCardRef}>
-      <table className="table user-table mynh-p1-semantic-table" data-auto-fit-version="5" style={tableWidths}>
+    <div className="card table-card account-table-card" ref={tableCardRef} data-client-ready={clientReady?'true':undefined}>
+      <table className={'table user-table mynh-p1-semantic-table'+(stacked?' account-table-stacked':'')}
+        data-auto-fit-version="7" data-account-filter-version="header-v3"
+        data-account-layout={stacked?'stacked':'columns'} style={tableWidths}>
         <colgroup>
-          {canManage&&<col className="p1-account-col p1-account-col-select" style={fitCol(28)}/>}
+          {canManage&&<col className="p1-account-col p1-account-col-select" style={fitCol(fitted[0])}/>}
           {shownColumns.map(k=><col key={k} className={'p1-account-col p1-account-col-'+k}
-            style={fitCol(widths[k])}/>)}
+            style={fitCol(fitted[(canManage?1:0)+shownColumns.indexOf(k)])}/>)}
         </colgroup>
         <thead><tr>
           {canManage&&<th className="bulk-select-col">
             <input type="checkbox" aria-label="Chọn tối đa 200 User" checked={allSelected} onChange={toggleSelectAll} disabled={!rows.length}/>
           </th>}
-          {columnOrder.filter(isVisible).map(renderHeader)}
+          {shownColumns.map(renderHeader)}
         </tr></thead>
         <tbody>
           {!rows.length
@@ -438,7 +546,7 @@ export function PurchaseAccountTable({
                     onChange={()=>toggleSelect(String(u.id))}
                   />
                 </td>}
-                {columnOrder.filter(isVisible).map(k=>renderCell(k,u,i))}
+                {shownColumns.map(k=>renderCell(k,u,i))}
               </tr>)}
         </tbody>
       </table>

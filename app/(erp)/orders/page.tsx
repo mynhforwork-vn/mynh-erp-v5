@@ -837,11 +837,15 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                         <div><b>Đơn đang lưu trữ</b><span>Dữ liệu và lịch sử vẫn được giữ nguyên.</span></div>
                         <button className="button primary" type="submit">Khôi phục</button>
                       </form>
-                      {role==='admin'&&<div className="permanent-delete-box erp-confirm-detail-entry">
+                      {canOperate&&<div className="permanent-delete-box erp-confirm-detail-entry">
                         <div><b>Xóa vĩnh viễn</b><span>Cần xác nhận trước khi xóa. Hệ thống tự ghi lịch sử.</span></div>
                         <DeleteOrderConfirmForm orderId={String(detail.id)} confirmCode={String(detail.shopee_order_id??detail.id.slice(0,8))} returnQuery={returnQuery}/>
                       </div>}
                     </>}
+                {!detail.archived_at&&<div className="permanent-delete-box erp-confirm-detail-entry">
+                  <div><b>Xóa vĩnh viễn</b><span>Xác nhận mã đơn; hệ thống kiểm tra kho và tài chính trước khi xóa.</span></div>
+                  <DeleteOrderConfirmForm orderId={String(detail.id)} confirmCode={String(detail.shopee_order_id??detail.id.slice(0,8))} returnQuery={returnQuery}/>
+                </div>}
               </div>}
 
             </>}
@@ -859,7 +863,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
                       <span>Lần đồng bộ cuối: {formatDateTime(s.last_track_at)}</span>
                       <span>{s.is_active?'Lần kế tiếp: '+formatDateTime(s.next_track_at):'Thay lúc: '+formatDateTime(s.replaced_at)}</span>
                     </div>
-                    {s.is_active&&!detail.archived_at&&<ManualSyncButton shipmentId={s.id}/>} 
+                    {s.is_active&&!detail.archived_at&&!orderIsCancelled(detail)&&<ManualSyncButton shipmentId={s.id}/>} 
                   </div>)}
 
               {['admin','operator'].includes(role)&&!detail.archived_at&&

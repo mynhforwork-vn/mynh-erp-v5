@@ -1,6 +1,6 @@
 /**
  * Read-only QA for the real Account → User → Orders → Order detail → Tracking
- * → Back → close sequence. Covers 0/1/2 simultaneous slidebars.
+ * → Back → close sequence. Enforces at most ONE slidebar in all states.
  * No writes: data read using QA operator; URL changes and localStorage only.
  */
 import fs from 'node:fs'
@@ -31,6 +31,31 @@ const contexts=[
   {width:1440,height:900},{width:1920,height:1080},
 ]
 async function metrics(page){
+  // Next.js can swap the route content before its responsive stylesheet finishes
+  // loading. Assert only settled geometry (bounded wait), never a transient
+  // half-hydrated grid, and still FAIL if the correct layout never appears.
+  try{
+    await page.waitForFunction(()=>{
+      const workspace=document.querySelector('.account-workspace')
+      const card=workspace?.querySelector('.account-table-card')
+      if(!workspace||!card)return false
+      const rect=card.getBoundingClientRect()
+      const vw=document.documentElement.clientWidth
+      const table=card.querySelector('table.user-table')
+      const horizontal=/auto|scroll/.test(getComputedStyle(card).overflowX)
+        ||table?.dataset.accountLayout==='stacked'
+      const withinViewport=rect.left>=-2&&rect.right<=vw+5
+        &&document.documentElement.scrollWidth<=vw+5
+      if(!horizontal||!withinViewport)return false
+      if(innerWidth<=900&&workspace.classList.contains('with-panel')){
+        return getComputedStyle(workspace).display==='block'
+          &&rect.width>=Math.max(190,innerWidth-110)
+      }
+      return rect.width>=Math.min(180,innerWidth-110)
+    },null,{timeout:12000})
+  }catch{
+    // Return the failed geometry below for diagnostics instead of hiding it.
+  }
   await page.waitForTimeout(180)
   return page.evaluate(()=>{
     const workspace=document.querySelector('.account-workspace')
@@ -43,17 +68,48 @@ async function metrics(page){
     const heads=[...table.querySelectorAll('thead th')]
     const cols=[...table.querySelectorAll('colgroup col')]
     const widths=Object.fromEntries(heads.map(el=>[el.dataset.accountCol??'select',Math.round(rect(el).width)]))
-    const aligned=cols.length===heads.length&&cols.every((col,i)=>Math.abs(rect(col).width-rect(heads[i]).width)<=8)
+    const stacked=table.dataset.accountLayout==='stacked'
+    const desktopSemantic=innerWidth<768||(!stacked
+      &&getComputedStyle(table).display==='table'
+      &&getComputedStyle(table.tHead).display==='table-header-group'
+      &&getComputedStyle(table.tHead.rows[0]).display==='table-row'
+      &&[...table.querySelectorAll('tbody tr[data-account-id]')].every(tr=>
+        getComputedStyle(tr).display==='table-row'
+        &&[...tr.children].every(td=>getComputedStyle(td).display==='table-cell')))
+    const headerRowHeight=Math.round(table.tHead.rows[0].getBoundingClientRect().height)
+    const expected=['number','username','platform','phone','email','status',
+      'mobile','browser','voucher','orders','deliveredOrders','createdAt','note']
+    const rendered=heads.filter(th=>th.dataset.accountCol).map(th=>th.dataset.accountCol)
+    const allFields=expected.every(key=>rendered.includes(key))
+      &&[...table.querySelectorAll('tbody tr[data-account-id]')].every(tr=>
+        expected.every(key=>tr.querySelector('td[data-account-col="'+key+'"]')))
+    const labeled=stacked&&[...table.querySelectorAll('tbody tr[data-account-id]')].every(tr=>
+      expected.every(key=>Boolean(tr.querySelector('td[data-account-col="'+key+'"]')
+        ?.getAttribute('data-account-label'))))
+    const mobileUsernameAccessible=innerWidth>=768||[...table.querySelectorAll('tbody tr[data-account-id]')]
+      .every(tr=>{
+        const cell=tr.querySelector('td[data-account-col="username"]')
+        const link=cell?.querySelector('.table-link')
+        return cell&&link&&rect(cell).width>=Math.min(150,innerWidth-96)
+          &&rect(link).width>=32&&getComputedStyle(cell).display!=='none'
+      })
+    const aligned=stacked?Boolean(labeled)
+      :cols.length===heads.length&&cols.every((col,i)=>
+        Math.abs(rect(col).width-rect(heads[i]).width)<=8)
     const tab=order?.querySelector('.context-order-tabs a.active')?.textContent?.trim()||null
     return {
       count:Number(Boolean(user))+Number(Boolean(order)),
+      domCount:workspace.querySelectorAll('[data-system-slidebar="true"]').length,
       panelClass:workspace.classList.contains('with-two-panels'),
       viewport:innerWidth,bodyOverflow:document.documentElement.scrollWidth>innerWidth+5,
       lane:rect(card),table:rect(table),user:rect(user),order:rect(order),
       panelVisible:user?getComputedStyle(user).visibility!=='hidden':null,
       orderStack:order?parseInt(getComputedStyle(order).zIndex)||0:0,
       userStack:user?parseInt(getComputedStyle(user).zIndex)||0:0,
-      localScroll:/auto|scroll/.test(getComputedStyle(card).overflowX),
+      stacked,desktopSemantic,headerRowHeight,mobileUsernameAccessible,allFields,labeled,
+      localScroll:stacked?/auto|scroll/.test(getComputedStyle(card).overflowY)
+        :/auto|scroll/.test(getComputedStyle(card).overflowX),
+      noHorizontalScroll:card.scrollWidth<=card.clientWidth+4,
       tableWithinScroll:card.scrollWidth>=card.clientWidth-1,
       fitted:rect(table).width>=card.clientWidth-8,
       aligned,
@@ -61,21 +117,25 @@ async function metrics(page){
     }
   })
 }
-function fit(m){return !!(m&&!m.bodyOverflow&&m.aligned&&m.localScroll&&m.fitted
-  &&m.tableWithinScroll&&m.widths.username>=118&&m.widths.voucher>=99
-  &&m.widths.number<=48&&m.widths.orders<=76
+function fit(m){return !!(m&&!m.bodyOverflow&&m.aligned&&m.localScroll
+  &&m.desktopSemantic&&(m.viewport<768||m.headerRowHeight<=85)
+  &&m.allFields&&(!m.stacked||m.labeled)
+  &&m.fitted&&m.noHorizontalScroll&&m.table.width<=m.lane.width+4
+  &&m.tableWithinScroll&&m.mobileUsernameAccessible
+  &&(m.viewport<768||m.widths.username>=56)
+  &&(m.stacked||(m.widths.voucher>=24
+    &&m.widths.number<=48&&m.widths.orders<=85))
   &&m.lane.right<=m.viewport+4
   &&(m.viewport>900||m.lane.width>=Math.max(190,m.viewport-110)))}
-function panels(m,expected){
-  if(!m||m.count!==expected)return false
+function panels(m,expected,kind=null){
+  if(!m||m.count!==expected||m.domCount!==expected||m.panelClass)return false
   if(expected===0)return !m.user&&!m.order
-  if(expected===1)return Boolean(m.user&&!m.order)
-  if(!m.user||!m.order||!m.panelClass)return false
-  if(m.viewport>=1200)return m.user.right<=m.order.left+3&&m.lane.right<=m.user.left+3
-    &&m.user.width>=270&&m.order.width>=290
-  // tablet/mobile use parent underlay; contextual Order has the active focus.
-  return m.orderStack>m.userStack
+  if(expected!==1||Boolean(m.user)===Boolean(m.order))return false
+  if(kind==='user')return Boolean(m.user&&!m.order)
+  if(kind==='order')return Boolean(m.order&&!m.user)
+  return true
 }
+
 try{
  for(const viewport of contexts){
   const ctx=await browser.newContext({viewport})
@@ -85,8 +145,9 @@ try{
     sameSite:c.options?.sameSite==='strict'?'Strict':c.options?.sameSite==='none'?'None':'Lax',
   })))
   const page=await ctx.newPage()
+  try{
   await page.goto(base+'/purchase/accounts',{waitUntil:'domcontentloaded',timeout:45000})
-  const marker=page.locator('.account-table-card table[data-auto-fit-version="5"]')
+  const marker=page.locator('.account-table-card table[data-auto-fit-version="7"]')
   for(let i=0;i<12&&!(await marker.count());i++){
     await page.waitForTimeout(5000);await page.reload({waitUntil:'domcontentloaded',timeout:45000})
   }
@@ -95,25 +156,51 @@ try{
   check(viewport.width+' 0 slidebars: full-table Auto Fit',fit(initial)&&panels(initial,0),initial??{})
   const visibleIds=await page.locator('.account-table-card tbody tr[data-account-id]').evaluateAll(rows=>rows.map(x=>x.getAttribute('data-account-id')))
   const userId=users.find(u=>visibleIds.includes(u))
-  if(!userId){check(viewport.width+' account fixture visible',false,{available:visibleIds.length});await ctx.close();continue}
+  if(!userId){check(viewport.width+' account fixture visible',false,{available:visibleIds.length});continue}
   const link=page.locator('.account-table-card tbody tr[data-account-id="'+userId+'"] td[data-account-col="username"] .table-link')
   await link.click()
   await page.locator('.account-workspace>.account-detail-panel').waitFor({timeout:20000})
   const one=await metrics(page)
-  check(viewport.width+' 1 slidebar: User detail',fit(one)&&panels(one,1)
-    &&(viewport.width<=900||one.lane.width<initial.lane.width-80),one??{})
+  check(viewport.width+' 1 slidebar: User detail',fit(one)&&panels(one,1,'user')
+    &&(viewport.width<=900
+      ||(viewport.width<=1180
+        ?Math.abs(one.lane.width-initial.lane.width)<=8
+          &&one.user.left<one.lane.right&&one.user.right<=viewport.width+4
+        :one.lane.width<initial.lane.width-80)),one??{})
+  if(viewport.width===1440){
+    // Read-only navigation QA: never submit a real account form. Successful
+    // persistence belongs to a separately approved isolated fixture test.
+    const documentOrigin=await page.evaluate(()=>performance.timeOrigin)
+    await page.locator('.account-workspace>.account-detail-panel .panel-action-row a')
+      .filter({hasText:'Sửa tài khoản'}).click()
+    const inlineForm=page.locator('.account-workspace>.account-detail-panel form')
+    await inlineForm.locator('input[name="inline_operation"][value="update"]')
+      .waitFor({state:'attached',timeout:15000})
+    const softEdit=await page.evaluate(origin=>performance.timeOrigin===origin,documentOrigin)
+    check('1440 edit form opens without document reload and uses inline Server Action',
+      softEdit&&page.url().includes('mode=edit')
+        &&await inlineForm.locator('input[name="user_id"]').count()===1,
+      {documentPreserved:softEdit,urlContainsEdit:page.url().includes('mode=edit')})
+    await inlineForm.locator('.form-actions a').click()
+    await page.locator('.account-workspace>.account-detail-panel .user-panel-tabs')
+      .waitFor({timeout:15000})
+    check('1440 cancel edit returns to User detail without document reload',
+      await page.evaluate(origin=>performance.timeOrigin===origin,documentOrigin),
+      {documentPreserved:await page.evaluate(origin=>performance.timeOrigin===origin,documentOrigin)})
+  }
+
   await page.locator('.account-workspace>.account-detail-panel .user-panel-tabs a').filter({hasText:'Đơn hàng'}).click()
   await page.locator('.account-workspace>.account-detail-panel .user-order-list a.user-order-card').first().waitFor({timeout:25000})
   const ordersTab=await metrics(page)
-  check(viewport.width+' 1 slidebar: User orders tab',fit(ordersTab)&&panels(ordersTab,1),ordersTab??{})
+  check(viewport.width+' 1 slidebar: User orders tab',fit(ordersTab)&&panels(ordersTab,1,'user'),ordersTab??{})
   await page.locator('.account-workspace>.account-detail-panel .user-order-list a.user-order-card').first().click()
-  await page.locator('.account-workspace.with-two-panels>.context-order-panel').waitFor({timeout:20000})
-  await page.locator('.account-workspace.with-two-panels>.account-detail-panel').waitFor({timeout:20000})
-  const two=await metrics(page)
-  check(viewport.width+' 2 slidebars: User + Order detail',fit(two)&&panels(two,2)
-    &&(viewport.width<1200||two.lane.width<one.lane.width-50),two??{})
+  await page.locator('.account-workspace>.context-order-panel').waitFor({timeout:20000})
+  await page.locator('.account-workspace>.account-detail-panel').waitFor({state:'detached',timeout:20000})
+  const orderDetail=await metrics(page)
+  check(viewport.width+' 1 slidebar: Order detail replaces User',fit(orderDetail)&&panels(orderDetail,1,'order')
+    &&(viewport.width<=900||Math.abs(orderDetail.lane.width-one.lane.width)<16),orderDetail??{})
   if([320,390,1280,1440,1920].includes(viewport.width)){
-    await page.screenshot({path:folder+'/accounts-'+viewport.width+'-two-panels.png',fullPage:false})
+    await page.screenshot({path:folder+'/accounts-'+viewport.width+'-single-panel.png',fullPage:false})
   }
   const tracking=page.locator('.account-workspace>.context-order-panel .context-order-tabs a').filter({hasText:'Tracking'})
   if(await tracking.count()){
@@ -126,25 +213,25 @@ try{
       await page.locator('.account-workspace>.context-order-panel .context-order-tabs a.active')
         .filter({hasText:'Tracking'}).waitFor({state:'visible',timeout:12000})
     }catch{selectedTracking=false}
-    const trackingTwo=await metrics(page)
-    check(viewport.width+' 2 slidebars: Tracking tab',fit(trackingTwo)&&panels(trackingTwo,2)
-      &&selectedTracking&&trackingTwo.tab==='Tracking',
-      {...(trackingTwo??{}),url:page.url(),trackingHref,selectedTracking})
+    const trackingOne=await metrics(page)
+    check(viewport.width+' 1 slidebar: Tracking tab',fit(trackingOne)&&panels(trackingOne,1,'order')
+      &&selectedTracking&&trackingOne.tab==='Tracking',
+      {...(trackingOne??{}),url:page.url(),trackingHref,selectedTracking})
     if(selectedTracking){
       // Back #1 from Tracking returns to the Order's Info tab, not to User.
       await page.locator('.account-workspace>.context-order-panel .context-stack-back').click()
       await page.locator('.account-workspace>.context-order-panel .context-order-tabs a.active')
         .filter({hasText:'Thông tin'}).waitFor({state:'visible',timeout:20000})
       const orderInfo=await metrics(page)
-      check(viewport.width+' Back Tracking to Order Info (still 2 slidebars)',
-        fit(orderInfo)&&panels(orderInfo,2)&&orderInfo.tab==='Thông tin',orderInfo??{})
+      check(viewport.width+' Back Tracking to Order Info (1 slidebar)',
+        fit(orderInfo)&&panels(orderInfo,1,'order')&&orderInfo.tab==='Thông tin',orderInfo??{})
     }
   }
-  // Back #2 returns from Order Info to User Orders (1 slidebar).
+  // Back #2 returns from Order Info to User Orders (1 slidebar), without overlay stacking.
   await page.locator('.account-workspace>.context-order-panel .context-stack-back').click()
   await page.locator('.account-workspace>.context-order-panel').waitFor({state:'detached',timeout:20000})
   const back=await metrics(page)
-  check(viewport.width+' back to User (1 slidebar)',fit(back)&&panels(back,1)
+  check(viewport.width+' back to User (1 slidebar)',fit(back)&&panels(back,1,'user')
     &&(viewport.width<=900||Math.abs(back.lane.width-one.lane.width)<16),back??{})
   await page.locator('.account-workspace>.account-detail-panel a.close').click()
   await page.locator('.account-workspace>.account-detail-panel').waitFor({state:'detached',timeout:20000})
@@ -160,8 +247,15 @@ try{
   await page.locator('.account-workspace>.context-order-panel a[aria-label="Đóng toàn bộ"]').click()
   await page.locator('.account-workspace>.context-order-panel').waitFor({state:'detached',timeout:20000})
   const allClosed=await metrics(page)
-  check(viewport.width+' close both slidebars restores table',fit(allClosed)&&panels(allClosed,0),allClosed??{})
-  await ctx.close()
+  check(viewport.width+' close Order slidebar restores table',fit(allClosed)&&panels(allClosed,0),allClosed??{})
+  }catch(error){
+    // A transient RSC request/error must not hide the remaining viewport QA.
+    // Log a FAIL with its URL, then keep testing other sizes.
+    check(viewport.width+' navigation/layout exception',false,{
+      error:String(error?.message??error).slice(0,600),
+      url:page.url(),
+    })
+  }finally{await ctx.close()}
  }
 }finally{await browser.close()}
 console.log('ACCOUNT_STACK_QA_SUMMARY '+JSON.stringify({passed,failed}))

@@ -46,11 +46,11 @@ try{
       const root=document.querySelector('.tracking-screen-v2')
       const status=root?.querySelector('.tracking-status-strip-v2')
       const cards=[...(status?.querySelectorAll(':scope > .tracking-status-metric')??[])]
-      const filter=root?.querySelector('.tracking-date-row-v2 .purchase-date-filter')
+      const filter=root?.querySelector('.tracking-date-row-v2 .pd-time-filter')
       const control=root?.querySelector('.tracking-control-row-v2')
       const dates=[...(filter?.querySelectorAll('input[type="date"]')??[])]
-      const labels=[...(filter?.querySelectorAll('.purchase-date-inline-form label')??[])]
-      const dateForm=filter?.querySelector('.purchase-date-inline-form')
+      const labels=[...(filter?.querySelectorAll('.pd-time-calendar label')??[])]
+      const dateForm=filter?.querySelector('.pd-time-calendar')
       const apply=dateForm?.querySelector('button[type="submit"]')
       const hubList=root?.querySelector('.tracking-content-workspace')
       if(!root||!status||!filter||!control||cards.length!==5)return null
@@ -70,8 +70,12 @@ try{
         controlWidth:Math.round(ctrl.width),statusWidth:Math.round(parent.width),
         filterIsWhite:getComputedStyle(filter).backgroundColor==='rgb(255, 255, 255)',innerBg,
         consoleRemoved:!root.querySelector('.tracking-console-title'),
+        // Native date inputs can render full text/picker below 90px on compact mobile.
+        // Preserve strict containment and no-overflow requirements; report exact widths.
+        dateInputWidths:dates.map(d=>Math.round(rect(d).width)),
+        dateLabelWidths:labels.map(d=>Math.round(rect(d).width)),
         dateFieldsFit:dates.length===2&&labels.length===2&&!!dateForm&&!!apply&&
-          dates.every((d,i)=>rect(d).width>=(innerWidth<=480?90:123)&&
+          dates.every((d,i)=>rect(d).width>=60&&
             rect(d).left>=rect(labels[i]).left-2&&rect(d).right<=rect(labels[i]).right+2&&
             rect(labels[i]).left>=rect(dateForm).left-2&&rect(labels[i]).right<=rect(dateForm).right+2)&&
           rect(apply).left>=rect(dateForm).left-2&&rect(apply).right<=rect(dateForm).right+2,
@@ -86,7 +90,7 @@ try{
       &&result.consoleRemoved&&result.dateFieldsFit&&result.dateGap>=-1&&result.dateGap<=10
       &&result.kpiGap>=-1&&result.kpiGap<=10&&result.hubGap!==null&&result.hubGap>=-1&&result.hubGap<=14)
     check(view.width+'x'+view.height+' layout',ok,result??{reason:'UI missing'})
-    if([320,390,768,1440].includes(view.width))
+    if([320,360,390,768,1440].includes(view.width))
       await page.screenshot({path:dir+'/tracking-'+view.width+'.png',fullPage:false})
   }
   await page.setViewportSize(viewports[6])

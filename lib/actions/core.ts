@@ -121,7 +121,9 @@ export async function createERPUser(formData:FormData){
   await saveAccountDeviceFields(supabase,String(data),mobileType,browserName,false)
 
   revalidatePath('/purchase/accounts')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data),mode:null,tab:'info'}))
+  const href=returnHref('/purchase/accounts',returnQuery,{user:String(data),mode:null,tab:'info'})
+  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã tạo tài khoản'}
+  redirect(href)
 }
 
 export async function updateERPUser(formData:FormData){
@@ -156,9 +158,11 @@ export async function updateERPUser(formData:FormData){
 
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
-  redirect(returnToOrders
+  const href=returnToOrders
     ?returnHref('/purchase/orders',returnQuery,{account:userId,accountTab:'info',accountMode:null})
-    :returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info'}))
+    :returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info'})
+  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã cập nhật User'}
+  redirect(href)
 }
 
 
@@ -199,9 +203,11 @@ export async function archiveERPUser(formData:FormData){
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase')
-  redirect(tableAction
+  const href=tableAction
     ? returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:null})
-    : returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:'archived'}))
+    : returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:'archived'})
+  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã lưu trữ User'}
+  redirect(href)
 }
 
 export async function restoreERPUser(formData:FormData){
@@ -240,9 +246,33 @@ export async function restoreERPUser(formData:FormData){
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase')
-  redirect(tableAction
+  const href=tableAction
     ? returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'})
-    : returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:null}))
+    : returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:null})
+  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã khôi phục User'}
+  redirect(href)
+}
+
+
+/** Gửi thao tác Tài khoản qua React Server Action, không điều hướng tài liệu. */
+export type ERPUserInlineResult={status:'idle'|'ok'|'error';href:string;message:string}
+export async function submitERPUserInline(_previous:ERPUserInlineResult,formData:FormData):Promise<ERPUserInlineResult>{
+  const kind=text(formData.get('inline_operation'))
+  formData.set('inline_submit','1')
+  try{
+    if(kind==='create')return await createERPUser(formData) as ERPUserInlineResult
+    if(kind==='update')return await updateERPUser(formData) as ERPUserInlineResult
+    if(kind==='archive')return await archiveERPUser(formData) as ERPUserInlineResult
+    if(kind==='restore')return await restoreERPUser(formData) as ERPUserInlineResult
+    if(kind==='archiveBulk')return await archiveERPUsersBulk(formData) as ERPUserInlineResult
+    if(kind==='restoreBulk')return await restoreERPUsersBulk(formData) as ERPUserInlineResult
+    return {status:'error',href:'',message:'Thao tác User không hợp lệ'}
+  }catch(error){
+    // Never swallow a Next.js auth/navigation redirect raised by requireUser().
+    const digest=error&&typeof error==='object'&&'digest' in error?String(error.digest):''
+    if(digest.startsWith('NEXT_REDIRECT')||digest.startsWith('NEXT_HTTP_ERROR_FALLBACK'))throw error
+    return {status:'error',href:'',message:error instanceof Error?error.message:'Không thể xử lý User. Vui lòng thử lại.'}
+  }
 }
 
 
@@ -291,7 +321,9 @@ export async function archiveERPUsersBulk(formData:FormData){
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:null}))
+  const href=returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:null})
+  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã lưu trữ các User'}
+  redirect(href)
 }
 
 export async function restoreERPUsersBulk(formData:FormData){
@@ -331,7 +363,9 @@ export async function restoreERPUsersBulk(formData:FormData){
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'}))
+  const href=returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'})
+  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã khôi phục các User'}
+  redirect(href)
 }
 
 function numberOrNull(v:FormDataEntryValue|null){
@@ -438,18 +472,23 @@ export async function createOrder(formData:FormData){
   const isExpress=shippingService==='EXPRESS'
   const trackingNumber=text(formData.get('tracking_number'))
   const cancelledByMarker=trackingNumberMeansCancelled(trackingNumber)
-  const carrier=cancelledByMarker?null:isExpress
-    ? (trackingNumber?'Hỏa tốc':null)
-    : await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
-  const usesDestinationHub=!cancelledByMarker&&!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
+  const cancelledByShopee=text(formData.get('recognized_shopee_status'))==='CANCELLED'
+  const cancelled=cancelledByMarker||cancelledByShopee
+  // Hủy chỉ dừng Tracking; giữ MVĐ, ĐVVC và giá trị lịch sử.
+  const effectiveTrackingNumber=trackingNumber
+  const carrier=isExpress
+    ? (effectiveTrackingNumber?'Hỏa tốc':null)
+    : await resolveCarrierName(supabase,effectiveTrackingNumber,text(formData.get('carrier')))
+  const usesDestinationHub=!cancelled&&!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const matchedHub=usesDestinationHub?await destinationHubFromAddress(
     supabase,text(formData.get('recipient_address')),carrier):null
-  const effectiveHub=usesDestinationHub
-    ?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''): ''
+  const effectiveHub=cancelled?text(formData.get('destination_hub'))
+    :usesDestinationHub?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''):''
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
-  const orderStatus=cancelledByMarker?'CANCELLED':isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
+  const orderStatus=cancelled?'CANCELLED':isExpress?'PROCESSING':(effectiveTrackingNumber?'PROCESSING':'PENDING')
+  const paymentStatus=text(formData.get('payment_status'))||'UNPAID'
   const prepaid=parsePrepaidMetadata({
-    paymentStatus:text(formData.get('payment_status'))||'UNPAID',
+    paymentStatus,
     amount:formData.get('prepaid_amount'),
     sourceType:formData.get('prepaid_source_type'),
     sourceLabel:formData.get('prepaid_source_label'),
@@ -464,17 +503,18 @@ export async function createOrder(formData:FormData){
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
     p_destination_hub:effectiveHub||null,
-    p_cod:resolveOrderCod(text(formData.get('payment_status'))||'UNPAID',formData.get('cod')),
+    p_cod:resolveOrderCod(paymentStatus,formData.get('cod')),
     p_order_status:orderStatus,
-    p_payment_status:text(formData.get('payment_status'))||'UNPAID',
-    p_tracking_number:trackingNumber||null,
+    p_payment_status:paymentStatus,
+    p_tracking_number:effectiveTrackingNumber||null,
     p_carrier:carrier,
     p_shipping_service:shippingService,
     p_items:itemPayload(formData),
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  const derivedArea=usesDestinationHub?(text(formData.get('area'))||matchedHub?.area||null):null
+  const derivedArea=cancelled?text(formData.get('area'))||null
+    :usesDestinationHub?(text(formData.get('area'))||matchedHub?.area||null):null
   if(data){
     const {error:orderMetaError}=await supabase.from('orders').update({
       area:derivedArea,
@@ -485,13 +525,13 @@ export async function createOrder(formData:FormData){
       express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
     }).eq('id',data)
     if(orderMetaError)throw new Error(orderMetaError.message)
-    if(cancelledByMarker){
+    if(cancelled){
       const {error:cancelError}=await supabase.from('shipments').update({
         current_tracking_status:'CANCELLED',tracking_enabled:false,next_track_at:null,locked_until:null,
       }).eq('order_id',data).eq('is_active',true)
       if(cancelError)throw new Error(cancelError.message)
     }
-    if(isExpress&&trackingNumber&&!cancelledByMarker){
+    if(isExpress&&effectiveTrackingNumber&&!cancelled){
       const {error:shipmentError}=await supabase.from('shipments').update({
         carrier:'Hỏa tốc',
         is_active:true,
@@ -503,7 +543,7 @@ export async function createOrder(formData:FormData){
       if(shipmentError)throw new Error(shipmentError.message)
     }
   }
-  if(data&&trackingNumber&&!isExpress&&!cancelledByMarker)await queueFirstTracking(supabase,String(data))
+  if(data&&effectiveTrackingNumber&&!isExpress&&!cancelled)await queueFirstTracking(supabase,String(data))
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
 }
@@ -518,18 +558,23 @@ export async function updateOrder(formData:FormData){
   const isExpress=shippingService==='EXPRESS'
   const trackingNumber=text(formData.get('tracking_number'))
   const cancelledByMarker=trackingNumberMeansCancelled(trackingNumber)
-  const carrier=cancelledByMarker?null:isExpress
-    ? (trackingNumber?'Hỏa tốc':null)
-    : await resolveCarrierName(supabase,trackingNumber,text(formData.get('carrier')))
-  const usesDestinationHub=!cancelledByMarker&&!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
+  const cancelledByShopee=text(formData.get('recognized_shopee_status'))==='CANCELLED'
+  const cancelled=cancelledByMarker||cancelledByShopee
+  // Hủy chỉ dừng Tracking; giữ MVĐ, ĐVVC và giá trị lịch sử.
+  const effectiveTrackingNumber=trackingNumber
+  const carrier=isExpress
+    ? (effectiveTrackingNumber?'Hỏa tốc':null)
+    : await resolveCarrierName(supabase,effectiveTrackingNumber,text(formData.get('carrier')))
+  const usesDestinationHub=!cancelled&&!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const matchedHub=usesDestinationHub?await destinationHubFromAddress(
     supabase,text(formData.get('recipient_address')),carrier):null
-  const effectiveHub=usesDestinationHub
-    ?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''): ''
+  const effectiveHub=cancelled?text(formData.get('destination_hub'))
+    :usesDestinationHub?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''):''
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
-  const orderStatus=cancelledByMarker?'CANCELLED':isExpress?'PROCESSING':(trackingNumber?'PROCESSING':'PENDING')
+  const orderStatus=cancelled?'CANCELLED':isExpress?'PROCESSING':(effectiveTrackingNumber?'PROCESSING':'PENDING')
+  const paymentStatus=text(formData.get('payment_status'))||'UNPAID'
   const prepaid=parsePrepaidMetadata({
-    paymentStatus:text(formData.get('payment_status'))||'UNPAID',
+    paymentStatus,
     amount:formData.get('prepaid_amount'),
     sourceType:formData.get('prepaid_source_type'),
     sourceLabel:formData.get('prepaid_source_label'),
@@ -545,17 +590,18 @@ export async function updateOrder(formData:FormData){
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
     p_destination_hub:effectiveHub||null,
-    p_cod:resolveOrderCod(text(formData.get('payment_status'))||'UNPAID',formData.get('cod')),
+    p_cod:resolveOrderCod(paymentStatus,formData.get('cod')),
     p_order_status:orderStatus,
-    p_payment_status:text(formData.get('payment_status'))||'UNPAID',
-    p_tracking_number:trackingNumber||null,
+    p_payment_status:paymentStatus,
+    p_tracking_number:effectiveTrackingNumber||null,
     p_carrier:carrier,
     p_shipping_service:shippingService,
     p_items:itemPayload(formData),
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  const derivedArea=usesDestinationHub?(text(formData.get('area'))||matchedHub?.area||null):null
+  const derivedArea=cancelled?text(formData.get('area'))||null
+    :usesDestinationHub?(text(formData.get('area'))||matchedHub?.area||null):null
   const {error:orderMetaError}=await supabase.from('orders').update({
     area:derivedArea,
     destination_hub:effectiveHub||null,
@@ -565,8 +611,8 @@ export async function updateOrder(formData:FormData){
     express_shipper_note:isExpress?(text(formData.get('express_shipper_note'))||null):null,
   }).eq('id',orderId)
   if(orderMetaError)throw new Error(orderMetaError.message)
-  if(isExpress){
-    const {error:shipmentError}=trackingNumber
+  if(isExpress&&!cancelled){
+    const {error:shipmentError}=effectiveTrackingNumber
       ? await supabase.from('shipments').update({
           carrier:'Hỏa tốc',
           is_active:true,
@@ -585,13 +631,13 @@ export async function updateOrder(formData:FormData){
         }).eq('order_id',orderId).eq('is_active',true)
     if(shipmentError)throw new Error(shipmentError.message)
   }
-  if(cancelledByMarker){
+  if(cancelled){
     const {error:cancelError}=await supabase.from('shipments').update({
       current_tracking_status:'CANCELLED',tracking_enabled:false,next_track_at:null,locked_until:null,
     }).eq('order_id',orderId).eq('is_active',true)
     if(cancelError)throw new Error(cancelError.message)
   }
-  if(trackingNumber&&!isExpress&&!cancelledByMarker)await queueFirstTracking(supabase,orderId)
+  if(effectiveTrackingNumber&&!isExpress&&!cancelled)await queueFirstTracking(supabase,orderId)
   revalidatePath('/purchase/orders'); revalidatePath('/purchase/tracking'); revalidatePath('/purchase/accounts'); revalidatePath('/purchase'); revalidatePath('/')
   redirect(returnHref('/purchase/orders',returnQuery,{order:String(data),mode:null,settings:null,tab:'info'}))
 }
@@ -730,8 +776,7 @@ function deleteOrderErrorMessage(error:unknown){
 }
 export async function deleteOrderPermanent(formData:FormData){
   try{
-    const {supabase,role}=await actor()
-    requireAdmin(role)
+    const {supabase}=await actor()
     const returnQuery=text(formData.get('return_query'))
     const orderId=text(formData.get('order_id'))
     if(!orderId)return {ok:false as const,error:'Thiếu đơn cần xóa'}
@@ -920,8 +965,7 @@ export async function restoreOrdersBulk(formData:FormData){
 
 export async function deleteOrdersBulkPermanent(formData:FormData){
   try{
-    const {supabase,role}=await actor()
-    requireAdmin(role)
+    const {supabase}=await actor()
     const returnQuery=text(formData.get('return_query'))
     const orderIds=bulkOrderIds(formData)
 
@@ -970,8 +1014,18 @@ export async function purgeEligibleArchivedOrders(formData:FormData){
   if(!eligible.length)throw new Error('Không có đơn lưu trữ nào đủ điều kiện xóa vĩnh viễn trong phạm vi kiểm tra')
 
   const eligibleIds=eligible.map((x:any)=>String(x.id))
-  const {error}=await supabase.from('orders').delete().in('id',eligibleIds)
-  if(error)throw new Error(error.message)
+  // Chỉ dùng RPC xóa an toàn: kiểm tra kho/tài chính, hoàn tác phụ thuộc
+  // và ghi audit trong cùng transaction. Không DELETE thô qua Data API.
+  // Một lần gọi duy nhất để tránh lặp lại hành động hủy không thể hoàn tác.
+  const {data:deleted,error}=await supabase.rpc('delete_orders_permanent_safe',{
+    p_order_ids:eligibleIds,
+    p_reason:'Dọn đơn lưu trữ từ Cài đặt',
+  })
+  if(error)throw new Error(deleteOrderErrorMessage(error))
+  const deletedCount=Number(deleted?.deleted_count)
+  if(deletedCount!==eligibleIds.length){
+    throw new Error('Kết quả xóa chưa xác định. Hãy kiểm tra lại danh sách trước khi thao tác tiếp.')
+  }
 
   await supabase.from('audit_logs').insert({
     actor_user_id:user.id,
@@ -986,13 +1040,13 @@ export async function purgeEligibleArchivedOrders(formData:FormData){
       protected_count:blockers.blockedIds.size,
       order_ids:eligibleIds,
     },
-    new_value:{deleted_count:eligible.length},
+    new_value:{deleted_count:deletedCount},
     source:'USER',
   })
 
   revalidateOrderLifecycle()
   revalidatePath('/settings')
-  redirect('/settings?section=data-management&purged='+eligible.length+'&protected='+blockers.blockedIds.size)
+  redirect('/settings?section=data-management&purged='+deletedCount+'&protected='+blockers.blockedIds.size)
 }
 
 function normalizeRoutingKeyword(value:string){
@@ -1763,8 +1817,7 @@ export async function bulkImportERPUsers(rows:Array<{
 
 
 export async function deleteERPUserPermanent(formData:FormData){
-  const {supabase,role}=await actor()
-  requireAdmin(role)
+  const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
   const userId=text(formData.get('user_id'))
   const confirmText=text(formData.get('confirm_text'))
@@ -1777,7 +1830,6 @@ export async function deleteERPUserPermanent(formData:FormData){
     .maybeSingle()
   if(readError)throw new Error(readError.message)
   if(!row)throw new Error('User không tồn tại')
-  if(!row.archived_at)throw new Error('Cần lưu trữ User trước khi xóa vĩnh viễn')
   if(confirmText!==row.username)throw new Error('Username xác nhận chưa đúng')
   if(Number(row.order_count??0)>0)throw new Error('User có đơn hàng liên kết; chỉ được lưu trữ')
 
@@ -1786,7 +1838,9 @@ export async function deleteERPUserPermanent(formData:FormData){
 
   revalidatePath('/purchase/accounts')
   revalidatePath('/users')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'}))
+  const href=returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:null})
+  if(text(formData.get('inline_submit'))==='1')return {ok:true as const,href}
+  redirect(href)
 }
 
 

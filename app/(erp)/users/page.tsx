@@ -1,10 +1,12 @@
 import { requireUser } from '@/lib/supabase/auth'
+import {readAccountFilterValues} from '@/lib/account-heading-filter-values'
 import { SystemSlidebar } from '@/components/system-slidebar'
+import { ERPUserInlineForm } from '@/components/erp-user-inline-form'
+import { ERPAccountFilterForm } from '@/components/erp-account-filter-form'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
-import { archiveERPUser, createERPUser, deleteERPUserPermanent, restoreERPUser, updateERPUser } from '@/lib/actions/core'
+import { DeleteERPUserConfirmForm } from '@/components/delete-erp-user-confirm-form'
 import { PurchaseAccountTable } from '@/components/purchase-account-table'
-import { AccountFilterDropdown } from '@/components/account-filter-dropdown'
 import { VoucherTags } from '@/components/voucher-tags'
 import { UserBulkImport } from '@/components/user-bulk-import'
 import { ContextOrderPanel } from '@/components/context-order-panel'
@@ -16,7 +18,8 @@ type SP={
   mode?:string,user?:string,tab?:string,q?:string,state?:string,platform?:string,
   device?:string,session?:string,voucher?:string,orders?:string,browser?:string,sort?:string,
   range?:string,from?:string,to?:string,archive?:string,
-  order?:string,orderTab?:string
+  order?:string,orderTab?:string,
+  [key:string]:string|undefined
 }
 
 function hasST(row:any){return Boolean(row?.spc_st_secret_id||row?.spc_st_encrypted)}
@@ -72,6 +75,16 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const browser=sp.browser??'all'
   const sort=sp.sort??'newest'
   const queryText=String(sp.q??'').trim().toLowerCase()
+  const browserSelection=readAccountFilterValues(sp.browser)
+  const sessionSelection=readAccountFilterValues(sp.session)
+  const voucherSelection=readAccountFilterValues(sp.voucher)
+  const orderSelection=readAccountFilterValues(sp.orders)
+  const selectedFor=(key:string)=>readAccountFilterValues(sp[key])
+  const headerFilterKeys=['number','username','platform','phone','email','status',
+    'mobile','deliveredOrders','createdAt','note'] as const
+  const columnFilterEntries=Object.fromEntries(headerFilterKeys.map(key=>[
+    'cf_'+key,String(sp['cf_'+key]??'').trim(),
+  ]))
 
   let userListQuery=supabase.from('erp_users').select(fields).eq('platform',platform)
   userListQuery=archiveView
@@ -158,34 +171,43 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     const activeDevices=u.active_devices??[]
     const allDevices=u.all_devices??[]
     const actualBrowser=accountDeviceFields(u).browserName
-    if(browser==='none'&&actualBrowser)return false
-    if(browser.startsWith('name:')&&actualBrowser.toLocaleLowerCase('vi')!==browser.slice(5).toLocaleLowerCase('vi'))return false
-    if(browser!=='all'&&browser!=='none'&&!browser.startsWith('name:')
-      &&!activeDevices.some((d:any)=>deviceBrowserBucket(d.browser_name)===browser))return false
+    const hasBrowser=(v:string)=>{
+      if(v==='none')return !actualBrowser
+      if(v.startsWith('name:'))return actualBrowser.toLocaleLowerCase('vi')===
+        v.slice(5).toLocaleLowerCase('vi')
+      return activeDevices.some((d:any)=>deviceBrowserBucket(d.browser_name)===v)
+    }
+    if(browserSelection.length&&!browserSelection.some(hasBrowser))return false
 
     const st=hasST(u),sf=hasF(u)
-    if(session==='full'&&!(st&&sf))return false
-    if(session==='st'&&!st)return false
-    if(session==='f'&&!sf)return false
-    if(session==='missing'&&(st&&sf))return false
-    if(session==='none'&&(st||sf))return false
+    const hasSession=(v:string)=>
+      v==='full'?(st&&sf):v==='st'?st:v==='f'?sf:
+      v==='missing'?!(st&&sf):v==='none'?!(st||sf):true
+    if(sessionSelection.length&&!sessionSelection.some(hasSession))return false
 
     const voucherLabels=(u.voucher_used_rows??[]).map(voucherLabel).filter(Boolean)
     const voucherText=voucherLabels.join(' ').toLowerCase()
-    if(voucher==='has'&&!voucherLabels.length)return false
-    if(voucher==='none'&&voucherLabels.length)return false
-    if(voucher==='freeship'&&!voucherText.includes('free'))return false
-    if(voucher==='discount'&&!voucherText.includes('giảm'))return false
-    if(voucher==='cashback'&&!(voucherText.includes('hoàn')||voucherText.includes('xu')))return false
-    if(voucher.startsWith('tag:')&&!voucherLabels.includes(voucher.slice(4)))return false
+    const hasVoucher=(v:string)=>{
+      if(v==='has')return voucherLabels.length>0
+      if(v==='none')return voucherLabels.length===0
+      if(v==='freeship')return voucherText.includes('free')
+      if(v==='discount')return voucherText.includes('giảm')
+      if(v==='cashback')return voucherText.includes('hoàn')||voucherText.includes('xu')
+      if(v.startsWith('tag:'))return voucherLabels.includes(v.slice(4))
+      return true
+    }
+    if(voucherSelection.length&&!voucherSelection.some(hasVoucher))return false
 
     const n=Number(u.order_count??0)
-    if(orders==='0'&&n!==0)return false
-    if(orders==='1-5'&&(n<1||n>5))return false
-    if(orders==='6-10'&&(n<6||n>10))return false
-    if(orders==='11+'&&n<11)return false
-    if(/^\d+$/.test(orders)&&orders!=='0'&&n!==Number(orders))return false
-    if(orders==='21+'&&n<21)return false
+    const hasOrders=(v:string)=>{
+      if(v==='0')return n===0
+      if(v==='1-5')return n>=1&&n<=5
+      if(v==='6-10')return n>=6&&n<=10
+      if(v==='11+')return n>=11
+      if(v==='21+')return n>=21
+      return /^\\d+$/.test(v)?n===Number(v):true
+    }
+    if(orderSelection.length&&!orderSelection.some(hasOrders))return false
 
     if(queryText){
       const deviceSearch=allDevices.flatMap((d:any)=>[d.device_name,d.browser_name,d.browser_profile]).filter(Boolean)
@@ -219,7 +241,87 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     .sort((a,b)=>a.localeCompare(b,'vi')).map(tag=>({value:'tag:'+tag,label:tag}))
   const hasNoVoucher=enriched.some((u:any)=>!u.voucher_tags?.length)
 
-  const scopeRows=enriched.filter(matchesAccountScope)
+  // Mọi bộ lọc tiêu đề chạy trên toàn bộ danh sách User đã nạp, không chỉ
+  // những dòng đang hiển thị hoặc hàng mới được tạo sau khi mở slidebar.
+  const norm=(v:unknown)=>String(v??'').trim().toLocaleLowerCase('vi')
+  const dateKey=(value:unknown)=>{
+    const date=new Date(String(value??''))
+    if(!Number.isFinite(date.getTime()))return ''
+    const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Ho_Chi_Minh',
+      year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date)
+    const part=(type:string)=>parts.find(p=>p.type===type)?.value??''
+    return part('year')+'-'+part('month')+'-'+part('day')
+  }
+  function matchesHeadingFilters(u:any){
+    const device=accountDeviceFields(u)
+    const textColumns:Record<string,unknown>={
+      username:u.username,phone:String(u.phone??'').replace(/\D/g,''),
+      email:u.email,note:u.note,
+    }
+    for(const key of ['username','email','note']){
+      const values=selectedFor('cf_'+key).map(norm)
+      if(values.length&&!values.includes(norm(textColumns[key])))return false
+    }
+    const phones=selectedFor('cf_phone').map(x=>x.replace(/\\D/g,''))
+    if(phones.length&&!phones.includes(String(textColumns.phone)))return false
+    const exact:Record<string,string>={
+      platform:String(u.platform??'SHOPEE'),status:String(u.status??''),
+      mobile:device.mobileType,
+    }
+    for(const key of Object.keys(exact)){
+      const values=selectedFor('cf_'+key).map(norm)
+      if(values.length&&!values.includes(norm(exact[key])))return false
+    }
+    const delivered=selectedFor('cf_deliveredOrders')
+    if(delivered.length&&!delivered.includes(String(Number(u.delivered_order_count??0))))return false
+    const day=dateKey(u.effective_created_at??u.created_at)
+    const dates=selectedFor('cf_createdAt')
+    if(dates.length&&!dates.includes(day))return false
+    const dateFrom=String(sp.cf_createdAt_from??'')
+    const dateTo=String(sp.cf_createdAt_to??'')
+    if(/^\\d{4}-\\d{2}-\\d{2}$/.test(dateFrom)&&day<dateFrom)return false
+    if(/^\\d{4}-\\d{2}-\\d{2}$/.test(dateTo)&&day>dateTo)return false
+    return true
+  }
+
+  const listOptions=(values:unknown[])=>{
+    const list=[...new Map(values.map(item=>String(item??'').trim()).filter(Boolean)
+      .map(item=>[item.toLocaleLowerCase('vi'),item] as const)).values()]
+      .sort((a,b)=>a.localeCompare(b,'vi'))
+    return list.map(item=>({value:item,label:item}))
+  }
+  const headingOptions={
+    username:listOptions(enriched.map((u:any)=>u.username)),
+    platform:listOptions(enriched.map((u:any)=>u.platform??'SHOPEE')),
+    phone:listOptions(enriched.map((u:any)=>u.phone)).map(option=>({
+      ...option,label:formatPhone(option.value),
+    })),
+    email:listOptions(enriched.map((u:any)=>u.email)),
+    status:[...new Set(enriched.map((u:any)=>String(u.status??'')))].filter(Boolean)
+      .sort((a,b)=>a.localeCompare(b,'vi'))
+      .map(value=>({value,label:statusLabel(value)})),
+    mobile:listOptions(enriched.map((u:any)=>accountDeviceFields(u).mobileType)),
+    browser:browserOptions,
+    voucher:[{value:'has',label:'Đã sử dụng voucher'},
+      ...(hasNoVoucher?[{value:'none',label:'Chưa dùng voucher'}]:[]),...voucherOptions],
+    orders:orderOptions,
+    deliveredOrders:[...new Set(enriched.map((u:any)=>Number(u.delivered_order_count??0)))]
+      .sort((a,b)=>a-b).map(n=>({value:String(n),label:n+' đơn'})),
+    note:listOptions(enriched.map((u:any)=>u.note)),
+    number:[...enriched.keys()].map(i=>({value:String(i+1),label:String(i+1)})),
+    createdAt:[...new Set(enriched.map((u:any)=>
+      dateKey(u.effective_created_at??u.created_at)).filter(Boolean))]
+      .sort((a,b)=>b.localeCompare(a))
+      .map(value=>({value,label:value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4)})),
+  }
+  const headingValues:Record<string,string>={
+    ...columnFilterEntries,browser,voucher,orders,session,
+    cf_createdAt:sp.cf_createdAt??'',
+    cf_createdAt_from:sp.cf_createdAt_from??'',
+    cf_createdAt_to:sp.cf_createdAt_to??'',
+  }
+
+  const scopeRows=enriched.filter(matchesAccountScope).filter(matchesHeadingFilters)
   const counts={
     all:scopeRows.length,
     active:scopeRows.filter(x=>x.status==='Active').length,
@@ -242,6 +344,12 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     if(sort==='oldest')return new Date(a.effective_created_at).getTime()-new Date(b.effective_created_at).getTime()
     return new Date(b.effective_created_at).getTime()-new Date(a.effective_created_at).getTime()
   })
+  // STT là thứ tự theo danh sách đã sắp xếp, giữ ổn định khi lọc riêng STT.
+  rows=rows.map((u:any,i:number)=>({...u,account_row_number:i+1}))
+  const selectedNumbers=selectedFor('cf_number')
+  if(selectedNumbers.length){
+    rows=rows.filter((u:any)=>selectedNumbers.includes(String(u.account_row_number)))
+  }
 
   function filterHref(overrides:Record<string,string|null|undefined>={}){
     const p=new URLSearchParams()
@@ -255,6 +363,9 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       order:sp.order,orderTab:sp.orderTab,
     }
     for(const [k,v] of Object.entries(current))if(v)p.set(k,v)
+    for(const [k,v] of Object.entries(columnFilterEntries))if(v)p.set(k,v)
+    for(const k of ['cf_createdAt','cf_createdAt_from','cf_createdAt_to'])
+      if(sp[k])p.set(k,sp[k])
     for(const [k,v] of Object.entries(overrides)){
       if(v===null||v===undefined||v==='all'||v==='')p.delete(k)
       else p.set(k,v)
@@ -265,6 +376,9 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
   const detailParams=new URLSearchParams()
   if(sp.q)detailParams.set('q',sp.q)
+  for(const [k,v] of Object.entries(columnFilterEntries))if(v)detailParams.set(k,v)
+  for(const k of ['cf_createdAt','cf_createdAt_from','cf_createdAt_to'])
+    if(sp[k])detailParams.set(k,sp[k])
   if(state!=='all')detailParams.set('state',state)
   if(session!=='all')detailParams.set('session',session)
   if(voucher!=='all')detailParams.set('voucher',voucher)
@@ -390,9 +504,9 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   }
   const selectedVoucherSummary=[...voucherCounts.keys()].join(' · ')
 
-  const panelOpen=(canOperate&&sp.mode==='create')||Boolean(selected)
+  const creating=canOperate&&sp.mode==='create'
+  const panelOpen=creating||Boolean(selected)
   const isEdit=Boolean(canOperate&&selected&&sp.mode==='edit'&&!selected.archived_at)
-  const filtersActive=Boolean(queryText||state!=='all'||session!=='all'||voucher!=='all'||orders!=='all'||browser!=='all'||sort!=='newest')
 
   return <div className="account-screen">
     <header className="page-head entity-page-head">
@@ -417,22 +531,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     </section>
 
     <div className="p1-account-command-row">
-    <form className="account-filter-bar one-line entity-command-bar entity-user-command" action="/purchase/accounts">
+    <ERPAccountFilterForm className="account-filter-bar one-line entity-command-bar entity-user-command">
       <input className="search" name="q" defaultValue={sp.q??''} placeholder="Tìm User / SĐT / Email / máy / voucher"/>
-      <AccountFilterDropdown name="browser" value={browser} label="Browser" baseHref={filterHref()} options={[
-        {value:'all',label:'Browser: Tất cả'},...browserOptions,
-      ]}/>
-      <AccountFilterDropdown name="session" value={session} label="SPC" baseHref={filterHref()} options={[
-        {value:'all',label:'SPC: Tất cả'},...sessionOptions,
-      ]}/>
-      <AccountFilterDropdown name="orders" value={orders} label="Số đơn" baseHref={filterHref()} options={[
-        {value:'all',label:'Số đơn: Tất cả'},...orderOptions,
-      ]}/>
-      <AccountFilterDropdown name="voucher" value={voucher} label="Tag voucher" baseHref={filterHref()} options={[
-        {value:'all',label:'Tag: Tất cả'},
-        ...(hasNoVoucher?[{value:'none',label:'Chưa dùng voucher'}]:[]),
-        ...voucherOptions,
-      ]}/>
+      {Object.entries(headingValues)
+        .filter(([key,value])=>Boolean(value)&&value!=='all'&&key!=='q')
+        .map(([key,value])=><input key={key} type="hidden" name={key} value={value}/>)}
       {state!=='all'&&<input type="hidden" name="state" value={state}/>}
       {sort!=='newest'&&<input type="hidden" name="sort" value={sort}/>}
       {sp.range&&<input type="hidden" name="range" value={sp.range}/>}
@@ -444,20 +547,15 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       {sp.archive&&<input type="hidden" name="archive" value={sp.archive}/>}
       {sp.order&&<input type="hidden" name="order" value={sp.order}/>}
       {sp.orderTab&&<input type="hidden" name="orderTab" value={sp.orderTab}/>}
-      <button className="button primary small">Lọc</button>
-      {filtersActive&&<Link className="button small filter-clear" href={filterHref({
-        q:null,state:null,device:null,session:null,voucher:null,orders:null,browser:null,sort:null,platform:null,
-      })}>×</Link>}
       <div className="archive-view-toggle">
         <Link className={!archiveView?'active':''} href={filterHref({archive:null,user:null,mode:null,tab:null})}>Đang dùng</Link>
         <Link className={archiveView?'active':''} href={filterHref({archive:'archived',user:null,mode:null,tab:null})}>Đã lưu trữ</Link>
       </div>
-      <div className="entity-result-meta"><b>{rows.length}</b><span>/ {counts.all} User{selectedOutsideFilter?' · +1 đang mở':''}</span></div>
-    </form>
+    </ERPAccountFilterForm>
       <div id="p1-account-filter-actions" className="p1-account-filter-actions"/>
     </div>
 
-    <div className={`split-view account-workspace ${panelOpen?'with-panel':''} ${selected&&!isEdit&&contextOrder?'with-two-panels':''}`}>
+    <div className={`split-view account-workspace ${panelOpen?'with-panel':''}`}>
       <section className="account-list-pane">
         {error&&<div className="error-box">Không thể tải dữ liệu tài khoản: {error.message}</div>}
         {orderStatsError&&<div className="error-box" role="alert">Không thể tính số đơn giao thành công: {orderStatsError.message}</div>}
@@ -467,16 +565,19 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
           detailQuery={detailQuery}
           sort={sort}
           canManage={canOperate}
+          headingOptions={headingOptions}
+          headingValues={headingValues}
+          sessionOptions={sessionOptions}
         />} 
       </section>
 
-      {canOperate&&sp.mode==='create'&&
+      {creating&&
         <SystemSlidebar className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Thêm tài khoản</h2></div>
             <Link className="close" href={filterHref({mode:null,user:null,tab:null})}>×</Link>
           </div>
-          <form action={createERPUser} className="panel-form panel-scroll">
+          <ERPUserInlineForm operation="create" className="panel-form panel-scroll">
             <input type="hidden" name="return_query" value={detailQuery}/>
             <section className="form-section">
               <h3>Thông tin tài khoản</h3>
@@ -500,11 +601,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
             </section>
             <div className="form-actions"><Link className="button" href={filterHref({mode:null,user:null,tab:null})}>Hủy</Link><button className="button primary">Tạo tài khoản</button></div>
-          </form>
+          </ERPUserInlineForm>
         </SystemSlidebar>
       }
 
-      {selected&&!isEdit&&contextOrder&&
+      {selected&&!isEdit&&!creating&&contextOrder&&
         <ContextOrderPanel
           order={contextOrder}
           items={contextOrderItems}
@@ -527,7 +628,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         />
       }
 
-      {selected&&!isEdit&&
+      {selected&&!isEdit&&!creating&&!contextOrder&&
         <SystemSlidebar className="detail-panel account-detail-panel">
           <div className="panel-head">
             <div><span className="eyebrow">CHI TIẾT USER</span><h2>{selected.username}</h2></div>
@@ -572,21 +673,27 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
               {canOperate&&<div className={'record-lifecycle-zone '+(selected.archived_at?'archived':'')}>
                 {!selected.archived_at
-                  ? <form action={archiveERPUser} className="record-lifecycle-action">
+                  ? <ERPUserInlineForm operation="archive" className="record-lifecycle-action">
                       <input type="hidden" name="user_id" value={selected.id}/>
                       <input type="hidden" name="return_query" value={detailQuery}/>
                       <div><b>Lưu trữ User</b><span>Ẩn khỏi danh sách sử dụng và không cho chọn khi tạo đơn. Có thể khôi phục.</span></div>
                       <button className="button archive-button" type="submit">Lưu trữ</button>
-                    </form>
+                    </ERPUserInlineForm>
                   : <>
-                      <form action={restoreERPUser} className="record-lifecycle-action">
+                      <ERPUserInlineForm operation="restore" className="record-lifecycle-action">
                         <input type="hidden" name="user_id" value={selected.id}/>
                         <input type="hidden" name="return_query" value={detailQuery}/>
                         <div><b>User đang lưu trữ</b><span>Đơn hàng và toàn bộ lịch sử vẫn được giữ.</span></div>
                         <button className="button primary" type="submit">Khôi phục</button>
-                      </form>
+                      </ERPUserInlineForm>
 
                     </>}
+                {Number(selected.order_count??0)===0
+                  ? <div className="permanent-delete-box erp-confirm-detail-entry">
+                      <div><b>Xóa vĩnh viễn User</b><span>Chỉ User không có đơn liên kết, yêu cầu xác nhận Username.</span></div>
+                      <DeleteERPUserConfirmForm userId={String(selected.id)} username={String(selected.username)} returnQuery={detailQuery}/>
+                    </div>
+                  : <div className="record-lifecycle-action"><span>User còn đơn liên kết: chỉ có thể lưu trữ.</span></div>}
               </div>}
             </>}
 
@@ -659,7 +766,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Sửa {selected.username}</h2></div>
             <Link className="close" href={detailHref({user:selected.id,mode:null})}>×</Link>
           </div>
-          <form action={updateERPUser} className="panel-form panel-scroll">
+          <ERPUserInlineForm operation="update" className="panel-form panel-scroll">
             <input type="hidden" name="return_query" value={detailQuery}/>
             <input type="hidden" name="user_id" value={selected.id}/>
             <section className="form-section">
@@ -685,7 +792,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
             </section>
             <div className="form-actions"><Link className="button" href={detailHref({user:selected.id,mode:null})}>Hủy</Link><button className="button primary">Lưu thay đổi</button></div>
-          </form>
+          </ERPUserInlineForm>
         </SystemSlidebar>
       }
     </div>

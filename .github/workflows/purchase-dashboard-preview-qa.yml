@@ -9,6 +9,24 @@ on:
       - 'app/(erp)/tracking/page.tsx'
       - 'app/(erp)/users/page.tsx'
       - 'components/purchase-account-table.tsx'
+      - 'components/account-heading-filter.tsx'
+      - 'scripts/purchase-account-header-filters-qa.mjs'
+      - 'lib/account-table-autofit.ts'
+      - 'scripts/purchase-account-no-scroll-qa.mjs'
+      - 'components/purchase-date-filter.tsx'
+      - 'app/styles/desktop-column-resize.css'
+      - 'scripts/purchase-time-filter-parity-qa.mjs'
+      - 'components/erp-user-inline-form.tsx'
+      - 'components/erp-account-filter-form.tsx'
+      - 'components/user-bulk-import.tsx'
+      - 'components/order-account-detail-panel.tsx'
+      - 'lib/actions/core.ts'
+      - 'scripts/account-inline-fit-static-qa.mjs'
+      - 'components/order-editor-form.tsx'
+      - 'lib/shopee-order-text-parser.ts'
+      - 'scripts/shopee-pending-payment-qa.mjs'
+      - 'scripts/shopee-pending-payment-ui-qa.mjs'
+      - 'scripts/fixtures/shopee-pending-payment-sample.mjs'
       - 'components/desktop-table-column-resize.tsx'
       - 'app/styles/p1-purchase-tables.css'
       - 'scripts/purchase-accounts-delivered-qa.mjs'
@@ -50,6 +68,10 @@ jobs:
           node-version: 22
       - name: Install project dependencies
         run: npm install --no-audit --no-fund
+      - name: Shopee pending payment parser QA
+        run: node --experimental-strip-types scripts/shopee-pending-payment-qa.mjs
+      - name: User actions and responsive Auto Fit contract QA
+        run: node scripts/account-inline-fit-static-qa.mjs
       - name: TypeScript QA
         run: npm run typecheck
       - name: Resolve existing public QA key (without printing it)
@@ -81,12 +103,20 @@ jobs:
           CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME_PATH"
           echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
-      - name: Check Accounts Auto Fit with User and Order stacked slidebars
+      - name: Check Accounts delivered counts, column preferences and responsive layout
+        run: node scripts/purchase-accounts-delivered-qa.mjs
+      - name: Check Accounts filters in every data column header (390-1440px)
+        run: node scripts/purchase-account-header-filters-qa.mjs
+      - name: Check Accounts no horizontal scroll and Orders-style column control (320-1440px)
+        run: node scripts/purchase-account-no-scroll-qa.mjs
+      - name: Check Accounts single slidebar User to Order to Tracking and Back
         run: node scripts/purchase-accounts-two-slidebars-qa.mjs
       - name: Check left sidebar Auto Fit and real mouse drag on Voucher and Số đơn
         run: node scripts/purchase-accounts-real-autofit-qa.mjs
-      - name: Check Accounts delivered counts, column preferences and responsive layout
-        run: node scripts/purchase-accounts-delivered-qa.mjs
+      - name: Check Shopee pending-review recognition in create form (read-only)
+        run: node scripts/shopee-pending-payment-ui-qa.mjs
+      - name: Check Dashboard date filter parity in Orders and Tracking (7 viewports, no reload)
+        run: node scripts/purchase-time-filter-parity-qa.mjs
       - name: Check Dashboard KPI parity, zero charts, groups, footer, 8 viewports
         run: node scripts/purchase-dashboard-preview-qa.mjs
       - name: Check Tracking layout and local data update without page reload
@@ -101,6 +131,7 @@ jobs:
             qa-accounts-delivered-artifacts/
             qa-accounts-two-slidebars-artifacts/
             qa-accounts-real-autofit-artifacts/
+            qa-shopee-pending-artifacts/
           retention-days: 3
           if-no-files-found: ignore
       - name: Cleanup only temporary QA login

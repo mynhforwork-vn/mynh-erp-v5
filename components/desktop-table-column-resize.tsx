@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import {fitAccountColumnWidths} from '@/lib/account-table-autofit'
 
 /**
  * Desktop-only non-destructive enhancer for legacy and managed ERP tables.
@@ -13,7 +14,7 @@ export function DesktopTableColumnResize() {
     const main = shell?.querySelector(':scope > .main')
     if (!main) return
 
-    const mq = window.matchMedia('(min-width: 901px)')
+    const mq = window.matchMedia('(min-width: 768px)')
     const clamp = (v:number) => Math.max(76, Math.min(680, Math.round(v)))
     const clampForHeader = (th:HTMLTableCellElement,v:number) => {
       if(th.closest('table.tracking-hub-table-v2'))
@@ -40,6 +41,20 @@ export function DesktopTableColumnResize() {
           ? Math.max(24, Math.min(140, Math.round(th.getBoundingClientRect().width)))
           : clampForHeader(th,th.getBoundingClientRect().width)
     const headerName = (th:HTMLTableCellElement) => {
+      // Header popovers own a lot of hidden content (choices, search, SPC).
+      // Manual width keys must refer to the original stable column label,
+      // never to the dropdown options or currently selected filters.
+      if(th.closest('table.user-table.mynh-p1-semantic-table')){
+        const labels:Record<string,string>={
+          number:'#',username:'Username',platform:'Nền tảng',phone:'SĐT',
+          email:'Email',status:'Trạng thái',mobile:'Mobile',browser:'Browser',
+          voucher:'Voucher đã dùng',orders:'Số đơn',
+          deliveredOrders:'Giao thành công',createdAt:'Thời gian tạo',
+          note:'Ghi chú',
+        }
+        if(th.dataset.accountCol&&labels[th.dataset.accountCol])
+          return labels[th.dataset.accountCol]
+      }
       const clone = th.cloneNode(true) as HTMLElement
       clone.querySelectorAll('.mynh-column-resize-grip').forEach(x => x.remove())
       return clone.textContent?.replace(/[↑↓↕⇅]/g, '').replace(/\s+/g, ' ').trim() || 'blank'
@@ -48,7 +63,7 @@ export function DesktopTableColumnResize() {
       Array.from(table.querySelectorAll(':scope > thead > tr:first-child > th')) as HTMLTableCellElement[]
     const tableId = (table:HTMLTableElement) => {
       const custom = table.dataset.tableResizeKey
-      const names = [...table.classList].filter(x => x !== 'table' && x !== 'active' && x !== 'striped' && x !== 'mynh-resizable-table').sort()
+      const names = [...table.classList].filter(x => x !== 'table' && x !== 'active' && x !== 'striped' && x !== 'mynh-resizable-table' && x !== 'account-table-stacked').sort()
       const parent = table.closest('.table-card, .managed-table-shell, .tracking-hub-table-wrap, .whx-table-wrap')
       const parentClass = parent ? [...parent.classList].filter(x => x !== 'card').sort().join('.') : ''
       return 'mynh-col-widths-v1:' + location.pathname + ':' + (custom || names.join('.') || parentClass || 'table')
@@ -289,70 +304,24 @@ export function DesktopTableColumnResize() {
       const accountFit=()=>{
         const pane=table.closest('.account-table-card') as HTMLElement|null
         const lane=Math.floor(pane?.clientWidth??table.parentElement?.clientWidth??0)
-        const min:Record<string,number>={
-          select:28,number:28,username:128,platform:56,phone:94,email:120,
-          status:75,mobile:80,browser:70,voucher:112,orders:62,
-          deliveredOrders:96,createdAt:128,note:78,
-        }
-        const base:Record<string,number>={
-          select:28,number:28,username:150,platform:64,phone:106,email:148,
-          status:82,mobile:95,browser:83,voucher:122,orders:66,
-          deliveredOrders:98,createdAt:138,note:96,
-        }
-        const max:Record<string,number>={
-          username:330,platform:80,phone:146,email:390,status:120,
-          mobile:240,browser:185,voucher:290,orders:110,
-          deliveredOrders:132,createdAt:170,note:390,
-        }
+        const withPanel=Boolean(table.closest('.account-workspace.with-panel'))
+        const compact=withPanel||lane<1200
+        const base:Record<string,number>=compact
+          ?{select:28,number:28,username:145,platform:58,phone:98,email:142,
+            status:78,mobile:88,browser:76,voucher:120,orders:62,
+            deliveredOrders:96,createdAt:130,note:90}
+          :{select:28,number:28,username:174,platform:64,phone:108,email:185,
+            status:85,mobile:110,browser:98,voucher:132,orders:66,
+            deliveredOrders:102,createdAt:142,note:120}
         const keys=ths.map(th=>th.classList.contains('bulk-select-col')
           ?'select':th.dataset.accountCol??'')
-        const widths=keys.map((key,i)=>{
-          const saved=overrides[headerName(ths[i])]
-          return Math.max(min[key]??76,Math.round(saved??base[key]??96))
-        })
-        const minimum=keys.reduce((sum,key)=>sum+(min[key]??76),0)
-        const target=Math.max(minimum,lane-2)
-        let remainder=target-widths.reduce((sum,w)=>sum+w,0)
-        if(remainder<0){
-          // Custom widths are user choices, NOT candidates for Auto Fit
-          // compression. Shrink only free columns; a narrower lane scrolls
-          // locally rather than undoing a manual Voucher/Số đơn drag.
-          for(const key of ['note','email','username','mobile','browser',
-            'voucher','platform','phone','status','createdAt','deliveredOrders','orders']){
-            const i=keys.indexOf(key)
-            if(i<0||remainder>=0)continue
-            if(overrides[headerName(ths[i])]!==undefined)continue
-            const reduction=Math.min(-remainder,Math.max(0,widths[i]-(min[key]??76)))
-            widths[i]-=reduction
-            remainder+=reduction
-          }
-        }
-        if(remainder>0){
-          // Spend spare width on useful TEXT columns before numeric counters.
-          // Respect manually saved Voucher/Số đơn widths on every sidebar state.
-          for(const key of ['username','email','mobile','browser','voucher','note',
-            'phone','createdAt','status','platform']){
-            const i=keys.indexOf(key)
-            if(i<0||remainder<=0||overrides[headerName(ths[i])]!==undefined)continue
-            const increase=Math.min(remainder,Math.max(0,(max[key]??320)-widths[i]))
-            widths[i]+=increase
-            remainder-=increase
-          }
-          if(remainder>0){
-            const flexible=['username','email','mobile','browser','voucher','note']
-              .map(k=>keys.indexOf(k)).filter(i=>i>=0&&overrides[headerName(ths[i])]===undefined)
-            // When all visible text columns are user-sized, use the final
-            // available text column for the remaining lane rather than blank.
-            const recipients=flexible.length?flexible:
-              ['note','email','username','voucher'].map(k=>keys.indexOf(k)).filter(i=>i>=0)
-            if(recipients.length){
-              const each=Math.floor(remainder/recipients.length)
-              recipients.forEach((i,j)=>widths[i]+=j===recipients.length-1
-                ?remainder-each*j:each)
-            }
-          }
-        }
-        return widths
+        const manual=ths.map(th=>overrides[headerName(th)]!==undefined)
+        const preferred=keys.map((key,i)=>Math.round(
+          overrides[headerName(ths[i])]??base[key]??96
+        ))
+        // Same allocator as React, including narrow 780/800px lanes.
+        // Manual preferences remain persisted; rendered columns always fit.
+        return fitAccountColumnWidths(keys,preferred,lane,manual)
       }
       const assigned = isOrder?orderFit(table,ths,overrides)
         :isTracking ? fitTrackingPanel(table,ths,preferred,overrides)
@@ -416,6 +385,17 @@ export function DesktopTableColumnResize() {
     }
 
     const enhance = (table:HTMLTableElement) => {
+      if(table.matches('table.user-table.account-table-stacked')){
+        // Stacked Account lanes show ALL enabled fields as labeled rows.
+        // Release inline Desktop resize dimensions without deleting the
+        // saved manual widths: they apply again when the lane is wide.
+        if(table.classList.contains('mynh-resizable-table')){
+          clearInlineWidths(table)
+          trackingLayout.delete(table)
+        }
+        return
+      }
+      if(window.innerWidth<901&&!table.matches('.mynh-p1-semantic-table.user-table'))return
       if (table.closest('.system-slidebar-v1, .system-slidebar, .context-panel, .side-panel, .finance-panel, .receive-confirm-modal')) return
       const ths = headerCells(table)
       if (ths.length < 2) return
@@ -542,6 +522,13 @@ export function DesktopTableColumnResize() {
     let scheduled = 0
     const scan=()=>{
       scheduled=0
+      // RSC navigation can replace the table card without remounting this
+      // observer. Bind newly rendered lanes before fitting their columns.
+      main.querySelectorAll('.order-table-card,.account-table-card').forEach(pane=>{
+        if(observedPanes.has(pane))return
+        observedPanes.add(pane)
+        paneResize.observe(pane)
+      })
       if(!mq.matches)return
       main.querySelectorAll('table.table').forEach(t=>enhance(t as HTMLTableElement))
     }
@@ -560,9 +547,30 @@ export function DesktopTableColumnResize() {
       }))queue()
     })
     observer.observe(main,{childList:true,subtree:true,attributes:true,attributeFilter:['class']})
-    const onChange=()=>{if(mq.matches)queue()}
+    const onChange=()=>{
+      if(mq.matches){
+        queue()
+        return
+      }
+      // Leaving Desktop/Tablet with a right drawer open must release the
+      // inline header, colgroup and table widths managed by this enhancer.
+      // React's lane-driven Auto Fit owns the compact Mobile layout. Keep
+      // saved drag preferences in localStorage for when Desktop returns.
+      main.querySelectorAll('table.user-table.mynh-p1-semantic-table').forEach(el=>{
+        const table=el as HTMLTableElement
+        clearInlineWidths(table)
+        trackingLayout.delete(table)
+      })
+    }
+    const observedPanes=new WeakSet<Element>()
     const paneResize=new ResizeObserver(()=>queue())
-    main.querySelectorAll('.order-table-card,.account-table-card').forEach(el=>paneResize.observe(el))
+    // Column table width can be overwritten after hydration even when the
+    // containing lane has not changed. Explicitly invalidate its fit token.
+    const refitAccount=()=>{
+      main.querySelectorAll('table.mynh-p1-semantic-table.user-table')
+        .forEach(table=>trackingLayout.delete(table as HTMLTableElement))
+      queue()
+    }
     window.addEventListener('resize',queue)
     mq.addEventListener('change',onChange)
     const sync=(event:Event)=>{
@@ -588,6 +596,7 @@ export function DesktopTableColumnResize() {
     window.addEventListener('mynh-table-column-width-changed',sync)
     // Left sidebar collapse/expand changes available table space without a React remount.
     window.addEventListener('mynh-sidebar-resized',queue)
+    window.addEventListener('mynh-account-fit-changed',refitAccount)
     queue()
     return ()=>{
       observer.disconnect()
@@ -595,6 +604,7 @@ export function DesktopTableColumnResize() {
       window.removeEventListener('resize',queue)
       window.removeEventListener('mynh-table-column-width-changed',sync)
       window.removeEventListener('mynh-sidebar-resized',queue)
+      window.removeEventListener('mynh-account-fit-changed',refitAccount)
       mq.removeEventListener('change',onChange)
       if(scheduled)window.cancelAnimationFrame(scheduled)
     }

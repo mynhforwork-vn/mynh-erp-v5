@@ -31,7 +31,11 @@ jobs:
       - name: Cài dependencies
         run: npm install --no-audit --no-fund
       - name: Kiểm tra huỷ đơn và điều hướng Mapping
-        run: node --experimental-strip-types scripts/qa-cancel-mapping-contract.mjs
+        run: |
+          node --experimental-strip-types scripts/qa-cancel-mapping-contract.mjs
+          node --experimental-strip-types scripts/shopee-cancelled-qa.mjs
+          node scripts/operator-cancelled-regression-qa.mjs
+          node scripts/order-hard-delete-gate-qa.mjs
       - name: Kiểm tra cú pháp bài E2E Mapping lịch sử trước khi được phê duyệt chạy
         run: node --check scripts/pr75-mapping-history-e2e.mjs
       - name: Kiểm tra kiểu TypeScript

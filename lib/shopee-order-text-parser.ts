@@ -21,8 +21,17 @@ export type ParsedShopeeOrderText={
   recipient_phone?:string
   recipient_address?:string
   order_date_local?:string
+  cancelled_date_local?:string
+  // Giá trị Shopee trước khi hủy; tuyệt đối không phải COD hiện còn phải thu.
+  original_total?:number
   cod?:number
   total_goods?:number
+  shipping_fee?:number
+  shipping_discount?:number
+  shopee_voucher_discount?:number
+  payment_method?:'COD'
+  payment_status?:'UNPAID'
+  warnings:string[]
   products:ParsedShopeeOrderItem[]
   vouchers:ParsedShopeeVoucher[]
   detected_status?:string
@@ -38,8 +47,12 @@ export type ParsedShopeeOrderText={
 
 function cleanLine(value:string){
   return value
-    .replace(/&nbsp;|&#x20;/gi,' ')
+    .replace(/&(?:nbsp|#160|#xA0|#x20);/gi,' ')
+    .replace(/&amp;/gi,'&')
+    .replace(/&quot;/gi,'"')
+    .replace(/&#39;|&apos;/gi,"'")
     .replace(/ /g,' ')
+    .replace(/^#{1,6}\s*/,'')
     .replace(/\\$/,'')
     .trim()
 }
@@ -54,6 +67,11 @@ function money(value:string){
   if(!raw)return null
   const n=Number(raw)
   return Number.isFinite(n)?n:null
+}
+
+function validVietnamPhone(value:string){
+  const normalized=normalizeVietnamPhone(value)
+  return /^0\d{9}$/.test(normalized)?normalized:null
 }
 
 function normalizeVietnamPhone(value:string){
@@ -79,6 +97,42 @@ function precedingTimestamp(lines:string[],index:number){
   return null
 }
 
+function phoneFromLine(value:string){
+  const matches=value.match(/(?:\+?84|0)[\s().-]*\d{2,3}[\s().-]*\d{3}[\s().-]*\d{3,4}/g)??[]
+  for(const candidate of matches){
+    const phone=validVietnamPhone(candidate)
+    if(phone)return phone
+  }
+  return null
+}
+
+function isNoise(line:string){
+  return /^(?:odp_accessibility_component_\d+|svg(?:chat)?|image|##*)$/i.test(line)
+}
+
+function recipientWithoutTracking(lines:string[]){
+  const start=lines.findIndex(line=>/^Địa chỉ nhận hàng\s*:?$/i.test(line))
+  if(start<0)return null
+  const stop=/^(?:chat|Xem Shop|MÃ\s*ĐƠN\s*HÀNG|Liên hệ Người bán|Hủy đơn hàng|Phương thức Thanh toán|Đã hủy|Đơn hàng đã (?:bị )?hủy|Đặt hàng thành công|Đơn hàng đã được đặt|Mua lại)$/i
+  const data:string[]=[]
+  for(let i=start+1;i<Math.min(lines.length,start+14);i++){
+    const line=visibleLabel(lines[i])
+    if(stop.test(line)||/^MÃ\s*ĐƠN\s*HÀNG[.:]/i.test(line))break
+    if(isNoise(line)||(!data.length&&/^(?:Nhanh|Tiết kiệm|Hỏa tốc)$/i.test(line)))continue
+    // Text immediately before the shop's 'chat / Xem Shop' controls is
+    // the seller label, never a continuation of the delivery address.
+    if(/^chat$/i.test(lines[i+1]??'')||(/^Xem Shop$/i.test(lines[i+2]??'')&&/^chat$/i.test(lines[i+1]??'')))continue
+    data.push(line)
+  }
+  const idx=data.findIndex(line=>Boolean(phoneFromLine(line)))
+  if(idx<1)return null
+  const phone=phoneFromLine(data[idx])
+  const name=data.slice(0,idx).find(line=>line.length>=2&&!/^[\d\s()+.-]+$/.test(line))
+  const address=data.slice(idx+1).filter(line=>!phoneFromLine(line))
+  if(!name||!phone||!address.length)return null
+  return {name,phone,address:address.join(', ')}
+}
+
 function nextMoney(lines:string[],index:number){
   for(let i=index+1;i<Math.min(lines.length,index+5);i++){
     const n=money(lines[i])
@@ -92,6 +146,8 @@ function productLink(line:string){
   if(!md)return null
   if(!/^https?:\/\/shopee\.vn\//i.test(md.url))return null
   if(!/(?:^|[-/])i\.\d+\.\d+(?:[/?#]|$)/i.test(md.url))return null
+  // Link giá/SL/phân loại cùng URL sản phẩm không phải tên sản phẩm.
+  if(moneyValues(md.label).length)return null
   if(/^(image|svg|x\d+|phân loại hàng:|phan loai hang:)/i.test(md.label))return null
   return md
 }
@@ -133,6 +189,7 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
   const result:ParsedShopeeOrderText={
     products:[],
     vouchers:[],
+    warnings:[],
     confidence:{order:false,tracking:false,recipient:false,products:0,cod:false},
   }
 
@@ -152,7 +209,12 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
   const sellerMatch=joined.match(/https?:\/\/shopee\.vn\/([A-Za-z0-9._-]+)\?entryPoint=OrderDetail/i)
   if(sellerMatch)result.seller_username=sellerMatch[1]
 
-  if(/Giao hàng thành công|\*\*Đã giao\*\*|\bĐã giao\b/i.test(joined))result.detected_status='DELIVERED'
+  // Trạng thái hủy hiện tại phải thắng các mốc lịch sử "Đặt hàng thành công".
+  if(/Đơn hàng đã (?:bị )?hủy|(?:^|\n)\*{0,2}Đã hủy\*{0,2}(?:\n|$)/i.test(joined))
+    result.detected_status='CANCELLED'
+  else if(/Đang chờ hệ thống xác nhận đơn hàng/i.test(joined)&&/Chờ thanh toán/i.test(joined))
+    result.detected_status='PENDING_SHOPEE_CONFIRMATION'
+  else if(/Giao hàng thành công|Đã giao/i.test(joined))result.detected_status='DELIVERED'
   else if(/Giao hàng không thành công/i.test(joined))result.detected_status='DELIVERY_FAILED'
   else if(/Đang giao|sớm được giao/i.test(joined))result.detected_status='OUT_FOR_DELIVERY'
   else if(/Đang vận chuyển/i.test(joined))result.detected_status='IN_TRANSIT'
@@ -167,7 +229,7 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
           continue
         }
         if(!result.recipient_phone&&/(?:\+?84|0)[\s().-]*\d{2,3}[\s.-]*\d{3}[\s.-]*\d{3,4}/.test(line)){
-          result.recipient_phone=normalizeVietnamPhone(line)
+          result.recipient_phone=validVietnamPhone(line)??undefined
           continue
         }
         if(result.recipient_name&&result.recipient_phone&&!result.recipient_address){
@@ -179,7 +241,29 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
     }
   }
 
-  if(result.recipient_name&&result.recipient_phone)result.confidence.recipient=true
+  // Orders awaiting Shopee's system approval have NO tracking number, but
+  // the independent 'Địa chỉ nhận hàng' section is still authoritative.
+  if(!result.recipient_name||!result.recipient_phone||!result.recipient_address){
+    const block=recipientWithoutTracking(lines)
+    if(block){
+      result.recipient_name=result.recipient_name??block.name
+      result.recipient_phone=result.recipient_phone??block.phone
+      result.recipient_address=result.recipient_address??block.address
+    }
+  }
+  if(result.recipient_name&&result.recipient_phone&&result.recipient_address)
+    result.confidence.recipient=true
+
+  // COD describes the payment method, not an already-paid transaction.
+  const methodIndex=lines.findIndex(line=>/^Phương thức Thanh toán\s*:?$/i.test(line))
+  const paymentLine=methodIndex>=0?lines.slice(methodIndex+1,methodIndex+4).find(line=>!isNoise(line))??'':''
+  if(/^(?:Cash on Delivery|Thanh toán khi nhận hàng)\b/i.test(paymentLine)){
+    result.payment_method='COD'
+    result.payment_status='UNPAID'
+  }
+
+  const cancelledIndex=lines.findIndex(line=>/^Đơn hàng đã (?:bị )?hủy$/i.test(visibleLabel(line)))
+  if(cancelledIndex>=0)result.cancelled_date_local=precedingTimestamp(lines,cancelledIndex)??undefined
 
   const placedIndex=lines.findIndex(line=>/Đơn hàng đã được đặt/i.test(line))
   if(placedIndex>=0){
@@ -200,10 +284,21 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
   if(codIndex>=0){
     const n=nextMoney(lines,codIndex)
     if(n!==null){
-      result.cod=n
-      result.confidence.cod=true
+      result.original_total=n
+      // "Thành tiền" và COD là dữ liệu lịch sử, không phải khoản phải thu khi đã hủy.
+      if(result.detected_status!=='CANCELLED'||result.payment_method==='COD'){
+        result.cod=n
+        result.confidence.cod=true
+      }
     }
   }
+
+  const shippingIndex=lines.findIndex(line=>/^Phí vận chuyển$/i.test(line))
+  const shippingDiscountIndex=lines.findIndex(line=>/^Giảm giá phí vận chuyển$/i.test(line))
+  const shopeeDiscountIndex=lines.findIndex(line=>/^Voucher từ Shopee$/i.test(line))
+  if(shippingIndex>=0)result.shipping_fee=nextMoney(lines,shippingIndex)??undefined
+  if(shippingDiscountIndex>=0)result.shipping_discount=nextMoney(lines,shippingDiscountIndex)??undefined
+  if(shopeeDiscountIndex>=0)result.shopee_voucher_discount=nextMoney(lines,shopeeDiscountIndex)??undefined
 
   const seenProductKeys=new Set<string>()
   for(let i=0;i<lines.length;i++){
@@ -223,6 +318,8 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
 
       const md=labelFromMarkdown(line)
       const label=(md?.label??line).trim()
+      // Không nuốt số tiền đơn / phí / voucher sau sản phẩm cuối cùng.
+      if(/^(?:Tổng tiền hàng|Phí vận chuyển|Giảm giá phí vận chuyển|Voucher từ Shopee|Thành tiền|Phương thức Thanh toán)$/i.test(label))break
 
       const variantMatch=label.match(/^Phân loại hàng\s*:\s*(.+)$/i)
       if(variantMatch&&!variant)variant=variantMatch[1].trim()
@@ -347,6 +444,13 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
     }
   }
 
+  if([result.total_goods,result.shipping_fee,result.shipping_discount,
+      result.shopee_voucher_discount,result.original_total].every(value=>value!==undefined)){
+    const expected=result.total_goods!+result.shipping_fee!
+      -result.shipping_discount!-result.shopee_voucher_discount!
+    if(expected!==result.original_total)
+      result.warnings.push('Thành tiền không khớp tổng tiền hàng, phí vận chuyển và voucher')
+  }
   return result
 }
 
@@ -357,6 +461,9 @@ export function formatParsedOrderSummary(parsed:ParsedShopeeOrderText){
   if(parsed.recipient_name||parsed.recipient_phone)parts.push('Người nhận')
   if(parsed.products.length)parts.push(parsed.products.length+' sản phẩm')
   if(parsed.total_goods!==undefined)parts.push('Tổng tiền hàng')
-  if(parsed.cod!==undefined)parts.push('Thành tiền')
+  if(parsed.detected_status==='CANCELLED')parts.push('Đã hủy · không thu COD')
+  if(parsed.original_total!==undefined)parts.push(parsed.detected_status==='CANCELLED'?'Thành tiền trước hủy':'Thành tiền')
+  if(parsed.detected_status==='PENDING_SHOPEE_CONFIRMATION')parts.push('Shopee đang xét duyệt')
+  if(parsed.payment_method==='COD')parts.push('Thanh toán khi nhận hàng')
   return parts.join(' · ')
 }

@@ -181,6 +181,9 @@ export function OrderEditorForm({
   const [cod,setCod]=useState<number|string>(mode==='create'?'':values.cod??0)
   const [orderText,setOrderText]=useState('')
   const [recognitionMessage,setRecognitionMessage]=useState('')
+  const [shopeeReviewPending,setShopeeReviewPending]=useState(false)
+  const [shopeeCancellationDetected,setShopeeCancellationDetected]=useState(false)
+  const [shopeeCancelled,setShopeeCancelled]=useState(String(values.order_status??'').toUpperCase()==='CANCELLED')
   const [items,setItems]=useState<Item[]>(initialItems.length?initialItems:[emptyItem()])
   const [vouchers,setVouchers]=useState<Voucher[]>(initialVouchers.length?initialVouchers:[emptyVoucher()])
   const [trackingNumber,setTrackingNumber]=useState(String(values.tracking_number??''))
@@ -356,6 +359,11 @@ export function OrderEditorForm({
       return
     }
 
+    const cancelled=parsed.detected_status==='CANCELLED'
+    setShopeeCancellationDetected(cancelled)
+    setShopeeCancelled(cancelled)
+    setShopeeReviewPending(parsed.detected_status==='PENDING_SHOPEE_CONFIRMATION')
+    if(parsed.payment_status==='UNPAID'&&mode==='create')setPaymentStatus('UNPAID')
     if(parsed.shopee_order_id)setShopeeOrderId(parsed.shopee_order_id)
     if(parsed.order_date_local)setOrderDateLocal(parsed.order_date_local)
 
@@ -363,9 +371,12 @@ export function OrderEditorForm({
     if(parsed.tracking_number){
       setTrackingNumber(parsed.tracking_number)
       detectedCarrier=detectCarrierConfig(parsed.tracking_number,carrierConfigs)
-      setCarrier(detectedCarrier?.display_name??'')
-      setCarrierEdited(false)
-      setShippingService('STANDARD')
+      // Đơn hủy vẫn lưu MVĐ; không tự xóa/chuyển dịch vụ vận chuyển đã chọn.
+      if(!cancelled||detectedCarrier){
+        setCarrier(detectedCarrier?.display_name??'')
+        setCarrierEdited(false)
+      }
+      if(!cancelled)setShippingService('STANDARD')
     }
 
     if(parsed.recipient_name)setRecipientName(parsed.recipient_name)
@@ -402,6 +413,7 @@ export function OrderEditorForm({
     }
 
     if(parsed.cod!==undefined)setCod(parsed.cod)
+    // Không suy đoán COD nếu Shopee không có dữ liệu.
 
     const parsedGoodsTotal=parsed.products.reduce(
       (sum,item)=>sum+Number(item.original_price??item.final_price??0)*Math.max(1,Number(item.quantity??1)||1),
@@ -415,14 +427,20 @@ export function OrderEditorForm({
     setRecognitionMessage(
       'Đã nhận diện: '+summary+
       goodsCheck+
-      (parsed.detected_status==='DELIVERED'?' · trạng thái Shopee: Giao thành công':'')
+      (parsed.detected_status==='DELIVERED'?' · trạng thái Shopee: Giao thành công':'')+
+      (cancelled?' · Trạng thái Shopee: Đã hủy · dừng Tracking · giữ dữ liệu lịch sử':'')+
+      (cancelled&&parsed.original_total!==undefined?' · Thành tiền trước hủy '+formatVnd(parsed.original_total):'')+
+      (cancelled&&parsed.cancelled_date_local?' · Hủy lúc '+parsed.cancelled_date_local.slice(8,10)+'/'+parsed.cancelled_date_local.slice(5,7)+'/'+parsed.cancelled_date_local.slice(0,4)+' '+parsed.cancelled_date_local.slice(11,16):'')+
+      (!parsed.order_date_local?' · Chưa có ngày đặt, vui lòng kiểm tra':'')+
+      (parsed.warnings.length?' · CẢNH BÁO: '+parsed.warnings.join('; '):'')
     )
   }
 
-  return <form action={action} className="panel-form panel-scroll order-editor">
+  return <form action={action} className="panel-form panel-scroll order-editor" data-shopee-recognizer={mode==='create'?'cancelled-v1':undefined}>
     <input type="hidden" name="return_query" value={returnQuery}/>
     <input type="hidden" name="erp_user_id" value={selectedUserId}/>
     <input type="hidden" name="shipping_service" value={shippingService}/>
+    <input type="hidden" name="recognized_shopee_status" value={shopeeCancelled?'CANCELLED':''}/>
     <input type="hidden" name="area" value={shippingService==='EXPRESS'?'':derivedArea}/>
     {mode==='edit'&&<input type="hidden" name="order_id" value={values.id}/>}
 
@@ -436,7 +454,10 @@ export function OrderEditorForm({
       <textarea
         rows={5}
         value={orderText}
-        onChange={e=>{setOrderText(e.target.value);setRecognitionMessage('')}}
+        onChange={e=>{
+          setOrderText(e.target.value)
+          setRecognitionMessage('')
+        }}
         placeholder="Dán nội dung Chi tiết đơn hàng Shopee vào đây..."
       />
       <div className="order-text-recognizer-actions">
@@ -486,17 +507,28 @@ export function OrderEditorForm({
       <div className="form-grid">
         <div className="derived-order-state">
           <span>Trạng thái đơn</span>
-          <b>{trackingNumberMeansCancelled(trackingNumber)?'Đơn bị huỷ'
+          <b>{shopeeCancelled?'Đã hủy · Shopee'
+            :trackingNumberMeansCancelled(trackingNumber)?'Đơn bị huỷ'
             :shippingService==='EXPRESS'
               ? trackingNumber.trim()?'Đang xử lý · Hỏa tốc':'Hỏa tốc · Chưa có MVĐ'
-              : trackingNumber.trim()?'Đang xử lý · Theo Tracking':'Đang chờ duyệt'}</b>
-          <small>{trackingNumberMeansCancelled(trackingNumber)
+              : trackingNumber.trim()?'Đang xử lý · Theo Tracking'
+                : shopeeReviewPending?'Chờ Shopee xác nhận':'Đang chờ duyệt'}</b>
+          <small>{shopeeCancelled?'Đơn đã hủy: không Tracking/nhập kho; dữ liệu thanh toán và COD lịch sử vẫn được giữ, không tự phát sinh khoản phải thu.'
+            :trackingNumberMeansCancelled(trackingNumber)
             ? 'Mã KHÔNG CÓ sẽ huỷ đơn và tắt Tracking/HUB.'
             : shippingService==='EXPRESS'
               ? trackingNumber.trim()?'Có MVĐ · trạng thái giao cập nhật thủ công · không Tracking/HUB':'Cần bổ sung Mã vận đơn Hỏa tốc'
-              : trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ':'Chờ mã vận đơn'}</small>
+              : trackingNumber.trim()?'Trạng thái vận chuyển tự cập nhật từ MVĐ'
+                : shopeeReviewPending?'Shopee đang xét duyệt; chưa có MVĐ, không tự Tracking':'Chờ mã vận đơn'}</small>
         </div>
       </div>
+      {(shopeeCancellationDetected||shopeeCancelled)&&<label className="shopee-cancel-review">
+        <input type="checkbox" checked={shopeeCancelled} onChange={e=>{
+          setShopeeCancelled(e.target.checked)
+          // Đánh dấu hủy không xóa thông tin vận chuyển hoặc giá trị.
+        }}/>
+        Xác nhận đơn đã hủy theo Shopee (giữ toàn bộ dữ liệu, chỉ dừng Tracking)
+      </label>}
     </section>
 
     <section className="form-section">
@@ -609,7 +641,7 @@ export function OrderEditorForm({
           {selectedUser?.phone&&recipientPhoneAuto&&<small className="field-help">Đã tự điền từ SĐT liên kết của Username; có thể sửa.</small>}
         </label>
       </div>
-      <label>Địa chỉ nhận
+      <label>Địa chỉ nhận hàng
         <textarea
           name="recipient_address"
           rows={3}
@@ -810,19 +842,19 @@ export function OrderEditorForm({
         ? <input type="hidden" name="cod" value="0"/>
         : <div className="order-cod-section">
             <label>COD
-              <input name="cod" inputMode="decimal" required
+              <input name="cod" inputMode="decimal" required={!shopeeCancelled}
                 value={cod} onChange={e=>setCod(e.target.value)}
                 placeholder="Nhập COD sau khi kiểm tra sản phẩm / voucher"/>
               <small className="field-help">Số tiền cần thu khi giao. Có thể nhập 0 nếu không thu COD.</small>
             </label>
           </div>}
       <div className="order-value-summary" aria-live="polite">
-        <span>Giá trị đơn hàng</span>
+        <span>{shopeeCancelled?'Giá trị / COD lịch sử (không thu)':'Giá trị đơn hàng'}</span>
         <strong>{(()=>{
           const amount=resolveOrderValue({paymentStatus,prepaidAmount,cod:paymentStatus==='PAID'?0:cod})
           return amount===null?'Chưa đủ dữ liệu':new Intl.NumberFormat('vi-VN').format(amount)+' ₫'
         })()}</strong>
-        <small>{paymentStatus==='PAID'?'Bằng số tiền đã thanh toán · COD = 0':
+        <small>{shopeeCancelled?'Đã hủy nên không thu COD, nhưng giá trị lịch sử vẫn lưu':paymentStatus==='PAID'?'Bằng số tiền đã thanh toán · COD = 0':
           paymentStatus==='PARTIAL'?'Số tiền đã thanh toán + COD':'Bằng số tiền COD'}</small>
       </div>
     </section>
