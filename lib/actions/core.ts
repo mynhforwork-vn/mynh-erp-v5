@@ -474,19 +474,19 @@ export async function createOrder(formData:FormData){
   const cancelledByMarker=trackingNumberMeansCancelled(trackingNumber)
   const cancelledByShopee=text(formData.get('recognized_shopee_status'))==='CANCELLED'
   const cancelled=cancelledByMarker||cancelledByShopee
-  // Không ghi MVĐ cho đơn Shopee đã hủy; giữ nguyên marker KHÔNG CÓ cũ.
-  const effectiveTrackingNumber=cancelledByShopee?'':trackingNumber
-  const carrier=cancelled?null:isExpress
+  // Hủy chỉ dừng Tracking; giữ MVĐ, ĐVVC và giá trị lịch sử.
+  const effectiveTrackingNumber=trackingNumber
+  const carrier=isExpress
     ? (effectiveTrackingNumber?'Hỏa tốc':null)
     : await resolveCarrierName(supabase,effectiveTrackingNumber,text(formData.get('carrier')))
   const usesDestinationHub=!cancelled&&!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const matchedHub=usesDestinationHub?await destinationHubFromAddress(
     supabase,text(formData.get('recipient_address')),carrier):null
-  const effectiveHub=usesDestinationHub
-    ?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''): ''
+  const effectiveHub=cancelled?text(formData.get('destination_hub'))
+    :usesDestinationHub?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''):''
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
   const orderStatus=cancelled?'CANCELLED':isExpress?'PROCESSING':(effectiveTrackingNumber?'PROCESSING':'PENDING')
-  const paymentStatus=cancelledByShopee?'UNPAID':(text(formData.get('payment_status'))||'UNPAID')
+  const paymentStatus=text(formData.get('payment_status'))||'UNPAID'
   const prepaid=parsePrepaidMetadata({
     paymentStatus,
     amount:formData.get('prepaid_amount'),
@@ -503,7 +503,7 @@ export async function createOrder(formData:FormData){
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
     p_destination_hub:effectiveHub||null,
-    p_cod:cancelledByShopee?0:resolveOrderCod(paymentStatus,formData.get('cod')),
+    p_cod:resolveOrderCod(paymentStatus,formData.get('cod')),
     p_order_status:orderStatus,
     p_payment_status:paymentStatus,
     p_tracking_number:effectiveTrackingNumber||null,
@@ -513,7 +513,8 @@ export async function createOrder(formData:FormData){
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  const derivedArea=usesDestinationHub?(text(formData.get('area'))||matchedHub?.area||null):null
+  const derivedArea=cancelled?text(formData.get('area'))||null
+    :usesDestinationHub?(text(formData.get('area'))||matchedHub?.area||null):null
   if(data){
     const {error:orderMetaError}=await supabase.from('orders').update({
       area:derivedArea,
@@ -559,19 +560,19 @@ export async function updateOrder(formData:FormData){
   const cancelledByMarker=trackingNumberMeansCancelled(trackingNumber)
   const cancelledByShopee=text(formData.get('recognized_shopee_status'))==='CANCELLED'
   const cancelled=cancelledByMarker||cancelledByShopee
-  // Không ghi MVĐ cho đơn Shopee đã hủy; giữ nguyên marker KHÔNG CÓ cũ.
-  const effectiveTrackingNumber=cancelledByShopee?'':trackingNumber
-  const carrier=cancelled?null:isExpress
+  // Hủy chỉ dừng Tracking; giữ MVĐ, ĐVVC và giá trị lịch sử.
+  const effectiveTrackingNumber=trackingNumber
+  const carrier=isExpress
     ? (effectiveTrackingNumber?'Hỏa tốc':null)
     : await resolveCarrierName(supabase,effectiveTrackingNumber,text(formData.get('carrier')))
   const usesDestinationHub=!cancelled&&!isExpress&&await carrierUsesDestinationHub(supabase,carrier)
   const matchedHub=usesDestinationHub?await destinationHubFromAddress(
     supabase,text(formData.get('recipient_address')),carrier):null
-  const effectiveHub=usesDestinationHub
-    ?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''): ''
+  const effectiveHub=cancelled?text(formData.get('destination_hub'))
+    :usesDestinationHub?text(formData.get('destination_hub'))||(matchedHub?.hub_code??''):''
   const orderDate=localDateTime(formData.get('order_date'))??new Date().toISOString()
   const orderStatus=cancelled?'CANCELLED':isExpress?'PROCESSING':(effectiveTrackingNumber?'PROCESSING':'PENDING')
-  const paymentStatus=cancelledByShopee?'UNPAID':(text(formData.get('payment_status'))||'UNPAID')
+  const paymentStatus=text(formData.get('payment_status'))||'UNPAID'
   const prepaid=parsePrepaidMetadata({
     paymentStatus,
     amount:formData.get('prepaid_amount'),
@@ -589,7 +590,7 @@ export async function updateOrder(formData:FormData){
     p_recipient_phone:text(formData.get('recipient_phone'))||null,
     p_recipient_address:text(formData.get('recipient_address'))||null,
     p_destination_hub:effectiveHub||null,
-    p_cod:cancelledByShopee?0:resolveOrderCod(paymentStatus,formData.get('cod')),
+    p_cod:resolveOrderCod(paymentStatus,formData.get('cod')),
     p_order_status:orderStatus,
     p_payment_status:paymentStatus,
     p_tracking_number:effectiveTrackingNumber||null,
@@ -599,7 +600,8 @@ export async function updateOrder(formData:FormData){
     p_vouchers:voucherPayload(formData),
   })
   if(error)throw new Error(error.message)
-  const derivedArea=usesDestinationHub?(text(formData.get('area'))||matchedHub?.area||null):null
+  const derivedArea=cancelled?text(formData.get('area'))||null
+    :usesDestinationHub?(text(formData.get('area'))||matchedHub?.area||null):null
   const {error:orderMetaError}=await supabase.from('orders').update({
     area:derivedArea,
     destination_hub:effectiveHub||null,

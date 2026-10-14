@@ -285,10 +285,11 @@ export function parseShopeeOrderText(input:string):ParsedShopeeOrderText{
     const n=nextMoney(lines,codIndex)
     if(n!==null){
       result.original_total=n
-      // Đơn hủy không có tiền cần thu, dù trang Shopee còn hiển thị
-      // lịch sử "Vui lòng thanh toán" và Thành tiền ban đầu.
-      result.cod=result.detected_status==='CANCELLED'?0:n
-      result.confidence.cod=result.detected_status!=='CANCELLED'
+      // "Thành tiền" và COD là dữ liệu lịch sử, không phải khoản phải thu khi đã hủy.
+      if(result.detected_status!=='CANCELLED'||result.payment_method==='COD'){
+        result.cod=n
+        result.confidence.cod=true
+      }
     }
   }
 
