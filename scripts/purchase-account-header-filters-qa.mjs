@@ -45,7 +45,7 @@ try{
     response=await page.goto(base+'/purchase/accounts?range=all',
       {waitUntil:'domcontentloaded',timeout:45000})
     if(response?.status()===200&&await page.locator(
-      '.account-table-card table[data-account-filter-version="header-v1"]').count()===1)break
+      '.account-table-card table[data-account-filter-version="header-v2"]').count()===1)break
     if(attempt===17)throw Error('Preview has not deployed per-header filter code')
     await page.waitForTimeout(10000)
   }
@@ -134,6 +134,10 @@ try{
     // All original data headings must be present when lane can fit them.
     const allHeaders=await page.locator('th[data-account-col]').count()
     check('1440 all 13 data headings have filters',allHeaders===13)
+    // Every column menu may contain radio lists or the SPC select only.
+    // No text/date/number/search input is permitted anywhere in the menus.
+    const typed=await page.locator('.account-heading-filter-menu input:not([type="radio"])').count()
+    check('1440 all column filters are selection-only',typed===0,{manualFields:typed})
 
     // Time filter is also choice-only: available day labels come from
     // actual User data; no manual date input is permitted.
