@@ -149,7 +149,7 @@ try{
         intentionallyCompact:!head&&card.clientWidth<1020,
         cells:cells.length,
         numeric:cells.every(el=>/^([0-9]+|—)$/.test(el.textContent?.trim()??'')),
-        width:Math.round(rect(head).width),
+        width:head?Math.round(rect(head).width):0,
         clipped:cells.some(el=>rect(el).right>rect(table).right+3),
         overflow:document.documentElement.scrollWidth>innerWidth+6,
         cardFits:rect(card).right<=innerWidth+4,
