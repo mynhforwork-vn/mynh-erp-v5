@@ -254,7 +254,9 @@ export function PurchaseAccountTable({
   // A narrow lane displays every selected field in labeled responsive rows.
   // This preserves the user's column visibility and order preferences.
   const shownColumns=allShownColumns
-  const stacked=tableLaneWidth>0&&tableLaneWidth<1020
+  // 1280px Desktop retains the standard resizable table when its list
+  // lane is usable; the right drawer still switches to full labeled rows.
+  const stacked=tableLaneWidth>0&&tableLaneWidth<980
   const colSpan=shownColumns.length+(canManage?1:0)
   // Hydration/column preferences may overwrite an earlier DOM-level fit.
   // Force a second lane-based measurement after React has committed the
