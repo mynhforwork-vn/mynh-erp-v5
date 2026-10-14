@@ -5,7 +5,7 @@ import { ERPUserInlineForm } from '@/components/erp-user-inline-form'
 import { ERPAccountFilterForm } from '@/components/erp-account-filter-form'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
-import { deleteERPUserPermanent } from '@/lib/actions/core'
+import { DeleteERPUserConfirmForm } from '@/components/delete-erp-user-confirm-form'
 import { PurchaseAccountTable } from '@/components/purchase-account-table'
 import { VoucherTags } from '@/components/voucher-tags'
 import { UserBulkImport } from '@/components/user-bulk-import'
@@ -688,6 +688,12 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                       </ERPUserInlineForm>
 
                     </>}
+                {Number(selected.order_count??0)===0
+                  ? <div className="permanent-delete-box erp-confirm-detail-entry">
+                      <div><b>Xóa vĩnh viễn User</b><span>Chỉ User không có đơn liên kết, yêu cầu xác nhận Username.</span></div>
+                      <DeleteERPUserConfirmForm userId={String(selected.id)} username={String(selected.username)} returnQuery={detailQuery}/>
+                    </div>
+                  : <div className="record-lifecycle-action"><span>User còn đơn liên kết: chỉ có thể lưu trữ.</span></div>}
               </div>}
             </>}
 
