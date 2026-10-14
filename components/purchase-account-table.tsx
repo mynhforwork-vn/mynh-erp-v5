@@ -81,8 +81,9 @@ export function PurchaseAccountTable({
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
   const columnMenuRef=useRef<HTMLDivElement|null>(null)
   const tableCardRef=useRef<HTMLDivElement|null>(null)
-  // An invisible readiness marker separates SSR markup from hydrated controls.
-  useEffect(()=>{tableCardRef.current?.setAttribute('data-client-ready','true')},[])
+  // Declarative marker: React renders it only after the account table hydrates.
+  const [clientReady,setClientReady]=useState(false)
+  useEffect(()=>{setClientReady(true)},[])
   // One pending query for ALL header menus prevents a later filter tick from
   // restoring stale selections while the previous router transition is pending.
   const filterQueryRef=useRef(detailQuery)
@@ -518,7 +519,7 @@ export function PurchaseAccountTable({
         </div>)}
       </div>,document.body)}
 
-    <div className="card table-card account-table-card" ref={tableCardRef}>
+    <div className="card table-card account-table-card" ref={tableCardRef} data-client-ready={clientReady?'true':undefined}>
       <table className={'table user-table mynh-p1-semantic-table'+(stacked?' account-table-stacked':'')}
         data-auto-fit-version="7" data-account-filter-version="header-v3"
         data-account-layout={stacked?'stacked':'columns'} style={tableWidths}>

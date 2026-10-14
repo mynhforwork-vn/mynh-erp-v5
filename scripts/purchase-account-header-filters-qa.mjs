@@ -88,7 +88,20 @@ try{
   }
   if(!ready)throw Error('Preview not ready at '+viewport.width)
   // React hydration must complete before asserting strict client-side navigation.
-  await page.locator('.account-table-card[data-client-ready="true"]').waitFor({timeout:25000})
+  try{
+    await page.locator('.account-table-card[data-client-ready="true"]').waitFor({timeout:25000})
+  }catch(error){
+    const diagnostic=await page.evaluate(()=>({
+      ready:document.querySelector('.account-table-card')?.getAttribute('data-client-ready'),
+      dom:!!document.querySelector('.account-table-card'),
+      url:location.pathname+location.search,
+      scripts:document.scripts.length,
+    })).catch(()=>null)
+    console.log('ACCOUNT_HEADER_HYDRATION_DIAGNOSTIC '+JSON.stringify({
+      viewport:viewport.width,diagnostic,message:String(error).slice(0,180),
+    }))
+    throw error
+  }
   await page.evaluate(()=>window.__accountHeaderNoReload=true)
 
   const geo=await page.evaluate(()=>{
