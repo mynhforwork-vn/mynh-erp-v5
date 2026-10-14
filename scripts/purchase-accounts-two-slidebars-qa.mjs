@@ -110,7 +110,7 @@ try{
   const page=await ctx.newPage()
   try{
   await page.goto(base+'/purchase/accounts',{waitUntil:'domcontentloaded',timeout:45000})
-  const marker=page.locator('.account-table-card table[data-auto-fit-version="5"]')
+  const marker=page.locator('.account-table-card table[data-auto-fit-version="6"]')
   for(let i=0;i<12&&!(await marker.count());i++){
     await page.waitForTimeout(5000);await page.reload({waitUntil:'domcontentloaded',timeout:45000})
   }
