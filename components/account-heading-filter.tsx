@@ -1,7 +1,8 @@
 'use client'
 
-import {useEffect,useId,useState,type FormEvent} from 'react'
+import {useEffect,useId,useRef,useState} from 'react'
 import {useRouter} from 'next/navigation'
+import {readAccountFilterValues,writeAccountFilterValues} from '@/lib/account-heading-filter-values'
 
 export type AccountHeadingFilterKind='text'|'choices'|'numeric'|'date'
 export type AccountHeadingOption={value:string,label:string}
@@ -14,7 +15,7 @@ function FilterIcon(){
   </svg>
 }
 
-/** Tất cả điều kiện lấy từ dữ liệu thực, chỉ tick chọn; không nhập giá trị. */
+/** Tìm trong các giá trị hiện có; tick chọn nhiều và áp dụng tức thì qua Router. */
 export function AccountHeadingFilter({
   name,label,kind='choices',value='',options=[],baseQuery='',secondary,from='',to='',
 }:{
@@ -25,59 +26,80 @@ export function AccountHeadingFilter({
   const router=useRouter()
   const id=useId()
   const [opened,setOpened]=useState(false)
-  const current=kind==='date'?(from&&from===to?from:'all'):(value||'all')
-  const [selected,setSelected]=useState(current)
-  const [selectedSecondary,setSelectedSecondary]=useState(secondary?.value||'all')
+  const [lookup,setLookup]=useState('')
+  const fromLegacy=kind==='date'&&!value&&from&&from===to?from:''
+  const current=value||fromLegacy
+  const [selected,setSelected]=useState<string[]>(()=>readAccountFilterValues(current))
+  const [secondarySelected,setSecondarySelected]=useState<string[]>(
+    ()=>readAccountFilterValues(secondary?.value))
+  const pending=useRef('')
   useEffect(()=>{
-    setSelected(current)
-    setSelectedSecondary(secondary?.value||'all')
+    setSelected(readAccountFilterValues(current))
+    setSecondarySelected(readAccountFilterValues(secondary?.value))
+    pending.current=''
   },[current,secondary?.value])
-  const active=(kind==='date'?Boolean(from||to):Boolean(value&&value!=='all'))
-    ||Boolean(secondary?.value&&secondary.value!=='all')
+  const active=selected.length>0||secondarySelected.length>0
+    ||Boolean(kind==='date'&&(from||to))
+  const query=lookup.trim().toLocaleLowerCase('vi')
+  const displayed=opened?options.filter(opt=>
+    !query||opt.label.toLocaleLowerCase('vi').includes(query)
+    ||opt.value.toLocaleLowerCase('vi').includes(query)
+  ):[]
 
-  function submit(next:string,other=selectedSecondary){
-    const q=new URLSearchParams(baseQuery)
+  function navigate(next:string[],nextSecondary:string[]=secondarySelected){
+    const q=new URLSearchParams(pending.current||(
+      typeof window!=='undefined'?window.location.search:baseQuery
+    ))
+    const encoded=writeAccountFilterValues(next)
+    if(encoded)q.set(name,encoded)
+    else q.delete(name)
     if(kind==='date'){
-      if(!next||next==='all'){
-        q.delete('cf_createdAt_from')
-        q.delete('cf_createdAt_to')
-      }else{
-        q.set('cf_createdAt_from',next)
-        q.set('cf_createdAt_to',next)
-      }
-    }else if(!next||next==='all')q.delete(name)
-    else q.set(name,next)
-    if(secondary){
-      if(!other||other==='all')q.delete(secondary.name)
-      else q.set(secondary.name,other)
+      // New multi-day selection supersedes legacy single-range query keys.
+      q.delete('cf_createdAt_from')
+      q.delete('cf_createdAt_to')
     }
-    const qs=q.toString()
-    router.push('/purchase/accounts'+(qs?'?'+qs:''),{scroll:false})
-    const popup=document.getElementById(id)
-    if(popup?.matches(':popover-open'))(popup as HTMLElement).hidePopover()
+    if(secondary){
+      const extra=writeAccountFilterValues(nextSecondary)
+      if(extra)q.set(secondary.name,extra)
+      else q.delete(secondary.name)
+    }
+    pending.current=q.toString()
+    router.push('/purchase/accounts'+(pending.current?'?'+pending.current:''),{scroll:false})
   }
-  function apply(e:FormEvent<HTMLFormElement>){
-    e.preventDefault()
-    submit(selected)
+  function toggle(val:string,isSecondary=false){
+    if(isSecondary){
+      const next=secondarySelected.includes(val)
+        ?secondarySelected.filter(x=>x!==val):[...secondarySelected,val]
+      setSecondarySelected(next)
+      navigate(selected,next)
+    }else{
+      const next=selected.includes(val)
+        ?selected.filter(x=>x!==val):[...selected,val]
+      setSelected(next)
+      navigate(next)
+    }
+  }
+  function clear(){
+    setSelected([])
+    setSecondarySelected([])
+    setLookup('')
+    navigate([],[])
   }
   function place(button:HTMLButtonElement){
     const popup=document.getElementById(id)
     if(!popup)return
     const rect=button.getBoundingClientRect()
-    const width=Math.min(270,window.innerWidth-16)
+    const width=Math.min(258,window.innerWidth-16)
     popup.style.setProperty('--account-head-filter-x',
       Math.max(8,Math.min(rect.left,window.innerWidth-width-8))+'px')
     popup.style.setProperty('--account-head-filter-y',
-      Math.max(8,Math.min(rect.bottom+5,window.innerHeight-290))+'px')
+      Math.max(8,Math.min(rect.bottom+4,window.innerHeight-292))+'px')
   }
   return <>
     <button type="button" className={'account-heading-filter-trigger'+(active?' is-active':'')}
       popoverTarget={id} aria-controls={id} aria-haspopup="dialog"
       aria-label={'Lọc cột '+label+(active?' (đang lọc)':'')}
       title={'Lọc '+label} onClick={e=>{
-        // Native popover can open before React emits onToggle (especially
-        // immediately after RSC hydration). Mount the real data choices on
-        // the actual click, never leave only the 'Tất cả' fallback visible.
         setOpened(true)
         place(e.currentTarget)
       }}>
@@ -86,7 +108,10 @@ export function AccountHeadingFilter({
     <div id={id} popover="auto" role="dialog"
       className="account-heading-filter-menu" aria-label={'Bộ lọc cột '+label}
       onToggle={event=>{
-        if(!event.currentTarget.matches(':popover-open'))setOpened(false)
+        if(!event.currentTarget.matches(':popover-open')){
+          setOpened(false)
+          setLookup('')
+        }
       }}
       onKeyDown={event=>{
         if(event.key==='Escape'){
@@ -95,40 +120,43 @@ export function AccountHeadingFilter({
           event.currentTarget.hidePopover()
         }
       }}>
-      <div className="account-heading-filter-title">Lọc theo {label}</div>
-      <form onSubmit={apply} className="account-heading-filter-form">
-        <div className="account-heading-filter-options" role="radiogroup"
-          aria-label={'Chọn giá trị '+label}>
-          <label className="account-heading-filter-option">
-            <input type="radio" name={id+'-value'} checked={!selected||selected==='all'}
-              onChange={()=>setSelected('all')}/>
-            <span>Tất cả</span>
-          </label>
-          {opened&&options.map(option=><label key={option.value}
-            className="account-heading-filter-option">
-            <input type="radio" name={id+'-value'} checked={selected===option.value}
-              onChange={()=>setSelected(option.value)}/>
-            <span title={option.label}>{option.label}</span>
+      <div className="account-heading-filter-title">
+        <span>{label}</span>
+        {selected.length>0&&<span className="account-heading-filter-selected">
+          {selected.length} đã chọn
+        </span>}
+      </div>
+      <div className="account-heading-filter-form">
+        <input type="search" className="account-heading-filter-search"
+          value={lookup} onChange={e=>setLookup(e.target.value)}
+          placeholder="Nhập để tìm trong dữ liệu"
+          aria-label={'Tìm trong danh sách '+label} autoComplete="off"/>
+        <div className="account-heading-filter-options" role="group"
+          aria-label={'Chọn các giá trị '+label}>
+          {displayed.map(opt=><label key={opt.value} className="account-heading-filter-option">
+            <input type="checkbox" checked={selected.includes(opt.value)}
+              onChange={()=>toggle(opt.value)}/>
+            <span title={opt.label}>{opt.label}</span>
           </label>)}
-          {opened&&options.length===0&&<span className="account-heading-filter-empty">
-            Chưa có dữ liệu để lọc
+          {opened&&displayed.length===0&&<span className="account-heading-filter-empty">
+            {options.length?'Không tìm thấy giá trị phù hợp':'Chưa có dữ liệu'}
           </span>}
         </div>
         {secondary&&<>
-          <label htmlFor={id+'-secondary'}>{secondary.label}</label>
-          <select id={id+'-secondary'} value={selectedSecondary}
-            onChange={e=>setSelectedSecondary(e.target.value)}>
-            <option value="all">Tất cả</option>
-            {secondary.options.map(o=><option value={o.value} key={o.value}>
-              {o.label}
-            </option>)}
-          </select>
+          <div className="account-heading-filter-subtitle">{secondary.label}</div>
+          <div className="account-heading-filter-options account-heading-filter-secondary"
+            role="group" aria-label={'Chọn '+secondary.label}>
+            {secondary.options.map(opt=><label key={opt.value} className="account-heading-filter-option">
+              <input type="checkbox" checked={secondarySelected.includes(opt.value)}
+                onChange={()=>toggle(opt.value,true)}/>
+              <span title={opt.label}>{opt.label}</span>
+            </label>)}
+          </div>
         </>}
         <div className="account-heading-filter-actions">
-          <button type="button" onClick={()=>submit('all','all')}>Xóa lọc</button>
-          <button type="submit" className="button primary small">Áp dụng</button>
+          <button type="button" onClick={clear}>Xóa lọc</button>
         </div>
-      </form>
+      </div>
     </div>
   </>
 }
