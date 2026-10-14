@@ -5,6 +5,7 @@ const api=src('app/api/alerts/in-app/route.ts')
 const ui=src('components/in-app-alert-center.tsx')
 const model=src('lib/notification-order-presentation.ts')
 const schedule=src('lib/notification-quiet-hours.ts')
+const migration=src('supabase/migrations/0070_persistent_failed_delivery_reminders.sql')
 let passed=0
 function check(label,condition){assert.ok(condition,label);passed++}
 check('Uses live shipment status without a second API read',api.includes('shipments(tracking_number,carrier,is_active,current_tracking_status)'))
@@ -17,4 +18,8 @@ check('UI acknowledges without clearing persistent failure',ui.includes("x.remin
 check('UI keeps persistent failures in unread counter after read all',ui.includes('current.items.filter(x=>x.reminder_active===true).length'))
 check('Existing 5-minute notification polling unchanged',schedule.includes('NOTIFICATION_POLL_MS=5*60*1000'))
 check('No new notification POST loops',!ui.includes('setInterval('))
+check('Long-lived failures survive the 30-day window in staged RPC migration',migration.includes("or (a.alert_type='DELIVERY_FAILED'"))
+check('Legacy RPC keeps security definer',migration.includes('SECURITY DEFINER'))
+check('Unresolved failures rank ahead of newer settled notices at RPC cap',migration.includes('order by g.persistent_failure desc'))
+check('Migration is independently gated and has no mutation of alert rows',!migration.includes('UPDATE public.alert_events')&&!migration.includes('DELETE FROM public.alert_events'))
 console.log('DELIVERY_FAILURE_CONTRACT_QA_SUMMARY '+JSON.stringify({passed,failed:0}))
