@@ -232,10 +232,21 @@ export function PurchaseAccountTable({
   const selectedRows=useMemo(()=>rows.filter((row:any)=>selectedSet.has(String(row.id))),[rows,selectedSet])
   const selectedArchived=selectedRows.length>0&&selectedRows.every((row:any)=>Boolean(row.archived_at))
   const allSelected=rows.length>0&&rows.slice(0,200).every((row:any)=>selectedSet.has(String(row.id)))
-  const colSpan=useMemo(()=>visible.length+(canManage?1:0),[visible,canManage])
   // Auto Fit: one width allocation for Desktop, Tablet, Mobile and right drawer.
   // Numeric fields stay compact; meaningful text and Voucher expand as space permits.
-  const shownColumns=columnOrder.filter(isVisible)
+  const allShownColumns=columnOrder.filter(isVisible)
+  // Vùng rất hẹp phải giữ các thao tác thiết yếu còn dùng được: không ép
+  // 14 cột xuống 12px. Cột khác vẫn có ở User detail và tự trở lại
+  // khi sidebar/slidebar đóng, không ghi đè lựa chọn ẩn/hiện đã lưu.
+  const compactKeys=tableLaneWidth>0&&tableLaneWidth<330
+    ?['username','phone','orders']
+    :tableLaneWidth>0&&tableLaneWidth<650
+      ?['username','phone','status','orders','voucher']
+      :null
+  const shownColumns=compactKeys
+    ?allShownColumns.filter(key=>compactKeys.includes(key))
+    :allShownColumns
+  const colSpan=shownColumns.length+(canManage?1:0)
   // Hydration/column preferences may overwrite an earlier DOM-level fit.
   // Force a second lane-based measurement after React has committed the
   // responsive widths; never reuse widths from the previous sidebar state.
@@ -459,7 +470,8 @@ export function PurchaseAccountTable({
       </div>,document.body)}
 
     <div className="card table-card account-table-card" ref={tableCardRef}>
-      <table className="table user-table mynh-p1-semantic-table" data-auto-fit-version="6" style={tableWidths}>
+      <table className="table user-table mynh-p1-semantic-table" data-auto-fit-version="6" style={tableWidths}
+        title={compactKeys?'Bảng gọn theo vùng hiển thị. Mở chi tiết User để xem đầy đủ thông tin.':undefined}>
         <colgroup>
           {canManage&&<col className="p1-account-col p1-account-col-select" style={fitCol(fitted[0])}/>}
           {shownColumns.map(k=><col key={k} className={'p1-account-col p1-account-col-'+k}
@@ -469,7 +481,7 @@ export function PurchaseAccountTable({
           {canManage&&<th className="bulk-select-col">
             <input type="checkbox" aria-label="Chọn tối đa 200 User" checked={allSelected} onChange={toggleSelectAll} disabled={!rows.length}/>
           </th>}
-          {columnOrder.filter(isVisible).map(renderHeader)}
+          {shownColumns.map(renderHeader)}
         </tr></thead>
         <tbody>
           {!rows.length
@@ -483,7 +495,7 @@ export function PurchaseAccountTable({
                     onChange={()=>toggleSelect(String(u.id))}
                   />
                 </td>}
-                {columnOrder.filter(isVisible).map(k=>renderCell(k,u,i))}
+                {shownColumns.map(k=>renderCell(k,u,i))}
               </tr>)}
         </tbody>
       </table>
