@@ -1128,7 +1128,8 @@ thead th.account-heading-filter-cell>.account-heading-filter-trigger.is-active{
   margin:0!important;padding:2px 8px!important;
   border:1px solid #cbdce9!important;
   border-radius:3px!important;
-  font:600 11px/1.4 inherit!important;
+  font-family:inherit!important;font-size:11px!important;
+  font-weight:600!important;line-height:1.4!important;
   white-space:nowrap!important;
   cursor:pointer!important;
 }
