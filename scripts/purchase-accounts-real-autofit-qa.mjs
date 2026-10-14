@@ -41,7 +41,17 @@ async function snap(page){
     const cols=[...table.querySelectorAll('colgroup col')]
     const width=e=>e.getBoundingClientRect().width
     const c=Object.fromEntries(heads.map(h=>[h.dataset.accountCol??'select',Math.round(width(h))]))
-    const aligned=heads.length===cols.length&&heads.every((h,i)=>Math.abs(width(h)-width(cols[i]))<=5)
+    const stacked=table.dataset.accountLayout==='stacked'
+    const expected=['number','username','platform','phone','email','status',
+      'mobile','browser','voucher','orders','deliveredOrders','createdAt','note']
+    const allFields=expected.every(key=>table.querySelector('thead th[data-account-col="'+key+'"]'))
+      &&[...table.querySelectorAll('tbody tr[data-account-id]')].every(tr=>
+        expected.every(key=>tr.querySelector('td[data-account-col="'+key+'"]')))
+    const labeled=stacked&&[...table.querySelectorAll('tbody tr[data-account-id]')].every(tr=>
+      expected.every(key=>Boolean(tr.querySelector('td[data-account-col="'+key+'"]')
+        ?.getAttribute('data-account-label'))))
+    const aligned=stacked?Boolean(labeled)
+      :heads.length===cols.length&&heads.every((h,i)=>Math.abs(width(h)-width(cols[i]))<=5)
     const tableRect=table.getBoundingClientRect()
     const lastHeader=heads.at(-1)?.getBoundingClientRect()
     const rightGap=lastHeader?Math.round(tableRect.right-lastHeader.right):999
@@ -49,10 +59,11 @@ async function snap(page){
     const leftGap=firstHeader?Math.round(firstHeader.left-tableRect.left):999
     // Prevent green QA while column DOM stops 140px short of the card,
     // exactly the regression reported by the real browser screenshots.
-    const headerCoverage=Math.abs(rightGap)<=5&&Math.abs(leftGap)<=5
+    const headerCoverage=stacked?Boolean(labeled)
+      :Math.abs(rightGap)<=5&&Math.abs(leftGap)<=5
     // Header isolation: Voucher/Số đơn text must not paint over the next
     // label, even when the resize handle is absolutely positioned.
-    const guarded=['voucher','orders','deliveredOrders'].every(key=>{
+    const guarded=stacked?Boolean(labeled):['voucher','orders','deliveredOrders'].every(key=>{
       const th=table.querySelector('thead th[data-account-col="'+key+'"]')
       if(!th)return true // user explicitly hid it
       const st=getComputedStyle(th)
@@ -63,8 +74,9 @@ async function snap(page){
       lane:Math.round(card.clientWidth),table:Math.round(width(table)),
       pageOverflow:document.documentElement.scrollWidth>innerWidth+5,
       horizontalScroll:card.scrollWidth>card.clientWidth+4,
-      scroll:/auto|scroll/.test(getComputedStyle(card).overflowX),
-      aligned,headerCoverage,guarded,leftGap,rightGap,
+      scroll:stacked?/auto|scroll/.test(getComputedStyle(card).overflowY)
+        :/auto|scroll/.test(getComputedStyle(card).overflowX),
+      stacked,allFields,labeled,aligned,headerCoverage,guarded,leftGap,rightGap,
       customized:table.classList.contains('mynh-resizable-table'),
       sameDocument:window.__mynhAccountQaDocument==='no-reload',
       storedManual:(()=>{
@@ -80,9 +92,10 @@ async function snap(page){
   })
 }
 function fit(s){return !!s&&s.sameDocument&&!s.pageOverflow&&!s.horizontalScroll
+  &&s.allFields&&(!s.stacked||s.labeled)
   &&s.aligned&&s.headerCoverage&&s.guarded&&s.scroll
   &&s.table>=s.lane-8&&s.table<=s.lane+4
-  &&s.col.username>=12&&(s.col.number===undefined||s.col.number<=48)}
+  &&s.col.username>=56&&(s.stacked||s.col.number<=48)}
 const ranges=[{width:1024,height:768},{width:1280,height:800},
   {width:1366,height:768},{width:1440,height:900},
   {width:1728,height:1117},{width:1920,height:1080}]
@@ -96,13 +109,19 @@ try{
   })))
   const page=await ctx.newPage()
   await page.goto(base+'/purchase/accounts',{waitUntil:'domcontentloaded',timeout:45000})
-  await page.locator('.account-table-card table[data-auto-fit-version="6"]').waitFor({timeout:25000})
+  await page.locator('.account-table-card table[data-auto-fit-version="7"]').waitFor({timeout:25000})
   // Only accept the hydrated, lane-fitted DOM. Do not accept any local
   // horizontal scrollbar, even in the narrow User detail lane (780/800px).
   await page.waitForFunction(()=>{
     const card=document.querySelector('.account-table-card')
-    const table=card?.querySelector('table[data-auto-fit-version="6"]')
-    if(!card||!table||!table.classList.contains('mynh-resizable-table'))return false
+    const table=card?.querySelector('table[data-auto-fit-version="7"]')
+    if(!card||!table)return false
+    if(table.dataset.accountLayout==='stacked'){
+      const keys=['number','username','platform','phone','email','status',
+        'mobile','browser','voucher','orders','deliveredOrders','createdAt','note']
+      if(!keys.every(k=>table.querySelector('th[data-account-col="'+k+'"]')))
+        return false
+    }else if(!table.classList.contains('mynh-resizable-table'))return false
     const rect=table.getBoundingClientRect()
     return rect.width<=card.clientWidth+4&&rect.width>=card.clientWidth-8
       &&card.scrollWidth<=card.clientWidth+4
@@ -206,8 +225,13 @@ try{
   await page.locator('.account-workspace>.account-detail-panel').waitFor({timeout:20000})
   before=await snap(page)
   check(viewport.width+' 1 right panel opened',fit(before)&&before.panelCount===1,before??{})
-  // Mouse drag with the right slidebar actually open, not only full-table.
-  if(viewport.width===1280||viewport.width===1440){
+  // On a narrow right-pane lane, ALL enabled Account fields appear as
+  // labeled rows. There is no horizontal column divider to drag in this mode;
+  // drag preferences remain stored and return in the wide table view.
+  if(before.stacked){
+    check(viewport.width+' right panel shows all 13 Account fields',
+      before.allFields&&before.labeled&&!before.horizontalScroll,before)
+  }else if(viewport.width===1280||viewport.width===1440){
     await drag('username',26)
   }
   await preserve('1-panel-with-saved-widths',before)
