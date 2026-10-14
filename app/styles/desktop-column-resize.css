@@ -1,5 +1,5 @@
 /* ERP Desktop — column-width grips. Never adds a toolbar row or touches right-side panels. */
-@media(min-width:901px){
+@media(min-width:768px){
   .brand-shell-v1>.main table.table thead th.mynh-column-resize-head{
     /* Sticky headers are part of the approved Desktop table contract.
        A resize handle can anchor to sticky just as to relative positioning. */
@@ -30,7 +30,8 @@
     background:rgba(67,124,190,.07)!important;
     outline:none!important;
   }
-  /* Đơn nhập và Tài khoản dùng chung tay nắm kéo 12px ở mép cột. */
+  /* Tài khoản cũng cho phép kéo tay từ Tablet 768px; các module khác
+     chỉ được gắn grip theo logic hiện có (Desktop từ 901px). */
   .brand-shell-v1>.main table.table.mynh-resizable-table{
     max-width:none!important;
   }
