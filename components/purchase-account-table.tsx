@@ -496,7 +496,7 @@ export function PurchaseAccountTable({
       </div>,document.body)}
 
     <div className="card table-card account-table-card" ref={tableCardRef}>
-      <table className="table user-table mynh-p1-semantic-table" data-auto-fit-version="6" data-account-filter-version="header-v1" style={tableWidths}
+      <table className="table user-table mynh-p1-semantic-table" data-auto-fit-version="6" data-account-filter-version="header-v2" style={tableWidths}
         title={compactKeys?'Bảng gọn theo vùng hiển thị. Mở chi tiết User để xem đầy đủ thông tin.':undefined}>
         <colgroup>
           {canManage&&<col className="p1-account-col p1-account-col-select" style={fitCol(fitted[0])}/>}
