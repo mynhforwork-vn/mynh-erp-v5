@@ -86,6 +86,13 @@ async function metrics(page){
     const labeled=stacked&&[...table.querySelectorAll('tbody tr[data-account-id]')].every(tr=>
       expected.every(key=>Boolean(tr.querySelector('td[data-account-col="'+key+'"]')
         ?.getAttribute('data-account-label'))))
+    const mobileUsernameAccessible=innerWidth>=768||[...table.querySelectorAll('tbody tr[data-account-id]')]
+      .every(tr=>{
+        const cell=tr.querySelector('td[data-account-col="username"]')
+        const link=cell?.querySelector('.table-link')
+        return cell&&link&&rect(cell).width>=Math.min(150,innerWidth-96)
+          &&rect(link).width>=32&&getComputedStyle(cell).display!=='none'
+      })
     const aligned=stacked?Boolean(labeled)
       :cols.length===heads.length&&cols.every((col,i)=>
         Math.abs(rect(col).width-rect(heads[i]).width)<=8)
@@ -99,7 +106,7 @@ async function metrics(page){
       panelVisible:user?getComputedStyle(user).visibility!=='hidden':null,
       orderStack:order?parseInt(getComputedStyle(order).zIndex)||0:0,
       userStack:user?parseInt(getComputedStyle(user).zIndex)||0:0,
-      stacked,desktopSemantic,headerRowHeight,allFields,labeled,
+      stacked,desktopSemantic,headerRowHeight,mobileUsernameAccessible,allFields,labeled,
       localScroll:stacked?/auto|scroll/.test(getComputedStyle(card).overflowY)
         :/auto|scroll/.test(getComputedStyle(card).overflowX),
       noHorizontalScroll:card.scrollWidth<=card.clientWidth+4,
@@ -114,7 +121,8 @@ function fit(m){return !!(m&&!m.bodyOverflow&&m.aligned&&m.localScroll
   &&m.desktopSemantic&&(m.viewport<768||m.headerRowHeight<=85)
   &&m.allFields&&(!m.stacked||m.labeled)
   &&m.fitted&&m.noHorizontalScroll&&m.table.width<=m.lane.width+4
-  &&m.tableWithinScroll&&m.widths.username>=56
+  &&m.tableWithinScroll&&m.mobileUsernameAccessible
+  &&(m.viewport<768||m.widths.username>=56)
   &&(m.stacked||(m.widths.voucher>=24
     &&m.widths.number<=48&&m.widths.orders<=85))
   &&m.lane.right<=m.viewport+4
