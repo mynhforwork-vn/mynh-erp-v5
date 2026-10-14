@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import {useRouter} from 'next/navigation'
+import {useEffect,useRef} from 'react'
 import type {FormEvent} from 'react'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
@@ -32,6 +33,10 @@ export function PurchaseDateFilter({
   preserveParams?:Record<string,string|undefined|null>
 }){
   const router=useRouter()
+  const navRef=useRef<HTMLElement>(null)
+  // Readiness marker only: allows QA to distinguish pre-hydration fallback
+  // document navigation from a regression after interactive JS is ready.
+  useEffect(()=>{navRef.current?.setAttribute('data-client-ready','true')},[])
   const preserved=Object.entries(preserveParams)
     .filter(([,value])=>value!==null&&value!==undefined&&value!=='')
   const options=dashboardRanges.filter(item=>showAll||item.key!=='all')
@@ -62,7 +67,7 @@ export function PurchaseDateFilter({
     query.set('to',toDate)
     router.push(basePath+'?'+query.toString(),{scroll:false})
   }
-  return <nav className="pd-time-filter" aria-label={'Lọc theo ngày đặt đơn · '+label}>
+  return <nav ref={navRef} className="pd-time-filter" aria-label={'Lọc theo ngày đặt đơn · '+label}>
     <div className="pd-time-quick" role="group" aria-label="Chọn khoảng thời gian">
       {options.map(option=><Link key={option.key} href={rangeHref(option.key)}
         prefetch={false} scroll={false}

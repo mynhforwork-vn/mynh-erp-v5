@@ -88,6 +88,10 @@ try{
       // Exercise both interactions on Desktop: same document and preserved
       // module filters, with no mutations or full document reload.
       if(vp.width!==1440)continue
+      // A Next.js Link works as a plain full-page anchor before hydration.
+      // Require the actual client effect before asserting SPA navigation.
+      // We still fail if the document reloads after hydration is ready.
+      await page.locator('.pd-time-filter[data-client-ready="true"]').waitFor({timeout:25000})
       await page.evaluate(()=>{window.__mynhTimeFilterDocument='persist'})
       await page.locator('.pd-time-filter .pd-time-quick a').filter({hasText:'Tuần này'}).click()
       await page.waitForURL(u=>u.pathname===target.path&&u.searchParams.get('range')==='week',
