@@ -1598,3 +1598,15 @@ table.table.user-table.mynh-p1-semantic-table.account-table-stacked{
   max-width:100%!important;
   table-layout:auto!important;
 }
+
+/* Higher-priority scroll containment for the account list when the
+   detail slidebar is open. Legacy enterprise overflow-x:auto rules must not
+   override the zero-horizontal-scroll responsive row layout. */
+.brand-shell-v1>.main .account-screen .account-workspace
+.account-list-pane .account-table-card:has(>table.user-table.account-table-stacked),
+.brand-shell-v1>.main .account-screen .account-workspace.with-panel
+.account-list-pane .account-table-card:has(>table.user-table.account-table-stacked){
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior-x:contain!important;
+}
