@@ -4,7 +4,7 @@ import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } fr
 import { VoucherTags } from '@/components/voucher-tags'
 import type { AccountDeviceRow } from '@/lib/purchase-account-device-fields'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
-import { updateERPUser } from '@/lib/actions/core'
+import { ERPUserInlineForm } from '@/components/erp-user-inline-form'
 import { orderIsCancelled } from '@/lib/purchase-order-cancellation'
 import { prepaidSourceLabel,resolveOrderValue } from '@/lib/order-prepaid'
 
@@ -60,7 +60,7 @@ export function OrderAccountDetailPanel({
   if(editMode&&canEdit)return <SystemSlidebar className="detail-panel account-detail-panel order-account-detail-panel">
     <div className="panel-head"><div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Sửa {account.username}</h2></div>
       <Link className="close" href={infoHref} aria-label="Đóng sửa tài khoản">×</Link></div>
-    <form className="panel-form panel-scroll" action={updateERPUser}>
+    <ERPUserInlineForm operation="update" className="panel-form panel-scroll">
       <input type="hidden" name="return_path" value="orders"/>
       <input type="hidden" name="return_query" value={returnQuery}/>
       <input type="hidden" name="user_id" value={account.id}/>
@@ -87,7 +87,7 @@ export function OrderAccountDetailPanel({
       </section>
       <div className="form-actions"><Link className="button" href={infoHref}>Huỷ</Link>
         <button className="button primary" type="submit">Lưu thay đổi</button></div>
-    </form>
+    </ERPUserInlineForm>
   </SystemSlidebar>
   return <SystemSlidebar className="detail-panel account-detail-panel order-account-detail-panel">
     <div className="panel-head">
