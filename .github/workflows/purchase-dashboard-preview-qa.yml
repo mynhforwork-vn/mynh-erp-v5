@@ -10,6 +10,8 @@ on:
       - 'app/(erp)/users/page.tsx'
       - 'components/purchase-account-table.tsx'
       - 'components/erp-user-inline-form.tsx'
+      - 'components/erp-account-filter-form.tsx'
+      - 'components/user-bulk-import.tsx'
       - 'components/order-account-detail-panel.tsx'
       - 'lib/actions/core.ts'
       - 'scripts/account-inline-fit-static-qa.mjs'
