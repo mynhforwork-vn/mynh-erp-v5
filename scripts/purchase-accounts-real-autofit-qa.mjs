@@ -75,7 +75,8 @@ function fit(s){return !!s&&s.sameDocument&&!s.pageOverflow&&s.aligned&&s.header
   &&s.table>=s.lane-8&&s.col.username>=118&&s.col.number<=48
   &&s.col.voucher>=110&&s.col.orders>=60}
 const ranges=[{width:1024,height:768},{width:1280,height:800},
-  {width:1440,height:900},{width:1920,height:1080}]
+  {width:1366,height:768},{width:1440,height:900},
+  {width:1728,height:1117},{width:1920,height:1080}]
 try{
  for(const viewport of ranges){
   const ctx=await browser.newContext({viewport})
