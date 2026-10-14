@@ -106,9 +106,12 @@ export function PurchaseAccountTable({
     observer.observe(card)
     const workspace=card.closest('.account-workspace')
     if(workspace)observer.observe(workspace)
+    const onPaneAnimation=()=>measure()
+    workspace?.addEventListener('transitionend',onPaneAnimation)
     window.addEventListener('mynh-sidebar-resized',measure)
     return ()=>{
       observer.disconnect()
+      workspace?.removeEventListener('transitionend',onPaneAnimation)
       window.removeEventListener('mynh-sidebar-resized',measure)
       if(raf)window.cancelAnimationFrame(raf)
     }
