@@ -1,8 +1,9 @@
 import { requireUser } from '@/lib/supabase/auth'
 import { SystemSlidebar } from '@/components/system-slidebar'
+import { ERPUserInlineForm } from '@/components/erp-user-inline-form'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
-import { archiveERPUser, createERPUser, deleteERPUserPermanent, restoreERPUser, updateERPUser } from '@/lib/actions/core'
+import { deleteERPUserPermanent } from '@/lib/actions/core'
 import { PurchaseAccountTable } from '@/components/purchase-account-table'
 import { AccountFilterDropdown } from '@/components/account-filter-dropdown'
 import { VoucherTags } from '@/components/voucher-tags'
@@ -477,7 +478,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Thêm tài khoản</h2></div>
             <Link className="close" href={filterHref({mode:null,user:null,tab:null})}>×</Link>
           </div>
-          <form action={createERPUser} className="panel-form panel-scroll">
+          <ERPUserInlineForm operation="create" className="panel-form panel-scroll">
             <input type="hidden" name="return_query" value={detailQuery}/>
             <section className="form-section">
               <h3>Thông tin tài khoản</h3>
@@ -501,7 +502,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
             </section>
             <div className="form-actions"><Link className="button" href={filterHref({mode:null,user:null,tab:null})}>Hủy</Link><button className="button primary">Tạo tài khoản</button></div>
-          </form>
+          </ERPUserInlineForm>
         </SystemSlidebar>
       }
 
@@ -573,19 +574,19 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
               {canOperate&&<div className={'record-lifecycle-zone '+(selected.archived_at?'archived':'')}>
                 {!selected.archived_at
-                  ? <form action={archiveERPUser} className="record-lifecycle-action">
+                  ? <ERPUserInlineForm operation="archive" className="record-lifecycle-action">
                       <input type="hidden" name="user_id" value={selected.id}/>
                       <input type="hidden" name="return_query" value={detailQuery}/>
                       <div><b>Lưu trữ User</b><span>Ẩn khỏi danh sách sử dụng và không cho chọn khi tạo đơn. Có thể khôi phục.</span></div>
                       <button className="button archive-button" type="submit">Lưu trữ</button>
-                    </form>
+                    </ERPUserInlineForm>
                   : <>
-                      <form action={restoreERPUser} className="record-lifecycle-action">
+                      <ERPUserInlineForm operation="restore" className="record-lifecycle-action">
                         <input type="hidden" name="user_id" value={selected.id}/>
                         <input type="hidden" name="return_query" value={detailQuery}/>
                         <div><b>User đang lưu trữ</b><span>Đơn hàng và toàn bộ lịch sử vẫn được giữ.</span></div>
                         <button className="button primary" type="submit">Khôi phục</button>
-                      </form>
+                      </ERPUserInlineForm>
 
                     </>}
               </div>}
@@ -660,7 +661,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             <div><span className="eyebrow">TÀI KHOẢN MUA HÀNG</span><h2>Sửa {selected.username}</h2></div>
             <Link className="close" href={detailHref({user:selected.id,mode:null})}>×</Link>
           </div>
-          <form action={updateERPUser} className="panel-form panel-scroll">
+          <ERPUserInlineForm operation="update" className="panel-form panel-scroll">
             <input type="hidden" name="return_query" value={detailQuery}/>
             <input type="hidden" name="user_id" value={selected.id}/>
             <section className="form-section">
@@ -686,7 +687,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
 
             </section>
             <div className="form-actions"><Link className="button" href={detailHref({user:selected.id,mode:null})}>Hủy</Link><button className="button primary">Lưu thay đổi</button></div>
-          </form>
+          </ERPUserInlineForm>
         </SystemSlidebar>
       }
     </div>
