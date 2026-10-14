@@ -85,15 +85,42 @@ try{
     if(attempt===17)throw Error('Account Preview not stable/updated after retries; cannot claim QA PASS')
     await page.waitForTimeout(12000)
   }
+  // A 200 SSR response can precede stalled/failed client JS asset loads.
+  // Only measure after the managed resize system (Tablet/Desktop) and
+  // toolbar portal hydrate. Retry transient Preview script failures, but
+  // never swallow a genuine persistent un-fitted table.
+  let hydrated=false
+  const pageErrors=[]
+  page.on('pageerror',error=>pageErrors.push(String(error).slice(0,250)))
+  for(let attempt=0;attempt<4;attempt++){
+    try{
+      await page.waitForFunction(()=>{
+        const card=document.querySelector('.account-table-card')
+        const table=card?.querySelector('table.user-table')
+        const manager=document.querySelector('.p1-account-filter-actions .managed-column-button')
+        return card&&table&&manager
+          &&(innerWidth<768||table.classList.contains('mynh-resizable-table'))
+          &&Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8
+          &&card.scrollWidth<=card.clientWidth+4
+      },null,{timeout:15000})
+      hydrated=true
+      break
+    }catch{
+      const snapshot=await state(page)
+      console.log('ACCOUNT_NO_SCROLL_WAIT '+JSON.stringify({
+        width:viewport.width,attempt,snapshot,pageErrors,
+      }))
+      if(attempt<3){
+        response=await page.reload({waitUntil:'domcontentloaded',timeout:45000})
+        await page.locator('.account-table-card table[data-auto-fit-version="6"]')
+          .waitFor({state:'visible',timeout:20000})
+      }
+    }
+  }
+  if(!hydrated)throw Error('Account Auto Fit not hydrated and fitted: '+JSON.stringify({
+    width:viewport.width,snapshot:await state(page),pageErrors,
+  }))
   await page.evaluate(()=>{window.__mynhQaDoc=true})
-  try{
-    await page.waitForFunction(()=>{
-      const card=document.querySelector('.account-table-card')
-      const table=card?.querySelector('table.user-table')
-      return card&&table&&Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8
-        &&card.scrollWidth<=card.clientWidth+4
-    },null,{timeout:12000})
-  }catch{}
   const initial=await state(page)
   check(viewport.width+' Auto Fit without horizontal scroll',
     response?.status()===200&&initial?.noScroll&&initial?.fits&&initial?.aligned
