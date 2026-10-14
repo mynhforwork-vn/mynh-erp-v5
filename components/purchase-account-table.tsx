@@ -9,6 +9,7 @@ import { VoucherTags } from '@/components/voucher-tags'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
 import { ERPUserInlineForm } from '@/components/erp-user-inline-form'
+import {fitAccountColumnWidths} from '@/lib/account-table-autofit'
 
 type Row=Record<string,any>
 type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'mobile'|'browser'|'voucher'|'orders'|'deliveredOrders'|'createdAt'|'note'
@@ -244,12 +245,9 @@ export function PurchaseAccountTable({
   const clamp=(n:number,low:number,high:number)=>Math.max(low,Math.min(high,n))
   const longestTag=sampleMax(r=>String(r.voucher_used_summary??'')
     .split('·').map(s=>s.trim()).sort((a,b)=>b.length-a.length)[0]??'')
-  const minimum:Record<ColKey,number>={
-    number:28,username:128,platform:56,phone:98,email:132,status:76,
-    mobile:86,browser:74,voucher:104,orders:48,deliveredOrders:88,
-    createdAt:130,note:88,
-  }
-  const widths:Record<ColKey,number>={
+  // Content-aware preferences; the same no-scroll allocator is also
+  // used by DesktopTableColumnResize when the User/Order pane moves.
+  const preferred:Record<ColKey,number>={
     number:28,username:clamp(45+sampleMax(r=>String(r.username??''))*6.4,144,214),
     platform:64,phone:110,
     email:clamp(18+sampleMax(r=>String(r.email??''))*5.7,148,248),
@@ -259,50 +257,14 @@ export function PurchaseAccountTable({
     orders:52,deliveredOrders:94,createdAt:137,
     note:clamp(26+sampleMax(r=>String(r.note??''))*4.8,103,185),
   }
-  const flex:ColKey[]=['username','email','mobile','browser','voucher','note']
-  const panelWidth=tableLaneWidth>0?Math.max(0,Math.floor(tableLaneWidth)-2):0
-  const allocated=()=> (canManage?28:0)+shownColumns.reduce((sum,key)=>sum+widths[key],0)
-  if(panelWidth>0&&allocated()>panelWidth){
-    let deficit=allocated()-panelWidth
-    for(const key of ['note','email','mobile','browser','username','voucher'] as ColKey[]){
-      if(!shownColumns.includes(key))continue
-      const cut=Math.min(deficit,widths[key]-minimum[key])
-      widths[key]-=cut
-      deficit-=cut
-      if(deficit<=0)break
-    }
-    // Short metadata fields also have safe lower bounds. Spend those few
-    // pixels before creating an avoidable horizontal scroll at 1440px.
-    if(deficit>0){
-      for(const key of ['phone','platform','status','createdAt','deliveredOrders','orders'] as ColKey[]){
-        if(!shownColumns.includes(key))continue
-        const cut=Math.min(deficit,widths[key]-minimum[key])
-        widths[key]-=cut
-        deficit-=cut
-        if(deficit<=0)break
-      }
-    }
-  }
-  const availableExtra=panelWidth>0?Math.max(0,panelWidth-allocated()):0
-  const expanding=flex.filter(key=>shownColumns.includes(key))
-  if(availableExtra>0&&expanding.length){
-    const importance:Partial<Record<ColKey,number>>={
-      username:1.3,email:1.4,mobile:.5,browser:.5,voucher:1,note:1,
-    }
-    const total=expanding.reduce((n,key)=>n+(importance[key]??1),0)
-    let consumed=0
-    expanding.forEach((key,i)=>{
-      const bonus=i===expanding.length-1?availableExtra-consumed:
-        Math.floor(availableExtra*(importance[key]??1)/total)
-      widths[key]+=bonus
-      consumed+=bonus
-    })
-  }
+  const keys=[...(canManage?['select']:[]),...shownColumns]
+  const original=[...(canManage?[28]:[]),...shownColumns.map(key=>preferred[key])]
+  const fitted=fitAccountColumnWidths(keys,original,tableLaneWidth)
   const fitCol=(px:number)=>({
-    '--p1-account-fit-col-width':Math.round(px*100)/100+'px',
+    '--p1-account-fit-col-width':px+'px',
   }) as CSSProperties
   const tableWidths={
-    '--p1-account-fit-table-width':Math.ceil(allocated())+'px',
+    '--p1-account-fit-table-width':fitted.reduce((sum,px)=>sum+px,0)+'px',
   } as CSSProperties
 
   function hrefFor(id:string){
@@ -469,11 +431,11 @@ export function PurchaseAccountTable({
     </div>,toolbarRoot)}
 
     <div className="card table-card account-table-card" ref={tableCardRef}>
-      <table className="table user-table mynh-p1-semantic-table" data-auto-fit-version="5" style={tableWidths}>
+      <table className="table user-table mynh-p1-semantic-table" data-auto-fit-version="6" style={tableWidths}>
         <colgroup>
-          {canManage&&<col className="p1-account-col p1-account-col-select" style={fitCol(28)}/>}
+          {canManage&&<col className="p1-account-col p1-account-col-select" style={fitCol(fitted[0])}/>}
           {shownColumns.map(k=><col key={k} className={'p1-account-col p1-account-col-'+k}
-            style={fitCol(widths[k])}/>)}
+            style={fitCol(fitted[(canManage?1:0)+shownColumns.indexOf(k)])}/>)}
         </colgroup>
         <thead><tr>
           {canManage&&<th className="bulk-select-col">
