@@ -47,7 +47,7 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           npx wrangler preview --name notification-pr79-qa --worker-name mynh-erp-v5 --message "PR79 notification QA $GITHUB_SHA" --json > pr79-preview.json
-          node -e "const x=require('./pr79-preview.json');console.log('PREVIEW_VERSION',x.version_id||x.id||'uploaded')"
+          test -s pr79-preview.json
       - name: Preview HTTP health and login smoke
         run: |
           test "$(curl --silent --show-error --max-time 25 -o health-pr79.json -w '%{http_code}' "$PREVIEW_URL/api/health")" = "200"

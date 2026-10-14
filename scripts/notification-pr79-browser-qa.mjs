@@ -40,16 +40,16 @@ try{
    const panel=page.locator('.app-alert-panel-v2')
    await panel.waitFor({state:'visible',timeout:12000})
    await page.locator('#neo-soft-category-select').waitFor({state:'visible',timeout:12000})
-   const api=await page.waitForResponse(r=>r.url().includes('/api/alerts/in-app?')&&r.status()!==0,{timeout:20000})
-     .catch(()=>null)
-   if(api)alerts.push({status:api.status()})
+   // Authenticated polling starts during hydration, before the drawer opens.
+   // Inspect response events captured since page.goto, not a late waitForResponse.
+   await page.waitForTimeout(1700)
    const before=page.url()
    const categories=page.locator('#neo-soft-category-select')
    await categories.selectOption('system')
    await categories.selectOption('tracking')
    await categories.selectOption('all')
-   await page.getByRole('button',{name:/Chưa đọc/}).last().click()
-   await page.getByRole('button',{name:/Tất cả/}).last().click()
+   await page.locator('.app-alert-tabs-v2 button').nth(2).click()
+   await page.locator('.app-alert-tabs-v2 button').first().click()
    const data=await page.evaluate(()=>{
     const panel=document.querySelector('.app-alert-panel-v2')
     const filters=[...panel.querySelectorAll('.neo-soft-hub-line select')]
