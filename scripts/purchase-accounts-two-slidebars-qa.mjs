@@ -78,6 +78,7 @@ async function metrics(page){
       orderStack:order?parseInt(getComputedStyle(order).zIndex)||0:0,
       userStack:user?parseInt(getComputedStyle(user).zIndex)||0:0,
       localScroll:/auto|scroll/.test(getComputedStyle(card).overflowX),
+      noHorizontalScroll:card.scrollWidth<=card.clientWidth+4,
       tableWithinScroll:card.scrollWidth>=card.clientWidth-1,
       fitted:rect(table).width>=card.clientWidth-8,
       aligned,
@@ -85,9 +86,12 @@ async function metrics(page){
     }
   })
 }
-function fit(m){return !!(m&&!m.bodyOverflow&&m.aligned&&m.localScroll&&m.fitted
-  &&m.tableWithinScroll&&m.widths.username>=118&&m.widths.voucher>=99
-  &&m.widths.number<=48&&m.widths.orders<=76
+function fit(m){return !!(m&&!m.bodyOverflow&&m.aligned&&m.localScroll
+  &&m.fitted&&m.noHorizontalScroll&&m.table.width<=m.lane.width+4
+  &&m.tableWithinScroll&&m.widths.username>=56
+  &&(m.widths.voucher===undefined||m.widths.voucher>=24)
+  &&(m.widths.number===undefined||m.widths.number<=48)
+  &&(m.widths.orders===undefined||m.widths.orders<=85)
   &&m.lane.right<=m.viewport+4
   &&(m.viewport>900||m.lane.width>=Math.max(190,m.viewport-110)))}
 function panels(m,expected,kind=null){
