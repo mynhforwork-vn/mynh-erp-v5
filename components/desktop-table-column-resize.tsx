@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import {fitAccountColumnWidths} from '@/lib/account-table-autofit'
 
 /**
  * Desktop-only non-destructive enhancer for legacy and managed ERP tables.
@@ -13,7 +14,7 @@ export function DesktopTableColumnResize() {
     const main = shell?.querySelector(':scope > .main')
     if (!main) return
 
-    const mq = window.matchMedia('(min-width: 901px)')
+    const mq = window.matchMedia('(min-width: 768px)')
     const clamp = (v:number) => Math.max(76, Math.min(680, Math.round(v)))
     const clampForHeader = (th:HTMLTableCellElement,v:number) => {
       if(th.closest('table.tracking-hub-table-v2'))
@@ -290,15 +291,7 @@ export function DesktopTableColumnResize() {
         const pane=table.closest('.account-table-card') as HTMLElement|null
         const lane=Math.floor(pane?.clientWidth??table.parentElement?.clientWidth??0)
         const withPanel=Boolean(table.closest('.account-workspace.with-panel'))
-        // Áp dụng đúng quy trình Auto Fit của Đơn nhập: xác định vùng thực,
-        // tính sàn đọc được, co cột chưa chỉnh trước, chia phần thừa cho cột
-        // nội dung. Hồ sơ Compact chỉ áp dụng khi vùng thực sự hẹp.
         const compact=withPanel||lane<1200
-        const min:Record<string,number>={
-          select:28,number:28,username:128,platform:56,phone:94,email:120,
-          status:75,mobile:80,browser:70,voucher:112,orders:62,
-          deliveredOrders:96,createdAt:128,note:78,
-        }
         const base:Record<string,number>=compact
           ?{select:28,number:28,username:145,platform:58,phone:98,email:142,
             status:78,mobile:88,browser:76,voucher:120,orders:62,
@@ -306,59 +299,15 @@ export function DesktopTableColumnResize() {
           :{select:28,number:28,username:174,platform:64,phone:108,email:185,
             status:85,mobile:110,browser:98,voucher:132,orders:66,
             deliveredOrders:102,createdAt:142,note:120}
-        const max:Record<string,number>={
-          select:28,number:28,username:330,platform:80,phone:146,email:390,
-          status:120,mobile:240,browser:185,voucher:290,orders:110,
-          deliveredOrders:132,createdAt:170,note:390,
-        }
         const keys=ths.map(th=>th.classList.contains('bulk-select-col')
           ?'select':th.dataset.accountCol??'')
-        const customized=keys.map((_,i)=>overrides[headerName(ths[i])]!==undefined)
-        const widths=keys.map((key,i)=>{
-          const saved=overrides[headerName(ths[i])]
-          // Saved widths are manual preferences: unlike Auto Fit caps they
-          // remain unchanged across left/right slidebars and browser reload.
-          return Math.max(min[key]??76,Math.round(saved??base[key]??96))
-        })
-        const minimum=keys.reduce((total,key)=>total+(min[key]??76),0)
-        const target=Math.max(minimum,lane-2)
-        let spare=target-widths.reduce((total,width)=>total+width,0)
-        const shrinkOrder=['note','email','username','mobile','browser',
-          'voucher','phone','createdAt','status','platform',
-          'deliveredOrders','orders']
-        if(spare<0){
-          // Like Đơn nhập, flexible fields yield before numeric counters.
-          // Respect manual widths even if the narrower pane must scroll.
-          for(const key of shrinkOrder){
-            const i=keys.indexOf(key)
-            if(i<0||customized[i]||spare>=0)continue
-            const reduction=Math.min(-spare,Math.max(0,widths[i]-(min[key]??76)))
-            widths[i]-=reduction
-            spare+=reduction
-          }
-        }else if(spare>0){
-          // Do not turn counters / index into huge empty columns.
-          for(const key of ['email','username','note','mobile','browser',
-            'voucher','phone','createdAt','status','platform']){
-            const i=keys.indexOf(key)
-            if(i<0||customized[i]||spare<=0)continue
-            const gain=Math.min(spare,Math.max(0,(max[key]??300)-widths[i]))
-            widths[i]+=gain
-            spare-=gain
-          }
-          if(spare>0){
-            // Ultra-wide Desktop: spend all usable width, like the
-            // Đơn nhập full-table profile, never leave a blank table tail.
-            const recipients=['email','username','note','mobile','browser','voucher']
-              .map(key=>keys.indexOf(key)).filter(i=>i>=0&&!customized[i])
-            if(recipients.length){
-              const each=Math.floor(spare/recipients.length)
-              recipients.forEach((i,j)=>widths[i]+=j===recipients.length-1
-                ?spare-each*j:each)
-            }
-          }
-        }
-        return widths
+        const manual=ths.map(th=>overrides[headerName(th)]!==undefined)
+        const preferred=keys.map((key,i)=>Math.round(
+          overrides[headerName(ths[i])]??base[key]??96
+        ))
+        // Same allocator as React, including narrow 780/800px lanes.
+        // Manual preferences remain persisted; rendered columns always fit.
+        return fitAccountColumnWidths(keys,preferred,lane,manual)
       }
       const assigned = isOrder?orderFit(table,ths,overrides)
         :isTracking ? fitTrackingPanel(table,ths,preferred,overrides)
@@ -422,6 +371,7 @@ export function DesktopTableColumnResize() {
     }
 
     const enhance = (table:HTMLTableElement) => {
+      if(window.innerWidth<901&&!table.matches('.mynh-p1-semantic-table.user-table'))return
       if (table.closest('.system-slidebar-v1, .system-slidebar, .context-panel, .side-panel, .finance-panel, .receive-confirm-modal')) return
       const ths = headerCells(table)
       if (ths.length < 2) return
