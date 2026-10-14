@@ -348,7 +348,23 @@ try{
     {emailBefore:Math.round(emailBefore),emailAfter:Math.round(emailAfter),resized})
   await page.reload({waitUntil:'domcontentloaded',timeout:45000})
   await page.locator('.account-table-card .user-table').waitFor()
-  await page.waitForTimeout(500)
+  // The SSR table can briefly have oversized default widths. Wait for the
+  // actual React hydration + Auto Fit to settle, without weakening any gate.
+  await page.locator('.account-table-card[data-client-ready="true"]').waitFor({timeout:20000})
+  try{
+    await page.waitForFunction(saved=>{
+      const card=document.querySelector('.account-table-card')
+      const table=card?.querySelector('table.user-table')
+      const email=table?.querySelector('th[data-account-col="email"]')
+      if(!card||!table||!email)return false
+      return Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8
+        &&card.scrollWidth<=card.clientWidth+4
+        &&Math.abs(email.getBoundingClientRect().width-saved)<10
+    },emailAfter,{timeout:12000})
+  }catch{
+    // Let the original exact persistence assertion FAIL with measurements.
+    console.log('ACCOUNT_DELIVERED_PERSISTENCE_SETTLE_TIMEOUT')
+  }
   const persistedEmail=await emailHead.evaluate(x=>x.getBoundingClientRect().width)
   const persistedFit=await inspectAccountFit()
   check('Account column saved width survives reload',Boolean(persistedFit&&
