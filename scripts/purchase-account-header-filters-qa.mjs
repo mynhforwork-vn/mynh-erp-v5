@@ -30,6 +30,16 @@ const points=[
   {width:390,height:844},{width:780,height:1024},{width:800,height:1024},
   {width:1280,height:800},{width:1440,height:900},
 ]
+async function waitRealChoices(page){
+  // No menu may show only "Tất cả" when source data has values. Wait for
+  // React to commit the choice list, including when native popover opens first.
+  await page.waitForFunction(()=>{
+    const menu=document.querySelector('.account-heading-filter-menu:popover-open')
+    return !!menu&&(menu.querySelectorAll('input[type="radio"]').length>1
+      ||!!menu.querySelector('.account-heading-filter-empty'))
+  },null,{timeout:8000})
+}
+
 try{
  for(const viewport of points){
   const context=await browser.newContext({viewport})
@@ -91,6 +101,7 @@ try{
   // hidden columns or the right-side slidebar.
   const username=page.locator('th[data-account-col="username"] .account-heading-filter-trigger')
   await username.click()
+  await waitRealChoices(page)
   const usernameMenu=page.locator('.account-heading-filter-menu[popover]:popover-open')
   const usernameChoices=await usernameMenu.locator(
     '.account-heading-filter-option input[type="radio"]').count()
@@ -122,6 +133,7 @@ try{
   if(viewport.width===780||viewport.width===800){
     const browserButton=page.locator('th[data-account-col="browser"] .account-heading-filter-trigger')
     await browserButton.click()
+    await waitRealChoices(page)
     const menu=page.locator('.account-heading-filter-menu[popover]:popover-open')
     const radio=menu.locator('.account-heading-filter-option input[type="radio"]').nth(1)
     const options=await menu.locator('.account-heading-filter-option input[type="radio"]').count()
@@ -165,6 +177,7 @@ try{
     // actual User data; no manual date input is permitted.
     const dateButton=page.locator('th[data-account-col="createdAt"] .account-heading-filter-trigger')
     await dateButton.click()
+    await waitRealChoices(page)
     const dialog=page.locator('.account-heading-filter-menu[popover]:popover-open')
     const dateOptions=dialog.locator('.account-heading-filter-option input[type="radio"]')
     const available=await dateOptions.count()
