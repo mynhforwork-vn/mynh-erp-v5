@@ -99,6 +99,7 @@ export async function GET(request:Request){
   const systems=(!newer.error&&Array.isArray(newer.data?.items)
     ?newer.data.items.filter((x:Record<string,unknown>)=>x.source==='system')
     :[]) as SystemNotice[]
+  // Missing operational RPC is surfaced as migration_pending, not silent PASS.
   const combined:(TrackingOrderNotice|SystemNotice|typeof workNotices[number])[]=[...enriched,...workNotices,...systems]
   // Keep unresolved delivery failures within the bounded first page,
   // even when newer non-critical notices accumulate.

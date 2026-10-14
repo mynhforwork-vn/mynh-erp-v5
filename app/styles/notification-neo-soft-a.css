@@ -411,3 +411,11 @@
 .sidebar-alert-trigger.has-action .sidebar-alert-badge{
   background:#3a7b78!important;border-color:#fff!important;color:#fff!important;
 }
+
+/* Compact shared notification filters; wrap only when mobile width is narrow. */
+.neo-soft-v1 .neo-soft-hub-line{flex-wrap:wrap!important;gap:6px!important}
+.neo-soft-v1 .neo-soft-hub-line select{flex:1 1 95px!important;min-width:72px!important}
+.neo-soft-v1 .neo-soft-hub-line .neo-soft-result-count{margin-left:auto!important}
+@media(max-width:390px){
+  .neo-soft-v1 .neo-soft-hub-line select{flex-basis:118px!important}
+}

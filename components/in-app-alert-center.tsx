@@ -108,6 +108,7 @@ export function InAppAlertCenter({
   const router=useRouter()
   const [open,setOpen]=useState(false)
   const [filter,setFilter]=useState<Filter>('all')
+  const [categoryFilter,setCategoryFilter]=useState<'all'|'tracking'|'purchase'|'warehouse'|'system'>('all')
   const [actionGroup,setActionGroup]=useState<ActionGroup>('all')
   const [hub,setHub]=useState('all')
   const [selectedId,setSelectedId]=useState<string|null>(null)
@@ -320,13 +321,14 @@ export function InAppAlertCenter({
     .map(row=>row.destination_hub.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi')),
     [feed.items])
   const visible=useMemo(()=>feed.items.filter(row=>
+    (categoryFilter==='all'||row.category===categoryFilter)&&
     (filter==='all'||(filter==='unread'&&!row.is_read)||
       (filter==='action'&&row.requires_action&&!row.is_resolved&&
        (actionGroup==='all'||taskGroup(row)===actionGroup)))&&
     (hub==='all'||(hub==='unknown'
       ?row.source==='tracking'&&row.receive_status!=='RECEIVED'&&!row.destination_hub
       :row.source==='tracking'&&row.receive_status!=='RECEIVED'&&row.destination_hub===hub))
-  ),[feed.items,filter,hub,actionGroup])
+  ),[feed.items,filter,hub,actionGroup,categoryFilter])
   // Only same-HUB, delivered and unreceived orders can be included in one batch.
   const batchSelected=feed.items.filter(row=>row.order_id&&
     selectedOrderIds.includes(row.order_id)&&receiptEligible(row)&&Boolean(row.destination_hub))
@@ -602,14 +604,24 @@ export function InAppAlertCenter({
               </button>)}
           </div>}
           <div className="neo-soft-hub-line">
-            <label htmlFor="neo-soft-hub-select">Lọc HUB</label>
+            <label htmlFor="neo-soft-category-select">Loại</label>
+            <select id="neo-soft-category-select" value={categoryFilter}
+              onChange={e=>{setCategoryFilter(e.target.value as typeof categoryFilter);
+                setHub('all');clearBatchSelection();setSelectedId(null)}}>
+              <option value="all">Tất cả</option>
+              <option value="tracking">Vận chuyển</option>
+              <option value="purchase">Đơn nhập</option>
+              <option value="warehouse">Kho</option>
+              <option value="system">Hệ thống</option>
+            </select>
+            <label htmlFor="neo-soft-hub-select">HUB</label>
             <select id="neo-soft-hub-select" value={hub}
               onChange={e=>{setHub(e.target.value);clearBatchSelection();setSelectedId(null)}}>
               <option value="all">Tất cả HUB</option>
               {hubs.map(x=><option key={x} value={x}>{x}</option>)}
               <option value="unknown">Chưa xác định HUB</option>
             </select>
-            <span className="neo-soft-result-count">{visible.length} đơn</span>
+            <span className="neo-soft-result-count">{visible.length} mục</span>
           </div>
           {canReceive&&batchEligible.length>0&&<div className="neo-soft-bulk-toolbar">
             <button type="button" className={batchMode?'active':''}
@@ -632,6 +644,9 @@ export function InAppAlertCenter({
 
         <div ref={listRef} className="app-alert-list app-alert-list-v2 neo-soft-content">
           {error&&<div role="alert" className="neo-soft-error">{error}</div>}
+          {feed.migration_pending&&<div role="status" className="neo-soft-error">
+            Nguồn thông báo hệ thống chưa được kích hoạt. Các cảnh báo vận chuyển và công việc vẫn có thể xem.
+          </div>
           {batchMode&&receiveFor==='batch'&&batchSelected.length>0&&<div
             className="neo-soft-receive-form neo-soft-batch-form" role="group"
             aria-label={'Xác nhận nhận '+batchSelected.length+' đơn'}>
@@ -757,7 +772,12 @@ export function InAppAlertCenter({
                     </p>
                     {row.recipient_address&&<p className="neo-soft-inline-address">{row.recipient_address}</p>}
                   </section>}
-                  {row.source!=='work'&&<section className="neo-soft-expanded-section">
+                  {row.source==='system'&&<section className="neo-soft-expanded-section">
+                    <h3>Chi tiết cảnh báo</h3>
+                    <p className="neo-soft-task-explainer">{row.message}</p>
+                    <p className="neo-soft-task-explainer">Thông báo tự kết thúc khi nguồn lỗi được khắc phục.</p>
+                  </section>}
+                  {row.source==='tracking'&&<section className="neo-soft-expanded-section">
                     <h3>Hành trình <span>{row.timeline?.length??0} cập nhật</span></h3>
                     {row.timeline?.length
                       ?<ol className="neo-soft-inline-timeline">{row.timeline.map(step=>
@@ -826,7 +846,8 @@ export function InAppAlertCenter({
                       onClick={()=>void mark(row)}>Đánh dấu đã đọc</button>}
                     {safeTarget(row)&&<button type="button" onClick={()=>void openAlert(row)}>
                       {row.work_type==='tracking_missing'?'Cập nhật MVD ↗':
-                       row.work_type==='warehouse_intake'?'Đến Nhập kho ↗':'Mở đơn trong ERP ↗'}</button>}
+                       row.work_type==='warehouse_intake'?'Đến Nhập kho ↗':
+                       row.source==='system'?'Mở vị trí xử lý ↗':'Mở đơn trong ERP ↗'}</button>}
                   </div>
                 </div>}
               </article>
