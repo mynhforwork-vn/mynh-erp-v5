@@ -59,6 +59,11 @@ try{
     return {panelLeft:rect.left,panelRight:rect.right,panelWidth:rect.width,
       filtersFit:fit,selectedCategory:document.querySelector('#neo-soft-category-select')?.value,
       warningVisible:Boolean(panel.querySelector('[role="status"]')),
+      emptyMessage:panel.querySelector('.app-alert-empty')?.textContent?.trim()?.slice(0,250)??null,
+      preference:localStorage.getItem('mynh-erp-in-app-notifications-enabled'),
+      switchTitle:panel.querySelector('[title="Bật thông báo"],[title="Tắt thông báo"]')?.getAttribute('title')??null,
+      localTime:new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit'}).format(new Date()),
+      panelHasError:Boolean(panel.querySelector('.neo-soft-error')),
       wideBody:body.scrollWidth>body.clientWidth+8,
       hasWorkPanel:!!panel.querySelector('.app-alert-list-v2'),
     }
