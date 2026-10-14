@@ -40,6 +40,18 @@ async function state(page){
     const heads=[...table.querySelectorAll('thead th')]
     const width=e=>e.getBoundingClientRect().width
     const stacked=table.dataset.accountLayout==='stacked'
+    const desktopViewport=innerWidth>=768
+    const tableRows=[...table.querySelectorAll('tbody tr[data-account-id]')]
+    const row=tableRows[0]
+    const rowStyle=row?getComputedStyle(row).display:null
+    const tdStyle=row?.querySelector('td')?getComputedStyle(row.querySelector('td')).display:null
+    const semantic=desktopViewport
+      ?(!stacked&&getComputedStyle(table).display==='table'
+        &&getComputedStyle(table.tHead).display==='table-header-group'
+        &&getComputedStyle(table.tHead.rows[0]).display==='table-row'
+        &&(rowStyle===null||rowStyle==='table-row')
+        &&(tdStyle===null||tdStyle==='table-cell'))
+      :true
     const canonical=['number','username','platform','phone','email','status',
       'mobile','browser','voucher','orders','deliveredOrders','createdAt','note']
     const allFields=canonical.every(k=>table.querySelector('th[data-account-col="'+k+'"]'))
@@ -56,7 +68,7 @@ async function state(page){
           &&getComputedStyle(td,'::before').content!=='none'
       }))
     return {
-      stacked,allFields,labeled,
+      stacked,semantic,rowStyle,tdStyle,allFields,labeled,
       lane:card.clientWidth,scrollWidth:card.scrollWidth,table:width(table),
       noScroll:card.scrollWidth<=card.clientWidth+4,
       fits:Math.abs(width(table)-card.clientWidth)<=8,
@@ -144,7 +156,7 @@ try{
   const initial=await state(page)
   check(viewport.width+' Auto Fit without horizontal scroll',
     response?.status()===200&&initial?.noScroll&&initial?.fits&&initial?.aligned
-    &&initial?.allFields&&(!initial.stacked||initial.labeled)
+    &&initial?.semantic&&initial?.allFields&&(!initial.stacked||initial.labeled)
     &&initial?.pageNoOverflow&&initial?.documentUnchanged,{initial})
 
   const button=page.locator('.p1-account-filter-actions .managed-column-button')
@@ -192,7 +204,8 @@ try{
     const afterPanel=await state(page)
     check(viewport.width+' right User slidebar keeps table within lane',
       afterPanel?.noScroll&&afterPanel?.fits&&afterPanel?.aligned
-      &&afterPanel?.allFields&&afterPanel?.labeled&&afterPanel?.stacked
+      &&afterPanel?.allFields&&afterPanel?.semantic
+      &&(viewport.width>=768?!afterPanel?.stacked:afterPanel?.stacked&&afterPanel?.labeled)
       &&afterPanel?.documentUnchanged,{afterPanel})
   }
   await ctx.close()
