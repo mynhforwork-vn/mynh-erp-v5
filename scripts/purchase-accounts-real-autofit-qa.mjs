@@ -129,6 +129,14 @@ try{
     const present=await grip.count()===1
     check(viewport.width+' '+key+' resize grip installed',present)
     if(!present)return
+    const visible=await grip.evaluate(el=>{
+      const style=getComputedStyle(el)
+      const box=el.getBoundingClientRect()
+      return box.width>=12&&style.cursor==='col-resize'
+        &&style.pointerEvents!=='none'
+        &&style.borderRightColor!=='rgba(0, 0, 0, 0)'
+    })
+    check(viewport.width+' '+key+' grip visible and grabbable',visible)
     await grip.scrollIntoViewIfNeeded()
     const before=await head.evaluate(el=>el.getBoundingClientRect().width)
     const box=await grip.boundingBox()
@@ -190,6 +198,10 @@ try{
   await page.locator('.account-workspace>.account-detail-panel').waitFor({timeout:20000})
   before=await snap(page)
   check(viewport.width+' 1 right panel opened',fit(before)&&before.panelCount===1,before??{})
+  // Mouse drag with the right slidebar actually open, not only full-table.
+  if(viewport.width===1280||viewport.width===1440){
+    await drag('username',26)
+  }
   await preserve('1-panel-with-saved-widths',before)
   collapsed=await leftTo(true,'1-panel left collapsed',before)
   await preserve('1-panel-collapse-preserves-drag',before)
