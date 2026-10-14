@@ -776,8 +776,7 @@ function deleteOrderErrorMessage(error:unknown){
 }
 export async function deleteOrderPermanent(formData:FormData){
   try{
-    const {supabase,role}=await actor()
-    requireAdmin(role)
+    const {supabase}=await actor()
     const returnQuery=text(formData.get('return_query'))
     const orderId=text(formData.get('order_id'))
     if(!orderId)return {ok:false as const,error:'Thiếu đơn cần xóa'}
@@ -966,8 +965,7 @@ export async function restoreOrdersBulk(formData:FormData){
 
 export async function deleteOrdersBulkPermanent(formData:FormData){
   try{
-    const {supabase,role}=await actor()
-    requireAdmin(role)
+    const {supabase}=await actor()
     const returnQuery=text(formData.get('return_query'))
     const orderIds=bulkOrderIds(formData)
 
@@ -1809,8 +1807,7 @@ export async function bulkImportERPUsers(rows:Array<{
 
 
 export async function deleteERPUserPermanent(formData:FormData){
-  const {supabase,role}=await actor()
-  requireAdmin(role)
+  const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
   const userId=text(formData.get('user_id'))
   const confirmText=text(formData.get('confirm_text'))
@@ -1823,7 +1820,6 @@ export async function deleteERPUserPermanent(formData:FormData){
     .maybeSingle()
   if(readError)throw new Error(readError.message)
   if(!row)throw new Error('User không tồn tại')
-  if(!row.archived_at)throw new Error('Cần lưu trữ User trước khi xóa vĩnh viễn')
   if(confirmText!==row.username)throw new Error('Username xác nhận chưa đúng')
   if(Number(row.order_count??0)>0)throw new Error('User có đơn hàng liên kết; chỉ được lưu trữ')
 
@@ -1832,7 +1828,9 @@ export async function deleteERPUserPermanent(formData:FormData){
 
   revalidatePath('/purchase/accounts')
   revalidatePath('/users')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'}))
+  const href=returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:null})
+  if(text(formData.get('inline_submit'))==='1')return {ok:true as const,href}
+  redirect(href)
 }
 
 
