@@ -229,6 +229,14 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   // Mọi bộ lọc tiêu đề chạy trên toàn bộ danh sách User đã nạp, không chỉ
   // những dòng đang hiển thị hoặc hàng mới được tạo sau khi mở slidebar.
   const norm=(v:unknown)=>String(v??'').trim().toLocaleLowerCase('vi')
+  const dateKey=(value:unknown)=>{
+    const date=new Date(String(value??''))
+    if(!Number.isFinite(date.getTime()))return ''
+    const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Ho_Chi_Minh',
+      year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date)
+    const part=(type:string)=>parts.find(p=>p.type===type)?.value??''
+    return part('year')+'-'+part('month')+'-'+part('day')
+  }
   function matchesHeadingFilters(u:any){
     const device=accountDeviceFields(u)
     const textColumns:Record<string,unknown>={
@@ -237,10 +245,10 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     }
     for(const key of ['username','email','note']){
       const val=norm(sp['cf_'+key])
-      if(val&&!norm(textColumns[key]).includes(val))return false
+      if(val&&norm(textColumns[key])!==val)return false
     }
     const phoneSearch=String(sp.cf_phone??'').replace(/\D/g,'')
-    if(phoneSearch&&!String(textColumns.phone).includes(phoneSearch))return false
+    if(phoneSearch&&String(textColumns.phone)!==phoneSearch)return false
     const exact:Record<string,string>={
       platform:String(u.platform??'SHOPEE'),status:String(u.status??''),
       mobile:device.mobileType,
@@ -251,10 +259,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     }
     if(/^\d+$/.test(sp.cf_deliveredOrders??'')
       &&Number(u.delivered_order_count??0)!==Number(sp.cf_deliveredOrders))return false
-    const date=new Date(u.effective_created_at??u.created_at)
-    const dateLocal=Number.isFinite(date.getTime())
-      ?new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',
-        month:'2-digit',day:'2-digit'}).format(date):''
+    const dateLocal=dateKey(u.effective_created_at??u.created_at)
     const dateFrom=sp.cf_createdAt_from??''
     const dateTo=sp.cf_createdAt_to??''
     if(/^\d{4}-\d{2}-\d{2}$/.test(dateFrom)&&dateLocal<dateFrom)return false
@@ -262,11 +267,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     return true
   }
 
-  const listOptions=(values:unknown[],limit=300)=>{
+  const listOptions=(values:unknown[])=>{
     const list=[...new Map(values.map(item=>String(item??'').trim()).filter(Boolean)
       .map(item=>[item.toLocaleLowerCase('vi'),item] as const)).values()]
       .sort((a,b)=>a.localeCompare(b,'vi'))
-    return list.slice(0,limit).map(item=>({value:item,label:item}))
+    return list.map(item=>({value:item,label:item}))
   }
   const headingOptions={
     username:listOptions(enriched.map((u:any)=>u.username)),
@@ -283,7 +288,12 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     orders:orderOptions,
     deliveredOrders:[...new Set(enriched.map((u:any)=>Number(u.delivered_order_count??0)))]
       .sort((a,b)=>a-b).map(n=>({value:String(n),label:n+' đơn'})),
-    note:listOptions(enriched.map((u:any)=>u.note),100),
+    note:listOptions(enriched.map((u:any)=>u.note)),
+    number:[...enriched.keys()].map(i=>({value:String(i+1),label:String(i+1)})),
+    createdAt:[...new Set(enriched.map((u:any)=>
+      dateKey(u.effective_created_at??u.created_at)).filter(Boolean))]
+      .sort((a,b)=>b.localeCompare(a))
+      .map(value=>({value,label:value.slice(8,10)+'/'+value.slice(5,7)+'/'+value.slice(0,4)})),
   }
   const headingValues:Record<string,string>={
     ...columnFilterEntries,browser,voucher,orders,session,
