@@ -268,6 +268,9 @@ export async function submitERPUserInline(_previous:ERPUserInlineResult,formData
     if(kind==='restoreBulk')return await restoreERPUsersBulk(formData) as ERPUserInlineResult
     return {status:'error',href:'',message:'Thao tác User không hợp lệ'}
   }catch(error){
+    // Never swallow a Next.js auth/navigation redirect raised by requireUser().
+    const digest=error&&typeof error==='object'&&'digest' in error?String(error.digest):''
+    if(digest.startsWith('NEXT_REDIRECT')||digest.startsWith('NEXT_HTTP_ERROR_FALLBACK'))throw error
     return {status:'error',href:'',message:error instanceof Error?error.message:'Không thể xử lý User. Vui lòng thử lại.'}
   }
 }
