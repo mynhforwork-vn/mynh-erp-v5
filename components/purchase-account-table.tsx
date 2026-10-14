@@ -10,6 +10,7 @@ import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
 import { ERPUserInlineForm } from '@/components/erp-user-inline-form'
 import {fitAccountColumnWidths} from '@/lib/account-table-autofit'
+import {AccountHeadingFilter,type AccountHeadingOption,type AccountHeadingFilterKind} from '@/components/account-heading-filter'
 
 type Row=Record<string,any>
 type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'mobile'|'browser'|'voucher'|'orders'|'deliveredOrders'|'createdAt'|'note'
@@ -60,12 +61,16 @@ export function PurchaseAccountTable({
   detailQuery='',
   sort='newest',
   canManage=false,
+  headingOptions={},headingValues={},sessionOptions=[],
 }:{
   rows:Row[]
   selectedId?:string|null
   detailQuery?:string
   sort?:string
   canManage?:boolean
+  headingOptions?:Partial<Record<ColKey,AccountHeadingOption[]>>
+  headingValues?:Record<string,string>
+  sessionOptions?:AccountHeadingOption[]
 }){
   const [visible,setVisible]=useState<ColKey[]>(ALL)
   const [columnOrder,setColumnOrder]=useState<ColKey[]>(ALL)
@@ -242,7 +247,9 @@ export function PurchaseAccountTable({
     ?['username','phone','orders']
     :tableLaneWidth>0&&tableLaneWidth<650
       ?['username','phone','status','orders','voucher']
-      :null
+      :tableLaneWidth>0&&tableLaneWidth<1020
+        ?['number','username','phone','status','mobile','browser','voucher','orders']
+        :null
   const shownColumns=compactKeys
     ?allShownColumns.filter(key=>compactKeys.includes(key))
     :allShownColumns
@@ -327,23 +334,43 @@ export function PurchaseAccountTable({
   }
 
   function renderHeader(key:ColKey){
-    if(key==='number')return <th key={key} data-account-col={key}>#</th>
-    if(key==='username')return <th key={key} data-account-col={key} className="p1-user-identity-head"><Link className="sortable-head" href={sortHref(detailQuery,nameNext)}>Username <span>{sort==='name_asc'?'↑':sort==='name_desc'?'↓':'↕'}</span></Link></th>
-    if(key==='platform')return <th key={key} data-account-col={key}>Nền tảng</th>
-    if(key==='phone')return <th key={key} data-account-col={key}>SĐT</th>
-    if(key==='email')return <th key={key} data-account-col={key}>Email</th>
-    if(key==='status')return <th key={key} data-account-col={key}>Trạng thái</th>
-    if(key==='mobile')return <th key={key} data-account-col={key}>Mobile</th>
-    if(key==='browser')return <th key={key} data-account-col={key}>Browser</th>
-    if(key==='voucher')return <th key={key} data-account-col={key} className="p1-user-voucher-head">Voucher đã dùng</th>
-    if(key==='orders')return <th key={key} data-account-col={key}>Số đơn</th>
-    if(key==='deliveredOrders')return <th key={key} data-account-col={key} title="Số đơn giao thành công">Giao thành công</th>
-    if(key==='createdAt')return <th key={key} data-account-col={key}><Link className="sortable-head" href={sortHref(detailQuery,timeNext)}>Thời gian tạo <span>{sort==='newest'?'↓':sort==='oldest'?'↑':'↕'}</span></Link></th>
-    return <th key={key} data-account-col={key}>Ghi chú</th>
+    const label=key==='username'?'Username':key==='createdAt'?'Thời gian tạo'
+      :key==='deliveredOrders'?'Giao thành công':LABELS[key]
+    const param=key==='browser'?'browser':key==='voucher'?'voucher'
+      :key==='orders'?'orders':'cf_'+key
+    const kind:AccountHeadingFilterKind=
+      key==='username'||key==='phone'||key==='email'||key==='note'?'text'
+      :key==='number'||key==='deliveredOrders'?'numeric'
+      :key==='createdAt'?'date':'choices'
+    const content=key==='username'
+      ?<Link className="sortable-head" href={sortHref(detailQuery,nameNext)}>
+        Username <span>{sort==='name_asc'?'↑':sort==='name_desc'?'↓':'↕'}</span>
+      </Link>
+      :key==='createdAt'
+        ?<Link className="sortable-head" href={sortHref(detailQuery,timeNext)}>
+          Thời gian tạo <span>{sort==='newest'?'↓':sort==='oldest'?'↑':'↕'}</span>
+        </Link>
+        :label
+    return <th key={key} data-account-col={key}
+      className={'account-heading-filter-cell'+
+        (key==='username'?' p1-user-identity-head':'')+
+        (key==='voucher'?' p1-user-voucher-head':'')}
+      title={label}>
+      <span className="account-heading-filter-caption">{content}</span>
+      <AccountHeadingFilter name={param} label={label} kind={kind}
+        value={headingValues[param]??''} options={headingOptions[key]??[]}
+        baseQuery={detailQuery}
+        from={key==='createdAt'?headingValues.cf_createdAt_from:''}
+        to={key==='createdAt'?headingValues.cf_createdAt_to:''}
+        secondary={key==='status'?{
+          name:'session',label:'Trạng thái phiên SPC',
+          value:headingValues.session??'all',options:sessionOptions,
+        }:undefined}/>
+    </th>
   }
 
   function renderCell(key:ColKey,u:any,i:number){
-    if(key==='number')return <td key={key} data-account-col={key}>{i+1}</td>
+    if(key==='number')return <td key={key} data-account-col={key}>{u.account_row_number??i+1}</td>
     if(key==='username')return <td key={key} data-account-col={key} className="p1-user-identity-cell">
       <div className="user-name-actions">
         <Link className="table-link" prefetch={false} href={hrefFor(u.id)} title={u.username}>{u.username}</Link>
