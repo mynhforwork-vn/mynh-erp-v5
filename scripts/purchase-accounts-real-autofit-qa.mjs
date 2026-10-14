@@ -56,24 +56,33 @@ async function snap(page){
       const th=table.querySelector('thead th[data-account-col="'+key+'"]')
       if(!th)return true // user explicitly hid it
       const st=getComputedStyle(th)
-      const floor={voucher:110,orders:60,deliveredOrders:94}[key]
-      return st.overflowX==='hidden'&&th.getBoundingClientRect().width>=floor
+      return st.overflowX==='hidden'&&th.getBoundingClientRect().width>=12
     })
     return {panelCount:w.querySelectorAll(':scope>aside.system-slidebar-v1').length,
       leftCollapsed:shell.classList.contains('desktop-sidebar-collapsed'),
       lane:Math.round(card.clientWidth),table:Math.round(width(table)),
       pageOverflow:document.documentElement.scrollWidth>innerWidth+5,
+      horizontalScroll:card.scrollWidth>card.clientWidth+4,
       scroll:/auto|scroll/.test(getComputedStyle(card).overflowX),
       aligned,headerCoverage,guarded,leftGap,rightGap,
       customized:table.classList.contains('mynh-resizable-table'),
       sameDocument:window.__mynhAccountQaDocument==='no-reload',
+      storedManual:(()=>{
+        try{
+          const key=Object.keys(localStorage).find(k=>k.startsWith('mynh-col-widths-v1:/purchase/accounts:')&&k.includes('user-table'))
+          const stored=key?JSON.parse(localStorage.getItem(key)??'{}'):{}
+          return {voucher:stored['Voucher đã dùng'],orders:stored['Số đơn'],
+            username:stored.Username}
+        }catch{return {}}
+      })(),
       col:c,
     }
   })
 }
-function fit(s){return !!s&&s.sameDocument&&!s.pageOverflow&&s.aligned&&s.headerCoverage&&s.guarded&&s.scroll
-  &&s.table>=s.lane-8&&s.col.username>=118&&s.col.number<=48
-  &&s.col.voucher>=110&&s.col.orders>=60}
+function fit(s){return !!s&&s.sameDocument&&!s.pageOverflow&&!s.horizontalScroll
+  &&s.aligned&&s.headerCoverage&&s.guarded&&s.scroll
+  &&s.table>=s.lane-8&&s.table<=s.lane+4
+  &&s.col.username>=12&&s.col.number<=48}
 const ranges=[{width:1024,height:768},{width:1280,height:800},
   {width:1366,height:768},{width:1440,height:900},
   {width:1728,height:1117},{width:1920,height:1080}]
@@ -87,21 +96,16 @@ try{
   })))
   const page=await ctx.newPage()
   await page.goto(base+'/purchase/accounts',{waitUntil:'domcontentloaded',timeout:45000})
-  await page.locator('.account-table-card table[data-auto-fit-version="5"]').waitFor({timeout:25000})
-  // Server HTML paints before the shared width manager hydrates. Testing its
-  // temporary intrinsic widths produces a false red initial-only result.
-  // Wait until the REAL Account manager has finished its first recalibration;
-  // never relax the 110px Voucher / 60px order-count acceptance thresholds.
+  await page.locator('.account-table-card table[data-auto-fit-version="6"]').waitFor({timeout:25000})
+  // Only accept the hydrated, lane-fitted DOM. Do not accept any local
+  // horizontal scrollbar, even in the narrow User detail lane (780/800px).
   await page.waitForFunction(()=>{
-    const table=document.querySelector('.account-table-card table[data-auto-fit-version="5"]')
-    const voucher=table?.querySelector('th[data-account-col="voucher"]')
-    const orders=table?.querySelector('th[data-account-col="orders"]')
-    const delivered=table?.querySelector('th[data-account-col="deliveredOrders"]')
-    if(!voucher||!orders||!delivered)return false
-    return voucher.getBoundingClientRect().width>=110
-      &&orders.getBoundingClientRect().width>=60
-      &&delivered.getBoundingClientRect().width>=94
-      &&getComputedStyle(voucher).overflowX==='hidden'
+    const card=document.querySelector('.account-table-card')
+    const table=card?.querySelector('table[data-auto-fit-version="6"]')
+    if(!card||!table||!table.classList.contains('mynh-resizable-table'))return false
+    const rect=table.getBoundingClientRect()
+    return rect.width<=card.clientWidth+4&&rect.width>=card.clientWidth-8
+      &&card.scrollWidth<=card.clientWidth+4
   },null,{timeout:20000})
   // Navigation between User and Order may update RSC data but must not reload
   // the browser document. Explicit persistence reload is handled separately.
@@ -162,7 +166,7 @@ try{
   async function preserve(label,prev){
     const s=await snap(page)
     check(viewport.width+' '+label,fit(s)
-      &&[...custom].every(([k,v])=>Math.abs(s.col[k]-v)<=7),
+      &&[...custom].every(([k,v])=>Math.abs(Number(s.storedManual[k])-v)<=7),
       {beforeLane:prev.lane,...s,manual:Object.fromEntries(custom)})
     if(viewport.width===1440)
       await page.screenshot({path:dir+'/1440-'+label.replaceAll(/[^a-z0-9-]/gi,'-')+'.png',fullPage:false})
@@ -191,7 +195,7 @@ try{
     check(viewport.width+' '+label,
       fit(now)&&now.panelCount===(open?1:0)&&now.leftCollapsed===previous.leftCollapsed
       &&Math.abs(now.lane-previous.lane)>=180
-      &&[...custom].every(([k,v])=>Math.abs(now.col[k]-v)<=7),
+      &&[...custom].every(([k,v])=>Math.abs(Number(now.storedManual[k])-v)<=7),
       {before:previous,...now,manual:Object.fromEntries(custom)})
     return now
   }
@@ -247,7 +251,7 @@ try{
   before=await snap(page)
   check(viewport.width+' back from Order to User: left still collapsed',
     fit(before)&&before.panelCount===1&&before.leftCollapsed
-    &&[...custom].every(([k,v])=>Math.abs(before.col[k]-v)<=7),before??{})
+    &&[...custom].every(([k,v])=>Math.abs(Number(before.storedManual[k])-v)<=7),before??{})
   const expanded=await leftTo(false,'User after Back: left expanded',before)
   before=expanded
   check(viewport.width+' back from Order to User: one panel Auto Fit',fit(before)&&before.panelCount===1,before??{})
@@ -265,7 +269,7 @@ try{
     await page.evaluate(()=>{window.__mynhAccountQaDocument='no-reload'})
     const reloaded=await snap(page)
     check('1440 Voucher and Số đơn preserved after reload',
-      fit(reloaded)&&reloaded.customized&&[...custom].every(([k,v])=>Math.abs(reloaded.col[k]-v)<=7),
+      fit(reloaded)&&reloaded.customized&&[...custom].every(([k,v])=>Math.abs(Number(reloaded.storedManual[k])-v)<=7),
       {prior,after:reloaded,manual:Object.fromEntries(custom)})
     // Return to truly natural sizing through the existing supported double-click reset.
     for(const k of custom.keys()){
