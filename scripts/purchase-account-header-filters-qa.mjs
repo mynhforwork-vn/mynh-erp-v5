@@ -32,14 +32,20 @@ const points=[
 ]
 async function openFilter(page,key){
   const button=page.locator('th[data-account-col="'+key+'"] .account-heading-filter-trigger')
-  const dialog=page.locator('.account-heading-filter-menu[popover]:popover-open')
-  if(await dialog.count()===0)await button.click()
-  await page.waitForFunction(()=>{
-    const menu=document.querySelector('.account-heading-filter-menu:popover-open')
-    return !!menu&&(menu.querySelectorAll('input[type="checkbox"]').length>0
-      ||!!menu.querySelector('.account-heading-filter-empty'))
-  },null,{timeout:10000})
-  return dialog
+  const expectedId=await button.getAttribute('aria-controls')
+  // The previous column's popover can remain open after Xóa lọc.
+  // Never mistake that menu for the filter of the newly requested column.
+  if(await page.locator('.account-heading-filter-menu:popover-open').count()){
+    await page.keyboard.press('Escape')
+  }
+  await button.click()
+  await page.waitForFunction(id=>{
+    const menu=id?document.getElementById(id):null
+    return !!menu&&menu.matches(':popover-open')
+      &&(menu.querySelectorAll('input[type="checkbox"]').length>0
+        ||!!menu.querySelector('.account-heading-filter-empty'))
+  },expectedId,{timeout:10000})
+  return page.locator('.account-heading-filter-menu:popover-open')
 }
 const selectedValues=raw=>{
   try{return raw?.startsWith('[')?JSON.parse(raw):raw?[raw]:[]}catch{return []}
