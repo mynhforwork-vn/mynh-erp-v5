@@ -108,6 +108,7 @@ try{
     sameSite:c.options?.sameSite==='strict'?'Strict':c.options?.sameSite==='none'?'None':'Lax',
   })))
   const page=await ctx.newPage()
+  try{
   await page.goto(base+'/purchase/accounts',{waitUntil:'domcontentloaded',timeout:45000})
   const marker=page.locator('.account-table-card table[data-auto-fit-version="5"]')
   for(let i=0;i<12&&!(await marker.count());i++){
@@ -118,7 +119,7 @@ try{
   check(viewport.width+' 0 slidebars: full-table Auto Fit',fit(initial)&&panels(initial,0),initial??{})
   const visibleIds=await page.locator('.account-table-card tbody tr[data-account-id]').evaluateAll(rows=>rows.map(x=>x.getAttribute('data-account-id')))
   const userId=users.find(u=>visibleIds.includes(u))
-  if(!userId){check(viewport.width+' account fixture visible',false,{available:visibleIds.length});await ctx.close();continue}
+  if(!userId){check(viewport.width+' account fixture visible',false,{available:visibleIds.length});continue}
   const link=page.locator('.account-table-card tbody tr[data-account-id="'+userId+'"] td[data-account-col="username"] .table-link')
   await link.click()
   await page.locator('.account-workspace>.account-detail-panel').waitFor({timeout:20000})
@@ -206,7 +207,14 @@ try{
   await page.locator('.account-workspace>.context-order-panel').waitFor({state:'detached',timeout:20000})
   const allClosed=await metrics(page)
   check(viewport.width+' close Order slidebar restores table',fit(allClosed)&&panels(allClosed,0),allClosed??{})
-  await ctx.close()
+  }catch(error){
+    // A transient RSC request/error must not hide the remaining viewport QA.
+    // Log a FAIL with its URL, then keep testing other sizes.
+    check(viewport.width+' navigation/layout exception',false,{
+      error:String(error?.message??error).slice(0,600),
+      url:page.url(),
+    })
+  }finally{await ctx.close()}
  }
 }finally{await browser.close()}
 console.log('ACCOUNT_STACK_QA_SUMMARY '+JSON.stringify({passed,failed}))
