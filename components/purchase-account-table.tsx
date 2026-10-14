@@ -18,7 +18,7 @@ type ColKey='number'|'username'|'platform'|'phone'|'email'|'status'|'mobile'|'br
 const ALL:ColKey[]=['number','username','platform','phone','email','status','mobile','browser','voucher','orders','deliveredOrders','createdAt','note']
 const LABELS:Record<ColKey,string>={
   number:'#',username:'Username',platform:'Nền tảng',phone:'SĐT',email:'Email',
-  status:'Trạng thái',mobile:'Mobile',browser:'Browser',voucher:'Voucher đã dùng',orders:'Số đơn',deliveredOrders:'Số đơn giao thành công',
+  status:'Trạng thái',mobile:'Mobile',browser:'Browser',voucher:'Voucher',orders:'Số đơn',deliveredOrders:'Số đơn giao thành công',
   createdAt:'Thời gian tạo',note:'Ghi chú'
 }
 const STORAGE_KEY='mynh-v5-purchase-account-columns'
