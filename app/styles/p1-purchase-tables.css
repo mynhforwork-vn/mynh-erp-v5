@@ -1394,3 +1394,24 @@ thead th.account-heading-filter-cell>.account-heading-filter-trigger{
   order:2!important;
   flex:none!important;
 }
+
+/* Account drawer Auto Fit: override legacy 940/1089px minimums BEFORE
+   DesktopTableColumnResize has hydrated. Panel-open, sidebar transitions and
+   RSC remounts must always paint within the actual list lane, not leave a
+   stale horizontal scroll. Resized tables keep their JS-managed px widths.
+   This rule intentionally does NOT affect Purchase Orders. */
+.brand-shell-v1 .account-screen .account-workspace
+.account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table),
+.brand-shell-v1 .account-screen .account-workspace.with-panel
+.account-table-card table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table){
+  box-sizing:border-box!important;
+  table-layout:fixed!important;
+  width:min(100%,var(--p1-account-fit-table-width,100%))!important;
+  min-width:0!important;
+  max-width:100%!important;
+}
+.brand-shell-v1 .account-screen .account-workspace
+:is(.account-list-pane,.account-table-card){
+  min-width:0!important;
+  max-width:100%!important;
+}
