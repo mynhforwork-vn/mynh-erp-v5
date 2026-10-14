@@ -133,7 +133,7 @@ try{
       .filter({hasText:'Sửa tài khoản'}).click()
     const inlineForm=page.locator('.account-workspace>.account-detail-panel form')
     await inlineForm.locator('input[name="inline_operation"][value="update"]')
-      .waitFor({timeout:15000})
+      .waitFor({state:'attached',timeout:15000})
     const softEdit=await page.evaluate(origin=>performance.timeOrigin===origin,documentOrigin)
     check('1440 edit form opens without document reload and uses inline Server Action',
       softEdit&&page.url().includes('mode=edit')
