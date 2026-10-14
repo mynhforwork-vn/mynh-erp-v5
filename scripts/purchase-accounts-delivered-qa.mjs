@@ -171,13 +171,13 @@ try{
         break
       }catch(error){
         const present=await page.locator('.account-table-card table[data-auto-fit-version="7"]').count()
-        const diagnostic=await page.evaluate(()=>({
+        const checkpoint=await page.evaluate(()=>({
           ready:document.readyState,pathname:location.pathname,
           hasTable:!!document.querySelector('.account-table-card'),
           title:document.title,
         }))
         console.log('ACCOUNT_DELIVERED_RETRY '+JSON.stringify({
-          viewport:viewport.width,attempt,present,diagnostic,clientErrors,
+          viewport:viewport.width,attempt,present,diagnostic:checkpoint,clientErrors,
         }))
         // Retry only transient Preview route/ChunkLoad failure. Persistent
         // real layout misalignment remains a test failure at the last try.
