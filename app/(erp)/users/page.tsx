@@ -232,14 +232,14 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   function matchesHeadingFilters(u:any){
     const device=accountDeviceFields(u)
     const textColumns:Record<string,unknown>={
-      username:u.username,phone:String(u.phone??'').replace(/\\D/g,''),
+      username:u.username,phone:String(u.phone??'').replace(/\D/g,''),
       email:u.email,note:u.note,
     }
     for(const key of ['username','email','note']){
       const val=norm(sp['cf_'+key])
       if(val&&!norm(textColumns[key]).includes(val))return false
     }
-    const phoneSearch=String(sp.cf_phone??'').replace(/\\D/g,'')
+    const phoneSearch=String(sp.cf_phone??'').replace(/\D/g,'')
     if(phoneSearch&&!String(textColumns.phone).includes(phoneSearch))return false
     const exact:Record<string,string>={
       platform:String(u.platform??'SHOPEE'),status:String(u.status??''),
@@ -249,7 +249,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       const val=norm(sp['cf_'+key])
       if(val&&norm(exact[key])!==val)return false
     }
-    if(/^\\d+$/.test(sp.cf_deliveredOrders??'')
+    if(/^\d+$/.test(sp.cf_deliveredOrders??'')
       &&Number(u.delivered_order_count??0)!==Number(sp.cf_deliveredOrders))return false
     const date=new Date(u.effective_created_at??u.created_at)
     const dateLocal=Number.isFinite(date.getTime())
@@ -257,8 +257,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         month:'2-digit',day:'2-digit'}).format(date):''
     const dateFrom=sp.cf_createdAt_from??''
     const dateTo=sp.cf_createdAt_to??''
-    if(/^\\d{4}-\\d{2}-\\d{2}$/.test(dateFrom)&&dateLocal<dateFrom)return false
-    if(/^\\d{4}-\\d{2}-\\d{2}$/.test(dateTo)&&dateLocal>dateTo)return false
+    if(/^\d{4}-\d{2}-\d{2}$/.test(dateFrom)&&dateLocal<dateFrom)return false
+    if(/^\d{4}-\d{2}-\d{2}$/.test(dateTo)&&dateLocal>dateTo)return false
     return true
   }
 
@@ -278,7 +278,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       .map(value=>({value,label:statusLabel(value)})),
     mobile:listOptions(enriched.map((u:any)=>accountDeviceFields(u).mobileType)),
     browser:browserOptions,
-    voucher:[...(hasNoVoucher?[{value:'none',label:'Chưa dùng voucher'}]:[]),...voucherOptions],
+    voucher:[{value:'has',label:'Đã sử dụng voucher'},
+      ...(hasNoVoucher?[{value:'none',label:'Chưa dùng voucher'}]:[]),...voucherOptions],
     orders:orderOptions,
     deliveredOrders:[...new Set(enriched.map((u:any)=>Number(u.delivered_order_count??0)))]
       .sort((a,b)=>a-b).map(n=>({value:String(n),label:n+' đơn'})),
@@ -315,7 +316,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   })
   // STT là thứ tự theo danh sách đã sắp xếp, giữ ổn định khi lọc riêng STT.
   rows=rows.map((u:any,i:number)=>({...u,account_row_number:i+1}))
-  if(/^\\d+$/.test(sp.cf_number??'')){
+  if(/^\d+$/.test(sp.cf_number??'')){
     rows=rows.filter((u:any)=>u.account_row_number===Number(sp.cf_number))
   }
 
@@ -473,7 +474,6 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const creating=canOperate&&sp.mode==='create'
   const panelOpen=creating||Boolean(selected)
   const isEdit=Boolean(canOperate&&selected&&sp.mode==='edit'&&!selected.archived_at)
-  const filtersActive=Boolean(queryText||state!=='all'||session!=='all'||voucher!=='all'||orders!=='all'||browser!=='all'||sort!=='newest')
 
   return <div className="account-screen">
     <header className="page-head entity-page-head">
@@ -514,12 +514,10 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       {sp.archive&&<input type="hidden" name="archive" value={sp.archive}/>}
       {sp.order&&<input type="hidden" name="order" value={sp.order}/>}
       {sp.orderTab&&<input type="hidden" name="orderTab" value={sp.orderTab}/>}
-      <button className="button primary small">Tìm</button>
       <div className="archive-view-toggle">
         <Link className={!archiveView?'active':''} href={filterHref({archive:null,user:null,mode:null,tab:null})}>Đang dùng</Link>
         <Link className={archiveView?'active':''} href={filterHref({archive:'archived',user:null,mode:null,tab:null})}>Đã lưu trữ</Link>
       </div>
-      <div className="entity-result-meta"><b>{rows.length}</b><span>/ {counts.all} User{selectedOutsideFilter?' · +1 đang mở':''}</span></div>
     </ERPAccountFilterForm>
       <div id="p1-account-filter-actions" className="p1-account-filter-actions"/>
     </div>
