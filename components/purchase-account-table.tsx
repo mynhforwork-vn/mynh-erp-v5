@@ -70,9 +70,11 @@ export function PurchaseAccountTable({
   const [visible,setVisible]=useState<ColKey[]>(ALL)
   const [columnOrder,setColumnOrder]=useState<ColKey[]>(ALL)
   const [open,setOpen]=useState(false)
+  const [menuPosition,setMenuPosition]=useState({top:64,right:8})
   const [selected,setSelected]=useState<string[]>([])
   const draggingRef=useRef<ColKey|null>(null)
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
+  const columnMenuRef=useRef<HTMLDivElement|null>(null)
   const tableCardRef=useRef<HTMLDivElement|null>(null)
   const [tableLaneWidth,setTableLaneWidth]=useState(0)
   useEffect(()=>{
@@ -166,16 +168,28 @@ export function PurchaseAccountTable({
     if(!open)return
     function onPointerDown(event:PointerEvent){
       const target=event.target as Node|null
-      if(target&&!columnManagerRef.current?.contains(target))setOpen(false)
+      if(target&&!columnManagerRef.current?.contains(target)
+        &&!columnMenuRef.current?.contains(target))setOpen(false)
     }
     function onKeyDown(event:KeyboardEvent){
       if(event.key==='Escape')setOpen(false)
     }
+    const reposition=()=>{
+      const button=columnManagerRef.current?.querySelector<HTMLButtonElement>('.managed-column-button')
+      if(!button)return
+      const rect=button.getBoundingClientRect()
+      setMenuPosition({top:Math.max(8,Math.min(rect.bottom+5,window.innerHeight-245)),
+        right:Math.max(8,window.innerWidth-rect.right)})
+    }
     document.addEventListener('pointerdown',onPointerDown)
     document.addEventListener('keydown',onKeyDown)
+    window.addEventListener('resize',reposition)
+    window.addEventListener('scroll',reposition,true)
     return ()=>{
       document.removeEventListener('pointerdown',onPointerDown)
       document.removeEventListener('keydown',onKeyDown)
+      window.removeEventListener('resize',reposition)
+      window.removeEventListener('scroll',reposition,true)
     }
   },[open])
 
@@ -364,10 +378,25 @@ export function PurchaseAccountTable({
     </div>}
 
     {toolbarRoot&&createPortal(<div className="column-manager managed-column-wrap" ref={columnManagerRef}>
-      <button className="icon-button managed-column-button" type="button" onClick={()=>setOpen(v=>!v)} aria-expanded={open} title="Cột & thứ tự">
-        <ColumnIcon/><span>Cột</span>
+      <button className="icon-button managed-column-button" type="button"
+        onClick={event=>{
+          const rect=event.currentTarget.getBoundingClientRect()
+          setMenuPosition({top:Math.max(8,Math.min(rect.bottom+5,window.innerHeight-245)),
+            right:Math.max(8,window.innerWidth-rect.right)})
+          setOpen(value=>!value)
+        }}
+        aria-expanded={open} aria-haspopup="dialog" aria-label="Sắp xếp cột tài khoản"
+        title="Sắp xếp, ẩn và hiện cột tài khoản">
+        <ColumnIcon/>
       </button>
-      {open&&<div className="column-manager-menu">
+    </div>,toolbarRoot)}
+    {open&&typeof document!=='undefined'&&createPortal(
+      <div ref={columnMenuRef} className="column-manager-menu p1-order-floating-menu p1-account-floating-menu"
+        role="dialog" aria-label="Sắp xếp, ẩn và hiện cột tài khoản"
+        style={{
+          '--p1-order-menu-top':menuPosition.top+'px',
+          '--p1-order-menu-right':menuPosition.right+'px',
+        } as CSSProperties}>
         <div className="column-manager-head"><b>Cột & thứ tự</b><button type="button" onClick={reset}>↺ Mặc định</button></div>
         {columnOrder.map(k=><div
           key={k}
@@ -427,8 +456,7 @@ export function PurchaseAccountTable({
               onClick={()=>moveColumn(k,1)}>↓</button>
           </div>
         </div>)}
-      </div>}
-    </div>,toolbarRoot)}
+      </div>,document.body)}
 
     <div className="card table-card account-table-card" ref={tableCardRef}>
       <table className="table user-table mynh-p1-semantic-table" data-auto-fit-version="6" style={tableWidths}>
