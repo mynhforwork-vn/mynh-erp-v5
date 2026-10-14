@@ -1064,3 +1064,127 @@ thead th.account-heading-filter-cell>.account-heading-filter-trigger.is-active{
     flex:1 1 100%!important;
   }
 }
+
+
+/* Tài khoản / Neo Enterprise Light: thanh công cụ và hàng tiêu đề
+   thống nhất nhịp, giảm bo góc và tránh tạo các thẻ nổi rời rạc. */
+.brand-shell-v1 .p1-account-command-row{
+  align-items:center!important;
+  gap:6px!important;
+  padding:4px 6px!important;
+  border-bottom:1px solid #d9e4ed!important;
+  border-radius:3px 3px 0 0!important;
+  background:#f6f9fc!important;
+}
+.brand-shell-v1 .p1-account-command-row>form.account-filter-bar{
+  border:0!important;border-radius:2px!important;
+  background:transparent!important;box-shadow:none!important;
+  padding:0!important;min-height:31px!important;
+}
+.brand-shell-v1 .p1-account-filter-actions{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:5px!important;
+}
+.brand-shell-v1 .p1-account-command-row>.p1-account-filter-actions:has(.user-bulk-toolbar){
+  flex:0 1 auto!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:min(72%,370px)!important;
+}
+.brand-shell-v1 .p1-account-filter-actions .user-bulk-toolbar{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:6px!important;
+  min-width:0!important;
+  white-space:nowrap!important;
+}
+.brand-shell-v1 .p1-account-filter-actions .user-bulk-count{
+  white-space:nowrap;
+  font-size:11px!important;
+  font-weight:600!important;
+  color:#33536e!important;
+}
+.brand-shell-v1 .p1-account-filter-actions .user-bulk-count b{
+  color:#1a608d!important;
+  font-weight:750!important;
+}
+.brand-shell-v1 .p1-account-filter-actions .user-bulk-toolbar-form{
+  display:flex!important;
+  width:auto!important;
+  min-width:0!important;
+  flex:none!important;
+  margin:0!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+}
+.brand-shell-v1 .p1-account-filter-actions .user-bulk-toolbar-form button,
+.brand-shell-v1 .p1-account-filter-actions .user-bulk-clear{
+  box-sizing:border-box!important;
+  height:27px!important;min-height:27px!important;
+  margin:0!important;padding:2px 8px!important;
+  border:1px solid #cbdce9!important;
+  border-radius:3px!important;
+  font:600 11px/1.4 inherit!important;
+  white-space:nowrap!important;
+  cursor:pointer!important;
+}
+.brand-shell-v1 .p1-account-filter-actions .user-bulk-clear{
+  color:#526b80!important;background:#fff!important;
+}
+.brand-shell-v1 .account-table-card{
+  border-radius:0 0 4px 4px!important;
+}
+.brand-shell-v1 .account-table-card table.user-table
+thead th.account-heading-filter-cell>.account-heading-filter-trigger,
+.brand-shell-v1 .account-table-card table.user-table
+thead th.account-heading-filter-cell>.account-heading-filter-trigger:is(:hover,:focus-visible){
+  border-radius:2px!important;
+}
+.account-heading-filter-menu[popover]{
+  border-radius:4px!important;
+  padding:9px!important;
+  box-shadow:0 12px 26px rgba(29,51,73,.16)!important;
+}
+.account-heading-filter-menu .account-heading-filter-title{
+  border-bottom:1px solid #e4eaf0!important;
+  padding-bottom:7px!important;margin-bottom:2px!important;
+  font-weight:700!important;
+}
+.account-heading-filter-menu .account-heading-filter-options{
+  border-radius:3px!important;
+  max-height:250px!important;
+}
+.account-heading-filter-menu .account-heading-filter-option{
+  min-height:28px!important;
+  border-bottom:1px solid #f1f4f7;
+}
+.account-heading-filter-menu .account-heading-filter-option:last-child{
+  border-bottom:0;
+}
+.account-heading-filter-menu .account-heading-filter-actions button,
+.account-heading-filter-menu .account-heading-filter-form select{
+  border-radius:3px!important;
+}
+@media(max-width:700px){
+  .brand-shell-v1 .p1-account-command-row{
+    flex-wrap:wrap!important;
+    row-gap:3px!important;
+  }
+  .brand-shell-v1 .p1-account-command-row>.p1-account-filter-actions:has(.user-bulk-toolbar){
+    max-width:100%!important;
+  }
+  .brand-shell-v1 .p1-account-filter-actions .user-bulk-toolbar{
+    gap:4px!important;
+  }
+  .brand-shell-v1 .p1-account-filter-actions .user-bulk-count{
+    font-size:10px!important;
+  }
+  .brand-shell-v1 .p1-account-filter-actions .user-bulk-toolbar-form button,
+  .brand-shell-v1 .p1-account-filter-actions .user-bulk-clear{
+    padding-inline:5px!important;
+  }
+}
