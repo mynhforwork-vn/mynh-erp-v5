@@ -289,13 +289,14 @@ try{
   await control.click()
   await toggle.check()
   check('Column can be shown again',await header.count()===1)
-  // Right slidebar: do not compress 13 columns into illegible fragments.
+  // Right slidebar: keep the REAL semantic table on Desktop, never
+  // switch thead to flex-wrap and tbody rows to CSS grid/cards.
   const firstUser=page.locator('.account-table-card tr[data-account-id] td[data-account-col="username"] .table-link').first()
   await firstUser.click()
   await page.locator('.account-workspace.with-panel').waitFor({timeout:15000})
   const drawer=await inspectAccountFit()
   check('Accounts Auto Fit with right slidebar open: every enabled field stays visible',Boolean(drawer&&
-    drawer.mode==='panel'&&drawer.stacked&&drawer.allPresent&&drawer.labeled
+    drawer.mode==='panel'&&!drawer.stacked&&drawer.allPresent
     &&drawer.aligned&&drawer.readable&&drawer.compact&&
     drawer.fillsLane&&drawer.noHorizontalScroll&&drawer.localScroll&&!drawer.pageOverflow),
     drawer??{reason:'Drawer table missing'})
