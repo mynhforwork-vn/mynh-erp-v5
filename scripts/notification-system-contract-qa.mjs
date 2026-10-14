@@ -20,5 +20,6 @@ check('All API-backed system handlers present', ['get_notification_feed','mark_s
 check('Status/category filters are local state, no extra fetch',ui.includes("row.category===categoryFilter")&&ui.includes('neo-soft-category-select')&&(ui.match(/\bfetch\(/g)||[]).length===4)
 check('System details, migration warning',ui.includes("row.source==='system'")&&ui.includes('feed.migration_pending'))
 check('Responsive wrapped filter layout',css.includes('max-width:390px')&&css.includes('flex-wrap:wrap'))
+check('System alert toggles use existing rule UI and cannot enable Telegram',sql.includes('insert into public.alert_rule_configs')&&sql.includes('on conflict(alert_type) do nothing')&&sql.includes('cfg.enabled and cfg.in_app_enabled')&&sql.includes('true,true,false,0,60'))
 check('No new cron/provider/Telegram writes',!sql.includes('cron.schedule(')&&!sql.includes('http_post(')&&!sql.includes('api.telegram.org'))
 console.log('NOTIFICATION_SYSTEM_CONTRACT_QA_SUMMARY '+JSON.stringify({passed,failed:0}))
