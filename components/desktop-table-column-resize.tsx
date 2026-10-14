@@ -542,6 +542,13 @@ export function DesktopTableColumnResize() {
     let scheduled = 0
     const scan=()=>{
       scheduled=0
+      // RSC navigation can replace the table card without remounting this
+      // observer. Bind newly rendered lanes before fitting their columns.
+      main.querySelectorAll('.order-table-card,.account-table-card').forEach(pane=>{
+        if(observedPanes.has(pane))return
+        observedPanes.add(pane)
+        paneResize.observe(pane)
+      })
       if(!mq.matches)return
       main.querySelectorAll('table.table').forEach(t=>enhance(t as HTMLTableElement))
     }
@@ -561,8 +568,15 @@ export function DesktopTableColumnResize() {
     })
     observer.observe(main,{childList:true,subtree:true,attributes:true,attributeFilter:['class']})
     const onChange=()=>{if(mq.matches)queue()}
+    const observedPanes=new WeakSet<Element>()
     const paneResize=new ResizeObserver(()=>queue())
-    main.querySelectorAll('.order-table-card,.account-table-card').forEach(el=>paneResize.observe(el))
+    // Column table width can be overwritten after hydration even when the
+    // containing lane has not changed. Explicitly invalidate its fit token.
+    const refitAccount=()=>{
+      main.querySelectorAll('table.mynh-p1-semantic-table.user-table')
+        .forEach(table=>trackingLayout.delete(table as HTMLTableElement))
+      queue()
+    }
     window.addEventListener('resize',queue)
     mq.addEventListener('change',onChange)
     const sync=(event:Event)=>{
@@ -588,6 +602,7 @@ export function DesktopTableColumnResize() {
     window.addEventListener('mynh-table-column-width-changed',sync)
     // Left sidebar collapse/expand changes available table space without a React remount.
     window.addEventListener('mynh-sidebar-resized',queue)
+    window.addEventListener('mynh-account-fit-changed',refitAccount)
     queue()
     return ()=>{
       observer.disconnect()
@@ -595,6 +610,7 @@ export function DesktopTableColumnResize() {
       window.removeEventListener('resize',queue)
       window.removeEventListener('mynh-table-column-width-changed',sync)
       window.removeEventListener('mynh-sidebar-resized',queue)
+      window.removeEventListener('mynh-account-fit-changed',refitAccount)
       mq.removeEventListener('change',onChange)
       if(scheduled)window.cancelAnimationFrame(scheduled)
     }
