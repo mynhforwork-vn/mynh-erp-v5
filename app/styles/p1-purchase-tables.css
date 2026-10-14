@@ -937,3 +937,130 @@ table.user-table.mynh-p1-semantic-table:not(.mynh-resizable-table) col.p1-accoun
 .brand-shell-v1 .order-editor .shopee-cancel-review input[type="checkbox"]{
   width:15px;height:15px;min-width:15px;flex:none;margin:1px 0 0;accent-color:#2563a0;
 }
+
+
+/* MYNH ERP · bộ lọc tích hợp tiêu đề cột Tài khoản mua hàng.
+   Filter trigger tránh 12px vùng resize mép phải, popover nằm trên cùng
+   nên không bị sticky heading / bảng / sidebar cắt. */
+.brand-shell-v1 .account-table-card table.user-table
+thead th.account-heading-filter-cell{
+  position:relative!important;
+  padding-right:31px!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  vertical-align:middle!important;
+}
+.brand-shell-v1 .account-table-card table.user-table
+thead th.account-heading-filter-cell>.account-heading-filter-caption{
+  display:block!important;
+  overflow:hidden!important;
+  white-space:nowrap!important;
+  text-overflow:ellipsis!important;
+  font-size:inherit!important;
+  line-height:1.45!important;
+  min-width:0!important;
+}
+.brand-shell-v1 .account-table-card table.user-table
+thead th.account-heading-filter-cell>.account-heading-filter-caption .sortable-head{
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.brand-shell-v1 .account-table-card table.user-table
+thead th.account-heading-filter-cell>.account-heading-filter-trigger{
+  position:absolute!important;
+  right:14px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  box-sizing:border-box!important;
+  width:16px!important;height:19px!important;
+  min-width:16px!important;min-height:19px!important;
+  padding:2px!important;margin:0!important;
+  border:0!important;border-radius:4px!important;
+  background:transparent!important;
+  color:#7391aa!important;
+  display:inline-flex!important;
+  align-items:center!important;justify-content:center!important;
+  cursor:pointer!important;pointer-events:auto!important;
+  z-index:8!important;
+}
+.brand-shell-v1 .account-table-card table.user-table
+thead th.account-heading-filter-cell>.account-heading-filter-trigger:is(:hover,:focus-visible){
+  background:#eaf3fb!important;color:#235c91!important;
+  outline:1px solid #b5d3e9!important;
+}
+.brand-shell-v1 .account-table-card table.user-table
+thead th.account-heading-filter-cell>.account-heading-filter-trigger.is-active{
+  background:#deedf9!important;color:#2464a3!important;
+  box-shadow:inset 0 0 0 1px #91bde1!important;
+}
+.account-heading-filter-menu[popover]{
+  position:fixed!important;
+  inset:auto!important;
+  top:var(--account-head-filter-y,65px)!important;
+  left:var(--account-head-filter-x,8px)!important;
+  box-sizing:border-box!important;
+  margin:0!important;
+  width:min(272px,calc(100vw - 16px))!important;
+  max-height:min(420px,calc(100dvh - 18px))!important;
+  overflow-y:auto!important;overflow-x:hidden!important;
+  padding:12px!important;
+  background:#fff!important;color:#2f475d!important;
+  border:1px solid #d7e2eb!important;border-radius:9px!important;
+  box-shadow:0 15px 35px rgba(35,55,80,.20)!important;
+  font:12px/1.42 inherit!important;
+}
+.account-heading-filter-menu .account-heading-filter-title{
+  margin-bottom:10px;font-size:12px;font-weight:750;color:#29445e
+}
+.account-heading-filter-menu .account-heading-filter-form{display:grid;gap:7px}
+.account-heading-filter-menu label:not(.account-heading-filter-option){
+  font-size:11px;font-weight:650;color:#536d86
+}
+.account-heading-filter-menu :is(input[type="search"],input[type="number"],
+  input[type="date"],select){
+  box-sizing:border-box;display:block;width:100%;height:33px;min-width:0;
+  margin:0;padding:5px 9px;
+  color:#2f485e;background:#fff;border:1px solid #cbd9e5;
+  border-radius:6px;font:12px/1.3 inherit
+}
+.account-heading-filter-menu .account-heading-filter-options{
+  max-height:214px;overflow-y:auto;border:1px solid #e6edf4;border-radius:6px
+}
+.account-heading-filter-menu .account-heading-filter-option{
+  display:flex;align-items:center;gap:8px;min-height:30px;
+  padding:5px 8px;cursor:pointer;color:#3d566c;font-size:12px
+}
+.account-heading-filter-menu .account-heading-filter-option:hover{background:#f1f6fb}
+.account-heading-filter-menu .account-heading-filter-option input{
+  flex:none;width:14px;height:14px;margin:0;accent-color:#2a6eaa
+}
+.account-heading-filter-menu .account-heading-filter-option span{
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+.account-heading-filter-menu .account-heading-filter-empty{
+  display:block;padding:10px;color:#69829a
+}
+.account-heading-filter-menu .account-heading-filter-actions{
+  display:flex;justify-content:flex-end;gap:6px;
+  margin-top:4px;padding-top:9px;border-top:1px solid #e8eef3
+}
+.account-heading-filter-menu .account-heading-filter-actions button{
+  min-height:29px;border-radius:6px;cursor:pointer
+}
+.account-heading-filter-menu .account-heading-filter-actions button:first-child{
+  background:#fff;border:1px solid #d9e4ed;color:#506a80;padding:5px 9px
+}
+/* Thanh phía trên giữ duy nhất tìm kiếm, trạng thái lưu trữ và icon cột.
+   Tìm bằng Enter; không có nút Lọc hay selector trùng lặp. */
+.brand-shell-v1 .entity-user-command .search{
+  flex:1 1 180px!important;
+  min-width:0!important;
+}
+@media(max-width:900px){
+  .brand-shell-v1 .entity-user-command .search{
+    flex:1 1 100%!important;
+  }
+}
