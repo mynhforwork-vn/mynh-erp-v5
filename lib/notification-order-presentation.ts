@@ -1,5 +1,3 @@
-import {orderIsCancelled} from './purchase-order-cancellation'
-
 /**
  * Pure presentation model for legacy tracking alerts.
  * Groups by Shopee order, not by status or HUB; read != requires action.
@@ -74,9 +72,12 @@ export function buildOrderNotices(rows:LegacyAlert[],orderLinks:OrderLink[]):Tra
   const output:TrackingOrderNotice[]=[]
   for(const {code,events,hub} of groups.values()){
     const link=orderByCode.get(code)
-    if(link&&orderIsCancelled(link))continue
     const activeShipment=link?.shipments?.find(s=>s.is_active)??link?.shipments?.[0]
     const liveStatus=String(activeShipment?.current_tracking_status??'').toUpperCase()
+    // The route already applies orderIsCancelled, including no-MVD markers;
+    // keep this pure order-level fallback for archived/legacy render callers.
+    const orderStatus=String(link?.order_status??'').trim().toUpperCase()
+    if(orderStatus==='CANCELLED'||orderStatus==='CANCELED'||liveStatus==='CANCELLED')continue
     // DELIVERED is definitive even when an older failure alert has higher
     // historical severity. Keep the complete history, without inventing events.
     const ordered=[...events].sort((a,b)=>(priority[b.type]??0)-(priority[a.type]??0)||
