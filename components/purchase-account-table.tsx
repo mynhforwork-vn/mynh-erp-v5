@@ -101,6 +101,28 @@ export function PurchaseAccountTable({
       if(raf)window.cancelAnimationFrame(raf)
     }
   },[])
+  // Lưu User bằng Server Action làm mới RSC, nhưng không được đặt lại vị trí
+  // cuộn ngang/dọc của bảng. Khôi phục sau khi hàng mới được React render.
+  useEffect(()=>{
+    const card=tableCardRef.current
+    if(!card)return
+    let raw=''
+    try{raw=sessionStorage.getItem('mynh-account-scroll-on-save')??''}catch{}
+    if(!raw)return
+    try{
+      const saved=JSON.parse(raw) as {x:number,y:number,at:number}
+      if(Date.now()-saved.at<15000){
+        const frame=window.requestAnimationFrame(()=>{
+          card.scrollLeft=saved.x
+          card.scrollTop=saved.y
+        })
+        try{sessionStorage.removeItem('mynh-account-scroll-on-save')}catch{}
+        return ()=>window.cancelAnimationFrame(frame)
+      }
+    }catch{}
+    try{sessionStorage.removeItem('mynh-account-scroll-on-save')}catch{}
+  },[rows,selectedId])
+
   const toolbarRoot=usePurchaseToolbarRoot('p1-account-filter-actions')
 
   useEffect(()=>{
