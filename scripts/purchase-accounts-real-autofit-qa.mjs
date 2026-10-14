@@ -1,6 +1,7 @@
 /**
  * Account table Auto Fit QA: actual mouse drags + navigation sidebar expand/
- * collapse across 0/1/2 right slidebars, persistence. Read-only ERP access.
+ * collapse, mixed left/right open-close permutations (one right detail slidebar),
+ * manual column widths and persistence. Read-only ERP access.
  */
 import fs from 'node:fs'
 import {chromium} from 'playwright'
@@ -65,11 +66,12 @@ async function snap(page){
       scroll:/auto|scroll/.test(getComputedStyle(card).overflowX),
       aligned,headerCoverage,guarded,leftGap,rightGap,
       customized:table.classList.contains('mynh-resizable-table'),
+      sameDocument:window.__mynhAccountQaDocument==='no-reload',
       col:c,
     }
   })
 }
-function fit(s){return !!s&&!s.pageOverflow&&s.aligned&&s.headerCoverage&&s.guarded&&s.scroll
+function fit(s){return !!s&&s.sameDocument&&!s.pageOverflow&&s.aligned&&s.headerCoverage&&s.guarded&&s.scroll
   &&s.table>=s.lane-8&&s.col.username>=118&&s.col.number<=48
   &&s.col.voucher>=110&&s.col.orders>=60}
 const ranges=[{width:1024,height:768},{width:1280,height:800},
@@ -100,6 +102,9 @@ try{
       &&delivered.getBoundingClientRect().width>=94
       &&getComputedStyle(voucher).overflowX==='hidden'
   },null,{timeout:20000})
+  // Navigation between User and Order may update RSC data but must not reload
+  // the browser document. Explicit persistence reload is handled separately.
+  await page.evaluate(()=>{window.__mynhAccountQaDocument='no-reload'})
   const initial=await snap(page)
   check(viewport.width+' initial 0 panels',fit(initial)&&initial.panelCount===0,initial??{})
   const toggle=page.locator('.desktop-sidebar-seam-handle .sidebar-collapse-toggle')
@@ -165,6 +170,22 @@ try{
   const target=ids.find(id=>displayed.includes(id))
   if(!target){check(viewport.width+' real account with order exists',false,{count:displayed.length});await ctx.close();continue}
   const userLink=page.locator('.account-table-card tr[data-account-id="'+target+'"] td[data-account-col="username"] .table-link')
+  async function rightUserTo(open,label,previous){
+    if(open){
+      await userLink.click()
+      await page.locator('.account-workspace>.account-detail-panel').waitFor({timeout:20000})
+    }else{
+      await page.locator('.account-workspace>.account-detail-panel a.close').click()
+      await page.locator('.account-workspace>.account-detail-panel').waitFor({state:'detached',timeout:20000})
+    }
+    const now=await snap(page)
+    check(viewport.width+' '+label,
+      fit(now)&&now.panelCount===(open?1:0)&&now.leftCollapsed===previous.leftCollapsed
+      &&Math.abs(now.lane-previous.lane)>=180
+      &&[...custom].every(([k,v])=>Math.abs(now.col[k]-v)<=7),
+      {before:previous,...now,manual:Object.fromEntries(custom)})
+    return now
+  }
   await userLink.click()
   await page.locator('.account-workspace>.account-detail-panel').waitFor({timeout:20000})
   before=await snap(page)
@@ -174,6 +195,22 @@ try{
   await preserve('1-panel-collapse-preserves-drag',before)
   before=await leftTo(false,'1-panel left expanded',collapsed)
   await preserve('1-panel-expand-preserves-drag',collapsed)
+
+  // Complete 2×2 left-navigation × right-User drawer transition matrix,
+  // including mixed sequences. A check after every transition rejects stale
+  // table fit and lost manual column widths; no document reload is allowed.
+  collapsed=await leftTo(true,'mixed: close left while right User open',before)
+  await preserve('mixed-left-closed-right-open',before)
+  before=await rightUserTo(false,'mixed: close right while left closed',collapsed)
+  collapsed=await leftTo(false,'mixed: open left while right closed',before)
+  await preserve('mixed-left-open-right-closed',before)
+  before=await leftTo(true,'mixed: close left with right already closed',collapsed)
+  collapsed=await rightUserTo(true,'mixed: open right while left closed',before)
+  before=await leftTo(false,'mixed: open left while right User open',collapsed)
+  await preserve('mixed-both-open',collapsed)
+  collapsed=await rightUserTo(false,'mixed: close right while left open',before)
+  before=await rightUserTo(true,'mixed: reopen right with left still open',collapsed)
+  await preserve('mixed-both-open-again',collapsed)
 
   await page.locator('.account-workspace>.account-detail-panel .user-panel-tabs a').filter({hasText:'Đơn hàng'}).click()
   const firstOrder=page.locator('.account-workspace>.account-detail-panel .user-order-list a.user-order-card').first()
@@ -189,9 +226,17 @@ try{
   before=await leftTo(false,'order-panel left expanded',collapsed)
   await preserve('order-panel-expand-preserves-drag',collapsed)
 
+  // Back also has to preserve fit when the navigation sidebar is collapsed.
+  collapsed=await leftTo(true,'order before Back: left collapsed',before)
   await page.locator('.account-workspace>.context-order-panel .context-stack-back').click()
   await page.locator('.account-workspace>.context-order-panel').waitFor({state:'detached',timeout:20000})
+  await page.locator('.account-workspace>.account-detail-panel').waitFor({timeout:20000})
   before=await snap(page)
+  check(viewport.width+' back from Order to User: left still collapsed',
+    fit(before)&&before.panelCount===1&&before.leftCollapsed
+    &&[...custom].every(([k,v])=>Math.abs(before.col[k]-v)<=7),before??{})
+  const expanded=await leftTo(false,'User after Back: left expanded',before)
+  before=expanded
   check(viewport.width+' back from Order to User: one panel Auto Fit',fit(before)&&before.panelCount===1,before??{})
   await preserve('1-panel-return-preserves-widths',before)
   await page.locator('.account-workspace>.account-detail-panel a.close').click()
@@ -204,6 +249,7 @@ try{
     const prior=await snap(page)
     await page.reload({waitUntil:'domcontentloaded',timeout:45000})
     await page.locator('.account-table-card table').waitFor({timeout:25000})
+    await page.evaluate(()=>{window.__mynhAccountQaDocument='no-reload'})
     const reloaded=await snap(page)
     check('1440 Voucher and Số đơn preserved after reload',
       fit(reloaded)&&reloaded.customized&&[...custom].every(([k,v])=>Math.abs(reloaded.col[k]-v)<=7),
