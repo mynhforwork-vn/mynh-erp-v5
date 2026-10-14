@@ -126,25 +126,27 @@ try{
   check(viewport.width+' 1 slidebar: User detail',fit(one)&&panels(one,1,'user')
     &&(viewport.width<=900||one.lane.width<initial.lane.width-80),one??{})
   if(viewport.width===1440){
-    // Validation must be handled in-place by the Server Action. An empty
-    // synthetic user_id is rejected BEFORE any Supabase write, so this QA
-    // never modifies a real account.
+    // Read-only navigation QA: never submit a real account form. Successful
+    // persistence belongs to a separately approved isolated fixture test.
     const documentOrigin=await page.evaluate(()=>performance.timeOrigin)
-    await page.locator('.account-workspace>.account-detail-panel .panel-action-row a').filter({hasText:'Sửa tài khoản'}).click()
+    await page.locator('.account-workspace>.account-detail-panel .panel-action-row a')
+      .filter({hasText:'Sửa tài khoản'}).click()
     const inlineForm=page.locator('.account-workspace>.account-detail-panel form')
-    await inlineForm.locator('input[name="user_id"]').evaluate(input=>{input.value=''})
-    await inlineForm.locator('button[type="submit"]').click()
-    await inlineForm.locator('.erp-user-inline-error').waitFor({timeout:15000})
-    const inlineError=(await inlineForm.locator('.erp-user-inline-error').textContent())?.trim()??''
-    check('1440 invalid edit handled in-place with no document reload',
-      inlineError.includes('Thiếu tài khoản cần cập nhật')
-      &&await page.evaluate(origin=>performance.timeOrigin===origin,documentOrigin)
-      &&page.url().includes('mode=edit')
-      &&await page.locator('.account-workspace>.account-detail-panel').count()===1,
-      {inlineError,documentPreserved:await page.evaluate(origin=>performance.timeOrigin===origin,documentOrigin)})
+    await inlineForm.locator('input[name="inline_operation"][value="update"]')
+      .waitFor({timeout:15000})
+    const softEdit=await page.evaluate(origin=>performance.timeOrigin===origin,documentOrigin)
+    check('1440 edit form opens without document reload and uses inline Server Action',
+      softEdit&&page.url().includes('mode=edit')
+        &&await inlineForm.locator('input[name="user_id"]').count()===1,
+      {documentPreserved:softEdit,urlContainsEdit:page.url().includes('mode=edit')})
     await inlineForm.locator('.form-actions a').click()
-    await page.locator('.account-workspace>.account-detail-panel .user-panel-tabs').waitFor({timeout:15000})
+    await page.locator('.account-workspace>.account-detail-panel .user-panel-tabs')
+      .waitFor({timeout:15000})
+    check('1440 cancel edit returns to User detail without document reload',
+      await page.evaluate(origin=>performance.timeOrigin===origin,documentOrigin),
+      {documentPreserved:await page.evaluate(origin=>performance.timeOrigin===origin,documentOrigin)})
   }
+
   await page.locator('.account-workspace>.account-detail-panel .user-panel-tabs a').filter({hasText:'Đơn hàng'}).click()
   await page.locator('.account-workspace>.account-detail-panel .user-order-list a.user-order-card').first().waitFor({timeout:25000})
   const ordersTab=await metrics(page)
