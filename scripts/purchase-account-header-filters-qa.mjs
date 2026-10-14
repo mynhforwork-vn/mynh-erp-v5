@@ -59,18 +59,42 @@ try{
     if(attempt===17)throw Error('Preview has not deployed per-header filter code')
     await page.waitForTimeout(10000)
   }
-  // Hydration and responsive sidebar measures update column widths on
-  // subsequent animation frames. Sample only after the grip enhancer
-  // has bound the live table, never from the first SSR document.
-  await page.waitForFunction(()=>{
-    const table=document.querySelector('.account-table-card table.user-table')
-    const card=document.querySelector('.account-table-card')
-    const manager=document.querySelector('.p1-account-filter-actions .managed-column-button')
-    const desktopGrips=innerWidth<768||table?.classList.contains('mynh-resizable-table')
-    return desktopGrips&&table&&card&&manager&&card.clientWidth>100
-      &&Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8
-      &&card.scrollWidth<=card.clientWidth+4
-  },null,{timeout:20000})
+  // SSR can arrive before Preview JS is fully hydrated. Measure only
+  // the stable interactive UI; retries are QA-only, not user navigation.
+  let ready=false
+  for(let retry=0;retry<4;retry++){
+    try{
+      await page.waitForFunction(()=>{
+        const table=document.querySelector('.account-table-card table.user-table')
+        const card=document.querySelector('.account-table-card')
+        const manager=document.querySelector('.p1-account-filter-actions .managed-column-button')
+        const desktopGrips=innerWidth<768||table?.classList.contains('mynh-resizable-table')
+        return desktopGrips&&table&&card&&manager&&card.clientWidth>100
+          &&Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8
+          &&card.scrollWidth<=card.clientWidth+4
+      },null,{timeout:16000})
+      ready=true
+      break
+    }catch{
+      const sizes=await page.evaluate(()=>{
+        const card=document.querySelector('.account-table-card')
+        const table=card?.querySelector('table.user-table')
+        return {lane:card?.clientWidth,scroll:card?.scrollWidth,
+          table:table?.getBoundingClientRect().width,
+          enhanced:table?.classList.contains('mynh-resizable-table'),
+          icon:!!document.querySelector('.p1-account-filter-actions .managed-column-button')}
+      })
+      console.log('ACCOUNT_HEADER_FILTER_WAIT '+JSON.stringify({
+        viewport:viewport.width,retry,sizes,
+      }))
+      if(retry<3){
+        await page.reload({waitUntil:'domcontentloaded',timeout:45000})
+        await page.locator('.account-table-card table[data-account-filter-version="header-v2"]')
+          .waitFor({state:'visible',timeout:25000})
+      }
+    }
+  }
+  if(!ready)throw Error('Account interactive header fit did not hydrate at '+viewport.width)
   await page.evaluate(()=>{window.__accountHeaderNoReload=true})
   const geometry=await page.evaluate(()=>{
     const table=document.querySelector('.account-table-card table.user-table')
