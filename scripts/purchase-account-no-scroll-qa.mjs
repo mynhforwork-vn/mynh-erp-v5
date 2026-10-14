@@ -46,7 +46,8 @@ async function state(page){
       aligned:cols.length===heads.length&&cols.every((col,i)=>Math.abs(width(col)-width(heads[i]))<=5),
       pageNoOverflow:document.documentElement.scrollWidth<=innerWidth+5,
       count:heads.length,
-      voucher:width(table.querySelector('th[data-account-col="voucher"]')),
+      voucher:table.querySelector('th[data-account-col="voucher"]')
+        ?width(table.querySelector('th[data-account-col="voucher"]')):null,
       manager:table.classList.contains('mynh-resizable-table'),
       documentUnchanged:window.__mynhQaDoc===true,
     }
