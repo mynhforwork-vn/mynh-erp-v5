@@ -36,6 +36,8 @@ try{
     sameSite:c.options?.sameSite==='strict'?'Strict':c.options?.sameSite==='none'?'None':'Lax',
   })))
   const page=await ctx.newPage()
+  const clientErrors=[]
+  page.on('pageerror',err=>clientErrors.push(err.name||'PageError'))
   const res=await page.goto(base+'/purchase/accounts',{waitUntil:'domcontentloaded',timeout:45000})
   await page.locator('.account-table-card .user-table').waitFor({timeout:15000})
   check('Account Preview authenticated',res?.status()===200&&!page.url().includes('/login'),{status:res?.status()})
@@ -146,9 +148,21 @@ try{
           pane:!!card?.closest('.account-workspace.with-panel'),
           columns:table?.querySelectorAll('thead th').length}
       })
-      console.log('ACCOUNT_DELIVERED_BREAKPOINT_FAIL '+JSON.stringify({
-        viewport:viewport.width,geometry,
+      const diagnostic=await page.evaluate(()=>({
+        pathname:location.pathname,ready:document.readyState,
+        title:document.title,
+        mainChildren:document.querySelector('main')?.childElementCount??0,
+        accountScreens:document.querySelectorAll('.account-screen').length,
+        errorBlocks:document.querySelectorAll('.error-box').length,
+        tableCards:document.querySelectorAll('.account-table-card').length,
       }))
+      console.log('ACCOUNT_DELIVERED_BREAKPOINT_FAIL '+JSON.stringify({
+        viewport:viewport.width,geometry,diagnostic,clientErrors,
+      }))
+      await page.screenshot({
+        path:'qa-accounts-delivered-artifacts/accounts-breakpoint-fail-'+viewport.width+'.png',
+        fullPage:false,
+      }).catch(()=>{})
       throw error
     }
     const result=await page.evaluate(()=>{
