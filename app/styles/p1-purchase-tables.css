@@ -1585,3 +1585,16 @@ th.account-heading-filter-cell>.account-heading-filter-caption{
     min-width:75px!important;
   }
 }
+
+/* Override older full/panel minimum widths with higher specificity.
+   The narrow responsive mode MUST NOT inherit the 940/1089px legacy floor. */
+.brand-shell-v1>.main .account-workspace .account-table-card
+table.table.user-table.mynh-p1-semantic-table.account-table-stacked,
+.brand-shell-v1>.main .account-workspace.with-panel .account-table-card
+table.table.user-table.mynh-p1-semantic-table.account-table-stacked{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  table-layout:auto!important;
+}
