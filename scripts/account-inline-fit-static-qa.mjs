@@ -48,7 +48,7 @@ const tests=[
    assert.match(manager,/trackingLayout\.delete\(table as HTMLTableElement\)/)
    assert.match(manager,/window\.addEventListener\('mynh-account-fit-changed',refitAccount\)/)
  }],
- ['Account Auto Fit follows Orders' semantic lane and safe width profile',()=>{
+ ['Account Auto Fit follows Purchase Orders semantic lane and safe width profile',()=>{
    assert.match(manager,/const orderFit=\(table:HTMLTableElement,ths:HTMLTableCellElement\[\],saved:Record<string,number>\)=>/)
    assert.match(manager,/const accountFit=\(\)=>/)
    assert.match(manager,/const compact=withPanel\|\|lane<1200/)
