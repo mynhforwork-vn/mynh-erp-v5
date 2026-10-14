@@ -112,6 +112,5 @@ AS $function$
   from grouped g
   order by g.persistent_failure desc,g.created_at desc
   limit greatest(1,least(coalesce(p_limit,30),100));
-$function$
-
+$function$;
 COMMIT;
