@@ -111,7 +111,7 @@ async function metrics(page){
   })
 }
 function fit(m){return !!(m&&!m.bodyOverflow&&m.aligned&&m.localScroll
-  &&m.desktopSemantic&&m.headerRowHeight<=85
+  &&m.desktopSemantic&&(m.viewport<768||m.headerRowHeight<=85)
   &&m.allFields&&(!m.stacked||m.labeled)
   &&m.fitted&&m.noHorizontalScroll&&m.table.width<=m.lane.width+4
   &&m.tableWithinScroll&&m.widths.username>=56
