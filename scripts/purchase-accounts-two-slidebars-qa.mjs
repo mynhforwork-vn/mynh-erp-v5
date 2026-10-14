@@ -41,7 +41,9 @@ async function metrics(page){
       if(!workspace||!card)return false
       const rect=card.getBoundingClientRect()
       const vw=document.documentElement.clientWidth
+      const table=card.querySelector('table.user-table')
       const horizontal=/auto|scroll/.test(getComputedStyle(card).overflowX)
+        ||table?.dataset.accountLayout==='stacked'
       const withinViewport=rect.left>=-2&&rect.right<=vw+5
         &&document.documentElement.scrollWidth<=vw+5
       if(!horizontal||!withinViewport)return false
@@ -66,7 +68,19 @@ async function metrics(page){
     const heads=[...table.querySelectorAll('thead th')]
     const cols=[...table.querySelectorAll('colgroup col')]
     const widths=Object.fromEntries(heads.map(el=>[el.dataset.accountCol??'select',Math.round(rect(el).width)]))
-    const aligned=cols.length===heads.length&&cols.every((col,i)=>Math.abs(rect(col).width-rect(heads[i]).width)<=8)
+    const stacked=table.dataset.accountLayout==='stacked'
+    const expected=['number','username','platform','phone','email','status',
+      'mobile','browser','voucher','orders','deliveredOrders','createdAt','note']
+    const rendered=heads.filter(th=>th.dataset.accountCol).map(th=>th.dataset.accountCol)
+    const allFields=expected.every(key=>rendered.includes(key))
+      &&[...table.querySelectorAll('tbody tr[data-account-id]')].every(tr=>
+        expected.every(key=>tr.querySelector('td[data-account-col="'+key+'"]')))
+    const labeled=stacked&&[...table.querySelectorAll('tbody tr[data-account-id]')].every(tr=>
+      expected.every(key=>Boolean(tr.querySelector('td[data-account-col="'+key+'"]')
+        ?.getAttribute('data-account-label'))))
+    const aligned=stacked?Boolean(labeled)
+      :cols.length===heads.length&&cols.every((col,i)=>
+        Math.abs(rect(col).width-rect(heads[i]).width)<=8)
     const tab=order?.querySelector('.context-order-tabs a.active')?.textContent?.trim()||null
     return {
       count:Number(Boolean(user))+Number(Boolean(order)),
@@ -77,7 +91,9 @@ async function metrics(page){
       panelVisible:user?getComputedStyle(user).visibility!=='hidden':null,
       orderStack:order?parseInt(getComputedStyle(order).zIndex)||0:0,
       userStack:user?parseInt(getComputedStyle(user).zIndex)||0:0,
-      localScroll:/auto|scroll/.test(getComputedStyle(card).overflowX),
+      stacked,allFields,labeled,
+      localScroll:stacked?/auto|scroll/.test(getComputedStyle(card).overflowY)
+        :/auto|scroll/.test(getComputedStyle(card).overflowX),
       noHorizontalScroll:card.scrollWidth<=card.clientWidth+4,
       tableWithinScroll:card.scrollWidth>=card.clientWidth-1,
       fitted:rect(table).width>=card.clientWidth-8,
@@ -87,11 +103,11 @@ async function metrics(page){
   })
 }
 function fit(m){return !!(m&&!m.bodyOverflow&&m.aligned&&m.localScroll
+  &&m.allFields&&(!m.stacked||m.labeled)
   &&m.fitted&&m.noHorizontalScroll&&m.table.width<=m.lane.width+4
   &&m.tableWithinScroll&&m.widths.username>=56
-  &&(m.widths.voucher===undefined||m.widths.voucher>=24)
-  &&(m.widths.number===undefined||m.widths.number<=48)
-  &&(m.widths.orders===undefined||m.widths.orders<=85)
+  &&(m.stacked||(m.widths.voucher>=24
+    &&m.widths.number<=48&&m.widths.orders<=85))
   &&m.lane.right<=m.viewport+4
   &&(m.viewport>900||m.lane.width>=Math.max(190,m.viewport-110)))}
 function panels(m,expected,kind=null){
@@ -114,7 +130,7 @@ try{
   const page=await ctx.newPage()
   try{
   await page.goto(base+'/purchase/accounts',{waitUntil:'domcontentloaded',timeout:45000})
-  const marker=page.locator('.account-table-card table[data-auto-fit-version="6"]')
+  const marker=page.locator('.account-table-card table[data-auto-fit-version="7"]')
   for(let i=0;i<12&&!(await marker.count());i++){
     await page.waitForTimeout(5000);await page.reload({waitUntil:'domcontentloaded',timeout:45000})
   }
