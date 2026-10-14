@@ -20,7 +20,17 @@ export function ERPUserInlineForm({operation,children,className=''}:{
   useEffect(()=>{
     if(state.status!=='ok'||!state.href||navigated.current===state.href)return
     navigated.current=state.href
-    // Chỉ chuyển ngữ cảnh slidebar bằng App Router, không reload document.
+    // Lưu vị trí bảng ngay trước chuyển ngữ cảnh panel để RSC cập nhật
+    // dữ liệu mà không đưa người dùng về đầu bảng sau thao tác.
+    if(state.href.startsWith('/purchase/accounts')){
+      const card=document.querySelector('.account-table-card')
+      if(card){
+        try{sessionStorage.setItem('mynh-account-scroll-on-save',JSON.stringify({
+          x:card.scrollLeft,y:card.scrollTop,at:Date.now(),
+        }))}catch{}
+      }
+    }
+    // Điều hướng client-side; tuyệt đối không location.href / reload().
     router.replace(state.href,{scroll:false})
   },[router,state])
   return <form className={className} action={submit} aria-busy={pending}
