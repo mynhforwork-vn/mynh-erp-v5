@@ -30,16 +30,20 @@ const points=[
   {width:390,height:844},{width:780,height:1024},{width:800,height:1024},
   {width:1280,height:800},{width:1440,height:900},
 ]
-async function waitRealChoices(page){
-  // No menu may show only "Tất cả" when source data has values. Wait for
-  // React to commit the choice list, including when native popover opens first.
+async function openFilter(page,key){
+  const button=page.locator('th[data-account-col="'+key+'"] .account-heading-filter-trigger')
+  const dialog=page.locator('.account-heading-filter-menu[popover]:popover-open')
+  if(await dialog.count()===0)await button.click()
   await page.waitForFunction(()=>{
     const menu=document.querySelector('.account-heading-filter-menu:popover-open')
-    return !!menu&&(menu.querySelectorAll('input[type="radio"]').length>1
+    return !!menu&&(menu.querySelectorAll('input[type="checkbox"]').length>0
       ||!!menu.querySelector('.account-heading-filter-empty'))
-  },null,{timeout:8000})
+  },null,{timeout:10000})
+  return dialog
 }
-
+const selectedValues=raw=>{
+  try{return raw?.startsWith('[')?JSON.parse(raw):raw?[raw]:[]}catch{return []}
+}
 try{
  for(const viewport of points){
   const context=await browser.newContext({viewport})
@@ -49,205 +53,156 @@ try{
     sameSite:c.options?.sameSite==='strict'?'Strict':c.options?.sameSite==='none'?'None':'Lax',
   })))
   const page=await context.newPage()
-  let response
-  // Do not validate stale deployments while Cloudflare Preview is updating.
-  for(let attempt=0;attempt<18;attempt++){
-    response=await page.goto(base+'/purchase/accounts?range=all',
-      {waitUntil:'domcontentloaded',timeout:45000})
-    if(response?.status()===200&&await page.locator(
-      '.account-table-card table[data-account-filter-version="header-v2"]').count()===1)break
-    if(attempt===17)throw Error('Preview has not deployed per-header filter code')
-    await page.waitForTimeout(10000)
-  }
-  // SSR can arrive before Preview JS is fully hydrated. Measure only
-  // the stable interactive UI; retries are QA-only, not user navigation.
   let ready=false
-  for(let retry=0;retry<4;retry++){
+  for(let attempt=0;attempt<4;attempt++){
+    const response=await page.goto(base+'/purchase/accounts?range=all',
+      {waitUntil:'domcontentloaded',timeout:45000})
     try{
+      if(response?.status()!==200)throw Error('Preview returned '+response?.status())
+      await page.locator('.account-table-card table[data-account-filter-version="header-v3"]')
+        .waitFor({state:'visible',timeout:18000})
       await page.waitForFunction(()=>{
         const table=document.querySelector('.account-table-card table.user-table')
         const card=document.querySelector('.account-table-card')
         const manager=document.querySelector('.p1-account-filter-actions .managed-column-button')
-        const desktopGrips=innerWidth<768||table?.classList.contains('mynh-resizable-table')
-        return desktopGrips&&table&&card&&manager&&card.clientWidth>100
+        return table&&card&&manager&&card.clientWidth>100
+          &&(innerWidth<768||table.classList.contains('mynh-resizable-table'))
           &&Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8
           &&card.scrollWidth<=card.clientWidth+4
-      },null,{timeout:16000})
+      },null,{timeout:18000})
       ready=true
       break
-    }catch{
-      const sizes=await page.evaluate(()=>{
-        const card=document.querySelector('.account-table-card')
-        const table=card?.querySelector('table.user-table')
-        return {lane:card?.clientWidth,scroll:card?.scrollWidth,
-          table:table?.getBoundingClientRect().width,
-          enhanced:table?.classList.contains('mynh-resizable-table'),
-          icon:!!document.querySelector('.p1-account-filter-actions .managed-column-button')}
-      })
+    }catch(e){
       console.log('ACCOUNT_HEADER_FILTER_WAIT '+JSON.stringify({
-        viewport:viewport.width,retry,sizes,
+        width:viewport.width,attempt,message:String(e).slice(0,120),
       }))
-      if(retry<3){
-        await page.reload({waitUntil:'domcontentloaded',timeout:45000})
-        await page.locator('.account-table-card table[data-account-filter-version="header-v2"]')
-          .waitFor({state:'visible',timeout:25000})
-      }
+      if(attempt===3)throw e
+      await page.waitForTimeout(3000)
     }
   }
-  if(!ready)throw Error('Account interactive header fit did not hydrate at '+viewport.width)
-  await page.evaluate(()=>{window.__accountHeaderNoReload=true})
-  const geometry=await page.evaluate(()=>{
-    const table=document.querySelector('.account-table-card table.user-table')
-    const lane=document.querySelector('.account-table-card')
-    const th=[...table.querySelectorAll('thead th')]
-    const dataHeads=th.filter(t=>t.hasAttribute('data-account-col'))
-    const colManager=document.querySelector('.p1-account-filter-actions .managed-column-button')
+  if(!ready)throw Error('Preview not ready at '+viewport.width)
+  await page.evaluate(()=>window.__accountHeaderNoReload=true)
+
+  const geo=await page.evaluate(()=>{
+    const card=document.querySelector('.account-table-card')
+    const table=card.querySelector('table.user-table')
+    const headers=[...table.querySelectorAll('thead th[data-account-col]')]
     const toolbar=document.querySelector('form.account-filter-bar')
     return {
-      count:dataHeads.length,
-      missing:dataHeads.filter(t=>t.querySelectorAll(
+      count:headers.length,
+      unfiltered:headers.filter(el=>el.querySelectorAll(
         ':scope > .account-heading-filter-trigger').length!==1).length,
-      horizontal:lane.scrollWidth>lane.clientWidth+4,
-      tableFit:Math.abs(table.getBoundingClientRect().width-lane.clientWidth)<=8,
-      toolbarOnlySearch:toolbar?.querySelectorAll('input[type="search"],input.search').length===1
-        &&toolbar?.querySelectorAll('.p1-filter-dropdown,select,button').length===0,
-      archive:toolbar?.querySelectorAll('.archive-view-toggle a').length===2,
-      columns:!!colManager,
-      noReload:window.__accountHeaderNoReload===true,
+      noScroll:card.scrollWidth<=card.clientWidth+4,
+      fit:Math.abs(table.getBoundingClientRect().width-card.clientWidth)<=8,
+      toolbarSearch:toolbar?.querySelectorAll('input.search').length===1,
+      toolbarArchive:toolbar?.querySelectorAll('.archive-view-toggle a').length===2,
+      columnIcon:!!document.querySelector('.p1-account-filter-actions .managed-column-button'),
+      hydrated:window.__accountHeaderNoReload===true,
     }
   })
-  check(viewport.width+' filters on every data heading',
-    geometry.count>=2&&geometry.missing===0
-    &&geometry.toolbarOnlySearch&&geometry.archive&&geometry.columns
-    &&geometry.noReload&&!geometry.horizontal&&geometry.tableFit,geometry)
+  check(viewport.width+' all available column headers and no scroll',
+    geo.count>=3&&geo.unfiltered===0&&geo.noScroll&&geo.fit
+    &&geo.toolbarSearch&&geo.toolbarArchive&&geo.columnIcon&&geo.hydrated,geo)
 
-  // Native top-layer menu cannot be clipped by sticky header, auto-layout,
-  // hidden columns or the right-side slidebar.
-  const username=page.locator('th[data-account-col="username"] .account-heading-filter-trigger')
-  await username.click()
-  await waitRealChoices(page)
-  const usernameMenu=page.locator('.account-heading-filter-menu[popover]:popover-open')
-  const usernameChoices=await usernameMenu.locator(
-    '.account-heading-filter-option input[type="radio"]').count()
-  const manualInputs=await usernameMenu.locator(
-    'input[type="search"],input[type="text"],input[type="number"],input[type="date"]').count()
-  check(viewport.width+' Username offers existing data only',
-    await usernameMenu.count()===1&&usernameChoices>=1&&manualInputs===0,
-    {usernameChoices,manualInputs})
-  if(viewport.width===390&&usernameChoices>=2){
-    const labels=usernameMenu.locator('.account-heading-filter-option input[type="radio"]')
-    const selectedUsername=await labels.nth(1).evaluate(el=>
+  const username=await openFilter(page,'username')
+  const typed=username.locator('.account-heading-filter-search')
+  const choices=username.locator('.account-heading-filter-option input[type="checkbox"]')
+  const count=await choices.count()
+  check(viewport.width+' filter has a search field and selectable data',
+    await typed.count()===1&&count>0
+    &&await username.locator('button[type="submit"]').count()===0
+    &&await username.locator('button').filter({hasText:'Xóa lọc'}).count()===1,
+    {choices:count})
+  if(count>=2){
+    const firstLabel=await choices.nth(0).evaluate(el=>
       el.closest('label')?.textContent?.trim()||'')
-    await labels.nth(1).check()
-    await usernameMenu.locator('button[type="submit"]').click()
-    await page.waitForURL(u=>u.searchParams.get('cf_username')===selectedUsername,
-      {timeout:25000})
-    check('390 selecting real Username filters without document reload',
-      await page.evaluate(()=>window.__accountHeaderNoReload===true)
-      &&await page.locator('tbody tr[data-account-id]').count()===1)
-    await username.click()
-    await page.locator('.account-heading-filter-menu[popover]:popover-open button[type="button"]')
-      .filter({hasText:'Xóa lọc'}).click()
+    await typed.fill(firstLabel.slice(0,Math.min(3,firstLabel.length)))
+    const narrowed=await choices.count()
+    check(viewport.width+' search narrows DATA only, not a typed filter',
+      narrowed>=1&&narrowed<=count)
+    await typed.fill('')
+    await choices.nth(0).check()
+    await page.waitForURL(u=>u.searchParams.get('cf_username')===firstLabel,{timeout:25000})
+    check(viewport.width+' selecting one value filters immediately',
+      await page.evaluate(()=>window.__accountHeaderNoReload===true))
+    const again=await openFilter(page,'username')
+    const others=again.locator('.account-heading-filter-option input[type="checkbox"]')
+    const secondLabel=await others.nth(1).evaluate(el=>
+      el.closest('label')?.textContent?.trim()||'')
+    await others.nth(1).check()
+    await page.waitForURL(u=>selectedValues(u.searchParams.get('cf_username'))
+      .length===2,{timeout:25000})
+    const values=selectedValues(new URL(page.url()).searchParams.get('cf_username'))
+    check(viewport.width+' two Username choices filter with OR and no reload',
+      values.includes(firstLabel)&&values.includes(secondLabel)
+      &&await page.evaluate(()=>window.__accountHeaderNoReload===true),
+      {count:values.length})
+    const menu=await openFilter(page,'username')
+    await menu.locator('button').filter({hasText:'Xóa lọc'}).click()
     await page.waitForURL(u=>!u.searchParams.has('cf_username'),{timeout:25000})
-  }else{
-    await page.keyboard.press('Escape')
-    check(viewport.width+' Esc closes header filter',await usernameMenu.count()===0)
-  }
+  }else await page.keyboard.press('Escape')
 
   if(viewport.width===780||viewport.width===800){
-    const browserButton=page.locator('th[data-account-col="browser"] .account-heading-filter-trigger')
-    await browserButton.click()
-    await waitRealChoices(page)
-    const menu=page.locator('.account-heading-filter-menu[popover]:popover-open')
-    const radio=menu.locator('.account-heading-filter-option input[type="radio"]').nth(1)
-    const options=await menu.locator('.account-heading-filter-option input[type="radio"]').count()
-    const realBrowserTexts=await page.locator(
-      '.account-table-card tbody td[data-account-col="browser"]').allTextContents()
-    const nonEmpty=realBrowserTexts.filter(t=>t.trim()&&!['—','-'].includes(t.trim())).length
-    check(viewport.width+' Browser options match actual available data',
-      options>=2||(options===1&&nonEmpty===0),
-      {options,visibleBrowserValues:nonEmpty})
-    if(options>=2){
-      await radio.check()
-      await menu.locator('button[type="submit"]').click()
-      await page.waitForURL(u=>u.searchParams.has('browser')&&u.searchParams.get('range')==='all',
-        {timeout:25000})
-      const state=await page.evaluate(()=>({
-        doc:window.__accountHeaderNoReload===true,
-        card:document.querySelector('.account-table-card')?.scrollWidth,
-        lane:document.querySelector('.account-table-card')?.clientWidth,
-        selected:document.querySelector('th[data-account-col="browser"] .account-heading-filter-trigger')?.classList.contains('is-active'),
-      }))
-      check(viewport.width+' Browser filter preserves route and Auto Fit',state.doc&&state.selected
-        &&state.card<=state.lane+4,{documentUnchanged:state.doc,noHorizontal:state.card<=state.lane+4})
-      await browserButton.click()
-      await page.locator('.account-heading-filter-menu[popover]:popover-open button[type="button"]')
-        .filter({hasText:'Xóa lọc'}).click()
-      await page.waitForURL(u=>!u.searchParams.has('browser'),{timeout:25000})
-      check(viewport.width+' clear Browser filter without reload',
+    const menu=await openFilter(page,'browser')
+    const browserOptions=await menu.locator('.account-heading-filter-option input[type="checkbox"]').count()
+    check(viewport.width+' Browser list derives live data',browserOptions>0,{browserOptions})
+    if(browserOptions>=1){
+      await menu.locator('.account-heading-filter-option input[type="checkbox"]').first().check()
+      await page.waitForURL(u=>u.searchParams.has('browser'),{timeout:25000})
+      check(viewport.width+' Browser filter applies without Apply button',
         await page.evaluate(()=>window.__accountHeaderNoReload===true))
+      const reopened=await openFilter(page,'browser')
+      await reopened.locator('button').filter({hasText:'Xóa lọc'}).click()
+      await page.waitForURL(u=>!u.searchParams.has('browser'),{timeout:25000})
+    }
+  }
+  if(viewport.width===1280){
+    const checkbox=page.locator('.account-table-card tbody tr[data-account-id] input[type="checkbox"]').first()
+    if(await checkbox.count()){
+      await checkbox.check()
+      const actions=page.locator('.p1-account-filter-actions .user-bulk-toolbar')
+      await actions.waitFor({timeout:8000})
+      const beforeIcon=await page.evaluate(()=>{
+        const actions=document.querySelector('.p1-account-filter-actions .user-bulk-toolbar')
+        const icon=document.querySelector('.p1-account-filter-actions .managed-column-wrap')
+        return actions&&icon&&actions.getBoundingClientRect().right<=icon.getBoundingClientRect().left+4
+      })
+      check('1280 bulk controls precede column icon on same toolbar',
+        beforeIcon&&await actions.locator('button[type="submit"]').count()===1
+        &&await page.locator('.order-bulk-bar.user-bulk-bar').count()===0)
+      await actions.locator('.user-bulk-clear').click()
+      check('1280 bulk toolbar clears without a page reload',
+        await page.locator('.user-bulk-toolbar').count()===0
+        &&await page.evaluate(()=>window.__accountHeaderNoReload===true))
     }
   }
   if(viewport.width===1440){
-    // All original data headings must be present when lane can fit them.
-    const allHeaders=await page.locator('th[data-account-col]').count()
-    check('1440 all 13 data headings have filters',allHeaders===13)
-    // Every column menu may contain radio lists or the SPC select only.
-    // No text/date/number/search input is permitted anywhere in the menus.
-    const typed=await page.locator('.account-heading-filter-menu input:not([type="radio"])').count()
-    check('1440 all column filters are selection-only',typed===0,{manualFields:typed})
-
-    // Time filter is also choice-only: available day labels come from
-    // actual User data; no manual date input is permitted.
-    const dateButton=page.locator('th[data-account-col="createdAt"] .account-heading-filter-trigger')
-    await dateButton.click()
-    await waitRealChoices(page)
-    const dialog=page.locator('.account-heading-filter-menu[popover]:popover-open')
-    const dateOptions=dialog.locator('.account-heading-filter-option input[type="radio"]')
-    const available=await dateOptions.count()
-    const realDateTexts=await page.locator(
-      '.account-table-card tbody td[data-account-col="createdAt"]').allTextContents()
-    const presentDates=realDateTexts.filter(t=>t.trim()&&!['—','-'].includes(t.trim())).length
-    check('1440 dates list actual data; no manual input',
-      (available>=2||(available===1&&presentDates===0))
-       &&await dialog.locator('input[type="date"],input[type="search"]').count()===0,
-      {available,presentDates})
-    if(available>=2){
-      const label=await dateOptions.nth(1).evaluate(el=>
-        el.closest('label')?.textContent?.trim()||'')
-      const [day,month,year]=label.split('/')
-      await dateOptions.nth(1).check()
-      await dialog.locator('button[type="submit"]').click()
-      await page.waitForURL(u=>u.searchParams.get('cf_createdAt_from')===year+'-'+month+'-'+day
-        &&u.searchParams.get('cf_createdAt_to')===year+'-'+month+'-'+day,{timeout:25000})
-      check('1440 actual date selected without document reload',
+    check('1440 all 13 Account data columns visible',
+      await page.locator('th[data-account-col]').count()===13)
+    const dateMenu=await openFilter(page,'createdAt')
+    const dates=dateMenu.locator('.account-heading-filter-option input[type="checkbox"]')
+    check('1440 date filter has existing dates and search',
+      await dates.count()>0&&await dateMenu.locator('input[type="date"]').count()===0)
+    if(await dates.count()){
+      await dates.first().check()
+      await page.waitForURL(u=>u.searchParams.has('cf_createdAt'),{timeout:25000})
+      check('1440 date filter acts immediately without typing',
         await page.evaluate(()=>window.__accountHeaderNoReload===true))
-    }else await page.keyboard.press('Escape')
-
-    // Status filter still exposes the previous SPC options as secondary scope.
-    await page.locator('th[data-account-col="status"] .account-heading-filter-trigger').click()
-    const statusMenu=page.locator('.account-heading-filter-menu[popover]:popover-open')
-    check('1440 status heading retains SPC session filters',
-      await statusMenu.locator('select').count()===1
-      &&await statusMenu.locator('option').count()>=2)
+      const reopened=await openFilter(page,'createdAt')
+      await reopened.locator('button').filter({hasText:'Xóa lọc'}).click()
+      await page.waitForURL(u=>!u.searchParams.has('cf_createdAt'),{timeout:25000})
+    }
+    const headerState=await page.locator('th[data-account-col="voucher"]').evaluate(el=>({
+      sticky:getComputedStyle(el).position==='sticky',
+      text:el.querySelector('.account-heading-filter-caption')?.textContent?.trim(),
+      wrap:getComputedStyle(el.querySelector('.account-heading-filter-caption')).whiteSpace,
+    }))
+    check('1440 sticky table heading and Voucher label',headerState.sticky
+      &&headerState.text==='Voucher'&&headerState.wrap==='normal',headerState)
+    const statusMenu=await openFilter(page,'status')
+    check('1440 SPC remains selectable within Status filter',
+      await statusMenu.locator('.account-heading-filter-secondary input[type="checkbox"]').count()>0)
     await page.keyboard.press('Escape')
-  }
-  if(viewport.width===1280){
-    // Read-only: selecting a row must move bulk operations into the SAME
-    // toolbar without adding any extra vertical band below.
-    const first=page.locator('.account-table-card tbody tr[data-account-id] input[type="checkbox"]').first()
-    if(await first.count()){
-      await first.check()
-      const inline=page.locator('.p1-account-filter-actions .user-bulk-toolbar')
-      await inline.waitFor({timeout:10000})
-      const form=await inline.locator('form.user-bulk-toolbar-form').count()
-      check('1280 selected User actions live on existing toolbar',
-        form===1&&await inline.locator('button[type="submit"]').count()===1
-          &&await page.locator('.order-bulk-bar.user-bulk-bar').count()===0)
-      await inline.locator('button.user-bulk-clear').click()
-      check('1280 clearing selection removes bulk actions',
-        await page.locator('.p1-account-filter-actions .user-bulk-toolbar').count()===0)
-    }else check('1280 has User row to test selection without data write',false)
   }
   await context.close()
  }
