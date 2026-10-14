@@ -1014,8 +1014,18 @@ export async function purgeEligibleArchivedOrders(formData:FormData){
   if(!eligible.length)throw new Error('Không có đơn lưu trữ nào đủ điều kiện xóa vĩnh viễn trong phạm vi kiểm tra')
 
   const eligibleIds=eligible.map((x:any)=>String(x.id))
-  const {error}=await supabase.from('orders').delete().in('id',eligibleIds)
-  if(error)throw new Error(error.message)
+  // Chỉ dùng RPC xóa an toàn: kiểm tra kho/tài chính, hoàn tác phụ thuộc
+  // và ghi audit trong cùng transaction. Không DELETE thô qua Data API.
+  // Một lần gọi duy nhất để tránh lặp lại hành động hủy không thể hoàn tác.
+  const {data:deleted,error}=await supabase.rpc('delete_orders_permanent_safe',{
+    p_order_ids:eligibleIds,
+    p_reason:'Dọn đơn lưu trữ từ Cài đặt',
+  })
+  if(error)throw new Error(deleteOrderErrorMessage(error))
+  const deletedCount=Number(deleted?.deleted_count)
+  if(deletedCount!==eligibleIds.length){
+    throw new Error('Kết quả xóa chưa xác định. Hãy kiểm tra lại danh sách trước khi thao tác tiếp.')
+  }
 
   await supabase.from('audit_logs').insert({
     actor_user_id:user.id,
@@ -1030,13 +1040,13 @@ export async function purgeEligibleArchivedOrders(formData:FormData){
       protected_count:blockers.blockedIds.size,
       order_ids:eligibleIds,
     },
-    new_value:{deleted_count:eligible.length},
+    new_value:{deleted_count:deletedCount},
     source:'USER',
   })
 
   revalidateOrderLifecycle()
   revalidatePath('/settings')
-  redirect('/settings?section=data-management&purged='+eligible.length+'&protected='+blockers.blockedIds.size)
+  redirect('/settings?section=data-management&purged='+deletedCount+'&protected='+blockers.blockedIds.size)
 }
 
 function normalizeRoutingKeyword(value:string){
