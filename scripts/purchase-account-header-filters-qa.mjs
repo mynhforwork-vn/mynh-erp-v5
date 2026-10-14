@@ -220,9 +220,9 @@ try{
     check('1440 title row remains fixed as Account data scrolls',
       scrolled?.bodyMoved&&scrolled.delta<=4,scrolled??{})
     const phones=await page.locator('td[data-account-col="phone"]').allTextContents()
-    const tenDigit=phones.filter(p=>p.replace(/\\D/g,'').length===10)
+    const tenDigit=phones.filter(p=>p.replace(/\D/g,'').length===10)
     check('1440 phone cells follow 0000 000 000 display when ten digits',
-      tenDigit.length===0||tenDigit.every(p=>/^\\d{4} \\d{3} \\d{3}$/.test(p.trim())),
+      tenDigit.length===0||tenDigit.every(p=>/^\d{4} \d{3} \d{3}$/.test(p.trim())),
       {tenDigitRows:tenDigit.length})
     const statusMenu=await openFilter(page,'status')
     check('1440 SPC remains selectable within Status filter',
