@@ -121,7 +121,9 @@ export async function createERPUser(formData:FormData){
   await saveAccountDeviceFields(supabase,String(data),mobileType,browserName,false)
 
   revalidatePath('/purchase/accounts')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:String(data),mode:null,tab:'info'}))
+  const href=returnHref('/purchase/accounts',returnQuery,{user:String(data),mode:null,tab:'info'})
+  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã tạo tài khoản'}
+  redirect(href)
 }
 
 export async function updateERPUser(formData:FormData){
@@ -156,9 +158,11 @@ export async function updateERPUser(formData:FormData){
 
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
-  redirect(returnToOrders
+  const href=returnToOrders
     ?returnHref('/purchase/orders',returnQuery,{account:userId,accountTab:'info',accountMode:null})
-    :returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info'}))
+    :returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info'})
+  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã cập nhật User'}
+  redirect(href)
 }
 
 
@@ -199,9 +203,11 @@ export async function archiveERPUser(formData:FormData){
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase')
-  redirect(tableAction
+  const href=tableAction
     ? returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:null})
-    : returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:'archived'}))
+    : returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:'archived'})
+  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã lưu trữ User'}
+  redirect(href)
 }
 
 export async function restoreERPUser(formData:FormData){
@@ -240,9 +246,28 @@ export async function restoreERPUser(formData:FormData){
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase')
-  redirect(tableAction
+  const href=tableAction
     ? returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'})
-    : returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:null}))
+    : returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:null})
+  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã khôi phục User'}
+  redirect(href)
+}
+
+
+/** Gửi thao tác Tài khoản qua React Server Action, không điều hướng tài liệu. */
+export type ERPUserInlineResult={status:'idle'|'ok'|'error';href:string;message:string}
+export async function submitERPUserInline(_previous:ERPUserInlineResult,formData:FormData):Promise<ERPUserInlineResult>{
+  const kind=text(formData.get('inline_operation'))
+  formData.set('inline_submit','1')
+  try{
+    if(kind==='create')return await createERPUser(formData) as ERPUserInlineResult
+    if(kind==='update')return await updateERPUser(formData) as ERPUserInlineResult
+    if(kind==='archive')return await archiveERPUser(formData) as ERPUserInlineResult
+    if(kind==='restore')return await restoreERPUser(formData) as ERPUserInlineResult
+    return {status:'error',href:'',message:'Thao tác User không hợp lệ'}
+  }catch(error){
+    return {status:'error',href:'',message:error instanceof Error?error.message:'Không thể xử lý User. Vui lòng thử lại.'}
+  }
 }
 
 
