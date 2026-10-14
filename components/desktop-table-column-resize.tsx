@@ -41,6 +41,20 @@ export function DesktopTableColumnResize() {
           ? Math.max(24, Math.min(140, Math.round(th.getBoundingClientRect().width)))
           : clampForHeader(th,th.getBoundingClientRect().width)
     const headerName = (th:HTMLTableCellElement) => {
+      // Header popovers own a lot of hidden content (choices, search, SPC).
+      // Manual width keys must refer to the original stable column label,
+      // never to the dropdown options or currently selected filters.
+      if(th.closest('table.user-table.mynh-p1-semantic-table')){
+        const labels:Record<string,string>={
+          number:'#',username:'Username',platform:'Nền tảng',phone:'SĐT',
+          email:'Email',status:'Trạng thái',mobile:'Mobile',browser:'Browser',
+          voucher:'Voucher đã dùng',orders:'Số đơn',
+          deliveredOrders:'Giao thành công',createdAt:'Thời gian tạo',
+          note:'Ghi chú',
+        }
+        if(th.dataset.accountCol&&labels[th.dataset.accountCol])
+          return labels[th.dataset.accountCol]
+      }
       const clone = th.cloneNode(true) as HTMLElement
       clone.querySelectorAll('.mynh-column-resize-grip').forEach(x => x.remove())
       return clone.textContent?.replace(/[↑↓↕⇅]/g, '').replace(/\s+/g, ' ').trim() || 'blank'
