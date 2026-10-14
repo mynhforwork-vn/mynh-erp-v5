@@ -264,6 +264,8 @@ export async function submitERPUserInline(_previous:ERPUserInlineResult,formData
     if(kind==='update')return await updateERPUser(formData) as ERPUserInlineResult
     if(kind==='archive')return await archiveERPUser(formData) as ERPUserInlineResult
     if(kind==='restore')return await restoreERPUser(formData) as ERPUserInlineResult
+    if(kind==='archiveBulk')return await archiveERPUsersBulk(formData) as ERPUserInlineResult
+    if(kind==='restoreBulk')return await restoreERPUsersBulk(formData) as ERPUserInlineResult
     return {status:'error',href:'',message:'Thao tác User không hợp lệ'}
   }catch(error){
     return {status:'error',href:'',message:error instanceof Error?error.message:'Không thể xử lý User. Vui lòng thử lại.'}
@@ -316,7 +318,9 @@ export async function archiveERPUsersBulk(formData:FormData){
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:null}))
+  const href=returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:null})
+  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã lưu trữ các User'}
+  redirect(href)
 }
 
 export async function restoreERPUsersBulk(formData:FormData){
@@ -356,7 +360,9 @@ export async function restoreERPUsersBulk(formData:FormData){
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase')
-  redirect(returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'}))
+  const href=returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'})
+  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã khôi phục các User'}
+  redirect(href)
 }
 
 function numberOrNull(v:FormDataEntryValue|null){
