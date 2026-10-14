@@ -6,7 +6,7 @@ import {submitERPUserInline,type ERPUserInlineResult} from '@/lib/actions/core'
 import type {ReactNode} from 'react'
 
 const initial:ERPUserInlineResult={status:'idle',href:'',message:''}
-type Operation='create'|'update'|'archive'|'restore'
+type Operation='create'|'update'|'archive'|'restore'|'archiveBulk'|'restoreBulk'
 
 /** Giữ nguyên vị trí trang/bảng trong khi ghi dữ liệu User. */
 export function ERPUserInlineForm({operation,children,className=''}:{
