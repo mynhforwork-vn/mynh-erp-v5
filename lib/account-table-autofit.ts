@@ -42,8 +42,10 @@ export function fitAccountColumnWidths(
   if(remainder<0){
     // Cột đã chỉnh tay được ưu tiên giữ nguyên; chỉ thu khi thực sự thiếu chỗ.
     reduceTo(ACCOUNT_FIT_FLOORS,true)
-    if(remainder<0)reduceTo(ACCOUNT_FIT_FLOORS,false)
+    // Ưu tiên thu các cột chưa chỉnh tay xuống mức gọn trước khi
+    // đụng tới độ rộng do người dùng kéo và lưu.
     if(remainder<0)reduceTo(TIGHT_FLOORS,true)
+    if(remainder<0)reduceTo(ACCOUNT_FIT_FLOORS,false)
     if(remainder<0)reduceTo(TIGHT_FLOORS,false)
     if(remainder<0){
       // Vùng cực nhỏ: ưu tiên tất cả cột nằm trong bảng, không sinh scroll.
