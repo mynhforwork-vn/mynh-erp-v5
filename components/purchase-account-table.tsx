@@ -81,6 +81,10 @@ export function PurchaseAccountTable({
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
   const columnMenuRef=useRef<HTMLDivElement|null>(null)
   const tableCardRef=useRef<HTMLDivElement|null>(null)
+  // One pending query for ALL header menus prevents a later filter tick from
+  // restoring stale selections while the previous router transition is pending.
+  const filterQueryRef=useRef(detailQuery)
+  useEffect(()=>{filterQueryRef.current=detailQuery},[detailQuery])
   const [tableLaneWidth,setTableLaneWidth]=useState(0)
   useEffect(()=>{
     const card=tableCardRef.current
@@ -360,6 +364,7 @@ export function PurchaseAccountTable({
       <AccountHeadingFilter name={param} label={label} kind={kind}
         value={headingValues[param]??''} options={headingOptions[key]??[]}
         baseQuery={detailQuery}
+        navigationRef={filterQueryRef}
         from={key==='createdAt'?headingValues.cf_createdAt_from:''}
         to={key==='createdAt'?headingValues.cf_createdAt_to:''}
         secondary={key==='status'?{
