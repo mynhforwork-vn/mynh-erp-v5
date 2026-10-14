@@ -371,9 +371,12 @@ export function OrderEditorForm({
     if(parsed.tracking_number){
       setTrackingNumber(parsed.tracking_number)
       detectedCarrier=detectCarrierConfig(parsed.tracking_number,carrierConfigs)
-      setCarrier(detectedCarrier?.display_name??'')
-      setCarrierEdited(false)
-      setShippingService('STANDARD')
+      // Đơn hủy vẫn lưu MVĐ; không tự xóa/chuyển dịch vụ vận chuyển đã chọn.
+      if(!cancelled||detectedCarrier){
+        setCarrier(detectedCarrier?.display_name??'')
+        setCarrierEdited(false)
+      }
+      if(!cancelled)setShippingService('STANDARD')
     }
 
     if(parsed.recipient_name)setRecipientName(parsed.recipient_name)
