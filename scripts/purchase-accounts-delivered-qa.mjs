@@ -146,8 +146,10 @@ try{
   for(const viewport of widths){
     await page.setViewportSize(viewport)
     // Width-changing sidebars & breakpoints may need two animation frames.
-    try{
-      await page.waitForFunction(()=>{
+    let fitReady=false
+    for(let attempt=0;attempt<4;attempt++){
+      try{
+        await page.waitForFunction(()=>{
         const card=document.querySelector('.account-table-card')
         const table=card?.querySelector('table.user-table')
         if(!card||!table)return false
@@ -164,9 +166,28 @@ try{
               &&(!number||size(number)<=48)
               &&(!orders||size(orders)<=85)
               &&(!delivered||size(delivered)<=140))
-      },null,{timeout:15000})
-    }catch(error){
-      const geometry=await page.evaluate(()=>{
+        },null,{timeout:15000})
+        fitReady=true
+        break
+      }catch(error){
+        const present=await page.locator('.account-table-card table[data-auto-fit-version="7"]').count()
+        const diagnostic=await page.evaluate(()=>({
+          ready:document.readyState,pathname:location.pathname,
+          hasTable:!!document.querySelector('.account-table-card'),
+          title:document.title,
+        }))
+        console.log('ACCOUNT_DELIVERED_RETRY '+JSON.stringify({
+          viewport:viewport.width,attempt,present,diagnostic,clientErrors,
+        }))
+        // Retry only transient Preview route/ChunkLoad failure. Persistent
+        // real layout misalignment remains a test failure at the last try.
+        if(attempt<3){
+          await page.reload({waitUntil:'domcontentloaded',timeout:45000})
+          await page.locator('.account-table-card table[data-auto-fit-version="7"]')
+            .waitFor({timeout:20000})
+          continue
+        }
+        const geometry=await page.evaluate(()=>{
         const card=document.querySelector('.account-table-card')
         const table=card?.querySelector('table.user-table')
         return {lane:card?.clientWidth,scroll:card?.scrollWidth,
@@ -190,8 +211,10 @@ try{
         path:'qa-accounts-delivered-artifacts/accounts-breakpoint-fail-'+viewport.width+'.png',
         fullPage:false,
       }).catch(()=>{})
-      throw error
+        throw error
+      }
     }
+    if(!fitReady)throw Error('Account table failed to stabilize at '+viewport.width)
     const result=await page.evaluate(()=>{
       const card=document.querySelector('.account-table-card')
       const table=card?.querySelector('table.user-table')
