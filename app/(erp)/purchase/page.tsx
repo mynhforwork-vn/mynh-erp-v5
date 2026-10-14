@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import {PurchaseDateFilter} from '@/components/purchase-date-filter'
 import { requireUser } from '@/lib/supabase/auth'
 import { PurchaseActionQueue,type PurchaseActionItem,type PurchaseActionGroup,type PurchaseDataIssue } from '@/components/purchase-action-queue'
 import { PurchaseAreaHubTable } from '@/components/purchase-area-hub-table'
@@ -58,13 +59,6 @@ const metrics:{key:string,label:string,description:string,tone:string}[]=[
   {key:'cancelled',label:'Đã hủy',description:'Đơn đã hủy',tone:'danger'},
   {key:'failed',label:'Giao lỗi',description:'Cần xử lý',tone:'danger'},
 ]
-const quickRanges:{key:RangeKey,label:string}[]=[
-  {key:'all',label:'Tất cả'},{key:'today',label:'Hôm nay'},{key:'week',label:'Tuần này'},
-  {key:'7d',label:'7 ngày'},{key:'30d',label:'30 ngày'},
-  {key:'month',label:'Tháng này'},
-  {key:'year',label:'Năm nay'},
-]
-
 /** Phân trang để tránh trần 1.000 dòng của PostgREST làm sai tổng số. */
 async function loadOrders(supabase:any,start:string,end:string,expressAcrossDates=false){
   const limit=500
@@ -125,9 +119,6 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
     {id:'out',title:'Đang giao hàng',hint:'Theo dõi tiến độ giao',tone:'blue',priority:4},
     {id:'express',title:'Hỏa tốc chờ xác nhận giao',hint:'Kiểm tra thủ công, không tự tracking',tone:'teal',priority:5},
   ].map(group=>({...group,orders:actions.filter(o=>issuePriority(o)===group.priority)}))
-  function timeHref(key:RangeKey){
-    return '/purchase?'+new URLSearchParams({range:key}).toString()
-  }
   function orderHref(o:InsightOrder){const p=new URLSearchParams({order:o.id,range:range.key})
     if(range.key==='custom'){p.set('from',range.from);p.set('to',range.to)}
     return '/purchase/orders?'+p.toString()
@@ -169,20 +160,8 @@ export default async function PurchaseDashboard({searchParams}:{searchParams:Pro
       </div>
     </header>
 
-    <nav className="pd-time-filter" aria-label="Lọc theo ngày đặt đơn">
-      <div className="pd-time-quick" role="group" aria-label="Chọn khoảng thời gian">
-        {quickRanges.map(option=><Link key={option.key} href={timeHref(option.key)}
-          prefetch={false} aria-current={range.key===option.key?'page':undefined}
-          className={'pd-time-option'+(range.key===option.key?' is-selected':'')}>{option.label}</Link>)}
-      </div>
-      <form className="pd-time-calendar" action="/purchase" method="GET" aria-label="Lọc khoảng ngày tùy chỉnh">
-        <input type="hidden" name="range" value="custom"/>
-        <label><span>Từ</span><input type="date" name="from" defaultValue={range.key==='all'?'':range.from} required aria-label="Từ ngày"/></label>
-        <span className="pd-date-separator" aria-hidden="true">→</span>
-        <label><span>Đến</span><input type="date" name="to" defaultValue={range.key==='all'?'':range.to} required aria-label="Đến ngày"/></label>
-        <button type="submit" className="button primary">Áp dụng</button>
-      </form>
-    </nav>
+    <PurchaseDateFilter activeRange={range.key} from={range.from} to={range.to}
+      label={range.label} basePath="/purchase" showAll/>
 
     {(result.error||expressResult.error)&&<div className="error-box" role="alert">Không tải đủ đơn nhập: {result.error||expressResult.error}. Không sử dụng tổng số khi nguồn dữ liệu lỗi.</div>}
     {(result.truncated||expressResult.truncated)&&<div className="error-box" role="alert">Danh sách vượt giới hạn 10.000 đơn. Thu hẹp phạm vi hoặc bổ sung truy vấn tổng hợp trước khi sử dụng kết quả.</div>}
