@@ -289,66 +289,72 @@ export function DesktopTableColumnResize() {
       const accountFit=()=>{
         const pane=table.closest('.account-table-card') as HTMLElement|null
         const lane=Math.floor(pane?.clientWidth??table.parentElement?.clientWidth??0)
+        const withPanel=Boolean(table.closest('.account-workspace.with-panel'))
+        // Áp dụng đúng quy trình Auto Fit của Đơn nhập: xác định vùng thực,
+        // tính sàn đọc được, co cột chưa chỉnh trước, chia phần thừa cho cột
+        // nội dung. Hồ sơ Compact chỉ áp dụng khi vùng thực sự hẹp.
+        const compact=withPanel||lane<1200
         const min:Record<string,number>={
           select:28,number:28,username:128,platform:56,phone:94,email:120,
           status:75,mobile:80,browser:70,voucher:112,orders:62,
           deliveredOrders:96,createdAt:128,note:78,
         }
-        const base:Record<string,number>={
-          select:28,number:28,username:150,platform:64,phone:106,email:148,
-          status:82,mobile:95,browser:83,voucher:122,orders:66,
-          deliveredOrders:98,createdAt:138,note:96,
-        }
+        const base:Record<string,number>=compact
+          ?{select:28,number:28,username:145,platform:58,phone:98,email:142,
+            status:78,mobile:88,browser:76,voucher:120,orders:62,
+            deliveredOrders:96,createdAt:130,note:90}
+          :{select:28,number:28,username:174,platform:64,phone:108,email:185,
+            status:85,mobile:110,browser:98,voucher:132,orders:66,
+            deliveredOrders:102,createdAt:142,note:120}
         const max:Record<string,number>={
-          username:330,platform:80,phone:146,email:390,status:120,
-          mobile:240,browser:185,voucher:290,orders:110,
+          select:28,number:28,username:330,platform:80,phone:146,email:390,
+          status:120,mobile:240,browser:185,voucher:290,orders:110,
           deliveredOrders:132,createdAt:170,note:390,
         }
         const keys=ths.map(th=>th.classList.contains('bulk-select-col')
           ?'select':th.dataset.accountCol??'')
+        const customized=keys.map((_,i)=>overrides[headerName(ths[i])]!==undefined)
         const widths=keys.map((key,i)=>{
           const saved=overrides[headerName(ths[i])]
+          // Saved widths are manual preferences: unlike Auto Fit caps they
+          // remain unchanged across left/right slidebars and browser reload.
           return Math.max(min[key]??76,Math.round(saved??base[key]??96))
         })
-        const minimum=keys.reduce((sum,key)=>sum+(min[key]??76),0)
+        const minimum=keys.reduce((total,key)=>total+(min[key]??76),0)
         const target=Math.max(minimum,lane-2)
-        let remainder=target-widths.reduce((sum,w)=>sum+w,0)
-        if(remainder<0){
-          // Custom widths are user choices, NOT candidates for Auto Fit
-          // compression. Shrink only free columns; a narrower lane scrolls
-          // locally rather than undoing a manual Voucher/Số đơn drag.
-          for(const key of ['note','email','username','mobile','browser',
-            'voucher','platform','phone','status','createdAt','deliveredOrders','orders']){
+        let spare=target-widths.reduce((total,width)=>total+width,0)
+        const shrinkOrder=['note','email','username','mobile','browser',
+          'voucher','phone','createdAt','status','platform',
+          'deliveredOrders','orders']
+        if(spare<0){
+          // Like Đơn nhập, flexible fields yield before numeric counters.
+          // Respect manual widths even if the narrower pane must scroll.
+          for(const key of shrinkOrder){
             const i=keys.indexOf(key)
-            if(i<0||remainder>=0)continue
-            if(overrides[headerName(ths[i])]!==undefined)continue
-            const reduction=Math.min(-remainder,Math.max(0,widths[i]-(min[key]??76)))
+            if(i<0||customized[i]||spare>=0)continue
+            const reduction=Math.min(-spare,Math.max(0,widths[i]-(min[key]??76)))
             widths[i]-=reduction
-            remainder+=reduction
+            spare+=reduction
           }
-        }
-        if(remainder>0){
-          // Spend spare width on useful TEXT columns before numeric counters.
-          // Respect manually saved Voucher/Số đơn widths on every sidebar state.
-          for(const key of ['username','email','mobile','browser','voucher','note',
-            'phone','createdAt','status','platform']){
+        }else if(spare>0){
+          // Do not turn counters / index into huge empty columns.
+          for(const key of ['email','username','note','mobile','browser',
+            'voucher','phone','createdAt','status','platform']){
             const i=keys.indexOf(key)
-            if(i<0||remainder<=0||overrides[headerName(ths[i])]!==undefined)continue
-            const increase=Math.min(remainder,Math.max(0,(max[key]??320)-widths[i]))
-            widths[i]+=increase
-            remainder-=increase
+            if(i<0||customized[i]||spare<=0)continue
+            const gain=Math.min(spare,Math.max(0,(max[key]??300)-widths[i]))
+            widths[i]+=gain
+            spare-=gain
           }
-          if(remainder>0){
-            const flexible=['username','email','mobile','browser','voucher','note']
-              .map(k=>keys.indexOf(k)).filter(i=>i>=0&&overrides[headerName(ths[i])]===undefined)
-            // When all visible text columns are user-sized, use the final
-            // available text column for the remaining lane rather than blank.
-            const recipients=flexible.length?flexible:
-              ['note','email','username','voucher'].map(k=>keys.indexOf(k)).filter(i=>i>=0)
+          if(spare>0){
+            // Ultra-wide Desktop: spend all usable width, like the
+            // Đơn nhập full-table profile, never leave a blank table tail.
+            const recipients=['email','username','note','mobile','browser','voucher']
+              .map(key=>keys.indexOf(key)).filter(i=>i>=0&&!customized[i])
             if(recipients.length){
-              const each=Math.floor(remainder/recipients.length)
+              const each=Math.floor(spare/recipients.length)
               recipients.forEach((i,j)=>widths[i]+=j===recipients.length-1
-                ?remainder-each*j:each)
+                ?spare-each*j:each)
             }
           }
         }
