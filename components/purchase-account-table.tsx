@@ -396,24 +396,23 @@ export function PurchaseAccountTable({
   }
 
   return <div className="account-table-shell p1-account-table-shell">
-    {canManage&&selected.length>0&&<div className="order-bulk-bar user-bulk-bar">
-      <div className="order-bulk-summary">
-        <b>{selected.length}</b>
-        <span>User đã chọn{rows.length>200?' · tối đa 200/lần':''}</span>
-        <button type="button" onClick={()=>setSelected([])}>Bỏ chọn</button>
-      </div>
-      {selectedArchived
-        ? <ERPUserInlineForm operation="restoreBulk" className="order-bulk-form">
+    {canManage&&selected.length>0&&toolbarRoot&&createPortal(
+      <div className="user-bulk-toolbar" role="group" aria-label="Thao tác User đã chọn">
+        <span className="user-bulk-count"><b>{selected.length}</b> đã chọn</span>
+        {selectedArchived
+          ?<ERPUserInlineForm operation="restoreBulk" className="user-bulk-toolbar-form">
             <input type="hidden" name="return_query" value={detailQuery}/>
             {selected.map(id=><input key={id} type="hidden" name="user_ids" value={id}/>)}
-            <button className="button small primary" type="submit">Khôi phục đã chọn</button>
+            <button type="submit" className="button small primary">Khôi phục</button>
           </ERPUserInlineForm>
-        : <ERPUserInlineForm operation="archiveBulk" className="order-bulk-form">
+          :<ERPUserInlineForm operation="archiveBulk" className="user-bulk-toolbar-form">
             <input type="hidden" name="return_query" value={detailQuery}/>
             {selected.map(id=><input key={id} type="hidden" name="user_ids" value={id}/>)}
-            <button className="button small archive-button" type="submit">Lưu trữ đã chọn</button>
+            <button type="submit" className="button small archive-button">Lưu trữ</button>
           </ERPUserInlineForm>}
-    </div>}
+        <button className="user-bulk-clear" type="button" onClick={()=>setSelected([])}
+          aria-label="Bỏ chọn User">Bỏ chọn</button>
+      </div>,toolbarRoot)}
 
     {toolbarRoot&&createPortal(<div className="column-manager managed-column-wrap" ref={columnManagerRef}>
       <button className="icon-button managed-column-button" type="button"
