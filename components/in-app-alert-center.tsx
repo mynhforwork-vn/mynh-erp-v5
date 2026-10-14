@@ -646,7 +646,7 @@ export function InAppAlertCenter({
           {error&&<div role="alert" className="neo-soft-error">{error}</div>}
           {feed.migration_pending&&<div role="status" className="neo-soft-error">
             Nguồn thông báo hệ thống chưa được kích hoạt. Các cảnh báo vận chuyển và công việc vẫn có thể xem.
-          </div>
+          </div>}
           {batchMode&&receiveFor==='batch'&&batchSelected.length>0&&<div
             className="neo-soft-receive-form neo-soft-batch-form" role="group"
             aria-label={'Xác nhận nhận '+batchSelected.length+' đơn'}>
