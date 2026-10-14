@@ -74,12 +74,20 @@ export function AccountHeadingFilter({
     <button type="button" className={'account-heading-filter-trigger'+(active?' is-active':'')}
       popoverTarget={id} aria-controls={id} aria-haspopup="dialog"
       aria-label={'Lọc cột '+label+(active?' (đang lọc)':'')}
-      title={'Lọc '+label} onClick={e=>place(e.currentTarget)}>
+      title={'Lọc '+label} onClick={e=>{
+        // Native popover can open before React emits onToggle (especially
+        // immediately after RSC hydration). Mount the real data choices on
+        // the actual click, never leave only the 'Tất cả' fallback visible.
+        setOpened(true)
+        place(e.currentTarget)
+      }}>
       <FilterIcon/>
     </button>
     <div id={id} popover="auto" role="dialog"
       className="account-heading-filter-menu" aria-label={'Bộ lọc cột '+label}
-      onToggle={event=>setOpened(event.currentTarget.matches(':popover-open'))}
+      onToggle={event=>{
+        if(!event.currentTarget.matches(':popover-open'))setOpened(false)
+      }}
       onKeyDown={event=>{
         if(event.key==='Escape'){
           event.preventDefault()
