@@ -4,6 +4,16 @@
 -- All notification delivery remains IN-APP and uses the existing 5-minute GET.
 BEGIN;
 
+-- Use the existing admin-controlled alert rule UI for system/operational types.
+-- Each may be enabled/disabled independently; Telegram remains permanently off.
+insert into public.alert_rule_configs
+  (alert_type,label,enabled,in_app_enabled,telegram_enabled,batch_window_minutes,sort_order)
+values
+  ('TRACKING_SYNC_FAILED','Lỗi đồng bộ vận chuyển',true,true,false,0,60),
+  ('TRACKING_UNMAPPED_STATUS','Trạng thái vận chuyển chưa nhận diện',true,true,false,0,70),
+  ('TRACKING_CRON_FAILED','Lỗi lịch Tracking',true,true,false,0,80)
+on conflict(alert_type) do nothing;
+
 create table if not exists public.system_notification_reads(
   user_id uuid not null references auth.users(id) on delete cascade,
   notification_id uuid not null,
@@ -115,6 +125,8 @@ begin
   with notices as (
     select n.*,r.read_at,r.resolved_at
     from private.active_system_notifications() n
+    join public.alert_rule_configs cfg
+      on cfg.alert_type=n.event_type and cfg.enabled and cfg.in_app_enabled
     left join public.system_notification_reads r
       on r.user_id=auth.uid() and r.notification_id=n.notification_id
   ),filtered as(
