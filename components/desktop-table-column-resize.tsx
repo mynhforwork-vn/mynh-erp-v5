@@ -63,7 +63,7 @@ export function DesktopTableColumnResize() {
       Array.from(table.querySelectorAll(':scope > thead > tr:first-child > th')) as HTMLTableCellElement[]
     const tableId = (table:HTMLTableElement) => {
       const custom = table.dataset.tableResizeKey
-      const names = [...table.classList].filter(x => x !== 'table' && x !== 'active' && x !== 'striped' && x !== 'mynh-resizable-table').sort()
+      const names = [...table.classList].filter(x => x !== 'table' && x !== 'active' && x !== 'striped' && x !== 'mynh-resizable-table' && x !== 'account-table-stacked').sort()
       const parent = table.closest('.table-card, .managed-table-shell, .tracking-hub-table-wrap, .whx-table-wrap')
       const parentClass = parent ? [...parent.classList].filter(x => x !== 'card').sort().join('.') : ''
       return 'mynh-col-widths-v1:' + location.pathname + ':' + (custom || names.join('.') || parentClass || 'table')
@@ -385,6 +385,16 @@ export function DesktopTableColumnResize() {
     }
 
     const enhance = (table:HTMLTableElement) => {
+      if(table.matches('table.user-table.account-table-stacked')){
+        // Stacked Account lanes show ALL enabled fields as labeled rows.
+        // Release inline Desktop resize dimensions without deleting the
+        // saved manual widths: they apply again when the lane is wide.
+        if(table.classList.contains('mynh-resizable-table')){
+          clearInlineWidths(table)
+          trackingLayout.delete(table)
+        }
+        return
+      }
       if(window.innerWidth<901&&!table.matches('.mynh-p1-semantic-table.user-table'))return
       if (table.closest('.system-slidebar-v1, .system-slidebar, .context-panel, .side-panel, .finance-panel, .receive-confirm-modal')) return
       const ths = headerCells(table)
