@@ -205,6 +205,25 @@ try{
     }))
     check('1440 sticky table heading and Voucher label',headerState.sticky
       &&headerState.text==='Voucher'&&headerState.wrap==='normal',headerState)
+    // Verify sticky position while ONLY the table's data lane scrolls.
+    const scrolled=await page.evaluate(()=>{
+      const card=document.querySelector('.account-table-card')
+      const th=card?.querySelector('th[data-account-col="voucher"]')
+      if(!card||!th)return null
+      const before=th.getBoundingClientRect().top
+      const start=card.scrollTop
+      card.scrollTop=Math.min(card.scrollHeight-card.clientHeight,start+95)
+      const after=th.getBoundingClientRect().top
+      const bodyMoved=card.scrollTop>start+25
+      return {before,after,bodyMoved,delta:Math.abs(after-before)}
+    })
+    check('1440 title row remains fixed as Account data scrolls',
+      scrolled?.bodyMoved&&scrolled.delta<=4,scrolled??{})
+    const phones=await page.locator('td[data-account-col="phone"]').allTextContents()
+    const tenDigit=phones.filter(p=>p.replace(/\\D/g,'').length===10)
+    check('1440 phone cells follow 0000 000 000 display when ten digits',
+      tenDigit.length===0||tenDigit.every(p=>/^\\d{4} \\d{3} \\d{3}$/.test(p.trim())),
+      {tenDigitRows:tenDigit.length})
     const statusMenu=await openFilter(page,'status')
     check('1440 SPC remains selectable within Status filter',
       await statusMenu.locator('.account-heading-filter-secondary input[type="checkbox"]').count()>0)
