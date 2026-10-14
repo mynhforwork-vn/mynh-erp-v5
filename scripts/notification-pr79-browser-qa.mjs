@@ -45,16 +45,29 @@ try{
     if(response.status()>=500)errors.push('http:'+response.status()+':'+new URL(response.url()).pathname)
   })
   try{
+   // Register response listener before navigation/hydration can fire the GET.
+   const firstAlertResponse=page.waitForResponse(
+     r=>r.url().includes('/api/alerts/in-app?')&&r.status()!==0,
+     {timeout:40000}).catch(()=>null)
    const navigation=await page.goto(BASE+'/purchase/orders?range=all',{waitUntil:'domcontentloaded',timeout:40000})
    const bell=page.locator('.sidebar-alert-trigger')
    await bell.waitFor({state:'visible',timeout:25000})
    await bell.click()
    const panel=page.locator('.app-alert-panel-v2')
    await panel.waitFor({state:'visible',timeout:12000})
-   await page.locator('#neo-soft-category-select').waitFor({state:'visible',timeout:12000})
-   // Authenticated polling starts during hydration, before the drawer opens.
-   // Inspect response events captured since page.goto, not a late waitForResponse.
-   await page.waitForTimeout(1700)
+   await page.locator('#neo-soft-category-select').waitFor({state:'visible',timeout:25000})
+   // Wait for the actual first fetch to return, not just for the drawer to mount.
+   const firstResponse=await firstAlertResponse
+   if(firstResponse){
+     await firstResponse.finished().catch(()=>{})
+     const firstBody=await firstResponse.json().catch(()=>null)
+     if(firstResponse.ok()&&firstBody?.migration_pending===true){
+       await panel.getByText('Nguồn thông báo hệ thống chưa được kích hoạt.',{exact:false})
+         .waitFor({state:'visible',timeout:22000})
+     }else if(firstResponse.ok()){
+       await page.waitForTimeout(900)
+     }
+   }
    const before=page.url()
    const categories=page.locator('#neo-soft-category-select')
    await categories.selectOption('system')

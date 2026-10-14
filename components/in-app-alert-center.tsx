@@ -244,6 +244,10 @@ export function InAppAlertCenter({
       setLoading(false)
       return
     }
+    // Keep the drawer in loading state until the first GET actually finishes.
+    // Otherwise initial hydration can display a misleading empty list while
+    // the Cloudflare/Supabase response is still in flight.
+    setLoading(!isTrackingQuietNow(new Date(),quietStart,quietEnd))
     lastRequestAt.current=0
     nextAllowedAt.current=0
     let stopped=false
