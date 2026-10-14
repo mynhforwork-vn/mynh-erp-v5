@@ -134,7 +134,17 @@ try{
         // Account lane-driven width contract deliberately allows 120px Email
         // with ellipsis and full value in title/detail. Reject any narrower
         // header; the separate real-drag QA enforces last-column coverage.
-        readable:stacked?allPresent&&find('username')>=75
+        // Stacked is now strictly Mobile: the header has five compact
+        // filter slots; readability must be measured in the actual labeled
+        // Username CELL, not the much narrower header filter button slot.
+        readable:stacked?allPresent&&[...table.querySelectorAll('tbody tr[data-account-id]')]
+          .every(row=>{
+            const cell=row.querySelector('td[data-account-col="username"]')
+            const link=cell?.querySelector('.table-link')
+            return cell&&link&&box(cell).width>=Math.min(150,laneWidth-28)
+              &&getComputedStyle(cell).display!=='none'
+              &&box(link).width>=32
+          })
           :find('username')>=56&&find('voucher')>=24
             &&find('email')>=42&&find('deliveredOrders')>=32,
         compact:stacked?allPresent
