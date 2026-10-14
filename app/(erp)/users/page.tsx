@@ -1,4 +1,5 @@
 import { requireUser } from '@/lib/supabase/auth'
+import {readAccountFilterValues} from '@/lib/account-heading-filter-values'
 import { SystemSlidebar } from '@/components/system-slidebar'
 import { ERPUserInlineForm } from '@/components/erp-user-inline-form'
 import { ERPAccountFilterForm } from '@/components/erp-account-filter-form'
@@ -74,6 +75,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const browser=sp.browser??'all'
   const sort=sp.sort??'newest'
   const queryText=String(sp.q??'').trim().toLowerCase()
+  const browserSelection=readAccountFilterValues(sp.browser)
+  const sessionSelection=readAccountFilterValues(sp.session)
+  const voucherSelection=readAccountFilterValues(sp.voucher)
+  const orderSelection=readAccountFilterValues(sp.orders)
+  const selectedFor=(key:string)=>readAccountFilterValues(sp[key])
   const headerFilterKeys=['number','username','platform','phone','email','status',
     'mobile','deliveredOrders','createdAt','note'] as const
   const columnFilterEntries=Object.fromEntries(headerFilterKeys.map(key=>[
@@ -165,34 +171,43 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     const activeDevices=u.active_devices??[]
     const allDevices=u.all_devices??[]
     const actualBrowser=accountDeviceFields(u).browserName
-    if(browser==='none'&&actualBrowser)return false
-    if(browser.startsWith('name:')&&actualBrowser.toLocaleLowerCase('vi')!==browser.slice(5).toLocaleLowerCase('vi'))return false
-    if(browser!=='all'&&browser!=='none'&&!browser.startsWith('name:')
-      &&!activeDevices.some((d:any)=>deviceBrowserBucket(d.browser_name)===browser))return false
+    const hasBrowser=(v:string)=>{
+      if(v==='none')return !actualBrowser
+      if(v.startsWith('name:'))return actualBrowser.toLocaleLowerCase('vi')===
+        v.slice(5).toLocaleLowerCase('vi')
+      return activeDevices.some((d:any)=>deviceBrowserBucket(d.browser_name)===v)
+    }
+    if(browserSelection.length&&!browserSelection.some(hasBrowser))return false
 
     const st=hasST(u),sf=hasF(u)
-    if(session==='full'&&!(st&&sf))return false
-    if(session==='st'&&!st)return false
-    if(session==='f'&&!sf)return false
-    if(session==='missing'&&(st&&sf))return false
-    if(session==='none'&&(st||sf))return false
+    const hasSession=(v:string)=>
+      v==='full'?(st&&sf):v==='st'?st:v==='f'?sf:
+      v==='missing'?!(st&&sf):v==='none'?!(st||sf):true
+    if(sessionSelection.length&&!sessionSelection.some(hasSession))return false
 
     const voucherLabels=(u.voucher_used_rows??[]).map(voucherLabel).filter(Boolean)
     const voucherText=voucherLabels.join(' ').toLowerCase()
-    if(voucher==='has'&&!voucherLabels.length)return false
-    if(voucher==='none'&&voucherLabels.length)return false
-    if(voucher==='freeship'&&!voucherText.includes('free'))return false
-    if(voucher==='discount'&&!voucherText.includes('giảm'))return false
-    if(voucher==='cashback'&&!(voucherText.includes('hoàn')||voucherText.includes('xu')))return false
-    if(voucher.startsWith('tag:')&&!voucherLabels.includes(voucher.slice(4)))return false
+    const hasVoucher=(v:string)=>{
+      if(v==='has')return voucherLabels.length>0
+      if(v==='none')return voucherLabels.length===0
+      if(v==='freeship')return voucherText.includes('free')
+      if(v==='discount')return voucherText.includes('giảm')
+      if(v==='cashback')return voucherText.includes('hoàn')||voucherText.includes('xu')
+      if(v.startsWith('tag:'))return voucherLabels.includes(v.slice(4))
+      return true
+    }
+    if(voucherSelection.length&&!voucherSelection.some(hasVoucher))return false
 
     const n=Number(u.order_count??0)
-    if(orders==='0'&&n!==0)return false
-    if(orders==='1-5'&&(n<1||n>5))return false
-    if(orders==='6-10'&&(n<6||n>10))return false
-    if(orders==='11+'&&n<11)return false
-    if(/^\d+$/.test(orders)&&orders!=='0'&&n!==Number(orders))return false
-    if(orders==='21+'&&n<21)return false
+    const hasOrders=(v:string)=>{
+      if(v==='0')return n===0
+      if(v==='1-5')return n>=1&&n<=5
+      if(v==='6-10')return n>=6&&n<=10
+      if(v==='11+')return n>=11
+      if(v==='21+')return n>=21
+      return /^\\d+$/.test(v)?n===Number(v):true
+    }
+    if(orderSelection.length&&!orderSelection.some(hasOrders))return false
 
     if(queryText){
       const deviceSearch=allDevices.flatMap((d:any)=>[d.device_name,d.browser_name,d.browser_profile]).filter(Boolean)
@@ -244,26 +259,28 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
       email:u.email,note:u.note,
     }
     for(const key of ['username','email','note']){
-      const val=norm(sp['cf_'+key])
-      if(val&&norm(textColumns[key])!==val)return false
+      const values=selectedFor('cf_'+key).map(norm)
+      if(values.length&&!values.includes(norm(textColumns[key])))return false
     }
-    const phoneSearch=String(sp.cf_phone??'').replace(/\D/g,'')
-    if(phoneSearch&&String(textColumns.phone)!==phoneSearch)return false
+    const phones=selectedFor('cf_phone').map(x=>x.replace(/\\D/g,''))
+    if(phones.length&&!phones.includes(String(textColumns.phone)))return false
     const exact:Record<string,string>={
       platform:String(u.platform??'SHOPEE'),status:String(u.status??''),
       mobile:device.mobileType,
     }
     for(const key of Object.keys(exact)){
-      const val=norm(sp['cf_'+key])
-      if(val&&norm(exact[key])!==val)return false
+      const values=selectedFor('cf_'+key).map(norm)
+      if(values.length&&!values.includes(norm(exact[key])))return false
     }
-    if(/^\d+$/.test(sp.cf_deliveredOrders??'')
-      &&Number(u.delivered_order_count??0)!==Number(sp.cf_deliveredOrders))return false
-    const dateLocal=dateKey(u.effective_created_at??u.created_at)
-    const dateFrom=sp.cf_createdAt_from??''
-    const dateTo=sp.cf_createdAt_to??''
-    if(/^\d{4}-\d{2}-\d{2}$/.test(dateFrom)&&dateLocal<dateFrom)return false
-    if(/^\d{4}-\d{2}-\d{2}$/.test(dateTo)&&dateLocal>dateTo)return false
+    const delivered=selectedFor('cf_deliveredOrders')
+    if(delivered.length&&!delivered.includes(String(Number(u.delivered_order_count??0))))return false
+    const day=dateKey(u.effective_created_at??u.created_at)
+    const dates=selectedFor('cf_createdAt')
+    if(dates.length&&!dates.includes(day))return false
+    const dateFrom=String(sp.cf_createdAt_from??'')
+    const dateTo=String(sp.cf_createdAt_to??'')
+    if(/^\\d{4}-\\d{2}-\\d{2}$/.test(dateFrom)&&day<dateFrom)return false
+    if(/^\\d{4}-\\d{2}-\\d{2}$/.test(dateTo)&&day>dateTo)return false
     return true
   }
 
@@ -276,7 +293,9 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const headingOptions={
     username:listOptions(enriched.map((u:any)=>u.username)),
     platform:listOptions(enriched.map((u:any)=>u.platform??'SHOPEE')),
-    phone:listOptions(enriched.map((u:any)=>u.phone)),
+    phone:listOptions(enriched.map((u:any)=>u.phone)).map(option=>({
+      ...option,label:formatPhone(option.value),
+    })),
     email:listOptions(enriched.map((u:any)=>u.email)),
     status:[...new Set(enriched.map((u:any)=>String(u.status??'')))].filter(Boolean)
       .sort((a,b)=>a.localeCompare(b,'vi'))
@@ -297,6 +316,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   }
   const headingValues:Record<string,string>={
     ...columnFilterEntries,browser,voucher,orders,session,
+    cf_createdAt:sp.cf_createdAt??'',
     cf_createdAt_from:sp.cf_createdAt_from??'',
     cf_createdAt_to:sp.cf_createdAt_to??'',
   }
@@ -326,8 +346,9 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   })
   // STT là thứ tự theo danh sách đã sắp xếp, giữ ổn định khi lọc riêng STT.
   rows=rows.map((u:any,i:number)=>({...u,account_row_number:i+1}))
-  if(/^\d+$/.test(sp.cf_number??'')){
-    rows=rows.filter((u:any)=>u.account_row_number===Number(sp.cf_number))
+  const selectedNumbers=selectedFor('cf_number')
+  if(selectedNumbers.length){
+    rows=rows.filter((u:any)=>selectedNumbers.includes(String(u.account_row_number)))
   }
 
   function filterHref(overrides:Record<string,string|null|undefined>={}){
@@ -343,7 +364,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
     }
     for(const [k,v] of Object.entries(current))if(v)p.set(k,v)
     for(const [k,v] of Object.entries(columnFilterEntries))if(v)p.set(k,v)
-    for(const k of ['cf_createdAt_from','cf_createdAt_to'])if(sp[k])p.set(k,sp[k])
+    for(const k of ['cf_createdAt','cf_createdAt_from','cf_createdAt_to'])
+      if(sp[k])p.set(k,sp[k])
     for(const [k,v] of Object.entries(overrides)){
       if(v===null||v===undefined||v==='all'||v==='')p.delete(k)
       else p.set(k,v)
@@ -355,7 +377,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const detailParams=new URLSearchParams()
   if(sp.q)detailParams.set('q',sp.q)
   for(const [k,v] of Object.entries(columnFilterEntries))if(v)detailParams.set(k,v)
-  for(const k of ['cf_createdAt_from','cf_createdAt_to'])if(sp[k])detailParams.set(k,sp[k])
+  for(const k of ['cf_createdAt','cf_createdAt_from','cf_createdAt_to'])
+    if(sp[k])detailParams.set(k,sp[k])
   if(state!=='all')detailParams.set('state',state)
   if(session!=='all')detailParams.set('session',session)
   if(voucher!=='all')detailParams.set('voucher',voucher)
