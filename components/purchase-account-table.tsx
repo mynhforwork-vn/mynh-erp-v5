@@ -181,6 +181,21 @@ export function PurchaseAccountTable({
   // Auto Fit: one width allocation for Desktop, Tablet, Mobile and right drawer.
   // Numeric fields stay compact; meaningful text and Voucher expand as space permits.
   const shownColumns=columnOrder.filter(isVisible)
+  // Hydration/column preferences may overwrite an earlier DOM-level fit.
+  // Force a second lane-based measurement after React has committed the
+  // responsive widths; never reuse widths from the previous sidebar state.
+  useEffect(()=>{
+    let second=0
+    const first=window.requestAnimationFrame(()=>{
+      second=window.requestAnimationFrame(
+        ()=>window.dispatchEvent(new Event('mynh-account-fit-changed'))
+      )
+    })
+    return ()=>{
+      window.cancelAnimationFrame(first)
+      if(second)window.cancelAnimationFrame(second)
+    }
+  },[tableLaneWidth,visible,columnOrder,canManage])
   const sampleMax=(pick:(row:Row)=>string)=>{
     let n=0
     for(const row of rows.slice(0,150))n=Math.max(n,pick(row).trim().length)
