@@ -108,7 +108,7 @@ begin
     or coalesce(p_category,'') not in ('all','tracking','purchase','warehouse','sales','finance','system')
   then raise exception 'Bộ lọc thông báo không hợp lệ' using errcode='22023'; end if;
   -- Operational error details are restricted to Admin/Operator.
-  if public.current_erp_role() not in ('admin','operator') then
+  if coalesce(public.current_erp_role(),'') not in ('admin','operator') then
     return jsonb_build_object('items','[]'::jsonb,'total',0,'unread_total',0,'action_total',0);
   end if;
 
@@ -154,7 +154,7 @@ returns void language plpgsql security definer set search_path=''
 as $read$
 begin
   if auth.uid() is null then raise exception 'Chưa đăng nhập' using errcode='42501'; end if;
-  if public.current_erp_role() not in ('admin','operator') then
+  if coalesce(public.current_erp_role(),'') not in ('admin','operator') then
     raise exception 'Không có quyền' using errcode='42501';
   end if;
   if not exists(select 1 from private.active_system_notifications() a where a.notification_id=p_id) then
@@ -171,7 +171,7 @@ returns void language plpgsql security definer set search_path=''
 as $readall$
 begin
   if auth.uid() is null then raise exception 'Chưa đăng nhập' using errcode='42501'; end if;
-  if public.current_erp_role() not in ('admin','operator') then
+  if coalesce(public.current_erp_role(),'') not in ('admin','operator') then
     raise exception 'Không có quyền' using errcode='42501';
   end if;
   insert into public.system_notification_reads(user_id,notification_id,read_at)
@@ -186,7 +186,7 @@ returns void language plpgsql security definer set search_path=''
 as $resolve$
 begin
   if auth.uid() is null then raise exception 'Chưa đăng nhập' using errcode='42501'; end if;
-  if public.current_erp_role() not in ('admin','operator') then
+  if coalesce(public.current_erp_role(),'') not in ('admin','operator') then
     raise exception 'Không có quyền' using errcode='42501';
   end if;
   -- Technical incident alerts cannot be dismissed while the source is failing.
