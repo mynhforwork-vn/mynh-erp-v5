@@ -65,8 +65,15 @@ try{
     })
     const toastOne=await toast.count()===1
     const leftSide=details.left>=0&&details.left<width/2&&details.right<=width+5
+    // SSR may render the toast before the page hydrates. The five-second
+    // timer starts only after TrackingSuccessToast's effect removes query flags.
+    // Time from the real effect rather than from DOMContentLoaded or SSR paint.
+    await page.waitForFunction(()=>{
+      const q=new URLSearchParams(location.search)
+      return !q.has('received')&&!q.has('payment')
+    },null,{timeout:25000})
     const timerStart=Date.now()
-    await toast.first().waitFor({state:'hidden',timeout:7200})
+    await toast.first().waitFor({state:'hidden',timeout:7000})
     const timerElapsed=Date.now()-timerStart
     assertMetric(width+'x'+height+' toast',Boolean(toastOne&&leftSide&&details.close&&
       details.title?.includes('nhận hàng')&&timerElapsed>=3300&&timerElapsed<=7100),
@@ -100,7 +107,7 @@ try{
         await page.locator('.tracking-content-workspace.with-panel').waitFor({state:'visible',timeout:20000})
         await page.waitForTimeout(700)
         const panel=await inspect(page)
-        assertMetric('1440 with order slidebar',Boolean(panel?.fill&&!panel?.pageOverflow&&panel?.localOverflow!==false),panel??{})
+        assertMetric('1440 with order slidebar',Boolean(panel?.fill&&!panel?.pageOverflow&&(panel.table<=panel.pane+4||panel.localOverflow)),panel??{})
         await page.goBack({waitUntil:'domcontentloaded'}).catch(()=>null)
         await page.waitForTimeout(500)
         const back=await inspect(page)
