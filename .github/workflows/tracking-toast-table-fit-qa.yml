@@ -1,0 +1,76 @@
+name: Tracking Toast and Table Fit QA
+on:
+  push:
+    branches:
+      - fix/tracking-toast-table-fit-20261015
+  pull_request:
+    branches: [main]
+    paths:
+      - 'components/tracking-success-toast.tsx'
+      - 'components/desktop-table-column-resize.tsx'
+      - 'app/styles/tracking-compact-actions-v1.css'
+      - 'scripts/tracking-toast-table-*.mjs'
+      - '.github/workflows/tracking-toast-table-fit-qa.yml'
+permissions:
+  contents: read
+concurrency:
+  group: tracking-toast-table-fit-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  tracking-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PREVIEW_URL: https://tracking-toast-fit-qa-mynh-erp-v5.mynh-forwork.workers.dev
+      SUPABASE_URL: https://nvgxwqapfaslavhtpauh.supabase.co
+      SUPABASE_KEY: sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
+      - name: Tracking toast/table contracts
+        run: |
+          node scripts/tracking-toast-table-contract-qa.mjs
+          node scripts/remediation-static-qa.mjs
+      - name: Build Next Cloudflare Worker, without Production deploy
+        run: npx opennextjs-cloudflare build
+      - name: Publish isolated Preview only
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx wrangler preview --name tracking-toast-fit-qa --worker-name mynh-erp-v5 --message "Tracking table/toast QA $GITHUB_SHA" --json > tracking-preview.json
+          test -s tracking-preview.json
+      - name: Preview health and login smoke
+        run: |
+          test "$(curl --silent --show-error --max-time 30 -o tracking-health.json -w '%{http_code}' "$PREVIEW_URL/api/health")" = "200"
+          grep -q '"ok":true' tracking-health.json
+          test "$(curl --silent --show-error --max-time 30 -o tracking-login.html -w '%{http_code}' "$PREVIEW_URL/login")" = "200"
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright --no-audit --no-fund
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: Temporary Operator session (no order mutations)
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-setup.mjs
+      - name: Browser regression for left toast 5s and full-width Tracking table
+        run: node scripts/tracking-toast-table-browser-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tracking-toast-fit-${{ github.sha }}
+          path: qa-tracking-toast-table/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Always delete temporary Operator
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/preview-auth-cleanup.mjs

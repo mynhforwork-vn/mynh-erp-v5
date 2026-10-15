@@ -115,7 +115,7 @@ export function DesktopTableColumnResize() {
       const withPanel=Boolean(table.closest('.tracking-content-workspace.with-panel'))
       // Fit to the actual lane. Only narrower-than-readable lanes scroll locally.
       // This is presentation-only: saved user column widths remain unmodified.
-      const target=Math.max(withPanel?760:900,Math.floor(lane.clientWidth)-2)
+      const target=Math.max(withPanel?760:900,Math.floor(lane.clientWidth))
       const columnIndex=(key:string)=>ths.findIndex(th=>th.classList.contains('tracking-col-'+key))
       // Older per-user saved widths can predate the detail column. Protect the
       // status/detail headers even when those legacy preferences are restored.
@@ -524,7 +524,9 @@ export function DesktopTableColumnResize() {
       scheduled=0
       // RSC navigation can replace the table card without remounting this
       // observer. Bind newly rendered lanes before fitting their columns.
-      main.querySelectorAll('.order-table-card,.account-table-card').forEach(pane=>{
+      // Watch Tracking lanes too: the detail slidebar animation can resize the
+      // HUB panel without a window resize or a new React table node.
+      main.querySelectorAll('.order-table-card,.account-table-card,.tracking-hub-table-wrap-v2').forEach(pane=>{
         if(observedPanes.has(pane))return
         observedPanes.add(pane)
         paneResize.observe(pane)
