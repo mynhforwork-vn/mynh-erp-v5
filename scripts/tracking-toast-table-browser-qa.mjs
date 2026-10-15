@@ -47,6 +47,19 @@ try{
     sameSite:c.options?.sameSite==='strict'?'Strict':c.options?.sameSite==='none'?'None':'Lax',
   })))
   const page=await ctx.newPage()
+  // Capture the exact effect activation, even on a slow server-rendered page.
+  await page.addInitScript(()=>{
+    const original=window.history.replaceState
+    window.history.replaceState=function(...args){
+      const before=new URL(location.href)
+      const next=new URL(String(args[2]??location.href),location.href)
+      if((before.searchParams.has('received')||before.searchParams.has('payment'))&&
+        !next.searchParams.has('received')&&!next.searchParams.has('payment')){
+        window.__qaToastEffectStartedAt=Date.now()
+      }
+      return original.apply(this,args)
+    }
+  })
   const errors=[]
   page.on('pageerror',e=>errors.push(String(e.message)))
   page.on('response',r=>{
@@ -72,11 +85,12 @@ try{
       const q=new URLSearchParams(location.search)
       return !q.has('received')&&!q.has('payment')
     },null,{timeout:25000})
-    const timerStart=Date.now()
+    const effectStartedAt=await page.evaluate(()=>window.__qaToastEffectStartedAt??0)
+    assert.ok(effectStartedAt>0,'Toast effect activation not observed')
     await toast.first().waitFor({state:'hidden',timeout:7000})
-    const timerElapsed=Date.now()-timerStart
+    const timerElapsed=Date.now()-effectStartedAt
     assertMetric(width+'x'+height+' toast',Boolean(toastOne&&leftSide&&details.close&&
-      details.title?.includes('nhận hàng')&&timerElapsed>=3300&&timerElapsed<=7100),
+      details.title?.includes('nhận hàng')&&timerElapsed>=4500&&timerElapsed<=7900),
       {toastOne,...details,timerElapsed,errors:[...errors]})
     await page.locator('.tracking-content-workspace').waitFor({state:'visible',timeout:18000})
     let hub=page.locator('.tracking-hub-card-v2.open .tracking-hub-table-v2')
