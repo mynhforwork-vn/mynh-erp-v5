@@ -9,6 +9,10 @@ on:
       - 'components/**'
       - 'lib/**'
       - 'supabase/migrations/**'
+      - 'scripts/delivery-failure-notification-contract-qa.mjs'
+      - 'scripts/notification-feed-window-qa.mjs'
+      - 'scripts/notification-system-contract-qa.mjs'
+      - 'scripts/notification-tracking-integration-contract-qa.mjs'
 permissions:
   contents: read
 concurrency:
