@@ -1,0 +1,128 @@
+name: MYNH ERP — One Production v229 Mirror Preview
+
+# Deliberately runs only on this already-existing QA branch.
+# It MUST NOT deploy production, change cloud resources besides this
+# Worker's branch Previews, touch Supabase DB or run migrations.
+on:
+  push:
+    branches:
+      - qa/integrated-notifications-tracking-20261016
+    paths:
+      - '.github/workflows/mynh-production-v229-mirror-preview-cleanup.yml'
+
+permissions:
+  contents: read
+concurrency:
+  group: mynh-v229-preview-cleanup
+  cancel-in-progress: false
+
+jobs:
+  snapshot-and-cleanup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      WORKER_NAME: mynh-erp-v5
+      SCRIPT_TAG: be83d62166d4498db1a985b3308d9100
+      LIVE_VERSION: cc54593b-6aad-4ec1-a354-2d72f99f1a97
+      SOURCE_SHA: 615fa4dcf31197623ef63a999747554fe5991b0a
+      MIRROR_NAME: production-v229-mirror-20261016
+      PROD_URL: https://mynh-erp-v5.mynh-forwork.workers.dev
+    steps:
+      - name: Checkout source recorded in deployed Production v229 (not new main)
+        uses: actions/checkout@v4
+        with:
+          ref: 615fa4dcf31197623ef63a999747554fe5991b0a
+          persist-credentials: false
+      - name: Configure Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Ensure the currently serving version is still v229 at 100 percent
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          curl -fsS --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME/deployments?page=1&per_page=1" > live.json
+          jq -e --arg v "$LIVE_VERSION" '.success==true and
+            (.result.deployments[0].versions|length)==1 and
+            .result.deployments[0].versions[0].version_id==$v and
+            .result.deployments[0].versions[0].percentage==100' live.json
+          echo 'Live Worker matches pinned v229. No writes to Production.'
+      - name: Install pinned project dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build source snapshot from deployed Production commit
+        run: npx opennextjs-cloudflare build
+      - name: Create one named Preview from the frozen source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler preview --name "$MIRROR_NAME" --worker-name "$WORKER_NAME" \
+            --message "Production v229 source $SOURCE_SHA (not merged main)" --json > mirror.json
+          test -s mirror.json
+          jq -er '.preview.urls[0]' mirror.json | tee mirror-url.txt
+      - name: Compare read-only health and login against Production
+        shell: bash
+        run: |
+          set -euo pipefail
+          PREVIEW_URL="$(cat mirror-url.txt)"
+          test "${PREVIEW_URL#https://}" != "$PREVIEW_URL"
+          for url in "$PROD_URL" "$PREVIEW_URL"; do
+            code="$(curl --silent --show-error --retry 3 --retry-delay 2 --max-time 40 -o /tmp/mynh-health.json -w '%{http_code}' "$url/api/health")"
+            test "$code" = '200'
+            jq -e '.ok==true' /tmp/mynh-health.json
+            code="$(curl --silent --show-error --retry 3 --retry-delay 2 --max-time 40 -o /tmp/mynh-login.html -w '%{http_code}' "$url/login")"
+            test "$code" = '200'
+          done
+          echo "Smoke PASS for Production and pinned-source Preview"
+      - name: Delete all OTHER old Previews only for mynh-erp-v5
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/builds/workers/$SCRIPT_TAG/previews?page=1&per_page=100" > preview-inventory.json
+          jq -e '.success==true and (.result|type=="array")' preview-inventory.json >/dev/null
+          jq -r --arg keep "$MIRROR_NAME" '.result[].branch | select(.!=$keep)' preview-inventory.json > delete-preview-names.txt
+          echo "Deleting $(wc -l < delete-preview-names.txt) old branch Previews (Worker scoped)."
+          failed=0
+          while IFS= read -r name; do
+            test -n "$name" || continue
+            if ! npx wrangler preview delete --name "$name" --skip-confirmation >/tmp/mynh-delete.log 2>&1; then
+              echo "Failed to delete Preview: $name"
+              tail -n 8 /tmp/mynh-delete.log
+              failed=$((failed+1))
+            else
+              echo "Deleted: $name"
+            fi
+          done < delete-preview-names.txt
+          test "$failed" -eq 0
+      - name: Verify exactly one Worker Preview and original Production deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/builds/workers/$SCRIPT_TAG/previews?page=1&per_page=100" > final-previews.json
+          jq -e --arg n "$MIRROR_NAME" '.success==true and (.result|length)==1 and .result[0].branch==$n' final-previews.json
+          curl -fsS --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$WORKER_NAME/deployments?page=1&per_page=1" > final-live.json
+          jq -e --arg v "$LIVE_VERSION" '.success==true and
+            (.result.deployments[0].versions|length)==1 and
+            .result.deployments[0].versions[0].version_id==$v and
+            .result.deployments[0].versions[0].percentage==100' final-live.json
+          echo "ONE_MIRROR_PREVIEW_PASS $(cat mirror-url.txt)"
+          {
+            echo '## MYNH ERP production v229 Preview cleanup'
+            echo ''
+            echo "- Production: $PROD_URL — Worker version $LIVE_VERSION (100%)"
+            echo "- Mirrored source SHA: $SOURCE_SHA"
+            echo "- Preview: $(cat mirror-url.txt)"
+            echo '- All other Worker Previews deleted; other Workers, DB and Production unaffected.'
+          } >> "$GITHUB_STEP_SUMMARY"
