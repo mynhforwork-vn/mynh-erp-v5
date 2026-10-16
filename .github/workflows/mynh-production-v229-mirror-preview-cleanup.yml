@@ -56,6 +56,15 @@ jobs:
           echo 'Live Worker matches pinned v229. No writes to Production.'
       - name: Install pinned project dependencies
         run: npm install --no-audit --no-fund
+      - name: Free exactly one old Preview slot before cloning (the 100 limit)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler preview delete --name develop --skip-confirmation
+          curl -fsS --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/builds/workers/$SCRIPT_TAG/previews?page=1&per_page=100" > pre-mirror.json
+          jq -e '.success==true and (.result|map(select(.branch=="develop"))|length)==0' pre-mirror.json
       - name: Build source snapshot from deployed Production commit
         run: npx opennextjs-cloudflare build
       - name: Create one named Preview from the frozen source snapshot
@@ -65,7 +74,10 @@ jobs:
           npx wrangler preview --name "$MIRROR_NAME" --worker-name "$WORKER_NAME" \
             --message "Production v229 source $SOURCE_SHA (not merged main)" --json > mirror.json
           test -s mirror.json
-          jq -er '.preview.urls[0]' mirror.json | tee mirror-url.txt
+          # Some Wrangler builds print text before the JSON despite --json.
+          # Extract only the generated preview URL; fail if absent.
+          node -e "const s=require('fs').readFileSync('mirror.json','utf8');const u=s.match(/https:\\/\\/[a-z0-9-]+-mynh-erp-v5\\.mynh-forwork\\.workers\\.dev/g)||[];const m=u.find(x=>x.includes('production-v229-mirror-20261016'));if(!m){console.error('No new preview URL in Wrangler output; non-sensitive excerpt:',s.replace(/Bearer\\s+[^\\s]+/g,'Bearer REDACTED').slice(0,1800));process.exit(4)}require('fs').writeFileSync('mirror-url.txt',m+'\\n')"
+          cat mirror-url.txt
       - name: Compare read-only health and login against Production
         shell: bash
         run: |
