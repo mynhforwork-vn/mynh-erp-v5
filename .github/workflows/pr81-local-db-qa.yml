@@ -1,0 +1,61 @@
+name: PR81 Local Database Auth and Migration QA
+
+# Public repository standard ubuntu runner is free. No Supabase Cloud branch,
+# service role credentials, production endpoints, Cloudflare preview, or deploy.
+on:
+  push:
+    branches:
+      - qa/integrated-notifications-tracking-20261016
+    paths:
+      - '.github/workflows/pr81-local-db-qa.yml'
+      - 'scripts/qa/pr81-local-*.sh'
+      - 'scripts/qa/pr81-local-*.sql'
+      - 'scripts/qa/pr81-local-*.mjs'
+      - 'scripts/pr81-local-qa-safety-contract.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: pr81-local-db-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  supabase-local-only:
+    name: Real local PostgreSQL + Auth JWT QA
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      SUPABASE_TELEMETRY_DISABLED: '1'
+    steps:
+      - name: Checkout exact test branch
+        uses: actions/checkout@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Setup Supabase CLI (no Cloud credentials)
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Validate isolated test syntax
+        run: |
+          node --check scripts/qa/pr81-local-jwt-qa.mjs
+          bash -n scripts/qa/pr81-local-supabase.sh
+          node scripts/pr81-local-qa-safety-contract.mjs
+      - name: Real migration 0070/0071 and signed JWT, PostgreSQL in Docker
+        run: |
+          unset SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_PROJECT_ID
+          bash scripts/qa/pr81-local-supabase.sh
+      - name: Record exact verdict
+        if: always()
+        run: |
+          {
+            echo '## PR #81 — Local database acceptance'
+            echo ''
+            echo "- Source: \`$GITHUB_SHA\`"
+            echo '- GitHub hosted Ubuntu standard, Supabase CLI Docker local only'
+            echo '- No Production data, Cloudflare, paid Supabase branching, or DB changes'
+            echo '- This job covers two SQL migrations and local signed JWT only'
+            echo '- See individual steps for PASS / FAIL evidence; do not substitute static checks'
+          } >> "$GITHUB_STEP_SUMMARY"

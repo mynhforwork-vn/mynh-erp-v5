@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import {buildOrderNotices,type LegacyAlert,type TrackingOrderNotice} from '@/lib/notification-order-presentation'
 import {buildOrderWorkNotices,type TaskOrder} from '@/lib/notification-order-tasks'
 import {orderIsCancelled} from '@/lib/purchase-order-cancellation'
+import {selectNotificationWindow} from '@/lib/notification-feed-window'
 
 const noCache={ 'Cache-Control':'private, no-store, max-age=0' }
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -29,7 +30,7 @@ export async function GET(request:Request){
   const legacyRows=(legacy.data??[]) as LegacyAlert[]
   const orderCodes=[...new Set(legacyRows.flatMap(row=>row.order_codes??[]).filter(Boolean))]
   const orderResult=orderCodes.length
-    ?await supabase.from('orders').select('id,shopee_order_id,receive_status,shipping_service,destination_hub,cod,recipient_name,recipient_phone,recipient_address,order_status,erp_users(username),order_items(product_name,variant,quantity),shipments(tracking_number,carrier,is_active)')
+    ?await supabase.from('orders').select('id,shopee_order_id,receive_status,shipping_service,destination_hub,cod,recipient_name,recipient_phone,recipient_address,order_status,erp_users(username),order_items(product_name,variant,quantity),shipments(tracking_number,carrier,is_active,current_tracking_status)')
       .in('shopee_order_id',orderCodes).is('archived_at',null)
     :{data:[],error:null}
   const role=String(user.app_metadata?.role??'viewer')
@@ -89,7 +90,8 @@ export async function GET(request:Request){
       ...item,recipient_name:null,recipient_phone:null,recipient_address:null,
     })
 
-  // Migration 0068 is additive. Pull system notices only when its RPC exists.
+  // Migration 0071 is independently released. Missing RPC is not the same
+  // as a transient query, permission, or connection failure.
   // Ignore its legacy tracking rows; they group by alert type rather than order.
   const newer=await supabase.rpc('get_notification_feed',{
     p_limit:40,p_offset:0,p_view:'all',p_category:'all',
@@ -99,17 +101,28 @@ export async function GET(request:Request){
   const systems=(!newer.error&&Array.isArray(newer.data?.items)
     ?newer.data.items.filter((x:Record<string,unknown>)=>x.source==='system')
     :[]) as SystemNotice[]
+  // Only missing-RPC (PGRST202) means migration 0071 has not been activated.
+  // Other errors must not be mislabeled as "migration pending".
   const combined:(TrackingOrderNotice|SystemNotice|typeof workNotices[number])[]=[...enriched,...workNotices,...systems]
-  const newest=combined.sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))
+  // Keep unresolved delivery failures within the bounded first page,
+  // even when newer non-critical notices accumulate.
+  const newest=combined.sort((a,b)=>
+    Number(b.source==='tracking'&&b.reminder_active===true)-
+    Number(a.source==='tracking'&&a.reminder_active===true)||
+    Date.parse(b.created_at)-Date.parse(a.created_at))
   const relevant=newest.filter(x=>category==='all'||x.category===category)
     .filter(x=>view==='all'||(view==='unread'&&!x.is_read)||
       (view==='action'&&x.requires_action&&!x.is_resolved))
+  // A bounded first page can contain only 11 of 33 actionable notices.
+  // Send remaining actionable/unread notices alongside it in the SAME GET,
+  // so tab totals and displayed groups refer to the same population.
+  const page=selectNotificationWindow(relevant,limit,offset,
+    view==='all'&&category==='all'&&offset===0)
   return NextResponse.json({
-    items:relevant.slice(offset,offset+limit),total:relevant.length,
-    unread_total:newest.filter(x=>!x.is_read).length,
-    action_total:newest.filter(x=>x.requires_action&&!x.is_resolved).length,
+    ...page,total:relevant.length,
     receiving_warehouses:receivingWarehouses??[],
-    migration_pending:Boolean(newer.error),
+    migration_pending:newer.error?.code==='PGRST202',
+    system_feed_error:newer.error!==null&&newer.error.code!=='PGRST202',
   },{headers:noCache})
 }
 

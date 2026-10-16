@@ -1,0 +1,85 @@
+name: PR79 + PR80 Isolated Integration QA
+on:
+  push:
+    branches:
+      - qa/integrated-notifications-tracking-20261016
+    # Avoid redeploying Cloudflare Preview just to verify SQL/JWT test harness.
+    paths:
+      - '.github/workflows/notification-tracking-integration-qa.yml'
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'supabase/migrations/**'
+      - 'scripts/delivery-failure-notification-contract-qa.mjs'
+      - 'scripts/notification-feed-window-qa.mjs'
+      - 'scripts/notification-system-contract-qa.mjs'
+      - 'scripts/notification-tracking-integration-contract-qa.mjs'
+permissions:
+  contents: read
+concurrency:
+  group: pr79-pr80-integration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  offline-contract-and-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PREVIEW_URL: https://notification-tracking-integrated-qa-mynh-erp-v5.mynh-forwork.workers.dev
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install project dependencies
+        run: npm install --no-audit --no-fund
+      - name: PR79 notification contracts and core regressions
+        run: |
+          node scripts/remediation-static-qa.mjs
+          node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+          node scripts/delivery-failure-notification-contract-qa.mjs
+          node --experimental-strip-types scripts/notification-feed-window-qa.mjs
+          node scripts/notification-system-contract-qa.mjs
+          node scripts/notification-sql-security-qa.mjs
+          node scripts/pr81-local-qa-safety-contract.mjs
+          node --check scripts/qa/pr81-local-jwt-qa.mjs
+          bash -n scripts/qa/pr81-local-supabase.sh
+          node --experimental-strip-types scripts/notification-quiet-hours-qa.mjs
+          node --experimental-strip-types scripts/notification-order-tasks-qa.mjs
+          node --experimental-strip-types scripts/notification-production-qa.mjs
+      - name: PR80 toast, table and integration contracts
+        run: |
+          node scripts/tracking-toast-table-contract-qa.mjs
+          node scripts/notification-tracking-integration-contract-qa.mjs
+      - name: Build isolated Cloudflare Worker without Production activation
+        run: npx opennextjs-cloudflare build
+      - name: Publish isolated Preview only
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx wrangler preview --name notification-tracking-integrated-qa --worker-name mynh-erp-v5 --message "PR79+PR80 isolated integration QA $GITHUB_SHA" --json > integration-preview.json
+          test -s integration-preview.json
+      - name: Unauthenticated health, login and alert authorization smoke
+        run: |
+          HEALTH_STATUS="$(curl --silent --show-error --max-time 30 -o integration-health.json -w '%{http_code}' "$PREVIEW_URL/api/health")"
+          test "$HEALTH_STATUS" = "200"
+          grep -q '"ok":true' integration-health.json
+          LOGIN_STATUS="$(curl --silent --show-error --max-time 30 -o integration-login.html -w '%{http_code}' "$PREVIEW_URL/login")"
+          test "$LOGIN_STATUS" = "200"
+          ALERT_STATUS="$(curl --silent --show-error --max-time 30 -o integration-unauth-alert.json -w '%{http_code}' "$PREVIEW_URL/api/alerts/in-app")"
+          test "$ALERT_STATUS" = "401"
+          echo "Health=200, Login=200, anonymous notifications=401"
+      - name: Save integration QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr79-pr80-safe-integration-${{ github.sha }}
+          path: |
+            integration-preview.json
+            integration-health.json
+            integration-unauth-alert.json
+          retention-days: 7
+          if-no-files-found: ignore
+# JWT/RLS/SQL E2E is deliberately NOT run here: Supabase currently has no isolated DB branch.
+# This CI must not create users, edit orders, apply SQL or call production deployment APIs.

@@ -8,12 +8,21 @@ export type LegacyAlert={
   alert_count:number;order_codes:string[];primary_order_id:string|null;
   reason_summary:string|null;created_at:string;is_read:boolean;
 }
-export type OrderLink={id:string;shopee_order_id:string;receive_status:string}
+export type OrderLink={
+  id:string;shopee_order_id:string;receive_status:string;
+  order_status?:string|null;
+  shipments?:{
+    is_active?:boolean|null;tracking_number?:string|null;
+    current_tracking_status?:string|null;
+  }[]|null;
+}
 export type AlertStep={
   id:string;type:string;label:string;created_at:string;is_read:boolean;reason:string|null;
 }
 export type TrackingOrderNotice={
   id:string;source:'tracking';category:'tracking';severity:'info'|'warning'|'critical';
+  // Only a current failed-delivery state is actionable; past failures stay in history.
+  reminder_active:boolean;
   title:string;message:string;event_type:string;created_at:string;is_read:boolean;
   requires_action:boolean;is_resolved:false;legacy_ids:string[];notification_id:null;
   order_id:string|null;order_code:string;destination_hub:string;
@@ -21,16 +30,17 @@ export type TrackingOrderNotice={
 }
 
 const codeOnly=/^(?:R[0-9]{2,4}|M[0-9]{2,4}|[A-Z]{1,4}[0-9]{2,4}|N\/?A|NULL|UNDEFINED)$/i
-const priority:Record<string,number>={
-  PICKUP_FAILED:90,DELIVERY_FAILED:90,DELIVERED:80,OUT_FOR_DELIVERY:70,
-  ARRIVED_DESTINATION_HUB:60,PICKED_UP:50,IN_TRANSIT:40,
-}
 const fallback:Record<string,string>={
-  DELIVERED:'Giao hàng thành công',
-  OUT_FOR_DELIVERY:'Đang giao hàng',
+  READY_TO_SHIP:'Chờ lấy hàng',
+  PICKED_UP:'Đã lấy hàng',
+  IN_TRANSIT:'Đang vận chuyển',
+  ARRIVED_TRANSIT_HUB:'Đến HUB trung chuyển',
   ARRIVED_DESTINATION_HUB:'Đến kho đích',
-  PICKUP_FAILED:'Lấy hàng không thành công',
+  OUT_FOR_DELIVERY:'Đang giao hàng',
   DELIVERY_FAILED:'Giao hàng không thành công',
+  PICKUP_FAILED:'Lấy hàng không thành công',
+  DELIVERED:'Giao hàng thành công',
+  RETURNED:'Đã hoàn hàng',
 }
 export function cleanTrackingReason(input:string|null|undefined):string|null{
   if(!input)return null
@@ -62,19 +72,38 @@ export function buildOrderNotices(rows:LegacyAlert[],orderLinks:OrderLink[]):Tra
   }
   const output:TrackingOrderNotice[]=[]
   for(const {code,events,hub} of groups.values()){
-    // Stage priority is more reliable than time of RPC batching, which is the
-    // max(created_at) for several events in the same time bucket.
-    const ordered=[...events].sort((a,b)=>(priority[b.type]??0)-(priority[a.type]??0)||
-      Date.parse(b.created_at)-Date.parse(a.created_at))
-    const latest=ordered[0]
     const link=orderByCode.get(code)
-    const isRead=events.every(x=>x.is_read)
+    const activeShipment=link?.shipments?.find(s=>s.is_active)??link?.shipments?.[0]
+    const liveStatus=String(activeShipment?.current_tracking_status??'').toUpperCase()
+    // The route already applies orderIsCancelled, including no-MVD markers;
+    // keep this pure order-level fallback for archived/legacy render callers.
+    const orderStatus=String(link?.order_status??'').trim().toUpperCase()
+    if(orderStatus==='CANCELLED'||orderStatus==='CANCELED'||liveStatus==='CANCELLED')continue
+    // The timeline remains chronological, not severity-sorted; a past
+    // failure must not obscure subsequent transport or a redelivery attempt.
+    const ordered=[...events].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))
+    const recent=ordered[0]
+    // Use the current shipment status (including DELIVERY_FAILED, IN_TRANSIT,
+    // OUT_FOR_DELIVERY and DELIVERED) when recognized, even if no corresponding
+    // alert event was emitted. Do not invent timeline events or timestamps.
+    const matchingLive=ordered.find(x=>x.type===liveStatus)
+    const latest=link&&fallback[liveStatus]
+      ?{...recent,type:liveStatus,label:fallback[liveStatus],
+        reason:matchingLive?.reason??null,
+        created_at:matchingLive?.created_at??recent.created_at}
+      :recent
+    // Only a CURRENT DELIVERY_FAILED status stays actionable/unread. Retry,
+    // return, delivery and cancellation clear the pin, not the audit history.
+    const reminderActive=Boolean(link)&&events.some(x=>x.type==='DELIVERY_FAILED')
+      &&(liveStatus==='DELIVERY_FAILED'||(!liveStatus&&recent.type==='DELIVERY_FAILED'))
+    const isRead=!reminderActive&&events.every(x=>x.is_read)
     const failed=latest.type==='PICKUP_FAILED'||latest.type==='DELIVERY_FAILED'
     const waitingReceive=latest.type==='DELIVERED'&&link?.receive_status==='WAITING_RECEIVE'
     const requiresAction=failed||waitingReceive
     const title=waitingReceive?'Chờ xác nhận nhận hàng':latest.label
     output.push({
       id:'tracking-order:'+code,source:'tracking',category:'tracking',
+      reminder_active:reminderActive,
       severity:failed?'critical':requiresAction?'warning':latest.type==='DELIVERED'?'info':'warning',
       title,message:code+(hub?' · '+hub:''),
       event_type:latest.type,created_at:latest.created_at,

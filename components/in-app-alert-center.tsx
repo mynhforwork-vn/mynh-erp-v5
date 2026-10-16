@@ -9,7 +9,8 @@ type Step={id:string;type:string;label:string;created_at:string;is_read:boolean;
 type ProductSummary={product_name:string;variant:string|null;quantity:number}
 type ReceivingWarehouse={id:string;code?:string|null;name?:string|null;address?:string|null}
 type Notice={
-  id:string;source:'tracking'|'system'|'work';category:string;work_type?:'tracking_missing'|'warehouse_intake';warehouse_status?:string;severity:'info'|'warning'|'critical';
+  id:string;source:'tracking'|'system'|'work';category:string;work_type?:'tracking_missing'|'warehouse_intake';
+  reminder_active?:boolean;warehouse_status?:string;severity:'info'|'warning'|'critical';
   title:string;message:string;event_type:string;created_at:string;is_read:boolean;
   requires_action:boolean;is_resolved:boolean;legacy_ids:string[];notification_id:string|null;
   order_id:string|null;order_code?:string;destination_hub:string;group_count:number;
@@ -19,8 +20,8 @@ type Notice={
   carrier?:string|null;products?:ProductSummary[];receive_status?:string;shipping_service?:string|null;
 }
 type Feed={
-  items:Notice[];total:number;unread_total:number;action_total:number;
-  migration_pending?:boolean;receiving_warehouses?:ReceivingWarehouse[]
+  items:Notice[];supplemental_items?:Notice[];total:number;unread_total:number;action_total:number;
+  migration_pending?:boolean;system_feed_error?:boolean;receiving_warehouses?:ReceivingWarehouse[]
 }
 type Filter='unread'|'action'|'all'
 type ActionGroup='all'|'mvd'|'receive'|'intake'|'other'
@@ -107,6 +108,7 @@ export function InAppAlertCenter({
   const router=useRouter()
   const [open,setOpen]=useState(false)
   const [filter,setFilter]=useState<Filter>('all')
+  const [categoryFilter,setCategoryFilter]=useState<'all'|'tracking'|'purchase'|'warehouse'|'system'>('all')
   const [actionGroup,setActionGroup]=useState<ActionGroup>('all')
   const [hub,setHub]=useState('all')
   const [selectedId,setSelectedId]=useState<string|null>(null)
@@ -173,11 +175,13 @@ export function InAppAlertCenter({
       const value=body as Partial<Feed>
       setFeed({
         items:Array.isArray(value.items)?value.items:[],
+        supplemental_items:Array.isArray(value.supplemental_items)?value.supplemental_items:[],
         total:Math.max(0,Number(value.total)||0),
         unread_total:Math.max(0,Number(value.unread_total)||0),
         action_total:Math.max(0,Number(value.action_total)||0),
         receiving_warehouses:Array.isArray(value.receiving_warehouses)?value.receiving_warehouses:[],
         migration_pending:value.migration_pending===true,
+        system_feed_error:value.system_feed_error===true,
       })
       setError('')
     }catch{
@@ -242,6 +246,10 @@ export function InAppAlertCenter({
       setLoading(false)
       return
     }
+    // Keep the drawer in loading state until the first GET actually finishes.
+    // Otherwise initial hydration can display a misleading empty list while
+    // the Cloudflare/Supabase response is still in flight.
+    setLoading(!isTrackingQuietNow(new Date(),quietStart,quietEnd))
     lastRequestAt.current=0
     nextAllowedAt.current=0
     let stopped=false
@@ -308,26 +316,37 @@ export function InAppAlertCenter({
     if(row.event_type==='DELIVERED'&&row.receive_status==='WAITING_RECEIVE')return 'receive'
     return 'other'
   }
+  // Keep the general feed at 40 rows; only action/unread filters include
+  // notices outside the first page, already supplied by the SAME GET.
+  const priorityItems=useMemo(()=>{
+    const merged=[...feed.items,...(feed.supplemental_items??[])]
+    return merged.sort((a,b)=>
+      Number(b.source==='tracking'&&b.reminder_active===true)-
+      Number(a.source==='tracking'&&a.reminder_active===true)||
+      Date.parse(b.created_at)-Date.parse(a.created_at))
+  },[feed.items,feed.supplemental_items])
   const actionGroups=useMemo(()=>({
-    mvd:feed.items.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='mvd').length,
-    receive:feed.items.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='receive').length,
-    intake:feed.items.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='intake').length,
-    other:feed.items.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='other').length,
-  }),[feed.items])
-  const hubs=useMemo(()=>[...new Set(feed.items
+    mvd:priorityItems.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='mvd').length,
+    receive:priorityItems.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='receive').length,
+    intake:priorityItems.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='intake').length,
+    other:priorityItems.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='other').length,
+  }),[priorityItems])
+  const filterItems=filter==='all'?feed.items:priorityItems
+  const hubs=useMemo(()=>[...new Set(filterItems
     .filter(row=>row.source==='tracking'&&row.receive_status!=='RECEIVED')
     .map(row=>row.destination_hub.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi')),
-    [feed.items])
-  const visible=useMemo(()=>feed.items.filter(row=>
+    [filterItems])
+  const visible=useMemo(()=>filterItems.filter(row=>
+    (categoryFilter==='all'||row.category===categoryFilter)&&
     (filter==='all'||(filter==='unread'&&!row.is_read)||
       (filter==='action'&&row.requires_action&&!row.is_resolved&&
        (actionGroup==='all'||taskGroup(row)===actionGroup)))&&
     (hub==='all'||(hub==='unknown'
       ?row.source==='tracking'&&row.receive_status!=='RECEIVED'&&!row.destination_hub
       :row.source==='tracking'&&row.receive_status!=='RECEIVED'&&row.destination_hub===hub))
-  ),[feed.items,filter,hub,actionGroup])
+  ),[filterItems,filter,hub,actionGroup,categoryFilter])
   // Only same-HUB, delivered and unreceived orders can be included in one batch.
-  const batchSelected=feed.items.filter(row=>row.order_id&&
+  const batchSelected=priorityItems.filter(row=>row.order_id&&
     selectedOrderIds.includes(row.order_id)&&receiptEligible(row)&&Boolean(row.destination_hub))
   const batchHub=batchSelected[0]?.destination_hub??''
   const batchCod=batchSelected.reduce((sum,row)=>sum+Number(row.cod??0),0)
@@ -411,9 +430,11 @@ export function InAppAlertCenter({
         throw Error(payload?.error||'Không thể xác nhận đợt nhận hàng.')
       }
       const ids=new Set(confirmedIds)
+      const markReceived=(x:Notice):Notice=>x.order_id&&ids.has(x.order_id)
+        ?{...x,receive_status:'RECEIVED',destination_hub:'',requires_action:false}:x
       setFeed(prev=>({...prev,
-        items:prev.items.map(x=>x.order_id&&ids.has(x.order_id)
-          ?{...x,receive_status:'RECEIVED',destination_hub:'',requires_action:false}:x),
+        items:prev.items.map(markReceived),
+        supplemental_items:prev.supplemental_items?.map(markReceived),
         action_total:Math.max(0,prev.action_total-batchSelected.filter(x=>x.requires_action).length),
       }))
       clearBatchSelection()
@@ -452,9 +473,11 @@ export function InAppAlertCenter({
       if(!result.ok||payload?.ok!==true){
         throw Error(payload?.error||'Không thể xác nhận. Vui lòng thử lại.')
       }
+      const markReceived=(x:Notice):Notice=>x.id===row.id
+        ?{...x,receive_status:'RECEIVED',destination_hub:'',requires_action:false}:x
       setFeed(prev=>({...prev,
-        items:prev.items.map(x=>x.id===row.id
-          ?{...x,receive_status:'RECEIVED',destination_hub:'',requires_action:false}:x),
+        items:prev.items.map(markReceived),
+        supplemental_items:prev.supplemental_items?.map(markReceived),
         action_total:Math.max(0,prev.action_total-(row.requires_action?1:0)),
       }))
       setReceiveFor(null)
@@ -483,9 +506,12 @@ export function InAppAlertCenter({
       await changeStatus(row.source==='tracking'
         ?{action:'read',source:'tracking',alert_ids:row.legacy_ids}
         :{action:'read',source:'system',notification_id:row.notification_id})
+      const markRead=(x:Notice):Notice=>x.id===row.id
+        ?{...x,is_read:x.reminder_active===true?false:true}:x
       setFeed(current=>({...current,
-        items:current.items.map(x=>x.id===row.id?{...x,is_read:true}:x),
-        unread_total:Math.max(0,current.unread_total-1),
+        items:current.items.map(markRead),
+        supplemental_items:current.supplemental_items?.map(markRead),
+        unread_total:Math.max(0,current.unread_total-(row.reminder_active?0:1)),
       }))
       setError('')
     }catch{setError('Không thể đánh dấu đã đọc.')}
@@ -496,8 +522,14 @@ export function InAppAlertCenter({
     setPending(true)
     try{
       await changeStatus({action:'read_all'})
-      setFeed(current=>({...current,unread_total:0,
-        items:current.items.map(x=>({...x,is_read:true}))}))
+      // Acknowledging the list does not resolve a delivery failure.
+      setFeed(current=>({...current,
+        unread_total:[...current.items,...(current.supplemental_items??[])]
+          .filter(x=>x.reminder_active===true).length,
+        items:current.items.map(x=>({...x,is_read:x.reminder_active===true?false:true})),
+        supplemental_items:current.supplemental_items?.map(x=>
+          ({...x,is_read:x.reminder_active===true?false:true})),
+      }))
       setError('')
     }catch{setError('Không thể đánh dấu đã đọc tất cả.')}
     finally{setPending(false)}
@@ -507,8 +539,11 @@ export function InAppAlertCenter({
     setPending(true)
     try{
       await changeStatus({action:'resolve',source:'system',notification_id:row.notification_id})
+      const markResolved=(x:Notice):Notice=>x.id===row.id
+        ?{...x,is_resolved:true,is_read:true}:x
       setFeed(current=>({...current,
-        items:current.items.map(x=>x.id===row.id?{...x,is_resolved:true,is_read:true}:x),
+        items:current.items.map(markResolved),
+        supplemental_items:current.supplemental_items?.map(markResolved),
         action_total:Math.max(0,current.action_total-1),
         unread_total:Math.max(0,current.unread_total-(row.is_read?0:1)),
       }))
@@ -597,14 +632,24 @@ export function InAppAlertCenter({
               </button>)}
           </div>}
           <div className="neo-soft-hub-line">
-            <label htmlFor="neo-soft-hub-select">Lọc HUB</label>
+            <label htmlFor="neo-soft-category-select">Loại</label>
+            <select id="neo-soft-category-select" value={categoryFilter}
+              onChange={e=>{setCategoryFilter(e.target.value as typeof categoryFilter);
+                setHub('all');clearBatchSelection();setSelectedId(null)}}>
+              <option value="all">Tất cả</option>
+              <option value="tracking">Vận chuyển</option>
+              <option value="purchase">Đơn nhập</option>
+              <option value="warehouse">Kho</option>
+              <option value="system">Hệ thống</option>
+            </select>
+            <label htmlFor="neo-soft-hub-select">HUB</label>
             <select id="neo-soft-hub-select" value={hub}
               onChange={e=>{setHub(e.target.value);clearBatchSelection();setSelectedId(null)}}>
               <option value="all">Tất cả HUB</option>
               {hubs.map(x=><option key={x} value={x}>{x}</option>)}
               <option value="unknown">Chưa xác định HUB</option>
             </select>
-            <span className="neo-soft-result-count">{visible.length} đơn</span>
+            <span className="neo-soft-result-count">{visible.length} mục</span>
           </div>
           {canReceive&&batchEligible.length>0&&<div className="neo-soft-bulk-toolbar">
             <button type="button" className={batchMode?'active':''}
@@ -627,6 +672,12 @@ export function InAppAlertCenter({
 
         <div ref={listRef} className="app-alert-list app-alert-list-v2 neo-soft-content">
           {error&&<div role="alert" className="neo-soft-error">{error}</div>}
+          {feed.migration_pending&&<div role="status" className="neo-soft-error">
+            Thông báo lỗi hệ thống chưa được phát hành trên cơ sở dữ liệu của môi trường này (chờ cập nhật SQL 0071). Cảnh báo vận chuyển và công việc vẫn hoạt động.
+          </div>}
+          {feed.system_feed_error&&<div role="alert" className="neo-soft-error">
+            Không tải được thông báo lỗi hệ thống. Cảnh báo vận chuyển và công việc vẫn hoạt động; vui lòng kiểm tra lại kết nối hoặc quyền truy cập.
+          </div>}
           {batchMode&&receiveFor==='batch'&&batchSelected.length>0&&<div
             className="neo-soft-receive-form neo-soft-batch-form" role="group"
             aria-label={'Xác nhận nhận '+batchSelected.length+' đơn'}>
@@ -727,6 +778,9 @@ export function InAppAlertCenter({
                 </button>
                 {selectedId===row.id&&<div className="neo-soft-expanded" id={'neo-soft-inline-'+row.id}
                   role="region" aria-label={'Thông tin chi tiết đơn '+(row.order_code??row.title)}>
+                  {row.reminder_active&&<p className="neo-soft-receive-tip">
+                    Chỉ nhắc khi vận đơn đang ở trạng thái giao không thành công; khi vận chuyển lại, đơn trở về luồng vận chuyển.
+                  </p>}
                   <div className="neo-soft-expanded-kv">
                     {row.username&&<div><span>Username</span><span>{row.username}</span></div>}
                     {row.carrier&&<div><span>ĐVVC</span><span>{row.carrier}</span></div>}
@@ -749,7 +803,12 @@ export function InAppAlertCenter({
                     </p>
                     {row.recipient_address&&<p className="neo-soft-inline-address">{row.recipient_address}</p>}
                   </section>}
-                  {row.source!=='work'&&<section className="neo-soft-expanded-section">
+                  {row.source==='system'&&<section className="neo-soft-expanded-section">
+                    <h3>Chi tiết cảnh báo</h3>
+                    <p className="neo-soft-task-explainer">{row.message}</p>
+                    <p className="neo-soft-task-explainer">Thông báo tự kết thúc khi nguồn lỗi được khắc phục.</p>
+                  </section>}
+                  {row.source==='tracking'&&<section className="neo-soft-expanded-section">
                     <h3>Hành trình <span>{row.timeline?.length??0} cập nhật</span></h3>
                     {row.timeline?.length
                       ?<ol className="neo-soft-inline-timeline">{row.timeline.map(step=>
@@ -818,7 +877,8 @@ export function InAppAlertCenter({
                       onClick={()=>void mark(row)}>Đánh dấu đã đọc</button>}
                     {safeTarget(row)&&<button type="button" onClick={()=>void openAlert(row)}>
                       {row.work_type==='tracking_missing'?'Cập nhật MVD ↗':
-                       row.work_type==='warehouse_intake'?'Đến Nhập kho ↗':'Mở đơn trong ERP ↗'}</button>}
+                       row.work_type==='warehouse_intake'?'Đến Nhập kho ↗':
+                       row.source==='system'?'Mở vị trí xử lý ↗':'Mở đơn trong ERP ↗'}</button>}
                   </div>
                 </div>}
               </article>
