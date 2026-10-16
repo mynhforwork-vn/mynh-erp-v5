@@ -47,6 +47,8 @@ try{
     sameSite:c.options?.sameSite==='strict'?'Strict':c.options?.sameSite==='none'?'None':'Lax',
   })))
   const page=await ctx.newPage()
+  // Virtual clock avoids six real 30-second waits while testing the full lifetime.
+  await page.clock.install()
   // Capture the exact effect activation, even on a slow server-rendered page.
   await page.addInitScript(()=>{
     const original=window.history.replaceState
@@ -77,8 +79,8 @@ try{
         title:el.querySelector('strong')?.textContent,close:!!el.querySelector('button')}
     })
     const toastOne=await toast.count()===1
-    const leftSide=details.left>=0&&details.left<width/2&&details.right<=width+5
-    // SSR may render the toast before the page hydrates. The five-second
+    const rightSide=details.left>=0&&details.right<=width+5&&width-details.right<=40
+    // SSR may render the toast before the page hydrates. The 30-second
     // timer starts only after TrackingSuccessToast's effect removes query flags.
     // Time from the real effect rather than from DOMContentLoaded or SSR paint.
     await page.waitForFunction(()=>{
@@ -87,11 +89,16 @@ try{
     },null,{timeout:25000})
     const effectStartedAt=await page.evaluate(()=>window.__qaToastEffectStartedAt??0)
     assert.ok(effectStartedAt>0,'Toast effect activation not observed')
-    await toast.first().waitFor({state:'hidden',timeout:7000})
-    const timerElapsed=Date.now()-effectStartedAt
-    assertMetric(width+'x'+height+' toast',Boolean(toastOne&&leftSide&&details.close&&
-      details.title?.includes('nhận hàng')&&timerElapsed>=4500&&timerElapsed<=7900),
-      {toastOne,...details,timerElapsed,errors:[...errors]})
+    // A visible notification must survive until the 30-second threshold.
+    await page.clock.fastForward(29500)
+    const beforeExpiry=await toast.first().isVisible()
+    await page.clock.fastForward(600)
+    await toast.first().waitFor({state:'hidden',timeout:5000})
+    const timerElapsed=await page.evaluate(start=>Date.now()-start,effectStartedAt)
+    assertMetric(width+'x'+height+' toast',Boolean(toastOne&&rightSide&&details.close&&
+      details.title?.includes('nhận hàng')&&beforeExpiry&&
+      timerElapsed>=30000&&timerElapsed<=32000),
+      {toastOne,...details,beforeExpiry,timerElapsed,errors:[...errors]})
     await page.locator('.tracking-content-workspace').waitFor({state:'visible',timeout:18000})
     let hub=page.locator('.tracking-hub-card-v2.open .tracking-hub-table-v2')
     if(await hub.count()===0)await page.locator('.tracking-hub-card-v2.collapsed .tracking-hub-toggle').first().click()

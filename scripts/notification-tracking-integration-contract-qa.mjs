@@ -12,8 +12,8 @@ const sql71=read('supabase/migrations/0071_operational_system_notifications.sql'
 const ci=read('.github/workflows/notification-tracking-integration-qa.yml')
 let passed=0
 const check=(name,good)=>{assert.ok(good,name);passed++;console.log('PASS '+name)}
-check('PR80 combines receive and ship payment',toast.includes("received&&payment?['combined']")&&toast.includes('5000'))
-check('PR80 toast is upper left',css.includes('position:fixed;')&&css.includes('left:230px;right:auto!important'))
+check('PR80 combines receive and ship payment with 30-second confirmation',toast.includes("received&&payment?['combined']")&&toast.includes('TOAST_DURATION_MS=30_000'))
+check('PR80 toast is upper right on all viewports',css.includes('position:fixed;')&&css.includes('left:auto!important')&&css.includes('right:max(14px,env(safe-area-inset-right,0px))!important')&&css.includes('right:max(10px,env(safe-area-inset-right,0px))!important'))
 check('PR80 table resizes on tracking drawer',fit.includes("'.order-table-card,.account-table-card,.tracking-hub-table-wrap-v2'")&&fit.includes('Math.floor(lane.clientWidth)'))
 check('PR80 table overflow has constrained floor',css.includes('min-width:max(100%,var(--tracking-table-min-width,900px))')&&css.includes('min-width:max(100%,var(--tracking-table-panel-min-width,760px))'))
 check('PR79 failure reminder resists marking read',model.includes('reminder_active:reminderActive')&&ui.includes('x.reminder_active===true?false:true'))

@@ -7,10 +7,15 @@ const css=read('app/styles/tracking-compact-actions-v1.css')
 const hub=read('components/tracking-hub-group.tsx')
 let tests=0
 const check=(label,pass)=>{assert.ok(pass,label);tests++;console.log('PASS '+label)}
-check('Toast positioned fixed upper-left without legacy right anchor',
- css.includes('left:230px;right:auto!important')&&css.includes('tracking-success-toast-stack'))
-check('Toast dismisses 5 seconds after mount',
- toast.includes('window.setTimeout(()=>setVisible([]),5000)')&&toast.includes('window.clearTimeout(timer)'))
+check('Toast positioned fixed upper-right on desktop and mobile',
+ css.includes('position:fixed;')&&css.includes('left:auto!important')&&
+ css.includes('right:max(14px,env(safe-area-inset-right,0px))!important')&&
+ css.includes('right:max(10px,env(safe-area-inset-right,0px))!important')&&
+ !css.includes('left:230px;right:auto!important'))
+check('Toast dismisses 30 seconds after mount and cleans up timer',
+ toast.includes('TOAST_DURATION_MS=30_000')&&
+ toast.includes('window.setTimeout(()=>setVisible([]),TOAST_DURATION_MS)')&&
+ toast.includes('window.clearTimeout(timer)'))
 check('Receive+payment is one compact confirmation',toast.includes("received&&payment?['combined']")&&toast.includes("id:NoticeKey"))
 check('Toast manually closeable and one-time URL cleaned',
  toast.includes('tracking-success-toast-close')&&toast.includes("url.searchParams.delete('received')")&&toast.includes("url.searchParams.delete('payment')"))

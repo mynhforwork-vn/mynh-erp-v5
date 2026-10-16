@@ -13,7 +13,8 @@ const DEFINITIONS:Record<NoticeKey,Omit<Notice,'id'>>={
 const noticeKeys=(received:boolean,payment:boolean):NoticeKey[]=>
   received&&payment?['combined']:received?['received']:payment?['payment']:[]
 
-/** Non-blocking confirmation at the left; auto-dismiss in exactly 5s. */
+/** Non-blocking confirmation at the upper-right; auto-dismiss after 30 seconds. */
+const TOAST_DURATION_MS=30_000
 export function TrackingSuccessToast({received=false,payment=false}:{received?:boolean;payment?:boolean}){
   const [visible,setVisible]=useState<NoticeKey[]>(()=>noticeKeys(received,payment))
   useEffect(()=>{
@@ -26,7 +27,7 @@ export function TrackingSuccessToast({received=false,payment=false}:{received?:b
     url.searchParams.delete('received')
     url.searchParams.delete('payment')
     window.history.replaceState(window.history.state,'',url.pathname+url.search+url.hash)
-    const timer=window.setTimeout(()=>setVisible([]),5000)
+    const timer=window.setTimeout(()=>setVisible([]),TOAST_DURATION_MS)
     return ()=>window.clearTimeout(timer)
   },[received,payment])
   if(!visible.length)return null
