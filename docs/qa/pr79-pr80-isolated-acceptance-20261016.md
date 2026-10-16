@@ -38,3 +38,10 @@
 - Phát hiện khác chưa nghiệm thu: resolve_system_notification chỉ nhận thông báo nguồn đã hết lỗi, nhưng feed hiện tại chỉ trả nguồn đang lỗi nên UI không có luồng xem/xử lý lịch sử sau hồi phục. Cần chốt nghiệp vụ đã xử lý trước release; không tuyên bố PASS.
 - Supabase QA có báo phí 0.01344 USD/giờ và người dùng chưa phê duyệt. Không tạo DB QA, không chạy SQL 0070/0071 trên Production. JWT/RLS/persistence và QA Browser tích hợp để trạng thái CHƯA XÁC MINH.
 - Commit [skip ci] nhằm tránh kích hoạt lại GitHub Actions và Cloudflare Preview trong đợt rà soát không phát sinh chi phí. Test mới sẽ chạy cùng workflow tích hợp khi được chấp thuận kiểm thử hạ tầng.
+
+## QA cục bộ thay thế tài nguyên Supabase Cloud tính phí (16/10/2026)
+- Người dùng đồng ý phương án Supabase CLI + Docker trên máy local; vẫn không đồng ý tạo branch Supabase Cloud tính phí.
+- Repository không có config.toml hoặc một baseline DB đầy đủ; các migration lịch sử đánh số bốn chữ số. Do vậy chạy lại tất cả migration tự động bằng db reset không phải cách tái hiện Production.
+- Đã chuẩn bị fixture tối thiểu và script disposable để kiểm thử đúng 0070/0071 và JWT được Supabase Auth local ký, không dùng secrets Production. Xem docs/qa/pr81-local-supabase-readme.md.
+- Môi trường chạy công cụ hiện tại không có Docker/Podman/PostgreSQL và không có mạng lấy image; không được báo những kiểm thử này đã PASS cho tới khi có bằng chứng thực thi trên máy có Docker.
+- Chỉ có thể nghiệm thu thông báo SQL 0070/0071 trên fixture cục bộ. Kiểm thử nghiệp vụ nhận hàng, chuyển ship, đầy đủ schema và UI responsive vẫn CHƯA XÁC MINH.
