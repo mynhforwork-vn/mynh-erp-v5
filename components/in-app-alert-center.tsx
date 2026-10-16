@@ -756,7 +756,7 @@ export function InAppAlertCenter({
                 {selectedId===row.id&&<div className="neo-soft-expanded" id={'neo-soft-inline-'+row.id}
                   role="region" aria-label={'Thông tin chi tiết đơn '+(row.order_code??row.title)}>
                   {row.reminder_active&&<p className="neo-soft-receive-tip">
-                    Tiếp tục nhắc đến khi giao thành công hoặc đơn bị hủy.
+                    Chỉ nhắc khi vận đơn đang ở trạng thái giao không thành công; khi vận chuyển lại, đơn trở về luồng vận chuyển.
                   </p>}
                   <div className="neo-soft-expanded-kv">
                     {row.username&&<div><span>Username</span><span>{row.username}</span></div>}

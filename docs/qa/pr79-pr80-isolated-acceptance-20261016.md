@@ -45,3 +45,9 @@
 - Đã chuẩn bị fixture tối thiểu và script disposable để kiểm thử đúng 0070/0071 và JWT được Supabase Auth local ký, không dùng secrets Production. Xem docs/qa/pr81-local-supabase-readme.md.
 - Môi trường chạy công cụ hiện tại không có Docker/Podman/PostgreSQL và không có mạng lấy image; không được báo những kiểm thử này đã PASS cho tới khi có bằng chứng thực thi trên máy có Docker.
 - Chỉ có thể nghiệm thu thông báo SQL 0070/0071 trên fixture cục bộ. Kiểm thử nghiệp vụ nhận hàng, chuyển ship, đầy đủ schema và UI responsive vẫn CHƯA XÁC MINH.
+
+## Quy tắc ưu tiên trạng thái Tracking — cập nhật theo người dùng 16/10/2026
+- Nếu một lần giao không thành công, lưu sự kiện DELIVERY_FAILED trong timeline/lịch sử. Khi vận đơn được cập nhật đang vận chuyển lại, đến HUB, đang giao lại hoặc hoàn hàng, trạng thái đang hiển thị phải theo current_tracking_status của shipment, không giữ DELIVERY_FAILED làm tiêu đề/cảnh báo nổi.
+- Chỉ giữ nhắc giao lỗi đang hoạt động khi current_tracking_status thực sự là DELIVERY_FAILED (hoặc không có trạng thái live và bản ghi alert mới nhất vẫn là DELIVERY_FAILED). Không giữ trạng thái chưa đọc/cần xử lý hoặc ghim ở đầu sau khi đơn quay lại luồng vận chuyển.
+- SQL 0070 sửa điều kiện persistent_failure; không xóa dữ liệu sự kiện, không thay lịch polling 5 phút, API, provider, cron, Telegram. Cần chạy QA local thật cho SQL mới trước khi trình release.
+- Quyết định này thay thế yêu cầu ghim cho đến giao thành công/hủy trong trường hợp vận đơn đã quay lại vận chuyển. Không có lệnh thay đổi Production.

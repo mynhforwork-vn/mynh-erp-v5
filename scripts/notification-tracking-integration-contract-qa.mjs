@@ -17,7 +17,10 @@ check('PR80 toast is upper right on all viewports',css.includes('position:fixed;
 check('PR80 table resizes on tracking drawer',fit.includes("'.order-table-card,.account-table-card,.tracking-hub-table-wrap-v2'")&&fit.includes('Math.floor(lane.clientWidth)'))
 check('PR80 table overflow has constrained floor',css.includes('min-width:max(100%,var(--tracking-table-min-width,900px))')&&css.includes('min-width:max(100%,var(--tracking-table-panel-min-width,760px))'))
 check('PR79 failure reminder resists marking read',model.includes('reminder_active:reminderActive')&&ui.includes('x.reminder_active===true?false:true'))
-check('PR79 delivered outranks historical failure',model.includes('DELIVERED:100')&&model.includes("liveStatus!=='DELIVERED'"))
+check('PR79 follows live transport stage and keeps failed attempt in history',
+  model.includes('const matchingLive=ordered.find(x=>x.type===liveStatus)')&&
+  model.includes("liveStatus==='DELIVERY_FAILED'")&&
+  ui.includes('khi vận chuyển lại, đơn trở về luồng vận chuyển.'))
 check('PR79 system alerts share bounded GET',api.includes("supabase.rpc('get_notification_feed'")&&api.includes('p_limit:40,p_offset:0')&&ui.includes("fetch('/api/alerts/in-app?view=all&category=all&limit=40&offset=0'"))
 check('SQL 0070 stages persistent failure without rewriting events',sql70.includes("or (a.alert_type='DELIVERY_FAILED'")&&!/UPDATE\s+public\.alert_events/i.test(sql70)&&!/DELETE\s+FROM\s+public\.alert_events/i.test(sql70))
 check('SQL 0071 stages per-user RLS and Admin/Operator authorization',sql71.includes('enable row level security')&&sql71.includes('user_id=(select auth.uid())')&&sql71.includes("not in ('admin','operator')"))
