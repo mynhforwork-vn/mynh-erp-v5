@@ -3,6 +3,12 @@ on:
   push:
     branches:
       - qa/integrated-notifications-tracking-20261016
+    # Avoid redeploying Cloudflare Preview just to verify SQL/JWT test harness.
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'supabase/migrations/**'
 permissions:
   contents: read
 concurrency:
