@@ -83,7 +83,8 @@ export function buildOrderNotices(rows:LegacyAlert[],orderLinks:OrderLink[]):Tra
     // failure must not obscure subsequent transport or a redelivery attempt.
     const ordered=[...events].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))
     const recent=ordered[0]
-    // Use the current shipment status if recognized, even if no corresponding
+    // Use the current shipment status (including DELIVERY_FAILED, IN_TRANSIT,
+    // OUT_FOR_DELIVERY and DELIVERED) when recognized, even if no corresponding
     // alert event was emitted. Do not invent timeline events or timestamps.
     const matchingLive=ordered.find(x=>x.type===liveStatus)
     const latest=link&&fallback[liveStatus]

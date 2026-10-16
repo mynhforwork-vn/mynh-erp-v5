@@ -15,7 +15,8 @@ check('API pins only CURRENT failed delivery in bounded feed',
   model.includes("latest.type==='PICKUP_FAILED'||latest.type==='DELIVERY_FAILED'"))
 check('API continues filtering cancelled codes',api.includes("!cancelledCodes.has(notice.order_code)"))
 check('Model suppresses cancelled orders',model.includes("orderStatus==='CANCELLED'"))
-check('Model prioritizes successful delivery',model.includes('DELIVERED:100'))
+check('Model follows live delivery status rather than historical severity',
+  model.includes("DELIVERED:'Giao hàng thành công'")&&model.includes('const latest=link&&fallback[liveStatus]'))
 check('Model follows current stage and preserves old failure history',
   model.includes('const matchingLive=ordered.find(x=>x.type===liveStatus)')&&
   model.includes("liveStatus==='DELIVERY_FAILED'")&&model.includes('timeline:ordered'))
