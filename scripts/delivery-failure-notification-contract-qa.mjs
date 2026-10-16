@@ -21,7 +21,7 @@ check('Model follows current stage and preserves old failure history',
   model.includes('const matchingLive=ordered.find(x=>x.type===liveStatus)')&&
   model.includes("liveStatus==='DELIVERY_FAILED'")&&model.includes('timeline:ordered'))
 check('UI acknowledges without clearing persistent failure',ui.includes("x.reminder_active===true?false:true"))
-check('UI keeps persistent failures in unread counter after read all',ui.includes('current.items.filter(x=>x.reminder_active===true).length'))
+check('UI keeps persistent failures in unread counter after read all',ui.includes('.filter(x=>x.reminder_active===true).length')&&ui.includes('current.supplemental_items??[]'))
 check('Existing 5-minute notification polling unchanged',schedule.includes('NOTIFICATION_POLL_MS=5*60*1000'))
 check('No new notification POST loops',!ui.includes('setInterval('))
 check('Long-lived failures survive the 30-day window in staged RPC migration',migration.includes("or (a.alert_type='DELIVERY_FAILED'"))
