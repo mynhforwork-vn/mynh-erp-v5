@@ -89,7 +89,8 @@ export async function GET(request:Request){
       ...item,recipient_name:null,recipient_phone:null,recipient_address:null,
     })
 
-  // Migration 0068 is additive. Pull system notices only when its RPC exists.
+  // Migration 0071 is independently released. Missing RPC is not the same
+  // as a transient query, permission, or connection failure.
   // Ignore its legacy tracking rows; they group by alert type rather than order.
   const newer=await supabase.rpc('get_notification_feed',{
     p_limit:40,p_offset:0,p_view:'all',p_category:'all',
@@ -99,7 +100,8 @@ export async function GET(request:Request){
   const systems=(!newer.error&&Array.isArray(newer.data?.items)
     ?newer.data.items.filter((x:Record<string,unknown>)=>x.source==='system')
     :[]) as SystemNotice[]
-  // Missing operational RPC is surfaced as migration_pending, not silent PASS.
+  // Only missing-RPC (PGRST202) means migration 0071 has not been activated.
+  // Other errors must not be mislabeled as "migration pending".
   const combined:(TrackingOrderNotice|SystemNotice|typeof workNotices[number])[]=[...enriched,...workNotices,...systems]
   // Keep unresolved delivery failures within the bounded first page,
   // even when newer non-critical notices accumulate.
@@ -115,7 +117,8 @@ export async function GET(request:Request){
     unread_total:newest.filter(x=>!x.is_read).length,
     action_total:newest.filter(x=>x.requires_action&&!x.is_resolved).length,
     receiving_warehouses:receivingWarehouses??[],
-    migration_pending:Boolean(newer.error),
+    migration_pending:newer.error?.code==='PGRST202',
+    system_feed_error:Boolean(newer.error)&&newer.error.code!=='PGRST202',
   },{headers:noCache})
 }
 

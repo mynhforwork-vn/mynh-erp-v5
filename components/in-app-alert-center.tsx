@@ -21,7 +21,7 @@ type Notice={
 }
 type Feed={
   items:Notice[];total:number;unread_total:number;action_total:number;
-  migration_pending?:boolean;receiving_warehouses?:ReceivingWarehouse[]
+  migration_pending?:boolean;system_feed_error?:boolean;receiving_warehouses?:ReceivingWarehouse[]
 }
 type Filter='unread'|'action'|'all'
 type ActionGroup='all'|'mvd'|'receive'|'intake'|'other'
@@ -180,6 +180,7 @@ export function InAppAlertCenter({
         action_total:Math.max(0,Number(value.action_total)||0),
         receiving_warehouses:Array.isArray(value.receiving_warehouses)?value.receiving_warehouses:[],
         migration_pending:value.migration_pending===true,
+        system_feed_error:value.system_feed_error===true,
       })
       setError('')
     }catch{
@@ -649,7 +650,10 @@ export function InAppAlertCenter({
         <div ref={listRef} className="app-alert-list app-alert-list-v2 neo-soft-content">
           {error&&<div role="alert" className="neo-soft-error">{error}</div>}
           {feed.migration_pending&&<div role="status" className="neo-soft-error">
-            Nguồn thông báo hệ thống chưa được kích hoạt. Các cảnh báo vận chuyển và công việc vẫn có thể xem.
+            Thông báo lỗi hệ thống chưa được phát hành trên cơ sở dữ liệu của môi trường này (chờ cập nhật SQL 0071). Cảnh báo vận chuyển và công việc vẫn hoạt động.
+          </div>}
+          {feed.system_feed_error&&<div role="alert" className="neo-soft-error">
+            Không tải được thông báo lỗi hệ thống. Cảnh báo vận chuyển và công việc vẫn hoạt động; vui lòng kiểm tra lại kết nối hoặc quyền truy cập.
           </div>}
           {batchMode&&receiveFor==='batch'&&batchSelected.length>0&&<div
             className="neo-soft-receive-form neo-soft-batch-form" role="group"
