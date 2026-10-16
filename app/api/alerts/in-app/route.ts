@@ -118,7 +118,7 @@ export async function GET(request:Request){
     action_total:newest.filter(x=>x.requires_action&&!x.is_resolved).length,
     receiving_warehouses:receivingWarehouses??[],
     migration_pending:newer.error?.code==='PGRST202',
-    system_feed_error:Boolean(newer.error)&&newer.error.code!=='PGRST202',
+    system_feed_error:newer.error!==null&&newer.error.code!=='PGRST202',
   },{headers:noCache})
 }
 

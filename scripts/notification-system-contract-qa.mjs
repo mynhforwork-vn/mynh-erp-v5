@@ -24,7 +24,7 @@ check('Status/category filters are local state, no extra fetch',ui.includes("row
 check('System details, explicit migration warning',ui.includes("row.source==='system'")&&ui.includes('feed.migration_pending')&&ui.includes('chờ cập nhật SQL 0071'))
 check('Only PGRST202 indicates the optional system RPC is not yet deployed',
   api.includes("migration_pending:newer.error?.code==='PGRST202'")&&
-  api.includes("system_feed_error:Boolean(newer.error)&&newer.error.code!=='PGRST202'")&&
+  api.includes("system_feed_error:newer.error!==null&&newer.error.code!=='PGRST202'")&&
   ui.includes('feed.system_feed_error'))
 check('Responsive wrapped filter layout',css.includes('max-width:390px')&&css.includes('flex-wrap:wrap'))
 check('System alert toggles use existing rule UI and cannot enable Telegram',sql.includes('insert into public.alert_rule_configs')&&sql.includes('on conflict(alert_type) do nothing')&&sql.includes('cfg.enabled and cfg.in_app_enabled')&&sql.includes('true,true,false,0,60'))
