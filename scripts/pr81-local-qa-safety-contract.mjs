@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-const get=p=>fs.readFileSync(new URL('../'+p,import.meta.url),'utf8')
+const get=p=>fs.readFileSync(new URL(p,import.meta.url),'utf8')
 const runner=get('qa/pr81-local-supabase.sh')
 const fixture=get('qa/pr81-local-fixture.sql')
 const jwt=get('qa/pr81-local-jwt-qa.mjs')
