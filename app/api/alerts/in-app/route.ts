@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import {buildOrderNotices,type LegacyAlert,type TrackingOrderNotice} from '@/lib/notification-order-presentation'
 import {buildOrderWorkNotices,type TaskOrder} from '@/lib/notification-order-tasks'
 import {orderIsCancelled} from '@/lib/purchase-order-cancellation'
+import {selectNotificationWindow} from '@/lib/notification-feed-window'
 
 const noCache={ 'Cache-Control':'private, no-store, max-age=0' }
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -112,10 +113,13 @@ export async function GET(request:Request){
   const relevant=newest.filter(x=>category==='all'||x.category===category)
     .filter(x=>view==='all'||(view==='unread'&&!x.is_read)||
       (view==='action'&&x.requires_action&&!x.is_resolved))
+  // A bounded first page can contain only 11 of 33 actionable notices.
+  // Send remaining actionable/unread notices alongside it in the SAME GET,
+  // so tab totals and displayed groups refer to the same population.
+  const page=selectNotificationWindow(relevant,limit,offset,
+    view==='all'&&category==='all'&&offset===0)
   return NextResponse.json({
-    items:relevant.slice(offset,offset+limit),total:relevant.length,
-    unread_total:newest.filter(x=>!x.is_read).length,
-    action_total:newest.filter(x=>x.requires_action&&!x.is_resolved).length,
+    ...page,total:relevant.length,
     receiving_warehouses:receivingWarehouses??[],
     migration_pending:newer.error?.code==='PGRST202',
     system_feed_error:newer.error!==null&&newer.error.code!=='PGRST202',

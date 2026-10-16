@@ -21,6 +21,16 @@ check('No public/anonymous execute on system procedures',sql.includes('revoke al
 check('Current operational incident cannot be falsely resolved',sql.includes('Lỗi vẫn tồn tại; cần xử lý nguồn lỗi trước'))
 check('All API-backed system handlers present', ['get_notification_feed','mark_system_notification_read','mark_all_system_notifications_read','resolve_system_notification'].every(v=>api.includes("'"+v+"'")))
 check('Status/category filters are local state, no extra fetch',ui.includes("row.category===categoryFilter")&&ui.includes('neo-soft-category-select')&&(ui.match(/\bfetch\(/g)||[]).length===4)
+check('Action group totals include every actionable row, not only the first 40',
+  api.includes('selectNotificationWindow(relevant,limit,offset,')&&
+  api.includes('...page,total:relevant.length')&&
+  ui.includes('supplemental_items:Array.isArray(value.supplemental_items)')&&
+  ui.includes('mvd:priorityItems.filter')&&
+  ui.includes("const filterItems=filter==='all'?feed.items:priorityItems"))
+check('Read and receive mutations update outside-first-page notices',
+  ui.includes('supplemental_items:prev.supplemental_items?.map(markReceived)')&&
+  ui.includes('supplemental_items:current.supplemental_items?.map(markRead)')&&
+  ui.includes('supplemental_items:current.supplemental_items?.map(markResolved)'))
 check('System details, explicit migration warning',ui.includes("row.source==='system'")&&ui.includes('feed.migration_pending')&&ui.includes('chờ cập nhật SQL 0071'))
 check('Only PGRST202 indicates the optional system RPC is not yet deployed',
   api.includes("migration_pending:newer.error?.code==='PGRST202'")&&

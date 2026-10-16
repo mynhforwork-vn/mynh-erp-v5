@@ -20,7 +20,7 @@ type Notice={
   carrier?:string|null;products?:ProductSummary[];receive_status?:string;shipping_service?:string|null;
 }
 type Feed={
-  items:Notice[];total:number;unread_total:number;action_total:number;
+  items:Notice[];supplemental_items?:Notice[];total:number;unread_total:number;action_total:number;
   migration_pending?:boolean;system_feed_error?:boolean;receiving_warehouses?:ReceivingWarehouse[]
 }
 type Filter='unread'|'action'|'all'
@@ -175,6 +175,7 @@ export function InAppAlertCenter({
       const value=body as Partial<Feed>
       setFeed({
         items:Array.isArray(value.items)?value.items:[],
+        supplemental_items:Array.isArray(value.supplemental_items)?value.supplemental_items:[],
         total:Math.max(0,Number(value.total)||0),
         unread_total:Math.max(0,Number(value.unread_total)||0),
         action_total:Math.max(0,Number(value.action_total)||0),
@@ -315,17 +316,27 @@ export function InAppAlertCenter({
     if(row.event_type==='DELIVERED'&&row.receive_status==='WAITING_RECEIVE')return 'receive'
     return 'other'
   }
+  // Keep the general feed at 40 rows; only action/unread filters include
+  // notices outside the first page, already supplied by the SAME GET.
+  const priorityItems=useMemo(()=>{
+    const merged=[...feed.items,...(feed.supplemental_items??[])]
+    return merged.sort((a,b)=>
+      Number(b.source==='tracking'&&b.reminder_active===true)-
+      Number(a.source==='tracking'&&a.reminder_active===true)||
+      Date.parse(b.created_at)-Date.parse(a.created_at))
+  },[feed.items,feed.supplemental_items])
   const actionGroups=useMemo(()=>({
-    mvd:feed.items.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='mvd').length,
-    receive:feed.items.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='receive').length,
-    intake:feed.items.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='intake').length,
-    other:feed.items.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='other').length,
-  }),[feed.items])
-  const hubs=useMemo(()=>[...new Set(feed.items
+    mvd:priorityItems.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='mvd').length,
+    receive:priorityItems.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='receive').length,
+    intake:priorityItems.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='intake').length,
+    other:priorityItems.filter(row=>row.requires_action&&!row.is_resolved&&taskGroup(row)==='other').length,
+  }),[priorityItems])
+  const filterItems=filter==='all'?feed.items:priorityItems
+  const hubs=useMemo(()=>[...new Set(filterItems
     .filter(row=>row.source==='tracking'&&row.receive_status!=='RECEIVED')
     .map(row=>row.destination_hub.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi')),
-    [feed.items])
-  const visible=useMemo(()=>feed.items.filter(row=>
+    [filterItems])
+  const visible=useMemo(()=>filterItems.filter(row=>
     (categoryFilter==='all'||row.category===categoryFilter)&&
     (filter==='all'||(filter==='unread'&&!row.is_read)||
       (filter==='action'&&row.requires_action&&!row.is_resolved&&
@@ -333,9 +344,9 @@ export function InAppAlertCenter({
     (hub==='all'||(hub==='unknown'
       ?row.source==='tracking'&&row.receive_status!=='RECEIVED'&&!row.destination_hub
       :row.source==='tracking'&&row.receive_status!=='RECEIVED'&&row.destination_hub===hub))
-  ),[feed.items,filter,hub,actionGroup,categoryFilter])
+  ),[filterItems,filter,hub,actionGroup,categoryFilter])
   // Only same-HUB, delivered and unreceived orders can be included in one batch.
-  const batchSelected=feed.items.filter(row=>row.order_id&&
+  const batchSelected=priorityItems.filter(row=>row.order_id&&
     selectedOrderIds.includes(row.order_id)&&receiptEligible(row)&&Boolean(row.destination_hub))
   const batchHub=batchSelected[0]?.destination_hub??''
   const batchCod=batchSelected.reduce((sum,row)=>sum+Number(row.cod??0),0)
@@ -419,9 +430,11 @@ export function InAppAlertCenter({
         throw Error(payload?.error||'Không thể xác nhận đợt nhận hàng.')
       }
       const ids=new Set(confirmedIds)
+      const markReceived=(x:Notice):Notice=>x.order_id&&ids.has(x.order_id)
+        ?{...x,receive_status:'RECEIVED',destination_hub:'',requires_action:false}:x
       setFeed(prev=>({...prev,
-        items:prev.items.map(x=>x.order_id&&ids.has(x.order_id)
-          ?{...x,receive_status:'RECEIVED',destination_hub:'',requires_action:false}:x),
+        items:prev.items.map(markReceived),
+        supplemental_items:prev.supplemental_items?.map(markReceived),
         action_total:Math.max(0,prev.action_total-batchSelected.filter(x=>x.requires_action).length),
       }))
       clearBatchSelection()
@@ -460,9 +473,11 @@ export function InAppAlertCenter({
       if(!result.ok||payload?.ok!==true){
         throw Error(payload?.error||'Không thể xác nhận. Vui lòng thử lại.')
       }
+      const markReceived=(x:Notice):Notice=>x.id===row.id
+        ?{...x,receive_status:'RECEIVED',destination_hub:'',requires_action:false}:x
       setFeed(prev=>({...prev,
-        items:prev.items.map(x=>x.id===row.id
-          ?{...x,receive_status:'RECEIVED',destination_hub:'',requires_action:false}:x),
+        items:prev.items.map(markReceived),
+        supplemental_items:prev.supplemental_items?.map(markReceived),
         action_total:Math.max(0,prev.action_total-(row.requires_action?1:0)),
       }))
       setReceiveFor(null)
@@ -491,9 +506,11 @@ export function InAppAlertCenter({
       await changeStatus(row.source==='tracking'
         ?{action:'read',source:'tracking',alert_ids:row.legacy_ids}
         :{action:'read',source:'system',notification_id:row.notification_id})
+      const markRead=(x:Notice):Notice=>x.id===row.id
+        ?{...x,is_read:x.reminder_active===true?false:true}:x
       setFeed(current=>({...current,
-        items:current.items.map(x=>x.id===row.id
-          ?{...x,is_read:x.reminder_active===true?false:true}:x),
+        items:current.items.map(markRead),
+        supplemental_items:current.supplemental_items?.map(markRead),
         unread_total:Math.max(0,current.unread_total-(row.reminder_active?0:1)),
       }))
       setError('')
@@ -507,8 +524,11 @@ export function InAppAlertCenter({
       await changeStatus({action:'read_all'})
       // Acknowledging the list does not resolve a delivery failure.
       setFeed(current=>({...current,
-        unread_total:current.items.filter(x=>x.reminder_active===true).length,
+        unread_total:[...current.items,...(current.supplemental_items??[])]
+          .filter(x=>x.reminder_active===true).length,
         items:current.items.map(x=>({...x,is_read:x.reminder_active===true?false:true})),
+        supplemental_items:current.supplemental_items?.map(x=>
+          ({...x,is_read:x.reminder_active===true?false:true})),
       }))
       setError('')
     }catch{setError('Không thể đánh dấu đã đọc tất cả.')}
@@ -519,8 +539,11 @@ export function InAppAlertCenter({
     setPending(true)
     try{
       await changeStatus({action:'resolve',source:'system',notification_id:row.notification_id})
+      const markResolved=(x:Notice):Notice=>x.id===row.id
+        ?{...x,is_resolved:true,is_read:true}:x
       setFeed(current=>({...current,
-        items:current.items.map(x=>x.id===row.id?{...x,is_resolved:true,is_read:true}:x),
+        items:current.items.map(markResolved),
+        supplemental_items:current.supplemental_items?.map(markResolved),
         action_total:Math.max(0,current.action_total-1),
         unread_total:Math.max(0,current.unread_total-(row.is_read?0:1)),
       }))
