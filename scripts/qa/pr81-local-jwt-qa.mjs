@@ -83,7 +83,13 @@ async function oldAlerts(){
 }
 const old=await oldAlerts()
 assert.ok(old.ok&&old.value?.some(x=>x.alert_type==='DELIVERY_FAILED'),'40-day failure disappeared')
-pass('Failure persists after 40 days while not delivered or cancelled')
+pass('Failure persists after 40 days while the current stage is DELIVERY_FAILED')
+psql("update public.shipments set current_tracking_status='IN_TRANSIT' where id='22222222-2222-4222-8222-222222222222'")
+const resumed=await oldAlerts()
+assert.ok(resumed.ok&&!resumed.value?.some(x=>x.alert_type==='DELIVERY_FAILED'),
+ 'Old failure remains pinned after shipping resumes')
+pass('Resumed transport unpins historical failure without deleting database history')
+psql("update public.shipments set current_tracking_status='DELIVERY_FAILED' where id='22222222-2222-4222-8222-222222222222'")
 psql("update public.shipments set current_tracking_status='DELIVERED' where id='22222222-2222-4222-8222-222222222222'")
 const done=await oldAlerts()
 assert.ok(done.ok&&!done.value?.some(x=>x.alert_type==='DELIVERY_FAILED'),'Delivered still shows aged failure')

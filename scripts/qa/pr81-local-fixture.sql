@@ -83,7 +83,7 @@ insert into public.orders(id,shopee_order_id,destination_hub,order_status)
 values ('11111111-1111-4111-8111-111111111111','QA-LOCAL-ORDER','QA-HUB','PROCESSING');
 insert into public.shipments(id,order_id,is_active,tracking_number,current_tracking_status)
 values ('22222222-2222-4222-8222-222222222222',
-        '11111111-1111-4111-8111-111111111111',true,'QA-LOCAL-MVD','IN_TRANSIT');
+        '11111111-1111-4111-8111-111111111111',true,'QA-LOCAL-MVD','DELIVERY_FAILED');
 insert into public.tracking_events(id,shipment_id,normalized_status,created_at,event_time,reason_description)
 values ('33333333-3333-4333-8333-333333333333',
         '22222222-2222-4222-8222-222222222222','UNKNOWN',now(),now(),'Kiểm thử trạng thái chưa ánh xạ');

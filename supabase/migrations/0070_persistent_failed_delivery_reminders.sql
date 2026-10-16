@@ -1,5 +1,6 @@
--- MYNH ERP V5: a failed delivery remains an actionable in-app alert until
--- actual delivery or cancellation, independent of its age/read acknowledgement.
+-- MYNH ERP V5: preserve failed delivery history, but keep a failed
+-- delivery reminder active only while the shipment is currently DELIVERY_FAILED.
+-- A reshipment or return must not pin an old failed-delivery attempt.
 -- Keep existing alert batching, existing 5-minute client polling, and RBAC.
 -- Requires a separate, approved Supabase release. Do NOT auto-run on merge.
 -- This replaces ONLY get_in_app_alerts; no data rewrite, cron or polling change.
@@ -27,13 +28,16 @@ AS $function$
       a.created_at,
       (a.alert_type='DELIVERY_FAILED'
         and o.order_status::text not in ('CANCELLED','CANCELED')
+        and exists(
+          select 1 from public.shipments active_s
+          where active_s.order_id=o.id and active_s.is_active
+            and active_s.current_tracking_status::text='DELIVERY_FAILED'
+            and upper(btrim(coalesce(active_s.tracking_number,''))) not in ('KHÔNG CÓ','KHONG CO')
+        )
         and not exists(
           select 1 from public.shipments active_s
           where active_s.order_id=o.id and active_s.is_active
-            and (
-              active_s.current_tracking_status::text in ('DELIVERED','CANCELLED')
-              or upper(btrim(coalesce(active_s.tracking_number,''))) in ('KHÔNG CÓ','KHONG CO')
-            )
+            and active_s.current_tracking_status::text in ('DELIVERED','CANCELLED')
         )) as persistent_failure,
       r.batch_window_minutes,
       case
@@ -70,13 +74,16 @@ AS $function$
       and (a.created_at>=now()-interval '30 days'
         or (a.alert_type='DELIVERY_FAILED'
         and o.order_status::text not in ('CANCELLED','CANCELED')
+        and exists(
+          select 1 from public.shipments active_s
+          where active_s.order_id=o.id and active_s.is_active
+            and active_s.current_tracking_status::text='DELIVERY_FAILED'
+            and upper(btrim(coalesce(active_s.tracking_number,''))) not in ('KHÔNG CÓ','KHONG CO')
+        )
         and not exists(
           select 1 from public.shipments active_s
           where active_s.order_id=o.id and active_s.is_active
-            and (
-              active_s.current_tracking_status::text in ('DELIVERED','CANCELLED')
-              or upper(btrim(coalesce(active_s.tracking_number,''))) in ('KHÔNG CÓ','KHONG CO')
-            )
+            and active_s.current_tracking_status::text in ('DELIVERED','CANCELLED')
         )))
   ),
   grouped as (

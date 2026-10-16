@@ -9,18 +9,26 @@ const migration=src('supabase/migrations/0070_persistent_failed_delivery_reminde
 let passed=0
 function check(label,condition){assert.ok(condition,label);passed++}
 check('Uses live shipment status without a second API read',api.includes('shipments(tracking_number,carrier,is_active,current_tracking_status)'))
-check('API keeps unresolved failure at top of 40-row page',api.includes("b.reminder_active===true"))
+check('API pins only CURRENT failed delivery in bounded feed',
+  api.includes("b.reminder_active===true")&&
+  model.includes("liveStatus==='DELIVERY_FAILED'")&&
+  model.includes("latest.type==='PICKUP_FAILED'||latest.type==='DELIVERY_FAILED'"))
 check('API continues filtering cancelled codes',api.includes("!cancelledCodes.has(notice.order_code)"))
 check('Model suppresses cancelled orders',model.includes("orderStatus==='CANCELLED'"))
 check('Model prioritizes successful delivery',model.includes('DELIVERED:100'))
-check('Model reminder ends on live delivery',model.includes("liveStatus!=='DELIVERED'"))
+check('Model follows current stage and preserves old failure history',
+  model.includes('const matchingLive=ordered.find(x=>x.type===liveStatus)')&&
+  model.includes("liveStatus==='DELIVERY_FAILED'")&&model.includes('timeline:ordered'))
 check('UI acknowledges without clearing persistent failure',ui.includes("x.reminder_active===true?false:true"))
 check('UI keeps persistent failures in unread counter after read all',ui.includes('current.items.filter(x=>x.reminder_active===true).length'))
 check('Existing 5-minute notification polling unchanged',schedule.includes('NOTIFICATION_POLL_MS=5*60*1000'))
 check('No new notification POST loops',!ui.includes('setInterval('))
 check('Long-lived failures survive the 30-day window in staged RPC migration',migration.includes("or (a.alert_type='DELIVERY_FAILED'"))
 check('Legacy RPC keeps security definer',migration.includes('SECURITY DEFINER'))
-check('Unresolved failures rank ahead of newer settled notices at RPC cap',migration.includes('order by g.persistent_failure desc'))
+check('SQL only prioritizes currently failed shipments at bounded RPC cap',
+  migration.includes('order by g.persistent_failure desc')&&
+  migration.includes("active_s.current_tracking_status::text='DELIVERY_FAILED'")&&
+  !migration.includes("active_s.current_tracking_status::text in ('DELIVERED','CANCELLED')\n              or upper"))
 check('Migration is independently gated and has no mutation of alert rows',!migration.includes('UPDATE public.alert_events')&&!migration.includes('DELETE FROM public.alert_events'))
 check('SQL function delimiter closes with statement terminator',migration.includes('$function$;\nCOMMIT;'))
 console.log('DELIVERY_FAILURE_CONTRACT_QA_SUMMARY '+JSON.stringify({passed,failed:0}))

@@ -19,9 +19,9 @@ const records=[
   row('DELIVERY_FAILED','2610000XYZTEST','c1',true),
 ]
 const links=[
-  {id:'11111111-1111-1111-1111-111111111111',shopee_order_id:'26100715VS1TB6',receive_status:'WAITING_RECEIVE'},
-  {id:'22222222-2222-2222-2222-222222222222',shopee_order_id:'26100707IKJE9T',receive_status:'RECEIVED'},
-  {id:'33333333-3333-3333-3333-333333333333',shopee_order_id:'2610000XYZTEST',receive_status:'NOT_READY'},
+  {id:'11111111-1111-1111-1111-111111111111',shopee_order_id:'26100715VS1TB6',receive_status:'WAITING_RECEIVE',shipments:[{is_active:true,current_tracking_status:'DELIVERED'}]},
+  {id:'22222222-2222-2222-2222-222222222222',shopee_order_id:'26100707IKJE9T',receive_status:'RECEIVED',shipments:[{is_active:true,current_tracking_status:'DELIVERED'}]},
+  {id:'33333333-3333-3333-3333-333333333333',shopee_order_id:'2610000XYZTEST',receive_status:'NOT_READY',shipments:[{is_active:true,current_tracking_status:'DELIVERY_FAILED'}]},
 ]
 assert.equal(cleanTrackingReason('R00'),null)
 assert.equal(cleanTrackingReason('R00 · R01'),null)
@@ -82,11 +82,13 @@ const replayOut=buildOrderNotices(replay,[
 ])
 assert.equal(replayOut.length,4,'cancelled orders stay absent')
 const retried=replayOut.find(x=>x.order_code===retryCode)
-assert.equal(retried.event_type,'DELIVERY_FAILED','failed delivery remains prioritized during repeated delivery')
-assert.equal(retried.reminder_active,true)
-assert.equal(retried.is_read,false,'mark all as read cannot silence unresolved delivery failure')
-assert.equal(retried.requires_action,true)
+assert.equal(retried.event_type,'OUT_FOR_DELIVERY','current retry outranks historical failure')
+assert.equal(retried.reminder_active,false,'retry no longer has an active failure reminder')
+assert.equal(retried.is_read,true,'read historical failure stays acknowledged during retry')
+assert.equal(retried.requires_action,false,'retry is not a delivery-failed action')
 assert.equal(retried.timeline.length,2,'historical failed/retry events retained')
+assert.equal(retried.timeline[0].type,'OUT_FOR_DELIVERY','timeline respects event chronology')
+assert.ok(retried.timeline.some(x=>x.type==='DELIVERY_FAILED'),'failure stays in history')
 const succeeded=replayOut.find(x=>x.order_code===deliveredCode)
 assert.equal(succeeded.event_type,'DELIVERED','successful delivery wins over prior failure')
 assert.equal(succeeded.reminder_active,false)
@@ -94,7 +96,8 @@ assert.equal(succeeded.is_read,true,'success removes persistent unread override'
 assert.equal(succeeded.requires_action,false)
 assert.equal(succeeded.timeline.length,3,'failure remains in history after delivery')
 const returned=replayOut.find(x=>x.order_code===returnedCode)
-assert.equal(returned.reminder_active,true,'a returned package is not successful delivery nor cancellation')
+assert.equal(returned.reminder_active,false,'returned package must not pin prior delivery failure')
+assert.equal(returned.event_type,'RETURNED')
 const ongoing=replayOut.find(x=>x.order_code===ongoingCode)
 assert.equal(ongoing.reminder_active,true)
 const noDeliveredEvent=buildOrderNotices(priorFailure('QA-LIVE-SUCCESS','ld'),[
@@ -103,7 +106,27 @@ const noDeliveredEvent=buildOrderNotices(priorFailure('QA-LIVE-SUCCESS','ld'),[
 assert.equal(noDeliveredEvent.event_type,'DELIVERED','live shipment state is authoritative')
 assert.equal(noDeliveredEvent.reminder_active,false)
 
+const transit=buildOrderNotices(priorFailure('QA-RESUMED-TRANSIT','transit'),[
+  order('QA-RESUMED-TRANSIT','IN_TRANSIT'),
+])[0]
+assert.equal(transit.event_type,'IN_TRANSIT','use live transport status after delivery failure')
+assert.equal(transit.title,'Đang vận chuyển')
+assert.equal(transit.reminder_active,false)
+assert.equal(transit.requires_action,false)
+assert.ok(transit.timeline.some(x=>x.type==='DELIVERY_FAILED'))
+const hub=buildOrderNotices(priorFailure('QA-RETRY-HUB','hub'),[
+  order('QA-RETRY-HUB','ARRIVED_DESTINATION_HUB'),
+])[0]
+assert.equal(hub.event_type,'ARRIVED_DESTINATION_HUB')
+assert.equal(hub.reminder_active,false)
+const noLive=buildOrderNotices([
+  row('DELIVERY_FAILED','QA-NO-LIVE','z1',true,'Giao lỗi','2026-10-13T06:00:00.000Z'),
+  row('OUT_FOR_DELIVERY','QA-NO-LIVE','z2',true,'Giao lại','2026-10-14T06:00:00.000Z'),
+],[{id:'66666666-6666-4666-8666-666666666666',shopee_order_id:'QA-NO-LIVE',receive_status:'NOT_READY'}])[0]
+assert.equal(noLive.event_type,'OUT_FOR_DELIVERY','newest real alert wins when live status is absent')
+assert.equal(noLive.reminder_active,false)
 console.log('DELIVERY_FAILURE_PERSISTENCE_QA_SUMMARY '+JSON.stringify({
-  failedReminder:true,retryReminder:true,succeededClears:true,cancelledClears:true,
-  returnedRemains:true,readAllCannotSilence:true,unchangedPolling:true,
+  failedReminder:true,retryUnpinned:true,transitUnpinned:true,
+  hubUnpinned:true,returnedUnpinned:true,succeededClears:true,
+  cancelledClears:true,historyPreserved:true,unchangedPolling:true,
 }))
