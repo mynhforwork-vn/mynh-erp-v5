@@ -5,6 +5,7 @@ on:
       - qa/integrated-notifications-tracking-20261016
     # Avoid redeploying Cloudflare Preview just to verify SQL/JWT test harness.
     paths:
+      - '.github/workflows/notification-tracking-integration-qa.yml'
       - 'app/**'
       - 'components/**'
       - 'lib/**'
