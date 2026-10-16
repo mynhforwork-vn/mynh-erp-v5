@@ -38,3 +38,6 @@ Bộ lệnh khởi tạo project local tạm, chạy migration + Auth JWT + RPC,
 
 ## Quyết định chi phí
 Người dùng chưa chấp thuận 0.01344 USD/giờ để tạo Supabase Cloud QA. Bộ kit này không tạo Supabase Cloud branch hoặc dịch vụ tính phí. PR #81 vẫn Draft.
+
+## Lưu ý PostgREST
+- Sau khi áp dụng 0070/0071 bằng psql, script chủ động gửi NOTIFY pgrst reload schema và kiểm tra chữ ký hai RPC trên DB local. Điều này tránh báo lỗi thiếu RPC do schema cache chưa làm mới.

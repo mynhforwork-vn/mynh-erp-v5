@@ -38,6 +38,11 @@ docker exec -i "$container" psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 <
 echo "Thử chạy đúng SQL 0070 và 0071 trên PostgreSQL local..."
 docker exec -i "$container" psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 < "$root/supabase/migrations/0070_persistent_failed_delivery_reminders.sql"
 docker exec -i "$container" psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 < "$root/supabase/migrations/0071_operational_system_notifications.sql"
+# PostgREST may have cached its RPC schema before the fixture/migrations.
+# Reload only the disposable local PostgREST cache, not any remote service.
+docker exec "$container" psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 -c "NOTIFY pgrst, 'reload schema';"
+# Explicitly verify both newly defined RPC entry points on the local DB.
+docker exec "$container" psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 -t -A -c "select case when to_regprocedure('public.get_in_app_alerts(integer)') is not null and to_regprocedure('public.get_notification_feed(integer,integer,text,text)') is not null then 'LOCAL_RPC_READY' else 'MISSING_RPC' end;" | grep -Fxq 'LOCAL_RPC_READY'
 # Supabase CLI reports only loopback URLs/keys for these disposable containers.
 # Do not print credentials or copy them into the repository.
 set -a

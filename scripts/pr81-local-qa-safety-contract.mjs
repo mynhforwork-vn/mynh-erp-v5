@@ -15,6 +15,9 @@ check('Production tokens erased in child process',runner.includes('unset SUPABAS
 check('Migrations 0070 and 0071 run only via local docker exec psql',
  runner.includes('docker exec -i "$container" psql')&&runner.includes('0070_persistent_failed_delivery_reminders.sql')&&runner.includes('0071_operational_system_notifications.sql'))
 check('Postgres container name read from disposable project ID',runner.includes('supabase_db_$id')&&runner.includes('grep -Fxq "$container"'))
+check('PostgREST local cache refreshed after migrations',
+ runner.includes("NOTIFY pgrst, 'reload schema';")&&
+ runner.includes("to_regprocedure('public.get_notification_feed(integer,integer,text,text)')"))
 check('Refuse hosted Supabase API URL',jwt.includes('Refuse nonlocal Supabase URL')&&jwt.includes("['localhost','127.0.0.1','::1']"))
 check('Auth local creates signed JWT for three RBAC roles',jwt.includes("['admin','operator','viewer']")&&jwt.includes('/auth/v1/token?grant_type=password'))
 check('Local test contains delivery-failure 40-day fixture',fixture.includes("interval '40 days'")&&fixture.includes("'DELIVERY_FAILED'"))
