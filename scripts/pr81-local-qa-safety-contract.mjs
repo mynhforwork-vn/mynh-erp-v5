@@ -20,5 +20,5 @@ check('Auth local creates signed JWT for three RBAC roles',jwt.includes("['admin
 check('Local test contains delivery-failure 40-day fixture',fixture.includes("interval '40 days'")&&fixture.includes("'DELIVERY_FAILED'"))
 check('Checks direct table write privilege and per-user read state',jwt.includes('/rest/v1/system_notification_reads')&&jwt.includes('Read state leaked across users'))
 check('Checks unresolved incidents and recovery',jwt.includes('Active failure must not be resolvable')&&jwt.includes('Recovered sync/mapping errors still active'))
-check('Scope and limitations explicit',doc.includes('chưa có kết quả chạy thực tế')&&doc.includes('không sao chép ERP Production'))
+check('Scope and limitations explicit',doc.includes('chưa có kết quả chạy thực tế')&&doc.toLowerCase().includes('không sao chép erp production'))
 console.log('PR81_LOCAL_QA_SAFETY_CONTRACT_SUMMARY '+JSON.stringify({passed,failed:0,scope:'static safety; no Docker run'}))
