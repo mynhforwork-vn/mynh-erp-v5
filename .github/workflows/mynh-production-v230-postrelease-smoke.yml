@@ -1,0 +1,59 @@
+name: MYNH ERP v230 Production Post-Release Smoke
+on:
+  push:
+    branches:
+      - qa/integrated-notifications-tracking-20261016
+    paths:
+      - '.github/workflows/mynh-production-v230-postrelease-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  read-only-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      MAIN_SHA: 17e071315bf44a96967a0b9bb0e1226c8b237fb5
+      WORKER_VERSION: edfb532f-0853-4300-adb8-d335c2ba4d85
+      MIRROR_PREVIEW: https://production-v229-mirror-20261016-mynh-erp-v5.mynh-forwork.workers.dev
+    steps:
+      - name: Verify exactly the authorized v230 deployment has 100 percent traffic
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          curl -fsS --retry 2 --retry-delay 2 \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/mynh-erp-v5/deployments?page=1&per_page=1" > live.json
+          jq -e --arg v "$WORKER_VERSION" '.success==true and
+            (.result.deployments[0].versions|length)==1 and
+            .result.deployments[0].versions[0].version_id==$v and
+            .result.deployments[0].versions[0].percentage==100' live.json
+          echo "Worker version $WORKER_VERSION receives 100 percent traffic."
+      - name: HTTP smoke production and alias; deny anonymous notification requests
+        shell: bash
+        run: |
+          set -euo pipefail
+          for url in https://mynh-erp-v5.mynh-forwork.workers.dev https://erp.mynh-forwork.workers.dev; do
+            code="$(curl -sS -L --retry 2 --retry-delay 2 --max-time 35 -o health.json -w '%{http_code}' "$url/api/health")"
+            test "$code" = '200'
+            jq -e '.ok==true' health.json >/dev/null
+            code="$(curl -sS -L --retry 2 --retry-delay 2 --max-time 35 -o login.html -w '%{http_code}' "$url/login")"
+            test "$code" = '200'
+            grep -q 'MYNH' login.html
+            for path in /api/alerts/in-app /api/alerts/in-app?view=action; do
+              code="$(curl -sS --retry 2 --retry-delay 2 --max-time 35 -o unauthorized.json -w '%{http_code}' "$url$path")"
+              test "$code" = '401'
+            done
+            echo "PRODUCTION_HTTP_SMOKE_PASS $url health=200 login=200 anonymous-alerts=401"
+          done
+      - name: Confirm rollback mirror remains available
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -L --retry 2 --retry-delay 2 --max-time 35 -o mirror-health.json -w '%{http_code}' "$MIRROR_PREVIEW/api/health")"
+          test "$code" = '200'
+          jq -e '.ok==true' mirror-health.json >/dev/null
+          echo 'MIRROR_PREVIEW_V229_REMAINS_AVAILABLE'
