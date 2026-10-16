@@ -30,3 +30,11 @@
 ## Release gate
 - QA bằng JWT thật và migration trên DB QA phải PASS trước khi trình phê duyệt SQL Production.
 - Sau nghiệm thu tích hợp mới trình duyệt merge riêng, phát hành Production riêng.
+
+## Rà soát bảo mật không tốn phí — 16/10/2026
+- Phát hiện: SQL 0071 trước đây GRANT SELECT,INSERT,UPDATE trên system_notification_reads cho authenticated. RLS chỉ chặn sửa dữ liệu người khác, không chặn Viewer giả mạo read state của chính mình hoặc Admin/Operator ghi resolved_at khi lỗi đang tồn tại, vượt qua kiểm tra RPC.
+- Sửa trong PR #81 (chưa triển khai): bỏ mọi GRANT trực tiếp vào bảng; thao tác ghi/đọc qua public RPC có xác thực + phân quyền Admin/Operator và private.active_system_notifications. Giữ RLS per-user để phòng vệ sâu.
+- Kiểm thử tĩnh thêm: kiểm tra direct grant không còn, toàn bộ RPC giữ auth/role gate, hàm private không cho anon/authenticated execute trực tiếp, SQL không thay Cron/Telegram.
+- Phát hiện khác chưa nghiệm thu: resolve_system_notification chỉ nhận thông báo nguồn đã hết lỗi, nhưng feed hiện tại chỉ trả nguồn đang lỗi nên UI không có luồng xem/xử lý lịch sử sau hồi phục. Cần chốt nghiệp vụ đã xử lý trước release; không tuyên bố PASS.
+- Supabase QA có báo phí 0.01344 USD/giờ và người dùng chưa phê duyệt. Không tạo DB QA, không chạy SQL 0070/0071 trên Production. JWT/RLS/persistence và QA Browser tích hợp để trạng thái CHƯA XÁC MINH.
+- Commit [skip ci] nhằm tránh kích hoạt lại GitHub Actions và Cloudflare Preview trong đợt rà soát không phát sinh chi phí. Test mới sẽ chạy cùng workflow tích hợp khi được chấp thuận kiểm thử hạ tầng.

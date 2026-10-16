@@ -29,6 +29,7 @@ jobs:
           node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
           node scripts/delivery-failure-notification-contract-qa.mjs
           node scripts/notification-system-contract-qa.mjs
+          node scripts/notification-sql-security-qa.mjs
           node --experimental-strip-types scripts/notification-quiet-hours-qa.mjs
           node --experimental-strip-types scripts/notification-order-tasks-qa.mjs
           node --experimental-strip-types scripts/notification-production-qa.mjs

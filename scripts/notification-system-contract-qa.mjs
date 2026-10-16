@@ -14,6 +14,9 @@ check('Recovered delivery or cancellation excluded',sql.includes("not in ('DELIV
 check('System feed RPC implemented',sql.includes('public.get_notification_feed('))
 check('Read one/all and resolve RPCs implemented', ['mark_system_notification_read','mark_all_system_notifications_read','resolve_system_notification'].every(v=>sql.includes('public.'+v+'(')))
 check('Role gate and read RLS',sql.includes("coalesce(public.current_erp_role(),'') not in ('admin','operator')")&&sql.includes('user_id=(select auth.uid())'))
+const rpcOnly=sql.includes('revoke all on public.system_notification_reads from public,anon,authenticated')&&
+  !/\bgrant\s+(?:all|select|insert|update|delete)\b[^;]*\bon\s+public\.system_notification_reads\b/i.test(sql)
+check('Read and resolve state is RPC-only, without direct authenticated table grant',rpcOnly)
 check('No public/anonymous execute on system procedures',sql.includes('revoke all on function public.get_notification_feed(integer,integer,text,text) from public,anon'))
 check('Current operational incident cannot be falsely resolved',sql.includes('Lỗi vẫn tồn tại; cần xử lý nguồn lỗi trước'))
 check('All API-backed system handlers present', ['get_notification_feed','mark_system_notification_read','mark_all_system_notifications_read','resolve_system_notification'].every(v=>api.includes("'"+v+"'")))

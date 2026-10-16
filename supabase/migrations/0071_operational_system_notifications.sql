@@ -22,8 +22,12 @@ create table if not exists public.system_notification_reads(
   primary key(user_id,notification_id)
 );
 alter table public.system_notification_reads enable row level security;
+-- Keep notification read/resolve state RPC-only. A direct authenticated INSERT or
+-- UPDATE (even with owner-only RLS) could set resolved_at while the underlying
+-- incident is still active, bypassing the Admin/Operator gate and source check.
+-- SECURITY DEFINER functions below mediate authenticated reads and writes.
+-- RLS policies remain as defense in depth in case permissions change later.
 revoke all on public.system_notification_reads from public,anon,authenticated;
-grant select,insert,update on public.system_notification_reads to authenticated;
 drop policy if exists system_notice_own_select on public.system_notification_reads;
 create policy system_notice_own_select on public.system_notification_reads
   for select to authenticated using (user_id=(select auth.uid()));

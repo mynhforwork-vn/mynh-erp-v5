@@ -21,6 +21,9 @@ check('PR79 delivered outranks historical failure',model.includes('DELIVERED:100
 check('PR79 system alerts share bounded GET',api.includes("supabase.rpc('get_notification_feed'")&&api.includes('p_limit:40,p_offset:0')&&ui.includes("fetch('/api/alerts/in-app?view=all&category=all&limit=40&offset=0'"))
 check('SQL 0070 stages persistent failure without rewriting events',sql70.includes("or (a.alert_type='DELIVERY_FAILED'")&&!/UPDATE\s+public\.alert_events/i.test(sql70)&&!/DELETE\s+FROM\s+public\.alert_events/i.test(sql70))
 check('SQL 0071 stages per-user RLS and Admin/Operator authorization',sql71.includes('enable row level security')&&sql71.includes('user_id=(select auth.uid())')&&sql71.includes("not in ('admin','operator')"))
+check('SQL 0071 revokes direct table Data API writes to prevent bypass of role/incident checks',
+  sql71.includes('revoke all on public.system_notification_reads from public,anon,authenticated')&&
+  !/\bgrant\s+(?:all|select|insert|update|delete)\b[^;]*\bon\s+public\.system_notification_reads\b/i.test(sql71))
 check('SQL 0071 refuses resolving an active source failure',sql71.includes('Lỗi vẫn tồn tại; cần xử lý nguồn lỗi trước'))
 check('CI uses Preview only, no Production DB auth admin or deploy',ci.includes('npx wrangler preview --name notification-tracking-integrated-qa')&&!ci.includes('SUPABASE_SERVICE_ROLE_KEY')&&!ci.includes('preview-auth-setup')&&!ci.includes('wrangler deploy')&&!ci.includes('apply_migration'))
 console.log('PR79_PR80_INTEGRATION_STATIC_QA_SUMMARY '+JSON.stringify({passed,failed:0,scope:'static/build only; JWT/SQL E2E requires isolated DB'}))
