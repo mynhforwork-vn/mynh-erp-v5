@@ -36,7 +36,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for url in https://mynh-erp-v5.mynh-forwork.workers.dev https://erp.mynh-forwork.workers.dev; do
+          for url in https://mynh-erp-v5.mynh-forwork.workers.dev; do
             code="$(curl -sS -L --retry 2 --retry-delay 2 --max-time 35 -o health.json -w '%{http_code}' "$url/api/health")"
             test "$code" = '200'
             jq -e '.ok==true' health.json >/dev/null
@@ -49,6 +49,16 @@ jobs:
             done
             echo "PRODUCTION_HTTP_SMOKE_PASS $url health=200 login=200 anonymous-alerts=401"
           done
+      - name: Diagnose unsupported erp workers.dev subdomain without treating it as primary ERP
+        shell: bash
+        run: |
+          set -euo pipefail
+          alias_url=https://erp.mynh-forwork.workers.dev
+          code="$(curl -sS -L --retry 1 --retry-delay 1 --max-time 20 -o /dev/null -w '%{http_code}' "$alias_url/api/health" || true)"
+          echo "LEGACY_ALIAS_DIAGNOSTIC url=$alias_url health_http=$code"
+          if [ "$code" != '200' ]; then
+            echo "::warning::The historical erp.mynh-forwork.workers.dev URL is not a configured script in this Cloudflare account. This is not a primary Worker v230 smoke failure."
+          fi
       - name: Confirm rollback mirror remains available
         shell: bash
         run: |
