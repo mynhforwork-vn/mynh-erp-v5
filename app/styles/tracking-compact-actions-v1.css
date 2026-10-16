@@ -239,9 +239,10 @@
   }
 }
 
-/* Acknowledgements float at the top-left and do not consume KPI/table height. */
+/* Acknowledgements float at the top-left and do not consume KPI/table height.
+   Right anchoring from legacy preview must never override the left-position contract. */
 .tracking-success-toast-stack{
-  position:fixed;top:max(14px,env(safe-area-inset-top));left:230px;
+  position:fixed;top:max(14px,env(safe-area-inset-top));left:230px;right:auto!important;
   z-index:110;display:flex;flex-direction:column;gap:8px;
   width:min(342px,calc(100vw - 244px));pointer-events:none;
 }
@@ -282,4 +283,22 @@
 }
 .tracking-success-toast-close:hover,.tracking-success-toast-close:focus-visible{
   background:#e8f3ee;outline-offset:2px;
+}
+
+/* One remaining tracking table-fit guard only: a table with fewer visible
+   columns must still occupy the full HUB lane. Narrow lanes scroll INSIDE
+   the wrapper; a persisted drag width is managed by DesktopTableColumnResize. */
+.brand-shell-v1 .tracking-screen-v2
+.tracking-hub-table-v2:not(.mynh-resizable-table){
+  min-width:max(100%,var(--tracking-table-min-width,900px))!important;
+}
+.brand-shell-v1 .tracking-screen-v2 .tracking-content-workspace.with-panel
+.tracking-hub-table-v2:not(.mynh-resizable-table){
+  min-width:max(100%,var(--tracking-table-panel-min-width,760px))!important;
+}
+@media(max-width:900px){
+  .brand-shell-v1 .tracking-screen-v2
+  .tracking-hub-table-v2:not(.mynh-resizable-table){
+    min-width:max(100%,var(--tracking-table-panel-min-width,760px))!important;
+  }
 }
