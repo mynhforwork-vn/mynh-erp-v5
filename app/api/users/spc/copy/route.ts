@@ -10,8 +10,10 @@ const headers={
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 export async function POST(req:Request){
   const origin=req.headers.get('origin')
-  // This route returns an active browser session secret; reject cross-origin requests.
-  if(!origin||new URL(origin).host!==new URL(req.url).host){
+  // This route returns an active session secret: reject missing, malformed or cross-site Origin.
+  let sameOrigin=false
+  try{sameOrigin=Boolean(origin)&&new URL(origin as string).host===new URL(req.url).host}catch{}
+  if(!sameOrigin){
     return NextResponse.json({error:'Yêu cầu không hợp lệ'},{status:403,headers})
   }
   const supabase=await createClient()
