@@ -30,7 +30,7 @@ jobs:
         run: |
           test "$GITHUB_REF" = "refs/heads/main"
           test "$(git log -1 --format=%s)" = 'Merge PR #82: returned shipment cancellation approved'
-          git show --pretty='' --name-only HEAD | grep -q 'supabase/migrations/0072_cancel_successfully_returned_orders.sql'
+          git diff --name-only HEAD^1 HEAD | grep -q 'supabase/migrations/0072_cancel_successfully_returned_orders.sql'
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
       - name: Install dependencies
