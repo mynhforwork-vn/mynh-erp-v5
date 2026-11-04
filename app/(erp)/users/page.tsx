@@ -4,6 +4,8 @@ import { SystemSlidebar } from '@/components/system-slidebar'
 import { ERPUserInlineForm } from '@/components/erp-user-inline-form'
 import { ERPAccountFilterForm } from '@/components/erp-account-filter-form'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
+import { userAuditChange } from '@/lib/user-audit-history'
+import { SpcCopyControl } from '@/components/spc-copy-control'
 import { formatDateTime, formatMoney, formatPhone, sourceLabel, statusLabel } from '@/lib/format'
 import { DeleteERPUserConfirmForm } from '@/components/delete-erp-user-confirm-form'
 import { PurchaseAccountTable } from '@/components/purchase-account-table'
@@ -55,6 +57,10 @@ const actionLabels:Record<string,string>={
   UPDATE_PASSWORD:'Đổi mật khẩu',
   UPDATE_SPC_ST:'Cập nhật SPC_ST',
   UPDATE_SPC_F:'Cập nhật SPC_F',
+  UPDATE_DEVICE:'Thay đổi thiết bị',
+  UPDATE_BROWSER:'Thay đổi trình duyệt',
+  COPY_SPC_ST:'Sao chép SPC_ST',
+  COPY_SPC_F:'Sao chép SPC_F',
   ARCHIVE_USER:'Lưu trữ User',
   RESTORE_USER:'Khôi phục User',
 }
@@ -589,8 +595,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             <section className="form-section">
               <h3>Đăng nhập & phiên</h3>
               <label>Mật khẩu<input name="password" type="password" autoComplete="new-password"/></label>
-              <label>SPC_ST<textarea name="spc_st" rows={2}/></label>
-              <label>SPC_F<textarea name="spc_f" rows={2}/></label>
+              <label>SPC_ST<input type="password" name="spc_st" autoComplete="off" spellCheck={false}/></label>
+              <label>SPC_F<input type="password" name="spc_f" autoComplete="off" spellCheck={false}/></label>
             </section>
             <section className="form-section">
               <h3>Thiết bị</h3>
@@ -646,8 +652,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                 <div><span>Trạng thái</span><b>{selected.archived_at?'Đã lưu trữ':statusLabel(selected.status)}</b></div>
                 <div><span>SĐT</span><b>{formatPhone(selected.phone)}</b></div>
                 <div><span>Email</span><b>{selected.email??'—'}</b></div>
-                <div><span>SPC_ST</span><b>{hasST(selected)?'Đã có':'Chưa có'}</b></div>
-                <div><span>SPC_F</span><b>{hasF(selected)?'Đã có':'Chưa có'}</b></div>
+                <div><span>SPC_ST</span><b>{hasST(selected)?'Đã mã hoá':'Chưa có'}</b>{canOperate&&<SpcCopyControl userId={selected.id} kind="SPC_ST" available={hasST(selected)}/>}</div>
+                <div><span>SPC_F</span><b>{hasF(selected)?'Đã mã hoá':'Chưa có'}</b>{canOperate&&<SpcCopyControl userId={selected.id} kind="SPC_F" available={hasF(selected)}/>}</div>
                 <div><span>Số đơn</span><b>{selected.order_count??0} đơn</b></div>
                 <div><span>Ngày tạo</span><b title="Lấy thời gian đặt đơn sớm hơn khi có đơn trước ngày nhập tài khoản">{formatDateTime(selected.effective_created_at??selected.created_at)}</b></div>
                 {selected.archived_at&&<div><span>Lưu trữ lúc</span><b>{formatDateTime(selected.archived_at)}</b></div>}
@@ -753,7 +759,14 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               <div className="timeline user-history-scroll">
                 {!history.length
                   ? <div className="empty compact">Chưa có lịch sử thay đổi.</div>
-                  : history.map((h:any)=><div className="timeline-item" key={h.id}><i></i><div><b>{actionLabels[h.action]??h.action}</b><span>{sourceLabel(h.source)}</span><small>{formatDateTime(h.created_at)}</small></div></div>)}
+                  : history.map((h:any)=>{
+                      const diff=userAuditChange(h)
+                      return <div className="timeline-item" key={h.id}><i></i><div>
+                        <b>{actionLabels[h.action]??h.action}</b>
+                        {diff&&<div className="user-audit-diff"><span>{diff.label}:</span><span className="user-audit-before">{diff.before}</span><span aria-hidden="true">→</span><strong className="user-audit-after">{diff.after}</strong></div>}
+                        <span>{sourceLabel(h.source)}</span><small>{formatDateTime(h.created_at)}</small>
+                      </div></div>
+                    })}
               </div>
             </>}
           </div>
@@ -778,10 +791,11 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             </section>
             <section className="form-section">
               <h3>Đăng nhập & phiên</h3>
-              <div className="secret-state">SPC_ST: <b>{hasST(selected)?'Đã có':'Chưa có'}</b> · SPC_F: <b>{hasF(selected)?'Đã có':'Chưa có'}</b></div>
+              <div className="secret-state">SPC_ST: <b>{hasST(selected)?'Đã mã hoá':'Chưa có'}</b> · SPC_F: <b>{hasF(selected)?'Đã mã hoá':'Chưa có'}</b></div>
+              {canOperate&&<div className="spc-copy-actions"><SpcCopyControl userId={selected.id} kind="SPC_ST" available={hasST(selected)}/><SpcCopyControl userId={selected.id} kind="SPC_F" available={hasF(selected)}/></div>}
               <label>Mật khẩu mới<input name="password" type="password" autoComplete="new-password" placeholder="Để trống nếu không đổi"/></label>
-              <label>SPC_ST mới<textarea name="spc_st" rows={2} placeholder="Để trống nếu không đổi"/></label>
-              <label>SPC_F mới<textarea name="spc_f" rows={2} placeholder="Để trống nếu không đổi"/></label>
+              <label>SPC_ST mới<input type="password" name="spc_st" autoComplete="off" spellCheck={false} placeholder="Để trống nếu không đổi"/></label>
+              <label>SPC_F mới<input type="password" name="spc_f" autoComplete="off" spellCheck={false} placeholder="Để trống nếu không đổi"/></label>
             </section>
             <section className="form-section">
               <h3>Thiết bị</h3>

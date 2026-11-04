@@ -1,0 +1,74 @@
+name: PR83 Approved One-Time Production Release
+# Added only by the reviewed PR83 merge. No SQL migration, routes, polling or Cron changes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/pr83-production-one-shot.yml'
+permissions:
+  contents: read
+concurrency:
+  group: pr83-approved-production-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: "${{ startsWith(github.event.head_commit.message, 'Merge PR #83: User history and SPC secure copy approved') }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROD_URL: https://mynh-erp-v5.mynh-forwork.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify approved PR83 production gate
+        shell: bash
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$(git log -1 --format=%s)" = 'Merge PR #83: User history and SPC secure copy approved'
+          test -f supabase/migrations/0073_user_device_history_spc_secure_copy.sql
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: User history SPC security regression and typecheck
+        run: |
+          node --experimental-strip-types scripts/user-history-spc-security-qa.mjs
+          node --experimental-strip-types scripts/returned-shipment-cancellation-qa.mjs
+          node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+          npm run typecheck
+      - name: OpenNext Production build
+        run: npx opennextjs-cloudflare build
+      - name: Deploy ERP Production Worker only
+        run: npx opennextjs-cloudflare deploy
+      - name: Production HTTP and SPC access smoke
+        shell: bash
+        run: |
+          HEALTH="$(curl --silent --show-error --max-time 30 -o pr83-prod-health.json -w '%{http_code}' "$PROD_URL/api/health")"
+          test "$HEALTH" = "200"
+          grep -q '"ok":true' pr83-prod-health.json
+          LOGIN="$(curl --silent --show-error --max-time 30 -o /dev/null -w '%{http_code}' "$PROD_URL/login")"
+          test "$LOGIN" = "200"
+          UNAUTH="$(curl --silent --show-error --max-time 30 -o /dev/null -w '%{http_code}' -X POST \
+            -H "Origin: $PROD_URL" -H 'Content-Type: application/json' \
+            -d '{"user_id":"00000000-0000-4000-8000-000000000001","kind":"SPC_ST"}' \
+            "$PROD_URL/api/users/spc/copy")"
+          test "$UNAUTH" = "401"
+          CROSS_ORIGIN="$(curl --silent --show-error --max-time 30 -o /dev/null -w '%{http_code}' -X POST \
+            -H 'Origin: https://example.invalid' -H 'Content-Type: application/json' -d '{}' \
+            "$PROD_URL/api/users/spc/copy")"
+          test "$CROSS_ORIGIN" = "403"
+          echo "PASS: health=$HEALTH login=$LOGIN SPC-anonymous=$UNAUTH SPC-cross-origin=$CROSS_ORIGIN at $GITHUB_SHA"
+          {
+            echo "### PR83 Production release"
+            echo "- main SHA: $GITHUB_SHA"
+            echo "- /api/health: $HEALTH"
+            echo "- /login: $LOGIN"
+            echo "- SPC anonymous request: $UNAUTH"
+            echo "- SPC cross-origin request: $CROSS_ORIGIN"
+            echo "- SQL 0073 was separately verified before this job; not reapplied here."
+          } >> "$GITHUB_STEP_SUMMARY"
+# No Preview deletion in this job. Cleanup occurs only after separate Production verification.

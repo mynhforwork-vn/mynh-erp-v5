@@ -1,0 +1,13 @@
+/* Compact User audit differences: readable on narrow slidebars, no extra cards. */
+.user-audit-diff{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 7px;margin:4px 0;font-size:12px;line-height:1.45;min-width:0}
+.user-audit-diff .user-audit-before,.user-audit-diff .user-audit-after{overflow-wrap:anywhere;white-space:normal;font-size:12px}
+.user-audit-before{color:#64748b;font-weight:400}
+.user-audit-after{color:#0f172a;font-weight:600}
+.spc-copy-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.spc-copy-control{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%;margin-top:4px}
+.spc-copy-button{border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:5px;padding:4px 9px;font-size:12px;line-height:1.4;cursor:pointer}
+.spc-copy-button:hover:not(:disabled){background:#eaf2fc;border-color:#94a3b8}
+.spc-copy-button:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+.spc-copy-button:disabled{opacity:.5;cursor:not-allowed}
+.spc-copy-feedback{font-size:11px;color:#475569}
+@media(max-width:390px){.spc-copy-control{align-items:flex-start}.user-audit-diff{gap:3px 5px}}
