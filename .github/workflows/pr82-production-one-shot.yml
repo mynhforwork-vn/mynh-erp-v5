@@ -1,0 +1,56 @@
+name: PR82 Approved One-Time Production Release
+# Activated only by the precisely named, explicitly approved merge commit.
+# Does not run on future main commits and does not apply Supabase migrations.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/pr82-production-one-shot.yml'
+permissions:
+  contents: read
+concurrency:
+  group: pr82-one-time-production
+  cancel-in-progress: false
+jobs:
+  production:
+    if: github.event.head_commit.message == 'Merge PR #82: returned shipment cancellation approved'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROD_URL: https://mynh-erp-v5.mynh-forwork.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify expected approved main merge
+        shell: bash
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$(git log -1 --format=%s)" = 'Merge PR #82: returned shipment cancellation approved'
+          git show --pretty='' --name-only HEAD | grep -q 'supabase/migrations/0072_cancel_successfully_returned_orders.sql'
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Static QA / regression / TypeScript
+        run: |
+          node --experimental-strip-types scripts/returned-shipment-cancellation-qa.mjs
+          node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+          node scripts/remediation-static-qa.mjs
+          npm run typecheck
+      - name: OpenNext Production build
+        run: npx opennextjs-cloudflare build
+      - name: Deploy only the current ERP Production Worker
+        run: npx opennextjs-cloudflare deploy
+      - name: Production HTTP smoke
+        shell: bash
+        run: |
+          test "$(curl --silent --show-error --max-time 30 -o /tmp/pr82-health.json -w '%{http_code}' "$PROD_URL/api/health")" = "200"
+          grep -q '"ok":true' /tmp/pr82-health.json
+          test "$(curl --silent --show-error --max-time 30 -o /tmp/pr82-login.html -w '%{http_code}' "$PROD_URL/login")" = "200"
+          test "$(curl --silent --show-error --max-time 30 -o /tmp/pr82-anon.json -w '%{http_code}' "$PROD_URL/api/alerts/in-app")" = "401"
+          echo "Production http checks PASS, main sha=$GITHUB_SHA"
+# This workflow intentionally has no SQL, Telegram, tracking provider, Cron or GHN mutation.
