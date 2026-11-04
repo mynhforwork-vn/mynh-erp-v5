@@ -203,7 +203,8 @@ export default async function TrackingPage({searchParams}:{searchParams:Promise<
     // Some historical orders still have PROCESSING / READY_TO_SHIP despite
     // a literal "KHÔNG CÓ" MVĐ. Do not count, display or sync them.
     if(trackingNumberMeansCancelled(r.tracking_number))return false
-    if(r.tracking_status==='CANCELLED')return false
+    // Successful returns are terminal and belong to cancelled orders, not live tracking.
+    if(r.tracking_status==='CANCELLED'||r.tracking_status==='RETURNED')return false
     if(orderStatus==='CANCELLED'||orderStatus==='CANCELED')return false
     return true
   })

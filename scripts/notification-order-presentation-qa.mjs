@@ -80,7 +80,7 @@ const replayOut=buildOrderNotices(replay,[
   order(returnedCode,'RETURNED'),
   order(ongoingCode,'DELIVERY_FAILED'),
 ])
-assert.equal(replayOut.length,4,'cancelled orders stay absent')
+assert.equal(replayOut.length,3,'cancelled and successfully returned orders stay absent')
 const retried=replayOut.find(x=>x.order_code===retryCode)
 assert.equal(retried.event_type,'OUT_FOR_DELIVERY','current retry outranks historical failure')
 assert.equal(retried.reminder_active,false,'retry no longer has an active failure reminder')
@@ -96,8 +96,7 @@ assert.equal(succeeded.is_read,true,'success removes persistent unread override'
 assert.equal(succeeded.requires_action,false)
 assert.equal(succeeded.timeline.length,3,'failure remains in history after delivery')
 const returned=replayOut.find(x=>x.order_code===returnedCode)
-assert.equal(returned.reminder_active,false,'returned package must not pin prior delivery failure')
-assert.equal(returned.event_type,'RETURNED')
+assert.equal(returned,undefined,'completed return removes old failed-delivery warnings')
 const ongoing=replayOut.find(x=>x.order_code===ongoingCode)
 assert.equal(ongoing.reminder_active,true)
 const noDeliveredEvent=buildOrderNotices(priorFailure('QA-LIVE-SUCCESS','ld'),[
@@ -128,5 +127,5 @@ assert.equal(noLive.reminder_active,false)
 console.log('DELIVERY_FAILURE_PERSISTENCE_QA_SUMMARY '+JSON.stringify({
   failedReminder:true,retryUnpinned:true,transitUnpinned:true,
   hubUnpinned:true,returnedUnpinned:true,succeededClears:true,
-  cancelledClears:true,historyPreserved:true,unchangedPolling:true,
+  cancelledClears:true,returnedExcluded:true,historyPreserved:true,unchangedPolling:true,
 }))

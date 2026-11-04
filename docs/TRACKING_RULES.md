@@ -68,6 +68,8 @@ Current shipment status is phase-aware rather than a simple numeric rank:
 - A known current state does not regress to `UNKNOWN`.
 - `PICKED_UP` does not regress to pre-pickup states.
 - `DELIVERED`, `CANCELLED`, and `RETURNED` are terminal and stop Auto Tracking.
+- A confirmed `RETURNED` (successful return to sender) automatically marks its active shipment's order `CANCELLED`, clears further Tracking scheduling and suppresses unsent transport alerts. `RETURNING` must **not** cancel the order. Historical Tracking events remain intact.
+- This DB behavior requires explicit approval and separate deployment of migration `0072`; code/Preview alone does not change existing Production orders.
 
 ## SPX direct adapter
 

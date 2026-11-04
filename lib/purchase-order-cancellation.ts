@@ -12,6 +12,8 @@ export function orderIsCancelled(order:{
   const orderStatus=String(order.order_status??'').trim().toUpperCase()
   if(orderStatus==='CANCELLED'||orderStatus==='CANCELED')return true
   const shipment=(order.shipments??[]).find(s=>s.is_active)??order.shipments?.[0]
-  return shipment?.current_tracking_status==='CANCELLED'
+  const status=String(shipment?.current_tracking_status??'').toUpperCase()
+  // RETURNED is a completed return to sender, not an in-progress return.
+  return status==='CANCELLED'||status==='RETURNED'
     ||trackingNumberMeansCancelled(shipment?.tracking_number)
 }
