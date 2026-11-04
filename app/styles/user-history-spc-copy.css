@@ -18,3 +18,22 @@
 .spc-copy-button[aria-busy="true"] .spc-copy-icon{opacity:.45}
 .spc-copy-feedback{position:absolute;z-index:3;right:0;top:calc(100% + 4px);padding:4px 7px;border-radius:4px;background:#f8fafc;border:1px solid #cbd5e1;box-shadow:0 2px 8px #0f172a15;color:#475569;font-size:11px;line-height:1.3;white-space:nowrap;pointer-events:none}
 @media(max-width:390px){.spc-value-inline{gap:4px}.spc-secret-inline{column-gap:10px}}
+
+/* Compact filter reset icon; no second toolbar row or heavyweight button. */
+.brand-shell-v1 .p1-account-clear-filters{display:inline-flex;align-items:center;justify-content:center;flex:0 0 27px;width:27px;height:27px;border:1px solid #cbdce9;border-radius:4px;background:#fff;color:#365772;text-decoration:none;cursor:pointer}
+.brand-shell-v1 .p1-account-clear-filters:hover:not(.is-disabled){background:#eaf2fc;border-color:#94a3b8}
+.brand-shell-v1 .p1-account-clear-filters:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+.brand-shell-v1 .p1-account-clear-filters.is-disabled{opacity:.35;pointer-events:none;cursor:default}
+
+/* User operation feedback: success TOP-RIGHT, error TOP-LEFT, never in filter/table layout. */
+.erp-user-action-toast{position:fixed;top:max(12px,env(safe-area-inset-top));z-index:5000;display:flex;align-items:flex-start;gap:10px;box-sizing:border-box;max-width:min(400px,calc(100vw - 24px));padding:10px 12px;border:1px solid #cbd5e1;border-left-width:3px;border-radius:5px;background:#fff;color:#334155;box-shadow:0 5px 24px #0f172a1f;font-size:12px;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
+.erp-user-action-toast.is-success{right:max(12px,env(safe-area-inset-right));border-left-color:#07836f}
+.erp-user-action-toast.is-error{left:max(12px,env(safe-area-inset-left));border-left-color:#be123c}
+.erp-user-action-toast>span{min-width:0;flex:1}
+.erp-user-action-toast>button{flex:0 0 auto;padding:1px 3px;border:0;background:transparent;color:inherit;cursor:pointer;font-size:18px;line-height:1}
+.erp-user-action-toast>button:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+@media(max-width:390px){.erp-user-action-toast{top:max(8px,env(safe-area-inset-top));max-width:calc(100vw - 16px)}.erp-user-action-toast.is-success{right:8px}.erp-user-action-toast.is-error{left:8px}}
+
+/* Mobile selection hides search: show the same clear-all control within bulk actions. */
+.brand-shell-v1 .p1-account-mobile-clear-filters{display:none!important}
+@media(max-width:700px){.brand-shell-v1 .p1-account-mobile-clear-filters{display:inline-flex!important;flex:0 0 27px!important}}

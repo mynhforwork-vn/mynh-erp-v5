@@ -8,7 +8,7 @@ import { formatDateTime, formatPhone, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
-import { ERPUserInlineForm } from '@/components/erp-user-inline-form'
+import { ERPUserInlineForm, ERP_USER_ACTION_EVENT, type ERPUserActionFeedback } from '@/components/erp-user-inline-form'
 import {fitAccountColumnWidths} from '@/lib/account-table-autofit'
 import {AccountHeadingFilter,type AccountHeadingOption,type AccountHeadingFilterKind} from '@/components/account-heading-filter'
 
@@ -61,6 +61,8 @@ export function PurchaseAccountTable({
   detailQuery='',
   sort='newest',
   canManage=false,
+  clearFiltersHref='/purchase/accounts',
+  hasActiveTableFilters=false,
   headingOptions={},headingValues={},sessionOptions=[],
 }:{
   rows:Row[]
@@ -68,6 +70,8 @@ export function PurchaseAccountTable({
   detailQuery?:string
   sort?:string
   canManage?:boolean
+  clearFiltersHref?:string
+  hasActiveTableFilters?:boolean
   headingOptions?:Partial<Record<ColKey,AccountHeadingOption[]>>
   headingValues?:Record<string,string>
   sessionOptions?:AccountHeadingOption[]
@@ -77,6 +81,25 @@ export function PurchaseAccountTable({
   const [open,setOpen]=useState(false)
   const [menuPosition,setMenuPosition]=useState({top:64,right:8})
   const [selected,setSelected]=useState<string[]>([])
+  const [hiddenAfterSuccess,setHiddenAfterSuccess]=useState<string[]>([])
+  const visibleRows=useMemo(()=>rows.filter(row=>!hiddenAfterSuccess.includes(String(row.id))),[rows,hiddenAfterSuccess])
+  useEffect(()=>{
+    const onAction=(event:Event)=>{
+      const detail=(event as CustomEvent<ERPUserActionFeedback>).detail
+      if(detail?.status!=='ok'||!['archive','archiveBulk','restore','restoreBulk'].includes(detail.operation))return
+      if(!detail.userIds.length)return
+      const ids=new Set(detail.userIds)
+      setHiddenAfterSuccess(prev=>[...new Set([...prev,...ids])])
+      setSelected(prev=>prev.filter(id=>!ids.has(id)))
+    }
+    window.addEventListener(ERP_USER_ACTION_EVENT,onAction)
+    return ()=>window.removeEventListener(ERP_USER_ACTION_EVENT,onAction)
+  },[])
+  useEffect(()=>{
+    // Once the refreshed server rows confirm the records left this view,
+    // forget the temporary client-side suppression.
+    setHiddenAfterSuccess(prev=>prev.filter(id=>rows.some(row=>String(row.id)===id)))
+  },[rows])
   const draggingRef=useRef<ColKey|null>(null)
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
   const columnMenuRef=useRef<HTMLDivElement|null>(null)
@@ -189,9 +212,9 @@ export function PurchaseAccountTable({
   },[])
 
   useEffect(()=>{
-    const valid=new Set(rows.map((x:any)=>String(x.id)))
+    const valid=new Set(visibleRows.map((x:any)=>String(x.id)))
     setSelected(prev=>prev.filter(id=>valid.has(id)))
-  },[rows])
+  },[visibleRows])
 
   useEffect(()=>{
     if(!open)return
@@ -258,9 +281,9 @@ export function PurchaseAccountTable({
   }
   function isVisible(k:ColKey){return visible.includes(k)}
   const selectedSet=useMemo(()=>new Set(selected),[selected])
-  const selectedRows=useMemo(()=>rows.filter((row:any)=>selectedSet.has(String(row.id))),[rows,selectedSet])
+  const selectedRows=useMemo(()=>visibleRows.filter((row:any)=>selectedSet.has(String(row.id))),[visibleRows,selectedSet])
   const selectedArchived=selectedRows.length>0&&selectedRows.every((row:any)=>Boolean(row.archived_at))
-  const allSelected=rows.length>0&&rows.slice(0,200).every((row:any)=>selectedSet.has(String(row.id)))
+  const allSelected=visibleRows.length>0&&visibleRows.slice(0,200).every((row:any)=>selectedSet.has(String(row.id)))
   // Auto Fit: one width allocation for Desktop, Tablet, Mobile and right drawer.
   // Numeric fields stay compact; meaningful text and Voucher expand as space permits.
   const allShownColumns=columnOrder.filter(isVisible)
@@ -348,7 +371,7 @@ export function PurchaseAccountTable({
   }
   function toggleSelectAll(){
     if(allSelected){setSelected([]);return}
-    setSelected(rows.slice(0,200).map((row:any)=>String(row.id)))
+    setSelected(visibleRows.slice(0,200).map((row:any)=>String(row.id)))
   }
 
   function renderHeader(key:ColKey){
@@ -434,6 +457,16 @@ export function PurchaseAccountTable({
             {selected.map(id=><input key={id} type="hidden" name="user_ids" value={id}/>)}
             <button type="submit" className="button small archive-button">Lưu trữ</button>
           </ERPUserInlineForm>}
+        <Link href={clearFiltersHref}
+          className={'p1-account-clear-filters p1-account-mobile-clear-filters'+(!hasActiveTableFilters?' is-disabled':'')}
+          aria-label="Xóa toàn bộ bộ lọc bảng" title="Xóa toàn bộ bộ lọc bảng"
+          aria-disabled={!hasActiveTableFilters} tabIndex={hasActiveTableFilters?0:-1}>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+            strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 5h18l-7 8v5l-4 2v-7L3 5Z"/>
+            <path d="m16 16 5 5m0-5-5 5"/>
+          </svg>
+        </Link>
         <button className="user-bulk-clear" type="button" onClick={()=>setSelected([])}
           aria-label="Bỏ chọn User">Bỏ chọn</button>
       </div>,toolbarRoot)}
@@ -530,14 +563,14 @@ export function PurchaseAccountTable({
         </colgroup>
         <thead><tr>
           {canManage&&<th className="bulk-select-col">
-            <input type="checkbox" aria-label="Chọn tối đa 200 User" checked={allSelected} onChange={toggleSelectAll} disabled={!rows.length}/>
+            <input type="checkbox" aria-label="Chọn tối đa 200 User" checked={allSelected} onChange={toggleSelectAll} disabled={!visibleRows.length}/>
           </th>}
           {shownColumns.map(renderHeader)}
         </tr></thead>
         <tbody>
-          {!rows.length
+          {!visibleRows.length
             ? <tr><td colSpan={colSpan} className="empty">Không có tài khoản phù hợp với bộ lọc hiện tại.</td></tr>
-            : rows.map((u,i)=><tr key={u.id} data-account-id={u.id} className={selectedId===u.id?'selected-row':''}>
+            : visibleRows.map((u,i)=><tr key={u.id} data-account-id={u.id} className={selectedId===u.id?'selected-row':''}>
                 {canManage&&<td className="bulk-select-col">
                   <input
                     type="checkbox"

@@ -1,7 +1,7 @@
 import { requireUser } from '@/lib/supabase/auth'
 import {readAccountFilterValues} from '@/lib/account-heading-filter-values'
 import { SystemSlidebar } from '@/components/system-slidebar'
-import { ERPUserInlineForm } from '@/components/erp-user-inline-form'
+import { ERPUserInlineForm, ERPUserActionToast } from '@/components/erp-user-inline-form'
 import { ERPAccountFilterForm } from '@/components/erp-account-filter-form'
 import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { userAuditChange } from '@/lib/user-audit-history'
@@ -402,6 +402,23 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   if(sp.orderTab)detailParams.set('orderTab',sp.orderTab)
   const detailQuery=detailParams.toString()
 
+  // One reset for search, KPI, date, sort and ALL column/header filters.
+  // Preserve the working/archived view and the open detail slidebar.
+  const hasActiveTableFilters=Boolean(
+    queryText||state!=='all'||session!=='all'||voucher!=='all'||
+    orders!=='all'||browser!=='all'||sort!=='newest'||
+    (sp.range&&sp.range!=='all')||sp.from||sp.to||
+    Object.values(columnFilterEntries).some(Boolean)||
+    ['cf_createdAt','cf_createdAt_from','cf_createdAt_to'].some(key=>Boolean(sp[key]))
+  )
+  const clearedParams=new URLSearchParams()
+  if(archiveView)clearedParams.set('archive','archived')
+  if(platform!=='SHOPEE')clearedParams.set('platform',platform)
+  for(const key of ['user','mode','tab','order','orderTab'] as const){
+    if(sp[key])clearedParams.set(key,sp[key])
+  }
+  const clearedFilterHref='/purchase/accounts'+(clearedParams.toString()?'?'+clearedParams.toString():'')
+
   function contextHref(path:string,extra:Record<string,string|null|undefined>={}){
     const p=new URLSearchParams()
     if(sp.range)p.set('range',sp.range)
@@ -515,6 +532,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const isEdit=Boolean(canOperate&&selected&&sp.mode==='edit'&&!selected.archived_at)
 
   return <div className="account-screen">
+    <ERPUserActionToast/>
     <header className="page-head entity-page-head">
       <div>
         <span className="module-eyebrow">MUA HÀNG</span>
@@ -557,6 +575,15 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
         <Link className={!archiveView?'active':''} href={filterHref({archive:null,user:null,mode:null,tab:null})}>Đang dùng</Link>
         <Link className={archiveView?'active':''} href={filterHref({archive:'archived',user:null,mode:null,tab:null})}>Đã lưu trữ</Link>
       </div>
+      <Link href={clearedFilterHref} className={'p1-account-clear-filters'+(!hasActiveTableFilters?' is-disabled':'')}
+        title="Xóa toàn bộ bộ lọc bảng" aria-label="Xóa toàn bộ bộ lọc bảng"
+        aria-disabled={!hasActiveTableFilters} tabIndex={hasActiveTableFilters?0:-1}>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+          strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M3 5h18l-7 8v5l-4 2v-7L3 5Z"/>
+          <path d="m16 16 5 5m0-5-5 5"/>
+        </svg>
+      </Link>
     </ERPAccountFilterForm>
       <div id="p1-account-filter-actions" className="p1-account-filter-actions"/>
     </div>
@@ -571,6 +598,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
           detailQuery={detailQuery}
           sort={sort}
           canManage={canOperate}
+          clearFiltersHref={clearedFilterHref}
+          hasActiveTableFilters={hasActiveTableFilters}
           headingOptions={headingOptions}
           headingValues={headingValues}
           sessionOptions={sessionOptions}

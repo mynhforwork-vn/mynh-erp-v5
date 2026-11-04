@@ -166,93 +166,65 @@ export async function updateERPUser(formData:FormData){
 }
 
 
+// A single protected database transaction must change User state AND write audit history.
+// Do not insert audit_logs from the session role: it is intentionally read-only via RLS.
+async function applyERPUserArchiveChange(supabase:any,userIds:string[],archive:boolean,bulk:boolean){
+  const {data,error}=await supabase.rpc('set_erp_user_archived',{
+    p_user_ids:userIds,p_archive:archive,p_bulk:bulk,
+  })
+  if(error){
+    const message=String(error.message??'')
+    if(error.code==='PGRST202'||/Could not find the function .*set_erp_user_archived/i.test(message)){
+      throw new Error('Chức năng lưu trữ đang được cập nhật, chưa thể thực hiện thao tác. Dữ liệu User chưa bị thay đổi.')
+    }
+    // These errors are raised intentionally inside the protected RPC.
+    if(/^(Không có quyền|Chỉ được chọn|Có User |User đã |User chưa |Danh sách User )/.test(message)){
+      throw new Error(message)
+    }
+    throw new Error('Không thể hoàn thành thao tác User. Hãy tải lại danh sách và kiểm tra trạng thái thực tế trước khi thử lại.')
+  }
+  if(Number(data)!==userIds.length){
+    throw new Error('Chưa xác nhận đủ kết quả cập nhật. Hãy tải lại danh sách User để đối chiếu.')
+  }
+}
+
 export async function archiveERPUser(formData:FormData){
-  const {supabase,user}=await actor()
+  const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
   const tableAction=text(formData.get('table_action'))==='1'
   const userId=text(formData.get('user_id'))
   if(!userId)throw new Error('Thiếu User cần lưu trữ')
 
-  const {data:row,error:readError}=await supabase
-    .from('erp_users')
-    .select('id,username,phone,email,status,archived_at')
-    .eq('id',userId)
-    .maybeSingle()
-  if(readError)throw new Error(readError.message)
-  if(!row)throw new Error('User không tồn tại')
-  if(row.archived_at)throw new Error('User đã được lưu trữ trước đó')
-
-  const archivedAt=new Date().toISOString()
-  const {error}=await supabase.from('erp_users').update({
-    archived_at:archivedAt,
-    archived_by:user.id,
-  }).eq('id',userId)
-  if(error)throw new Error(error.message)
-
-  await supabase.from('audit_logs').insert({
-    actor_user_id:user.id,
-    module:'USERS',
-    action:'ARCHIVE_USER',
-    entity_type:'ERP_USER',
-    entity_id:userId,
-    old_value:{archived_at:null,username:row.username,status:row.status},
-    new_value:{archived_at:archivedAt,username:row.username,status:row.status},
-    source:'USER',
-  })
+  await applyERPUserArchiveChange(supabase,[userId],true,false)
 
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase')
   const href=tableAction
     ? returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:null})
-    : returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:'archived'})
+    : returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:null})
   if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã lưu trữ User'}
   redirect(href)
 }
 
 export async function restoreERPUser(formData:FormData){
-  const {supabase,user}=await actor()
+  const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
   const tableAction=text(formData.get('table_action'))==='1'
   const userId=text(formData.get('user_id'))
   if(!userId)throw new Error('Thiếu User cần khôi phục')
 
-  const {data:row,error:readError}=await supabase
-    .from('erp_users')
-    .select('id,username,status,archived_at')
-    .eq('id',userId)
-    .maybeSingle()
-  if(readError)throw new Error(readError.message)
-  if(!row)throw new Error('User không tồn tại')
-  if(!row.archived_at)throw new Error('User này chưa được lưu trữ')
-
-  const {error}=await supabase.from('erp_users').update({
-    archived_at:null,
-    archived_by:null,
-  }).eq('id',userId)
-  if(error)throw new Error(error.message)
-
-  await supabase.from('audit_logs').insert({
-    actor_user_id:user.id,
-    module:'USERS',
-    action:'RESTORE_USER',
-    entity_type:'ERP_USER',
-    entity_id:userId,
-    old_value:{archived_at:row.archived_at,username:row.username,status:row.status},
-    new_value:{archived_at:null,username:row.username,status:row.status},
-    source:'USER',
-  })
+  await applyERPUserArchiveChange(supabase,[userId],false,false)
 
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase')
   const href=tableAction
     ? returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'})
-    : returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:null})
+    : returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'})
   if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã khôi phục User'}
   redirect(href)
 }
-
 
 /** Gửi thao tác Tài khoản qua React Server Action, không điều hướng tài liệu. */
 export type ERPUserInlineResult={status:'idle'|'ok'|'error';href:string;message:string}
@@ -271,7 +243,14 @@ export async function submitERPUserInline(_previous:ERPUserInlineResult,formData
     // Never swallow a Next.js auth/navigation redirect raised by requireUser().
     const digest=error&&typeof error==='object'&&'digest' in error?String(error.digest):''
     if(digest.startsWith('NEXT_REDIRECT')||digest.startsWith('NEXT_HTTP_ERROR_FALLBACK'))throw error
-    return {status:'error',href:'',message:error instanceof Error?error.message:'Không thể xử lý User. Vui lòng thử lại.'}
+    const message=error instanceof Error?error.message:''
+    const rawDatabaseError=/audit_logs|row.level security|violates|SQLSTATE|PGRST|PostgREST|permission denied|constraint|duplicate key|invalid input syntax|schema cache/i.test(message)
+    const safeMessage=rawDatabaseError
+      ? 'Không thể hoàn tất thao tác. Vui lòng làm mới danh sách để kiểm tra trạng thái trước khi thử lại.'
+      : message.startsWith('Không thể hoàn thành thao tác User.')
+        ? message
+        : message||'Không thể xử lý User. Vui lòng thử lại.'
+    return {status:'error',href:'',message:safeMessage}
   }
 }
 
@@ -284,87 +263,33 @@ function bulkUserIds(formData:FormData){
 }
 
 export async function archiveERPUsersBulk(formData:FormData){
-  const {supabase,user}=await actor()
+  const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
   const userIds=bulkUserIds(formData)
 
-  const {data:rows,error:readError}=await supabase
-    .from('erp_users')
-    .select('id,username,status,archived_at')
-    .in('id',userIds)
-  if(readError)throw new Error(readError.message)
-  if((rows??[]).length!==userIds.length)throw new Error('Có User không tồn tại hoặc không có quyền truy cập')
-  if((rows??[]).some((x:any)=>x.archived_at))throw new Error('Có User đã được lưu trữ. Hãy bỏ chọn các User đó.')
-
-  const archivedAt=new Date().toISOString()
-  const {error}=await supabase.from('erp_users').update({
-    archived_at:archivedAt,
-    archived_by:user.id,
-  }).in('id',userIds)
-  if(error)throw new Error(error.message)
-
-  const audits=(rows??[]).map((row:any)=>({
-    actor_user_id:user.id,
-    module:'USERS',
-    action:'ARCHIVE_USER',
-    entity_type:'ERP_USER',
-    entity_id:String(row.id),
-    old_value:{archived_at:null,username:row.username,status:row.status},
-    new_value:{archived_at:archivedAt,username:row.username,status:row.status,bulk:true},
-    source:'USER',
-  }))
-  if(audits.length){
-    const {error:auditError}=await supabase.from('audit_logs').insert(audits)
-    if(auditError)throw new Error(auditError.message)
-  }
+  // One RPC (one Postgres transaction) for all selected Users and their audits.
+  await applyERPUserArchiveChange(supabase,userIds,true,true)
 
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase')
   const href=returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:null})
-  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã lưu trữ các User'}
+  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã lưu trữ '+userIds.length+' User'}
   redirect(href)
 }
 
 export async function restoreERPUsersBulk(formData:FormData){
-  const {supabase,user}=await actor()
+  const {supabase}=await actor()
   const returnQuery=text(formData.get('return_query'))
   const userIds=bulkUserIds(formData)
 
-  const {data:rows,error:readError}=await supabase
-    .from('erp_users')
-    .select('id,username,status,archived_at')
-    .in('id',userIds)
-  if(readError)throw new Error(readError.message)
-  if((rows??[]).length!==userIds.length)throw new Error('Có User không tồn tại hoặc không có quyền truy cập')
-  if((rows??[]).some((x:any)=>!x.archived_at))throw new Error('Có User chưa được lưu trữ. Hãy bỏ chọn các User đó.')
-
-  const {error}=await supabase.from('erp_users').update({
-    archived_at:null,
-    archived_by:null,
-  }).in('id',userIds)
-  if(error)throw new Error(error.message)
-
-  const audits=(rows??[]).map((row:any)=>({
-    actor_user_id:user.id,
-    module:'USERS',
-    action:'RESTORE_USER',
-    entity_type:'ERP_USER',
-    entity_id:String(row.id),
-    old_value:{archived_at:row.archived_at,username:row.username,status:row.status},
-    new_value:{archived_at:null,username:row.username,status:row.status,bulk:true},
-    source:'USER',
-  }))
-  if(audits.length){
-    const {error:auditError}=await supabase.from('audit_logs').insert(audits)
-    if(auditError)throw new Error(auditError.message)
-  }
+  await applyERPUserArchiveChange(supabase,userIds,false,true)
 
   revalidatePath('/purchase/accounts')
   revalidatePath('/purchase/orders')
   revalidatePath('/purchase')
   const href=returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'})
-  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã khôi phục các User'}
+  if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã khôi phục '+userIds.length+' User'}
   redirect(href)
 }
 
