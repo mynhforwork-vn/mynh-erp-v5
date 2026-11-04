@@ -1,5 +1,5 @@
 name: PR82 Approved One-Time Production Release
-# Activated only by the precisely named, explicitly approved merge commit.
+# One-time retry after the approved merge's shallow-checkout gate failed.
 # Does not run on future main commits and does not apply Supabase migrations.
 on:
   push:
@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   production:
-    if: "${{ startsWith(github.event.head_commit.message, 'Merge PR #82: returned shipment cancellation approved') }}"
+    if: "${{ github.event.head_commit.message == 'release(pr82): approved production Worker deployment from main' }}"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -22,15 +22,18 @@ jobs:
       PROD_URL: https://mynh-erp-v5.mynh-forwork.workers.dev
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Verify expected approved main merge
+      - name: Verify approved PR82 is the immediate ancestor of this one-time release
         shell: bash
         run: |
           test "$GITHUB_REF" = "refs/heads/main"
-          test "$(git log -1 --format=%s)" = 'Merge PR #82: returned shipment cancellation approved'
-          git diff --name-only HEAD^1 HEAD | grep -q 'supabase/migrations/0072_cancel_successfully_returned_orders.sql'
+          test "$(git log -1 --format=%s)" = 'release(pr82): approved production Worker deployment from main'
+          test "$(git rev-parse HEAD^1)" = 'fc223b5685b75f52c8dc230bf7f48e38e2a04e41'
+          git cat-file -e 'fc223b5685b75f52c8dc230bf7f48e38e2a04e41:supabase/migrations/0072_cancel_successfully_returned_orders.sql'
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
       - name: Install dependencies
