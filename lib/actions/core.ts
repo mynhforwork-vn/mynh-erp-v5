@@ -175,7 +175,7 @@ async function applyERPUserArchiveChange(supabase:any,userIds:string[],archive:b
   if(error){
     const message=String(error.message??'')
     if(error.code==='PGRST202'||/Could not find the function .*set_erp_user_archived/i.test(message)){
-      throw new Error('Chức năng lưu trữ an toàn chưa được cập nhật trên cơ sở dữ liệu (SQL 0074). Không thực hiện thay đổi User.')
+      throw new Error('Chức năng lưu trữ đang được cập nhật, chưa thể thực hiện thao tác. Dữ liệu User chưa bị thay đổi.')
     }
     // These errors are raised intentionally inside the protected RPC.
     if(/^(Không có quyền|Chỉ được chọn|Có User |User đã |User chưa |Danh sách User )/.test(message)){

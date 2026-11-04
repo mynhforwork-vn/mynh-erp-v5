@@ -407,7 +407,7 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
   const hasActiveTableFilters=Boolean(
     queryText||state!=='all'||session!=='all'||voucher!=='all'||
     orders!=='all'||browser!=='all'||sort!=='newest'||
-    sp.range||sp.from||sp.to||
+    (sp.range&&sp.range!=='all')||sp.from||sp.to||
     Object.values(columnFilterEntries).some(Boolean)||
     ['cf_createdAt','cf_createdAt_from','cf_createdAt_to'].some(key=>Boolean(sp[key]))
   )
@@ -598,6 +598,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
           detailQuery={detailQuery}
           sort={sort}
           canManage={canOperate}
+          clearFiltersHref={clearedFilterHref}
+          hasActiveTableFilters={hasActiveTableFilters}
           headingOptions={headingOptions}
           headingValues={headingValues}
           sessionOptions={sessionOptions}

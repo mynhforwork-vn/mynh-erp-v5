@@ -61,6 +61,8 @@ export function PurchaseAccountTable({
   detailQuery='',
   sort='newest',
   canManage=false,
+  clearFiltersHref='/purchase/accounts',
+  hasActiveTableFilters=false,
   headingOptions={},headingValues={},sessionOptions=[],
 }:{
   rows:Row[]
@@ -68,6 +70,8 @@ export function PurchaseAccountTable({
   detailQuery?:string
   sort?:string
   canManage?:boolean
+  clearFiltersHref?:string
+  hasActiveTableFilters?:boolean
   headingOptions?:Partial<Record<ColKey,AccountHeadingOption[]>>
   headingValues?:Record<string,string>
   sessionOptions?:AccountHeadingOption[]
@@ -453,6 +457,16 @@ export function PurchaseAccountTable({
             {selected.map(id=><input key={id} type="hidden" name="user_ids" value={id}/>)}
             <button type="submit" className="button small archive-button">Lưu trữ</button>
           </ERPUserInlineForm>}
+        <Link href={clearFiltersHref}
+          className={'p1-account-clear-filters p1-account-mobile-clear-filters'+(!hasActiveTableFilters?' is-disabled':'')}
+          aria-label="Xóa toàn bộ bộ lọc bảng" title="Xóa toàn bộ bộ lọc bảng"
+          aria-disabled={!hasActiveTableFilters} tabIndex={hasActiveTableFilters?0:-1}>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+            strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 5h18l-7 8v5l-4 2v-7L3 5Z"/>
+            <path d="m16 16 5 5m0-5-5 5"/>
+          </svg>
+        </Link>
         <button className="user-bulk-clear" type="button" onClick={()=>setSelected([])}
           aria-label="Bỏ chọn User">Bỏ chọn</button>
       </div>,toolbarRoot)}

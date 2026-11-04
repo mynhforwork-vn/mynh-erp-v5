@@ -33,3 +33,7 @@
 .erp-user-action-toast>button{flex:0 0 auto;padding:1px 3px;border:0;background:transparent;color:inherit;cursor:pointer;font-size:18px;line-height:1}
 .erp-user-action-toast>button:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
 @media(max-width:390px){.erp-user-action-toast{top:max(8px,env(safe-area-inset-top));max-width:calc(100vw - 16px)}.erp-user-action-toast.is-success{right:8px}.erp-user-action-toast.is-error{left:8px}}
+
+/* Mobile selection hides search: show the same clear-all control within bulk actions. */
+.brand-shell-v1 .p1-account-mobile-clear-filters{display:none!important}
+@media(max-width:700px){.brand-shell-v1 .p1-account-mobile-clear-filters{display:inline-flex!important;flex:0 0 27px!important}}
