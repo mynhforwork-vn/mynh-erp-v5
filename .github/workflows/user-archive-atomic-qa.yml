@@ -1,0 +1,30 @@
+name: User archive atomic audit QA
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lib/actions/core.ts'
+      - 'supabase/migrations/0074_atomic_user_archive_audit.sql'
+      - 'scripts/user-archive-atomic-qa.mjs'
+      - '.github/workflows/user-archive-atomic-qa.yml'
+  push:
+    branches: [fix/atomic-user-archive-audit-rls-20261104]
+permissions:
+  contents: read
+jobs:
+  contract-and-typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: User lifecycle atomic SQL and action regression
+        run: |
+          node scripts/user-archive-atomic-qa.mjs
+          node --experimental-strip-types scripts/user-history-spc-security-qa.mjs
+          npm run typecheck
+# No deployment, no SQL execution, no Production/Preview mutation.
