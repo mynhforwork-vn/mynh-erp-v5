@@ -1,0 +1,29 @@
+name: PR84 SPC Copy Icon-Only QA
+on:
+  push:
+    branches: [fix/compact-spc-copy-icon-20261104]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'components/spc-copy-control.tsx'
+      - 'app/styles/user-history-spc-copy.css'
+      - 'app/(erp)/users/page.tsx'
+      - 'scripts/user-history-spc-security-qa.mjs'
+permissions:
+  contents: read
+jobs:
+  contract-and-typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Verify compact SPC icon UI and security contracts
+        run: |
+          node --experimental-strip-types scripts/user-history-spc-security-qa.mjs
+          npm run typecheck
+# CI only. No Cloudflare Preview, Production deployment, or Supabase mutation.
