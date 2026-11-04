@@ -202,7 +202,7 @@ export async function archiveERPUser(formData:FormData){
   revalidatePath('/purchase')
   const href=tableAction
     ? returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:null})
-    : returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:'archived'})
+    : returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:null})
   if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã lưu trữ User'}
   redirect(href)
 }
@@ -221,7 +221,7 @@ export async function restoreERPUser(formData:FormData){
   revalidatePath('/purchase')
   const href=tableAction
     ? returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'})
-    : returnHref('/purchase/accounts',returnQuery,{user:userId,mode:null,tab:'info',archive:null})
+    : returnHref('/purchase/accounts',returnQuery,{user:null,mode:null,tab:null,archive:'archived'})
   if(text(formData.get('inline_submit'))==='1')return {status:'ok' as const,href,message:'Đã khôi phục User'}
   redirect(href)
 }
@@ -243,7 +243,14 @@ export async function submitERPUserInline(_previous:ERPUserInlineResult,formData
     // Never swallow a Next.js auth/navigation redirect raised by requireUser().
     const digest=error&&typeof error==='object'&&'digest' in error?String(error.digest):''
     if(digest.startsWith('NEXT_REDIRECT')||digest.startsWith('NEXT_HTTP_ERROR_FALLBACK'))throw error
-    return {status:'error',href:'',message:error instanceof Error?error.message:'Không thể xử lý User. Vui lòng thử lại.'}
+    const message=error instanceof Error?error.message:''
+    const rawDatabaseError=/audit_logs|row.level security|violates|SQLSTATE|PGRST|PostgREST|permission denied|constraint|duplicate key|invalid input syntax|schema cache/i.test(message)
+    const safeMessage=rawDatabaseError
+      ? 'Không thể hoàn tất thao tác. Vui lòng làm mới danh sách để kiểm tra trạng thái trước khi thử lại.'
+      : message.startsWith('Không thể hoàn thành thao tác User.')
+        ? message
+        : message||'Không thể xử lý User. Vui lòng thử lại.'
+    return {status:'error',href:'',message:safeMessage}
   }
 }
 
