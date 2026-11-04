@@ -36,8 +36,14 @@ export function SpcCopyControl({userId,kind,available}:{userId:string,kind:Kind,
   }
   return <span className="spc-copy-control">
     <button type="button" className="spc-copy-button" disabled={!available||busy} onClick={copy}
-      aria-label={'Sao chép '+kind} title={available?'Sao chép vào bộ nhớ tạm':'Chưa lưu '+kind}>
-      {busy?'Đang sao chép…':'Sao chép '+kind}
+      aria-label={(busy?'Đang sao chép ': 'Sao chép ')+kind}
+      title={busy?'Đang sao chép '+kind:available?'Sao chép '+kind:'Chưa lưu '+kind}
+      aria-busy={busy}>
+      <svg className="spc-copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="8" y="8" width="12" height="12" rx="2"/>
+        <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>
+      </svg>
     </button>
     {feedback&&<small role="status" className="spc-copy-feedback">{feedback}</small>}
   </span>

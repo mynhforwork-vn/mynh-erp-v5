@@ -652,8 +652,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
                 <div><span>Trạng thái</span><b>{selected.archived_at?'Đã lưu trữ':statusLabel(selected.status)}</b></div>
                 <div><span>SĐT</span><b>{formatPhone(selected.phone)}</b></div>
                 <div><span>Email</span><b>{selected.email??'—'}</b></div>
-                <div><span>SPC_ST</span><b>{hasST(selected)?'Đã mã hoá':'Chưa có'}</b>{canOperate&&<SpcCopyControl userId={selected.id} kind="SPC_ST" available={hasST(selected)}/>}</div>
-                <div><span>SPC_F</span><b>{hasF(selected)?'Đã mã hoá':'Chưa có'}</b>{canOperate&&<SpcCopyControl userId={selected.id} kind="SPC_F" available={hasF(selected)}/>}</div>
+                <div><span>SPC_ST</span><div className="spc-value-inline"><b>{hasST(selected)?'Đã mã hoá':'Chưa có'}</b>{canOperate&&<SpcCopyControl userId={selected.id} kind="SPC_ST" available={hasST(selected)}/>}</div></div>
+                <div><span>SPC_F</span><div className="spc-value-inline"><b>{hasF(selected)?'Đã mã hoá':'Chưa có'}</b>{canOperate&&<SpcCopyControl userId={selected.id} kind="SPC_F" available={hasF(selected)}/>}</div></div>
                 <div><span>Số đơn</span><b>{selected.order_count??0} đơn</b></div>
                 <div><span>Ngày tạo</span><b title="Lấy thời gian đặt đơn sớm hơn khi có đơn trước ngày nhập tài khoản">{formatDateTime(selected.effective_created_at??selected.created_at)}</b></div>
                 {selected.archived_at&&<div><span>Lưu trữ lúc</span><b>{formatDateTime(selected.archived_at)}</b></div>}
@@ -791,8 +791,10 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             </section>
             <section className="form-section">
               <h3>Đăng nhập & phiên</h3>
-              <div className="secret-state">SPC_ST: <b>{hasST(selected)?'Đã mã hoá':'Chưa có'}</b> · SPC_F: <b>{hasF(selected)?'Đã mã hoá':'Chưa có'}</b></div>
-              {canOperate&&<div className="spc-copy-actions"><SpcCopyControl userId={selected.id} kind="SPC_ST" available={hasST(selected)}/><SpcCopyControl userId={selected.id} kind="SPC_F" available={hasF(selected)}/></div>}
+              <div className="secret-state spc-secret-inline">
+                <span className="spc-secret-item">SPC_ST: <b>{hasST(selected)?'Đã mã hoá':'Chưa có'}</b>{canOperate&&<SpcCopyControl userId={selected.id} kind="SPC_ST" available={hasST(selected)}/>}</span>
+                <span className="spc-secret-item">SPC_F: <b>{hasF(selected)?'Đã mã hoá':'Chưa có'}</b>{canOperate&&<SpcCopyControl userId={selected.id} kind="SPC_F" available={hasF(selected)}/>}</span>
+              </div>
               <label>Mật khẩu mới<input name="password" type="password" autoComplete="new-password" placeholder="Để trống nếu không đổi"/></label>
               <label>SPC_ST mới<input type="password" name="spc_st" autoComplete="off" spellCheck={false} placeholder="Để trống nếu không đổi"/></label>
               <label>SPC_F mới<input type="password" name="spc_f" autoComplete="off" spellCheck={false} placeholder="Để trống nếu không đổi"/></label>
