@@ -3,11 +3,18 @@
 .user-audit-diff .user-audit-before,.user-audit-diff .user-audit-after{overflow-wrap:anywhere;white-space:normal;font-size:12px}
 .user-audit-before{color:#64748b;font-weight:400}
 .user-audit-after{color:#0f172a;font-weight:600}
-.spc-copy-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.spc-copy-control{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%;margin-top:4px}
-.spc-copy-button{border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:5px;padding:4px 9px;font-size:12px;line-height:1.4;cursor:pointer}
+
+/* SPC copy stays beside its own status in both view and edit sidebars. */
+.spc-value-inline{display:flex;align-items:center;gap:5px;min-width:0;flex-wrap:wrap}
+.spc-value-inline>b{min-width:0}
+.spc-secret-inline{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px}
+.spc-secret-item{display:inline-flex;align-items:center;gap:5px;min-width:0}
+.spc-copy-control{display:inline-flex;align-items:center;position:relative;flex:0 0 auto;vertical-align:middle}
+.spc-copy-button{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:26px;height:26px;padding:0;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:5px;cursor:pointer}
+.spc-copy-icon{display:block;width:15px;height:15px;flex:0 0 15px}
 .spc-copy-button:hover:not(:disabled){background:#eaf2fc;border-color:#94a3b8}
 .spc-copy-button:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
 .spc-copy-button:disabled{opacity:.5;cursor:not-allowed}
-.spc-copy-feedback{font-size:11px;color:#475569}
-@media(max-width:390px){.spc-copy-control{align-items:flex-start}.user-audit-diff{gap:3px 5px}}
+.spc-copy-button[aria-busy="true"] .spc-copy-icon{opacity:.45}
+.spc-copy-feedback{position:absolute;z-index:3;right:0;top:calc(100% + 4px);padding:4px 7px;border-radius:4px;background:#f8fafc;border:1px solid #cbd5e1;box-shadow:0 2px 8px #0f172a15;color:#475569;font-size:11px;line-height:1.3;white-space:nowrap;pointer-events:none}
+@media(max-width:390px){.spc-value-inline{gap:4px}.spc-secret-inline{column-gap:10px}}

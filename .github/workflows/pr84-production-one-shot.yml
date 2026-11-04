@@ -1,0 +1,73 @@
+name: PR84 Approved One-Time Production Release
+# User-approved SPC icon-only release; this job changes only the ERP Production Worker.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/pr84-production-one-shot.yml'
+permissions:
+  contents: read
+concurrency:
+  group: pr84-approved-production-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: "${{ startsWith(github.event.head_commit.message, 'Merge PR #84: compact SPC copy icon approved') }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROD_URL: https://mynh-erp-v5.mynh-forwork.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate approved release gate and scope
+        shell: bash
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$(git log -1 --format=%s)" = 'Merge PR #84: compact SPC copy icon approved'
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          grep -q 'className="spc-copy-icon"' components/spc-copy-control.tsx
+          grep -q 'className="spc-value-inline"' 'app/(erp)/users/page.tsx'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: SPC icon-only and cross-module regression tests
+        run: |
+          node --experimental-strip-types scripts/user-history-spc-security-qa.mjs
+          node --experimental-strip-types scripts/returned-shipment-cancellation-qa.mjs
+          node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+          npm run typecheck
+      - name: Build ERP Production
+        run: npx opennextjs-cloudflare build
+      - name: Deploy ERP Production Worker only
+        run: npx opennextjs-cloudflare deploy
+      - name: Validate Production HTTP and SPC access protections
+        shell: bash
+        run: |
+          HEALTH="$(curl --silent --show-error --max-time 30 -o pr84-health.json -w '%{http_code}' "$PROD_URL/api/health")"
+          test "$HEALTH" = "200"
+          grep -q '"ok":true' pr84-health.json
+          LOGIN="$(curl --silent --show-error --max-time 30 -o /dev/null -w '%{http_code}' "$PROD_URL/login")"
+          test "$LOGIN" = "200"
+          UNAUTH="$(curl --silent --show-error --max-time 30 -o /dev/null -w '%{http_code}' -X POST \
+            -H "Origin: $PROD_URL" -H 'Content-Type: application/json' \
+            -d '{"user_id":"00000000-0000-4000-8000-000000000001","kind":"SPC_ST"}' \
+            "$PROD_URL/api/users/spc/copy")"
+          test "$UNAUTH" = "401"
+          CROSS_ORIGIN="$(curl --silent --show-error --max-time 30 -o /dev/null -w '%{http_code}' -X POST \
+            -H 'Origin: https://example.invalid' -H 'Content-Type: application/json' \
+            -d '{}' "$PROD_URL/api/users/spc/copy")"
+          test "$CROSS_ORIGIN" = "403"
+          echo "PASS: health=$HEALTH login=$LOGIN SPC-anon=$UNAUTH SPC-cross-origin=$CROSS_ORIGIN commit=$GITHUB_SHA"
+          {
+            echo "### PR84 Production release"
+            echo "- main commit: $GITHUB_SHA"
+            echo "- /api/health HTTP $HEALTH; /login HTTP $LOGIN"
+            echo "- SPC unauthenticated HTTP $UNAUTH; cross-origin HTTP $CROSS_ORIGIN"
+            echo "- No DB migration, Worker tracking/Proxy modification, or Preview deployment."
+          } >> "$GITHUB_STEP_SUMMARY"
+# Cleanup of any auto-generated Cloudflare Preview is a separate, post-release step.
