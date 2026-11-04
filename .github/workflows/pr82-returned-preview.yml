@@ -1,0 +1,83 @@
+name: PR82 - Preview tra hang thanh cong
+on:
+  push:
+    branches:
+      - fix/returned-shipment-cancel-order-20261104
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr82-returned-order-preview
+  cancel-in-progress: true
+
+jobs:
+  preview-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      PREVIEW_URL: https://returned-cancellation-qa-v1-mynh-erp-v5.mynh-forwork.workers.dev
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Verify returned/cancelled business contracts
+        run: |
+          node --experimental-strip-types scripts/returned-shipment-cancellation-qa.mjs
+          node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+          node --experimental-strip-types scripts/notification-order-tasks-qa.mjs
+          npm run typecheck
+      - name: Build OpenNext Worker for isolated Preview
+        run: npx opennextjs-cloudflare build
+      - name: Publish NAMED Preview only - do not deploy Production
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx wrangler preview \
+            --name returned-cancellation-qa-v1 \
+            --worker-name mynh-erp-v5 \
+            --message "PR82 successful-return cancellation preview $GITHUB_SHA" \
+            --json > returned-cancellation-preview.json
+          test -s returned-cancellation-preview.json
+          echo "Preview $PREVIEW_URL"
+          echo "Commit $GITHUB_SHA"
+      - name: Live Preview HTTP smoke and authorization
+        shell: bash
+        run: |
+          health="$(curl --silent --show-error --max-time 30 -o pr82-health.json -w '%{http_code}' "$PREVIEW_URL/api/health")"
+          test "$health" = "200"
+          grep -q '"ok":true' pr82-health.json
+          login="$(curl --silent --show-error --max-time 30 -o pr82-login.html -w '%{http_code}' "$PREVIEW_URL/login")"
+          test "$login" = "200"
+          grep -q 'MYNH ERP' pr82-login.html
+          unauth="$(curl --silent --show-error --max-time 30 -o pr82-unauth.json -w '%{http_code}' "$PREVIEW_URL/api/alerts/in-app")"
+          test "$unauth" = "401"
+          printf 'Preview: %s\nCommit: %s\nHealth: %s\nLogin: %s\nUnauthorized alerts: %s\n' "$PREVIEW_URL" "$GITHUB_SHA" "$health" "$login" "$unauth" | tee pr82-smoke.txt
+          {
+            echo "### PR82 Preview (no Production deployment)"
+            echo "- URL: $PREVIEW_URL"
+            echo "- Commit: $GITHUB_SHA"
+            echo "- /api/health: HTTP $health"
+            echo "- /login: HTTP $login"
+            echo "- anonymous /api/alerts/in-app: HTTP $unauth"
+            echo "- SQL 0072 was NOT applied. Production database and Workers were not mutated by this job."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Save non-secret Preview smoke evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr82-returned-preview-${{ github.sha }}
+          path: |
+            pr82-smoke.txt
+            pr82-health.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+# Do not call wrangler deploy, supabase migration, modify production DB or change tracking cron.
