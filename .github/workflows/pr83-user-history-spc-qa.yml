@@ -37,4 +37,6 @@ jobs:
           test "$(curl -fsS --max-time 30 -o pr83-health.json -w '%{http_code}' "$PREVIEW_URL/api/health")" = "200"
           grep -q '"ok":true' pr83-health.json
           test "$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' "$PREVIEW_URL/login")" = "200"
+          test "$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' -X POST -H "Origin: $PREVIEW_URL" -H 'Content-Type: application/json' -d '{"user_id":"00000000-0000-4000-8000-000000000001","kind":"SPC_ST"}' "$PREVIEW_URL/api/users/spc/copy")" = "401"
+          test "$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' -X POST -H 'Origin: https://example.invalid' -H 'Content-Type: application/json' -d '{}' "$PREVIEW_URL/api/users/spc/copy")" = "403"
 # SQL 0073 is not applied to Production and the SPC endpoint's authenticated happy path is NOT E2E verified.
