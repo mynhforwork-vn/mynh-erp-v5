@@ -32,7 +32,7 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           npx wrangler preview --name user-history-spc-qa-v1 --worker-name mynh-erp-v5 --message "PR83 history SPC QA $GITHUB_SHA" --json > pr83-preview.json
-      - name: Preview smoke: health and login
+      - name: Preview health and login smoke
         run: |
           test "$(curl -fsS --max-time 30 -o pr83-health.json -w '%{http_code}' "$PREVIEW_URL/api/health")" = "200"
           grep -q '"ok":true' pr83-health.json
