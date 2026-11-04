@@ -78,7 +78,7 @@ export function buildOrderNotices(rows:LegacyAlert[],orderLinks:OrderLink[]):Tra
     // The route already applies orderIsCancelled, including no-MVD markers;
     // keep this pure order-level fallback for archived/legacy render callers.
     const orderStatus=String(link?.order_status??'').trim().toUpperCase()
-    if(orderStatus==='CANCELLED'||orderStatus==='CANCELED'||liveStatus==='CANCELLED')continue
+    if(orderStatus==='CANCELLED'||orderStatus==='CANCELED'||liveStatus==='CANCELLED'||liveStatus==='RETURNED')continue
     // The timeline remains chronological, not severity-sorted; a past
     // failure must not obscure subsequent transport or a redelivery attempt.
     const ordered=[...events].sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at))

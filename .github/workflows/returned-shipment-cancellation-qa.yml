@@ -1,0 +1,33 @@
+name: Returned shipment cancellation (read-only CI)
+on:
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'app/(erp)/tracking/**'
+      - 'scripts/**'
+      - 'supabase/migrations/0072_cancel_successfully_returned_orders.sql'
+      - '.github/workflows/returned-shipment-cancellation-qa.yml'
+  push:
+    branches:
+      - fix/returned-shipment-cancel-order-20261104
+permissions:
+  contents: read
+jobs:
+  contract-and-typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Returned and returning regression
+        run: |
+          node --experimental-strip-types scripts/returned-shipment-cancellation-qa.mjs
+          node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+          node --experimental-strip-types scripts/notification-order-tasks-qa.mjs
+      - name: Typecheck
+        run: npm run typecheck
+# Do not apply SQL, sync production shipments, or deploy any Worker here.
