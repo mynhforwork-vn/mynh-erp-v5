@@ -26,4 +26,8 @@ assert.doesNotMatch(component,/(?:localStorage|sessionStorage|console\.log|setIn
 const page=read('app/(erp)/users/page.tsx')
 assert.match(page,/const diff=userAuditChange\(h\)/,'history renders old/new')
 assert.match(page,/canOperate&&<SpcCopyControl/,'copy shown only to operator')
+assert.doesNotMatch(page,/<textarea name="spc_(?:st|f)"/,'SPC fields must not show plaintext as textareas')
+assert.match(page,/<input type="password" name="spc_st"/,'SPC ST entry is masked')
+assert.match(page,/<input type="password" name="spc_f"/,'SPC F entry is masked')
+assert.match(component,/setTimeout\(\(\)=>setFeedback\(''\),5000\)/,'copy feedback clears after five seconds')
 console.log('PASS USER_HISTORY_SPC_STATIC_QA (no SQL DB E2E; migration staged)')

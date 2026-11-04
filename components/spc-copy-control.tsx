@@ -1,10 +1,15 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type Kind='SPC_ST'|'SPC_F'
 export function SpcCopyControl({userId,kind,available}:{userId:string,kind:Kind,available:boolean}){
   const [busy,setBusy]=useState(false)
   const [feedback,setFeedback]=useState('')
+  useEffect(()=>{
+    if(!feedback)return
+    const handle=window.setTimeout(()=>setFeedback(''),5000)
+    return ()=>window.clearTimeout(handle)
+  },[feedback])
   async function copy(){
     if(busy||!available)return
     setBusy(true)
