@@ -595,8 +595,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
             <section className="form-section">
               <h3>Đăng nhập & phiên</h3>
               <label>Mật khẩu<input name="password" type="password" autoComplete="new-password"/></label>
-              <label>SPC_ST<textarea name="spc_st" rows={2}/></label>
-              <label>SPC_F<textarea name="spc_f" rows={2}/></label>
+              <label>SPC_ST<input type="password" name="spc_st" autoComplete="off" spellCheck={false}/></label>
+              <label>SPC_F<input type="password" name="spc_f" autoComplete="off" spellCheck={false}/></label>
             </section>
             <section className="form-section">
               <h3>Thiết bị</h3>
@@ -794,8 +794,8 @@ export default async function UsersPage({searchParams}:{searchParams:Promise<SP>
               <div className="secret-state">SPC_ST: <b>{hasST(selected)?'Đã mã hoá':'Chưa có'}</b> · SPC_F: <b>{hasF(selected)?'Đã mã hoá':'Chưa có'}</b></div>
               {canOperate&&<div className="spc-copy-actions"><SpcCopyControl userId={selected.id} kind="SPC_ST" available={hasST(selected)}/><SpcCopyControl userId={selected.id} kind="SPC_F" available={hasF(selected)}/></div>}
               <label>Mật khẩu mới<input name="password" type="password" autoComplete="new-password" placeholder="Để trống nếu không đổi"/></label>
-              <label>SPC_ST mới<textarea name="spc_st" rows={2} placeholder="Để trống nếu không đổi"/></label>
-              <label>SPC_F mới<textarea name="spc_f" rows={2} placeholder="Để trống nếu không đổi"/></label>
+              <label>SPC_ST mới<input type="password" name="spc_st" autoComplete="off" spellCheck={false} placeholder="Để trống nếu không đổi"/></label>
+              <label>SPC_F mới<input type="password" name="spc_f" autoComplete="off" spellCheck={false} placeholder="Để trống nếu không đổi"/></label>
             </section>
             <section className="form-section">
               <h3>Thiết bị</h3>
