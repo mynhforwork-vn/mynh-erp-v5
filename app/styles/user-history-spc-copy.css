@@ -25,14 +25,14 @@
 .brand-shell-v1 .p1-account-clear-filters:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
 .brand-shell-v1 .p1-account-clear-filters.is-disabled{opacity:.35;pointer-events:none;cursor:default}
 
-/* User operation feedback: success TOP-RIGHT, error TOP-LEFT, never in filter/table layout. */
-.erp-user-action-toast{position:fixed;top:max(12px,env(safe-area-inset-top));z-index:5000;display:flex;align-items:flex-start;gap:10px;box-sizing:border-box;max-width:min(400px,calc(100vw - 24px));padding:10px 12px;border:1px solid #cbd5e1;border-left-width:3px;border-radius:5px;background:#fff;color:#334155;box-shadow:0 5px 24px #0f172a1f;font-size:12px;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
-.erp-user-action-toast.is-success{right:max(12px,env(safe-area-inset-right));border-left-color:#07836f}
-.erp-user-action-toast.is-error{left:max(12px,env(safe-area-inset-left));border-left-color:#be123c}
+/* User operation feedback: both success and error TOP-RIGHT, never in filter/table layout. */
+.erp-user-action-toast{position:fixed;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:5000;display:flex;align-items:flex-start;gap:10px;box-sizing:border-box;max-width:min(400px,calc(100vw - 24px));padding:10px 12px;border:1px solid #cbd5e1;border-left-width:3px;border-radius:5px;background:#fff;color:#334155;box-shadow:0 5px 24px #0f172a1f;font-size:12px;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
+.erp-user-action-toast.is-success{border-left-color:#07836f}
+.erp-user-action-toast.is-error{border-left-color:#be123c}
 .erp-user-action-toast>span{min-width:0;flex:1}
 .erp-user-action-toast>button{flex:0 0 auto;padding:1px 3px;border:0;background:transparent;color:inherit;cursor:pointer;font-size:18px;line-height:1}
 .erp-user-action-toast>button:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
-@media(max-width:390px){.erp-user-action-toast{top:max(8px,env(safe-area-inset-top));max-width:calc(100vw - 16px)}.erp-user-action-toast.is-success{right:8px}.erp-user-action-toast.is-error{left:8px}}
+@media(max-width:390px){.erp-user-action-toast{top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));max-width:calc(100vw - 16px)}}
 
 /* Mobile selection hides search: show the same clear-all control within bulk actions. */
 .brand-shell-v1 .p1-account-mobile-clear-filters{display:none!important}

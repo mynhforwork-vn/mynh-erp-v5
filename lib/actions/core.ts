@@ -244,9 +244,14 @@ export async function submitERPUserInline(_previous:ERPUserInlineResult,formData
     const digest=error&&typeof error==='object'&&'digest' in error?String(error.digest):''
     if(digest.startsWith('NEXT_REDIRECT')||digest.startsWith('NEXT_HTTP_ERROR_FALLBACK'))throw error
     const message=error instanceof Error?error.message:''
+    // Username is unique across active and archived Users. Explain a known
+    // conflict without exposing raw database details or weakening the constraint.
+    const duplicateUsername=(kind==='create'||kind==='update')&&/erp_users_username_key/i.test(message)
     const rawDatabaseError=/audit_logs|row.level security|violates|SQLSTATE|PGRST|PostgREST|permission denied|constraint|duplicate key|invalid input syntax|schema cache/i.test(message)
-    const safeMessage=rawDatabaseError
-      ? 'Không thể hoàn tất thao tác. Vui lòng làm mới danh sách để kiểm tra trạng thái trước khi thử lại.'
+    const safeMessage=duplicateUsername
+      ? 'Username đã tồn tại trong hệ thống, kể cả tài khoản đã lưu trữ. Hãy kiểm tra mục Đang dùng / Đã lưu trữ để chỉnh sửa hoặc khôi phục, hoặc nhập Username khác.'
+      : rawDatabaseError
+        ? 'Không thể hoàn tất thao tác. Vui lòng làm mới danh sách để kiểm tra trạng thái trước khi thử lại.'
       : message.startsWith('Không thể hoàn thành thao tác User.')
         ? message
         : message||'Không thể xử lý User. Vui lòng thử lại.'

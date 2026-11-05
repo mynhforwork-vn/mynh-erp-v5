@@ -42,4 +42,17 @@ assert.match(compactCss,/\.spc-copy-feedback\{position:absolute/,'feedback does 
 assert.match(page,/className="spc-value-inline"/,'SPC copy is inline in details')
 assert.match(page,/className="secret-state spc-secret-inline"/,'SPC copy stays inline in edit form')
 assert.doesNotMatch(page,/className="spc-copy-actions"/,'remove separate copy action row')
-console.log('PASS USER_HISTORY_SPC_STATIC_QA (no SQL DB E2E; migration staged)')
+
+// Regression: creating an existing username shows a safe and actionable message,
+// while User success/error toasts share the upper-right anchor at every breakpoint.
+const userActions=read('lib/actions/core.ts')
+const userToast=read('components/erp-user-inline-form.tsx')
+assert.match(userActions,/duplicateUsername=\(kind==='create'\|\|kind==='update'\).*erp_users_username_key/,'detect the exact username unique constraint in create/update')
+assert.match(userActions,/Username đã tồn tại trong hệ thống/,'tell the operator the username already exists')
+assert.match(userActions,/Đang dùng \/ Đã lưu trữ/,'point to both active and archived Users')
+assert.match(compactCss,/\.erp-user-action-toast\{[^}]*right:max\(12px,env\(safe-area-inset-right\)\)/,'User toast anchors at upper right')
+assert.doesNotMatch(compactCss,/\.erp-user-action-toast\.is-error\{[^}]*left:/,'User errors must not anchor left')
+assert.match(compactCss,/@media\(max-width:390px\)\{\.erp-user-action-toast\{[^}]*right:max\(8px,env\(safe-area-inset-right\)\)/,'mobile toast anchors at upper right')
+assert.match(userToast,/window\.setTimeout\(\(\)=>setFeedback\(null\),5000\)/,'User toast closes after five seconds')
+assert.match(userToast,/aria-label="Đóng thông báo"/,'User toast can be dismissed')
+console.log('PASS USER_HISTORY_SPC_STATIC_QA + USER_CREATE_TOAST_STATIC_QA (no SQL DB E2E; migration staged)')
