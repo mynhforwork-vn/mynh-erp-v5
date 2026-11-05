@@ -1,0 +1,92 @@
+/* Bóc tách — bản thiết kế lại dựa trên contract bảng/slidebar hiện có của ERP.
+ * Chỉ các quy tắc bên trong .wh-native; không ghi đè CSS global.
+ */
+.wh-native{min-width:0;min-height:0;display:flex;flex-direction:column;flex:1 1 auto;gap:7px}
+.wh-native *{box-sizing:border-box}
+.wh-native-filters{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;flex:0 0 auto;min-width:0}
+.wh-native-warehouse-tabs,.wh-native-phase-tabs{display:flex;align-items:center;gap:5px;min-width:0;flex-wrap:wrap}
+.wh-native-warehouse-tabs button,.wh-native-phase-tabs button{border:1px solid #e1e8ed;background:#fff;border-radius:5px;color:#5d7083;min-height:30px;padding:6px 9px;font-size:10.5px;line-height:1.3;cursor:pointer}
+.wh-native-warehouse-tabs button.active,.wh-native-phase-tabs button.active{background:#eef6fc;border-color:#bad2e6;color:#245e8a;font-weight:700}
+.wh-native-warehouse-tabs button b{margin-left:4px;font-size:10px;font-variant-numeric:tabular-nums}
+.wh-native-workspace{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);gap:var(--mynh-panel-gap,8px);align-items:stretch;overflow:hidden}
+.wh-native-list{min-width:0;min-height:0;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.wh-native-table-toolbar{flex:0 0 auto;display:flex;align-items:center;gap:7px;min-height:38px;padding:3px 4px}
+.wh-native-table-toolbar .managed-table-meta{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:auto;font-size:10px;color:#657b8b}
+.wh-native-table-toolbar .managed-table-meta b{font-size:11px;color:#294c64}
+.wh-native-search{display:flex;align-items:center;gap:4px;flex:0 1 250px;min-width:150px}
+.wh-native-search input{min-width:0;width:100%;min-height:29px;border:1px solid #dce5ed;border-radius:5px;background:#fff;padding:6px 8px;font-size:10.5px;color:#304c61}
+.wh-native-search button{flex:0 0 28px;width:28px;height:29px;background:#fff;color:#667b89;border:1px solid #dce5ed;border-radius:5px;cursor:pointer;font-size:15px}
+.wh-native-table-toolbar .managed-column-wrap{position:relative;flex:0 0 auto}
+.wh-native-table-toolbar .managed-column-button{white-space:nowrap}
+.wh-native-table-wrap{flex:1 1 auto;min-height:0;overflow:auto!important;border:1px solid #e2e9ee;background:#fff;scrollbar-width:thin;overscroll-behavior:contain}
+.wh-native-table{width:100%;border-collapse:separate;border-spacing:0;table-layout:auto}
+.wh-native-table th{position:sticky;top:0;z-index:3;white-space:nowrap;background:#f6f9fb;border-bottom:1px solid #dfe8ed;font-size:10px;font-weight:680}
+.wh-native-table td{font-size:10.7px;color:#35556c;padding:8px 9px!important;white-space:nowrap;max-width:230px}
+.wh-native-table .tracking-order-id{max-width:220px}
+.wh-native-order-link{border:0;background:transparent;padding:0;color:#176798;cursor:pointer;white-space:nowrap;font-size:11px}
+.wh-native-order-link:hover{text-decoration:underline}
+.wh-native-panel{height:100%;max-height:100%;min-height:0;overflow:hidden}
+.wh-native-panel-content{display:flex;flex-direction:column;gap:8px;min-width:0}
+.wh-native-progress{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;font-size:10.3px;color:#758595}
+.wh-native-progress b{font-size:11px;color:#35566f}
+.wh-native-item-list{display:flex;flex-direction:column;gap:3px}
+.wh-native-item-list button{min-width:0;display:flex;align-items:center;justify-content:space-between;text-align:left;gap:7px;cursor:pointer;padding:8px 7px;background:#fff;border:1px solid #e6ecf0;border-radius:4px}
+.wh-native-item-list button.active{border-color:#b4cfe2;background:#f3f8fc}
+.wh-native-item-list button>span:first-child{min-width:0;display:flex;flex-direction:column;gap:3px}
+.wh-native-item-list b{font-size:10.8px;color:#345369;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wh-native-item-list small{font-size:9.5px;color:#7b8b99}
+.wh-native-item-status{font-size:9.5px;color:#5b7790;white-space:nowrap}
+.wh-native-editor{border-top:1px solid #e8edf1;padding-top:10px;display:flex;flex-direction:column;gap:9px}
+.wh-native-editor .panel-section-head{margin:5px 0 0;min-height:23px;padding:0;border:0}
+.wh-native-editor .panel-section-head h3{font-size:11.5px;margin:0;color:#35566e}
+.wh-native-price-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid #e6edf2;border-radius:5px;overflow:hidden}
+.wh-native-price-row>div{display:flex;flex-direction:column;gap:5px;min-width:0;padding:9px 7px;background:#f8fafb;border-right:1px solid #e6edf2}
+.wh-native-price-row>div:last-child{border-right:0}
+.wh-native-price-row span{font-size:9px;color:#6f8293}
+.wh-native-price-row b{font-size:11px;color:#294f6a;overflow-wrap:anywhere}
+.wh-native-source-note{font-size:9.8px;color:#748798}
+.wh-native-switch{display:flex;gap:5px;flex-wrap:wrap}
+.wh-native-switch button{border:1px solid #dce7ee;border-radius:5px;background:#fff;color:#546c7f;padding:7px 9px;font-size:10.5px;cursor:pointer}
+.wh-native-switch button.active{border-color:#a9cbe2;background:#eef7fc;color:#265f8c;font-weight:720}
+.wh-native-field{display:flex;flex-direction:column;gap:4px;min-width:0;color:#64798b;font-size:10px;font-weight:650}
+.wh-native-field input,.wh-native-field select,.wh-native-field textarea{width:100%;min-width:0;min-height:31px;padding:7px 9px;border:1px solid #dbe6ee;border-radius:5px;background:#fff;color:#314e63;font-size:11px}
+.wh-native-field textarea{resize:vertical;min-height:58px}
+.wh-native-field-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.wh-native-conversion{display:flex;justify-content:space-between;align-items:center;gap:6px;border-top:1px solid #e9eef2;border-bottom:1px solid #e9eef2;padding:7px 2px;color:#597283;font-size:10.5px}
+.wh-native-conversion b{font-size:12px;color:#2e627f}
+.wh-native-design-action{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:3px}
+.wh-native-design-action small{font-size:9.5px;color:#8b7480}
+.wh-native-notice{padding:8px 9px;background:#f4f9fc;border-left:2px solid #9dbdd4;color:#41637c;font-size:10.5px;line-height:1.45}
+.wh-native-info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border-top:1px solid #e7edf2;border-left:1px solid #e7edf2}
+.wh-native-info-grid>div{display:flex;flex-direction:column;gap:5px;padding:8px 9px;border-right:1px solid #e7edf2;border-bottom:1px solid #e7edf2;min-width:0}
+.wh-native-info-grid span,.wh-native-info-line span{font-size:9.5px;color:#708596}
+.wh-native-info-grid b,.wh-native-info-line b{font-size:10.8px;color:#355469;overflow-wrap:anywhere;font-weight:670}
+.wh-native-info-grid .full{grid-column:1/-1}
+.wh-native-info-line{display:flex;flex-direction:column;gap:5px;border-bottom:1px solid #e9eef1;padding:7px 3px}
+.wh-native-vouchers,.wh-native-info-items{display:flex;flex-direction:column;gap:4px}
+.wh-native-vouchers>div,.wh-native-info-items button{border:1px solid #e9eef2;border-radius:4px;padding:8px 9px;background:#fff}
+.wh-native-vouchers b,.wh-native-info-items b{font-size:10.5px;color:#31546c}
+.wh-native-vouchers span,.wh-native-info-items span{font-size:9.5px;color:#6e8494}
+.wh-native-vouchers>div,.wh-native-info-items button{display:flex;flex-direction:column;gap:3px}
+.wh-native-info-items button{text-align:left;cursor:pointer}
+@media(min-width:901px){
+  .brand-shell-v1 .wh-native-workspace.with-panel{grid-template-columns:minmax(0,1fr) var(--mynh-panel-width,400px)!important}
+  .brand-shell-v1 .wh-native-workspace.with-panel>.wh-native-panel.mynh-slide-panel{
+    position:relative!important;inset:auto!important;min-height:0!important;height:100%!important;max-height:100%!important;
+  }
+}
+@media(max-width:900px){
+  .wh-native-workspace{min-height:360px;overflow:visible}
+  .wh-native-list{min-height:350px}
+  .brand-shell-v1 .wh-native-workspace.with-panel{grid-template-columns:minmax(0,1fr)!important}
+}
+@media(max-width:650px){
+  .wh-native-filters{align-items:stretch;flex-direction:column}
+  .wh-native-warehouse-tabs,.wh-native-phase-tabs{flex-wrap:nowrap;overflow-x:auto;max-width:100%;padding-bottom:3px}
+  .wh-native-warehouse-tabs button,.wh-native-phase-tabs button{white-space:nowrap;flex:0 0 auto}
+  .wh-native-table-toolbar{flex-wrap:wrap;gap:5px}
+  .wh-native-table-toolbar .managed-table-meta{flex:0 0 100%}
+  .wh-native-search{flex:1 1 150px}
+  .wh-native-workspace{min-height:410px}
+}
+@media(max-width:355px){.wh-native-price-row{grid-template-columns:1fr}.wh-native-price-row>div{border-right:0;border-bottom:1px solid #e6edf2}.wh-native-price-row>div:last-child{border-bottom:0}.wh-native-field-pair{grid-template-columns:1fr}}
