@@ -107,6 +107,9 @@ export function WarehouseIntakeNativeDesign({
 }) {
   const [openWarehouses, setOpenWarehouses] = useState<Record<string, boolean>>({ BG: true, HN: true, unknown: false })
   const [phase, setPhase] = useState<Phase>(initialPhase)
+  // Deep-links from KPI and other modules must update the active filter even
+  // if Next.js preserves this client component between search-param navigations.
+  useEffect(() => { setPhase(initialPhase) }, [initialPhase])
   const [search, setSearch] = useState('')
   const [activeId, setActiveId] = useState<string | null>(null)
   const [panelTab, setPanelTab] = useState<'products' | 'info' | 'history'>('products')
