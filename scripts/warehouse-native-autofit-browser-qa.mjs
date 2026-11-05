@@ -22,14 +22,17 @@ const entry=[
   "rows[1].order_items.forEach(item=>{item.product_variant_id='READY-TEST-SKU'})",
   "rows[2].warehouse_status='WAREHOUSE_RECEIVED'",
   "rows[3].warehouse_status='WAREHOUSE_SKIPPED'",
-  "createRoot(document.getElementById('root')).render(<div className='fixture-shell'><WarehouseIntakeNativeDesign rows={rows} variants={[]} auditLogs={[]}/></div>)"
+  "const skuVariant={id:'SKU-SALE-EXISTING',variant_name:'110ml',sale_price:155000,products:{sku:'SKU-EXISTING-110',name:'Dầu gội đầu dành cho nam Clear Men'}}",
+  "const suggestions={[rows[0].order_items[0].id]:{variant_id:skuVariant.id,sku:'SKU-EXISTING-110',product_name:'Dầu gội đầu dành cho nam Clear Men',variant_name:'110ml',multiplier:2}}",
+  "function Harness(){const [phase,setPhase]=React.useState('all');return <><div className='fixture-controls'><button className='fixture-done-kpi' onClick={()=>setPhase('done')}>KPI Đã xử lý</button><button className='fixture-work-kpi' onClick={()=>setPhase('all')}>KPI Việc cần xử lý</button></div><div className='fixture-shell'><WarehouseIntakeNativeDesign rows={rows} variants={[skuVariant]} suggestions={suggestions} auditLogs={[]} initialPhase={phase}/></div></>}",
+  "createRoot(document.getElementById('root')).render(<Harness/>)"
 ].join('\n');
 const entryPath=path.join(tmp,'entry.tsx'), outfile=path.join(tmp,'bundle.js');
 writeFileSync(entryPath,entry);
 await build({entryPoints:[entryPath],outfile,absWorkingDir:root,bundle:true,platform:'browser',format:'iife',jsx:'automatic',define:{'process.env.NODE_ENV':'"production"'},alias:{'@':root},nodePaths:[path.join(root,'node_modules')]});
 const cssFiles=readdirSync(path.join(root,'app/styles')).filter(f=>f.endsWith('.css')&&f!=='warehouse-native-design.css');
 const css=cssFiles.map(f=>readFileSync(path.join(root,'app/styles',f),'utf8')).join('\n')+'\n'+readFileSync(path.join(root,'app/styles/warehouse-native-design.css'),'utf8');
-const shellCss='body{margin:0;background:#f5f7fa;font-family:Arial,sans-serif}.fixture-shell{margin-left:252px;width:calc(100vw - 252px);padding:12px 16px;height:calc(100dvh - 24px);display:flex;min-width:0}.fixture-shell .wh-native{width:100%;height:100%;min-width:0}.fixture-shell .wh-native-workspace{height:calc(100% - 85px);min-height:0}@media(max-width:900px){.fixture-shell{margin-left:0;width:100%;padding:8px;height:100dvh}.fixture-shell .wh-native-workspace{height:calc(100% - 110px)}}';
+const shellCss='body{margin:0;background:#f5f7fa;font-family:Arial,sans-serif}.fixture-controls{position:fixed;left:3px;top:3px;z-index:40;display:flex;gap:4px}.fixture-controls button{font-size:9px;border:1px solid #ccd;background:white}.fixture-shell{margin-left:252px;width:calc(100vw - 252px);padding:12px 16px;height:calc(100dvh - 24px);display:flex;min-width:0}.fixture-shell .wh-native{width:100%;height:100%;min-width:0}.fixture-shell .wh-native-workspace{height:calc(100% - 85px);min-height:0}@media(max-width:900px){.fixture-shell{margin-left:0;width:100%;padding:8px;height:100dvh}.fixture-shell .wh-native-workspace{height:calc(100% - 110px)}}';
 const html='<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'\n'+shellCss+'</style></head><body class="brand-shell-v1"><div id="root"></div><script>'+readFileSync(outfile,'utf8')+'</script></body></html>';
 const executable=process.env.CHROME_BIN||'/usr/bin/chromium';
 const browser=await chromium.launch({headless:true,executablePath:executable,args:['--no-sandbox']});
@@ -46,6 +49,9 @@ try{
     const rects=Array.from(t.querySelector('tbody tr.wh-native-data-row').querySelectorAll('td')).map(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,overflow:getComputedStyle(el).overflowX}});
     const lines=Array.from(t.querySelector('tbody tr.wh-native-data-row').querySelectorAll('.wh-native-product-line')).map(el=>({text:el.textContent,weight:getComputedStyle(el).fontWeight,wrap:getComputedStyle(el).whiteSpace,height:el.getBoundingClientRect().height,lineHeight:parseFloat(getComputedStyle(el).lineHeight)}));
     const heads=Array.from(document.querySelectorAll('.wh-native-warehouse-head')).map(el=>({width:el.getBoundingClientRect().width,scroll:el.scrollWidth}));
+    const listRect=document.querySelector('.wh-native-list').getBoundingClientRect();
+    const panels=Array.from(document.querySelectorAll('.wh-native-workspace > aside.mynh-slide-panel')).map(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width}});
+    const fontSize=parseFloat(getComputedStyle(t.querySelector('tbody tr.wh-native-data-row td')).fontSize);
     return {
       table:t.getBoundingClientRect().width,
       wrap:wr.getBoundingClientRect().width,
@@ -54,7 +60,7 @@ try{
       overflow:document.documentElement.scrollWidth-innerWidth,
       cols:rects.length,
       headers:t.querySelectorAll('thead th').length,
-      rects,lines,heads,
+      rects,lines,heads,fontSize,geometry:{listRight:listRect.right,panels},
       statusClasses:Array.from(document.querySelectorAll('tr.wh-native-data-row .status-pill')).map(el=>el.className),
       statusLabels:Array.from(document.querySelectorAll('tr.wh-native-data-row .status-pill')).map(el=>el.textContent?.trim()),
     };
@@ -70,8 +76,18 @@ try{
    const allowedLabels=['Chờ bóc tách','Chờ nhập kho','Đã xử lý'];
    assert.ok(result.statusLabels.every(t=>allowedLabels.includes(t)),
      'unknown order status at '+w+' '+state+': '+result.statusLabels.join(','));
-   for(const label of allowedLabels)assert.ok(result.statusLabels.includes(label),
-     'missing order status '+label+' at '+w+' '+state);
+   assert.ok(result.fontSize<=10.1,'table data too large '+w+' '+state+' '+result.fontSize);
+   if(result.geometry.panels.length){
+     const first=result.geometry.panels[0];
+     assert.ok(first.left>=result.geometry.listRight-1,'first slidebar overlaps table '+w+' '+state);
+     assert.ok(first.left-result.geometry.listRight<=7,'excessive gap before slidebar '+w+' '+state);
+   }
+   if(result.geometry.panels.length===2){
+     const [first,second]=result.geometry.panels;
+     assert.ok(second.left>=first.right-1,'second slidebar overlaps first '+w+' '+state+' '+JSON.stringify(result.geometry));
+     assert.ok(second.left-first.right<=7,'excessive gap between two slidebars '+w+' '+state);
+     assert.ok(first.width>=215&&second.width>=215,'dual panels became too narrow '+w+' '+state);
+   }
    assert.ok(result.statusClasses.every(c=>c.includes('status-pill')),
      'status tags must use ERP status-pill '+w+' '+state);
    assert.ok(result.heads.every(v=>v.scroll<=v.width+3),'warehouse card header overflows '+w+' '+state+' '+JSON.stringify(result));
@@ -91,7 +107,7 @@ try{
   const hnCard=page.locator('.wh-native-warehouse-card').filter({hasText:'KHO HN'});
   assert.equal(await bgCard.count(),1);
   assert.equal(await hnCard.count(),1);
-  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),4);
+  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),2,'default work view excludes completed BG orders');
   assert.equal(await hnCard.locator('tr.wh-native-data-row').count(),10);
   assert.equal(await bgCard.locator('.wh-native-warehouse-metrics > span').count(),5);
   assert.equal(await hnCard.locator('.wh-native-warehouse-metrics > span').count(),5);
@@ -104,19 +120,30 @@ try{
   assert.equal(await bgCard.locator('.wh-native-table').count(),1,'BG must remain expanded');
   await hnCard.getByRole('button',{name:'Mở KHO HN'}).click();
   const statusFilters=page.locator('.wh-native-phase-tabs button');
-  assert.equal(await statusFilters.count(),4,'3 statuses plus an explicit all-orders filter');
+  assert.equal(await statusFilters.count(),3,'only work/pending/ready filters; processed is KPI only');
   await statusFilters.filter({hasText:'Chờ nhập kho'}).click();
   assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),1,'ready filter must include exactly the mapped BG order');
-  await statusFilters.filter({hasText:'Đã xử lý'}).click();
-  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),2,'done must group received and skipped BG orders');
+  assert.equal(await statusFilters.filter({hasText:'Đã xử lý'}).count(),0,'processed cannot be opened via ordinary filters');
+  await page.locator('.fixture-done-kpi').click();
+  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),2,'processed KPI reveals received and skipped BG orders');
+  assert.equal(await hnCard.locator('tr.wh-native-data-row').count(),0,'processed KPI excludes unfinished HN orders');
+  assert.ok((await bgCard.locator('tr.wh-native-data-row .status-pill').allTextContents()).every(text=>text.trim()==='Đã xử lý'),'completed orders must have the unified status');
+  await page.locator('.fixture-work-kpi').click();
+  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),2,'return to work hides completed orders');
   await statusFilters.filter({hasText:'Chờ bóc tách'}).click();
   assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),1,'pending must show unmapped BG order');
-  await statusFilters.filter({hasText:'Tất cả đơn'}).click();
-  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),4,'all-orders filter restores all BG orders');
+  await statusFilters.filter({hasText:'Việc cần xử lý'}).click();
+  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),2,'work list must still exclude completed BG orders');
   const closed=await check('closed');
   assert.equal(closed.cols,7);
   await page.locator('.wh-native-order-link').first().click();
   await page.waitForSelector('.wh-native-panel');
+  await page.waitForSelector('.wh-native-sku-suggestion[data-source="past-mapping"]');
+  await page.locator('.wh-native-sku-suggestion button').click();
+  assert.equal(await page.locator('.wh-native-editor input[type="number"]').first().inputValue(),'155000','suggested SKU should prefill live sale price');
+  assert.equal(await page.locator('.wh-native-editor input[type="number"]').nth(1).inputValue(),'2','suggestion restores historic multiplier');
+  await page.locator('.wh-native-editor input[type="number"]').first().fill('159000');
+  assert.equal(await page.locator('.wh-native-editor input[type="number"]').first().inputValue(),'159000','sale price remains editable');
   const opened=await check('open');
   assert.equal(opened.cols,7);
   if(w>=1280)assert.ok(opened.table<=closed.table+2,'open panel should shrink widths at '+w);
@@ -131,7 +158,7 @@ try{
   if(w>=1024){
    await page.evaluate(()=>{
      const second=document.createElement('aside');
-     second.className='mynh-slide-panel wh-native-extra-panel';
+     second.className='whx-detail-panel warehouse-intake-panel mynh-slide-panel wh-native-panel wh-native-extra-panel';
      second.textContent='Chi tiết thứ hai';
      document.querySelector('.wh-native-workspace').appendChild(second);
    });
