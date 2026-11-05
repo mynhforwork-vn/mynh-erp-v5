@@ -108,3 +108,18 @@
 .wiv21-table .managed-sort-head{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;white-space:nowrap;color:inherit;border:0;background:transparent;padding:0;font-size:inherit;font-weight:inherit}
 .wiv21-table .managed-sort-head i{color:#95a6b5;font-style:normal;font-size:10px}
 @media(max-width:600px){.wiv21-tools{flex:1 1 100%;justify-content:stretch;width:100%}.wiv21-tools .wiv21-toolbar-input{flex:1}}
+
+/* Keep list readable and interactive while a desktop right slidebar is open. */
+@media(min-width:1025px){
+  .wiv21-panel{width:min(640px,55vw)}
+  .wiv21-backdrop{display:none}
+  .wiv21-open .wiv21-grid-wrap,.wiv21-open .wiv21-toolbar{
+    margin-right:min(640px,55vw);transition:margin-right .16s ease
+  }
+  .wiv21-open .wiv21-toolbar{align-items:stretch;flex-direction:column}
+  .wiv21-open .wiv21-tools{width:100%;flex:0 1 auto;justify-content:flex-start}
+}
+@media(min-width:1700px){
+  .wiv21-panel{width:min(720px,43vw)}
+  .wiv21-open .wiv21-grid-wrap,.wiv21-open .wiv21-toolbar{margin-right:min(720px,43vw)}
+}
