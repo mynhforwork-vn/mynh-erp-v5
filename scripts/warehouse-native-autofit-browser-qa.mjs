@@ -37,7 +37,7 @@ const html='<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" co
 const executable=process.env.CHROME_BIN||'/usr/bin/chromium';
 const browser=await chromium.launch({headless:true,executablePath:executable,args:['--no-sandbox']});
 try{
- for(const [w,h] of [[1440,900],[1280,800],[1024,768],[768,1024],[390,844],[320,568]]){
+ for(const [w,h] of [[1536,864],[1440,900],[1366,768],[1280,800],[1024,768],[768,1024],[390,844],[320,568]]){
   const page=await browser.newPage({viewport:{width:w,height:h}}), errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.setContent(html,{waitUntil:'load',timeout:60000});
@@ -164,7 +164,7 @@ try{
   assert.equal(await page.locator('.wh-native-editor input[type="number"]').first().inputValue(),'159000','sale price remains editable');
   const opened=await check('open');
   assert.equal(opened.cols,7);
-  if(w===1440){
+  if(w===1440 || w===1536){
     // Real screenshot configuration: warehouse column hidden in the ERP menu.
     // It must not inherit 1050px Tracking widths or clip the rightmost status.
     await page.locator('.managed-column-button').click();
@@ -186,7 +186,7 @@ try{
     assert.equal(hiddenResult.cols,6,'six user-chosen columns must remain after hiding warehouse');
     assert.ok(hiddenResult.overflow<=5,'hidden-column table should fit beside panel: '+JSON.stringify(hiddenResult));
     assert.ok(hiddenResult.tagRight<=hiddenResult.wrapRight-3,'status tag should be fully visible beside panel: '+JSON.stringify(hiddenResult));
-    await page.screenshot({path:path.join(output,'1440-six-columns-panel-open.png')});
+    await page.screenshot({path:path.join(output,w+'-six-columns-panel-open.png')});
     await page.locator('.managed-column-row').filter({hasText:'Kho nhận'}).locator('input[type="checkbox"]').check();
     await page.locator('.managed-column-button').click();
   }
