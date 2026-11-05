@@ -247,7 +247,7 @@
 @media(min-width:901px){
   .brand-shell-v1 .wh-native-workspace.with-panel:has(> aside.mynh-slide-panel:nth-of-type(2)){
     grid-template-columns:minmax(0,1fr) repeat(2,minmax(0,clamp(220px,21vw,320px)))!important;
-    column-gap:7px!important;
+    column-gap:14px!important;
   }
   /* The ERP's global .warehouse-intake-panel rule assigns column 2 to every
      panel. Explicit tracks prevent a second slidebar from overlaying the first. */
@@ -415,8 +415,8 @@
 
 /* Compact operational density without hiding or merging table columns. */
 .brand-shell-v1 .wh-native-workspace{
-  --mynh-panel-gap:7px;
-  column-gap:7px!important;
+  --mynh-panel-gap:14px;
+  column-gap:14px!important;
   padding:0!important;
 }
 .brand-shell-v1 .wh-native-workspace>.wh-native-list{
@@ -559,35 +559,52 @@ body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.wh-native-table .
   }
 }
 
-/* Read-only receipt-date filter, compact and aligned with operational tabs. */
+/* Matches the purchase order quick-date tabs: seven inline choices, with
+   calendar inputs on the same row rather than a detached select. */
 .wh-native-date-toolbar{
-  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
-  min-width:0;margin:1px 0 2px;
+  display:flex;align-items:center;gap:6px;min-width:0;margin:0 0 3px;
 }
 .wh-native-date-filter{
-  display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap;min-width:0;
+  display:flex;align-items:center;gap:8px;min-width:0;
+  max-width:100%;flex-wrap:wrap;
 }
-.wh-native-date-field{
-  display:flex;flex-direction:column;gap:3px;min-width:0;
-  color:#5c7287;font-size:9.5px;font-weight:500;
+.wh-native-date-title{
+  font-size:10px;font-weight:650;color:#4d657a;white-space:nowrap;
 }
-.wh-native-date-field select,.wh-native-date-field input{
-  box-sizing:border-box;
-  min-width:0;width:155px;height:31px;
-  padding:5px 8px;border-radius:5px;
-  border:1px solid #d4e0ea;background:#fff;color:#36536b;
-  font-size:10.5px;font-weight:400;
+.wh-native-date-quick{
+  display:flex;align-items:center;gap:3px;flex-wrap:wrap;min-width:0;
 }
-.wh-native-date-field input[type="date"]{width:140px}
-.wh-native-date-clear{
-  align-self:flex-end;width:31px;height:31px;border:1px solid #d4e0ea;border-radius:5px;
-  background:white;color:#576e81;font-size:16px;cursor:pointer;
+.wh-native-date-option{
+  min-height:29px;display:inline-flex;align-items:center;justify-content:center;
+  padding:5px 9px;border:1px solid transparent;border-radius:5px;
+  background:transparent;color:#536e82;font-size:10px;font-weight:500;
+  text-decoration:none;white-space:nowrap;
 }
-.wh-native-date-error{color:#aa4a2a;font-size:10.5px}
+.wh-native-date-option:hover{background:#f2f7fb}
+.wh-native-date-option.active,
+.wh-native-date-option[aria-current="page"]{
+  background:#edf5fc;border-color:#b8d3e7;color:#225d8a;font-weight:690;
+}
+.wh-native-date-calendar{
+  display:flex;align-items:center;gap:4px;min-width:0;
+}
+.wh-native-date-calendar label{
+  display:inline-flex;align-items:center;gap:5px;
+  color:#647b8e;font-size:10px;font-weight:450;
+}
+.wh-native-date-calendar input{
+  box-sizing:border-box;width:125px;height:29px;
+  padding:4px 5px;border:1px solid #d6e1ea;border-radius:5px;
+  background:#fff;color:#38556b;font-size:10px;
+}
+.wh-native-date-calendar.active input{border-color:#9fbfda}
+.wh-native-date-separator{color:#9aabba;font-size:11px}
+.wh-native-date-error{color:#aa4a2a;font-size:10px}
 @media(max-width:650px){
-  .wh-native-date-toolbar{gap:4px}
-  .wh-native-date-field select{width:150px}
-  .wh-native-date-field input[type="date"]{width:135px}
+  .wh-native-date-filter{gap:5px}
+  .wh-native-date-quick{gap:1px}
+  .wh-native-date-option{padding:4px 6px;font-size:9.5px}
+  .wh-native-date-calendar input{width:122px}
 }
 /* The warehouse table is NOT a Tracking table: Tracking forces a fixed
    1050px minimum and nth-child widths, which clipped the rightmost status
@@ -605,4 +622,81 @@ body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.wh-native-table t
   box-sizing:border-box!important;
   overflow:hidden!important;
   text-overflow:ellipsis;
+}
+
+/* The settings control in the header is an embedded slidebar, not a popup.
+   Docked settings and order details reserve independent tracks; the table
+   shrinks and only its own scroll viewport can overflow horizontally. */
+@media(min-width:901px){
+  body.brand-shell-v1 .wh-native-workspace:has(>aside.wh-native-settings-panel){
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) clamp(300px,28vw,400px)!important;
+    column-gap:14px!important;
+    align-items:stretch!important;
+  }
+  body.brand-shell-v1 .wh-native-workspace:has(>aside.wh-native-settings-panel):has(>aside.wh-native-panel){
+    grid-template-columns:minmax(0,1fr) minmax(0,clamp(255px,24vw,370px)) minmax(0,clamp(255px,24vw,360px))!important;
+    column-gap:14px!important;
+  }
+  body.brand-shell-v1 .wh-native-workspace:has(>aside.wh-native-settings-panel)>.wh-native-list{
+    grid-column:1!important;grid-row:1!important;min-width:0!important;
+  }
+  body.brand-shell-v1 .wh-native-workspace:has(>aside.wh-native-settings-panel)>aside.wh-native-panel{
+    grid-column:2!important;grid-row:1!important;
+  }
+  body.brand-shell-v1 .wh-native-workspace:has(>aside.wh-native-settings-panel)>aside.wh-native-settings-panel{
+    grid-column:2!important;grid-row:1!important;
+  }
+  body.brand-shell-v1 .wh-native-workspace:has(>aside.wh-native-settings-panel):has(>aside.wh-native-panel)>aside.wh-native-settings-panel{
+    grid-column:3!important;grid-row:1!important;
+  }
+}
+/* A portaled settings panel overrides the old absolute header popover.
+   Preserve the original form in production screens that do not opt into docking. */
+body.brand-shell-v1 .wh-native-workspace>aside.wh-native-settings-panel.whx-settings-popover{
+  box-sizing:border-box!important;
+  position:relative!important;
+  inset:auto!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-self:stretch!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  max-height:100%!important;
+  margin:0!important;
+  border-radius:6px!important;
+  overflow:hidden!important;
+  box-shadow:none!important;
+  z-index:3!important;
+}
+body.brand-shell-v1 .wh-native-workspace>aside.wh-native-settings-panel>.whx-settings-head{
+  flex:0 0 auto;
+}
+body.brand-shell-v1 .wh-native-workspace>aside.wh-native-settings-panel>form{
+  flex:1 1 auto;min-height:0;overflow-y:auto!important;
+  scrollbar-width:thin;
+}
+body.brand-shell-v1 .wh-native-workspace>aside.wh-native-settings-panel label{
+  font-size:10px;font-weight:500;
+}
+body.brand-shell-v1 .wh-native-workspace>aside.wh-native-settings-panel select{
+  min-height:32px;font-size:10px;
+}
+body.brand-shell-v1 .wh-native-workspace>aside.wh-native-settings-panel .whx-settings-head b{
+  font-size:11px;
+}
+body.brand-shell-v1 .wh-native-workspace>aside.wh-native-settings-panel .whx-settings-head small{
+  font-size:9px;
+}
+@media(max-width:900px){
+  body.brand-shell-v1 .wh-native-workspace>aside.wh-native-settings-panel.whx-settings-popover{
+    position:fixed!important;
+    inset:0!important;
+    width:100vw!important;max-width:100vw!important;
+    height:100dvh!important;max-height:100dvh!important;
+    margin:0!important;z-index:1100!important;
+  }
 }
