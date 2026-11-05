@@ -30,97 +30,11 @@ function revalidateWarehouse(){
   revalidatePath('/purchase/tracking')
 }
 
-export async function mapWarehouseOrderItem(formData:FormData){
-  const {supabase,user}=await actor()
-
-  const itemId=text(formData.get('item_id'))
-  const existingVariantId=text(formData.get('existing_variant_id'))
-  const saleSku=text(formData.get('sale_sku')).toUpperCase()
-  const productName=text(formData.get('sale_product_name'))
-  const variantName=text(formData.get('sale_variant_name'))||'Mặc định'
-  const salePrice=number(formData.get('sale_price'))
-  const multiplier=number(formData.get('inventory_multiplier'))
-
-  if(!itemId)throw new Error('Thiếu dòng sản phẩm cần bóc tách')
-  if(!Number.isInteger(multiplier)||multiplier<=0){
-    throw new Error('Quy đổi tồn kho phải là số nguyên lớn hơn 0')
-  }
-
-  let variantId=existingVariantId
-
-  if(variantId){
-    const {data:variant,error}=await supabase
-      .from('product_variants')
-      .select('id')
-      .eq('id',variantId)
-      .maybeSingle()
-    if(error)throw new Error(error.message)
-    if(!variant)throw new Error('SKU bán đã chọn không còn tồn tại')
-  }else{
-    if(!saleSku||!productName)throw new Error('Thiếu SKU bán hoặc tên sản phẩm')
-    if(!Number.isFinite(salePrice)||salePrice<0)throw new Error('Giá bán không hợp lệ')
-
-    const {data:product,error:productError}=await supabase
-      .from('products')
-      .upsert({
-        sku:saleSku,
-        name:productName,
-        note:'Tạo từ Bóc tách nhập kho',
-        updated_at:new Date().toISOString(),
-      },{onConflict:'sku'})
-      .select('id')
-      .single()
-    if(productError)throw new Error(productError.message)
-
-    const {data:variant,error:variantError}=await supabase
-      .from('product_variants')
-      .upsert({
-        product_id:product.id,
-        variant_name:variantName,
-        sale_price:salePrice,
-        updated_at:new Date().toISOString(),
-      },{onConflict:'product_id,variant_name'})
-      .select('id')
-      .single()
-    if(variantError)throw new Error(variantError.message)
-    variantId=String(variant.id)
-  }
-
-  const {data:item,error:itemError}=await supabase
-    .from('order_items')
-    .select('id,order_id,product_variant_id,inventory_multiplier')
-    .eq('id',itemId)
-    .single()
-  if(itemError)throw new Error(itemError.message)
-
-  const {error:updateError}=await supabase
-    .from('order_items')
-    .update({
-      product_variant_id:variantId,
-      inventory_multiplier:multiplier,
-    })
-    .eq('id',itemId)
-  if(updateError)throw new Error(updateError.message)
-
-  await supabase.from('audit_logs').insert({
-    actor_user_id:user.id,
-    module:'WAREHOUSE',
-    action:'MAP_INVENTORY_SKU',
-    entity_type:'ORDER',
-    entity_id:String(item.order_id),
-    old_value:{
-      product_variant_id:item.product_variant_id,
-      inventory_multiplier:item.inventory_multiplier,
-    },
-    new_value:{
-      order_item_id:itemId,
-      product_variant_id:variantId,
-      inventory_multiplier:multiplier,
-    },
-    source:'USER',
-  })
-
-  revalidateWarehouse()
+// Compatibility entry point for older warehouse forms. No direct upsert is
+// allowed to overwrite an existing SKU or bypass the atomic V2.1 audit.
+export async function mapWarehouseOrderItem(formData: FormData) {
+  const { saveWarehouseSkuV21 } = await import('@/lib/actions/warehouse-item-v21')
+  return saveWarehouseSkuV21(formData)
 }
 
 export async function receiveOrdersIntoWarehouse(formData:FormData){
@@ -142,54 +56,31 @@ export async function receiveOrdersIntoWarehouse(formData:FormData){
 }
 
 
-export async function skipWarehouseOrder(formData:FormData){
-  const {supabase,user}=await actor()
-
-  const orderId=text(formData.get('order_id'))
-  const note=text(formData.get('note'))||'Bỏ qua kho sau khi xác nhận SKU'
-  if(!orderId)throw new Error('Thiếu đơn cần bỏ qua kho')
-
-  const {data:order,error:orderError}=await supabase
-    .from('orders')
-    .select('id,receive_status,warehouse_status,order_items(id,product_variant_id)')
-    .eq('id',orderId)
-    .is('archived_at',null)
-    .maybeSingle()
-  if(orderError)throw new Error(orderError.message)
-  if(!order)throw new Error('Đơn hàng không tồn tại hoặc đã lưu trữ')
-  if(order.receive_status!=='RECEIVED'){
-    throw new Error('Đơn chưa được xác nhận nhận hàng')
+// Compatibility entry point for whole-order skip: pass through the same
+// row-level RPC. This cannot silently mark an order SKIPPED while leaving
+// its order_items in PENDING.
+export async function skipWarehouseOrder(formData: FormData) {
+  const { supabase } = await actor()
+  const orderId = text(formData.get('order_id'))
+  const reason = text(formData.get('note'))
+  if (!orderId) throw new Error('Thiếu đơn hàng')
+  if (!reason) throw new Error('Cần nhập lý do bỏ qua kho')
+  const { data: items, error } = await supabase.from('order_items')
+    .select('id,product_variant_id,warehouse_item_status')
+    .eq('order_id', orderId)
+  if (error) throw new Error(error.message)
+  if (!items?.length) throw new Error('Đơn không có sản phẩm')
+  if (items.some(item => !item.product_variant_id || item.warehouse_item_status !== 'PENDING')) {
+    throw new Error('Có sản phẩm chưa xác nhận SKU hoặc đã xử lý kho')
   }
-  if(order.warehouse_status!=='READY_TO_TRANSFER'){
-    throw new Error('Đơn không còn ở trạng thái chờ xử lý kho')
-  }
-
-  const items=(order.order_items??[]) as any[]
-  if(!items.length||items.some(item=>!item.product_variant_id)){
-    throw new Error('Cần xác nhận đầy đủ SKU trước khi bỏ qua kho')
-  }
-
-  const {error:updateError}=await supabase
-    .from('orders')
-    .update({warehouse_status:'WAREHOUSE_SKIPPED'})
-    .eq('id',orderId)
-  if(updateError)throw new Error(updateError.message)
-
-  await supabase.from('audit_logs').insert({
-    actor_user_id:user.id,
-    module:'WAREHOUSE',
-    action:'SKIP_WAREHOUSE',
-    entity_type:'ORDER',
-    entity_id:orderId,
-    old_value:{warehouse_status:order.warehouse_status},
-    new_value:{
-      warehouse_status:'WAREHOUSE_SKIPPED',
-      note,
-    },
-    source:'USER',
-  })
-
-  revalidateWarehouse()
+  const decisions = items.map(item => ({
+    item_id: item.id, action: 'SKIP' as const, reason,
+  }))
+  const { processWarehouseItemsV21 } = await import('@/lib/actions/warehouse-item-v21')
+  const payload = new FormData()
+  payload.set('order_id', orderId)
+  payload.set('decisions', JSON.stringify(decisions))
+  await processWarehouseItemsV21(payload)
 }
 
 export async function saveReceivingWarehouseSettings(formData:FormData){
