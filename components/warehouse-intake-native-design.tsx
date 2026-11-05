@@ -42,6 +42,7 @@ const LABELS: Record<Column, string> = {
   product: 'Sản phẩm', progress: 'Bóc tách', cod: 'COD', status: 'Trạng thái',
 }
 type Phase = 'all' | 'pending' | 'ready' | 'done'
+type Suggestion = { variant_id: string; sku: string | null; product_name: string | null; variant_name: string | null; multiplier: number }
 type PreviewDecision = 'IN' | 'SKIP'
 type PreviewChoice = { action: PreviewDecision; sku: string; price: string; reason?: string }
 
@@ -101,9 +102,9 @@ function actionLabel(action: string) {
 }
 
 export function WarehouseIntakeNativeDesign({
-  rows, variants, auditLogs, initialPhase = 'all',
+  rows, variants, auditLogs, suggestions = {}, initialPhase = 'all',
 }: {
-  rows: Order[]; variants: Variant[]; auditLogs: Audit[]; initialPhase?: Phase
+  rows: Order[]; variants: Variant[]; auditLogs: Audit[]; suggestions?: Record<string, Suggestion>; initialPhase?: Phase
 }) {
   const [openWarehouses, setOpenWarehouses] = useState<Record<string, boolean>>({ BG: true, HN: true, unknown: false })
   const [phase, setPhase] = useState<Phase>(initialPhase)
@@ -116,6 +117,7 @@ export function WarehouseIntakeNativeDesign({
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const [mode, setMode] = useState<'existing' | 'new'>('existing')
   const [variantId, setVariantId] = useState('')
+  const [skuSearch, setSkuSearch] = useState('')
   const [salePrice, setSalePrice] = useState('')
   const [newSku, setNewSku] = useState('')
   const [newName, setNewName] = useState('')
@@ -169,6 +171,8 @@ export function WarehouseIntakeNativeDesign({
   const sort = useManagedSort<Column>('mynh-warehouse-native-sort', 'received', 'desc')
   const visible = useMemo(() => {
     const filtered = rows.filter(row => {
+      // Completed orders are isolated behind the processed KPI, never in everyday work.
+      if (phase === 'all' && phaseOf(row) === 'done') return false
       if (phase !== 'all' && phaseOf(row) !== phase) return false
       if (search.trim()) {
         const text = [
@@ -220,7 +224,16 @@ export function WarehouseIntakeNativeDesign({
 
   const active = rows.find(row => row.id === activeId) ?? null
   const focused = active?.order_items.find(item => item.id === focusedId) ?? null
+  const suggestion = focused ? suggestions[focused.id] : undefined
   const selectedVariant = variants.find(variant => variant.id === variantId) ?? null
+  const filteredVariants = useMemo(() => {
+    const query = skuSearch.trim().toLocaleLowerCase('vi')
+    if (!query) return variants.slice(0, 120)
+    return variants.filter(variant =>
+      [variant.products?.sku, variant.products?.name, variant.variant_name]
+        .filter(Boolean).join(' ').toLocaleLowerCase('vi').includes(query)
+    ).slice(0, 120)
+  }, [variants, skuSearch])
   const logs = active ? auditLogs.filter(log => String(log.entity_id) === active.id) : []
   const activeShipment = active?.shipments?.find(s => s.is_active) ?? active?.shipments?.[0] ?? null
 
@@ -229,7 +242,7 @@ export function WarehouseIntakeNativeDesign({
     setMode('existing')
     setVariantId(item.product_variant_id ?? '')
     setSalePrice(item.product_variants?.sale_price == null ? '' : String(item.product_variants.sale_price))
-    setNewSku(''); setNewName(item.product_name)
+    setSkuSearch(''); setNewSku(''); setNewName(item.product_name)
     setMultiplier(String(item.inventory_multiplier ?? 1))
     setAction('IN'); setReason(''); setNotice('')
   }
@@ -244,6 +257,19 @@ export function WarehouseIntakeNativeDesign({
     window.addEventListener('keydown', close)
     return () => window.removeEventListener('keydown', close)
   }, [])
+  function selectSuggestion() {
+    if (!suggestion) return
+    const candidate = variants.find(variant => variant.id === suggestion.variant_id)
+    if (!candidate) {
+      setNotice('SKU gợi ý không còn trong danh mục. Vui lòng tìm và chọn SKU hợp lệ.')
+      return
+    }
+    setMode('existing')
+    chooseVariant(candidate.id)
+    const multiplierValue = Number(suggestion.multiplier)
+    setMultiplier(Number.isInteger(multiplierValue) && multiplierValue > 0 ? String(multiplierValue) : '1')
+    setNotice('Đã chọn SKU gợi ý để đối chiếu. Chưa lưu bóc tách hoặc nhập kho.')
+  }
   function chooseVariant(id: string) {
     setVariantId(id)
     const found = variants.find(variant => variant.id === id)
@@ -312,14 +338,15 @@ export function WarehouseIntakeNativeDesign({
     <div className="wh-native-filters">
       <div className="wh-native-phase-tabs" aria-label="Trạng thái xử lý">
         {([
-          ['all', 'Tất cả đơn'],
+          ['all', 'Việc cần xử lý'],
           ['pending', PHASE_LABELS.pending],
           ['ready', PHASE_LABELS.ready],
-          ['done', PHASE_LABELS.done],
         ] as const).map(([id, label]) => <button type="button" key={id} className={phase === id ? 'active' : ''}
           onClick={() => setPhase(id)}>{label}</button>)}
       </div>
-      <span className="wh-native-warehouse-hint">Phân theo kho nhận thực tế · Thu/mở từng kho</span>
+      {phase === 'done'
+        ? <span className="wh-native-processed-context" role="status">Đang xem Đã xử lý · Chọn “Việc cần xử lý” để quay lại danh sách đang làm</span>
+        : <span className="wh-native-warehouse-hint">Phân theo kho nhận thực tế · Thu/mở từng kho</span>}
     </div>
     <div ref={workspaceRef} className={'whx-intake-layout warehouse-intake-layout wh-native-workspace' + (active ? ' with-panel' : '')}>
       <section ref={listRef} className="whx-intake-main wh-native-list">
@@ -423,12 +450,34 @@ export function WarehouseIntakeNativeDesign({
                   onClick={() => { setMode('new'); setSalePrice(''); setVariantId('') }}>Tạo SKU mới</button>
               </div>
               {mode === 'existing'
-                ? <label className="wh-native-field"><span>SKU bán trong danh mục</span>
-                    <select value={variantId} onChange={e => chooseVariant(e.target.value)}>
-                      <option value="">— Chọn SKU —</option>
-                      {variants.map(v => <option key={v.id} value={v.id}>{v.products?.sku} · {v.products?.name} · {v.variant_name}</option>)}
-                    </select>
-                  </label>
+                ? <div className="wh-native-existing-sku">
+                    {suggestion && <div className="wh-native-sku-suggestion" data-source="past-mapping">
+                      <div>
+                        <span>GỢI Ý TỪ LẦN BÓC TÁCH TRƯỚC</span>
+                        <b>{suggestion.sku || 'SKU bán'} · {suggestion.product_name || 'Sản phẩm đã dùng'}</b>
+                        <small>{suggestion.variant_name || 'Mặc định'} · quy đổi từng dùng ×{suggestion.multiplier}</small>
+                      </div>
+                      <button type="button" onClick={selectSuggestion}>Chọn gợi ý</button>
+                      <small className="wh-native-sku-disclaimer">Gợi ý không tự xác nhận SKU hoặc nhập kho</small>
+                    </div>}
+                    <label className="wh-native-field"><span>Tìm trong danh mục SKU bán hiện có</span>
+                      <input type="search" value={skuSearch} onChange={event => setSkuSearch(event.target.value)}
+                        aria-label="Tìm SKU bán theo mã, tên hoặc phân loại" placeholder="Nhập SKU, tên sản phẩm hoặc phân loại"/>
+                    </label>
+                    <label className="wh-native-field"><span>Chọn SKU bán</span>
+                      <select value={variantId} onChange={e => chooseVariant(e.target.value)}>
+                        <option value="">— Chọn SKU (không tự xác nhận) —</option>
+                        {selectedVariant && !filteredVariants.some(v => v.id === selectedVariant.id) &&
+                          <option value={selectedVariant.id}>
+                            {selectedVariant.products?.sku || 'Chưa có SKU'} · {selectedVariant.products?.name || ''} · {selectedVariant.variant_name}
+                          </option>}
+                        {filteredVariants.map(v => <option key={v.id} value={v.id}>
+                          {v.products?.sku || 'Chưa có SKU'} · {v.products?.name || ''} · {v.variant_name}
+                        </option>)}
+                      </select>
+                      <small>{skuSearch ? 'Hiển thị tối đa 120 kết quả phù hợp' : 'Nhập từ khóa để tìm trong danh mục SKU hiện có'} · Không tự ghép SKU</small>
+                    </label>
+                  </div>
                 : <div className="wh-native-field-pair">
                     <label className="wh-native-field"><span>Mã SKU bán mới</span><input value={newSku} onChange={e => setNewSku(e.target.value)}/></label>
                     <label className="wh-native-field"><span>Tên sản phẩm bán</span><input value={newName} onChange={e => setNewName(e.target.value)}/></label>
