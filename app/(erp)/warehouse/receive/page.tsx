@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
-import { formatMoney } from '@/lib/format'
 import { WarehouseIntakeNativeDesign } from '@/components/warehouse-intake-native-design'
 import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
 import '@/app/styles/warehouse-native-design.css'
@@ -104,9 +103,12 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     (row.order_items ?? []).every((item: any) => Boolean(item.product_variant_id)))
   const missingItems = incomplete.reduce((sum, row) =>
     sum + (row.order_items ?? []).filter((item: any) => !item.product_variant_id).length, 0)
-  const warehouses = new Set(rows.map(row => batchOf(row)?.warehouses?.code).filter(Boolean).map(String))
-  const waitingCod = pending.reduce((sum, row) => sum + Number(row.cod ?? 0), 0)
-  const currentStatus = state === 'ready' ? 'ready' : state === 'incomplete' || state === 'missing' ? 'pending' : state === 'done' ? 'done' : 'all'
+  const done = rows.filter(row =>
+    ['WAREHOUSE_RECEIVED', 'WAREHOUSE_SKIPPED', 'WAREHOUSE_MIXED'].includes(String(row.warehouse_status)))
+  // Preserve legacy deep-links from Kho overview; expose only three workflow states.
+  const currentStatus = state === 'ready' ? 'ready' :
+    state === 'pending' || state === 'incomplete' || state === 'missing' ? 'pending' :
+    state === 'done' ? 'done' : 'all'
 
   return <div className="tracking-screen tracking-screen-v2 whx-page warehouse-receive-screen">
     <header className="page-head tracking-page-head-v2">
@@ -142,22 +144,16 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     </div>}
 
     <section className="tracking-command-center-v2 warehouse-command-center">
-      <div className="tracking-status-strip-v2">
-        <Link href="/warehouse/receive?state=incomplete" className={'tracking-status-metric warning ' + (state === 'incomplete' ? 'active' : '')}>
-          <span>Chờ bóc tách</span><b>{incomplete.length}</b><small>Đơn chưa xác nhận đủ SKU</small>
+      <div className="tracking-status-strip-v2 wh-native-three-statuses" aria-label="Ba trạng thái nhập kho">
+        <Link href="/warehouse/receive?state=pending" className={'tracking-status-metric warning ' + (currentStatus === 'pending' ? 'active' : '')}>
+          <span>Chờ bóc tách</span><b>{incomplete.length}</b><small>{missingItems} dòng SKU chưa ghép</small>
         </Link>
-        <Link href="/warehouse/receive?state=missing" className={'tracking-status-metric amber ' + (state === 'missing' ? 'active' : '')}>
-          <span>SKU chưa map</span><b>{missingItems}</b><small>Dòng sản phẩm cần xử lý</small>
+        <Link href="/warehouse/receive?state=ready" className={'tracking-status-metric info ' + (currentStatus === 'ready' ? 'active' : '')}>
+          <span>Chờ nhập kho</span><b>{ready.length}</b><small>Đã ghép SKU, chưa ghi tồn</small>
         </Link>
-        <Link href="/warehouse/receive?state=ready" className={'tracking-status-metric success ' + (state === 'ready' ? 'active' : '')}>
-          <span>Chờ nhập kho</span><b>{ready.length}</b><small>Chưa ghi tăng tồn</small>
+        <Link href="/warehouse/receive?state=done" className={'tracking-status-metric success ' + (currentStatus === 'done' ? 'active' : '')}>
+          <span>Đã xử lý</span><b>{done.length}</b><small>Đã nhập kho hoặc bỏ qua kho</small>
         </Link>
-        <Link href="/warehouse/receive" className={'tracking-status-metric info ' + (state === 'all' ? 'active' : '')}>
-          <span>Kho nhận</span><b>{warehouses.size}</b><small>{rows.length} đơn đã nhận</small>
-        </Link>
-        <div className="tracking-status-metric">
-          <span>COD chờ xử lý</span><b>{formatMoney(waitingCod)}</b><small>{pending.length} đơn chưa xử lý kho</small>
-        </div>
       </div>
     </section>
 
