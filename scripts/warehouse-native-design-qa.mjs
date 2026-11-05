@@ -86,6 +86,29 @@ const checks = [
     workspace.includes('group.rows.map(row =>') &&
     css.includes('overflow-y:auto!important') &&
     css.includes('container-type:inline-size')],
+  ['processed orders are excluded from the work list and accessible only via KPI',
+    workspace.includes("if (phase === 'all' && phaseOf(row) === 'done') return false") &&
+    !workspace.includes("['done', PHASE_LABELS.done]") &&
+    page.includes('href="/warehouse/receive?state=done"') &&
+    workspace.includes("phase === 'done'")],
+  ['existing SKU suggestions reuse historical confirmed mappings and require manual choice',
+    page.includes("supabase.from('order_items')") &&
+    page.includes('mappingByKey') &&
+    page.includes('suggestions={suggestions}') &&
+    workspace.includes('suggestions?: Record<string, Suggestion>') &&
+    workspace.includes('wh-native-sku-suggestion') &&
+    workspace.includes('selectSuggestion') &&
+    workspace.includes('chooseVariant(candidate.id)') &&
+    workspace.includes("setSalePrice(found?.sale_price == null ? '' : String(found.sale_price))")],
+  ['two slidebars use distinct grid tracks and narrow gaps',
+    css.includes('grid-column:2!important') && css.includes('grid-column:3!important') &&
+    css.includes('column-gap:4px!important') &&
+    css.includes('clamp(220px,21vw,320px)')],
+  ['compact table fonts preserve all seven columns',
+    css.includes('font-size:9.5px!important') &&
+    css.includes('font-size:9.4px!important') &&
+    workspace.includes('minWidths: Record<Column, number>') &&
+    workspace.includes("columns.visible.map(column => renderCell(row, column))")],
   ['no fixed-position desktop panel', css.includes('@media(min-width:901px)') && css.includes('position:relative!important') && !css.includes('position:fixed')],
   ['escape key closes slidebar', workspace.includes("event.key === 'Escape'")],
 ]
