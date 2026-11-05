@@ -114,8 +114,8 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       </div>
     </header>
     {!error && <div className="wiv21-live-source" role="status">
-      <span><b>Dữ liệu thực MYNH ERP</b> · Supabase hiện hành · {rows.length} đơn đã nhận hàng · Chỉ xem trên Preview</span>
-      <span>Không tạo dữ liệu mẫu, không tự điền giá nguồn còn thiếu.</span>
+      <span><b>Dữ liệu thực MYNH ERP</b> · Supabase hiện hành · {rows.length} đơn đã nhận hàng · {schemaReady ? 'Có quyền thao tác sau khi nghiệm thu' : 'Chế độ chỉ xem'}</span>
+      <span>Không tạo dữ liệu mẫu · Giá thiếu hiển thị “Chưa có”</span>
     </div>}
     {error && <div className="tracking-flash-row">
       <div className="error-box">Không thể tải dữ liệu Nhập kho: {error.message}</div>
