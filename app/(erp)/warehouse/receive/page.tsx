@@ -4,6 +4,14 @@ import { WarehouseIntakeNativeDesign } from '@/components/warehouse-intake-nativ
 import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
 import '@/app/styles/warehouse-native-design.css'
 
+function suggestionKey(item: { sku?: string | null; product_name?: string | null; variant?: string | null }) {
+  return [
+    String(item.sku ?? '').trim().toUpperCase(),
+    String(item.product_name ?? '').trim().toLocaleLowerCase('vi'),
+    String(item.variant ?? '').trim().toLocaleLowerCase('vi'),
+  ].join('|')
+}
+
 function batchOf(row: any) {
   const detail = Array.isArray(row.receive_batch_details)
     ? row.receive_batch_details[0] : row.receive_batch_details
@@ -25,6 +33,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     { data: receiptBatches, error: receiptBatchesError },
     { data: receivingWarehouses, error: receivingWarehousesError },
     { data: settings, error: settingsError },
+    { data: recentMappings, error: mappingError },
   ] = await Promise.all([
     supabase.from('orders')
       .select([
@@ -56,9 +65,14 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       .select('id,code,name,address,is_active').in('code', ['BG', 'HN']).limit(10),
     supabase.from('warehouse_settings')
       .select('default_receiving_warehouse_id').eq('id', 'main').single(),
+    // Same read-only suggestion source already used by the Production receiving screen.
+    supabase.from('order_items')
+      .select('sku,product_name,variant,product_variant_id,inventory_multiplier,created_at,product_variants(id,variant_name,sale_price,products(id,sku,name))')
+      .not('product_variant_id', 'is', null)
+      .order('created_at', { ascending: false }).limit(3000),
   ])
   const error = ordersError ?? variantsError ?? auditError ??
-    receiptLinksError ?? receiptBatchesError ?? receivingWarehousesError ?? settingsError
+    receiptLinksError ?? receiptBatchesError ?? receivingWarehousesError ?? settingsError ?? mappingError
 
   // Read-only reconciliation from the confirmed receiving records. Do not
   // infer warehouse from HUB/delivery destination or place of residence.
@@ -89,6 +103,27 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       },
     }] }
   })
+  const mappingByKey = new Map<string, any>()
+  for (const item of (recentMappings ?? []) as any[]) {
+    const key = suggestionKey(item)
+    if (!mappingByKey.has(key) && item.product_variant_id && item.product_variants) {
+      mappingByKey.set(key, item)
+    }
+  }
+  const suggestions: Record<string, { variant_id: string; sku: string | null; product_name: string | null; variant_name: string | null; multiplier: number }> = {}
+  for (const order of rows) for (const item of order.order_items ?? []) {
+    if (item.product_variant_id) continue
+    const previous = mappingByKey.get(suggestionKey(item))
+    if (!previous?.product_variant_id || !previous?.product_variants) continue
+    suggestions[item.id] = {
+      variant_id: previous.product_variant_id,
+      sku: previous.product_variants.products?.sku ?? null,
+      product_name: previous.product_variants.products?.name ?? null,
+      variant_name: previous.product_variants.variant_name ?? null,
+      multiplier: Number(previous.inventory_multiplier ?? 1),
+    }
+  }
+
   const assignedCount = rows.filter(row => {
     const batch = row.receive_batch_details?.[0]?.receive_batches
     return batch?.warehouses?.code === 'BG' || batch?.warehouses?.code === 'HN'
@@ -161,6 +196,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       rows={rows}
       variants={(variants ?? []) as any[]}
       auditLogs={(auditLogs ?? []) as any[]}
+      suggestions={suggestions}
       initialPhase={currentStatus}
     />
   </div>
