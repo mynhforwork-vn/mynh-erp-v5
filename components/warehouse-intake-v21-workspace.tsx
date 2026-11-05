@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { ManagedColumnsMenu, SortableHeader, useManagedColumns, useManagedSort } from '@/components/managed-table-columns'
-import { formatDateTime, formatMoney, formatPhone } from '@/lib/format'
+import { formatDateTime, formatMoney, formatPhone, statusLabel } from '@/lib/format'
 import { processWarehouseItemsV21, saveWarehouseSkuV21 } from '@/lib/actions/warehouse-item-v21'
 
 type Column = 'order' | 'received' | 'warehouse' | 'total' | 'mapped' | 'receivedCount' | 'skippedCount' | 'status'
@@ -33,7 +33,9 @@ type Row = {
   id: string; shopee_order_id?: string | null; order_date?: string | null
   warehouse_status?: string | null; cod?: number | string | null; prepaid_amount?: number | string | null
   recipient_name?: string | null; recipient_phone?: string | null; recipient_address?: string | null
-  destination_hub?: string | null
+  destination_hub?: string | null; area?: string | null
+  order_status?: string | null; payment_status?: string | null
+  shipping_service?: string | null; prepaid_source_label?: string | null
   erp_users?: { username?: string | null } | null
   receive_batch_details?: Array<{ receive_batches?: Batch | null }> | null
   shipments?: Array<{ carrier?: string | null; tracking_number?: string | null; current_tracking_status?: string | null; is_active?: boolean }> | null
@@ -289,7 +291,7 @@ export function WarehouseIntakeV21({
 
   return <div className="wiv21 wiv21-system">
     {!schemaReady && <div className="wiv21-compat" role="status">
-      Đang hiển thị bản thiết kế V2.1 ở chế độ chỉ xem. Chức năng ghi sẽ được mở sau khi migration được phê duyệt và kiểm thử.
+      Dữ liệu đơn và kho đang lấy trực tiếp từ MYNH ERP. Preview chỉ xem; xác nhận SKU, đổi giá và nhập/bỏ qua kho bị khóa do migration V2.1 chưa được duyệt.
     </div>}
     <div className="wiv21-warehouses" aria-label="Chọn kho nhận">
       <button type="button" className={warehouse === 'all' ? 'active' : ''} onClick={() => setWarehouse('all')}>Tất cả kho</button>
@@ -456,6 +458,8 @@ export function WarehouseIntakeV21({
               <div><small>Ngày đặt hàng</small><b>{formatDateTime(active.order_date)}</b></div>
               <div><small>Ngày nhận</small><b>{formatDateTime(batchOf(active)?.received_at)}</b></div>
               <div><small>Kho nhận thực tế</small><b>{warehouseOf(active)?.code ?? 'Chưa xác định'} · {warehouseOf(active)?.address ?? ''}</b></div>
+              <div><small>Trạng thái đơn</small><b>{statusLabel(active.order_status)}</b></div>
+              <div><small>Thanh toán</small><b>{statusLabel(active.payment_status)}</b></div>
               <div><small>Tiến độ xử lý</small><b>{stats(active).received} nhập · {stats(active).skipped} bỏ · {stats(active).pending} còn</b></div>
             </div>
             <div className="wiv21-info-head"><strong>Giá trị đơn</strong><span>Giá nguồn được giữ nguyên, không ước đoán</span></div>
@@ -464,14 +468,17 @@ export function WarehouseIntakeV21({
               <div><small>Tổng giá sau giảm</small><b>{price(sourceTotal(active.order_items, 'final_price'))}</b></div>
               <div><small>COD</small><b>{price(active.cod)}</b></div>
               <div><small>Trả trước</small><b>{price(active.prepaid_amount)}</b></div>
+              {active.prepaid_source_label && <div className="wide"><small>Nguồn trả trước</small><b>{active.prepaid_source_label}</b></div>}
             </div>
             <div className="wiv21-info-head"><strong>Người nhận & vận chuyển</strong></div>
             <div className="wiv21-source-grid">
               <div><small>Người nhận</small><b>{active.recipient_name ?? 'Chưa có'}</b></div>
               <div><small>Số điện thoại</small><b>{formatPhone(active.recipient_phone)}</b></div>
               <div className="wide"><small>Địa chỉ</small><b>{active.recipient_address ?? 'Chưa có'}</b></div>
+              <div><small>Khu vực</small><b>{active.area ?? 'Chưa có'}</b></div>
               <div><small>HUB đích</small><b>{active.destination_hub ?? 'Chưa có'}</b></div>
-              <div><small>Đơn vị / mã vận đơn</small><b>{active.shipments?.find(x => x.is_active)?.carrier ?? active.shipments?.[0]?.carrier ?? 'Chưa có'} · {active.shipments?.find(x => x.is_active)?.tracking_number ?? active.shipments?.[0]?.tracking_number ?? 'Chưa có'}</b></div>
+              <div className="wide"><small>Đơn vị / mã vận đơn</small><b>{active.shipments?.find(x => x.is_active)?.carrier ?? active.shipments?.[0]?.carrier ?? 'Chưa có'} · {active.shipments?.find(x => x.is_active)?.tracking_number ?? active.shipments?.[0]?.tracking_number ?? 'Chưa có'}</b></div>
+              <div className="wide"><small>Trạng thái vận chuyển gần nhất</small><b>{statusLabel(active.shipments?.find(x => x.is_active)?.current_tracking_status ?? active.shipments?.[0]?.current_tracking_status)}</b></div>
             </div>
             <div className="wiv21-info-head"><strong>Voucher</strong></div>
             <div className="wiv21-vouchers">{!active.order_vouchers?.length ? 'Chưa có voucher' : active.order_vouchers.map((v, i) =>
