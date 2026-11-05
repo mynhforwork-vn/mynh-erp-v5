@@ -46,8 +46,9 @@ type PreviewDecision = 'IN' | 'SKIP'
 type PreviewChoice = { action: PreviewDecision; sku: string; price: string; reason?: string }
 
 function batchOf(row: Order) {
-  const raw = row.receive_batch_details?.[0]?.receive_batches
-  return raw ?? null
+  const details = row.receive_batch_details
+  const raw = Array.isArray(details) ? details[0]?.receive_batches : null
+  return Array.isArray(raw) ? raw[0] ?? null : raw ?? null
 }
 function hasItems(row: Order) {
   return (row.order_items?.length ?? 0) > 0
@@ -72,9 +73,17 @@ function totalSource(items: Item[], key: 'original_price' | 'final_price') {
   if (!items.length || items.some(item => item[key] === null || item[key] === undefined)) return null
   return items.reduce((total, item) => total + Number(item[key]) * Number(item.quantity), 0)
 }
+function warehouseCode(row: Order): 'BG' | 'HN' | null {
+  const code = String(batchOf(row)?.warehouses?.code ?? '').toUpperCase().trim()
+  return code === 'BG' || code === 'HN' ? code : null
+}
 function warehouseName(row: Order) {
-  const info = batchOf(row)?.warehouses
-  return info?.code ? String(info.code) : 'Chưa xác định'
+  const code = warehouseCode(row)
+  return code ? 'KHO ' + code : 'Chưa xác định kho nhận'
+}
+function productDescription(item: Item) {
+  return [item.product_name, item.variant ? 'Phân loại: ' + item.variant : null, 'SL: ' + item.quantity]
+    .filter(Boolean).join(' · ')
 }
 function actionLabel(action: string) {
   if (action === 'MAP_INVENTORY_SKU') return 'Bóc tách SKU'
@@ -105,43 +114,56 @@ export function WarehouseIntakeNativeDesign({
   const [previewChoices, setPreviewChoices] = useState<Record<string, PreviewChoice>>({})
   const [notice, setNotice] = useState('')
   const listRef = useRef<HTMLElement | null>(null)
+  const workspaceRef = useRef<HTMLDivElement | null>(null)
   const [tableMode, setTableMode] = useState<'wide' | 'compact' | 'narrow'>('wide')
 
   // Measure the actual list width, not the viewport. The slidebar, sidebar,
   // browser zoom and Tablet split-view all change available table space.
   useEffect(() => {
     const node = listRef.current
-    if (!node) return
-    const adapt = (width: number) => {
+    const workspace = workspaceRef.current
+    if (!node || !workspace) return
+    const adapt = () => {
+      // Measure the content area's actual width, after all surrounding panels
+      // and sidebar changes. Never infer it from window.innerWidth.
+      const width = Math.min(node.getBoundingClientRect().width, node.clientWidth)
       const next = width < 570 ? 'narrow' : width < 950 ? 'compact' : 'wide'
       setTableMode(current => current === next ? current : next)
     }
-    adapt(node.getBoundingClientRect().width)
-    if (typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(entries => {
-      adapt(entries[0]?.contentRect.width ?? node.getBoundingClientRect().width)
-    })
-    observer.observe(node)
-    return () => observer.disconnect()
+    adapt()
+    const observer = typeof ResizeObserver === 'undefined' ? null
+      : new ResizeObserver(adapt)
+    observer?.observe(node)
+    observer?.observe(workspace)
+    // A second embedded slidebar can be added/removed without a viewport
+    // resize. Observe those DOM changes and re-measure in the next layout.
+    const mutation = typeof MutationObserver === 'undefined' ? null
+      : new MutationObserver(adapt)
+    mutation?.observe(workspace, { childList: true })
+    window.addEventListener('resize', adapt)
+    return () => {
+      observer?.disconnect()
+      mutation?.disconnect()
+      window.removeEventListener('resize', adapt)
+    }
   }, [])
 
   const columns = useManagedColumns<Column>('mynh-warehouse-native-columns', COLUMNS, ['order'])
   const sort = useManagedSort<Column>('mynh-warehouse-native-sort', 'received', 'desc')
-  const warehouses = useMemo(() => {
-    const m = new Map<string, { id: string; name: string; count: number }>()
+  const warehouseLanes = useMemo(() => {
+    const counts = { BG: 0, HN: 0, unknown: 0 }
     for (const row of rows) {
-      const id = String(batchOf(row)?.warehouse_id ?? 'unknown')
-      const b = batchOf(row)?.warehouses
-      const entry = m.get(id) ?? { id, name: [b?.code, b?.address ?? b?.name].filter(Boolean).join(' · ') || 'Kho chưa xác định', count: 0 }
-      entry.count++
-      m.set(id, entry)
+      const code = warehouseCode(row)
+      if (code === 'BG') counts.BG++
+      else if (code === 'HN') counts.HN++
+      else counts.unknown++
     }
-    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+    return counts
   }, [rows])
 
   const visible = useMemo(() => {
     const filtered = rows.filter(row => {
-      if (warehouse !== 'all' && String(batchOf(row)?.warehouse_id ?? 'unknown') !== warehouse) return false
+      if (warehouse !== 'all' && (warehouseCode(row) ?? 'unknown') !== warehouse) return false
       if (phase !== 'all' && phaseOf(row) !== phase) return false
       if (search.trim()) {
         const text = [
@@ -236,11 +258,14 @@ export function WarehouseIntakeNativeDesign({
     {visibleColumn('received') && <span className="wh-native-cell-note">{formatDateTime(receivedAt(row))}</span>}
     {visibleColumn('warehouse') && <span className="wh-native-cell-note">Kho: {warehouseName(row)}</span>}
   </div>
-  const productCell = (row: Order) => <div className="wh-native-cell-stack">
-    {visibleColumn('product') && <b className="wh-native-cell-product" title={row.order_items[0]?.product_name ?? ''}>
-      {row.order_items[0]?.product_name ?? 'Chưa có sản phẩm'}
-    </b>}
-    <span className="wh-native-cell-note">{row.order_items.length} dòng sản phẩm</span>
+  const productLines = (row: Order) => <div className="wh-native-product-lines">
+    {row.order_items.length === 0
+      ? <span className="wh-native-product-line">Chưa có sản phẩm</span>
+      : row.order_items.map(item => <span key={item.id} className="wh-native-product-line"
+          title={productDescription(item)}>{productDescription(item)}</span>)}
+  </div>
+  const productCell = (row: Order) => <div className="wh-native-cell-stack wh-native-grouped-product">
+    {visibleColumn('product') && productLines(row)}
     {narrow && visibleColumn('progress') && <span className="wh-native-cell-note">SKU: {row.order_items.filter(isMapped).length}/{row.order_items.length}</span>}
     {narrow && visibleColumn('cod') && <span className="wh-native-cell-note">COD: {valueOrMissing(row.cod)}</span>}
     {narrow && visibleColumn('status') && <span className={'status-pill ' + (phaseOf(row) === 'done' ? 'green' : phaseOf(row) === 'ready' ? 'blue' : 'orange')}>{phaseLabel(row)}</span>}
@@ -269,12 +294,7 @@ export function WarehouseIntakeNativeDesign({
     </td>
     if (column === 'received') return <td key={column}>{formatDateTime(receivedAt(row))}</td>
     if (column === 'warehouse') return <td key={column}>{warehouseName(row)}</td>
-    if (column === 'product') return <td key={column} className="wh-native-product-cell">
-      <div className="tracking-order-id">
-        <b className="wh-native-product-label" title={row.order_items[0]?.product_name ?? ''}>{row.order_items[0]?.product_name ?? 'Chưa có sản phẩm'}</b>
-        <span>{row.order_items.length} dòng sản phẩm</span>
-      </div>
-    </td>
+    if (column === 'product') return <td key={column} className="wh-native-product-cell">{productLines(row)}</td>
     if (column === 'progress') return <td key={column}>{row.order_items.filter(isMapped).length}/{row.order_items.length}</td>
     if (column === 'cod') return <td key={column} className="money">{valueOrMissing(row.cod)}</td>
     return <td key={column}><span className={'status-pill ' + (phaseOf(row) === 'done' ? 'green' : phaseOf(row) === 'ready' ? 'blue' : 'orange')}>{phaseLabel(row)}</span></td>
@@ -282,10 +302,18 @@ export function WarehouseIntakeNativeDesign({
 
   return <div className="wh-native">
     <div className="wh-native-filters">
-      <div className="wh-native-warehouse-tabs" aria-label="Lọc theo kho nhận">
-        <button type="button" className={warehouse === 'all' ? 'active' : ''} onClick={() => setWarehouse('all')}>Tất cả kho <b>{rows.length}</b></button>
-        {warehouses.map(w => <button type="button" key={w.id} className={warehouse === w.id ? 'active' : ''}
-          onClick={() => setWarehouse(w.id)}>{w.name} <b>{w.count}</b></button>)}
+      <div className="wh-native-warehouse-tabs" aria-label="Tự phân luồng theo kho đã nhận">
+        <button type="button" className={warehouse === 'all' ? 'active' : ''} onClick={() => setWarehouse('all')}>
+          Tất cả <b>{rows.length}</b>
+        </button>
+        <button type="button" className={warehouse === 'BG' ? 'active' : ''} onClick={() => setWarehouse('BG')}>
+          KHO BG <b>{warehouseLanes.BG}</b>
+        </button>
+        <button type="button" className={warehouse === 'HN' ? 'active' : ''} onClick={() => setWarehouse('HN')}>
+          KHO HN <b>{warehouseLanes.HN}</b>
+        </button>
+        {warehouseLanes.unknown > 0 && <button type="button" className={warehouse === 'unknown' ? 'active' : ''}
+          onClick={() => setWarehouse('unknown')}>Chưa rõ kho <b>{warehouseLanes.unknown}</b></button>}
       </div>
       <div className="wh-native-phase-tabs" aria-label="Trạng thái xử lý">
         {([
@@ -297,7 +325,7 @@ export function WarehouseIntakeNativeDesign({
           onClick={() => setPhase(id)}>{label}</button>)}
       </div>
     </div>
-    <div className={'whx-intake-layout warehouse-intake-layout wh-native-workspace' + (active ? ' with-panel' : '')}>
+    <div ref={workspaceRef} className={'whx-intake-layout warehouse-intake-layout wh-native-workspace' + (active ? ' with-panel' : '')}>
       <section ref={listRef} className="whx-intake-main wh-native-list">
         <div className="managed-table-toolbar wh-native-table-toolbar">
           <span className="managed-table-meta"><b>{visible.length} đơn</b> · Dữ liệu thực từ Kho nhận, không có đơn mẫu</span>
@@ -357,7 +385,7 @@ export function WarehouseIntakeNativeDesign({
             <div className="wh-native-item-list">
               {active.order_items.map((item, index) => <button key={item.id} type="button" className={focusedId === item.id ? 'active' : ''}
                 onClick={() => focus(item)}>
-                <span><b>{index + 1}. {item.product_name}</b><small>{item.sku || 'Chưa có SKU mua'} · SL {item.quantity}</small></span>
+                <span><span className="wh-native-item-name">{index + 1}. {item.product_name}</span><small>{item.sku || 'Chưa có SKU mua'} · SL {item.quantity}</small></span>
                 <span className="wh-native-item-status">{previewChoices[item.id] ? (previewChoices[item.id].action === 'IN' ? 'Dự kiến nhập' : 'Dự kiến bỏ') : isMapped(item) ? 'Đã ghép SKU' : 'Chưa bóc tách'}</span>
               </button>)}
             </div>
@@ -456,7 +484,7 @@ export function WarehouseIntakeNativeDesign({
             <div className="wh-native-info-items">
               {active.order_items.map(item => <button type="button" key={item.id}
                 onClick={() => { setPanelTab('products'); focus(item) }}>
-                <b>{item.product_name} · SL {item.quantity}</b>
+                <span className="wh-native-info-item-name">{item.product_name} · SL {item.quantity}</span>
                 <span>Gốc {valueOrMissing(item.original_price)} · Sau giảm {valueOrMissing(item.final_price)}</span>
                 </button>)}
             </div>
