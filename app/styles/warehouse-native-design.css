@@ -246,8 +246,18 @@
 }
 @media(min-width:901px){
   .brand-shell-v1 .wh-native-workspace.with-panel:has(> aside.mynh-slide-panel:nth-of-type(2)){
-    grid-template-columns:minmax(0,1fr) repeat(2,minmax(0,min(28vw,370px)))!important;
-    gap:var(--mynh-panel-gap,8px)!important;
+    grid-template-columns:minmax(0,1fr) repeat(2,minmax(0,clamp(220px,21vw,320px)))!important;
+    column-gap:4px!important;
+  }
+  /* The ERP's global .warehouse-intake-panel rule assigns column 2 to every
+     panel. Explicit tracks prevent a second slidebar from overlaying the first. */
+  .brand-shell-v1 .wh-native-workspace.with-panel:has(> aside.mynh-slide-panel:nth-of-type(2))>aside.mynh-slide-panel:nth-of-type(1){
+    grid-column:2!important;
+    grid-row:1!important;
+  }
+  .brand-shell-v1 .wh-native-workspace.with-panel:has(> aside.mynh-slide-panel:nth-of-type(2))>aside.mynh-slide-panel:nth-of-type(2){
+    grid-column:3!important;
+    grid-row:1!important;
   }
   .brand-shell-v1 .wh-native-workspace.with-panel:has(> aside.mynh-slide-panel:nth-of-type(2))>aside.mynh-slide-panel{
     position:relative!important;
@@ -399,4 +409,107 @@
     font-size:9px;
     line-height:1.35;
   }
+}
+
+
+/* Compact operational density without hiding or merging table columns. */
+.brand-shell-v1 .wh-native-workspace{
+  --mynh-panel-gap:4px;
+  column-gap:4px!important;
+  padding:0!important;
+}
+.brand-shell-v1 .wh-native-workspace>.wh-native-list{
+  margin:0!important;
+  padding:0!important;
+  gap:4px!important;
+  min-width:0!important;
+}
+.brand-shell-v1 .wh-native-workspace>.wh-native-panel{
+  margin:0!important;
+  min-width:0!important;
+}
+.wh-native .wh-native-warehouse-stack{gap:5px!important}
+.wh-native .wh-native-table-toolbar{min-height:33px;gap:5px;padding:2px 3px}
+.wh-native .wh-native-table-toolbar .managed-table-meta{font-size:9px}
+.wh-native .wh-native-table th{
+  font-size:9.1px!important;
+  line-height:1.25!important;
+  padding:6px 5px!important;
+}
+.wh-native .wh-native-table td{
+  font-size:9.5px!important;
+  line-height:1.28!important;
+  padding:5px 6px!important;
+}
+.wh-native .wh-native-table .wh-native-order-link{
+  font-size:9.9px!important;
+}
+.wh-native .wh-native-product-lines{
+  gap:2px!important;
+}
+.wh-native .wh-native-product-lines .wh-native-product-line{
+  font-size:9.4px!important;
+  line-height:1.25!important;
+  font-weight:400!important;
+  white-space:nowrap!important;
+  text-overflow:ellipsis!important;
+}
+.wh-native .wh-native-warehouse-head .wh-native-warehouse-metrics>span{
+  font-size:8.6px!important;
+  min-height:22px!important;
+}
+.wh-native .wh-native-warehouse-head .tracking-hub-identity b{font-size:10px}
+.wh-native .wh-native-panel .whx-panel-head{
+  padding:8px 9px 7px!important;
+}
+.wh-native .wh-native-panel .whx-panel-scroll{
+  padding:7px 9px!important;
+}
+.wh-native .wh-native-item-list button{
+  padding:6px 7px!important;
+}
+.wh-native .wh-native-field input,
+.wh-native .wh-native-field select,
+.wh-native .wh-native-field textarea{
+  font-size:10px!important;
+}
+.wh-native-existing-sku{display:flex;flex-direction:column;gap:7px;min-width:0}
+.wh-native-sku-suggestion{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:5px 8px;
+  min-width:0;
+  background:#f5f9fc;
+  border-left:2px solid #94bad4;
+  padding:8px;
+}
+.wh-native-sku-suggestion>div{
+  display:flex;flex-direction:column;gap:3px;min-width:0
+}
+.wh-native-sku-suggestion span{
+  color:#557c95;font-size:8.7px;font-weight:700;letter-spacing:.02em
+}
+.wh-native-sku-suggestion b{
+  color:#355971;font-size:10px;white-space:normal;overflow-wrap:anywhere;font-weight:650
+}
+.wh-native-sku-suggestion small{color:#73889a;font-size:9px}
+.wh-native-sku-suggestion button{
+  border:1px solid #bcd4e5;
+  border-radius:4px;
+  background:#fff;
+  color:#2e6286;
+  padding:6px 7px;
+  font-size:9.5px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.wh-native-sku-disclaimer{grid-column:1/-1}
+.wh-native .wh-native-processed-context{
+  color:#547488;
+  font-size:10px;
+  line-height:1.4;
+}
+@media(max-width:900px){
+  .brand-shell-v1 .wh-native-workspace{column-gap:0!important}
 }
