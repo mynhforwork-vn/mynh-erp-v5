@@ -19,6 +19,9 @@ const entry=[
   "  receive_batch_details:[{receive_batches:{warehouse_id:i<4?'50000000-0000-0000-0000-000000000002':'50000000-0000-0000-0000-000000000001',received_at:'2026-11-03T15:09:00+07:00',warehouses:{code:i<4?'BG':'HN',name:i<4?'Kho BG':'Kho HN',address:i<4?'320 Nguyễn Công Hãng':'164 Hồng Mai'}}}],",
   "  order_items:[{id:'40000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),sku:'SP-'+i,product_name:title,variant:'Loại 110ml/180ml',quantity:2,original_price:129000,final_price:89000,product_variant_id:null,inventory_multiplier:1}, {id:'90000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),sku:'SP-2-'+i,product_name:'Sữa tắm hương hoa nhài - chai 500ml',variant:'500ml',quantity:1,original_price:65000,final_price:55000,product_variant_id:null,inventory_multiplier:1}]",
   '}))',
+  "rows[1].order_items.forEach(item=>{item.product_variant_id='READY-TEST-SKU'})",
+  "rows[2].warehouse_status='WAREHOUSE_RECEIVED'",
+  "rows[3].warehouse_status='WAREHOUSE_SKIPPED'",
   "createRoot(document.getElementById('root')).render(<div className='fixture-shell'><WarehouseIntakeNativeDesign rows={rows} variants={[]} auditLogs={[]}/></div>)"
 ].join('\n');
 const entryPath=path.join(tmp,'entry.tsx'), outfile=path.join(tmp,'bundle.js');
@@ -53,6 +56,7 @@ try{
       headers:t.querySelectorAll('thead th').length,
       rects,lines,heads,
       statusClasses:Array.from(document.querySelectorAll('tr.wh-native-data-row .status-pill')).map(el=>el.className),
+      statusLabels:Array.from(document.querySelectorAll('tr.wh-native-data-row .status-pill')).map(el=>el.textContent?.trim()),
     };
    });
    assert.equal(result.cols,7,'all seven columns must remain in '+w+' '+state);
@@ -63,8 +67,13 @@ try{
        'unnecessary x-scroll when all columns can fit at '+w+' '+state+' '+JSON.stringify(result));
    }
    assert.ok(result.contentWidth>=result.table-3,'table content cut instead of inner scroll '+w+' '+state+' '+JSON.stringify(result));
-   assert.ok(result.statusClasses.every(c=>c.includes('status-pill')&&c.includes('orange')),
-     'status tags must use existing ERP token '+w+' '+state);
+   const allowedLabels=['Chờ bóc tách','Chờ nhập kho','Đã xử lý'];
+   assert.ok(result.statusLabels.every(t=>allowedLabels.includes(t)),
+     'unknown order status at '+w+' '+state+': '+result.statusLabels.join(','));
+   for(const label of allowedLabels)assert.ok(result.statusLabels.includes(label),
+     'missing order status '+label+' at '+w+' '+state);
+   assert.ok(result.statusClasses.every(c=>c.includes('status-pill')),
+     'status tags must use ERP status-pill '+w+' '+state);
    assert.ok(result.heads.every(v=>v.scroll<=v.width+3),'warehouse card header overflows '+w+' '+state+' '+JSON.stringify(result));
    assert.ok(result.overflow<=2,'page overflow '+w+' '+state+' '+JSON.stringify(result));
    for(let i=1;i<result.rects.length;i++)assert.ok(result.rects[i-1].right<=result.rects[i].left+1,'overlapping cells '+w+' '+state);
@@ -94,6 +103,16 @@ try{
   assert.equal(await hnCard.locator('.wh-native-table').count(),0,'HN card should collapse independently');
   assert.equal(await bgCard.locator('.wh-native-table').count(),1,'BG must remain expanded');
   await hnCard.getByRole('button',{name:'Mở KHO HN'}).click();
+  const statusFilters=page.locator('.wh-native-phase-tabs button');
+  assert.equal(await statusFilters.count(),4,'3 statuses plus an explicit all-orders filter');
+  await statusFilters.filter({hasText:'Chờ nhập kho'}).click();
+  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),1,'ready filter must include exactly the mapped BG order');
+  await statusFilters.filter({hasText:'Đã xử lý'}).click();
+  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),2,'done must group received and skipped BG orders');
+  await statusFilters.filter({hasText:'Chờ bóc tách'}).click();
+  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),1,'pending must show unmapped BG order');
+  await statusFilters.filter({hasText:'Tất cả đơn'}).click();
+  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),4,'all-orders filter restores all BG orders');
   const closed=await check('closed');
   assert.equal(closed.cols,7);
   await page.locator('.wh-native-order-link').first().click();
