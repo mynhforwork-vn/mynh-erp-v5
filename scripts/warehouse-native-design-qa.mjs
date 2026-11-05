@@ -4,6 +4,7 @@ const read = (name) => readFileSync(new URL('../' + name, import.meta.url), 'utf
 const page = read('app/(erp)/warehouse/receive/page.tsx')
 const workspace = read('components/warehouse-intake-native-design.tsx')
 const css = read('app/styles/warehouse-native-design.css')
+const receivingSettings = read('components/warehouse-receiving-settings.tsx')
 const checks = [
   ['existing ERP layout and slidebar', workspace.includes('whx-intake-layout warehouse-intake-layout wh-native-workspace') && workspace.includes('whx-detail-panel warehouse-intake-panel mynh-slide-panel')],
   ['existing ERP tables and shared column controls', workspace.includes('tracking-hub-table-wrap') && workspace.includes('ManagedColumnsMenu') && workspace.includes('SortableHeader')],
@@ -13,14 +14,27 @@ const checks = [
   ['per-item choice preview without writes', workspace.includes('setPreviewChoices') && workspace.includes('không ghi Supabase')],
   ['no old V2.1 component or migration needed', !workspace.includes('warehouse-intake-v21-workspace') && !page.includes('warehouse-item-v21')],
   ['no app server actions in preview component', !workspace.includes("from '@/lib/actions/warehouse'") && !workspace.includes('supabase.rpc(')],
-  ['ResizeObserver tracks real list width and switches presentation modes',
-    workspace.includes('new ResizeObserver(') && workspace.includes('width < 570') && workspace.includes('width < 950')],
-  ['wide columns strictly sized by visible column weights',
-    workspace.includes('columnWeights') && workspace.includes('<colgroup>') && workspace.includes('totalColumnWeight')],
-  ['compact groups preserve date, warehouse, progress and COD',
-    workspace.includes('renderGroupedCells') && workspace.includes('visibleColumn(\'received\')') &&
-    workspace.includes('visibleColumn(\'warehouse\')') && workspace.includes('visibleColumn(\'progress\')') &&
-    workspace.includes('visibleColumn(\'cod\')')],
+  ['ResizeObserver measures true list width without auto-hiding columns',
+    workspace.includes('new ResizeObserver(') && workspace.includes('setListWidth(') &&
+    !workspace.includes('renderGroupedCells') && !workspace.includes('tableMode')],
+  ['all seven visible columns preserve managed order while pixel widths flex',
+    workspace.includes('minWidths: Record<Column, number>') &&
+    workspace.includes('colWidths') && workspace.includes('<colgroup>') &&
+    workspace.includes('columns.visible.map(column => renderCell(row, column))')],
+  ['inner scroll is allowed when two panels constrain list width',
+    css.includes('overflow-x:auto!important') &&
+    css.includes('var(--wh-table-width,100%)') &&
+    css.includes('max-height:min(58dvh,660px)')],
+  ['warehouse settings reuse native component without Preview mutations',
+    page.includes('<WarehouseReceivingSettings') &&
+    page.includes('previewOnly') && page.includes("supabase.from('warehouse_settings')") &&
+    receivingSettings.includes('previewOnly ? undefined : saveReceivingWarehouseSettings') &&
+    receivingSettings.includes('disabled={previewOnly}')],
+  ['status pills use the existing ERP semantic palette',
+    workspace.includes("'status-ready_to_ship'") &&
+    workspace.includes("'orange'") && workspace.includes("'green'") &&
+    !workspace.includes(" ? 'blue' :") &&
+    workspace.includes("'status-pill ' + phaseStatusTone(row)")],
   ['fixed table layout clips long strings and keeps sticky header',
     css.includes('table-layout:fixed!important') && css.includes('overflow:hidden!important') &&
     css.includes('position:sticky!important') && css.includes('white-space:nowrap!important') && css.includes('font-weight:400!important')],
