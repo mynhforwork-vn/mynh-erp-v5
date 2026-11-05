@@ -58,6 +58,10 @@ try{
    assert.equal(result.cols,7,'all seven columns must remain in '+w+' '+state);
    assert.equal(result.headers,7,'all seven headers must remain in '+w+' '+state);
    assert.ok(result.table>=result.wrap-4,'table is not filling available width '+w+' '+state+' '+JSON.stringify(result));
+   if(result.wrap>926){
+     assert.ok(result.contentWidth-result.available<6,
+       'unnecessary x-scroll when all columns can fit at '+w+' '+state+' '+JSON.stringify(result));
+   }
    assert.ok(result.contentWidth>=result.table-3,'table content cut instead of inner scroll '+w+' '+state+' '+JSON.stringify(result));
    assert.ok(result.statusClasses.every(c=>c.includes('status-pill')&&c.includes('orange')),
      'status tags must use existing ERP token '+w+' '+state);
