@@ -2,8 +2,17 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { ManagedColumnsMenu, SortableHeader, useManagedColumns, useManagedSort } from '@/components/managed-table-columns'
 import { formatDateTime, formatMoney, formatPhone } from '@/lib/format'
 import { processWarehouseItemsV21, saveWarehouseSkuV21 } from '@/lib/actions/warehouse-item-v21'
+
+type Column = 'order' | 'received' | 'warehouse' | 'total' | 'mapped' | 'receivedCount' | 'skippedCount' | 'status'
+const COLUMNS: Column[] = ['order','received','warehouse','total','mapped','receivedCount','skippedCount','status']
+const LABELS: Record<Column,string> = {
+  order:'Mã đơn',received:'Ngày nhận',warehouse:'Kho',
+  total:'Sản phẩm',mapped:'Đã bóc tách',receivedCount:'Nhập kho',
+  skippedCount:'Bỏ qua',status:'Trạng thái',
+}
 
 type Variant = {
   id: string
@@ -99,6 +108,8 @@ export function WarehouseIntakeV21({
   initialStage?: 'split' | 'ready' | 'done'
 }) {
   const router = useRouter()
+  const managedColumns = useManagedColumns<Column>('mynh-warehouse-v21-column-prefs',COLUMNS,['order'])
+  const managedSort = useManagedSort<Column>('mynh-warehouse-v21-sort','received','desc')
   const [busy, startTransition] = useTransition()
   const [stage, setStage] = useState<'split' | 'ready' | 'done'>(initialStage)
   const [warehouse, setWarehouse] = useState('all')
@@ -136,7 +147,8 @@ export function WarehouseIntakeV21({
     return [...map.values()].sort((a, b) => a.code.localeCompare(b.code, 'vi'))
   }, [rows])
 
-  const visible = useMemo(() => rows.filter(row => {
+  const visible = useMemo(() => {
+    const filtered = rows.filter(row => {
     if (rowStage(row) !== stage) return false
     if (warehouse !== 'all' && (batchOf(row)?.warehouse_id ?? 'unknown') !== warehouse) return false
     if (!query.trim()) return true
@@ -145,7 +157,25 @@ export function WarehouseIntakeV21({
       ...row.order_items.flatMap(item => [item.sku, item.product_name, item.variant, item.product_variants?.products?.sku]),
     ].filter(Boolean).join(' ').toLocaleLowerCase('vi')
     return hay.includes(query.trim().toLocaleLowerCase('vi'))
-  }), [rows, stage, warehouse, query])
+    })
+    const value = (row:Row,column:Column):string|number => {
+      const st=stats(row)
+      if(column==='order')return String(row.shopee_order_id??row.id)
+      if(column==='received')return new Date(batchOf(row)?.received_at??row.order_date??0).getTime()
+      if(column==='warehouse')return String(warehouseOf(row)?.code??'')
+      if(column==='total')return st.total
+      if(column==='mapped')return st.mapped
+      if(column==='receivedCount')return st.received
+      if(column==='skippedCount')return st.skipped
+      return rowStage(row)
+    }
+    return [...filtered].sort((a,b)=>{
+      const av=value(a,managedSort.key),bv=value(b,managedSort.key)
+      const cmp=typeof av==='number'&&typeof bv==='number'
+        ? av-bv : String(av).localeCompare(String(bv),'vi')
+      return managedSort.dir==='asc' ? cmp : -cmp
+    })
+  },[rows,stage,warehouse,query,managedSort.key,managedSort.dir])
 
   const active = rows.find(row => row.id === activeId) ?? null
   const focused = active?.order_items.find(item => item.id === focusedId) ?? null
@@ -277,27 +307,35 @@ export function WarehouseIntakeV21({
     <div className="wiv21-toolbar">
       <div><strong>{stage === 'split' ? 'Đơn cần bóc tách' : stage === 'ready' ? 'Chờ quyết định nhập kho' : 'Đã xử lý kho'}</strong>
         <small>{visible.length} đơn trong danh sách · Chọn mã đơn để mở chi tiết</small></div>
-      <div className="wiv21-toolbar-input">
-        <input aria-label="Tìm đơn hoặc sản phẩm" value={query} onChange={e => setQuery(e.target.value)}
-          placeholder="Tìm mã đơn, sản phẩm, SKU..." />
-        <button type="button" aria-label="Xóa bộ lọc" title="Xóa bộ lọc" onClick={() => { setQuery(''); setWarehouse('all') }}>⌫</button>
+      <div className="wiv21-tools">
+        <div className="wiv21-toolbar-input">
+          <input aria-label="Tìm đơn hoặc sản phẩm" value={query} onChange={e => setQuery(e.target.value)}
+            placeholder="Tìm mã đơn, sản phẩm, SKU..." />
+          <button type="button" aria-label="Xóa bộ lọc" title="Xóa bộ lọc" onClick={() => { setQuery(''); setWarehouse('all') }}>⌫</button>
+        </div>
+        <ManagedColumnsMenu labels={LABELS} manager={managedColumns}/>
       </div>
     </div>
 
     <div className="wiv21-grid-wrap">
       <table className="wiv21-table">
-        <thead><tr><th>Mã đơn</th><th>Ngày nhận</th><th>Kho</th><th>Sản phẩm</th><th>Đã bóc tách</th><th>Nhập kho</th><th>Bỏ qua</th><th>Trạng thái</th></tr></thead>
+        <thead><tr>{managedColumns.visible.map(col =>
+          <th key={col}><SortableHeader column={col} label={LABELS[col]} sort={managedSort} onSort={managedSort.toggle}/></th>
+        )}</tr></thead>
         <tbody>
-          {visible.length === 0 && <tr><td colSpan={8} className="wiv21-empty">Không có đơn phù hợp bộ lọc.</td></tr>}
+          {visible.length === 0 && <tr><td colSpan={managedColumns.visible.length} className="wiv21-empty">Không có đơn phù hợp bộ lọc.</td></tr>}
           {visible.map(row => {
-            const s = stats(row)
-            return <tr key={row.id}>
-              <td><button type="button" className="wiv21-order-link" onClick={() => openOrder(row)}>{row.shopee_order_id ?? row.id.slice(0, 8)}</button></td>
-              <td>{formatDateTime(batchOf(row)?.received_at ?? row.order_date)}</td>
-              <td>{warehouseOf(row)?.code ?? '—'}</td>
-              <td>{s.total} dòng</td><td>{s.mapped}/{s.total}</td><td>{s.received}</td><td>{s.skipped}</td>
-              <td><span className={'wiv21-status ' + rowStage(row)}>{rowStage(row) === 'split' ? 'Cần bóc tách' : rowStage(row) === 'ready' ? 'Chờ xử lý kho' : 'Đã hoàn tất'}</span></td>
-            </tr>
+            const st=stats(row)
+            return <tr key={row.id}>{managedColumns.visible.map(col=>{
+              if(col==='order')return <td key={col}><button type="button" className="wiv21-order-link" onClick={()=>openOrder(row)}>{row.shopee_order_id??row.id.slice(0,8)}</button></td>
+              if(col==='received')return <td key={col}>{formatDateTime(batchOf(row)?.received_at??row.order_date)}</td>
+              if(col==='warehouse')return <td key={col}>{warehouseOf(row)?.code??'—'}</td>
+              if(col==='total')return <td key={col}>{st.total} dòng</td>
+              if(col==='mapped')return <td key={col}>{st.mapped}/{st.total}</td>
+              if(col==='receivedCount')return <td key={col}>{st.received}</td>
+              if(col==='skippedCount')return <td key={col}>{st.skipped}</td>
+              return <td key={col}><span className={'wiv21-status '+rowStage(row)}>{rowStage(row)==='split'?'Cần bóc tách':rowStage(row)==='ready'?'Chờ xử lý kho':'Đã hoàn tất'}</span></td>
+            })}</tr>
           })}
         </tbody>
       </table>
