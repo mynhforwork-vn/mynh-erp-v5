@@ -36,7 +36,7 @@ await build({entryPoints:[entryPath],outfile,absWorkingDir:root,bundle:true,plat
   // Only the server-action import is mocked; the settings UI is the actual
   // application component and is mounted as a real portaled slidebar.
   plugins:[{name:'mock-server-action',setup(build){
-    build.onResolve({filter:new RegExp('^@/lib/actions/warehouse
+    build.onResolve({filter:new RegExp('actions/warehouse')},()=>({path:'warehouse-actions',namespace:'qa-action'}));
     build.onLoad({filter:/.*/,namespace:'qa-action'},()=>({contents:'export async function saveReceivingWarehouseSettings(){}',loader:'js'}));
   }}]
 });
