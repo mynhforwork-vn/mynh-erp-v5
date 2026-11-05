@@ -253,7 +253,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     </div>}
 
     <div className="wh-native-date-toolbar">
-      <WarehouseReceivedDateFilter period={receivedPeriod} from={dateFrom} to={dateTo}/>
+      <WarehouseReceivedDateFilter period={receivedPeriod} from={dateFrom} to={dateTo} state={currentStatus}/>
       {invalidDateRange && <span className="wh-native-date-error" role="alert">Từ ngày không được sau Đến ngày.</span>}
     </div>
     <section className="tracking-command-center-v2 warehouse-command-center">
