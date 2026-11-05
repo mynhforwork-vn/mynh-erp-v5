@@ -21,6 +21,9 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     { data: orders, error: ordersError },
     { data: variants, error: variantsError },
     { data: auditLogs, error: auditError },
+    { data: receiptLinks, error: receiptLinksError },
+    { data: receiptBatches, error: receiptBatchesError },
+    { data: receivingWarehouses, error: receivingWarehousesError },
   ] = await Promise.all([
     supabase.from('orders')
       .select([
@@ -44,9 +47,50 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       .select('id,entity_id,action,created_at,old_value,new_value')
       .eq('module', 'WAREHOUSE').eq('entity_type', 'ORDER')
       .order('created_at', { ascending: false }).limit(800),
+    supabase.from('receive_batch_details')
+      .select('order_id,receive_batch_id').limit(1500),
+    supabase.from('receive_batches')
+      .select('id,warehouse_id,received_at').limit(1000),
+    supabase.from('warehouses')
+      .select('id,code,name,address,is_active').in('code', ['BG', 'HN']).limit(10),
   ])
-  const error = ordersError ?? variantsError ?? auditError
-  const rows = (orders ?? []) as any[]
+  const error = ordersError ?? variantsError ?? auditError ??
+    receiptLinksError ?? receiptBatchesError ?? receivingWarehousesError
+
+  // Read-only reconciliation from the confirmed receiving records. Do not
+  // infer warehouse from HUB/delivery destination or place of residence.
+  // This also protects the Preview from an absent nested PostgREST relation.
+  const batchMap = new Map((receiptBatches ?? []).map(batch => [batch.id, batch]))
+  const warehouseMap = new Map((receivingWarehouses ?? []).map(warehouse => [warehouse.id, warehouse]))
+  const linksMap = new Map<string, Array<{ receive_batch_id: string }>>()
+  for (const link of receiptLinks ?? []) {
+    const previous = linksMap.get(link.order_id) ?? []
+    previous.push({ receive_batch_id: link.receive_batch_id })
+    linksMap.set(link.order_id, previous)
+  }
+  const rows = ((orders ?? []) as any[]).map(order => {
+    const links = linksMap.get(order.id) ?? []
+    if (links.length !== 1) return {
+      ...order,
+      receive_batch_details: links.length === 0 ? order.receive_batch_details : [],
+    }
+    const batch = batchMap.get(links[0].receive_batch_id)
+    const warehouse = batch ? warehouseMap.get(batch.warehouse_id) : null
+    if (!batch || !warehouse || !['BG', 'HN'].includes(warehouse.code)) {
+      return { ...order, receive_batch_details: [] }
+    }
+    return { ...order, receive_batch_details: [{
+      receive_batches: {
+        warehouse_id: warehouse.id, received_at: batch.received_at,
+        warehouses: { id: warehouse.id, code: warehouse.code, name: warehouse.name, address: warehouse.address },
+      },
+    }] }
+  })
+  const assignedCount = rows.filter(row => {
+    const batch = row.receive_batch_details?.[0]?.receive_batches
+    return batch?.warehouses?.code === 'BG' || batch?.warehouses?.code === 'HN'
+  }).length
+  const unresolvedCount = rows.length - assignedCount
   const pending = rows.filter(row => row.warehouse_status === 'READY_TO_TRANSFER')
   const incomplete = pending.filter(row =>
     !(row.order_items ?? []).length ||
@@ -56,7 +100,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     (row.order_items ?? []).every((item: any) => Boolean(item.product_variant_id)))
   const missingItems = incomplete.reduce((sum, row) =>
     sum + (row.order_items ?? []).filter((item: any) => !item.product_variant_id).length, 0)
-  const warehouses = new Set(rows.map(row => batchOf(row)?.warehouse_id).filter(Boolean).map(String))
+  const warehouses = new Set(rows.map(row => batchOf(row)?.warehouses?.code).filter(Boolean).map(String))
   const waitingCod = pending.reduce((sum, row) => sum + Number(row.cod ?? 0), 0)
   const currentStatus = state === 'ready' ? 'ready' : state === 'incomplete' || state === 'missing' ? 'pending' : state === 'done' ? 'done' : 'all'
 
@@ -78,6 +122,12 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
         <span>Chỉ xem và mô phỏng lựa chọn trên Preview; không ghi SKU, giá hoặc tồn kho vào Supabase.</span>
       </div>
     </div>
+    {!error && unresolvedCount > 0 && <div className="tracking-flash-row">
+      <div className="warehouse-intake-rule" role="status">
+        <b>{unresolvedCount} đơn chưa xác định được kho nhận thực tế</b>
+        <span>Vui lòng kiểm tra liên kết phiếu nhận. Hệ thống không tự suy đoán theo HUB và không nhập kho.</span>
+      </div>
+    </div>}
     {error && <div className="tracking-flash-row">
       <div className="error-box">Không thể tải dữ liệu Kho nhận: {error.message}</div>
     </div>}
