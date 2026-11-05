@@ -335,28 +335,14 @@ export function WarehouseIntakeNativeDesign({
   }
 
   return <div className="wh-native">
-    <div className="wh-native-filters">
-      <div className="wh-native-phase-tabs" aria-label="Trạng thái xử lý">
-        {([
-          ['all', 'Việc cần xử lý'],
-          ['pending', PHASE_LABELS.pending],
-          ['ready', PHASE_LABELS.ready],
-        ] as const).map(([id, label]) => <button type="button" key={id} className={phase === id ? 'active' : ''}
-          onClick={() => setPhase(id)}>{label}</button>)}
-      </div>
-      {phase === 'done'
-        ? <span className="wh-native-processed-context" role="status">Đang xem Đã xử lý · Chọn “Việc cần xử lý” để quay lại danh sách đang làm</span>
-        : <span className="wh-native-warehouse-hint">Phân theo kho nhận thực tế · Thu/mở từng kho</span>}
-    </div>
     <div ref={workspaceRef} className={'whx-intake-layout warehouse-intake-layout wh-native-workspace' + (active ? ' with-panel' : '')}>
       <section ref={listRef} className="whx-intake-main wh-native-list">
         <div className="managed-table-toolbar wh-native-table-toolbar">
-          <span className="managed-table-meta"><b>{visible.length} đơn</b> · Dữ liệu thực từ Kho nhận, không có đơn mẫu</span>
           <div className="wh-native-search">
             <input aria-label="Tìm mã đơn, SKU, sản phẩm" placeholder="Tìm mã đơn, SKU, sản phẩm..."
               value={search} onChange={e => setSearch(e.target.value)}/>
             <button type="button" aria-label="Xóa bộ lọc" title="Xóa bộ lọc"
-              onClick={() => { setSearch(''); setPhase('all') }}>×</button>
+              onClick={() => setSearch('')}>×</button>
           </div>
           <ManagedColumnsMenu labels={LABELS} manager={columns}/>
         </div>
