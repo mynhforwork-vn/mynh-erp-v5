@@ -21,6 +21,37 @@ jobs:
       - run: node scripts/warehouse-native-design-qa.mjs
       - run: npm run typecheck
       - run: npm run build
+  browser-autofit:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install isolated Browser QA toolchain
+        run: npm install --no-save playwright esbuild
+      - name: Locate system Chrome
+        shell: bash
+        run: |
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          if [ -z "$CHROME_PATH" ]; then
+            echo "::error::System Chrome/Chromium unavailable"
+            exit 1
+          fi
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+          "$CHROME_PATH" --version
+      - name: Browser auto-fit regression (6 viewports, open/close slidebar)
+        run: node scripts/warehouse-native-autofit-browser-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: warehouse-native-autofit
+          path: qa-warehouse-native-autofit/
+          retention-days: 7
   preview:
     needs: verify
     runs-on: ubuntu-latest
