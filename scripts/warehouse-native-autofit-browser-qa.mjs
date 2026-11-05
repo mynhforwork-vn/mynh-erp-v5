@@ -79,8 +79,16 @@ try{
    assert.ok(result.fontSize<=10.1,'table data too large '+w+' '+state+' '+result.fontSize);
    if(result.geometry.panels.length){
      const first=result.geometry.panels[0];
-     assert.ok(first.left>=result.geometry.listRight-1,'first slidebar overlaps table '+w+' '+state);
-     assert.ok(first.left-result.geometry.listRight<=7,'excessive gap before slidebar '+w+' '+state);
+     if(w>900){
+       assert.ok(first.left>=result.geometry.listRight-1,'desktop slidebar overlaps table '+w+' '+state);
+       assert.ok(first.left-result.geometry.listRight<=7,'excessive desktop table/slidebar gap '+w+' '+state);
+     }else{
+       // The ERP intentionally uses an overlay/full-width right slidebar on
+       // Tablet and Mobile. This is not a Desktop grid collision.
+       assert.ok(first.left>=-2 && first.right<=w+2,
+         'responsive slidebar escapes viewport '+w+' '+state+' '+JSON.stringify(result.geometry));
+       assert.ok(first.width>=Math.min(w,300)-2,'responsive slidebar is too narrow '+w+' '+state);
+     }
    }
    if(result.geometry.panels.length===2){
      const [first,second]=result.geometry.panels;
