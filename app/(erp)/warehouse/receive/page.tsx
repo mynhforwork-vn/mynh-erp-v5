@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { formatMoney } from '@/lib/format'
 import { WarehouseIntakeNativeDesign } from '@/components/warehouse-intake-native-design'
+import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
 import '@/app/styles/warehouse-native-design.css'
 
 function batchOf(row: any) {
@@ -24,6 +25,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     { data: receiptLinks, error: receiptLinksError },
     { data: receiptBatches, error: receiptBatchesError },
     { data: receivingWarehouses, error: receivingWarehousesError },
+    { data: settings, error: settingsError },
   ] = await Promise.all([
     supabase.from('orders')
       .select([
@@ -53,9 +55,11 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       .select('id,warehouse_id,received_at').limit(1000),
     supabase.from('warehouses')
       .select('id,code,name,address,is_active').in('code', ['BG', 'HN']).limit(10),
+    supabase.from('warehouse_settings')
+      .select('default_receiving_warehouse_id').eq('id', 'main').single(),
   ])
   const error = ordersError ?? variantsError ?? auditError ??
-    receiptLinksError ?? receiptBatchesError ?? receivingWarehousesError
+    receiptLinksError ?? receiptBatchesError ?? receivingWarehousesError ?? settingsError
 
   // Read-only reconciliation from the confirmed receiving records. Do not
   // infer warehouse from HUB/delivery destination or place of residence.
@@ -112,6 +116,11 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
         <p>Theo Kho nhận · Bóc tách SKU · Quyết định nhập hoặc bỏ qua theo từng sản phẩm</p>
       </div>
       <div className="head-actions">
+        <WarehouseReceivingSettings
+          warehouses={((receivingWarehouses ?? []).filter(w => w.is_active)) as any[]}
+          defaultReceivingWarehouseId={settings?.default_receiving_warehouse_id ?? null}
+          previewOnly
+        />
         <Link className="button" href="/purchase/tracking?range=all&status=DELIVERED&receive=WAITING_RECEIVE">Đơn chờ nhận</Link>
       </div>
     </header>
