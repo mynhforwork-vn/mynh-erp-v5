@@ -42,8 +42,10 @@ assert.match(form,/feedback\.status==='ok'\?'is-success'/,'success class is used
 assert.match(form,/router\.refresh\(\)/,'server rows refresh when URL is unchanged')
 assert.doesNotMatch(form,/erp-user-inline-error/,'no error text that expands toolbar')
 assert.match(feedbackCss,/\.erp-user-action-toast\{position:fixed/,'feedback stays outside table flow')
-assert.match(feedbackCss,/\.erp-user-action-toast\.is-success\{right:/,'successful action toast is top right')
-assert.match(feedbackCss,/\.erp-user-action-toast\.is-error\{left:/,'error toast is top left')
+assert.match(feedbackCss,/\.erp-user-action-toast\{[^}]*right:max\(12px,env\(safe-area-inset-right\)\)/,'shared action toast is anchored top right')
+assert.match(feedbackCss,/\.erp-user-action-toast\.is-success\{border-left-color:/,'success style is retained')
+assert.match(feedbackCss,/\.erp-user-action-toast\.is-error\{border-left-color:/,'error style is retained')
+assert.doesNotMatch(feedbackCss,/\.erp-user-action-toast\.is-error\{[^}]*left:/,'error toast no longer anchors left')
 
 const page=read('app/(erp)/users/page.tsx')
 const table=read('components/purchase-account-table.tsx')
