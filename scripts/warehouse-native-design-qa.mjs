@@ -109,7 +109,10 @@ const checks = [
     css.includes('font-size:9.4px!important') &&
     workspace.includes('minWidths: Record<Column, number>') &&
     workspace.includes("columns.visible.map(column => renderCell(row, column))")],
-  ['no fixed-position desktop panel', css.includes('@media(min-width:901px)') && css.includes('position:relative!important') && !css.includes('position:fixed')],
+  ['Desktop panels stay in grid; Tablet/Mobile panel stays within viewport',
+    css.includes('@media(min-width:901px)') && css.includes('position:relative!important') &&
+    css.includes('@media(max-width:900px)') && css.includes('position:fixed!important') &&
+    css.includes('width:100vw!important') && css.includes('inset:0!important')],
   ['escape key closes slidebar', workspace.includes("event.key === 'Escape'")],
 ]
 for (const [name, pass] of checks) {
