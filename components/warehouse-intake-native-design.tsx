@@ -59,16 +59,19 @@ function phaseOf(row: Order): Exclude<Phase, 'all'> {
     return 'done'
   return hasItems(row) && row.order_items.every(isMapped) ? 'ready' : 'pending'
 }
+// Chỉ ba trạng thái vận hành ở cấp đơn. Nhập kho / bỏ qua kho là kết quả
+// xử lý chi tiết, không làm phát sinh trạng thái thứ tư trên giao diện.
+const PHASE_LABELS: Record<Exclude<Phase, 'all'>, string> = {
+  pending: 'Chờ bóc tách',
+  ready: 'Chờ nhập kho',
+  done: 'Đã xử lý',
+}
 function phaseLabel(row: Order) {
-  if (row.warehouse_status === 'WAREHOUSE_RECEIVED') return 'Đã nhập kho'
-  if (row.warehouse_status === 'WAREHOUSE_SKIPPED') return 'Đã bỏ qua kho'
-  if (row.warehouse_status === 'WAREHOUSE_MIXED') return 'Đã xử lý hỗn hợp'
-  return phaseOf(row) === 'ready' ? 'Chờ quyết định kho' : 'Chờ bóc tách'
+  return PHASE_LABELS[phaseOf(row)]
 }
 function phaseStatusTone(row: Order) {
-  if (row.warehouse_status === 'WAREHOUSE_RECEIVED' || row.warehouse_status === 'WAREHOUSE_MIXED') return 'green'
-  if (row.warehouse_status === 'WAREHOUSE_SKIPPED') return ''
-  return phaseOf(row) === 'ready' ? 'status-ready_to_ship' : 'orange'
+  const state = phaseOf(row)
+  return state === 'done' ? 'green' : state === 'ready' ? 'status-ready_to_ship' : 'orange'
 }
 function receivedAt(row: Order) { return batchOf(row)?.received_at ?? row.order_date ?? null }
 function valueOrMissing(value?: number | string | null) {
@@ -306,10 +309,10 @@ export function WarehouseIntakeNativeDesign({
     <div className="wh-native-filters">
       <div className="wh-native-phase-tabs" aria-label="Trạng thái xử lý">
         {([
-          ['all', 'Tất cả'],
-          ['pending', 'Chờ bóc tách'],
-          ['ready', 'Chờ quyết định kho'],
-          ['done', 'Đã xử lý'],
+          ['all', 'Tất cả đơn'],
+          ['pending', PHASE_LABELS.pending],
+          ['ready', PHASE_LABELS.ready],
+          ['done', PHASE_LABELS.done],
         ] as const).map(([id, label]) => <button type="button" key={id} className={phase === id ? 'active' : ''}
           onClick={() => setPhase(id)}>{label}</button>)}
       </div>
@@ -347,7 +350,7 @@ export function WarehouseIntakeNativeDesign({
                 <div className="tracking-hub-metrics-v2 wh-native-warehouse-metrics" aria-label={'Chỉ số ' + group.label}>
                   <span><b>{group.rows.length}</b> đơn</span>
                   <span className={group.pending ? 'warning' : ''}><b>{group.pending}</b> chờ bóc tách</span>
-                  <span className={group.ready ? 'info' : ''}><b>{group.ready}</b> chờ nhập</span>
+                  <span className={group.ready ? 'info' : ''}><b>{group.ready}</b> chờ nhập kho</span>
                   <span className={group.done ? 'success' : ''}><b>{group.done}</b> đã xử lý</span>
                   <span className="money"><b>{formatMoney(group.cod)}</b> COD</span>
                 </div>
