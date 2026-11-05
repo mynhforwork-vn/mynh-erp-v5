@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireUser } from '@/lib/supabase/auth'
 import { WarehouseIntakeNativeDesign } from '@/components/warehouse-intake-native-design'
 import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
+import { WarehouseReceivedDateFilter } from '@/components/warehouse-received-date-filter'
 import '@/app/styles/warehouse-native-design.css'
 
 function suggestionKey(item: { sku?: string | null; product_name?: string | null; variant?: string | null }) {
@@ -19,11 +20,52 @@ function batchOf(row: any) {
   return Array.isArray(value) ? value[0] ?? null : value ?? null
 }
 
-type SP = { state?: 'all' | 'pending' | 'incomplete' | 'missing' | 'ready' | 'done' }
+type ReceiptPeriod = 'all' | 'today' | '7d' | '30d' | 'custom'
+type SP = {
+  state?: 'all' | 'pending' | 'incomplete' | 'missing' | 'ready' | 'done'
+  received_range?: ReceiptPeriod
+  from?: string
+  to?: string
+}
+function validIsoDay(value: string | undefined): string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return ''
+  const date = new Date(value + 'T00:00:00Z')
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0,10) === value ? value : ''
+}
+function vietnamDay(value: Date): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(value)
+  const take = (type: string) => parts.find(part => part.type === type)?.value ?? ''
+  return take('year') + '-' + take('month') + '-' + take('day')
+}
+function subtractDays(day: string, count: number): string {
+  const date = new Date(day + 'T00:00:00Z')
+  date.setUTCDate(date.getUTCDate() - count)
+  return date.toISOString().slice(0, 10)
+}
+function receiptDay(value: string | null | undefined): string {
+  if (!value) return ''
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? '' : vietnamDay(d)
+}
 
 export default async function WarehouseReceivePage({ searchParams }: { searchParams: Promise<SP> }) {
   const params = await searchParams
   const state = params.state ?? 'all'
+  const requestedPeriod = params.received_range ?? 'all'
+  const receivedPeriod: ReceiptPeriod = (['today','7d','30d','custom'] as const).includes(requestedPeriod as any)
+    ? requestedPeriod : 'all'
+  const dateFrom = validIsoDay(params.from)
+  const dateTo = validIsoDay(params.to)
+  const today = vietnamDay(new Date())
+  const sinceDay = receivedPeriod === 'today' ? today
+    : receivedPeriod === '7d' ? subtractDays(today, 6)
+    : receivedPeriod === '30d' ? subtractDays(today, 29)
+    : receivedPeriod === 'custom' ? dateFrom : ''
+  const untilDay = receivedPeriod === 'today' || receivedPeriod === '7d' || receivedPeriod === '30d'
+    ? today : receivedPeriod === 'custom' ? dateTo : ''
+  const invalidDateRange = Boolean(sinceDay && untilDay && sinceDay > untilDay)
   const { supabase } = await requireUser()
   const [
     { data: orders, error: ordersError },
@@ -85,7 +127,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     previous.push({ receive_batch_id: link.receive_batch_id })
     linksMap.set(link.order_id, previous)
   }
-  const rows = ((orders ?? []) as any[]).map(order => {
+  const allRows = ((orders ?? []) as any[]).map(order => {
     const links = linksMap.get(order.id) ?? []
     if (links.length !== 1) return {
       ...order,
@@ -103,6 +145,14 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       },
     }] }
   })
+  // The filter uses the RECEIVED timestamp on the confirmed batch,
+  // NEVER the purchase/order date or delivery HUB.
+  const rows = invalidDateRange ? [] : allRows.filter(row => {
+    if (receivedPeriod === 'all') return true
+    const day = receiptDay(batchOf(row)?.received_at)
+    return !!day && (!sinceDay || day >= sinceDay) && (!untilDay || day <= untilDay)
+  })
+
   const mappingByKey = new Map<string, any>()
   for (const item of (recentMappings ?? []) as any[]) {
     const key = suggestionKey(item)
@@ -154,6 +204,16 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     state === 'pending' || state === 'incomplete' || state === 'missing' ? 'pending' :
     state === 'done' ? 'done' : 'all'
 
+  const statusHref = (status: 'all' | 'pending' | 'ready' | 'done') => {
+    const query = new URLSearchParams({ state: status })
+    if (receivedPeriod !== 'all') query.set('received_range', receivedPeriod)
+    if (receivedPeriod === 'custom') {
+      if (dateFrom) query.set('from', dateFrom)
+      if (dateTo) query.set('to', dateTo)
+    }
+    return '/warehouse/receive?' + query.toString()
+  }
+
   return <div className="tracking-screen tracking-screen-v2 whx-page warehouse-receive-screen">
     <header className="page-head tracking-page-head-v2">
       <div>
@@ -187,15 +247,22 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       <div className="error-box">Không thể tải dữ liệu Kho nhận: {error.message}</div>
     </div>}
 
+    <div className="wh-native-date-toolbar">
+      <WarehouseReceivedDateFilter period={receivedPeriod} from={dateFrom} to={dateTo}/>
+      {invalidDateRange && <span className="wh-native-date-error" role="alert">Từ ngày không được sau Đến ngày.</span>}
+    </div>
     <section className="tracking-command-center-v2 warehouse-command-center">
-      <div className="tracking-status-strip-v2 wh-native-three-statuses" aria-label="Ba trạng thái nhập kho">
-        <Link href="/warehouse/receive?state=pending" className={'tracking-status-metric warning ' + (currentStatus === 'pending' ? 'active' : '')}>
+      <div className="tracking-status-strip-v2 wh-native-status-kpis" aria-label="Tất cả và ba trạng thái nhập kho">
+        <Link href={statusHref('all')} className={'tracking-status-metric ' + (currentStatus === 'all' ? 'active' : '')}>
+          <span>Tất cả</span><b>{rows.length}</b><small>{pending.length} cần xử lý · {done.length} đã xử lý</small>
+        </Link>
+        <Link href={statusHref('pending')} className={'tracking-status-metric warning ' + (currentStatus === 'pending' ? 'active' : '')}>
           <span>Chờ bóc tách</span><b>{incomplete.length}</b><small>{missingItems} dòng SKU chưa ghép</small>
         </Link>
-        <Link href="/warehouse/receive?state=ready" className={'tracking-status-metric info ' + (currentStatus === 'ready' ? 'active' : '')}>
+        <Link href={statusHref('ready')} className={'tracking-status-metric info ' + (currentStatus === 'ready' ? 'active' : '')}>
           <span>Chờ nhập kho</span><b>{ready.length}</b><small>Đã ghép SKU, chưa ghi tồn</small>
         </Link>
-        <Link href="/warehouse/receive?state=done" className={'tracking-status-metric success ' + (currentStatus === 'done' ? 'active' : '')}>
+        <Link href={statusHref('done')} className={'tracking-status-metric success ' + (currentStatus === 'done' ? 'active' : '')}>
           <span>Đã xử lý</span><b>{done.length}</b><small>Đã nhập kho hoặc bỏ qua kho</small>
         </Link>
       </div>
