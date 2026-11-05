@@ -43,9 +43,24 @@ try{
     const rects=Array.from(t.querySelector('tbody tr.wh-native-data-row').querySelectorAll('td')).map(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,overflow:getComputedStyle(el).overflowX}});
     const lines=Array.from(t.querySelector('tbody tr.wh-native-data-row').querySelectorAll('.wh-native-product-line')).map(el=>({text:el.textContent,weight:getComputedStyle(el).fontWeight,wrap:getComputedStyle(el).whiteSpace,height:el.getBoundingClientRect().height,lineHeight:parseFloat(getComputedStyle(el).lineHeight)}));
     const heads=Array.from(document.querySelectorAll('.wh-native-warehouse-head')).map(el=>({width:el.getBoundingClientRect().width,scroll:el.scrollWidth}));
-    return {mode:t.className.match(/wh-native-table-(wide|compact|narrow)/)?.[1],table:t.getBoundingClientRect().width,wrap:wr.getBoundingClientRect().width,overflow:document.documentElement.scrollWidth-innerWidth,cols:rects.length,rects,lines,heads};
+    return {
+      table:t.getBoundingClientRect().width,
+      wrap:wr.getBoundingClientRect().width,
+      contentWidth:wr.scrollWidth,
+      available:wr.clientWidth,
+      overflow:document.documentElement.scrollWidth-innerWidth,
+      cols:rects.length,
+      headers:t.querySelectorAll('thead th').length,
+      rects,lines,heads,
+      statusClasses:Array.from(document.querySelectorAll('tr.wh-native-data-row .status-pill')).map(el=>el.className),
+    };
    });
-   assert.ok(result.table<=result.wrap+2,'table exceeds wrapper '+w+' '+state+' '+JSON.stringify(result));
+   assert.equal(result.cols,7,'all seven columns must remain in '+w+' '+state);
+   assert.equal(result.headers,7,'all seven headers must remain in '+w+' '+state);
+   assert.ok(result.table>=result.wrap-4,'table is not filling available width '+w+' '+state+' '+JSON.stringify(result));
+   assert.ok(result.contentWidth>=result.table-3,'table content cut instead of inner scroll '+w+' '+state+' '+JSON.stringify(result));
+   assert.ok(result.statusClasses.every(c=>c.includes('status-pill')&&c.includes('orange')),
+     'status tags must use existing ERP token '+w+' '+state);
    assert.ok(result.heads.every(v=>v.scroll<=v.width+3),'warehouse card header overflows '+w+' '+state+' '+JSON.stringify(result));
    assert.ok(result.overflow<=2,'page overflow '+w+' '+state+' '+JSON.stringify(result));
    for(let i=1;i<result.rects.length;i++)assert.ok(result.rects[i-1].right<=result.rects[i].left+1,'overlapping cells '+w+' '+state);
@@ -54,7 +69,7 @@ try{
    assert.ok(result.lines.every(v=>v.wrap==='nowrap' && Number(v.weight)<=500),'product line should be regular, nowrap '+w+' '+state);
    assert.ok(result.lines.every(v=>v.height <= v.lineHeight+3),'product label wraps '+w+' '+state);
    assert.ok(result.lines[0].text.includes('Clear Men') && result.lines[1].text.includes('Sữa tắm'),'product data missing '+w+' '+state);
-   console.log('PASS '+w+'x'+h+' '+state+' '+result.mode+' '+result.cols+' columns');
+   console.log('PASS '+w+'x'+h+' '+state+' seven columns; table='+Math.round(result.table)+'px, area='+Math.round(result.wrap)+'px, inner-scroll='+Math.round(result.contentWidth-result.available)+'px');
    await page.screenshot({path:path.join(output,w+'-'+state+'.png')});
    return result;
   }
@@ -76,12 +91,20 @@ try{
   assert.equal(await bgCard.locator('.wh-native-table').count(),1,'BG must remain expanded');
   await hnCard.getByRole('button',{name:'Mở KHO HN'}).click();
   const closed=await check('closed');
-  if(w>=1280)assert.equal(closed.mode,'wide');
+  assert.equal(closed.cols,7);
   await page.locator('.wh-native-order-link').first().click();
   await page.waitForSelector('.wh-native-panel');
   const opened=await check('open');
-  if(w>=1024)assert.notEqual(opened.mode,'wide','panel did not auto-fit '+w);
-  if(w<=390)assert.equal(opened.mode,'narrow');
+  assert.equal(opened.cols,7);
+  if(w>=1280)assert.ok(opened.table<=closed.table+2,'open panel should shrink widths at '+w);
+  if(opened.contentWidth>opened.available+3){
+    await page.evaluate(()=>{
+      const wrap=document.querySelector('.wh-native-table-wrap');
+      wrap.scrollLeft=wrap.scrollWidth-wrap.clientWidth;
+    });
+    const scroll=await page.locator('.wh-native-table-wrap').first().evaluate(el=>el.scrollLeft);
+    assert.ok(scroll>0,'horizontal scrolling is required and must stay inside the table '+w);
+  }
   if(w>=1024){
    await page.evaluate(()=>{
      const second=document.createElement('aside');
@@ -91,7 +114,9 @@ try{
    });
    await page.waitForTimeout(250);
    const two=await check('two-panels');
-   assert.equal(two.mode,'narrow','two slidebars must compact to 2 grouped columns');
+   assert.equal(two.cols,7,'two slidebars must retain seven columns');
+   assert.ok(two.table>=two.wrap-2,'table contents are not preserved when two panels open');
+   assert.ok(two.contentWidth>two.available+3,'two panels must allow inner horizontal scroll');
    await page.evaluate(()=>document.querySelector('.wh-native-extra-panel')?.remove());
    await check('second-closed');
    await page.evaluate(()=>{
@@ -113,5 +138,5 @@ try{
   assert.deepEqual(errors,[]);
   await page.close();
  }
- console.log('PASS browser autofit layout incl. Shipping Alert-style collapsible BG/HN cards, two slidebars, and product lines');
+ console.log('PASS: all seven columns preserved, widths auto-fit or scroll inside each warehouse card, with one/two slidebars');
 }finally{await browser.close()}
