@@ -34,7 +34,7 @@ function revalidateWarehouse(){
 // allowed to overwrite an existing SKU or bypass the atomic V2.1 audit.
 export async function mapWarehouseOrderItem(formData: FormData) {
   const { saveWarehouseSkuV21 } = await import('@/lib/actions/warehouse-item-v21')
-  return saveWarehouseSkuV21(formData)
+  await saveWarehouseSkuV21(formData)
 }
 
 export async function receiveOrdersIntoWarehouse(formData:FormData){
