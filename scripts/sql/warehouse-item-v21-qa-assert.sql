@@ -147,6 +147,13 @@ begin
     if sqlerrm='Direct status forgery was accepted' then raise; end if;
   end;
   begin
+    update public.order_items set warehouse_item_skip_reason='Giả mạo lý do'
+      where id='50000000-0000-0000-0000-000000000003';
+    raise exception 'Direct skip reason forgery was accepted';
+  exception when others then
+    if sqlerrm='Direct skip reason forgery was accepted' then raise; end if;
+  end;
+  begin
     delete from public.order_items
       where id='50000000-0000-0000-0000-000000000001';
     raise exception 'Completed item delete was accepted';
