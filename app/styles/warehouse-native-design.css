@@ -247,7 +247,7 @@
 @media(min-width:901px){
   .brand-shell-v1 .wh-native-workspace.with-panel:has(> aside.mynh-slide-panel:nth-of-type(2)){
     grid-template-columns:minmax(0,1fr) repeat(2,minmax(0,clamp(220px,21vw,320px)))!important;
-    column-gap:4px!important;
+    column-gap:7px!important;
   }
   /* The ERP's global .warehouse-intake-panel rule assigns column 2 to every
      panel. Explicit tracks prevent a second slidebar from overlaying the first. */
@@ -389,24 +389,25 @@
 }
 
 
-/* Exactly three workflow KPI states, consistent with order tags and filters.
-   Override the legacy five-column status strip only in this module. */
-.brand-shell-v1 .warehouse-command-center .tracking-status-strip-v2.wh-native-three-statuses{
-  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+/* Four KPI cards: one aggregate plus exactly three business statuses.
+   The aggregate is not a fourth workflow state. */
+.brand-shell-v1 .warehouse-command-center .tracking-status-strip-v2.wh-native-status-kpis{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
 }
-.brand-shell-v1 .warehouse-command-center .wh-native-three-statuses .tracking-status-metric{
+.brand-shell-v1 .warehouse-command-center .wh-native-status-kpis .tracking-status-metric{
   min-width:0;
 }
 @media(max-width:650px){
-  .brand-shell-v1 .warehouse-command-center .tracking-status-strip-v2.wh-native-three-statuses{
-    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  .brand-shell-v1 .warehouse-command-center .tracking-status-strip-v2.wh-native-status-kpis{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
   }
-  .brand-shell-v1 .warehouse-command-center .wh-native-three-statuses .tracking-status-metric{
-    padding:7px 5px;
+  .brand-shell-v1 .warehouse-command-center .wh-native-status-kpis .tracking-status-metric{
+    padding:7px 6px;
     gap:2px 4px;
   }
-  .brand-shell-v1 .warehouse-command-center .wh-native-three-statuses .tracking-status-metric>span{
-    font-size:9px;
+  .brand-shell-v1 .warehouse-command-center .wh-native-status-kpis .tracking-status-metric>span{
+    font-size:9.5px;
     line-height:1.35;
   }
 }
@@ -414,8 +415,8 @@
 
 /* Compact operational density without hiding or merging table columns. */
 .brand-shell-v1 .wh-native-workspace{
-  --mynh-panel-gap:4px;
-  column-gap:4px!important;
+  --mynh-panel-gap:7px;
+  column-gap:7px!important;
   padding:0!important;
 }
 .brand-shell-v1 .wh-native-workspace>.wh-native-list{
@@ -556,4 +557,52 @@ body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.wh-native-table .
     transform:none!important;
     z-index:1000!important;
   }
+}
+
+/* Read-only receipt-date filter, compact and aligned with operational tabs. */
+.wh-native-date-toolbar{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  min-width:0;margin:1px 0 2px;
+}
+.wh-native-date-filter{
+  display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap;min-width:0;
+}
+.wh-native-date-field{
+  display:flex;flex-direction:column;gap:3px;min-width:0;
+  color:#5c7287;font-size:9.5px;font-weight:500;
+}
+.wh-native-date-field select,.wh-native-date-field input{
+  box-sizing:border-box;
+  min-width:0;width:155px;height:31px;
+  padding:5px 8px;border-radius:5px;
+  border:1px solid #d4e0ea;background:#fff;color:#36536b;
+  font-size:10.5px;font-weight:400;
+}
+.wh-native-date-field input[type="date"]{width:140px}
+.wh-native-date-clear{
+  align-self:flex-end;width:31px;height:31px;border:1px solid #d4e0ea;border-radius:5px;
+  background:white;color:#576e81;font-size:16px;cursor:pointer;
+}
+.wh-native-date-error{color:#aa4a2a;font-size:10.5px}
+@media(max-width:650px){
+  .wh-native-date-toolbar{gap:4px}
+  .wh-native-date-field select{width:150px}
+  .wh-native-date-field input[type="date"]{width:135px}
+}
+/* The warehouse table is NOT a Tracking table: Tracking forces a fixed
+   1050px minimum and nth-child widths, which clipped the rightmost status
+   column despite an available content width large enough to fit. */
+body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.table.wh-native-table{
+  min-width:var(--wh-table-width,100%)!important;
+  width:var(--wh-table-width,100%)!important;
+  max-width:none!important;
+  table-layout:fixed!important;
+}
+body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.wh-native-table tr>th,
+body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.wh-native-table tr>td{
+  min-width:0!important;
+  max-width:none!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis;
 }
