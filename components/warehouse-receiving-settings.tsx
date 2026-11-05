@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect,useRef,useState } from 'react'
+import { createPortal } from 'react-dom'
 import { saveReceivingWarehouseSettings } from '@/lib/actions/warehouse'
 
 type Warehouse={
@@ -14,20 +15,30 @@ export function WarehouseReceivingSettings({
   warehouses,
   defaultReceivingWarehouseId,
   previewOnly=false,
+  dockToWorkspace=false,
 }:{
   warehouses:Warehouse[]
   defaultReceivingWarehouseId?:string|null
   previewOnly?:boolean
+  dockToWorkspace?:boolean
 }){
   const [open,setOpen]=useState(false)
+  const [dockNode,setDockNode]=useState<HTMLElement|null>(null)
   const wrapRef=useRef<HTMLDivElement|null>(null)
   const active=warehouses.find(w=>w.id===defaultReceivingWarehouseId)??null
+
+  useEffect(()=>{
+    if(!dockToWorkspace)return
+    // Mount the settings panel inside the same workspace grid as the detail
+    // slidebar. Never anchor it above the KPI/table as an absolute popover.
+    setDockNode(document.querySelector<HTMLElement>('.wh-native-workspace'))
+  },[dockToWorkspace])
 
   useEffect(()=>{
     if(!open)return
     function outside(event:PointerEvent){
       const target=event.target as Node|null
-      if(target&&!wrapRef.current?.contains(target))setOpen(false)
+      if(!dockToWorkspace && target && !wrapRef.current?.contains(target))setOpen(false)
     }
     function esc(event:KeyboardEvent){
       if(event.key==='Escape')setOpen(false)
@@ -38,26 +49,16 @@ export function WarehouseReceivingSettings({
       document.removeEventListener('pointerdown',outside)
       document.removeEventListener('keydown',esc)
     }
-  },[open])
+  },[open,dockToWorkspace])
 
-  return <div className="whx-settings-wrap" ref={wrapRef}>
-    <button
-      type="button"
-      className={'button '+(open?'active':'')}
-      onClick={()=>setOpen(value=>!value)}
-      aria-expanded={open}
-    >
-      Cài đặt Kho nhận
-    </button>
-
-    {open&&<div className="whx-settings-popover">
+  const settingsContent = <>
       <div className="whx-settings-head">
         <div>
           <span className="module-eyebrow">CẤU HÌNH KHO</span>
           <b>Kho nhận hàng mặc định</b>
           <small>Kho được chọn sẵn khi bóc tách nhập kho và các thao tác tồn.</small>
         </div>
-        <button type="button" onClick={()=>setOpen(false)} aria-label="Đóng">×</button>
+        <button type="button" onClick={()=>setOpen(false)} aria-label="Đóng cài đặt Kho nhận">×</button>
       </div>
 
       <form action={previewOnly ? undefined : saveReceivingWarehouseSettings}>
@@ -97,10 +98,27 @@ export function WarehouseReceivingSettings({
         </div>
 
         <div className="whx-settings-actions">
-          <button className="button small" type="button" onClick={()=>setOpen(false)}>Hủy</button>
+          <button className="button small" type="button" onClick={()=>setOpen(false)}>Đóng</button>
           <button className="button primary small" type="submit" disabled={previewOnly}>{previewOnly?'Chỉ xem Preview':'Lưu cấu hình'}</button>
         </div>
       </form>
-    </div>}
+    </>
+
+  return <div className="whx-settings-wrap" ref={wrapRef}>
+    <button
+      type="button"
+      className={'button '+(open?'active':'')}
+      onClick={()=>setOpen(value=>!value)}
+      aria-expanded={open}
+    >
+      Cài đặt Kho nhận
+    </button>
+
+    {open && (dockToWorkspace && dockNode
+      ? createPortal(<aside className="whx-settings-popover mynh-slide-panel wh-native-settings-panel"
+          data-system-slidebar="true" role="region" aria-label="Cài đặt Kho nhận">
+          {settingsContent}
+        </aside>,dockNode)
+      : <div className="whx-settings-popover">{settingsContent}</div>)}
   </div>
 }
