@@ -125,10 +125,20 @@ try{
   assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),1,'ready filter must include exactly the mapped BG order');
   assert.equal(await statusFilters.filter({hasText:'Đã xử lý'}).count(),0,'processed cannot be opened via ordinary filters');
   await page.locator('.fixture-done-kpi').click();
+  // Clicking the KPI changes a server-to-client prop; allow the React
+  // useEffect that synchronizes the route state to complete.
+  await page.waitForFunction(() => {
+    const rows=[...document.querySelectorAll('tr.wh-native-data-row .status-pill')];
+    return rows.length===2 && rows.every(el=>el.textContent?.trim()==='Đã xử lý')
+  }, null, {timeout:5000});
   assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),2,'processed KPI reveals received and skipped BG orders');
   assert.equal(await hnCard.locator('tr.wh-native-data-row').count(),0,'processed KPI excludes unfinished HN orders');
   assert.ok((await bgCard.locator('tr.wh-native-data-row .status-pill').allTextContents()).every(text=>text.trim()==='Đã xử lý'),'completed orders must have the unified status');
   await page.locator('.fixture-work-kpi').click();
+  await page.waitForFunction(() => {
+    const rows=[...document.querySelectorAll('tr.wh-native-data-row .status-pill')];
+    return rows.length===12 && rows.every(el=>el.textContent?.trim()!=='Đã xử lý')
+  }, null, {timeout:5000});
   assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),2,'return to work hides completed orders');
   await statusFilters.filter({hasText:'Chờ bóc tách'}).click();
   assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),1,'pending must show unmapped BG order');
