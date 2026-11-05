@@ -185,6 +185,12 @@ export function WarehouseIntakeNativeDesign({
       return phaseOf(row)
     }
     return [...filtered].sort((a, b) => {
+      // In "Tất cả", BG and HN remain separate operational lanes.
+      // Sorting applies within a confirmed receiving warehouse.
+      if (warehouse === 'all') {
+        const rank = (row: Order) => warehouseCode(row) === 'BG' ? 0 : warehouseCode(row) === 'HN' ? 1 : 2
+        if (rank(a) !== rank(b)) return rank(a) - rank(b)
+      }
       const x = keyOf(a), y = keyOf(b)
       const order = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'vi')
       return sort.dir === 'asc' ? order : -order
@@ -356,9 +362,23 @@ export function WarehouseIntakeNativeDesign({
             <tbody>
               {visible.length === 0
                 ? <tr><td className="empty compact" colSpan={isGrouped ? (narrow ? 2 : 4) : columns.visible.length}>Không có đơn phù hợp.</td></tr>
-                : visible.map(row => <tr key={row.id} className={activeId === row.id ? 'active-row' : ''}>
-                  {isGrouped ? renderGroupedCells(row) : columns.visible.map(column => renderCell(row, column))}
-                </tr>)}
+                : visible.flatMap((row, index) => {
+                  const current = warehouseCode(row) ?? 'unknown'
+                  const previous = index > 0 ? (warehouseCode(visible[index - 1]) ?? 'unknown') : null
+                  const showLane = warehouse === 'all' && current !== previous
+                  const count = showLane ? visible.filter(item => (warehouseCode(item) ?? 'unknown') === current).length : 0
+                  return [
+                    ...(showLane ? [<tr key={'lane-' + current} className="wh-native-warehouse-separator">
+                      <td colSpan={isGrouped ? (narrow ? 2 : 4) : columns.visible.length}>
+                        {current === 'unknown' ? 'CHƯA XÁC ĐỊNH KHO NHẬN' : 'KHO ' + current}
+                        <span>{count} đơn</span>
+                      </td>
+                    </tr>] : []),
+                    <tr key={row.id} className={'wh-native-data-row ' + (activeId === row.id ? 'active-row' : '')}>
+                      {isGrouped ? renderGroupedCells(row) : columns.visible.map(column => renderCell(row, column))}
+                    </tr>,
+                  ]
+                })}
             </tbody>
           </table>
         </div>
