@@ -9,7 +9,7 @@
 .wiv21-warehouses button{border:1px solid transparent;background:#f1f5f9;color:#304458;border-radius:7px;padding:8px 11px;font-size:12px;line-height:1.35;max-width:100%;white-space:normal;text-align:left}
 .wiv21-warehouses button.active{background:#eaf3fc;border-color:#aecde8;color:#0e538b;font-weight:650}
 .wiv21-warehouses span{margin-left:5px;color:#6f8193;font-size:11px}
-.wiv21-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px}
+.wiv21-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 12px}
 .wiv21-metrics button{background:#fff;border:1px solid var(--wiv21-line);border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 13px;text-align:left;color:#476078;min-width:0}
 .wiv21-metrics button.active{border-color:#95bde2;background:#f4f9fe;color:#175e9e}
 .wiv21-metrics button span{font-size:12px;min-width:0}
@@ -97,7 +97,7 @@
 .wiv21-toast button{border:0;background:transparent;font-size:19px;color:#567086}
 @media(min-width:1500px){.wiv21-open .wiv21-grid-wrap{margin-right:min(630px,47vw)}.wiv21-open .wiv21-toolbar{margin-right:min(630px,47vw)}}
 @media(max-width:900px){.wiv21-metrics{gap:5px}.wiv21-metrics button{padding:8px 9px}.wiv21-panel{width:min(650px,100vw)}}
-@media(max-width:600px){.wiv21-warehouses{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.wiv21-warehouses button{white-space:nowrap;flex:0 0 auto}.wiv21-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.wiv21-metrics button{display:block}.wiv21-metrics button span{display:block;font-size:10px;line-height:1.35;min-height:28px}.wiv21-metrics button strong{font-size:18px}.wiv21-toolbar{align-items:stretch;flex-direction:column}.wiv21-toolbar-input{width:100%}.wiv21-panel{width:100vw;border:0}.wiv21-panel-head{padding:12px 13px 10px}.wiv21-panel-head h2{font-size:17px}.wiv21-panel-tabs{padding:0 13px;gap:18px}.wiv21-panel-body{padding:13px 13px 30px}.wiv21-item-select{grid-template-columns:minmax(0,1fr)}.wiv21-source-grid{gap:6px}.wiv21-form-cols{grid-template-columns:minmax(0,1fr)}.wiv21-price-strip b{font-size:13px}}
+@media(max-width:600px){.wiv21-warehouses{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.wiv21-warehouses button{white-space:nowrap;flex:0 0 auto}.wiv21-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.wiv21-metrics button{display:block}.wiv21-metrics button span{display:block;font-size:10px;line-height:1.35;min-height:28px}.wiv21-metrics button strong{font-size:18px}.wiv21-toolbar{align-items:stretch;flex-direction:column}.wiv21-toolbar-input{width:100%}.wiv21-panel{width:100vw;border:0}.wiv21-panel-head{padding:12px 13px 10px}.wiv21-panel-head h2{font-size:17px}.wiv21-panel-tabs{padding:0 13px;gap:18px}.wiv21-panel-body{padding:13px 13px 30px}.wiv21-item-select{grid-template-columns:minmax(0,1fr)}.wiv21-source-grid{gap:6px}.wiv21-form-cols{grid-template-columns:minmax(0,1fr)}.wiv21-price-strip b{font-size:13px}}
 @media(max-width:340px){.wiv21-source-grid{grid-template-columns:minmax(0,1fr)}.wiv21-metrics button{padding:7px 6px}.wiv21-metrics button span{font-size:9px}}
 
 /* V2.1 shared ERP column manager — search and tools share one compact row. */
