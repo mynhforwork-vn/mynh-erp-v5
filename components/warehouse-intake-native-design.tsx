@@ -74,7 +74,7 @@ function phaseStatusTone(row: Order) {
   const state = phaseOf(row)
   return state === 'done' ? 'green' : state === 'ready' ? 'status-ready_to_ship' : 'orange'
 }
-function receivedAt(row: Order) { return batchOf(row)?.received_at ?? row.order_date ?? null }
+function receivedAt(row: Order) { return batchOf(row)?.received_at ?? null }
 function valueOrMissing(value?: number | string | null) {
   return value === null || value === undefined || value === '' ? 'Chưa có' : formatMoney(value)
 }
@@ -386,7 +386,7 @@ export function WarehouseIntakeNativeDesign({
                 </div>
               </div>
               {expanded && <div id={panelId} className="tracking-hub-table-wrap tracking-hub-table-wrap-v2 wh-native-table-wrap">
-                <table className="table tracking-hub-table tracking-hub-table-v2 wh-native-table"
+                <table className="table wh-native-table"
                   style={{ '--wh-table-width': tableWidth + 'px' } as React.CSSProperties}
                   aria-label={'Danh sách đơn hàng ' + group.label}>
                   <colgroup>
