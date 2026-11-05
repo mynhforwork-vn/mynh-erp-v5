@@ -429,3 +429,43 @@ begin
 end; $$;
 -- Grants for the existing private and public receipt RPC remain as configured
 -- by migrations 0048/0049.
+
+
+-- UPDATE RLS on order_items currently grants Operator UPDATE across columns.
+-- Do not trust UI guards alone: only the vetted SECURITY DEFINER transaction
+-- (owned by postgres on this project) may transition an item to RECEIVED/SKIPPED.
+create or replace function private.guard_warehouse_item_state_v21()
+returns trigger language plpgsql security invoker set search_path='' as $$
+begin
+  if tg_op='INSERT' then
+    if new.warehouse_item_status<>'PENDING' then
+      raise exception 'Sản phẩm mới phải bắt đầu ở trạng thái chờ xử lý kho';
+    end if;
+  elsif new.warehouse_item_status is distinct from old.warehouse_item_status
+        and current_user<>'postgres' then
+    raise exception 'Chỉ nghiệp vụ xác nhận kho mới được cập nhật trạng thái sản phẩm';
+  end if;
+  return new;
+end; $$;
+
+drop trigger if exists guard_warehouse_item_state_v21 on public.order_items;
+create trigger guard_warehouse_item_state_v21
+  before insert or update of warehouse_item_status on public.order_items
+  for each row execute function private.guard_warehouse_item_state_v21();
+
+-- Completed rows cannot be deleted directly through an Operator's table role.
+-- Normal administrative RPCs running as postgres remain responsible for any
+-- authorized permanent-delete lifecycle and must preserve ledger integrity.
+create or replace function private.guard_completed_warehouse_item_delete_v21()
+returns trigger language plpgsql security invoker set search_path='' as $$
+begin
+  if old.warehouse_item_status<>'PENDING' and current_user<>'postgres' then
+    raise exception 'Không được xóa trực tiếp sản phẩm đã xử lý kho';
+  end if;
+  return old;
+end; $$;
+
+drop trigger if exists guard_completed_warehouse_item_delete_v21 on public.order_items;
+create trigger guard_completed_warehouse_item_delete_v21
+  before delete on public.order_items
+  for each row execute function private.guard_completed_warehouse_item_delete_v21();
