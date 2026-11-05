@@ -476,3 +476,26 @@ drop trigger if exists guard_completed_warehouse_item_delete_v21 on public.order
 create trigger guard_completed_warehouse_item_delete_v21
   before delete on public.order_items
   for each row execute function private.guard_completed_warehouse_item_delete_v21();
+
+
+-- Legacy RLS allows Operator INSERT into inventory_transactions for stocktake
+-- and adjustment tools. Limit forged PURCHASE_RECEIPT inserts without removing
+-- legitimate stocktake/adjustment and POS transaction paths.
+create or replace function private.guard_direct_purchase_receipt_v21()
+returns trigger language plpgsql security invoker set search_path='' as $$
+begin
+  if new.reference_type='PURCHASE_RECEIPT' then
+    if current_user<>'postgres' then
+      raise exception 'Chỉ nghiệp vụ nhập kho xác nhận mới được tạo giao dịch nhận hàng';
+    end if;
+    if new.order_item_id is null then
+      raise exception 'Giao dịch nhận hàng mới phải tham chiếu sản phẩm mua';
+    end if;
+  end if;
+  return new;
+end; $$;
+
+drop trigger if exists guard_direct_purchase_receipt_v21 on public.inventory_transactions;
+create trigger guard_direct_purchase_receipt_v21
+  before insert on public.inventory_transactions
+  for each row execute function private.guard_direct_purchase_receipt_v21();
