@@ -15,6 +15,8 @@ const checks = [
   ['item-level state and skip reason', /warehouse_item_status text not null default 'PENDING'/i.test(sql) && /warehouse_item_skip_reason/i.test(sql)],
   ['exactly-once stock ledger index', /create unique index if not exists inventory_one_purchase_receipt_per_order_item_v21/i.test(sql)],
   ['legacy RPC guarded against partial processing', /create or replace function private\.receive_orders_into_warehouse_impl/i.test(sql) && /warehouse_item_status<>'PENDING'/i.test(sql)],
+  ['direct row-status writes restricted by trigger', /guard_warehouse_item_state_v21/.test(sql) && /current_user<>'postgres'/.test(sql)],
+  ['completed row deletes protected', /guard_completed_warehouse_item_delete_v21/.test(sql)],
   ['new RPC performs operator authorization', (sql.match(/perform private\.assert_operator\(\);/g) ?? []).length >= 3],
   ['transactionally stored audit', sql.includes("'UPDATE_SALE_PRICE'") && sql.includes("'SKIP_WAREHOUSE_ITEM'")],
   ['existing SKU global price has stale check', /v_old_price is distinct from p_expected_sale_price/i.test(sql)],
