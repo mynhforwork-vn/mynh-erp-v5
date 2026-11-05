@@ -44,6 +44,8 @@ const checks = [
     page.includes('href="/warehouse/receive?state=ready"') &&
     page.includes('href="/warehouse/receive?state=done"') &&
     page.includes('const done = rows.filter(') &&
+    page.includes("'all' | 'pending' | 'incomplete' | 'missing' | 'ready' | 'done'") &&
+    workspace.includes('useEffect(() => { setPhase(initialPhase) }, [initialPhase])') &&
     !page.includes('<span>SKU chưa map</span>') &&
     css.includes("grid-template-columns:repeat(3,minmax(0,1fr))!important")],
   ['status pills use the existing ERP semantic palette',
