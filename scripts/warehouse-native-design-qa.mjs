@@ -26,6 +26,15 @@ const checks = [
     css.includes('overflow-x:auto!important') &&
     css.includes('var(--wh-table-width,100%)') &&
     css.includes('max-height:min(58dvh,660px)')],
+  ['settings opened as second real slidebar rather than overlay popup',
+    page.includes('dockToWorkspace') &&
+    receivingSettings.includes("createPortal(<aside className=\"whx-settings-popover mynh-slide-panel wh-native-settings-panel\"") &&
+    css.includes('aside.wh-native-settings-panel.whx-settings-popover') &&
+    css.includes('grid-template-columns:minmax(0,1fr) minmax(0,clamp(255px,24vw,370px))')],
+  ['remove redundant workflow tabs and order count line above warehouse tables',
+    !workspace.includes('<div className="wh-native-filters">') &&
+    !workspace.includes('className="managed-table-meta"') &&
+    workspace.includes('wh-native-search')],
   ['warehouse settings reuse native component without Preview mutations',
     page.includes('<WarehouseReceivingSettings') &&
     page.includes('previewOnly') && page.includes("supabase.from('warehouse_settings')") &&
@@ -56,11 +65,14 @@ const checks = [
     page.includes("const rows = invalidDateRange ? [] : allRows.filter(") &&
     page.includes("if (receivedPeriod !== 'all') query.set('received_range'") &&
     page.includes("<WarehouseReceivedDateFilter period={receivedPeriod}") &&
-    dateFilter.includes("router.replace('/warehouse/receive?'") &&
+    dateFilter.includes("router.replace(urlFor('custom'") &&
     dateFilter.includes("Từ ngày nhận") &&
     dateFilter.includes("Đến ngày nhận") &&
-    dateFilter.includes('7 ngày gần nhất') &&
-    dateFilter.includes('30 ngày gần nhất')],
+    dateFilter.includes("label:'7 ngày'") &&
+    dateFilter.includes("label:'30 ngày'") &&
+    dateFilter.includes("label:'Tuần này'") &&
+    dateFilter.includes("label:'Tháng này'") &&
+    dateFilter.includes("label:'Năm nay'")],
   ['receiving table not inheriting hard coded Tracking widths',
     workspace.includes('<table className="table wh-native-table"') &&
     !workspace.includes('<table className="table tracking-hub-table tracking-hub-table-v2 wh-native-table"') &&
@@ -119,7 +131,7 @@ const checks = [
     workspace.includes("setSalePrice(found?.sale_price == null ? '' : String(found.sale_price))")],
   ['two slidebars use distinct grid tracks and narrow gaps',
     css.includes('grid-column:2!important') && css.includes('grid-column:3!important') &&
-    css.includes('column-gap:7px!important') &&
+    css.includes('column-gap:14px!important') &&
     css.includes('clamp(220px,21vw,320px)')],
   ['compact table fonts preserve all seven columns',
     css.includes('font-size:9.5px!important') &&
