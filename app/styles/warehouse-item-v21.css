@@ -133,3 +133,14 @@
   .wiv21-metrics button span{font-size:10px}
   .wiv21-item-select button{align-items:flex-start;flex-direction:column;gap:3px}
 }
+
+/* Read-only data source indicator. Do not hide load errors or missing values. */
+.wiv21-live-source{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;min-width:0;margin:0 0 8px;padding:5px 8px;border-left:2px solid #89afcd;background:#f6f9fb;color:#617b8f;font-size:10.5px;line-height:1.4}
+.wiv21-live-source b{color:#275a7e;font-weight:720}
+/* Slidebar opens from the right without overlaying the Desktop list. */
+@keyframes wiv21-panel-in{from{opacity:.65;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
+.wiv21-workspace>.wiv21-panel{animation:wiv21-panel-in .17s ease-out both}
+@media(max-width:900px){
+  @keyframes wiv21-panel-in{from{opacity:.8;transform:translateX(100%)}to{opacity:1;transform:translateX(0)}}
+}
+@media(prefers-reduced-motion:reduce){.wiv21-workspace>.wiv21-panel{animation:none}}
