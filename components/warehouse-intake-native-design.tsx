@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatDateTime, formatMoney, formatPhone, statusLabel } from '@/lib/format'
 import { ManagedColumnsMenu, SortableHeader, useManagedColumns, useManagedSort } from '@/components/managed-table-columns'
 
@@ -104,6 +104,26 @@ export function WarehouseIntakeNativeDesign({
   const [reason, setReason] = useState('')
   const [previewChoices, setPreviewChoices] = useState<Record<string, PreviewChoice>>({})
   const [notice, setNotice] = useState('')
+  const listRef = useRef<HTMLElement | null>(null)
+  const [tableMode, setTableMode] = useState<'wide' | 'compact' | 'narrow'>('wide')
+
+  // Measure the actual list width, not the viewport. The slidebar, sidebar,
+  // browser zoom and Tablet split-view all change available table space.
+  useEffect(() => {
+    const node = listRef.current
+    if (!node) return
+    const adapt = (width: number) => {
+      const next = width < 570 ? 'narrow' : width < 950 ? 'compact' : 'wide'
+      setTableMode(current => current === next ? current : next)
+    }
+    adapt(node.getBoundingClientRect().width)
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(entries => {
+      adapt(entries[0]?.contentRect.width ?? node.getBoundingClientRect().width)
+    })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
 
   const columns = useManagedColumns<Column>('mynh-warehouse-native-columns', COLUMNS, ['order'])
   const sort = useManagedSort<Column>('mynh-warehouse-native-sort', 'received', 'desc')
@@ -201,14 +221,59 @@ export function WarehouseIntakeNativeDesign({
     setNotice('Đã ghi nhận lựa chọn mô phỏng trên màn hình. Không lưu SKU, giá hoặc tồn kho vào Supabase.')
   }
 
+  const visibleColumn = (name: Column) => columns.visible.includes(name)
+  const columnWeights: Record<Column, number> = {
+    order: 16, received: 16, warehouse: 11, product: 29, progress: 8, cod: 9, status: 11,
+  }
+  const totalColumnWeight = columns.visible.reduce((sum, key) => sum + columnWeights[key], 0)
+  const isGrouped = tableMode !== 'wide'
+  const narrow = tableMode === 'narrow'
+  const displayColumnWidths = narrow ? [41, 59] : [24, 37, 19, 20]
+
+  const orderCell = (row: Order) => <div className="wh-native-cell-stack">
+    <button type="button" className="table-link wh-native-order-link" title={row.shopee_order_id ?? row.id}
+      onClick={() => openOrder(row)}>{row.shopee_order_id ?? row.id.slice(0, 8)}</button>
+    {visibleColumn('received') && <span className="wh-native-cell-note">{formatDateTime(receivedAt(row))}</span>}
+    {visibleColumn('warehouse') && <span className="wh-native-cell-note">Kho: {warehouseName(row)}</span>}
+  </div>
+  const productCell = (row: Order) => <div className="wh-native-cell-stack">
+    {visibleColumn('product') && <b className="wh-native-cell-product" title={row.order_items[0]?.product_name ?? ''}>
+      {row.order_items[0]?.product_name ?? 'Chưa có sản phẩm'}
+    </b>}
+    <span className="wh-native-cell-note">{row.order_items.length} dòng sản phẩm</span>
+    {narrow && visibleColumn('progress') && <span className="wh-native-cell-note">SKU: {row.order_items.filter(isMapped).length}/{row.order_items.length}</span>}
+    {narrow && visibleColumn('cod') && <span className="wh-native-cell-note">COD: {valueOrMissing(row.cod)}</span>}
+    {narrow && visibleColumn('status') && <span className={'status-pill ' + (phaseOf(row) === 'done' ? 'green' : phaseOf(row) === 'ready' ? 'blue' : 'orange')}>{phaseLabel(row)}</span>}
+  </div>
+  const renderGroupedCells = (row: Order) => narrow
+    ? <>
+      <td className="wh-native-group-order">{orderCell(row)}</td>
+      <td className="wh-native-group-product">{productCell(row)}</td>
+    </>
+    : <>
+      <td className="wh-native-group-order">{orderCell(row)}</td>
+      <td className="wh-native-group-product">{productCell(row)}</td>
+      <td className="wh-native-group-metrics"><div className="wh-native-cell-stack">
+        {visibleColumn('progress') && <span>SKU: <b>{row.order_items.filter(isMapped).length}/{row.order_items.length}</b></span>}
+        {visibleColumn('cod') && <span className="wh-native-cell-note">COD: {valueOrMissing(row.cod)}</span>}
+      </div></td>
+      <td className="wh-native-group-status">
+        {visibleColumn('status') && <span className={'status-pill ' + (phaseOf(row) === 'done' ? 'green' : phaseOf(row) === 'ready' ? 'blue' : 'orange')}>{phaseLabel(row)}</span>}
+      </td>
+    </>
+
   const renderCell = (row: Order, column: Column) => {
-    if (column === 'order') return <td key={column}><button type="button" className="table-link wh-native-order-link"
-      onClick={() => openOrder(row)}>{row.shopee_order_id ?? row.id.slice(0, 8)}</button></td>
+    if (column === 'order') return <td key={column}>
+      <button type="button" className="table-link wh-native-order-link" title={row.shopee_order_id ?? row.id}
+        onClick={() => openOrder(row)}>{row.shopee_order_id ?? row.id.slice(0, 8)}</button>
+    </td>
     if (column === 'received') return <td key={column}>{formatDateTime(receivedAt(row))}</td>
     if (column === 'warehouse') return <td key={column}>{warehouseName(row)}</td>
-    if (column === 'product') return <td key={column}>
-      <div className="tracking-order-id"><b>{row.order_items[0]?.product_name ?? 'Chưa có sản phẩm'}</b>
-        <span>{row.order_items.length} dòng sản phẩm</span></div>
+    if (column === 'product') return <td key={column} className="wh-native-product-cell">
+      <div className="tracking-order-id">
+        <b className="wh-native-product-label" title={row.order_items[0]?.product_name ?? ''}>{row.order_items[0]?.product_name ?? 'Chưa có sản phẩm'}</b>
+        <span>{row.order_items.length} dòng sản phẩm</span>
+      </div>
     </td>
     if (column === 'progress') return <td key={column}>{row.order_items.filter(isMapped).length}/{row.order_items.length}</td>
     if (column === 'cod') return <td key={column} className="money">{valueOrMissing(row.cod)}</td>
@@ -233,7 +298,7 @@ export function WarehouseIntakeNativeDesign({
       </div>
     </div>
     <div className={'whx-intake-layout warehouse-intake-layout wh-native-workspace' + (active ? ' with-panel' : '')}>
-      <section className="whx-intake-main wh-native-list">
+      <section ref={listRef} className="whx-intake-main wh-native-list">
         <div className="managed-table-toolbar wh-native-table-toolbar">
           <span className="managed-table-meta"><b>{visible.length} đơn</b> · Dữ liệu thực từ Kho nhận, không có đơn mẫu</span>
           <div className="wh-native-search">
@@ -245,14 +310,26 @@ export function WarehouseIntakeNativeDesign({
           <ManagedColumnsMenu labels={LABELS} manager={columns}/>
         </div>
         <div className="tracking-hub-table-wrap tracking-hub-table-wrap-v2 wh-native-table-wrap">
-          <table className="table tracking-hub-table tracking-hub-table-v2 wh-native-table">
-            <thead><tr>{columns.visible.map(column =>
-              <th key={column}><SortableHeader column={column} label={LABELS[column]} sort={sort} onSort={sort.toggle}/></th>)}</tr></thead>
+          <table className={'table tracking-hub-table tracking-hub-table-v2 wh-native-table wh-native-table-' + tableMode}
+            aria-label="Danh sách đơn hàng chờ xử lý kho">
+            <colgroup>
+              {isGrouped
+                ? displayColumnWidths.map((width, index) => <col key={index} style={{ width: width + '%' }}/>)
+                : columns.visible.map(key => <col key={key} style={{ width: (100 * columnWeights[key] / totalColumnWeight) + '%' }}/>)}
+            </colgroup>
+            <thead><tr>
+              {isGrouped
+                ? (narrow
+                  ? <><th>Đơn hàng / Nhận</th><th>Sản phẩm / Xử lý</th></>
+                  : <><th>Đơn hàng / Nhận</th><th>Sản phẩm</th><th>Bóc tách / COD</th><th>Trạng thái</th></>)
+                : columns.visible.map(column =>
+                  <th key={column}><SortableHeader column={column} label={LABELS[column]} sort={sort} onSort={sort.toggle}/></th>)}
+            </tr></thead>
             <tbody>
               {visible.length === 0
-                ? <tr><td className="empty compact" colSpan={columns.visible.length}>Không có đơn phù hợp.</td></tr>
+                ? <tr><td className="empty compact" colSpan={isGrouped ? (narrow ? 2 : 4) : columns.visible.length}>Không có đơn phù hợp.</td></tr>
                 : visible.map(row => <tr key={row.id} className={activeId === row.id ? 'active-row' : ''}>
-                  {columns.visible.map(column => renderCell(row, column))}
+                  {isGrouped ? renderGroupedCells(row) : columns.visible.map(column => renderCell(row, column))}
                 </tr>)}
             </tbody>
           </table>
