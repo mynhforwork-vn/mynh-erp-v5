@@ -42,7 +42,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     supabase.from('orders')
       .select([
         'id,shopee_order_id,cod,prepaid_amount,order_date,warehouse_status',
-        'recipient_name,recipient_phone,recipient_address,destination_hub',
+        'recipient_name,recipient_phone,recipient_address,destination_hub,area,order_status,payment_status,shipping_service,prepaid_source_label',
         'erp_users(username)',
         'shipments(carrier,tracking_number,current_tracking_status,is_active)',
         'order_vouchers(voucher_code,voucher_name,voucher_type,voucher_tag)',
@@ -113,6 +113,10 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
         </Link>
       </div>
     </header>
+    {!error && <div className="wiv21-live-source" role="status">
+      <span><b>Dữ liệu thực MYNH ERP</b> · Supabase hiện hành · {rows.length} đơn đã nhận hàng · Chỉ xem trên Preview</span>
+      <span>Không tạo dữ liệu mẫu, không tự điền giá nguồn còn thiếu.</span>
+    </div>}
     {error && <div className="tracking-flash-row">
       <div className="error-box">Không thể tải dữ liệu Nhập kho: {error.message}</div>
     </div>}
