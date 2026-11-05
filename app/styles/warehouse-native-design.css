@@ -92,6 +92,26 @@
 @media(max-width:355px){.wh-native-price-row{grid-template-columns:1fr}.wh-native-price-row>div{border-right:0;border-bottom:1px solid #e6edf2}.wh-native-price-row>div:last-child{border-bottom:0}.wh-native-field-pair{grid-template-columns:1fr}}
 
 
+/* Warehouse BG/HN lane markers live inside the scrolled table. */
+.wh-native .wh-native-warehouse-separator td{
+  position:relative;
+  background:#edf3f8!important;
+  color:#2a5572!important;
+  padding:6px 10px!important;
+  font-size:10px;
+  font-weight:750;
+  letter-spacing:.015em;
+  white-space:nowrap!important;
+  border-top:1px solid #d4e1eb;
+  border-bottom:1px solid #dfe8ef;
+}
+.wh-native .wh-native-warehouse-separator td span{
+  margin-left:8px;
+  color:#738a9c;
+  font-size:9.5px;
+  font-weight:500;
+  letter-spacing:normal;
+}
 /* Auto-fit V3: a single scoped rule set for actual list width and 2 slidebars.
    Each purchase item has exactly one clipped, normal-weight line. */
 .wh-native .wh-native-workspace,
