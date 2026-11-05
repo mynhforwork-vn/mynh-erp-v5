@@ -119,7 +119,7 @@ const checks = [
     workspace.includes("if (phase === 'all' && phaseOf(row) === 'done') return false") &&
     !workspace.includes("['done', PHASE_LABELS.done]") &&
     page.includes("statusHref('done')") &&
-    workspace.includes("phase === 'done'")],
+    workspace.includes("if (phase !== 'all' && phaseOf(row) !== phase) return false")],
   ['existing SKU suggestions reuse historical confirmed mappings and require manual choice',
     page.includes("supabase.from('order_items')") &&
     page.includes('mappingByKey') &&
