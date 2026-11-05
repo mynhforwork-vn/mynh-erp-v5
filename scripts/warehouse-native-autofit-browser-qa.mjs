@@ -16,8 +16,8 @@ const entry=[
   "  id:'30000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),",
   "  shopee_order_id:'261103C48K1GUU'+String(i+1).padStart(2,'0'),",
   "  order_date:'2026-11-03T15:09:00+07:00', warehouse_status:'READY_TO_TRANSFER', cod: (i+1)*15000,",
-  "  receive_batch_details:[{receive_batches:{warehouse_id:'10000000-0000-0000-0000-000000000001',received_at:'2026-11-03T15:09:00+07:00',warehouses:{code:'HN',name:'Hà Nội',address:'164 Hồng Mai'}}}],",
-  "  order_items:[{id:'40000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),sku:'SP-'+i,product_name:title,variant:'Loại 110ml/180ml',quantity:2,original_price:129000,final_price:89000,product_variant_id:null,inventory_multiplier:1}]",
+  "  receive_batch_details:[{receive_batches:{warehouse_id:i<4?'50000000-0000-0000-0000-000000000002':'50000000-0000-0000-0000-000000000001',received_at:'2026-11-03T15:09:00+07:00',warehouses:{code:i<4?'BG':'HN',name:i<4?'Kho BG':'Kho HN',address:i<4?'320 Nguyễn Công Hãng':'164 Hồng Mai'}}}],",
+  "  order_items:[{id:'40000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),sku:'SP-'+i,product_name:title,variant:'Loại 110ml/180ml',quantity:2,original_price:129000,final_price:89000,product_variant_id:null,inventory_multiplier:1}, {id:'90000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),sku:'SP-2-'+i,product_name:'Sữa tắm hương hoa nhài - chai 500ml',variant:'500ml',quantity:1,original_price:65000,final_price:55000,product_variant_id:null,inventory_multiplier:1}]",
   '}))',
   "createRoot(document.getElementById('root')).render(<div className='fixture-shell'><WarehouseIntakeNativeDesign rows={rows} variants={[]} auditLogs={[]}/></div>)"
 ].join('\n');
@@ -35,22 +35,30 @@ try{
   const page=await browser.newPage({viewport:{width:w,height:h}}), errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.setContent(html,{waitUntil:'load',timeout:60000});
-  await page.waitForSelector('.wh-native-table tbody tr td',{timeout:20000});
+  await page.waitForSelector('.wh-native-table tbody tr.wh-native-data-row td',{timeout:20000});
   async function check(state){
    await page.waitForTimeout(150);
    const result=await page.evaluate(()=>{
     const t=document.querySelector('.wh-native-table'),wr=document.querySelector('.wh-native-table-wrap');
-    const rects=Array.from(t.querySelector('tbody tr').querySelectorAll('td')).map(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,overflow:getComputedStyle(el).overflowX}});
-    return {mode:t.className.match(/wh-native-table-(wide|compact|narrow)/)?.[1],table:t.getBoundingClientRect().width,wrap:wr.getBoundingClientRect().width,overflow:document.documentElement.scrollWidth-innerWidth,cols:rects.length,rects};
+    const rects=Array.from(t.querySelector('tbody tr.wh-native-data-row').querySelectorAll('td')).map(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,overflow:getComputedStyle(el).overflowX}});
+    const lines=Array.from(t.querySelector('tbody tr.wh-native-data-row').querySelectorAll('.wh-native-product-line')).map(el=>({text:el.textContent,weight:getComputedStyle(el).fontWeight,wrap:getComputedStyle(el).whiteSpace,height:el.getBoundingClientRect().height,lineHeight:parseFloat(getComputedStyle(el).lineHeight)}));
+    return {mode:t.className.match(/wh-native-table-(wide|compact|narrow)/)?.[1],table:t.getBoundingClientRect().width,wrap:wr.getBoundingClientRect().width,overflow:document.documentElement.scrollWidth-innerWidth,cols:rects.length,rects,lines};
    });
    assert.ok(result.table<=result.wrap+2,'table exceeds wrapper '+w+' '+state+' '+JSON.stringify(result));
    assert.ok(result.overflow<=2,'page overflow '+w+' '+state+' '+JSON.stringify(result));
    for(let i=1;i<result.rects.length;i++)assert.ok(result.rects[i-1].right<=result.rects[i].left+1,'overlapping cells '+w+' '+state);
    assert.ok(result.rects.every(c=>c.overflow==='hidden'),'cell content not clipped '+w+' '+state);
+   assert.equal(result.lines.length,2,'each of 2 products must be displayed in '+w+' '+state);
+   assert.ok(result.lines.every(v=>v.wrap==='nowrap' && Number(v.weight)<=500),'product line should be regular, nowrap '+w+' '+state);
+   assert.ok(result.lines.every(v=>v.height <= v.lineHeight+3),'product label wraps '+w+' '+state);
+   assert.ok(result.lines[0].text.includes('Clear Men') && result.lines[1].text.includes('Sữa tắm'),'product data missing '+w+' '+state);
    console.log('PASS '+w+'x'+h+' '+state+' '+result.mode+' '+result.cols+' columns');
    await page.screenshot({path:path.join(output,w+'-'+state+'.png')});
    return result;
   }
+  assert.equal(await page.locator('.wh-native-warehouse-separator').count(),2,'BG and HN separated in all-orders view');
+  assert.equal(await page.locator('.wh-native-warehouse-tabs button').filter({hasText:'KHO BG'}).count(),1);
+  assert.equal(await page.locator('.wh-native-warehouse-tabs button').filter({hasText:'KHO HN'}).count(),1);
   const closed=await check('closed');
   if(w>=1280)assert.equal(closed.mode,'wide');
   await page.locator('.wh-native-order-link').first().click();
@@ -58,11 +66,36 @@ try{
   const opened=await check('open');
   if(w>=1024)assert.notEqual(opened.mode,'wide','panel did not auto-fit '+w);
   if(w<=390)assert.equal(opened.mode,'narrow');
+  if(w>=1024){
+   await page.evaluate(()=>{
+     const second=document.createElement('aside');
+     second.className='mynh-slide-panel wh-native-extra-panel';
+     second.textContent='Chi tiết thứ hai';
+     document.querySelector('.wh-native-workspace').appendChild(second);
+   });
+   await page.waitForTimeout(250);
+   const two=await check('two-panels');
+   assert.equal(two.mode,'narrow','two slidebars must compact to 2 grouped columns');
+   await page.evaluate(()=>document.querySelector('.wh-native-extra-panel')?.remove());
+   await check('second-closed');
+   await page.evaluate(()=>{
+     const shell=document.querySelector('.fixture-shell');
+     shell.style.marginLeft='72px';
+     shell.style.width='calc(100vw - 72px)';
+   });
+   await check('nav-collapsed');
+   await page.evaluate(()=>{
+     const shell=document.querySelector('.fixture-shell');
+     shell.style.marginLeft='252px';
+     shell.style.width='calc(100vw - 252px)';
+   });
+   await check('nav-expanded');
+  }
   await page.locator('.wh-native-panel .close').click();
   await page.waitForSelector('.wh-native-panel',{state:'detached'});
   await check('reclosed');
   assert.deepEqual(errors,[]);
   await page.close();
  }
- console.log('PASS browser autofit layout at 6 viewport sizes');
+ console.log('PASS browser autofit layout incl. two slidebars, sidebar toggle, BG/HN lanes and product lines');
 }finally{await browser.close()}
