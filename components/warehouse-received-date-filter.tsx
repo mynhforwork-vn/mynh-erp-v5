@@ -1,70 +1,62 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-type Period = 'all' | 'today' | '7d' | '30d' | 'custom'
+type Period = 'all' | 'today' | 'week' | '7d' | '30d' | 'month' | 'year' | 'custom'
+
+const OPTIONS: ReadonlyArray<{ value: Period; label: string }> = [
+  {value:'all',label:'Tất cả'},
+  {value:'today',label:'Hôm nay'},
+  {value:'week',label:'Tuần này'},
+  {value:'7d',label:'7 ngày'},
+  {value:'30d',label:'30 ngày'},
+  {value:'month',label:'Tháng này'},
+  {value:'year',label:'Năm nay'},
+]
 
 export function WarehouseReceivedDateFilter({
-  period, from, to,
+  period, from, to, state,
 }: {
   period: Period
   from: string
   to: string
+  state: 'all' | 'pending' | 'ready' | 'done'
 }) {
   const router = useRouter()
   const [start, setStart] = useState(from)
   const [end, setEnd] = useState(to)
   useEffect(() => { setStart(from); setEnd(to) }, [from, to])
 
-  const navigate = (choice: Period, nextFrom = start, nextTo = end) => {
-    const params = new URLSearchParams(window.location.search)
-    if (choice === 'all') {
-      params.delete('received_range')
-      params.delete('from')
-      params.delete('to')
-    } else {
-      params.set('received_range', choice)
-      if (choice === 'custom') {
-        if (nextFrom) params.set('from', nextFrom)
-        else params.delete('from')
-        if (nextTo) params.set('to', nextTo)
-        else params.delete('to')
-      } else {
-        params.delete('from')
-        params.delete('to')
-      }
+  const urlFor = (choice: Period, begin = '', finish = '') => {
+    const params = new URLSearchParams({state})
+    if (choice !== 'all') params.set('received_range', choice)
+    if (choice === 'custom') {
+      if (begin) params.set('from', begin)
+      if (finish) params.set('to', finish)
     }
-    router.replace('/warehouse/receive?' + params.toString(), { scroll: false })
+    return '/warehouse/receive?' + params.toString()
+  }
+  const chooseDay = (begin: string, finish: string) => {
+    // Both fields are independently optional; the server guards invalid dates
+    // and applies the range to the confirmed receiving batch timestamp.
+    router.replace(urlFor('custom', begin, finish), {scroll:false})
   }
 
-  return <div className="wh-native-date-filter" aria-label="Bộ lọc thời gian theo ngày nhận hàng">
-    <label className="wh-native-date-field">
-      <span>Ngày nhận hàng</span>
-      <select value={period} aria-label="Khoảng ngày nhận hàng"
-        onChange={event => navigate(event.target.value as Period)}>
-        <option value="all">Tất cả thời gian</option>
-        <option value="today">Hôm nay</option>
-        <option value="7d">7 ngày gần nhất</option>
-        <option value="30d">30 ngày gần nhất</option>
-        <option value="custom">Tùy chọn ngày</option>
-      </select>
-    </label>
-    {period === 'custom' && <>
-      <label className="wh-native-date-field">
-        <span>Từ ngày nhận</span>
-        <input aria-label="Từ ngày nhận" type="date" value={start}
-          onChange={event => { const value = event.target.value; setStart(value); navigate('custom', value, end) }}/>
-      </label>
-      <label className="wh-native-date-field">
-        <span>Đến ngày nhận</span>
-        <input aria-label="Đến ngày nhận" type="date" value={end}
-          onChange={event => { const value = event.target.value; setEnd(value); navigate('custom', start, value) }}/>
-      </label>
-    </>}
-    {period !== 'all' && <button type="button" className="wh-native-date-clear" title="Xóa lọc ngày nhận"
-      aria-label="Xóa lọc ngày nhận" onClick={() => { setStart(''); setEnd(''); navigate('all', '', '') }}>
-      ×
-    </button>}
-  </div>
+  return <nav className="wh-native-date-filter" aria-label="Lọc theo ngày nhận hàng">
+    <span className="wh-native-date-title">Ngày nhận hàng</span>
+    <div className="wh-native-date-quick" role="group" aria-label="Khoảng thời gian">
+      {OPTIONS.map(item=><Link key={item.value} href={urlFor(item.value)}
+        scroll={false} prefetch={false} aria-current={period===item.value?'page':undefined}
+        className={'wh-native-date-option' + (period===item.value?' active':'')}>{item.label}</Link>)}
+    </div>
+    <div className={'wh-native-date-calendar'+(period==='custom'?' active':'')}>
+      <label><span>Từ</span><input type="date" value={start} aria-label="Từ ngày nhận"
+        onChange={e=>{const next=e.target.value;setStart(next);chooseDay(next,end)}}/></label>
+      <span className="wh-native-date-separator" aria-hidden="true">→</span>
+      <label><span>Đến</span><input type="date" value={end} aria-label="Đến ngày nhận"
+        onChange={e=>{const next=e.target.value;setEnd(next);chooseDay(start,next)}}/></label>
+    </div>
+  </nav>
 }
