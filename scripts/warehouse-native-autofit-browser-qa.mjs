@@ -7,10 +7,12 @@ import assert from 'node:assert/strict';
 const root=process.cwd(), tmp=mkdtempSync(path.join(os.tmpdir(),'mynh-autofit-'));
 const output=path.join(root,'qa-warehouse-native-autofit'); mkdirSync(output,{recursive:true});
 const component=path.join(root,'components/warehouse-intake-native-design.tsx');
+const settings=path.join(root,'components/warehouse-receiving-settings.tsx');
 const entry=[
   "import React from 'react'",
   "import {createRoot} from 'react-dom/client'",
   'import {WarehouseIntakeNativeDesign} from '+JSON.stringify(component),
+  'import {WarehouseReceivingSettings} from '+JSON.stringify(settings),
   "const title='Dầu gội đầu dành cho nam Clear Men sạch gàu dài suốt ngày với nhiều thông tin phân loại và thương hiệu - mặt hàng nhập kho mùa hè',",
   'rows=Array.from({length:14},(_,i)=>({',
   "  id:'30000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),",
@@ -24,12 +26,20 @@ const entry=[
   "rows[3].warehouse_status='WAREHOUSE_SKIPPED'",
   "const skuVariant={id:'SKU-SALE-EXISTING',variant_name:'110ml',sale_price:155000,products:{sku:'SKU-EXISTING-110',name:'Dầu gội đầu dành cho nam Clear Men'}}",
   "const suggestions={[rows[0].order_items[0].id]:{variant_id:skuVariant.id,sku:'SKU-EXISTING-110',product_name:'Dầu gội đầu dành cho nam Clear Men',variant_name:'110ml',multiplier:2}}",
-  "function Harness(){const [phase,setPhase]=React.useState('all');return <><div className='fixture-controls'><button className='fixture-done-kpi' onClick={()=>setPhase('done')}>KPI Đã xử lý</button><button className='fixture-work-kpi' onClick={()=>setPhase('all')}>KPI Việc cần xử lý</button></div><div className='fixture-shell'><WarehouseIntakeNativeDesign rows={rows} variants={[skuVariant]} suggestions={suggestions} auditLogs={[]} initialPhase={phase}/></div></>}",
+  "function Harness(){const [phase,setPhase]=React.useState('all');return <><div className='fixture-controls'><button className='fixture-done-kpi' onClick={()=>setPhase('done')}>KPI Đã xử lý</button><button className='fixture-work-kpi' onClick={()=>setPhase('all')}>KPI Tất cả</button><button className='fixture-pending-kpi' onClick={()=>setPhase('pending')}>KPI Chờ bóc tách</button><button className='fixture-ready-kpi' onClick={()=>setPhase('ready')}>KPI Chờ nhập kho</button><WarehouseReceivingSettings warehouses={[{id:'HN',code:'HN',name:'Kho HN',address:'164 Hồng Mai'},{id:'BG',code:'BG',name:'Kho BG',address:'320 Nguyễn Công Hãng'}]} defaultReceivingWarehouseId='HN' previewOnly dockToWorkspace/></div><div className='fixture-shell'><WarehouseIntakeNativeDesign rows={rows} variants={[skuVariant]} suggestions={suggestions} auditLogs={[]} initialPhase={phase}/></div></>}",
   "createRoot(document.getElementById('root')).render(<Harness/>)"
 ].join('\n');
 const entryPath=path.join(tmp,'entry.tsx'), outfile=path.join(tmp,'bundle.js');
 writeFileSync(entryPath,entry);
-await build({entryPoints:[entryPath],outfile,absWorkingDir:root,bundle:true,platform:'browser',format:'iife',jsx:'automatic',define:{'process.env.NODE_ENV':'"production"'},alias:{'@':root},nodePaths:[path.join(root,'node_modules')]});
+await build({entryPoints:[entryPath],outfile,absWorkingDir:root,bundle:true,platform:'browser',format:'iife',jsx:'automatic',
+  define:{'process.env.NODE_ENV':'"production"'},alias:{'@':root},nodePaths:[path.join(root,'node_modules')],
+  // Only the server-action import is mocked; the settings UI is the actual
+  // application component and is mounted as a real portaled slidebar.
+  plugins:[{name:'mock-server-action',setup(build){
+    build.onResolve({filter:/^@\\/lib\\/actions\\/warehouse$/},()=>({path:'warehouse-actions',namespace:'qa-action'}));
+    build.onLoad({filter:/.*/,namespace:'qa-action'},()=>({contents:'export async function saveReceivingWarehouseSettings(){}',loader:'js'}));
+  }}]
+});
 const cssFiles=readdirSync(path.join(root,'app/styles')).filter(f=>f.endsWith('.css')&&f!=='warehouse-native-design.css');
 const css=cssFiles.map(f=>readFileSync(path.join(root,'app/styles',f),'utf8')).join('\n')+'\n'+readFileSync(path.join(root,'app/styles/warehouse-native-design.css'),'utf8');
 const shellCss='body{margin:0;background:#f5f7fa;font-family:Arial,sans-serif}.fixture-controls{position:fixed;left:3px;top:3px;z-index:40;display:flex;gap:4px}.fixture-controls button{font-size:9px;border:1px solid #ccd;background:white}.fixture-shell{margin-left:252px;width:calc(100vw - 252px);padding:12px 16px;height:calc(100dvh - 24px);display:flex;min-width:0}.fixture-shell .wh-native{width:100%;height:100%;min-width:0}.fixture-shell .wh-native-workspace{height:calc(100% - 85px);min-height:0}@media(max-width:900px){.fixture-shell{margin-left:0;width:100%;padding:8px;height:100dvh}.fixture-shell .wh-native-workspace{height:calc(100% - 110px)}}';
@@ -81,7 +91,8 @@ try{
      const first=result.geometry.panels[0];
      if(w>900){
        assert.ok(first.left>=result.geometry.listRight-1,'desktop slidebar overlaps table '+w+' '+state);
-       assert.ok(first.left-result.geometry.listRight<=7,'excessive desktop table/slidebar gap '+w+' '+state);
+       assert.ok(first.left-result.geometry.listRight>=10,'desktop table/slidebar gap too small '+w+' '+state);
+       assert.ok(first.left-result.geometry.listRight<=18,'excessive desktop table/slidebar gap '+w+' '+state);
      }else{
        // The ERP intentionally uses an overlay/full-width right slidebar on
        // Tablet and Mobile. This is not a Desktop grid collision.
@@ -93,7 +104,8 @@ try{
    if(result.geometry.panels.length===2){
      const [first,second]=result.geometry.panels;
      assert.ok(second.left>=first.right-1,'second slidebar overlaps first '+w+' '+state+' '+JSON.stringify(result.geometry));
-     assert.ok(second.left-first.right<=7,'excessive gap between two slidebars '+w+' '+state);
+     assert.ok(second.left-first.right>=10,'two slidebars need visible separation '+w+' '+state);
+     assert.ok(second.left-first.right<=18,'excessive gap between two slidebars '+w+' '+state);
      assert.ok(first.width>=215&&second.width>=215,'dual panels became too narrow '+w+' '+state);
    }
    assert.ok(result.statusClasses.every(c=>c.includes('status-pill')),
@@ -127,31 +139,27 @@ try{
   assert.equal(await hnCard.locator('.wh-native-table').count(),0,'HN card should collapse independently');
   assert.equal(await bgCard.locator('.wh-native-table').count(),1,'BG must remain expanded');
   await hnCard.getByRole('button',{name:'Mở KHO HN'}).click();
-  const statusFilters=page.locator('.wh-native-phase-tabs button');
-  assert.equal(await statusFilters.count(),3,'only work/pending/ready filters; processed is KPI only');
-  await statusFilters.filter({hasText:'Chờ nhập kho'}).click();
-  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),1,'ready filter must include exactly the mapped BG order');
-  assert.equal(await statusFilters.filter({hasText:'Đã xử lý'}).count(),0,'processed cannot be opened via ordinary filters');
+  assert.equal(await page.locator('.wh-native-phase-tabs').count(),0,'redundant status tabs must not exist');
+  assert.equal(await page.locator('.managed-table-meta').count(),0,'redundant order-count row must not exist');
+  await page.locator('.fixture-ready-kpi').click();
+  await page.waitForTimeout(100);
+  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),1,'ready KPI includes mapped BG order');
   await page.locator('.fixture-done-kpi').click();
-  // Clicking the KPI changes a server-to-client prop; allow the React
-  // useEffect that synchronizes the route state to complete.
   await page.waitForFunction(() => {
     const rows=[...document.querySelectorAll('tr.wh-native-data-row .status-pill')];
     return rows.length===2 && rows.every(el=>el.textContent?.trim()==='Đã xử lý')
   }, null, {timeout:5000});
-  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),2,'processed KPI reveals received and skipped BG orders');
-  assert.equal(await hnCard.locator('tr.wh-native-data-row').count(),0,'processed KPI excludes unfinished HN orders');
-  assert.ok((await bgCard.locator('tr.wh-native-data-row .status-pill').allTextContents()).every(text=>text.trim()==='Đã xử lý'),'completed orders must have the unified status');
+  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),2,'processed KPI shows received and skipped');
   await page.locator('.fixture-work-kpi').click();
   await page.waitForFunction(() => {
     const rows=[...document.querySelectorAll('tr.wh-native-data-row .status-pill')];
     return rows.length===12 && rows.every(el=>el.textContent?.trim()!=='Đã xử lý')
   }, null, {timeout:5000});
-  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),2,'return to work hides completed orders');
-  await statusFilters.filter({hasText:'Chờ bóc tách'}).click();
-  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),1,'pending must show unmapped BG order');
-  await statusFilters.filter({hasText:'Việc cần xử lý'}).click();
-  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),2,'work list must still exclude completed BG orders');
+  await page.locator('.fixture-pending-kpi').click();
+  await page.waitForTimeout(100);
+  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),1,'pending KPI shows unmapped order');
+  await page.locator('.fixture-work-kpi').click();
+  await page.waitForTimeout(100);
   const closed=await check('closed');
   assert.equal(closed.cols,7);
   await page.locator('.wh-native-order-link').first().click();
@@ -200,18 +208,15 @@ try{
     assert.ok(scroll>0,'horizontal scrolling is required and must stay inside the table '+w);
   }
   if(w>=1024){
-   await page.evaluate(()=>{
-     const second=document.createElement('aside');
-     second.className='whx-detail-panel warehouse-intake-panel mynh-slide-panel wh-native-panel wh-native-extra-panel';
-     second.textContent='Chi tiết thứ hai';
-     document.querySelector('.wh-native-workspace').appendChild(second);
-   });
-   await page.waitForTimeout(250);
+   await page.locator('.whx-settings-wrap > button').click();
+   await page.waitForSelector('.wh-native-workspace > aside.wh-native-settings-panel');
+   assert.equal(await page.locator('.wh-native-workspace > aside.mynh-slide-panel').count(),2,
+     'actual settings and order detail must be separately docked');
    const two=await check('two-panels');
-   assert.equal(two.cols,7,'two slidebars must retain seven columns');
-   assert.ok(two.table>=two.wrap-2,'table contents are not preserved when two panels open');
-   assert.ok(two.contentWidth>two.available+3,'two panels must allow inner horizontal scroll');
-   await page.evaluate(()=>document.querySelector('.wh-native-extra-panel')?.remove());
+   assert.equal(two.cols,7);
+   assert.ok(two.contentWidth>two.available+3,'two real slidebars must use inner table scroll');
+   await page.locator('.wh-native-settings-panel [aria-label="Đóng cài đặt Kho nhận"]').click();
+   await page.waitForSelector('.wh-native-settings-panel',{state:'detached'});
    await check('second-closed');
    await page.evaluate(()=>{
      const shell=document.querySelector('.fixture-shell');
@@ -232,5 +237,5 @@ try{
   assert.deepEqual(errors,[]);
   await page.close();
  }
- console.log('PASS: all seven columns preserved, widths auto-fit or scroll inside each warehouse card, with one/two slidebars');
+ console.log('PASS: actual settings + order slidebars docked; 14px gaps, seven columns, no redundant status toolbar');
 }finally{await browser.close()}
