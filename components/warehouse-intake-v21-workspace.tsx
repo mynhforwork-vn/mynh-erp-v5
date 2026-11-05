@@ -92,14 +92,15 @@ function actionLabel(action: string) {
 }
 
 export function WarehouseIntakeV21({
-  rows, variants, warehouses, auditLogs, suggestions, schemaReady, canOperate,
+  rows, variants, warehouses, auditLogs, suggestions, schemaReady, canOperate, initialStage = 'split',
 }: {
   rows: Row[]; variants: Variant[]; warehouses: Warehouse[]; auditLogs: Audit[]
   suggestions: Record<string, Suggestion>; schemaReady: boolean; canOperate: boolean
+  initialStage?: 'split' | 'ready' | 'done'
 }) {
   const router = useRouter()
   const [busy, startTransition] = useTransition()
-  const [stage, setStage] = useState<'split' | 'ready' | 'done'>('split')
+  const [stage, setStage] = useState<'split' | 'ready' | 'done'>(initialStage)
   const [warehouse, setWarehouse] = useState('all')
   const [query, setQuery] = useState('')
   const [activeId, setActiveId] = useState<string | null>(null)
