@@ -377,3 +377,26 @@
     line-height:1.4;
   }
 }
+
+
+/* Exactly three workflow KPI states, consistent with order tags and filters.
+   Override the legacy five-column status strip only in this module. */
+.brand-shell-v1 .warehouse-command-center .tracking-status-strip-v2.wh-native-three-statuses{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+.brand-shell-v1 .warehouse-command-center .wh-native-three-statuses .tracking-status-metric{
+  min-width:0;
+}
+@media(max-width:650px){
+  .brand-shell-v1 .warehouse-command-center .tracking-status-strip-v2.wh-native-three-statuses{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+  .brand-shell-v1 .warehouse-command-center .wh-native-three-statuses .tracking-status-metric{
+    padding:7px 5px;
+    gap:2px 4px;
+  }
+  .brand-shell-v1 .warehouse-command-center .wh-native-three-statuses .tracking-status-metric>span{
+    font-size:9px;
+    line-height:1.35;
+  }
+}
