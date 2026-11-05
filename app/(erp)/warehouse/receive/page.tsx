@@ -20,7 +20,7 @@ function batchOf(row: any) {
   return Array.isArray(value) ? value[0] ?? null : value ?? null
 }
 
-type ReceiptPeriod = 'all' | 'today' | '7d' | '30d' | 'custom'
+type ReceiptPeriod = 'all' | 'today' | 'week' | '7d' | '30d' | 'month' | 'year' | 'custom'
 type SP = {
   state?: 'all' | 'pending' | 'incomplete' | 'missing' | 'ready' | 'done'
   received_range?: ReceiptPeriod
@@ -54,16 +54,20 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
   const params = await searchParams
   const state = params.state ?? 'all'
   const requestedPeriod = params.received_range ?? 'all'
-  const receivedPeriod: ReceiptPeriod = (['today','7d','30d','custom'] as const).includes(requestedPeriod as any)
+  const receivedPeriod: ReceiptPeriod = (['today','week','7d','30d','month','year','custom'] as const).includes(requestedPeriod as any)
     ? requestedPeriod : 'all'
   const dateFrom = validIsoDay(params.from)
   const dateTo = validIsoDay(params.to)
   const today = vietnamDay(new Date())
+  const weekdayFromMonday = (new Date(today + 'T00:00:00Z').getUTCDay() + 6) % 7
   const sinceDay = receivedPeriod === 'today' ? today
+    : receivedPeriod === 'week' ? subtractDays(today, weekdayFromMonday)
     : receivedPeriod === '7d' ? subtractDays(today, 6)
     : receivedPeriod === '30d' ? subtractDays(today, 29)
+    : receivedPeriod === 'month' ? today.slice(0, 8) + '01'
+    : receivedPeriod === 'year' ? today.slice(0, 4) + '-01-01'
     : receivedPeriod === 'custom' ? dateFrom : ''
-  const untilDay = receivedPeriod === 'today' || receivedPeriod === '7d' || receivedPeriod === '30d'
+  const untilDay = ['today','week','7d','30d','month','year'].includes(receivedPeriod)
     ? today : receivedPeriod === 'custom' ? dateTo : ''
   const invalidDateRange = Boolean(sinceDay && untilDay && sinceDay > untilDay)
   const { supabase } = await requireUser()
