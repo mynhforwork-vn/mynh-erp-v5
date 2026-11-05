@@ -99,3 +99,12 @@
 @media(max-width:900px){.wiv21-metrics{gap:5px}.wiv21-metrics button{padding:8px 9px}.wiv21-panel{width:min(650px,100vw)}}
 @media(max-width:600px){.wiv21-warehouses{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px}.wiv21-warehouses button{white-space:nowrap;flex:0 0 auto}.wiv21-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.wiv21-metrics button{display:block}.wiv21-metrics button span{display:block;font-size:10px;line-height:1.35;min-height:28px}.wiv21-metrics button strong{font-size:18px}.wiv21-toolbar{align-items:stretch;flex-direction:column}.wiv21-toolbar-input{width:100%}.wiv21-panel{width:100vw;border:0}.wiv21-panel-head{padding:12px 13px 10px}.wiv21-panel-head h2{font-size:17px}.wiv21-panel-tabs{padding:0 13px;gap:18px}.wiv21-panel-body{padding:13px 13px 30px}.wiv21-item-select{grid-template-columns:minmax(0,1fr)}.wiv21-source-grid{gap:6px}.wiv21-form-cols{grid-template-columns:minmax(0,1fr)}.wiv21-price-strip b{font-size:13px}}
 @media(max-width:340px){.wiv21-source-grid{grid-template-columns:minmax(0,1fr)}.wiv21-metrics button{padding:7px 6px}.wiv21-metrics button span{font-size:9px}}
+
+/* V2.1 shared ERP column manager — search and tools share one compact row. */
+.wiv21-tools{display:flex;align-items:center;gap:7px;justify-content:flex-end;min-width:0;flex:0 1 500px}
+.wiv21-tools .wiv21-toolbar-input{width:auto;flex:1;min-width:130px}
+.wiv21-tools .managed-column-wrap{flex:0 0 auto}
+.wiv21-tools .managed-column-button{white-space:nowrap}
+.wiv21-table .managed-sort-head{display:inline-flex;align-items:center;justify-content:space-between;gap:6px;white-space:nowrap;color:inherit;border:0;background:transparent;padding:0;font-size:inherit;font-weight:inherit}
+.wiv21-table .managed-sort-head i{color:#95a6b5;font-style:normal;font-size:10px}
+@media(max-width:600px){.wiv21-tools{flex:1 1 100%;justify-content:stretch;width:100%}.wiv21-tools .wiv21-toolbar-input{flex:1}}
