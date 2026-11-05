@@ -700,3 +700,19 @@ body.brand-shell-v1 .wh-native-workspace>aside.wh-native-settings-panel .whx-set
     margin:0!important;z-index:1100!important;
   }
 }
+
+/* Shared .warehouse-intake-layout.with-panel gap is more specific than the
+   generic .wh-native-workspace declaration. Keep the intended 14px breathing
+   room even when the system slidebar is opened from an order link. */
+@media(min-width:901px){
+  body.brand-shell-v1 .wh-native-workspace.warehouse-intake-layout.with-panel{
+    gap:14px!important;
+    column-gap:14px!important;
+    row-gap:14px!important;
+  }
+  body.brand-shell-v1 .wh-native-workspace.warehouse-intake-layout:has(>aside.wh-native-settings-panel){
+    gap:14px!important;
+    column-gap:14px!important;
+    row-gap:14px!important;
+  }
+}
