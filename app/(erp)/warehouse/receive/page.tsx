@@ -104,10 +104,10 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
         <p>Bóc tách SKU và xác nhận nhập tồn theo từng sản phẩm tại Kho nhận thực tế</p>
       </div>
       <div className="head-actions">
-        <WarehouseReceivingSettings
+        {schemaReady && <WarehouseReceivingSettings
           warehouses={(warehouses ?? []) as any[]}
           defaultReceivingWarehouseId={(settings as any)?.default_receiving_warehouse_id ?? null}
-        />
+        />}
         <Link className="button" href="/purchase/tracking?range=all&status=DELIVERED&receive=WAITING_RECEIVE">
           Đơn chờ nhận
         </Link>
@@ -122,6 +122,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       auditLogs={(auditLogs ?? []) as any[]}
       suggestions={suggestions}
       schemaReady={schemaReady} canOperate={canOperate}
+      initialStage={sp.state === 'ready' ? 'ready' : 'split'}
     />
   </div>
 }
