@@ -11,6 +11,8 @@ on:
       - 'lib/format.ts'
       - 'supabase/migrations/0075_warehouse_item_intake_v21.sql'
       - 'scripts/warehouse-item-v21-contract-qa.mjs'
+      - 'scripts/sql/warehouse-item-v21-qa-seed.sql'
+      - 'scripts/sql/warehouse-item-v21-qa-assert.sql'
       - '.github/workflows/warehouse-item-v21-qa.yml'
   workflow_dispatch:
 permissions:
@@ -32,4 +34,33 @@ jobs:
         run: npm run typecheck
       - name: Build
         run: npm run build
-# No SQL execution, production deploy or preview mutation in this workflow.
+  isolated-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: warehouse_qa
+          POSTGRES_PASSWORD: warehouse_qa_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d warehouse_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: PostgreSQL client
+        run: |
+          command -v psql || (sudo apt-get update -qq && sudo apt-get install -y postgresql-client)
+      - name: Run migration and transaction QA in disposable PostgreSQL
+        env:
+          PGPASSWORD: warehouse_qa_only
+        run: |
+          psql -h 127.0.0.1 -U postgres -d warehouse_qa -v ON_ERROR_STOP=1 -f scripts/sql/warehouse-item-v21-qa-seed.sql
+          psql -h 127.0.0.1 -U postgres -d warehouse_qa -v ON_ERROR_STOP=1 -f supabase/migrations/0075_warehouse_item_intake_v21.sql
+          psql -h 127.0.0.1 -U postgres -d warehouse_qa -v ON_ERROR_STOP=1 -f scripts/sql/warehouse-item-v21-qa-assert.sql
+# Isolated test DB only. No Production Supabase SQL, Cloudflare deploy or Preview mutation.
