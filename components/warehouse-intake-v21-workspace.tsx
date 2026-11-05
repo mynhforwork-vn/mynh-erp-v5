@@ -287,7 +287,7 @@ export function WarehouseIntakeV21({
     run(() => processWarehouseItemsV21(form), 'Đã xử lý ' + list.length + ' sản phẩm', () => setDecisions({}))
   }
 
-  return <div className={'wiv21' + (active ? ' wiv21-open' : '')}>
+  return <div className="wiv21 wiv21-system">
     {!schemaReady && <div className="wiv21-compat" role="status">
       Đang hiển thị bản thiết kế V2.1 ở chế độ chỉ xem. Chức năng ghi sẽ được mở sau khi migration được phê duyệt và kiểm thử.
     </div>}
@@ -309,6 +309,8 @@ export function WarehouseIntakeV21({
       </button>)}
     </div>
 
+    <div className={'whx-intake-layout warehouse-intake-layout wiv21-workspace' + (active ? ' with-panel' : '')}>
+      <section className="whx-intake-main wiv21-main">
     <div className="wiv21-toolbar">
       <div><strong>{stage === 'needs' ? 'Đơn chưa ghép đủ SKU' : stage === 'split' ? 'Đơn chưa bóc tách' : stage === 'partial' ? 'Đơn đang bóc tách' : stage === 'ready' ? 'Chờ quyết định nhập kho' : 'Đã xử lý kho'}</strong>
         <small>{visible.length} đơn trong danh sách · Chọn mã đơn để mở chi tiết</small></div>
@@ -345,21 +347,20 @@ export function WarehouseIntakeV21({
         </tbody>
       </table>
     </div>
-    {active && <>
-      <button className="wiv21-backdrop" type="button" aria-label="Đóng chi tiết" onClick={() => setActiveId(null)} />
-      <aside className="wiv21-panel" aria-label="Chi tiết xử lý kho">
-        <div className="wiv21-panel-head">
+      </section>
+    {active && <aside className="whx-detail-panel mynh-slide-panel wiv21-panel" data-system-slidebar="true" aria-label="Chi tiết xử lý kho">
+        <div className="whx-panel-head wiv21-panel-head">
           <div><small>CHI TIẾT ĐƠN / {warehouseOf(active)?.code ?? 'KHO NHẬN'}</small>
             <h2>{active.shopee_order_id ?? active.id.slice(0, 8)}</h2>
             <p>{warehouseOf(active)?.address ?? warehouseOf(active)?.name ?? 'Chưa xác định kho'} · {formatDateTime(batchOf(active)?.received_at)}</p></div>
-          <button type="button" aria-label="Đóng slidebar" onClick={() => setActiveId(null)}>×</button>
+          <button className="close" type="button" aria-label="Đóng chi tiết" onClick={() => setActiveId(null)}>×</button>
         </div>
-        <div className="wiv21-panel-tabs">
+        <div className="whx-panel-tabs wiv21-panel-tabs">
           <button type="button" className={tab === 'products' ? 'active' : ''} onClick={() => setTab('products')}>Sản phẩm</button>
           <button type="button" className={tab === 'info' ? 'active' : ''} onClick={() => setTab('info')}>Thông tin đơn</button>
           <button type="button" className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>Lịch sử</button>
         </div>
-        <div className="wiv21-panel-body">
+        <div className="whx-panel-scroll wiv21-panel-body">
           {tab === 'products' && <>
             <div className="wiv21-progress">
               <strong>Xử lý từng sản phẩm</strong>
@@ -494,8 +495,8 @@ export function WarehouseIntakeV21({
                 </div>)}
           </div>}
         </div>
-      </aside>
-    </>}
+      </aside>}
+    </div>
     {toast && <div className={'wiv21-toast ' + toast.type} role="status"><span>{toast.message}</span><button type="button" aria-label="Đóng thông báo" onClick={() => setToast(null)}>×</button></div>}
   </div>
 }
