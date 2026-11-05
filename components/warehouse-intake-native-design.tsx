@@ -300,8 +300,8 @@ export function WarehouseIntakeNativeDesign({
   // changes column widths, never the column count. If 2 slidebars leave too
   // little room, only the table body scrolls horizontally.
   const minWidths: Record<Column, number> = {
-    order: 132, received: 128, warehouse: 96, product: 226,
-    progress: 84, cod: 102, status: 154,
+    order: 124, received: 114, warehouse: 78, product: 208,
+    progress: 68, cod: 86, status: 116,
   }
   const growWeights: Record<Column, number> = {
     order: 1, received: 1, warehouse: 0.35, product: 4.5,
