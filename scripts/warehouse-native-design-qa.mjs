@@ -23,7 +23,20 @@ const checks = [
     workspace.includes('visibleColumn(\'cod\')')],
   ['fixed table layout clips long strings and keeps sticky header',
     css.includes('table-layout:fixed!important') && css.includes('overflow:hidden!important') &&
-    css.includes('position:sticky!important') && css.includes('-webkit-line-clamp:2')],
+    css.includes('position:sticky!important') && css.includes('white-space:nowrap!important') && css.includes('font-weight:400!important')],
+  ['all products listed once per row, no bold wrapping',
+    workspace.includes('row.order_items.map(item => <span key={item.id}') &&
+    workspace.includes('productDescription(item)') && css.includes('.wh-native-product-line') &&
+    css.includes('font-weight:400!important')],
+  ['both receiving warehouse lanes derived from confirmed batch links',
+    page.includes("supabase.from('receive_batch_details')") &&
+    page.includes("supabase.from('receive_batches')") &&
+    page.includes("supabase.from('warehouses')") &&
+    workspace.includes('KHO BG') && workspace.includes('KHO HN') &&
+    !workspace.includes('destination_hub || warehouse')],
+  ['two embedded detail panels adapt table width',
+    workspace.includes('new MutationObserver(adapt)') &&
+    css.includes('aside.mynh-slide-panel:nth-of-type(2)')],
   ['no fixed-position desktop panel', css.includes('@media(min-width:901px)') && css.includes('position:relative!important') && !css.includes('position:fixed')],
   ['escape key closes slidebar', workspace.includes("event.key === 'Escape'")],
 ]
