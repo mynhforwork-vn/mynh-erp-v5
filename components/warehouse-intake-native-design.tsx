@@ -131,7 +131,10 @@ export function WarehouseIntakeNativeDesign({
     const adapt = () => {
       // Measure the content area's actual width, after all surrounding panels
       // and sidebar changes. Never infer it from window.innerWidth.
-      const width = Math.min(node.getBoundingClientRect().width, node.clientWidth)
+      const wrap = node.querySelector<HTMLElement>('.wh-native-table-wrap')
+      // Card borders and table gutters are not part of the available width:
+      // measure the actual scroll viewport to avoid phantom x-scroll at 1440px.
+      const width = wrap?.clientWidth ?? node.clientWidth
       setListWidth(current => Math.abs(current - width) < 1 ? current : width)
     }
     adapt()
@@ -139,11 +142,15 @@ export function WarehouseIntakeNativeDesign({
       : new ResizeObserver(adapt)
     observer?.observe(node)
     observer?.observe(workspace)
-    // A second embedded slidebar can be added/removed without a viewport
-    // resize. Observe those DOM changes and re-measure in the next layout.
+    const watchTables = () => {
+      node.querySelectorAll('.wh-native-table-wrap').forEach(table => observer?.observe(table))
+    }
+    watchTables()
+    // The second embedded slidebar or an accordion changes the DOM without
+    // changing the viewport. Observe new table viewports as they are mounted.
     const mutation = typeof MutationObserver === 'undefined' ? null
-      : new MutationObserver(adapt)
-    mutation?.observe(workspace, { childList: true })
+      : new MutationObserver(() => { watchTables(); adapt() })
+    mutation?.observe(workspace, { childList: true, subtree: true })
     window.addEventListener('resize', adapt)
     return () => {
       observer?.disconnect()
