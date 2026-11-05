@@ -110,6 +110,15 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       mappingByKey.set(key, item)
     }
   }
+  // Preserve historically matched SKUs even when they fall outside the
+  // latest 1,500 edited variants (read-only, deduplicated by variant ID).
+  const knownVariants = new Map<string, any>()
+  for (const variant of (variants ?? []) as any[]) knownVariants.set(variant.id, variant)
+  for (const item of (recentMappings ?? []) as any[]) {
+    const variant = item.product_variants
+    if (variant?.id && !knownVariants.has(variant.id)) knownVariants.set(variant.id, variant)
+  }
+  const allVariants = [...knownVariants.values()]
   const suggestions: Record<string, { variant_id: string; sku: string | null; product_name: string | null; variant_name: string | null; multiplier: number }> = {}
   for (const order of rows) for (const item of order.order_items ?? []) {
     if (item.product_variant_id) continue
@@ -194,7 +203,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
 
     <WarehouseIntakeNativeDesign
       rows={rows}
-      variants={(variants ?? []) as any[]}
+      variants={allVariants}
       auditLogs={(auditLogs ?? []) as any[]}
       suggestions={suggestions}
       initialPhase={currentStatus}
