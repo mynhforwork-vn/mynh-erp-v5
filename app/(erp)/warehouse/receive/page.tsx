@@ -11,7 +11,7 @@ function batchOf(row: any) {
   return Array.isArray(value) ? value[0] ?? null : value ?? null
 }
 
-type SP = { state?: 'all' | 'incomplete' | 'missing' | 'ready' | 'done' }
+type SP = { state?: 'all' | 'pending' | 'incomplete' | 'missing' | 'ready' | 'done' }
 
 export default async function WarehouseReceivePage({ searchParams }: { searchParams: Promise<SP> }) {
   const params = await searchParams
