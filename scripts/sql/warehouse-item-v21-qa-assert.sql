@@ -130,3 +130,30 @@ begin
   raise notice 'Warehouse V2.1 isolated PostgreSQL transactional QA: PASS';
 end;
 $qa$;
+
+
+-- Test a real non-definer SQL role: direct table writes must not be able to
+-- fake a warehouse receipt or delete a previously completed source item.
+grant usage on schema public to authenticated;
+grant select,update,delete on public.order_items to authenticated;
+set role authenticated;
+do $role_test$
+begin
+  begin
+    update public.order_items set warehouse_item_status='RECEIVED'
+      where id='50000000-0000-0000-0000-000000000005';
+    raise exception 'Direct status forgery was accepted';
+  exception when others then
+    if sqlerrm='Direct status forgery was accepted' then raise; end if;
+  end;
+  begin
+    delete from public.order_items
+      where id='50000000-0000-0000-0000-000000000001';
+    raise exception 'Completed item delete was accepted';
+  exception when others then
+    if sqlerrm='Completed item delete was accepted' then raise; end if;
+  end;
+  raise notice 'Non-definer direct state/delete guard: PASS';
+end;
+$role_test$;
+reset role;
