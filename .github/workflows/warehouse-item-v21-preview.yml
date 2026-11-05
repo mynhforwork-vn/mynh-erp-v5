@@ -11,6 +11,8 @@ on:
       - 'lib/actions/warehouse.ts'
       - 'lib/format.ts'
       - 'scripts/warehouse-item-v21-contract-qa.mjs'
+      - 'supabase/migrations/0075_warehouse_item_intake_v21.sql'
+      - 'scripts/sql/warehouse-item-v21-qa-assert.sql'
       - '.github/workflows/warehouse-item-v21-preview.yml'
 
 permissions:
