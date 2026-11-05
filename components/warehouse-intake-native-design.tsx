@@ -97,7 +97,7 @@ export function WarehouseIntakeNativeDesign({
 }: {
   rows: Order[]; variants: Variant[]; auditLogs: Audit[]; initialPhase?: Phase
 }) {
-  const [warehouse, setWarehouse] = useState('all')
+  const [openWarehouses, setOpenWarehouses] = useState<Record<string, boolean>>({ BG: true, HN: true, unknown: false })
   const [phase, setPhase] = useState<Phase>(initialPhase)
   const [search, setSearch] = useState('')
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -150,20 +150,8 @@ export function WarehouseIntakeNativeDesign({
 
   const columns = useManagedColumns<Column>('mynh-warehouse-native-columns', COLUMNS, ['order'])
   const sort = useManagedSort<Column>('mynh-warehouse-native-sort', 'received', 'desc')
-  const warehouseLanes = useMemo(() => {
-    const counts = { BG: 0, HN: 0, unknown: 0 }
-    for (const row of rows) {
-      const code = warehouseCode(row)
-      if (code === 'BG') counts.BG++
-      else if (code === 'HN') counts.HN++
-      else counts.unknown++
-    }
-    return counts
-  }, [rows])
-
   const visible = useMemo(() => {
     const filtered = rows.filter(row => {
-      if (warehouse !== 'all' && (warehouseCode(row) ?? 'unknown') !== warehouse) return false
       if (phase !== 'all' && phaseOf(row) !== phase) return false
       if (search.trim()) {
         const text = [
@@ -187,15 +175,31 @@ export function WarehouseIntakeNativeDesign({
     return [...filtered].sort((a, b) => {
       // In "Tất cả", BG and HN remain separate operational lanes.
       // Sorting applies within a confirmed receiving warehouse.
-      if (warehouse === 'all') {
-        const rank = (row: Order) => warehouseCode(row) === 'BG' ? 0 : warehouseCode(row) === 'HN' ? 1 : 2
-        if (rank(a) !== rank(b)) return rank(a) - rank(b)
-      }
+      const rank = (row: Order) => warehouseCode(row) === 'BG' ? 0 : warehouseCode(row) === 'HN' ? 1 : 2
+      if (rank(a) !== rank(b)) return rank(a) - rank(b)
       const x = keyOf(a), y = keyOf(b)
       const order = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'vi')
       return sort.dir === 'asc' ? order : -order
     })
-  }, [rows, warehouse, phase, search, sort.key, sort.dir])
+  }, [rows, phase, search, sort.key, sort.dir])
+
+  const warehouseGroups = useMemo(() => {
+    const buckets: Record<string, Order[]> = { BG: [], HN: [], unknown: [] }
+    for (const row of visible) buckets[warehouseCode(row) ?? 'unknown'].push(row)
+    const defs: Array<{ key: 'BG' | 'HN' | 'unknown'; label: string; address: string }> = [
+      { key: 'BG', label: 'KHO BG', address: '320 Nguyễn Công Hãng' },
+      { key: 'HN', label: 'KHO HN', address: '164 Hồng Mai' },
+      { key: 'unknown', label: 'CHƯA XÁC ĐỊNH KHO', address: 'Cần kiểm tra phiếu nhận thực tế' },
+    ]
+    return defs.filter(group => group.key !== 'unknown' || buckets.unknown.length > 0)
+      .map(group => ({
+        ...group, rows: buckets[group.key],
+        pending: buckets[group.key].filter(row => phaseOf(row) === 'pending').length,
+        ready: buckets[group.key].filter(row => phaseOf(row) === 'ready').length,
+        done: buckets[group.key].filter(row => phaseOf(row) === 'done').length,
+        cod: buckets[group.key].reduce((total, row) => total + Number(row.cod ?? 0), 0),
+      }))
+  }, [visible])
 
   const active = rows.find(row => row.id === activeId) ?? null
   const focused = active?.order_items.find(item => item.id === focusedId) ?? null
@@ -308,19 +312,6 @@ export function WarehouseIntakeNativeDesign({
 
   return <div className="wh-native">
     <div className="wh-native-filters">
-      <div className="wh-native-warehouse-tabs" aria-label="Tự phân luồng theo kho đã nhận">
-        <button type="button" className={warehouse === 'all' ? 'active' : ''} onClick={() => setWarehouse('all')}>
-          Tất cả <b>{rows.length}</b>
-        </button>
-        <button type="button" className={warehouse === 'BG' ? 'active' : ''} onClick={() => setWarehouse('BG')}>
-          KHO BG <b>{warehouseLanes.BG}</b>
-        </button>
-        <button type="button" className={warehouse === 'HN' ? 'active' : ''} onClick={() => setWarehouse('HN')}>
-          KHO HN <b>{warehouseLanes.HN}</b>
-        </button>
-        {warehouseLanes.unknown > 0 && <button type="button" className={warehouse === 'unknown' ? 'active' : ''}
-          onClick={() => setWarehouse('unknown')}>Chưa rõ kho <b>{warehouseLanes.unknown}</b></button>}
-      </div>
       <div className="wh-native-phase-tabs" aria-label="Trạng thái xử lý">
         {([
           ['all', 'Tất cả'],
@@ -330,6 +321,7 @@ export function WarehouseIntakeNativeDesign({
         ] as const).map(([id, label]) => <button type="button" key={id} className={phase === id ? 'active' : ''}
           onClick={() => setPhase(id)}>{label}</button>)}
       </div>
+      <span className="wh-native-warehouse-hint">Phân theo kho nhận thực tế · Thu/mở từng kho</span>
     </div>
     <div ref={workspaceRef} className={'whx-intake-layout warehouse-intake-layout wh-native-workspace' + (active ? ' with-panel' : '')}>
       <section ref={listRef} className="whx-intake-main wh-native-list">
@@ -339,48 +331,62 @@ export function WarehouseIntakeNativeDesign({
             <input aria-label="Tìm mã đơn, SKU, sản phẩm" placeholder="Tìm mã đơn, SKU, sản phẩm..."
               value={search} onChange={e => setSearch(e.target.value)}/>
             <button type="button" aria-label="Xóa bộ lọc" title="Xóa bộ lọc"
-              onClick={() => { setSearch(''); setWarehouse('all'); setPhase('all') }}>×</button>
+              onClick={() => { setSearch(''); setPhase('all') }}>×</button>
           </div>
           <ManagedColumnsMenu labels={LABELS} manager={columns}/>
         </div>
-        <div className="tracking-hub-table-wrap tracking-hub-table-wrap-v2 wh-native-table-wrap">
-          <table className={'table tracking-hub-table tracking-hub-table-v2 wh-native-table wh-native-table-' + tableMode}
-            aria-label="Danh sách đơn hàng chờ xử lý kho">
-            <colgroup>
-              {isGrouped
-                ? displayColumnWidths.map((width, index) => <col key={index} style={{ width: width + '%' }}/>)
-                : columns.visible.map(key => <col key={key} style={{ width: (100 * columnWeights[key] / totalColumnWeight) + '%' }}/>)}
-            </colgroup>
-            <thead><tr>
-              {isGrouped
-                ? (narrow
-                  ? <><th>Đơn hàng / Nhận</th><th>Sản phẩm / Xử lý</th></>
-                  : <><th>Đơn hàng / Nhận</th><th>Sản phẩm</th><th>Bóc tách / COD</th><th>Trạng thái</th></>)
-                : columns.visible.map(column =>
-                  <th key={column}><SortableHeader column={column} label={LABELS[column]} sort={sort} onSort={sort.toggle}/></th>)}
-            </tr></thead>
-            <tbody>
-              {visible.length === 0
-                ? <tr><td className="empty compact" colSpan={isGrouped ? (narrow ? 2 : 4) : columns.visible.length}>Không có đơn phù hợp.</td></tr>
-                : visible.flatMap((row, index) => {
-                  const current = warehouseCode(row) ?? 'unknown'
-                  const previous = index > 0 ? (warehouseCode(visible[index - 1]) ?? 'unknown') : null
-                  const showLane = warehouse === 'all' && current !== previous
-                  const count = showLane ? visible.filter(item => (warehouseCode(item) ?? 'unknown') === current).length : 0
-                  return [
-                    ...(showLane ? [<tr key={'lane-' + current} className="wh-native-warehouse-separator">
-                      <td colSpan={isGrouped ? (narrow ? 2 : 4) : columns.visible.length}>
-                        {current === 'unknown' ? 'CHƯA XÁC ĐỊNH KHO NHẬN' : 'KHO ' + current}
-                        <span>{count} đơn</span>
-                      </td>
-                    </tr>] : []),
-                    <tr key={row.id} className={'wh-native-data-row ' + (activeId === row.id ? 'active-row' : '')}>
-                      {isGrouped ? renderGroupedCells(row) : columns.visible.map(column => renderCell(row, column))}
-                    </tr>,
-                  ]
-                })}
-            </tbody>
-          </table>
+        <div className="wh-native-warehouse-stack" aria-label="Đơn hàng theo kho nhận">
+          {warehouseGroups.map(group => {
+            const expanded = openWarehouses[group.key] === true
+            const panelId = 'wh-native-warehouse-table-' + group.key
+            return <section key={group.key}
+              className={'card tracking-hub-card tracking-hub-card-v2 wh-native-warehouse-card ' + (expanded ? 'open' : 'collapsed')}>
+              <div className="tracking-hub-head-v2 wh-native-warehouse-head">
+                <button type="button" className="tracking-hub-toggle"
+                  aria-label={(expanded ? 'Thu gọn ' : 'Mở ') + group.label}
+                  aria-expanded={expanded} aria-controls={panelId}
+                  onClick={() => setOpenWarehouses(previous => ({ ...previous, [group.key]: !previous[group.key] }))}>
+                  <span aria-hidden="true">{expanded ? '⌄' : '›'}</span>
+                </button>
+                <div className="tracking-hub-identity">
+                  <span className={'tracking-hub-priority-dot ' + (group.pending ? 'attention' : '')} aria-hidden="true"/>
+                  <div><b>{group.label}</b><small>{group.address}</small></div>
+                </div>
+                <div className="tracking-hub-metrics-v2 wh-native-warehouse-metrics" aria-label={'Chỉ số ' + group.label}>
+                  <span><b>{group.rows.length}</b> đơn</span>
+                  <span className={group.pending ? 'warning' : ''}><b>{group.pending}</b> chờ bóc tách</span>
+                  <span className={group.ready ? 'info' : ''}><b>{group.ready}</b> chờ nhập</span>
+                  <span className={group.done ? 'success' : ''}><b>{group.done}</b> đã xử lý</span>
+                  <span className="money"><b>{formatMoney(group.cod)}</b> COD</span>
+                </div>
+              </div>
+              {expanded && <div id={panelId} className="tracking-hub-table-wrap tracking-hub-table-wrap-v2 wh-native-table-wrap">
+                <table className={'table tracking-hub-table tracking-hub-table-v2 wh-native-table wh-native-table-' + tableMode}
+                  aria-label={'Danh sách đơn hàng ' + group.label}>
+                  <colgroup>
+                    {isGrouped
+                      ? displayColumnWidths.map((width, index) => <col key={index} style={{ width: width + '%' }}/>)
+                      : columns.visible.map(key => <col key={key} style={{ width: (100 * columnWeights[key] / totalColumnWeight) + '%' }}/>)}
+                  </colgroup>
+                  <thead><tr>
+                    {isGrouped
+                      ? (narrow
+                        ? <><th>Đơn hàng / Nhận</th><th>Sản phẩm / Xử lý</th></>
+                        : <><th>Đơn hàng / Nhận</th><th>Sản phẩm</th><th>Bóc tách / COD</th><th>Trạng thái</th></>)
+                      : columns.visible.map(column =>
+                        <th key={column}><SortableHeader column={column} label={LABELS[column]} sort={sort} onSort={sort.toggle}/></th>)}
+                  </tr></thead>
+                  <tbody>
+                    {group.rows.length === 0
+                      ? <tr><td className="empty compact" colSpan={isGrouped ? (narrow ? 2 : 4) : columns.visible.length}>Không có đơn phù hợp bộ lọc tại kho này.</td></tr>
+                      : group.rows.map(row => <tr key={row.id} className={'wh-native-data-row ' + (activeId === row.id ? 'active-row' : '')}>
+                        {isGrouped ? renderGroupedCells(row) : columns.visible.map(column => renderCell(row, column))}
+                      </tr>)}
+                  </tbody>
+                </table>
+              </div>}
+            </section>
+          })}
         </div>
       </section>
 
