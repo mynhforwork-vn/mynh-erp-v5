@@ -1,0 +1,94 @@
+name: Warehouse V2.1 isolated Cloudflare Preview
+
+on:
+  push:
+    branches: [feat/warehouse-item-intake-v21-20261105]
+    paths:
+      - 'app/(erp)/warehouse/receive/page.tsx'
+      - 'app/styles/warehouse-item-v21.css'
+      - 'components/warehouse-intake-v21-workspace.tsx'
+      - 'lib/actions/warehouse-item-v21.ts'
+      - 'lib/actions/warehouse.ts'
+      - 'lib/format.ts'
+      - 'scripts/warehouse-item-v21-contract-qa.mjs'
+      - '.github/workflows/warehouse-item-v21-preview.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: warehouse-v21-cloudflare-preview
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify preview-only Cloudflare credentials
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Static contracts
+        run: node scripts/warehouse-item-v21-contract-qa.mjs
+      - name: Build OpenNext
+        run: npx opennextjs-cloudflare build
+      - name: Publish isolated preview version (not Production)
+        id: preview
+        run: |
+          npx wrangler preview --name warehouse-v21-qa --worker-name mynh-erp-v5 \
+            --message "Warehouse V2.1 QA $GITHUB_SHA" --json > warehouse-preview.json
+          node - <<'NODE'
+          const fs=require('fs')
+          const raw=fs.readFileSync('warehouse-preview.json','utf8')
+          let data
+          try { data=JSON.parse(raw) } catch {
+            const start=raw.indexOf('{'),end=raw.lastIndexOf('}')
+            if(start<0||end<start)throw new Error('Missing preview JSON')
+            data=JSON.parse(raw.slice(start,end+1))
+          }
+          const urls=[]
+          const scan=x=>{
+            if(!x)return
+            if(typeof x==='string'&&/^https:\/\//.test(x))urls.push(x)
+            else if(Array.isArray(x))x.forEach(scan)
+            else if(typeof x==='object')Object.values(x).forEach(scan)
+          }
+          scan(data)
+          const url=urls.find(x=>x.includes('workers.dev'))||urls[0]
+          if(!url)throw new Error('No preview URL found')
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'url='+url+'\n')
+          console.log('Preview URL: '+url)
+          NODE
+      - name: Smoke preview without credentials or mutations
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+        run: |
+          curl --fail --silent --show-error --retry 4 --retry-delay 3 "$PREVIEW_URL/api/health" > health.json
+          grep -q '"ok":true' health.json
+          code=$(curl -sS -o login.html -w '%{http_code}' "$PREVIEW_URL/login")
+          test "$code" = "200"
+          grep -q 'MYNH ERP' login.html
+      - name: Publish QA links
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+        run: |
+          {
+            echo "## Warehouse V2.1 isolated Preview"
+            echo "- SHA: \`$GITHUB_SHA\`"
+            echo "- URL: $PREVIEW_URL"
+            echo "- Health/login smoke: PASS"
+            echo "- Business UI: NOT TESTED (requires authenticated staging context)"
+            echo "- Supabase schema not migrated: warehouse item mutations DISABLED"
+            echo "- Production Worker: NOT DEPLOYED"
+          } >> "$GITHUB_STEP_SUMMARY"
+# No wrangler deploy, no Production merge, no Supabase migration or fixture mutations.
