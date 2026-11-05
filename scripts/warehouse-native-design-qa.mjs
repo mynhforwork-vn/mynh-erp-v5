@@ -13,6 +13,17 @@ const checks = [
   ['per-item choice preview without writes', workspace.includes('setPreviewChoices') && workspace.includes('không ghi Supabase')],
   ['no old V2.1 component or migration needed', !workspace.includes('warehouse-intake-v21-workspace') && !page.includes('warehouse-item-v21')],
   ['no app server actions in preview component', !workspace.includes("from '@/lib/actions/warehouse'") && !workspace.includes('supabase.rpc(')],
+  ['ResizeObserver tracks real list width and switches presentation modes',
+    workspace.includes('new ResizeObserver(') && workspace.includes('width < 570') && workspace.includes('width < 950')],
+  ['wide columns strictly sized by visible column weights',
+    workspace.includes('columnWeights') && workspace.includes('<colgroup>') && workspace.includes('totalColumnWeight')],
+  ['compact groups preserve date, warehouse, progress and COD',
+    workspace.includes('renderGroupedCells') && workspace.includes('visibleColumn(\'received\')') &&
+    workspace.includes('visibleColumn(\'warehouse\')') && workspace.includes('visibleColumn(\'progress\')') &&
+    workspace.includes('visibleColumn(\'cod\')')],
+  ['fixed table layout clips long strings and keeps sticky header',
+    css.includes('table-layout:fixed!important') && css.includes('overflow:hidden!important') &&
+    css.includes('position:sticky!important') && css.includes('-webkit-line-clamp:2')],
   ['no fixed-position desktop panel', css.includes('@media(min-width:901px)') && css.includes('position:relative!important') && !css.includes('position:fixed')],
   ['escape key closes slidebar', workspace.includes("event.key === 'Escape'")],
 ]
