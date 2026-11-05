@@ -438,11 +438,18 @@ create or replace function private.guard_warehouse_item_state_v21()
 returns trigger language plpgsql security invoker set search_path='' as $$
 begin
   if tg_op='INSERT' then
-    if new.warehouse_item_status<>'PENDING' then
+    if new.warehouse_item_status<>'PENDING'
+      or new.warehouse_item_processed_at is not null
+      or new.warehouse_item_processed_by is not null
+      or new.warehouse_item_skip_reason is not null then
       raise exception 'Sản phẩm mới phải bắt đầu ở trạng thái chờ xử lý kho';
     end if;
-  elsif new.warehouse_item_status is distinct from old.warehouse_item_status
-        and current_user<>'postgres' then
+  elsif current_user<>'postgres'
+    and (new.warehouse_item_status is distinct from old.warehouse_item_status
+      or new.warehouse_item_processed_at is distinct from old.warehouse_item_processed_at
+      or new.warehouse_item_processed_by is distinct from old.warehouse_item_processed_by
+      or new.warehouse_item_skip_reason is distinct from old.warehouse_item_skip_reason)
+  then
     raise exception 'Chỉ nghiệp vụ xác nhận kho mới được cập nhật trạng thái sản phẩm';
   end if;
   return new;
@@ -450,7 +457,7 @@ end; $$;
 
 drop trigger if exists guard_warehouse_item_state_v21 on public.order_items;
 create trigger guard_warehouse_item_state_v21
-  before insert or update of warehouse_item_status on public.order_items
+  before insert or update of warehouse_item_status,warehouse_item_processed_at,warehouse_item_processed_by,warehouse_item_skip_reason on public.order_items
   for each row execute function private.guard_warehouse_item_state_v21();
 
 -- Completed rows cannot be deleted directly through an Operator's table role.
