@@ -513,3 +513,23 @@
 @media(max-width:900px){
   .brand-shell-v1 .wh-native-workspace{column-gap:0!important}
 }
+
+
+/* Strong enough to override older shared tracking-table typography. Scope to
+   this warehouse workbench only; never alter other ERP tables. */
+body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.wh-native-table thead tr > th{
+  font-size:9.1px!important;
+  padding:6px 5px!important;
+  line-height:1.25!important;
+}
+body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.wh-native-table tbody tr.wh-native-data-row > td{
+  font-size:9.5px!important;
+  padding:5px 6px!important;
+  line-height:1.28!important;
+}
+body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.wh-native-table .wh-native-product-line{
+  font-size:9.4px!important;
+  font-weight:400!important;
+  line-height:1.25!important;
+  white-space:nowrap!important;
+}
