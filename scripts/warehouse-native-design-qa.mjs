@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+const read = (name) => readFileSync(new URL('../' + name, import.meta.url), 'utf8')
+const page = read('app/(erp)/warehouse/receive/page.tsx')
+const workspace = read('components/warehouse-intake-native-design.tsx')
+const css = read('app/styles/warehouse-native-design.css')
+const checks = [
+  ['existing ERP layout and slidebar', workspace.includes('whx-intake-layout warehouse-intake-layout wh-native-workspace') && workspace.includes('whx-detail-panel warehouse-intake-panel mynh-slide-panel')],
+  ['existing ERP tables and shared column controls', workspace.includes('tracking-hub-table-wrap') && workspace.includes('ManagedColumnsMenu') && workspace.includes('SortableHeader')],
+  ['real Supabase orders, receiving batches, items and vouchers', page.includes("supabase.from('orders')") && page.includes("receive_batch_details(") && page.includes("order_items(") && page.includes("order_vouchers(")],
+  ['purchase price before pricing form', workspace.indexOf('Đối chiếu giá mua') >= 0 && workspace.indexOf('Đối chiếu giá mua') < workspace.indexOf('Ghép SKU bán và quyết định giá')],
+  ['real price missing is not zero', workspace.includes("? 'Chưa có' : formatMoney(value)")],
+  ['per-item choice preview without writes', workspace.includes('setPreviewChoices') && workspace.includes('không ghi Supabase')],
+  ['no old V2.1 component or migration needed', !workspace.includes('warehouse-intake-v21-workspace') && !page.includes('warehouse-item-v21')],
+  ['no app server actions in preview component', !workspace.includes("from '@/lib/actions/warehouse'") && !workspace.includes('supabase.rpc(')],
+  ['no fixed-position desktop panel', css.includes('@media(min-width:901px)') && css.includes('position:relative!important') && !css.includes('position:fixed')],
+  ['escape key closes slidebar', workspace.includes("event.key === 'Escape'")],
+]
+for (const [name, pass] of checks) {
+  assert.ok(pass, name)
+  console.log('PASS', name)
+}
+console.log(checks.length + '/' + checks.length + ' native warehouse design contracts PASS')
