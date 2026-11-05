@@ -112,8 +112,10 @@
   font-weight:500;
   letter-spacing:normal;
 }
-/* Auto-fit V3: a single scoped rule set for actual list width and 2 slidebars.
-   Each purchase item has exactly one clipped, normal-weight line. */
+/* Auto-fit V4: every displayed column remains present in every layout.
+   JS computes pixel widths using ResizeObserver and the actual list width.
+   When one/two slidebars leave insufficient space, ONLY the table scrolls
+   horizontally; no automatic reduction from seven to four/two columns. */
 .wh-native .wh-native-workspace,
 .wh-native .wh-native-list,
 .wh-native .wh-native-table-wrap{
@@ -124,23 +126,21 @@
 .wh-native .wh-native-list{
   flex:1 1 0%!important;
   width:100%!important;
-  min-width:0!important;
   overflow:hidden!important;
 }
 .wh-native .wh-native-table-wrap{
-  flex:1 1 auto!important;
   width:100%!important;
   min-height:0!important;
-  overflow-x:hidden!important;
+  overflow-x:auto!important;
   overflow-y:auto!important;
-  scrollbar-width:thin;
   overscroll-behavior:contain;
+  scrollbar-width:thin;
 }
 .wh-native .wh-native-table{
   display:table!important;
-  width:100%!important;
-  min-width:0!important;
-  max-width:100%!important;
+  width:var(--wh-table-width,100%)!important;
+  min-width:var(--wh-table-width,100%)!important;
+  max-width:none!important;
   table-layout:fixed!important;
   border-collapse:separate;
   border-spacing:0;
@@ -148,60 +148,56 @@
 .wh-native .wh-native-table th,
 .wh-native .wh-native-table td{
   box-sizing:border-box!important;
-  min-width:0!important;
-  max-width:none!important;
   overflow:hidden!important;
   text-overflow:ellipsis;
-  vertical-align:top;
+  white-space:nowrap!important;
+  vertical-align:middle;
   border-right:0!important;
 }
 .wh-native .wh-native-table th{
   position:sticky!important;
   top:0;
   z-index:3;
-  white-space:nowrap;
-}
-.wh-native .wh-native-table td{
-  padding:9px 8px!important;
-  white-space:nowrap;
 }
 .wh-native .wh-native-table th .managed-sort-head{
   display:flex;
-  justify-content:space-between;
-  align-items:center;
+  width:100%;
   min-width:0;
   max-width:100%;
-  width:100%;
-  overflow:hidden;
+  align-items:center;
+  justify-content:space-between;
   gap:3px;
+  overflow:hidden;
   white-space:nowrap;
 }
 .wh-native .wh-native-table th .managed-sort-head span{
-  overflow:hidden;
   min-width:0;
+  overflow:hidden;
   text-overflow:ellipsis;
 }
-.wh-native .wh-native-table th .managed-sort-head i{
-  flex:0 0 auto;
-}
+.wh-native .wh-native-table th .managed-sort-head i{flex:0 0 auto}
 .wh-native .wh-native-table .status-pill,
 .wh-native .wh-native-table .wh-native-order-link{
-  display:inline-block;
+  display:inline-flex;
+  align-items:center;
   max-width:100%;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap!important;
 }
-.wh-native .wh-native-cell-stack,
+.wh-native .wh-native-table .wh-native-order-link{
+  font-size:11px;
+  font-weight:690;
+}
 .wh-native .wh-native-product-lines{
   display:flex;
   flex-direction:column;
   align-items:stretch;
-  width:100%;
-  max-width:100%;
-  min-width:0;
-  overflow:hidden;
   gap:3px;
+  min-width:0;
+  max-width:100%;
+  width:100%;
+  overflow:hidden;
 }
 .wh-native .wh-native-product-lines .wh-native-product-line{
   display:block!important;
@@ -219,65 +215,36 @@
   overflow-wrap:normal;
   -webkit-line-clamp:unset!important;
 }
-.wh-native .wh-native-product-cell .wh-native-product-lines,
-.wh-native .wh-native-group-product .wh-native-product-lines{
+.wh-native .wh-native-product-cell .wh-native-product-lines{
   min-width:0!important;
   max-width:100%!important;
-}
-.wh-native .wh-native-cell-stack > *{
-  min-width:0;
-  max-width:100%;
-}
-.wh-native .wh-native-cell-note{
-  display:block;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap!important;
-  color:#758596;
-  font-size:9.7px;
-  line-height:1.4;
-}
-.wh-native .wh-native-table-compact td,
-.wh-native .wh-native-table-narrow td{
-  padding:8px!important;
-  white-space:normal!important;
-}
-.wh-native .wh-native-table-compact .wh-native-order-link,
-.wh-native .wh-native-table-narrow .wh-native-order-link{
-  font-size:10.8px;
-  font-weight:690;
-}
-.wh-native .wh-native-table-narrow .wh-native-product-line{
-  font-size:10px;
-}
-.wh-native .wh-native-table-narrow .wh-native-group-product .status-pill{
-  margin-top:3px;
 }
 .wh-native .wh-native-table td.money{
   text-align:right;
   font-variant-numeric:tabular-nums;
 }
-.wh-native .wh-native-item-list .wh-native-item-name{
+.wh-native .wh-native-item-list .wh-native-item-name,
+.wh-native .wh-native-info-item-name{
   display:block;
-  font-size:10.8px;
+  max-width:100%;
+  min-width:0;
+  font-size:10.7px;
   font-weight:400!important;
   color:#345369;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
 }
-.wh-native .wh-native-info-item-name{
+.whx-settings-preview-readonly{
+  margin:8px 0 10px;
+  padding:8px 10px;
+  border-left:2px solid #9bbbd3;
+  background:#f3f8fc;
+  color:#526b80;
   font-size:10.5px;
-  color:#31546c;
-  font-weight:400!important;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  line-height:1.5;
 }
 @media(min-width:901px){
-  /* When a second right panel is added by the surrounding ERP flow,
-     both panels occupy explicit tracks and the list remains minmax(0,1fr).
-     The ResizeObserver re-selects 7/4/2 data columns from that real width. */
   .brand-shell-v1 .wh-native-workspace.with-panel:has(> aside.mynh-slide-panel:nth-of-type(2)){
     grid-template-columns:minmax(0,1fr) repeat(2,minmax(0,min(28vw,370px)))!important;
     gap:var(--mynh-panel-gap,8px)!important;
@@ -292,11 +259,6 @@
     max-height:100%!important;
   }
 }
-@media(max-width:650px){
-  .wh-native .wh-native-table td{padding:8px 7px!important}
-  .wh-native .wh-native-cell-note{font-size:9.3px}
-}
-
 
 /* Kho nhận follows the Shipping Alert HUB cards: accordion header + inline
    operational counters + own table. The outer lane owns vertical scrolling. */
@@ -377,12 +339,14 @@
   width:100%!important;
   height:auto!important;
   min-height:0!important;
-  max-height:none!important;
-  overflow:hidden!important;
+  max-height:min(58dvh,660px)!important;
+  overflow:auto!important;
+  scrollbar-width:thin;
 }
 .wh-native .wh-native-warehouse-card .wh-native-table{
-  width:100%!important;
-  min-width:0!important;
+  width:var(--wh-table-width,100%)!important;
+  min-width:var(--wh-table-width,100%)!important;
+  max-width:none!important;
   table-layout:fixed!important;
 }
 .wh-native .wh-native-warehouse-card.collapsed .wh-native-warehouse-head{
