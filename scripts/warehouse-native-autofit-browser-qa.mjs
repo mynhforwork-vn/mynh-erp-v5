@@ -164,6 +164,32 @@ try{
   assert.equal(await page.locator('.wh-native-editor input[type="number"]').first().inputValue(),'159000','sale price remains editable');
   const opened=await check('open');
   assert.equal(opened.cols,7);
+  if(w===1440){
+    // Real screenshot configuration: warehouse column hidden in the ERP menu.
+    // It must not inherit 1050px Tracking widths or clip the rightmost status.
+    await page.locator('.managed-column-button').click();
+    await page.locator('.managed-column-row').filter({hasText:'Kho nhận'}).locator('input[type="checkbox"]').uncheck();
+    await page.waitForTimeout(170);
+    const hiddenResult=await page.evaluate(()=>{
+      const table=document.querySelector('.wh-native-table');
+      const wrap=document.querySelector('.wh-native-table-wrap');
+      const tag=table.querySelector('tr.wh-native-data-row .status-pill');
+      const right=tag.getBoundingClientRect().right;
+      return {
+        cols:table.querySelectorAll('thead th').length,
+        tableWidth:table.getBoundingClientRect().width,
+        viewportWidth:wrap.clientWidth,
+        overflow:wrap.scrollWidth-wrap.clientWidth,
+        tagRight:right,wrapRight:wrap.getBoundingClientRect().right,
+      };
+    });
+    assert.equal(hiddenResult.cols,6,'six user-chosen columns must remain after hiding warehouse');
+    assert.ok(hiddenResult.overflow<=5,'hidden-column table should fit beside panel: '+JSON.stringify(hiddenResult));
+    assert.ok(hiddenResult.tagRight<=hiddenResult.wrapRight-3,'status tag should be fully visible beside panel: '+JSON.stringify(hiddenResult));
+    await page.screenshot({path:path.join(output,'1440-six-columns-panel-open.png')});
+    await page.locator('.managed-column-row').filter({hasText:'Kho nhận'}).locator('input[type="checkbox"]').check();
+    await page.locator('.managed-column-button').click();
+  }
   if(w>=1280)assert.ok(opened.table<=closed.table+2,'open panel should shrink widths at '+w);
   if(opened.contentWidth>opened.available+3){
     await page.evaluate(()=>{
