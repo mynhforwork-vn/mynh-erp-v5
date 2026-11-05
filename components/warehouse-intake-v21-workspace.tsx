@@ -66,10 +66,14 @@ function stats(row: Row) {
   const mapped = items.filter(i => Boolean(i.product_variant_id)).length
   return { total: items.length, received, skipped, pending, mapped, missing: pending > 0 && items.some(i => itemStatus(i, row) === 'PENDING' && !i.product_variant_id) }
 }
-function rowStage(row: Row): 'split' | 'ready' | 'done' {
+type Stage='needs'|'split'|'partial'|'ready'|'done'
+function rowStage(row: Row): Exclude<Stage,'needs'> {
   const s = stats(row)
   if (s.total > 0 && s.pending === 0) return 'done'
-  if (s.missing || s.total === 0) return 'split'
+  if (s.missing || s.total === 0) {
+    return s.total === 0 || (s.mapped === 0 && s.received === 0 && s.skipped === 0)
+      ? 'split' : 'partial'
+  }
   return 'ready'
 }
 function labelForStatus(item: Item, row: Row) {
@@ -101,17 +105,17 @@ function actionLabel(action: string) {
 }
 
 export function WarehouseIntakeV21({
-  rows, variants, warehouses, auditLogs, suggestions, schemaReady, canOperate, initialStage = 'split',
+  rows, variants, warehouses, auditLogs, suggestions, schemaReady, canOperate, initialStage = 'needs',
 }: {
   rows: Row[]; variants: Variant[]; warehouses: Warehouse[]; auditLogs: Audit[]
   suggestions: Record<string, Suggestion>; schemaReady: boolean; canOperate: boolean
-  initialStage?: 'split' | 'ready' | 'done'
+  initialStage?: Stage
 }) {
   const router = useRouter()
   const managedColumns = useManagedColumns<Column>('mynh-warehouse-v21-column-prefs',COLUMNS,['order'])
   const managedSort = useManagedSort<Column>('mynh-warehouse-v21-sort','received','desc')
   const [busy, startTransition] = useTransition()
-  const [stage, setStage] = useState<'split' | 'ready' | 'done'>(initialStage)
+  const [stage, setStage] = useState<Stage>(initialStage)
   const [warehouse, setWarehouse] = useState('all')
   const [query, setQuery] = useState('')
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -149,7 +153,7 @@ export function WarehouseIntakeV21({
 
   const visible = useMemo(() => {
     const filtered = rows.filter(row => {
-    if (rowStage(row) !== stage) return false
+    if (stage === 'needs' ? !['split','partial'].includes(rowStage(row)) : rowStage(row) !== stage) return false
     if (warehouse !== 'all' && (batchOf(row)?.warehouse_id ?? 'unknown') !== warehouse) return false
     if (!query.trim()) return true
     const hay = [
@@ -297,6 +301,7 @@ export function WarehouseIntakeV21({
     <div className="wiv21-metrics">
       {([
         ['split', 'Chờ bóc tách'],
+        ['partial', 'Đang xử lý'],
         ['ready', 'Chờ quyết định kho'],
         ['done', 'Đã xử lý'],
       ] as const).map(([key, label]) => <button key={key} className={stage === key ? 'active' : ''} type="button" onClick={() => setStage(key)}>
@@ -305,13 +310,13 @@ export function WarehouseIntakeV21({
     </div>
 
     <div className="wiv21-toolbar">
-      <div><strong>{stage === 'split' ? 'Đơn cần bóc tách' : stage === 'ready' ? 'Chờ quyết định nhập kho' : 'Đã xử lý kho'}</strong>
+      <div><strong>{stage === 'needs' ? 'Đơn chưa ghép đủ SKU' : stage === 'split' ? 'Đơn chưa bóc tách' : stage === 'partial' ? 'Đơn đang bóc tách' : stage === 'ready' ? 'Chờ quyết định nhập kho' : 'Đã xử lý kho'}</strong>
         <small>{visible.length} đơn trong danh sách · Chọn mã đơn để mở chi tiết</small></div>
       <div className="wiv21-tools">
         <div className="wiv21-toolbar-input">
           <input aria-label="Tìm đơn hoặc sản phẩm" value={query} onChange={e => setQuery(e.target.value)}
             placeholder="Tìm mã đơn, sản phẩm, SKU..." />
-          <button type="button" aria-label="Xóa bộ lọc" title="Xóa bộ lọc" onClick={() => { setQuery(''); setWarehouse('all') }}>⌫</button>
+          <button type="button" aria-label="Xóa bộ lọc" title="Xóa bộ lọc" onClick={() => { setQuery(''); setWarehouse('all'); setStage('needs') }}>⌫</button>
         </div>
         <ManagedColumnsMenu labels={LABELS} manager={managedColumns}/>
       </div>
@@ -334,7 +339,7 @@ export function WarehouseIntakeV21({
               if(col==='mapped')return <td key={col}>{st.mapped}/{st.total}</td>
               if(col==='receivedCount')return <td key={col}>{st.received}</td>
               if(col==='skippedCount')return <td key={col}>{st.skipped}</td>
-              return <td key={col}><span className={'wiv21-status '+rowStage(row)}>{rowStage(row)==='split'?'Cần bóc tách':rowStage(row)==='ready'?'Chờ xử lý kho':'Đã hoàn tất'}</span></td>
+              return <td key={col}><span className={'wiv21-status '+rowStage(row)}>{rowStage(row)==='split'?'Chưa bóc tách':rowStage(row)==='partial'?'Đang xử lý':rowStage(row)==='ready'?'Chờ xử lý kho':'Đã hoàn tất'}</span></td>
             })}</tr>
           })}
         </tbody>
