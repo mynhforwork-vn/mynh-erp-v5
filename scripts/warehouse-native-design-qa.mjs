@@ -30,6 +30,22 @@ const checks = [
     page.includes('previewOnly') && page.includes("supabase.from('warehouse_settings')") &&
     receivingSettings.includes('previewOnly ? undefined : saveReceivingWarehouseSettings') &&
     receivingSettings.includes('disabled={previewOnly}')],
+  ['only three order workflow statuses exist everywhere',
+    workspace.includes("pending: 'Chờ bóc tách'") &&
+    workspace.includes("ready: 'Chờ nhập kho'") &&
+    workspace.includes("done: 'Đã xử lý'") &&
+    !workspace.includes("'Chờ quyết định kho'") &&
+    !workspace.includes("return 'Đã nhập kho'") &&
+    !workspace.includes("return 'Đã bỏ qua kho'") &&
+    !workspace.includes("return 'Đã xử lý hỗn hợp'")],
+  ['the three KPI status cards match phase filters and deep-links',
+    page.includes("tracking-status-strip-v2 wh-native-three-statuses") &&
+    page.includes('href="/warehouse/receive?state=pending"') &&
+    page.includes('href="/warehouse/receive?state=ready"') &&
+    page.includes('href="/warehouse/receive?state=done"') &&
+    page.includes('const done = rows.filter(') &&
+    !page.includes('<span>SKU chưa map</span>') &&
+    css.includes("grid-template-columns:repeat(3,minmax(0,1fr))!important")],
   ['status pills use the existing ERP semantic palette',
     workspace.includes("'status-ready_to_ship'") &&
     workspace.includes("'orange'") && workspace.includes("'green'") &&
