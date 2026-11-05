@@ -42,9 +42,11 @@ try{
     const t=document.querySelector('.wh-native-table'),wr=document.querySelector('.wh-native-table-wrap');
     const rects=Array.from(t.querySelector('tbody tr.wh-native-data-row').querySelectorAll('td')).map(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,overflow:getComputedStyle(el).overflowX}});
     const lines=Array.from(t.querySelector('tbody tr.wh-native-data-row').querySelectorAll('.wh-native-product-line')).map(el=>({text:el.textContent,weight:getComputedStyle(el).fontWeight,wrap:getComputedStyle(el).whiteSpace,height:el.getBoundingClientRect().height,lineHeight:parseFloat(getComputedStyle(el).lineHeight)}));
-    return {mode:t.className.match(/wh-native-table-(wide|compact|narrow)/)?.[1],table:t.getBoundingClientRect().width,wrap:wr.getBoundingClientRect().width,overflow:document.documentElement.scrollWidth-innerWidth,cols:rects.length,rects,lines};
+    const heads=Array.from(document.querySelectorAll('.wh-native-warehouse-head')).map(el=>({width:el.getBoundingClientRect().width,scroll:el.scrollWidth}));
+    return {mode:t.className.match(/wh-native-table-(wide|compact|narrow)/)?.[1],table:t.getBoundingClientRect().width,wrap:wr.getBoundingClientRect().width,overflow:document.documentElement.scrollWidth-innerWidth,cols:rects.length,rects,lines,heads};
    });
    assert.ok(result.table<=result.wrap+2,'table exceeds wrapper '+w+' '+state+' '+JSON.stringify(result));
+   assert.ok(result.heads.every(v=>v.scroll<=v.width+3),'warehouse card header overflows '+w+' '+state+' '+JSON.stringify(result));
    assert.ok(result.overflow<=2,'page overflow '+w+' '+state+' '+JSON.stringify(result));
    for(let i=1;i<result.rects.length;i++)assert.ok(result.rects[i-1].right<=result.rects[i].left+1,'overlapping cells '+w+' '+state);
    assert.ok(result.rects.every(c=>c.overflow==='hidden'),'cell content not clipped '+w+' '+state);
@@ -56,9 +58,23 @@ try{
    await page.screenshot({path:path.join(output,w+'-'+state+'.png')});
    return result;
   }
-  assert.equal(await page.locator('.wh-native-warehouse-separator').count(),2,'BG and HN separated in all-orders view');
-  assert.equal(await page.locator('.wh-native-warehouse-tabs button').filter({hasText:'KHO BG'}).count(),1);
-  assert.equal(await page.locator('.wh-native-warehouse-tabs button').filter({hasText:'KHO HN'}).count(),1);
+  assert.equal(await page.locator('.wh-native-warehouse-card').count(),2,'BG/HN warehouse cards must be separate');
+  const bgCard=page.locator('.wh-native-warehouse-card').filter({hasText:'KHO BG'});
+  const hnCard=page.locator('.wh-native-warehouse-card').filter({hasText:'KHO HN'});
+  assert.equal(await bgCard.count(),1);
+  assert.equal(await hnCard.count(),1);
+  assert.equal(await bgCard.locator('tr.wh-native-data-row').count(),4);
+  assert.equal(await hnCard.locator('tr.wh-native-data-row').count(),10);
+  assert.equal(await bgCard.locator('.wh-native-warehouse-metrics > span').count(),5);
+  assert.equal(await hnCard.locator('.wh-native-warehouse-metrics > span').count(),5);
+  await bgCard.getByRole('button',{name:'Thu gọn KHO BG'}).click();
+  assert.equal(await bgCard.locator('.wh-native-table').count(),0,'BG card should collapse independently');
+  assert.equal(await hnCard.locator('.wh-native-table').count(),1,'HN must remain expanded');
+  await bgCard.getByRole('button',{name:'Mở KHO BG'}).click();
+  await hnCard.getByRole('button',{name:'Thu gọn KHO HN'}).click();
+  assert.equal(await hnCard.locator('.wh-native-table').count(),0,'HN card should collapse independently');
+  assert.equal(await bgCard.locator('.wh-native-table').count(),1,'BG must remain expanded');
+  await hnCard.getByRole('button',{name:'Mở KHO HN'}).click();
   const closed=await check('closed');
   if(w>=1280)assert.equal(closed.mode,'wide');
   await page.locator('.wh-native-order-link').first().click();
@@ -97,5 +113,5 @@ try{
   assert.deepEqual(errors,[]);
   await page.close();
  }
- console.log('PASS browser autofit layout incl. two slidebars, sidebar toggle, BG/HN lanes and product lines');
+ console.log('PASS browser autofit layout incl. Shipping Alert-style collapsible BG/HN cards, two slidebars, and product lines');
 }finally{await browser.close()}
