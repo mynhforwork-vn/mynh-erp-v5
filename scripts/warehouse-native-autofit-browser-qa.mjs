@@ -91,8 +91,8 @@ try{
      const first=result.geometry.panels[0];
      if(w>900){
        assert.ok(first.left>=result.geometry.listRight-1,'desktop slidebar overlaps table '+w+' '+state);
-       assert.ok(first.left-result.geometry.listRight>=10,'desktop table/slidebar gap too small '+w+' '+state);
-       assert.ok(first.left-result.geometry.listRight<=18,'excessive desktop table/slidebar gap '+w+' '+state);
+       assert.ok(first.left-result.geometry.listRight>=10,'desktop table/slidebar gap too small '+w+' '+state+JSON.stringify(result.geometry));
+       assert.ok(first.left-result.geometry.listRight<=18,'excessive desktop table/slidebar gap '+w+' '+state+JSON.stringify(result.geometry));
      }else{
        // The ERP intentionally uses an overlay/full-width right slidebar on
        // Tablet and Mobile. This is not a Desktop grid collision.
@@ -104,7 +104,7 @@ try{
    if(result.geometry.panels.length===2){
      const [first,second]=result.geometry.panels;
      assert.ok(second.left>=first.right-1,'second slidebar overlaps first '+w+' '+state+' '+JSON.stringify(result.geometry));
-     assert.ok(second.left-first.right>=10,'two slidebars need visible separation '+w+' '+state);
+     assert.ok(second.left-first.right>=10,'two slidebars need visible separation '+w+' '+state+JSON.stringify(result.geometry));
      assert.ok(second.left-first.right<=18,'excessive gap between two slidebars '+w+' '+state);
      assert.ok(first.width>=215&&second.width>=215,'dual panels became too narrow '+w+' '+state);
    }
