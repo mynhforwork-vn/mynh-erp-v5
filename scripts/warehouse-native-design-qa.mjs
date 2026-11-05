@@ -37,6 +37,22 @@ const checks = [
   ['two embedded detail panels adapt table width',
     workspace.includes('new MutationObserver(adapt)') &&
     css.includes('aside.mynh-slide-panel:nth-of-type(2)')],
+  ['warehouse cards mirror Shipping Alert HUB interactions',
+    workspace.includes('tracking-hub-card tracking-hub-card-v2 wh-native-warehouse-card') &&
+    workspace.includes('tracking-hub-head-v2 wh-native-warehouse-head') &&
+    workspace.includes('tracking-hub-metrics-v2 wh-native-warehouse-metrics') &&
+    workspace.includes("aria-expanded={expanded}") &&
+    workspace.includes('setOpenWarehouses(previous =>') ],
+  ['warehouse card operational summaries derived from its own rows',
+    workspace.includes('pending: buckets[group.key].filter') &&
+    workspace.includes('ready: buckets[group.key].filter') &&
+    workspace.includes('done: buckets[group.key].filter') &&
+    workspace.includes('cod: buckets[group.key].reduce') ],
+  ['warehouse card owns a subtable and shares scrollable outer stack',
+    workspace.includes('wh-native-warehouse-stack') &&
+    workspace.includes('group.rows.map(row =>') &&
+    css.includes('overflow-y:auto!important') &&
+    css.includes('container-type:inline-size')],
   ['no fixed-position desktop panel', css.includes('@media(min-width:901px)') && css.includes('position:relative!important') && !css.includes('position:fixed')],
   ['escape key closes slidebar', workspace.includes("event.key === 'Escape'")],
 ]
