@@ -18,6 +18,8 @@ const STATUS_LABELS: Record<string, string> = {
   READY_TO_TRANSFER: 'Sẵn sàng chuyển kho',
   IN_TRANSFER: 'Đang chuyển kho',
   WAREHOUSE_RECEIVED: 'Đã nhập kho',
+  WAREHOUSE_SKIPPED: 'Đã bỏ qua kho',
+  WAREHOUSE_MIXED: 'Hoàn tất kho: nhập và bỏ qua',
   PENDING: 'Đang chờ',
   CONFIRMED: 'Đã xác nhận',
   PROCESSING: 'Đang xử lý',
