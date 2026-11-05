@@ -296,3 +296,120 @@
   .wh-native .wh-native-table td{padding:8px 7px!important}
   .wh-native .wh-native-cell-note{font-size:9.3px}
 }
+
+
+/* Kho nhận follows the Shipping Alert HUB cards: accordion header + inline
+   operational counters + own table. The outer lane owns vertical scrolling. */
+.wh-native .wh-native-warehouse-hint{
+  font-size:10px;
+  color:#73899b;
+  white-space:nowrap;
+}
+.wh-native .wh-native-warehouse-stack{
+  display:flex;
+  flex:1 1 0%;
+  flex-direction:column;
+  gap:7px;
+  min-height:0!important;
+  min-width:0!important;
+  width:100%!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+}
+.wh-native .wh-native-warehouse-card{
+  flex:0 0 auto!important;
+  min-width:0!important;
+  width:100%!important;
+  max-width:100%!important;
+  container-type:inline-size;
+  border-radius:5px!important;
+  overflow:hidden!important;
+  box-shadow:none!important;
+}
+.wh-native .wh-native-warehouse-card .wh-native-warehouse-head{
+  display:grid!important;
+  grid-template-columns:24px minmax(132px,.68fr) minmax(0,2fr)!important;
+  align-items:center!important;
+  min-width:0;
+  width:100%;
+  padding:4px 7px 4px 3px;
+  column-gap:7px;
+  row-gap:5px;
+}
+.wh-native .wh-native-warehouse-head .tracking-hub-identity{
+  min-width:0;
+}
+.wh-native .wh-native-warehouse-head .tracking-hub-identity>div{
+  overflow:hidden;
+}
+.wh-native .wh-native-warehouse-head .tracking-hub-identity small{
+  font-size:9px;
+  line-height:1.45;
+}
+.wh-native .wh-native-warehouse-head .tracking-hub-toggle{
+  width:24px;
+  height:28px;
+}
+.wh-native .wh-native-warehouse-head .wh-native-warehouse-metrics{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  justify-content:flex-end;
+  align-content:center;
+  gap:4px;
+  max-width:100%;
+  min-width:0;
+  overflow:visible!important;
+}
+.wh-native .wh-native-warehouse-head .wh-native-warehouse-metrics>span{
+  flex:0 0 auto;
+  font-size:9px;
+  white-space:nowrap;
+  min-height:24px;
+}
+.wh-native .wh-native-warehouse-head .wh-native-warehouse-metrics>span.money{
+  margin-left:0;
+}
+.wh-native .wh-native-warehouse-card .wh-native-table-wrap{
+  display:block!important;
+  flex:0 0 auto!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  overflow:hidden!important;
+}
+.wh-native .wh-native-warehouse-card .wh-native-table{
+  width:100%!important;
+  min-width:0!important;
+  table-layout:fixed!important;
+}
+.wh-native .wh-native-warehouse-card.collapsed .wh-native-warehouse-head{
+  border-bottom:0!important;
+}
+@container (max-width:790px){
+  .wh-native .wh-native-warehouse-card .wh-native-warehouse-head{
+    grid-template-columns:24px minmax(0,1fr)!important;
+  }
+  .wh-native .wh-native-warehouse-card .wh-native-warehouse-metrics{
+    grid-column:2 / -1!important;
+    justify-content:flex-start!important;
+  }
+}
+@container (max-width:390px){
+  .wh-native .wh-native-warehouse-card .wh-native-warehouse-metrics{
+    gap:3px!important;
+  }
+  .wh-native .wh-native-warehouse-card .wh-native-warehouse-metrics>span{
+    font-size:8.5px!important;
+    min-height:22px!important;
+    padding:0 4px!important;
+  }
+}
+@media(max-width:650px){
+  .wh-native .wh-native-warehouse-hint{
+    white-space:normal;
+    line-height:1.4;
+  }
+}
