@@ -1,0 +1,35 @@
+name: Warehouse item-level intake V2.1 QA
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/(erp)/warehouse/receive/**'
+      - 'app/styles/warehouse-item-v21.css'
+      - 'components/warehouse-intake-v21-workspace.tsx'
+      - 'lib/actions/warehouse-item-v21.ts'
+      - 'lib/actions/warehouse.ts'
+      - 'lib/format.ts'
+      - 'supabase/migrations/0075_warehouse_item_intake_v21.sql'
+      - 'scripts/warehouse-item-v21-contract-qa.mjs'
+      - '.github/workflows/warehouse-item-v21-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-and-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Warehouse integration static contract
+        run: node scripts/warehouse-item-v21-contract-qa.mjs
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+# No SQL execution, production deploy or preview mutation in this workflow.
