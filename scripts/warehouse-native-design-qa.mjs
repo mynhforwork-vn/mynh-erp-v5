@@ -49,7 +49,8 @@ const checks = [
     workspace.includes('KHO BG') && workspace.includes('KHO HN') &&
     !workspace.includes('destination_hub || warehouse')],
   ['two embedded detail panels adapt table width',
-    workspace.includes('new MutationObserver(adapt)') &&
+    workspace.includes('new MutationObserver(() => { watchTables(); adapt() })') &&
+    workspace.includes('mutation?.observe(workspace, { childList: true, subtree: true })') &&
     css.includes('aside.mynh-slide-panel:nth-of-type(2)')],
   ['warehouse cards mirror Shipping Alert HUB interactions',
     workspace.includes('tracking-hub-card tracking-hub-card-v2 wh-native-warehouse-card') &&
