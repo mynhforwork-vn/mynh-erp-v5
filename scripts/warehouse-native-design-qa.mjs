@@ -5,6 +5,7 @@ const page = read('app/(erp)/warehouse/receive/page.tsx')
 const workspace = read('components/warehouse-intake-native-design.tsx')
 const css = read('app/styles/warehouse-native-design.css')
 const receivingSettings = read('components/warehouse-receiving-settings.tsx')
+const dateFilter = read('components/warehouse-received-date-filter.tsx')
 const checks = [
   ['existing ERP layout and slidebar', workspace.includes('whx-intake-layout warehouse-intake-layout wh-native-workspace') && workspace.includes('whx-detail-panel warehouse-intake-panel mynh-slide-panel')],
   ['existing ERP tables and shared column controls', workspace.includes('tracking-hub-table-wrap') && workspace.includes('ManagedColumnsMenu') && workspace.includes('SortableHeader')],
@@ -38,16 +39,32 @@ const checks = [
     !workspace.includes("return 'Đã nhập kho'") &&
     !workspace.includes("return 'Đã bỏ qua kho'") &&
     !workspace.includes("return 'Đã xử lý hỗn hợp'")],
-  ['the three KPI status cards match phase filters and deep-links',
-    page.includes("tracking-status-strip-v2 wh-native-three-statuses") &&
-    page.includes('href="/warehouse/receive?state=pending"') &&
-    page.includes('href="/warehouse/receive?state=ready"') &&
-    page.includes('href="/warehouse/receive?state=done"') &&
-    page.includes('const done = rows.filter(') &&
-    page.includes("'all' | 'pending' | 'incomplete' | 'missing' | 'ready' | 'done'") &&
-    workspace.includes('useEffect(() => { setPhase(initialPhase) }, [initialPhase])') &&
-    !page.includes('<span>SKU chưa map</span>') &&
-    css.includes("grid-template-columns:repeat(3,minmax(0,1fr))!important")],
+  ['four KPI cards include aggregate without creating a fourth workflow status',
+    page.includes("tracking-status-strip-v2 wh-native-status-kpis") &&
+    page.includes("statusHref('all')") &&
+    page.includes("statusHref('pending')") &&
+    page.includes("statusHref('ready')") &&
+    page.includes("statusHref('done')") &&
+    page.includes("<span>Tất cả</span>") &&
+    page.includes("const done = rows.filter(") &&
+    workspace.includes("useEffect(() => { setPhase(initialPhase) }, [initialPhase])") &&
+    css.includes("grid-template-columns:repeat(4,minmax(0,1fr))!important")],
+  ['receipt-date presets and calendar filter affect server KPI and order data',
+    page.includes("received_range?: ReceiptPeriod") &&
+    page.includes("receiptDay(batchOf(row)?.received_at)") &&
+    page.includes("timeZone: 'Asia/Ho_Chi_Minh'") &&
+    page.includes("const rows = invalidDateRange ? [] : allRows.filter(") &&
+    page.includes("if (receivedPeriod !== 'all') query.set('received_range'") &&
+    page.includes("<WarehouseReceivedDateFilter period={receivedPeriod}") &&
+    dateFilter.includes("router.replace('/warehouse/receive?'") &&
+    dateFilter.includes("Từ ngày nhận") &&
+    dateFilter.includes("Đến ngày nhận") &&
+    dateFilter.includes('7 ngày gần nhất') &&
+    dateFilter.includes('30 ngày gần nhất')],
+  ['receiving table not inheriting hard coded Tracking widths',
+    workspace.includes('<table className="table wh-native-table"') &&
+    !workspace.includes('<table className="table tracking-hub-table tracking-hub-table-v2 wh-native-table"') &&
+    css.includes('body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.table.wh-native-table')],
   ['status pills use the existing ERP semantic palette',
     workspace.includes("'status-ready_to_ship'") &&
     workspace.includes("'orange'") && workspace.includes("'green'") &&
@@ -89,7 +106,7 @@ const checks = [
   ['processed orders are excluded from the work list and accessible only via KPI',
     workspace.includes("if (phase === 'all' && phaseOf(row) === 'done') return false") &&
     !workspace.includes("['done', PHASE_LABELS.done]") &&
-    page.includes('href="/warehouse/receive?state=done"') &&
+    page.includes("statusHref('done')") &&
     workspace.includes("phase === 'done'")],
   ['existing SKU suggestions reuse historical confirmed mappings and require manual choice',
     page.includes("supabase.from('order_items')") &&
@@ -102,7 +119,7 @@ const checks = [
     workspace.includes("setSalePrice(found?.sale_price == null ? '' : String(found.sale_price))")],
   ['two slidebars use distinct grid tracks and narrow gaps',
     css.includes('grid-column:2!important') && css.includes('grid-column:3!important') &&
-    css.includes('column-gap:4px!important') &&
+    css.includes('column-gap:7px!important') &&
     css.includes('clamp(220px,21vw,320px)')],
   ['compact table fonts preserve all seven columns',
     css.includes('font-size:9.5px!important') &&
