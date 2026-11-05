@@ -136,6 +136,8 @@ $qa$;
 -- fake a warehouse receipt or delete a previously completed source item.
 grant usage on schema public to authenticated;
 grant select,update,delete on public.order_items to authenticated;
+grant insert on public.inventory_transactions to authenticated;
+grant usage,select on sequence public.inventory_transactions_id_seq to authenticated;
 set role authenticated;
 do $role_test$
 begin
@@ -159,6 +161,19 @@ begin
     raise exception 'Completed item delete was accepted';
   exception when others then
     if sqlerrm='Completed item delete was accepted' then raise; end if;
+  end;
+  begin
+    insert into public.inventory_transactions(
+      warehouse_id,product_variant_id,tx_type,quantity,reference_type,reference_id,order_item_id
+    ) values (
+      '10000000-0000-0000-0000-000000000001',
+      '30000000-0000-0000-0000-000000000001','IN',1,'PURCHASE_RECEIPT',
+      '40000000-0000-0000-0000-000000000003',
+      '50000000-0000-0000-0000-000000000005'
+    );
+    raise exception 'Forged purchase receipt was accepted';
+  exception when others then
+    if sqlerrm='Forged purchase receipt was accepted' then raise; end if;
   end;
   raise notice 'Non-definer direct state/delete guard: PASS';
 end;
