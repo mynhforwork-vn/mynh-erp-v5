@@ -122,7 +122,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       auditLogs={(auditLogs ?? []) as any[]}
       suggestions={suggestions}
       schemaReady={schemaReady} canOperate={canOperate}
-      initialStage={sp.state === 'ready' ? 'ready' : 'split'}
+      initialStage={sp.state === 'ready' ? 'ready' : 'needs'}
     />
   </div>
 }
