@@ -39,8 +39,14 @@ await build({
   alias:{'@':root},nodePaths:[path.join(root,'node_modules')],
   plugins:[{name:'mock-warehouse-actions',setup(es){
     es.onResolve({filter:/[\\/]lib[\\/]actions[\\/]warehouse$/},()=>({path:'warehouse-actions',namespace:'warehouse-qa'}))
-    es.onLoad({filter:/.*/,namespace:'warehouse-qa'},()=>({
-      contents:'export async function mapWarehouseOrderItem(){throw new Error("blocked")} export async function receiveOrdersIntoWarehouse(){throw new Error("blocked")} export async function skipWarehouseOrder(){throw new Error("blocked")}',
+    es.onResolve({filter:/[\\/]lib[\\/]actions[\\/]warehouse-item-decisions$/},()=>({path:'item-actions',namespace:'warehouse-qa'}))
+    es.onResolve({filter:/^next\\/navigation$/},()=>({path:'next-navigation',namespace:'warehouse-qa'}))
+    es.onLoad({filter:/.*/,namespace:'warehouse-qa'},args=>({
+      contents:args.path==='next-navigation'
+        ? 'export function useRouter(){return {refresh(){}}}'
+        : args.path==='item-actions'
+        ? 'export async function saveWarehouseItemDecision(){throw new Error("Preview blocked")} export async function finalizeWarehouseItemDecisions(){throw new Error("Preview blocked")}'
+        : 'export async function mapWarehouseOrderItem(){throw new Error("blocked")} export async function receiveOrdersIntoWarehouse(){throw new Error("blocked")} export async function skipWarehouseOrder(){throw new Error("blocked")}',
       loader:'js'
     }))
   }}]
