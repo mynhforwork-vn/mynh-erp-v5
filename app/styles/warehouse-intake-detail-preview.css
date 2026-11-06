@@ -9,6 +9,23 @@
 .warehouse-receive-screen .warehouse-detail-v2 *,
 .warehouse-receive-screen .warehouse-detail-v2 *::before,
 .warehouse-receive-screen .warehouse-detail-v2 *::after{box-sizing:border-box}
+.warehouse-receive-screen .warehouse-detail-v2-toast{
+  position:fixed!important;top:18px!important;right:18px!important;z-index:3000!important;
+  display:flex;align-items:flex-start;gap:10px;max-width:min(390px,calc(100vw - 28px));
+  background:#fff;border:1px solid #b6d7c7;border-left:3px solid #39936c;
+  box-shadow:0 8px 24px rgba(33,58,77,.15);border-radius:6px;
+  color:#315d4c;padding:10px 12px;font-size:11px;line-height:1.5;
+}
+.warehouse-detail-v2-toast span{flex:1 1 auto}
+.warehouse-detail-v2-toast button{
+  flex:0 0 auto;cursor:pointer;border:0;background:transparent;
+  color:#608074;font-size:17px;line-height:1;
+}
+.warehouse-detail-v2-confirm{
+  display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  border-top:1px solid #dbe5ed;padding-top:8px;
+}
+.warehouse-detail-v2-confirm p{flex:0 0 100%;margin:0;font-size:9.4px;line-height:1.45;color:#46657a}
 .warehouse-receive-screen .warehouse-detail-v2-head{
   display:flex!important;flex:0 0 auto!important;justify-content:space-between;
   gap:8px;min-height:0!important;padding:11px 12px 10px!important;
