@@ -252,12 +252,6 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       </div>
     </header>
 
-    <div className="tracking-flash-row">
-      <div className="warehouse-intake-rule" role="status">
-        <b>Thiết kế mới · Dữ liệu thực MYNH ERP</b>
-        <span>Chỉ xem và mô phỏng lựa chọn trên Preview; không ghi SKU, giá hoặc tồn kho vào Supabase.</span>
-      </div>
-    </div>
     {!error && unresolvedCount > 0 && <div className="tracking-flash-row">
       <div className="warehouse-intake-rule" role="status">
         <b>{unresolvedCount} đơn chưa xác định được kho nhận thực tế</b>
@@ -269,7 +263,6 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     </div>}
 
     <div className="warehouse-receive-date-toolbar">
-      <span className="warehouse-receive-date-label">Ngày nhận hàng</span>
       <PurchaseDateFilter activeRange={receivedPeriod} from={sinceDay || dateFrom || today} to={untilDay || dateTo || today}
         label="Ngày nhận hàng" basePath="/warehouse/receive" dateDescription="ngày nhận hàng"
         rangeParam="received_range" showAll preserveParams={{state:currentStatus}}/>
