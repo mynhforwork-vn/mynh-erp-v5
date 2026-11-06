@@ -25,18 +25,11 @@
   border:1px solid #dce5ec!important;background:#fff!important;
   border-radius:5px!important;color:#60758a!important;cursor:pointer;font-size:18px!important;
 }
-.warehouse-receive-screen .warehouse-detail-v2-tabs{
-  display:flex!important;flex:0 0 35px!important;height:35px!important;
-  min-height:35px!important;align-items:stretch;gap:0;
-  padding:0 9px!important;border-bottom:1px solid #dce6ed;
-  background:#fff;overflow:visible;
+/* The V2 panel uses the same mynh-slide-panel > panel-tabs contract as
+   the existing Order and User slidebars. No separate filled-tab styling. */
+.warehouse-receive-screen .warehouse-detail-v2-tabs button:focus-visible{
+  outline:1px solid #a9bfd1!important;outline-offset:-3px!important;
 }
-.warehouse-detail-v2-tabs button{
-  flex:1 1 auto;min-width:0!important;border:0!important;border-bottom:2px solid transparent!important;
-  background:transparent!important;color:#728698!important;font-size:10px!important;
-  font-weight:630;white-space:nowrap;cursor:pointer;padding:6px 5px!important;
-}
-.warehouse-detail-v2-tabs button.active{border-bottom-color:#2c74ad!important;background:#eff6fb!important;color:#285b7f!important}
 .warehouse-receive-screen .warehouse-detail-v2-scroll{
   flex:1 1 auto!important;display:block;min-width:0!important;min-height:0!important;
   max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;
@@ -136,6 +129,56 @@
 .warehouse-detail-v2-summary span{font-size:9.4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .warehouse-detail-v2-summary strong{color:#2c7255;font-size:9.4px}
 .warehouse-detail-v2-summary small{color:#708496}
+/* Match contextual order slidebar: flat two-column detail grid, concise
+   section headings, existing order product rows and VoucherTags. */
+.warehouse-receive-screen .warehouse-detail-v2-order-info>.panel-section-head{
+  margin:9px 0 6px;flex:0 0 auto;
+}
+.warehouse-receive-screen .warehouse-detail-v2-order-info>.panel-section-head:first-child{margin-top:0}
+.warehouse-receive-screen .warehouse-detail-v2-order-info>.panel-section-head h3{
+  margin:0;color:#34526a;font-size:11px;font-weight:700;
+}
+.warehouse-receive-screen .warehouse-detail-v2-order-info>.panel-section-head span{
+  color:#718798;font-size:9px;
+}
+.warehouse-receive-screen .warehouse-detail-v2-order-info .detail-grid{
+  box-sizing:border-box;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  min-width:0;overflow:hidden;border:1px solid #dce5ec;border-radius:4px;
+}
+.warehouse-receive-screen .warehouse-detail-v2-order-info .detail-grid>div{
+  box-sizing:border-box;display:flex;flex-direction:column;gap:4px;
+  min-width:0;padding:7px 8px;border-right:1px solid #e7ecf1;
+  border-bottom:1px solid #e7ecf1;background:#fff;
+}
+.warehouse-receive-screen .warehouse-detail-v2-order-info .detail-grid>div:nth-child(2n){border-right:0}
+.warehouse-receive-screen .warehouse-detail-v2-order-info .detail-grid>div.full{
+  grid-column:1/-1;border-right:0;
+}
+.warehouse-receive-screen .warehouse-detail-v2-order-info .detail-grid span{
+  color:#758597;font-size:9px;line-height:1.3;
+}
+.warehouse-receive-screen .warehouse-detail-v2-order-info .detail-grid b{
+  color:#2e445b;font-size:10.5px;font-weight:630;line-height:1.4;
+  overflow-wrap:anywhere;
+}
+.warehouse-receive-screen .warehouse-detail-v2-order-info .context-order-items{
+  min-width:0;width:100%;
+}
+.warehouse-receive-screen .warehouse-detail-v2-product-link{
+  display:flex;flex-direction:column;gap:3px;min-width:0;width:100%;
+  border:0;padding:0;background:none;text-align:left;cursor:pointer;
+}
+.warehouse-receive-screen .warehouse-detail-v2-product-link b,
+.warehouse-receive-screen .warehouse-detail-v2-product-link small{
+  display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.warehouse-receive-screen .warehouse-detail-v2-product-link:hover b{color:#236b9b!important;text-decoration:underline}
+.warehouse-receive-screen .warehouse-detail-v2-product-link:focus-visible{
+  outline:2px solid #8cb5d1;outline-offset:2px;
+}
+.warehouse-receive-screen .warehouse-detail-v2-order-info>.panel-meta{
+  margin:10px 0 0;font-size:9px;color:#748697;
+}
 .warehouse-detail-v2-info{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid #e7edf2;border-left:1px solid #e7edf2}
 .warehouse-detail-v2-info>div{display:flex;flex-direction:column;gap:4px;min-width:0;padding:9px;border-right:1px solid #e7edf2;border-bottom:1px solid #e7edf2}
 .warehouse-detail-v2-info .full{grid-column:1/-1}
