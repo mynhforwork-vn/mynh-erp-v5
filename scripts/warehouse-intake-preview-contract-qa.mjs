@@ -78,9 +78,13 @@ const checks=[
     !page.includes('Chỉ xem và mô phỏng lựa chọn trên Preview') &&
     !page.includes('<span className="warehouse-receive-date-label">') &&
     page.includes('rangeParam="received_range"')],
-  ['more space between the receiving table and the existing desktop slidebar',
-    css.includes('column-gap:26px!important') &&
+  ['compact gap and table isolated from generic ERP table widths',
+    css.includes('column-gap:10px!important') &&
     css.includes('.brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout.with-panel') &&
+    table.includes('<table className="warehouse-unified-table"') &&
+    !table.includes('<table className="table warehouse-unified-table"') &&
+    css.includes('table.warehouse-unified-table') &&
+    css.includes('width:auto!important;min-width:0!important;max-width:none!important') &&
     !css.includes('body.brand-shell-v1')],
   ['selectors target the real ERP shell wrapper instead of body',
     read('app/(erp)/layout.tsx').includes('className="shell brand-shell-v1"') &&
