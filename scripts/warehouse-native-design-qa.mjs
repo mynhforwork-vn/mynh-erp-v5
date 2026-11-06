@@ -26,11 +26,14 @@ const checks = [
     css.includes('overflow-x:auto!important') &&
     css.includes('var(--wh-table-width,100%)') &&
     css.includes('max-height:min(58dvh,660px)')],
-  ['settings opened as second real slidebar rather than overlay popup',
-    page.includes('dockToWorkspace') &&
-    receivingSettings.includes("createPortal(<aside className=\"whx-settings-popover mynh-slide-panel wh-native-settings-panel\"") &&
-    css.includes('aside.wh-native-settings-panel.whx-settings-popover') &&
-    css.includes('grid-template-columns:minmax(0,1fr) minmax(0,clamp(255px,24vw,370px))')],
+  ['warehouse settings remains original popover, never an unauthorized slidebar',
+    !page.includes('dockToWorkspace') &&
+    !receivingSettings.includes('dockToWorkspace') &&
+    !receivingSettings.includes('createPortal') &&
+    receivingSettings.includes('<div className="whx-settings-popover" role="dialog"') &&
+    receivingSettings.includes("if(target&&!wrapRef.current?.contains(target))setOpen(false)") &&
+    css.includes('.warehouse-receive-screen:has(.wh-native-workspace>.wh-native-panel) .whx-settings-wrap>.whx-settings-popover') &&
+    !css.includes('aside.wh-native-settings-panel')],
   ['remove redundant workflow tabs and order count line above warehouse tables',
     !workspace.includes('<div className="wh-native-filters">') &&
     !workspace.includes('className="managed-table-meta"') &&
