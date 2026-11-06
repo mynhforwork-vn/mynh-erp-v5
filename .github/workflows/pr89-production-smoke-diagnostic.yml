@@ -1,0 +1,44 @@
+name: PR89 Production HTTP post-deploy diagnostic (read only)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/pr89-production-smoke-diagnostic.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: HTTP diagnostic both Worker URLs after propagation
+        shell: bash
+        run: |
+          set -uo pipefail
+          primary="https://mynh-erp-v5.mynh-forwork.workers.dev"
+          alias="https://erp.mynh-forwork.workers.dev"
+          for base in "$primary" "$alias"; do
+            echo "Host: $base"
+            for endpoint in /api/health /login /warehouse/receive; do
+              echo "Request: $endpoint"
+              code=$(curl -L -sS -o /tmp/mynh-smoke-response -w '%{http_code}' \
+                --connect-timeout 10 --max-time 25 --retry 2 --retry-delay 2 \
+                "$base$endpoint") || code="CURL_ERROR_$?"
+              echo "Result: HTTP $code"
+              if [ "$endpoint" = /api/health ]; then
+                head -c 180 /tmp/mynh-smoke-response | tr '\n' ' ' || true
+                echo
+              fi
+            done
+          done
+          primary_code=$(curl -sS -o /tmp/mynh-primary-health -w '%{http_code}' \
+            --connect-timeout 10 --max-time 25 "$primary/api/health") || true
+          if [ "$primary_code" != "200" ]; then
+            echo "::error::Primary production health was HTTP $primary_code; investigate before PASS"
+            exit 1
+          fi
+          grep -q '"ok":true' /tmp/mynh-primary-health || exit 1
+          echo "PASS: Primary Production health after Cloudflare propagation"
