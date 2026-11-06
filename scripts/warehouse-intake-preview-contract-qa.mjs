@@ -74,7 +74,8 @@ const checks=[
     table.includes('batchOf(row)?.warehouses?.code')&&
     table.includes('BG - 320 Nguyễn Công Hãng')&&
     table.includes('HN - 164 Hồng Mai')&&
-    !table.includes('destination_hub')],
+    table.includes('const batch=batchOf(row)')&&
+    !table.includes('destination_hub??')],
   ['preview banner and redundant visual date heading removed',
     !page.includes('Thiết kế mới · Dữ liệu thực MYNH ERP') &&
     !page.includes('Chỉ xem và mô phỏng lựa chọn trên Preview') &&
