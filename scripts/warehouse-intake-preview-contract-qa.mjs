@@ -79,7 +79,14 @@ const checks=[
     !page.includes('<span className="warehouse-receive-date-label">') &&
     page.includes('rangeParam="received_range"')],
   ['more space between the receiving table and the existing desktop slidebar',
-    css.includes('column-gap:26px!important')],
+    css.includes('column-gap:26px!important') &&
+    css.includes('.brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout.with-panel') &&
+    !css.includes('body.brand-shell-v1')],
+  ['selectors target the real ERP shell wrapper instead of body',
+    read('app/(erp)/layout.tsx').includes('className="shell brand-shell-v1"') &&
+    read('app/layout.tsx').includes('<body>{children}</body>') &&
+    !css.includes('body.brand-shell-v1')],
+
   ['tablet/mobile uses full table width and fixed original slidebar overlay',
     css.includes('grid-template-columns:minmax(0,1fr)!important') &&
     css.includes('width:min(100vw,430px)!important') &&
