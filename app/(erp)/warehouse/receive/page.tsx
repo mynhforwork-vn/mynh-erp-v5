@@ -237,13 +237,23 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
   const decisionList:any[]=[]
   let decisionError:{message:string}|null=null
   if(isLive){
-    for(let offset=0;offset<displayedRows.length;offset+=150){
-      const ids=displayedRows.slice(offset,offset+150).map(o=>o.id)
-      const {data,error:loadError}=await supabase.from('warehouse_item_decisions')
-        .select('order_item_id,order_id,product_variant_id,decision,sale_price,multiplier,skip_reason,processing_state,updated_at')
-        .in('order_id',ids).limit(4000)
-      if(loadError){decisionError=loadError;break}
-      decisionList.push(...(data??[]))
+    // Supabase/PostgREST may cap individual responses below requested limits;
+    // paginate every order chunk so no persisted item decision is silently lost.
+    for(let offset=0;offset<displayedRows.length&&!decisionError;offset+=100){
+      const ids=displayedRows.slice(offset,offset+100).map(o=>o.id)
+      for(let itemOffset=0;itemOffset<50000;itemOffset+=500){
+        const {data,error:loadError}=await supabase.from('warehouse_item_decisions')
+          .select('order_item_id,order_id,product_variant_id,decision,sale_price,multiplier,skip_reason,processing_state,updated_at')
+          .in('order_id',ids).order('order_item_id')
+          .range(itemOffset,itemOffset+499)
+        if(loadError){decisionError=loadError;break}
+        const part=data??[]
+        decisionList.push(...part)
+        if(part.length<500)break
+        if(itemOffset===49500){
+          decisionError={message:'Số dòng bóc tách vượt giới hạn; vui lòng lọc hẹp hơn'}
+        }
+      }
     }
   }
   const itemDecisions=Object.fromEntries(decisionList.map(x=>[x.order_item_id,x]))
