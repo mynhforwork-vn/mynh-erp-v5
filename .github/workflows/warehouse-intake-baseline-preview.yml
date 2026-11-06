@@ -51,7 +51,7 @@ jobs:
           CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME_PATH"
           echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
-      - name: Responsive warehouse table QA (8 viewports, slidebar open/close)
+      - name: Responsive warehouse Auto Fit QA (14 viewports, close/open slidebar, no x-scroll)
         run: node scripts/warehouse-intake-preview-browser-qa.mjs
       - uses: actions/upload-artifact@v4
         if: always()
@@ -101,6 +101,6 @@ jobs:
             echo "- Base source: main 96029492250b078d3ec182578297401160ca3bdd; reviewed warehouse Preview changes"
             echo "- Branch: preview/warehouse-intake-baseline-20261106"
             echo "- Preview: $PREVIEW_URL"
-            echo "- Warehouse contracts, typecheck, 8 viewport browser fixture, OpenNext build, /api/health and /login: PASS"
+            echo "- Warehouse contracts, typecheck, 14 viewport responsive QA, OpenNext build, /api/health and /login: PASS"
             echo "- No Production or Supabase changes"
           } >> "$GITHUB_STEP_SUMMARY"
