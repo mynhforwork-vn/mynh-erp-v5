@@ -42,17 +42,41 @@ const checks=[
     table.includes('row.order_items.map(item=><div')&&
     !table.includes('warehouse-split-table')&&
     !table.includes('warehouse-ready-table')],
-  ['column sorting, visibility, internal scroll and sticky header',
-    table.includes('ManagedColumnsMenu labels={TABLE_LABELS}')&&
-    table.includes('<SortableHeader')&&
-    css.includes('overflow:auto!important')&&
-    css.includes('position:sticky;top:0')&&
-    css.includes('min-width:870px!important')],
+  ['independent column menu per receiving warehouse and sortable columns',
+    table.includes("mynh-warehouse-intake-bg-columns-v1") &&
+    table.includes("mynh-warehouse-intake-hn-columns-v1") &&
+    table.includes("group.code==='BG'?bgColumns:group.code==='HN'?hnColumns:otherColumns") &&
+    table.includes('<ManagedColumnsMenu labels={TABLE_LABELS}')&&
+    table.includes('<SortableHeader') &&
+    table.includes('warehouse-unified-group-column-control') &&
+    !table.includes('warehouse-unified-toolbar')],
+  ['real-width Auto Fit with no horizontal table scrollbar',
+    table.includes('new ResizeObserver(measure)') &&
+    table.includes('laneRef') &&
+    table.includes('laneWidth<1050?TABLE_COMPACT_WEIGHTS:TABLE_WEIGHTS') &&
+    css.includes('container-type:inline-size') &&
+    css.includes('@container warehouse-lane (max-width:850px)') &&
+    css.includes('overflow:visible!important') &&
+    css.includes('min-width:0!important') &&
+    !css.includes('min-width:870px!important')],
+  ['one product per line and full detail in tooltip',
+    table.includes('warehouse-unified-product-line') &&
+    table.includes("['SL '+item.quantity]") === false &&
+    table.includes("'SL '+item.quantity") &&
+    css.includes('white-space:nowrap') &&
+    css.includes('text-overflow:ellipsis')],
   ['receive warehouse is actual batch; BG and HN stay distinct',
     table.includes('batchOf(row)?.warehouses?.code')&&
     table.includes('BG - 320 Nguyễn Công Hãng')&&
     table.includes('HN - 164 Hồng Mai')&&
     !table.includes('destination_hub')],
+  ['preview banner and redundant visual date heading removed',
+    !page.includes('Thiết kế mới · Dữ liệu thực MYNH ERP') &&
+    !page.includes('Chỉ xem và mô phỏng lựa chọn trên Preview') &&
+    !page.includes('<span className="warehouse-receive-date-label">') &&
+    page.includes('rangeParam="received_range"')],
+  ['more space between the receiving table and the existing desktop slidebar',
+    css.includes('column-gap:26px!important')],
   ['existing detail slidebar remains old JSX and no new panel redesign',
     table.includes('<aside className="whx-detail-panel warehouse-intake-panel">')&&
     table.includes('className="whx-panel-tabs"')&&
