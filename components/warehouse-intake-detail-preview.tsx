@@ -2,6 +2,8 @@
 
 import {useEffect,useMemo,useState} from 'react'
 import {formatDateTime,formatMoney,formatPhone,statusLabel} from '@/lib/format'
+import {prepaidSourceLabel,resolveOrderValue} from '@/lib/order-prepaid'
+import {VoucherTags} from '@/components/voucher-tags'
 
 type Variant={
   id:string
@@ -32,10 +34,15 @@ type Order={
   id:string
   shopee_order_id?:string|null
   warehouse_status?:string|null
+  receive_status?:string|null
+  shipping_service?:string|null
+  order_date?:string|null
+  created_at?:string|null
   order_status?:string|null
   payment_status?:string|null
   cod?:number|string|null
   prepaid_amount?:number|string|null
+  prepaid_source_type?:string|null
   prepaid_source_label?:string|null
   recipient_name?:string|null
   recipient_phone?:string|null
@@ -219,7 +226,15 @@ export function WarehouseIntakeDetailPreview({
     setNotice('Đã ghi nhận lựa chọn thử. Không ghi SKU, giá hoặc tồn kho vào Supabase.')
   }
 
-  return <aside className="whx-detail-panel warehouse-intake-panel warehouse-detail-v2" data-system-slidebar="true"
+  const express=order.shipping_service==='EXPRESS'
+  const value=resolveOrderValue({
+    paymentStatus:order.payment_status,prepaidAmount:order.prepaid_amount,cod:order.cod
+  })
+  const voucherText=(order.order_vouchers??[]).map(v=>
+    String(v.voucher_tag||v.voucher_type||v.voucher_name||v.voucher_code||'').trim()
+  ).filter(Boolean).join(' · ')
+
+  return <aside className="whx-detail-panel warehouse-intake-panel warehouse-detail-v2 mynh-slide-panel" data-system-slidebar="true"
     aria-label={'Bóc tách đơn '+(order.shopee_order_id??order.id)}>
     <header className="whx-panel-head warehouse-detail-v2-head">
       <div className="warehouse-detail-v2-title">
@@ -236,12 +251,12 @@ export function WarehouseIntakeDetailPreview({
       </div>
       <button className="close" type="button" onClick={onClose} aria-label="Đóng slidebar">×</button>
     </header>
-    <nav className="whx-panel-tabs warehouse-detail-v2-tabs" aria-label="Các tab chi tiết bóc tách">
-      <button type="button" className={tab==='products'?'active':''} onClick={()=>setTab('products')}>Sản phẩm</button>
-      <button type="button" className={tab==='info'?'active':''} onClick={()=>setTab('info')}>Thông tin đơn</button>
-      <button type="button" className={tab==='history'?'active':''} onClick={()=>setTab('history')}>Lịch sử</button>
+    <nav className="panel-tabs warehouse-detail-v2-tabs" aria-label="Các tab chi tiết bóc tách" role="tablist">
+      <button type="button" role="tab" aria-selected={tab==='products'} className={tab==='products'?'active':''} onClick={()=>setTab('products')}>Sản phẩm</button>
+      <button type="button" role="tab" aria-selected={tab==='info'} className={tab==='info'?'active':''} onClick={()=>setTab('info')}>Thông tin đơn</button>
+      <button type="button" role="tab" aria-selected={tab==='history'} className={tab==='history'?'active':''} onClick={()=>setTab('history')}>Lịch sử</button>
     </nav>
-    <div className="whx-panel-scroll warehouse-detail-v2-scroll">
+    <div className="panel-scroll whx-panel-scroll warehouse-detail-v2-scroll">
       {tab==='products'&&<div className="warehouse-detail-v2-content">
         <div className="warehouse-detail-v2-progress">
           <b>{countSaved}/{order.order_items.length} đã ghép SKU</b>
@@ -347,49 +362,57 @@ export function WarehouseIntakeDetailPreview({
           <p className="warehouse-detail-v2-disclaimer">Chỉ mô phỏng · không tạo SKU hoặc ghi tồn kho vào Supabase</p>
         </section>}
       </div>}
-      {tab==='info'&&<div className="warehouse-detail-v2-content">
-        <div className="warehouse-detail-v2-section-title">Tổng quan đơn hàng</div>
-        <div className="warehouse-detail-v2-info">
-          <div><span>Mã đơn</span><b>{order.shopee_order_id||'Chưa có'}</b></div>
-          <div><span>Nick mua</span><b>{order.erp_users?.username||'Chưa có'}</b></div>
-          <div className="full"><span>Kho nhận thực tế</span><b>{[warehouse?.code,warehouse?.address||warehouse?.name].filter(Boolean).join(' · ')||'Chưa xác định'}</b></div>
-          <div><span>Ngày nhận</span><b>{batchOf(order)?.received_at?formatDateTime(batchOf(order)?.received_at):'Chưa có'}</b></div>
+      {tab==='info'&&<div className="warehouse-detail-v2-content warehouse-detail-v2-order-info">
+        <div className="panel-section-head"><div><h3>Chi tiết đơn hàng</h3><span>Thông tin lấy từ đơn nhập hàng hiện có</span></div></div>
+        <div className="detail-grid compact-detail-grid">
+          <div><span>User</span><b>{order.erp_users?.username??'Chưa có'}</b></div>
+          <div><span>Ngày đặt</span><b>{order.order_date?formatDateTime(order.order_date):'Chưa có'}</b></div>
           <div><span>Trạng thái đơn</span><b>{statusLabel(order.order_status)}</b></div>
           <div><span>Thanh toán</span><b>{statusLabel(order.payment_status)}</b></div>
-        </div>
-        <div className="warehouse-detail-v2-section-title">Giá trị đơn hàng</div>
-        <div className="warehouse-detail-v2-info">
+          {order.prepaid_amount!=null&&<>
+            <div><span>Đã thanh toán trước</span><b>{displayMoney(order.prepaid_amount)}</b></div>
+            <div><span>Loại tài khoản/thẻ</span><b>{prepaidSourceLabel(order.prepaid_source_type)}</b></div>
+            {order.prepaid_source_label&&<div className="full"><span>Tài khoản/thẻ sử dụng</span><b>{order.prepaid_source_label}</b></div>}
+          </>}
+          <div><span>COD</span><b>{displayMoney(order.cod)}</b></div>
+          <div><span>Giá trị đơn hàng</span><b>{value===null?'Chưa đủ dữ liệu':formatMoney(value)}</b></div>
           <div><span>Tổng giá gốc</span><b>{displayMoney(sourceTotal(order.order_items,'original_price'))}</b></div>
           <div><span>Tổng sau giảm</span><b>{displayMoney(sourceTotal(order.order_items,'final_price'))}</b></div>
-          <div><span>COD</span><b>{displayMoney(order.cod)}</b></div>
-          <div><span>Trả trước</span><b>{displayMoney(order.prepaid_amount)}</b></div>
-          {order.prepaid_source_label&&<div className="full"><span>Nguồn trả trước</span><b>{order.prepaid_source_label}</b></div>}
+          <div><span>Dịch vụ</span><b>{express?'Hỏa tốc':order.shipping_service==='STANDARD'?'Tiêu chuẩn':order.shipping_service||'Chưa có'}</b></div>
+          <div><span>Nhận hàng</span><b>{statusLabel(order.receive_status)}</b></div>
+          <div><span>Người nhận</span><b>{order.recipient_name??'Chưa có'}</b></div>
+          <div><span>SĐT</span><b>{order.recipient_phone?formatPhone(order.recipient_phone):'Chưa có'}</b></div>
+          <div className="full"><span>Địa chỉ</span><b>{order.recipient_address??'Chưa có'}</b></div>
+          <div><span>Khu vực</span><b>{order.area??'Chưa có'}</b></div>
+          <div><span>Kho đích / HUB</span><b>{order.destination_hub??'Chưa có'}</b></div>
+          <div><span>Mã vận đơn</span><b>{activeShipment?.tracking_number??'Chưa có'}</b></div>
+          <div><span>ĐVVC</span><b>{express?'Hỏa tốc':activeShipment?.carrier??'Chưa có'}</b></div>
+          <div><span>Tracking</span><b>{express?'Thủ công':statusLabel(activeShipment?.current_tracking_status)}</b></div>
+          <div><span>Kho</span><b>{stateLabel(order)}</b></div>
+          <div><span>Ngày nhận</span><b>{batchOf(order)?.received_at?formatDateTime(batchOf(order)?.received_at):'Chưa có'}</b></div>
+          <div className="full"><span>Kho nhận thực tế</span><b>{[warehouse?.code,warehouse?.address??warehouse?.name].filter(Boolean).join(' · ')||'Chưa xác định'}</b></div>
         </div>
-        <div className="warehouse-detail-v2-section-title">Người nhận và vận chuyển</div>
-        <div className="warehouse-detail-v2-info">
-          <div><span>Người nhận</span><b>{order.recipient_name||'Chưa có'}</b></div>
-          <div><span>Điện thoại</span><b>{order.recipient_phone?formatPhone(order.recipient_phone):'Chưa có'}</b></div>
-          <div className="full"><span>Địa chỉ</span><b>{order.recipient_address||'Chưa có'}</b></div>
-          <div><span>Khu vực</span><b>{order.area||'Chưa có'}</b></div>
-          <div><span>HUB đích</span><b>{order.destination_hub||'Chưa có'}</b></div>
-          <div><span>Đơn vị vận chuyển</span><b>{activeShipment?.carrier||'Chưa có'}</b></div>
-          <div><span>Mã vận đơn</span><b>{activeShipment?.tracking_number||'Chưa có'}</b></div>
-          <div className="full"><span>Trạng thái vận chuyển</span><b>{statusLabel(activeShipment?.current_tracking_status)}</b></div>
+
+        <div className="panel-section-head"><div><h3>Sản phẩm</h3><span>{order.order_items.length} dòng sản phẩm</span></div></div>
+        <div className="context-order-items warehouse-detail-v2-order-items">
+          {!order.order_items.length
+            ?<div className="empty compact">Đơn chưa có sản phẩm.</div>
+            :order.order_items.map(item=><div key={item.id}>
+                <button type="button" className="warehouse-detail-v2-product-link"
+                  onClick={()=>{focus(item);setTab('products')}} aria-label={'Bóc tách '+item.product_name}>
+                  <b title={item.product_name}>{item.product_name}</b>
+                  <small>{[item.sku,item.variant].filter(Boolean).join(' · ')||'Không SKU'}</small>
+                </button>
+                <span>×{item.quantity}</span>
+                <strong>{displayMoney(item.final_price??item.original_price)}</strong>
+              </div>)}
         </div>
-        <div className="warehouse-detail-v2-section-title">Voucher</div>
-        <div className="warehouse-detail-v2-vouchers">
-          {order.order_vouchers?.length?order.order_vouchers.map((v,i)=>
-            <div key={i}><b>{v.voucher_code||v.voucher_name||'Voucher'}</b>
-              <small>{v.voucher_type||'Chưa phân loại'} · {v.voucher_tag||'Chưa có tag'}</small></div>)
-            :<p>Chưa có voucher.</p>}
-        </div>
-        <div className="warehouse-detail-v2-section-title">Sản phẩm trong đơn</div>
-        <div className="warehouse-detail-v2-info-products">
-          {order.order_items.map(item=><button key={item.id} type="button" onClick={()=>{focus(item);setTab('products')}}>
-            <b>{item.product_name} · SL {item.quantity}</b>
-            <small>Gốc {displayMoney(item.original_price)} · Sau giảm {displayMoney(item.final_price)}</small>
-          </button>)}
-        </div>
+
+        {voucherText&&<>
+          <div className="panel-section-head"><div><h3>Voucher</h3></div></div>
+          <VoucherTags value={voucherText}/>
+        </>}
+        <div className="panel-meta">Tạo đơn: {order.created_at?formatDateTime(order.created_at):'Chưa có'}</div>
       </div>}
       {tab==='history'&&<div className="warehouse-detail-v2-content">
         <div className="warehouse-detail-v2-section-title">Lịch sử xử lý kho</div>
