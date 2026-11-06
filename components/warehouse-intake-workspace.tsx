@@ -38,6 +38,7 @@ type Row={
   shopee_order_id?:string|null
   cod?:number|string|null
   order_date?:string|null
+  warehouse_status?:string|null
   receive_batch_details?:ReceiveDetail|ReceiveDetail[]|null
   order_items:Item[]
 }
@@ -48,15 +49,14 @@ type AuditLog={
   created_at:string
   new_value?:Record<string,unknown>|null
 }
-type SplitCol='order'|'received'|'product'|'cod'|'missing'|'status'
-const SPLIT_COLUMNS:SplitCol[]=['order','received','product','cod','missing','status']
-const SPLIT_LABELS:Record<SplitCol,string>={
-  order:'Mã đơn',received:'Ngày nhận',product:'Sản phẩm',cod:'COD',missing:'SKU chưa map',status:'Trạng thái',
+type TableCol='order'|'received'|'warehouse'|'product'|'progress'|'cod'|'status'
+const TABLE_COLUMNS:TableCol[]=['order','received','warehouse','product','progress','cod','status']
+const TABLE_LABELS:Record<TableCol,string>={
+  order:'Mã đơn',received:'Ngày nhận',warehouse:'Kho nhận',product:'Sản phẩm',
+  progress:'Bóc tách',cod:'COD',status:'Trạng thái',
 }
-type ReadyCol='order'|'received'|'product'|'qty'|'cod'|'status'
-const READY_COLUMNS:ReadyCol[]=['order','received','product','qty','cod','status']
-const READY_LABELS:Record<ReadyCol,string>={
-  order:'Mã đơn',received:'Ngày nhận',product:'Sản phẩm',qty:'SL nhập',cod:'COD',status:'Trạng thái',
+const TABLE_WEIGHTS:Record<TableCol,number>={
+  order:17,received:15,warehouse:10,product:26,progress:9,cod:11,status:12,
 }
 
 type Suggestion={
@@ -76,7 +76,16 @@ function batchOf(row:Row){
   return raw??null
 }
 function receivedAt(row:Row){
-  return batchOf(row)?.received_at??row.order_date??null
+  return batchOf(row)?.received_at??null
+}
+function isDone(row:Row){
+  return ['WAREHOUSE_RECEIVED','WAREHOUSE_SKIPPED','WAREHOUSE_MIXED'].includes(String(row.warehouse_status??''))
+}
+function phaseLabel(row:Row){
+  if(row.warehouse_status==='WAREHOUSE_SKIPPED')return 'Đã bỏ qua kho'
+  if(row.warehouse_status==='WAREHOUSE_RECEIVED')return 'Đã nhập kho'
+  if(isDone(row))return 'Đã xử lý'
+  return isComplete(row)?'Chờ nhập kho':'Chờ bóc tách'
 }
 function isComplete(row:Row){
   return row.order_items.length>0&&row.order_items.every(item=>Boolean(item.product_variant_id))
@@ -87,11 +96,13 @@ export function WarehouseIntakeWorkspace({
   variants,
   auditLogs,
   suggestions,
+  previewOnly=false,
 }:{
   rows:Row[]
   variants:Variant[]
   auditLogs:AuditLog[]
   suggestions:Record<string,Suggestion>
+  previewOnly?:boolean
 }){
   const groups=useMemo(()=>{
     const map=new Map<string,{
@@ -125,13 +136,13 @@ export function WarehouseIntakeWorkspace({
   const [selected,setSelected]=useState<string[]>([])
   const [panelTab,setPanelTab]=useState<'products'|'info'|'history'>('products')
   const [editingItem,setEditingItem]=useState<string|null>(null)
-  const splitColumns=useManagedColumns<SplitCol>('mynh-warehouse-intake-split-columns-v2',SPLIT_COLUMNS,['order'])
-  const splitSort=useManagedSort<SplitCol>('mynh-warehouse-intake-split-sort-v2','received','asc')
-  const readyColumns=useManagedColumns<ReadyCol>('mynh-warehouse-intake-ready-columns-v2',READY_COLUMNS,['order'])
-  const readySort=useManagedSort<ReadyCol>('mynh-warehouse-intake-ready-sort-v2','received','asc')
+  const [search,setSearch]=useState('')
+  const tableColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-unified-columns-v1',TABLE_COLUMNS,['order'])
+  const tableSort=useManagedSort<TableCol>('mynh-warehouse-intake-unified-sort-v1','received','desc')
 
   const active=rows.find(row=>row.id===activeId)??null
-  const activeComplete=active?isComplete(active):false
+  const activeDone=active?isDone(active):false
+  const activeComplete=active?!isDone(active)&&isComplete(active):false
   const selectedSet=useMemo(()=>new Set(selected),[selected])
   const activeLogs=active
     ? auditLogs.filter(log=>String(log.entity_id??'')===active.id)
@@ -165,181 +176,127 @@ export function WarehouseIntakeWorkspace({
     setSelected(readyIds)
   }
 
-  return <div className={'whx-intake-layout warehouse-intake-layout '+(active?'with-panel':'')}>
-    <section className="whx-intake-main tracking-hub-stack tracking-hub-stack-v2 warehouse-receive-groups">
+  return <div className={'whx-intake-layout warehouse-intake-layout warehouse-intake-preview-layout '+(active?'with-panel':'')}>
+    <section className="whx-intake-main tracking-hub-stack tracking-hub-stack-v2 warehouse-receive-groups warehouse-receive-table-lane">
+      <div className="warehouse-unified-toolbar">
+        <div className="warehouse-unified-search">
+          <input type="search" aria-label="Tìm mã đơn, SKU, sản phẩm" placeholder="Tìm mã đơn, SKU, sản phẩm"
+            value={search} onChange={event=>setSearch(event.target.value)}/>
+          {search&&<button type="button" aria-label="Xóa tìm kiếm" onClick={()=>setSearch('')}>×</button>}
+        </div>
+        <ManagedColumnsMenu labels={TABLE_LABELS} manager={tableColumns}/>
+      </div>
       {!groups.length
-        ? <div className="card empty">Không có đơn đã nhận đang chờ bóc tách hoặc nhập kho.</div>
+        ? <div className="card empty">Không có đơn đã nhận trong khoảng thời gian và trạng thái đang chọn.</div>
         : groups.map(group=>{
             const open=openGroups.includes(group.id)
-            const splitRows=group.rows.filter(row=>!isComplete(row))
-            const readyRows=group.rows.filter(isComplete)
-            const splitSorted=[...splitRows].sort((a,b)=>{
-              const value=(row:Row,key:SplitCol)=>{
-                if(key==='order')return String(row.shopee_order_id??row.id)
-                if(key==='received')return new Date(receivedAt(row)??0).getTime()
-                if(key==='product')return String(row.order_items[0]?.product_name??'')
-                if(key==='cod')return Number(row.cod??0)
-                if(key==='missing')return row.order_items.filter(item=>!item.product_variant_id).length
-                return isComplete(row)?'ready':'missing'
-              }
-              const av=value(a,splitSort.key),bv=value(b,splitSort.key)
-              const cmp=typeof av==='number'&&typeof bv==='number'?av-bv:String(av).localeCompare(String(bv),'vi')
-              return splitSort.dir==='asc'?cmp:-cmp
+            const waiting=group.rows.filter(row=>!isDone(row))
+            const splitRows=waiting.filter(row=>!isComplete(row))
+            const readyRows=waiting.filter(isComplete)
+            const doneRows=group.rows.filter(isDone)
+            const filtered=group.rows.filter(row=>{
+              if(!search.trim())return true
+              const text=[row.shopee_order_id,row.id,...row.order_items.flatMap(item=>
+                [item.sku,item.product_name,item.variant,item.product_variants?.products?.sku])]
+                .filter(Boolean).join(' ').toLocaleLowerCase('vi')
+              return text.includes(search.trim().toLocaleLowerCase('vi'))
             })
-            const readySorted=[...readyRows].sort((a,b)=>{
-              const value=(row:Row,key:ReadyCol)=>{
-                if(key==='order')return String(row.shopee_order_id??row.id)
-                if(key==='received')return new Date(receivedAt(row)??0).getTime()
-                if(key==='product')return String(row.order_items[0]?.product_name??'')
-                if(key==='qty')return row.order_items.reduce((sum,item)=>sum+Number(item.quantity??0)*Number(item.inventory_multiplier??1),0)
-                if(key==='cod')return Number(row.cod??0)
-                return 'ready'
+            const sorted=[...filtered].sort((left,right)=>{
+              const key=(row:Row,col:TableCol):number|string=>{
+                if(col==='order')return String(row.shopee_order_id??row.id)
+                if(col==='received')return new Date(receivedAt(row)??0).getTime()
+                if(col==='warehouse')return String(batchOf(row)?.warehouses?.code??'')
+                if(col==='product')return row.order_items[0]?.product_name??''
+                if(col==='progress')return row.order_items.filter(item=>item.product_variant_id).length
+                if(col==='cod')return Number(row.cod??0)
+                return phaseLabel(row)
               }
-              const av=value(a,readySort.key),bv=value(b,readySort.key)
-              const cmp=typeof av==='number'&&typeof bv==='number'?av-bv:String(av).localeCompare(String(bv),'vi')
-              return readySort.dir==='asc'?cmp:-cmp
+              const x=key(left,tableSort.key),y=key(right,tableSort.key)
+              const cmp=typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y),'vi')
+              return tableSort.dir==='asc'?cmp:-cmp
             })
             const totalCod=group.rows.reduce((sum,row)=>sum+Number(row.cod??0),0)
             const readyIds=readyRows.map(row=>row.id)
             const allReadySelected=readyIds.length>0&&selectedGroup===group.id&&readyIds.every(id=>selectedSet.has(id))
-            const groupSelected=selectedGroup===group.id?selected.length:0
-
-            return <section className={'card tracking-hub-card tracking-hub-card-v2 warehouse-receive-card '+(open?'open':'collapsed')} key={group.id}>
-              <div className="tracking-hub-head-v2">
-                <button
-                  type="button"
-                  className="tracking-hub-toggle"
-                  aria-label={open?'Thu gọn Kho nhận':'Mở Kho nhận'}
-                  aria-expanded={open}
-                  onClick={()=>toggleGroup(group.id)}
-                >
-                  <span>{open?'⌄':'›'}</span>
-                </button>
-
+            const groupSelected=selectedGroup===group.id?selected.filter(id=>readyIds.includes(id)).length:0
+            const widthTotal=tableColumns.visible.reduce((sum,key)=>sum+TABLE_WEIGHTS[key],0)
+            const cell=(row:Row,col:TableCol)=>{
+              if(col==='order')return <td key={col}>
+                <div className="warehouse-unified-order">
+                  {!isDone(row)&&isComplete(row)&&<input type="checkbox"
+                    checked={selectedGroup===group.id&&selectedSet.has(row.id)}
+                    onChange={()=>toggleReady(group.id,row.id)}
+                    onClick={event=>event.stopPropagation()}
+                    aria-label={'Chọn '+(row.shopee_order_id??row.id)}/>}
+                  <button type="button" className="table-link" onClick={event=>{event.stopPropagation();setActiveId(row.id);setPanelTab('products');setEditingItem(null)}}>
+                    {row.shopee_order_id??row.id.slice(0,8)}
+                  </button>
+                </div>
+              </td>
+              if(col==='received')return <td key={col} className="warehouse-unified-date">{receivedAt(row)?formatDateTime(receivedAt(row)):'Chưa có ngày nhận'}</td>
+              if(col==='warehouse')return <td key={col}>{batchOf(row)?.warehouses?.code??'Chưa xác định'}</td>
+              if(col==='product')return <td key={col} className="warehouse-unified-products">
+                {row.order_items.length?row.order_items.map(item=><div key={item.id} title={[item.product_name,item.variant].filter(Boolean).join(' · ')}>
+                  {item.product_name}{item.variant?' · '+item.variant:''} <span>×{item.quantity}</span>
+                </div>):'Chưa có sản phẩm'}
+              </td>
+              if(col==='progress')return <td key={col} className="warehouse-unified-progress">
+                {row.order_items.filter(item=>item.product_variant_id).length}/{row.order_items.length}
+              </td>
+              if(col==='cod')return <td key={col} className="money">{formatMoney(row.cod)}</td>
+              return <td key={col}><span className={'status-pill '+(isDone(row)?'green':isComplete(row)?'status-ready_to_ship':'orange')}>{phaseLabel(row)}</span></td>
+            }
+            return <section className={'card tracking-hub-card tracking-hub-card-v2 warehouse-receive-card warehouse-unified-group '+(open?'open':'collapsed')} key={group.id}>
+              <div className="tracking-hub-head-v2 warehouse-unified-group-head">
+                <button type="button" className="tracking-hub-toggle" aria-label={(open?'Thu gọn ':'Mở ')+group.code}
+                  aria-expanded={open} onClick={()=>toggleGroup(group.id)}><span>{open?'⌄':'›'}</span></button>
                 <div className="tracking-hub-identity">
                   <span className={'tracking-hub-priority-dot '+(splitRows.length?'attention':'')}/>
-                  <div>
-                    <b>{group.code} · {group.address||group.name}</b>
-                    <small>{group.name} · {group.rows.length} đơn đã xác nhận nhận hàng</small>
-                  </div>
+                  <div><b>{group.code==='BG'?'BG - 320 Nguyễn Công Hãng':group.code==='HN'?'HN - 164 Hồng Mai':group.code+' · '+(group.address||group.name)}</b>
+                    <small>Kho nhận thực tế theo phiếu nhận hàng</small></div>
                 </div>
-
-                <div className="tracking-hub-metrics-v2">
+                <div className="tracking-hub-metrics-v2 warehouse-unified-metrics">
                   <span><b>{group.rows.length}</b> đơn</span>
                   <span className={splitRows.length?'warning':''}><b>{splitRows.length}</b> chờ bóc tách</span>
-                  <span className={readyRows.length?'info':''}><b>{readyRows.length}</b> chờ nhập</span>
+                  <span className={readyRows.length?'info':''}><b>{readyRows.length}</b> chờ nhập kho</span>
+                  <span className={doneRows.length?'success':''}><b>{doneRows.length}</b> đã xử lý</span>
                   <span className="money"><b>{formatMoney(totalCod)}</b> COD</span>
                 </div>
-
-                <div className="tracking-hub-summary-state">
-                  {readyRows.length>0&&<span className="success">{readyRows.length} sẵn sàng</span>}
-                  <span>{open?'Thu gọn':'Xem đơn'}</span>
-                </div>
               </div>
-
               {open&&<>
-                <div className="warehouse-intake-section-head">
-                  <div>
-                    <b>Chưa bóc tách</b>
-                    <span>Chỉ hiển thị đơn còn ít nhất 1 sản phẩm chưa xác nhận SKU tồn kho</span>
-                  </div>
-                  <strong>{splitRows.length}</strong>
-                </div>
-
-                
-
-                <div className="managed-table-toolbar warehouse-intake-managed-toolbar">
-                  <span className="managed-table-meta">Bảng chờ bóc tách · áp dụng mọi kho nhận</span>
-                  <ManagedColumnsMenu labels={SPLIT_LABELS} manager={splitColumns}/>
-                </div>
-                <div className="tracking-hub-table-wrap tracking-hub-table-wrap-v2">
-                  <table className="table tracking-hub-table tracking-hub-table-v2 warehouse-split-table">
-                    <thead><tr>{splitColumns.visible.map(col=><th key={col}><SortableHeader column={col} label={SPLIT_LABELS[col]} sort={splitSort} onSort={splitSort.toggle}/></th>)}</tr></thead>
-                    <tbody>
-                      {!splitSorted.length
-                        ? <tr><td colSpan={splitColumns.visible.length} className="empty compact">Không còn đơn cần bóc tách tại kho này.</td></tr>
-                        : splitSorted.map(row=>{
-                            const missing=row.order_items.filter(item=>!item.product_variant_id).length
-                            const cell=(col:SplitCol)=>{
-                              if(col==='order')return <td key={col}><b className="table-link">{row.shopee_order_id??row.id.slice(0,8)}</b></td>
-                              if(col==='received')return <td key={col}>{formatDateTime(receivedAt(row))}</td>
-                              if(col==='product')return <td key={col}><div className="tracking-order-id"><b>{row.order_items[0]?.product_name??'—'}</b><span>{row.order_items.length>1?('+'+(row.order_items.length-1)+' sản phẩm khác'):'1 sản phẩm'}</span></div></td>
-                              if(col==='cod')return <td key={col} className="money">{formatMoney(row.cod)}</td>
-                              if(col==='missing')return <td key={col}><b className="warehouse-missing-count">{missing}</b></td>
-                              return <td key={col}><span className="status-pill orange">Cần bóc tách</span></td>
-                            }
-                            return <tr key={row.id} className={activeId===row.id?'active-row':''} onClick={()=>{setActiveId(row.id);setPanelTab('products');setEditingItem(null)}}>
-                              {splitColumns.visible.map(cell)}
-                            </tr>
-                          })}
+                <div className="tracking-hub-table-wrap tracking-hub-table-wrap-v2 warehouse-unified-table-wrap">
+                  <table className="table tracking-hub-table tracking-hub-table-v2 warehouse-unified-table"
+                    aria-label={'Danh sách Nhập kho '+group.code}>
+                    <colgroup>{tableColumns.visible.map(col=><col key={col}
+                      style={{width:(TABLE_WEIGHTS[col]/widthTotal*100)+'%'}}/>)}</colgroup>
+                    <thead><tr>{tableColumns.visible.map(col=><th key={col}>
+                      <SortableHeader column={col} label={TABLE_LABELS[col]} sort={tableSort} onSort={tableSort.toggle}/>
+                      {col==='order'&&readyIds.length>0&&<input type="checkbox" checked={allReadySelected}
+                        onChange={()=>toggleAllReady(group.id,readyIds)} aria-label={'Chọn toàn bộ đơn chờ nhập '+group.code}/>}
+                    </th>)}</tr></thead>
+                    <tbody>{sorted.length
+                      ? sorted.map(row=><tr key={row.id} className={activeId===row.id?'active-row':''}
+                          onClick={()=>{setActiveId(row.id);setPanelTab('products');setEditingItem(null)}}>
+                          {tableColumns.visible.map(col=>cell(row,col))}
+                        </tr>)
+                      : <tr><td colSpan={tableColumns.visible.length} className="empty compact">Không có đơn phù hợp.</td></tr>}
                     </tbody>
                   </table>
                 </div>
-
-                <div className="warehouse-intake-section-head ready">
-                  <div>
-                    <b>Chờ nhập kho</b>
-                    <span>Đã bóc tách đủ SKU nhưng chưa ghi tăng tồn; bắt buộc xác nhận thủ công</span>
-                  </div>
-                  <strong>{readyRows.length}</strong>
-                </div>
-
-                
-
-                <div className="managed-table-toolbar warehouse-intake-managed-toolbar">
-                  <span className="managed-table-meta">Bảng chờ nhập kho · áp dụng mọi kho nhận</span>
-                  <ManagedColumnsMenu labels={READY_LABELS} manager={readyColumns}/>
-                </div>
-                <div className="tracking-hub-table-wrap tracking-hub-table-wrap-v2">
-                  <table className="table tracking-hub-table tracking-hub-table-v2 warehouse-ready-table">
-                    <thead><tr>
-                      <th className="select-col">
-                        <input type="checkbox" checked={allReadySelected} onChange={()=>toggleAllReady(group.id,readyIds)} disabled={!readyRows.length} aria-label={'Chọn toàn bộ đơn chờ nhập '+group.code}/>
-                      </th>
-                      {readyColumns.visible.map(col=><th key={col}><SortableHeader column={col} label={READY_LABELS[col]} sort={readySort} onSort={readySort.toggle}/></th>)}
-                    </tr></thead>
-                    <tbody>
-                      {!readySorted.length
-                        ? <tr><td colSpan={readyColumns.visible.length+1} className="empty compact">Chưa có đơn đã bóc tách chờ nhập kho.</td></tr>
-                        : readySorted.map(row=>{
-                            const stockQty=row.order_items.reduce((sum,item)=>sum+Number(item.quantity??0)*Number(item.inventory_multiplier??1),0)
-                            const cell=(col:ReadyCol)=>{
-                              if(col==='order')return <td key={col}><b className="table-link">{row.shopee_order_id??row.id.slice(0,8)}</b></td>
-                              if(col==='received')return <td key={col}>{formatDateTime(receivedAt(row))}</td>
-                              if(col==='product')return <td key={col}>{row.order_items.length} dòng SP</td>
-                              if(col==='qty')return <td key={col} className="warehouse-stock-qty">{stockQty}</td>
-                              if(col==='cod')return <td key={col} className="money">{formatMoney(row.cod)}</td>
-                              return <td key={col}><span className="status-pill green">Chờ xác nhận nhập</span></td>
-                            }
-                            return <tr key={row.id} className={activeId===row.id?'active-row':''} onClick={()=>{setActiveId(row.id);setPanelTab('products');setEditingItem(null)}}>
-                              <td className="select-col" onClick={event=>event.stopPropagation()}>
-                                <input type="checkbox" checked={selectedGroup===group.id&&selectedSet.has(row.id)} onChange={()=>toggleReady(group.id,row.id)} aria-label={'Chọn '+(row.shopee_order_id??row.id)}/>
-                              </td>
-                              {readyColumns.visible.map(cell)}
-                            </tr>
-                          })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {groupSelected>0&&<form action={receiveOrdersIntoWarehouse} className="warehouse-confirm-stock-bar">
-                  <div>
-                    <b>{groupSelected} đơn đã chọn · {group.code}</b>
-                    <span>Kho nhận đã khóa theo lần xác nhận nhận hàng. Không thể đổi kho ở bước này.</span>
-                  </div>
-                  {selected.map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
-                  <label>
-                    <span>Ghi chú nhập kho</span>
-                    <input name="note" placeholder="Không bắt buộc"/>
-                  </label>
-                  <button className="button primary small" type="submit">Xác nhận nhập kho</button>
+                {groupSelected>0&&<form action={previewOnly?undefined:receiveOrdersIntoWarehouse}
+                  onSubmit={previewOnly?event=>event.preventDefault():undefined}
+                  className="warehouse-confirm-stock-bar">
+                  <div><b>{groupSelected} đơn đã chọn · {group.code}</b>
+                    <span>Kho nhận dựa trên phiếu xác nhận thực tế. {previewOnly?'Preview chỉ xem, không ghi tồn kho.':'Nhập kho chỉ sau khi xác nhận.'}</span></div>
+                  {selected.filter(id=>readyIds.includes(id)).map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
+                  <label><span>Ghi chú nhập kho</span><input name="note" placeholder="Không bắt buộc"/></label>
+                  <button className="button primary small" type="submit" disabled={previewOnly}>Xác nhận nhập kho</button>
                   <button className="button small" type="button" onClick={()=>{setSelected([]);setSelectedGroup(null)}}>Bỏ chọn</button>
                 </form>}
               </>}
             </section>
           })}
     </section>
-
     {active&&<aside className="whx-detail-panel warehouse-intake-panel">
       <div className="whx-panel-head">
         <div>
@@ -364,22 +321,22 @@ export function WarehouseIntakeWorkspace({
               <span>Chọn thao tác nhanh cho đơn này.</span>
             </div>
             <div className="warehouse-quick-actions">
-              <form action={receiveOrdersIntoWarehouse}>
+              <form action={previewOnly?undefined:receiveOrdersIntoWarehouse} onSubmit={previewOnly?event=>event.preventDefault():undefined}>
                 <input type="hidden" name="order_ids" value={active.id}/>
                 <input type="hidden" name="note" value="Nhập kho nhanh sau khi xác nhận SKU"/>
-                <button className="button primary small" type="submit">Nhập kho</button>
+                <button className="button primary small" type="submit" disabled={previewOnly}>Nhập kho</button>
               </form>
               <form
-                action={skipWarehouseOrder}
+                action={previewOnly?undefined:skipWarehouseOrder}
                 onSubmit={event=>{
-                  if(!window.confirm('Bỏ qua kho cho đơn này? Đơn sẽ không ghi tăng tồn kho.')){
+                  if(previewOnly||!window.confirm('Bỏ qua kho cho đơn này? Đơn sẽ không ghi tăng tồn kho.')){
                     event.preventDefault()
                   }
                 }}
               >
                 <input type="hidden" name="order_id" value={active.id}/>
                 <input type="hidden" name="note" value="Bỏ qua kho sau khi xác nhận SKU"/>
-                <button className="button small warehouse-skip-button" type="submit">Bỏ qua kho</button>
+                <button className="button small warehouse-skip-button" type="submit" disabled={previewOnly}>Bỏ qua kho</button>
               </form>
             </div>
           </div>}
@@ -388,7 +345,7 @@ export function WarehouseIntakeWorkspace({
             const mapped=Boolean(item.product_variant_id&&item.product_variants)
             const suggestion=suggestions[item.id]
             const stockQty=Number(item.quantity??0)*Number(item.inventory_multiplier??1)
-            const editable=!activeComplete&&(editingItem===item.id||!mapped)
+            const editable=!activeDone&&!activeComplete&&(editingItem===item.id||!mapped)
 
             return <div className={'whx-item-card '+(mapped?'mapped':'unmapped')} key={item.id}>
               <div className="whx-item-source">
@@ -421,7 +378,7 @@ export function WarehouseIntakeWorkspace({
                   <i>Chỉ gợi ý · chưa lưu</i>
                 </div>}
 
-                <form action={mapWarehouseOrderItem} className="whx-map-form">
+                <form action={previewOnly?undefined:mapWarehouseOrderItem} onSubmit={previewOnly?event=>event.preventDefault():undefined} className="whx-map-form">
                   <input type="hidden" name="item_id" value={item.id}/>
                   <label className="full">
                     <span>SKU tồn kho</span>
@@ -457,7 +414,7 @@ export function WarehouseIntakeWorkspace({
                   </label>
                   <div className="whx-map-actions">
                     <span>Chọn gợi ý không tự nhập kho. Bấm lưu để xác nhận bóc tách.</span>
-                    <button className="button primary small" type="submit">Lưu bóc tách</button>
+                    <button className="button primary small" type="submit" disabled={previewOnly}>Lưu bóc tách</button>
                   </div>
                 </form>
               </>}
@@ -471,7 +428,7 @@ export function WarehouseIntakeWorkspace({
           <div><span>Ngày nhận</span><b>{formatDateTime(receivedAt(active))}</b></div>
           <div><span>COD</span><b>{formatMoney(active.cod)}</b></div>
           <div><span>Số dòng SP</span><b>{active.order_items.length}</b></div>
-          <div><span>Trạng thái</span><b>{activeComplete?'Chờ nhập kho':'Chờ bóc tách'}</b></div>
+          <div><span>Trạng thái</span><b>{phaseLabel(active)}</b></div>
         </div>}
 
         {panelTab==='history'&&<div className="whx-history-list">
