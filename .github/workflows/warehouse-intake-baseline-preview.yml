@@ -41,6 +41,11 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Warehouse date, KPI, table and Preview safety contracts
         run: node scripts/warehouse-intake-preview-contract-qa.mjs
+      - name: Cross-module Warehouse / Returned / Notifications regression
+        run: |
+          node scripts/remediation-static-qa.mjs
+          node --experimental-strip-types scripts/returned-shipment-cancellation-qa.mjs
+          node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
       - name: TypeScript
         run: npm run typecheck
       - name: Install isolated browser fixture QA dependencies
