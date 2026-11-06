@@ -4,6 +4,7 @@ import { WarehouseIntakeWorkspace } from '@/components/warehouse-intake-workspac
 import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
 import '@/app/styles/warehouse-intake-preview.css'
+import '@/app/styles/warehouse-intake-detail-preview.css'
 
 function suggestionKey(item: { sku?: string | null; product_name?: string | null; variant?: string | null }) {
   return [
