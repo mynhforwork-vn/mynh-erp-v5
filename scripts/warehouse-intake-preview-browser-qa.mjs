@@ -48,13 +48,14 @@ const css=cssFiles.map(file=>readFileSync(path.join(root,'app/styles',file),'utf
 const harnessCss=[
   'html,body{margin:0;padding:0;max-width:100%;background:#f5f8fb;font-family:Arial,sans-serif}',
   '#root{box-sizing:border-box;max-width:100%;min-width:0}',
+  '.shell.brand-shell-v1{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;min-height:100dvh}',
   '.fixture-app{box-sizing:border-box;width:calc(100% - 245px);height:calc(100dvh - 24px);margin-left:245px;padding:9px 14px;min-width:0;display:flex;flex-direction:column}',
   '.fixture-command{display:flex;gap:6px;flex:0 0 auto;min-height:34px}',
   '.fixture-command button{border:1px solid #cbd8e3;background:white;border-radius:5px;padding:5px 10px}',
   '.fixture-app .warehouse-intake-preview-layout{flex:1;min-height:0}',
   '@media(max-width:900px){.fixture-app{margin-left:0;width:100%;padding:7px;height:calc(100dvh - 16px)}}',
 ].join('\n')
-const html='<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'\n'+harnessCss+'</style></head><body class="brand-shell-v1"><div id="root" class="tracking-screen-v2 whx-page warehouse-receive-screen"></div><script>'+readFileSync(outfile,'utf8')+'</script></body></html>'
+const html='<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'\n'+harnessCss+'</style></head><body><div class="shell brand-shell-v1"><div id="root" class="tracking-screen-v2 whx-page warehouse-receive-screen"></div></div><script>'+readFileSync(outfile,'utf8')+'</script></body></html>'
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BIN, args:['--no-sandbox']})
 try {
   for(const [width,height] of [[320,568],[360,800],[390,844],[414,896],[568,320],[768,1024],[820,1180],[1024,768],[1180,820],[1280,800],[1366,768],[1440,900],[1536,864],[1920,1080]]){
@@ -106,7 +107,27 @@ try {
         products:tables.map(t=>t.querySelectorAll('.warehouse-unified-products>div').length),
         widths:wraps.map(e=>({client:e.clientWidth,scroll:e.scrollWidth,table:e.querySelector('table')?.getBoundingClientRect().width})),
         pageOverflow:document.documentElement.scrollWidth-window.innerWidth,
+        actualShell:document.body.classList.contains('brand-shell-v1')===false &&
+          !!document.querySelector('.shell.brand-shell-v1 .warehouse-receive-screen'),
+        computedGap:getComputedStyle(document.querySelector('.warehouse-intake-preview-layout')).columnGap,
         laneRight:lane?.getBoundingClientRect().right,
+        groupRights:[...document.querySelectorAll('.warehouse-unified-group')].map(e=>e.getBoundingClientRect().right),
+        pills:[...document.querySelectorAll('.warehouse-unified-table td[data-col="status"] .status-pill')].map(el=>({
+          label:el.textContent?.trim(),
+          width:el.clientWidth,
+          actual:el.scrollWidth,
+          right:el.getBoundingClientRect().right
+        })),
+        statusHeaders:tables.map(t=>{
+          const th=t.tHead?.rows[0]?.cells[t.tHead.rows[0].cells.length-1]
+          const button=th?.querySelector('button')
+          return {
+            text:th?.textContent?.trim(),
+            displayed:th?.clientWidth,
+            needed:button?.scrollWidth,
+            right:th?.getBoundingClientRect().right
+          }
+        }),
         panelLeft:panel?.getBoundingClientRect().left,
         panelRight:panel?.getBoundingClientRect().right,
         readOnlySubmit:[...document.querySelectorAll('.warehouse-intake-panel button[type="submit"]')].every(b=>b.disabled),
@@ -124,6 +145,7 @@ try {
     assert.ok(list.productLines.every(x=>x.whiteSpace==='nowrap' && x.height<=x.lineHeight+3),
       'product text wrapped to multiple lines '+width+' '+JSON.stringify(list.productLines))
     assert.ok(list.productLines.every(x=>x.nameOverflow==='ellipsis'),'long name must use ellipsis '+width)
+    assert.ok(list.actualShell,'Fixture does not reproduce actual ERP .shell.brand-shell-v1 wrapper '+width)
     assert.ok(list.widths.every(x=>Math.abs(x.table-x.client)<=3 && x.scroll<=x.client+3),
       'table must exactly auto-fit without horizontal scroll '+width+' '+JSON.stringify(list))
     assert.ok(list.laneOverflow<=3,'lane has horizontal overflow '+width+' '+JSON.stringify(list))
@@ -139,10 +161,20 @@ try {
       'Auto Fit leaves unused blank space at table edges '+width+' '+JSON.stringify(list.tableGeometry))
     if(width>900&&list.panelLeft!==undefined&&list.panelLeft!==null) {
       assert.ok(list.panelLeft-list.laneRight>=25,'desktop panel gap must be larger '+width+' '+JSON.stringify(list))
+      assert.ok(list.groupRights.every(right=>right<=list.laneRight+2),
+        'warehouse card extends beyond available table lane '+width+' '+JSON.stringify(list))
+      assert.ok(list.groupRights.every(right=>list.panelLeft-right>=24),
+        'table card intrudes into required visual gap before slidebar '+width+' '+JSON.stringify(list))
       assert.ok(list.panelRight<=width+3,'panel escapes viewport '+width+' '+JSON.stringify(list))
     } else if(width<=900){
       assert.ok(list.laneWidth>=width-30,'mobile/tablet list must own the screen under the overlay '+width+' '+JSON.stringify(list))
       assert.ok(list.panelLeft>=-2&&list.panelRight<=width+2,'mobile/tablet panel escapes viewport '+width+' '+JSON.stringify(list))
+    }
+    if(list.laneWidth>=700){
+      assert.ok(list.statusHeaders.every(h=>h.needed<=h.displayed+2 && h.right<=list.laneRight+2),
+        'last column heading hidden or clipped behind the slidebar '+width+' '+JSON.stringify(list.statusHeaders))
+      assert.ok(list.pills.every(p=>p.actual<=p.width+2 && p.right<=list.laneRight+2),
+        'status values clipped at the right edge '+width+' '+JSON.stringify(list.pills))
     }
     await page.screenshot({path:path.join(output,width+'-'+height+'-open.png')})
     await page.locator('aside.warehouse-intake-panel .close').click()
