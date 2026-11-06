@@ -55,7 +55,7 @@ jobs:
             -v ON_ERROR_STOP=1 \
             -f scripts/warehouse-item-level-db-fixture.sql \
             -f supabase/migrations/0075_item_level_warehouse_decisions.sql \
-            -f scripts/warehouse-item-level-db-qa.sql | tee warehouse-db-qa.log
-          grep -q 'PASS' warehouse-db-qa.log || test "${PIPESTATUS[0]}" = "0"
+            -f scripts/warehouse-item-level-db-qa.sql 2>&1 | tee warehouse-db-qa.log
+          grep -q 'PASS: 0075 persistence, mixed, skip, duplicate, aggregation, audit, permissions' warehouse-db-qa.log
       - name: Verify no migration was applied to Production
         run: echo "PASS — disposable GitHub Actions PostgreSQL only; NO Supabase Production writes"
