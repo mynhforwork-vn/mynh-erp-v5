@@ -398,11 +398,11 @@ export function WarehouseIntakeDetailPreview({
           {!order.order_items.length
             ?<div className="empty compact">Đơn chưa có sản phẩm.</div>
             :order.order_items.map(item=><div key={item.id}>
-                <button type="button" className="warehouse-detail-v2-product-link"
+                <span><button type="button" className="warehouse-detail-v2-product-link"
                   onClick={()=>{focus(item);setTab('products')}} aria-label={'Bóc tách '+item.product_name}>
                   <b title={item.product_name}>{item.product_name}</b>
                   <small>{[item.sku,item.variant].filter(Boolean).join(' · ')||'Không SKU'}</small>
-                </button>
+                </button></span>
                 <span>×{item.quantity}</span>
                 <strong>{displayMoney(item.final_price??item.original_price)}</strong>
               </div>)}
