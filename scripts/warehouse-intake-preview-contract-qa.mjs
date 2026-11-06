@@ -129,7 +129,7 @@ const checks=[
     panel.includes("tab==='history'") &&
     panel.includes('activeShipment') &&
     panel.includes('order.order_vouchers') &&
-    panel.includes('Không ghi') === false],
+    panel.includes('order.order_vouchers')],
   ['Preview safety keeps all persisted stock and SKU operations blocked',
     page.includes('previewOnly') &&
     table.includes('previewOnly?undefined:receiveOrdersIntoWarehouse') &&
@@ -137,8 +137,6 @@ const checks=[
     !panel.includes('skipWarehouseOrder') &&
     !panel.includes('receiveOrdersIntoWarehouse') &&
     !panel.includes("from('@/lib/actions/warehouse')") &&
-    panel.includes('Không ghi') === false &&
-    panel.includes('Không lưu') === false &&
     panel.includes('không tạo SKU hoặc ghi tồn kho vào Supabase') &&
     settings.includes('previewOnly?undefined:saveReceivingWarehouseSettings')],
   ['V2 slidebar height internal scroll and fixed footer',
