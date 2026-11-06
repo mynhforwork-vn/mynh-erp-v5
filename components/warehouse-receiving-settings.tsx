@@ -13,13 +13,16 @@ type Warehouse={
 export function WarehouseReceivingSettings({
   warehouses,
   defaultReceivingWarehouseId,
+  previewOnly=false,
 }:{
   warehouses:Warehouse[]
   defaultReceivingWarehouseId?:string|null
+  previewOnly?:boolean
 }){
   const [open,setOpen]=useState(false)
   const wrapRef=useRef<HTMLDivElement|null>(null)
   const active=warehouses.find(w=>w.id===defaultReceivingWarehouseId)??null
+
 
   useEffect(()=>{
     if(!open)return
@@ -38,30 +41,23 @@ export function WarehouseReceivingSettings({
     }
   },[open])
 
-  return <div className="whx-settings-wrap" ref={wrapRef}>
-    <button
-      type="button"
-      className={'button '+(open?'active':'')}
-      onClick={()=>setOpen(value=>!value)}
-      aria-expanded={open}
-    >
-      Cài đặt Kho nhận
-    </button>
-
-    {open&&<div className="whx-settings-popover">
+  const settingsContent = <>
       <div className="whx-settings-head">
         <div>
           <span className="module-eyebrow">CẤU HÌNH KHO</span>
           <b>Kho nhận hàng mặc định</b>
           <small>Kho được chọn sẵn khi bóc tách nhập kho và các thao tác tồn.</small>
         </div>
-        <button type="button" onClick={()=>setOpen(false)} aria-label="Đóng">×</button>
+        <button type="button" onClick={()=>setOpen(false)} aria-label="Đóng cài đặt Kho nhận">×</button>
       </div>
 
-      <form action={saveReceivingWarehouseSettings}>
+      <form action={previewOnly ? undefined : saveReceivingWarehouseSettings}>
+        {previewOnly&&<div className="whx-settings-preview-readonly" role="status">
+          Preview chỉ xem cấu hình thực tế. Lưu thay đổi kho mặc định được khóa để không ghi vào Production.
+        </div>}
         <label>
           <span>Kho nhận mặc định</span>
-          <select name="default_receiving_warehouse_id" required defaultValue={defaultReceivingWarehouseId??''}>
+          <select name="default_receiving_warehouse_id" required defaultValue={defaultReceivingWarehouseId??''} disabled={previewOnly}>
             <option value="" disabled>Chọn kho nhận</option>
             {warehouses.map(warehouse=><option value={warehouse.id} key={warehouse.id}>
               {warehouse.code} · {warehouse.address||warehouse.name}
@@ -92,10 +88,22 @@ export function WarehouseReceivingSettings({
         </div>
 
         <div className="whx-settings-actions">
-          <button className="button small" type="button" onClick={()=>setOpen(false)}>Hủy</button>
-          <button className="button primary small" type="submit">Lưu cấu hình</button>
+          <button className="button small" type="button" onClick={()=>setOpen(false)}>Đóng</button>
+          <button className="button primary small" type="submit" disabled={previewOnly}>{previewOnly?'Chỉ xem Preview':'Lưu cấu hình'}</button>
         </div>
       </form>
-    </div>}
+    </>
+
+  return <div className="whx-settings-wrap" ref={wrapRef}>
+    <button
+      type="button"
+      className={'button '+(open?'active':'')}
+      onClick={()=>setOpen(value=>!value)}
+      aria-expanded={open}
+    >
+      Cài đặt Kho nhận
+    </button>
+
+    {open && <div className="whx-settings-popover" role="dialog" aria-label="Cài đặt Kho nhận">{settingsContent}</div>}
   </div>
 }

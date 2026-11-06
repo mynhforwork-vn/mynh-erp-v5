@@ -1,0 +1,657 @@
+/* Bóc tách — bản thiết kế lại dựa trên contract bảng/slidebar hiện có của ERP.
+ * Chỉ các quy tắc bên trong .wh-native; không ghi đè CSS global.
+ */
+.wh-native{min-width:0;min-height:0;display:flex;flex-direction:column;flex:1 1 auto;gap:7px}
+.wh-native *{box-sizing:border-box}
+.wh-native-filters{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;flex:0 0 auto;min-width:0}
+.wh-native-warehouse-tabs,.wh-native-phase-tabs{display:flex;align-items:center;gap:5px;min-width:0;flex-wrap:wrap}
+.wh-native-warehouse-tabs button,.wh-native-phase-tabs button{border:1px solid #e1e8ed;background:#fff;border-radius:5px;color:#5d7083;min-height:30px;padding:6px 9px;font-size:10.5px;line-height:1.3;cursor:pointer}
+.wh-native-warehouse-tabs button.active,.wh-native-phase-tabs button.active{background:#eef6fc;border-color:#bad2e6;color:#245e8a;font-weight:700}
+.wh-native-warehouse-tabs button b{margin-left:4px;font-size:10px;font-variant-numeric:tabular-nums}
+.wh-native-workspace{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);gap:var(--mynh-panel-gap,8px);align-items:stretch;overflow:hidden}
+.wh-native-list{min-width:0;min-height:0;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.wh-native-table-toolbar{flex:0 0 auto;display:flex;align-items:center;gap:7px;min-height:38px;padding:3px 4px}
+.wh-native-table-toolbar .managed-table-meta{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:auto;font-size:10px;color:#657b8b}
+.wh-native-table-toolbar .managed-table-meta b{font-size:11px;color:#294c64}
+.wh-native-search{display:flex;align-items:center;gap:4px;flex:0 1 250px;min-width:150px}
+.wh-native-search input{min-width:0;width:100%;min-height:29px;border:1px solid #dce5ed;border-radius:5px;background:#fff;padding:6px 8px;font-size:10.5px;color:#304c61}
+.wh-native-search button{flex:0 0 28px;width:28px;height:29px;background:#fff;color:#667b89;border:1px solid #dce5ed;border-radius:5px;cursor:pointer;font-size:15px}
+.wh-native-table-toolbar .managed-column-wrap{position:relative;flex:0 0 auto}
+.wh-native-table-toolbar .managed-column-button{white-space:nowrap}
+.wh-native-table-wrap{flex:1 1 auto;min-height:0;overflow:auto!important;border:1px solid #e2e9ee;background:#fff;scrollbar-width:thin;overscroll-behavior:contain}
+.wh-native-table{width:100%;border-collapse:separate;border-spacing:0;table-layout:auto}
+.wh-native-table th{position:sticky;top:0;z-index:3;white-space:nowrap;background:#f6f9fb;border-bottom:1px solid #dfe8ed;font-size:10px;font-weight:680}
+.wh-native-table td{font-size:10.7px;color:#35556c;padding:8px 9px!important;white-space:nowrap;max-width:230px}
+.wh-native-table .tracking-order-id{max-width:220px}
+.wh-native-order-link{border:0;background:transparent;padding:0;color:#176798;cursor:pointer;white-space:nowrap;font-size:11px}
+.wh-native-order-link:hover{text-decoration:underline}
+.wh-native-panel{height:100%;max-height:100%;min-height:0;overflow:hidden}
+.wh-native-panel-content{display:flex;flex-direction:column;gap:8px;min-width:0}
+.wh-native-progress{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;font-size:10.3px;color:#758595}
+.wh-native-progress b{font-size:11px;color:#35566f}
+.wh-native-item-list{display:flex;flex-direction:column;gap:3px}
+.wh-native-item-list button{min-width:0;display:flex;align-items:center;justify-content:space-between;text-align:left;gap:7px;cursor:pointer;padding:8px 7px;background:#fff;border:1px solid #e6ecf0;border-radius:4px}
+.wh-native-item-list button.active{border-color:#b4cfe2;background:#f3f8fc}
+.wh-native-item-list button>span:first-child{min-width:0;display:flex;flex-direction:column;gap:3px}
+.wh-native-item-list b{font-size:10.8px;color:#345369;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wh-native-item-list small{font-size:9.5px;color:#7b8b99}
+.wh-native-item-status{font-size:9.5px;color:#5b7790;white-space:nowrap}
+.wh-native-editor{border-top:1px solid #e8edf1;padding-top:10px;display:flex;flex-direction:column;gap:9px}
+.wh-native-editor .panel-section-head{margin:5px 0 0;min-height:23px;padding:0;border:0}
+.wh-native-editor .panel-section-head h3{font-size:11.5px;margin:0;color:#35566e}
+.wh-native-price-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid #e6edf2;border-radius:5px;overflow:hidden}
+.wh-native-price-row>div{display:flex;flex-direction:column;gap:5px;min-width:0;padding:9px 7px;background:#f8fafb;border-right:1px solid #e6edf2}
+.wh-native-price-row>div:last-child{border-right:0}
+.wh-native-price-row span{font-size:9px;color:#6f8293}
+.wh-native-price-row b{font-size:11px;color:#294f6a;overflow-wrap:anywhere}
+.wh-native-source-note{font-size:9.8px;color:#748798}
+.wh-native-switch{display:flex;gap:5px;flex-wrap:wrap}
+.wh-native-switch button{border:1px solid #dce7ee;border-radius:5px;background:#fff;color:#546c7f;padding:7px 9px;font-size:10.5px;cursor:pointer}
+.wh-native-switch button.active{border-color:#a9cbe2;background:#eef7fc;color:#265f8c;font-weight:720}
+.wh-native-field{display:flex;flex-direction:column;gap:4px;min-width:0;color:#64798b;font-size:10px;font-weight:650}
+.wh-native-field input,.wh-native-field select,.wh-native-field textarea{width:100%;min-width:0;min-height:31px;padding:7px 9px;border:1px solid #dbe6ee;border-radius:5px;background:#fff;color:#314e63;font-size:11px}
+.wh-native-field textarea{resize:vertical;min-height:58px}
+.wh-native-field-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.wh-native-conversion{display:flex;justify-content:space-between;align-items:center;gap:6px;border-top:1px solid #e9eef2;border-bottom:1px solid #e9eef2;padding:7px 2px;color:#597283;font-size:10.5px}
+.wh-native-conversion b{font-size:12px;color:#2e627f}
+.wh-native-design-action{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:3px}
+.wh-native-design-action small{font-size:9.5px;color:#8b7480}
+.wh-native-notice{padding:8px 9px;background:#f4f9fc;border-left:2px solid #9dbdd4;color:#41637c;font-size:10.5px;line-height:1.45}
+.wh-native-info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border-top:1px solid #e7edf2;border-left:1px solid #e7edf2}
+.wh-native-info-grid>div{display:flex;flex-direction:column;gap:5px;padding:8px 9px;border-right:1px solid #e7edf2;border-bottom:1px solid #e7edf2;min-width:0}
+.wh-native-info-grid span,.wh-native-info-line span{font-size:9.5px;color:#708596}
+.wh-native-info-grid b,.wh-native-info-line b{font-size:10.8px;color:#355469;overflow-wrap:anywhere;font-weight:670}
+.wh-native-info-grid .full{grid-column:1/-1}
+.wh-native-info-line{display:flex;flex-direction:column;gap:5px;border-bottom:1px solid #e9eef1;padding:7px 3px}
+.wh-native-vouchers,.wh-native-info-items{display:flex;flex-direction:column;gap:4px}
+.wh-native-vouchers>div,.wh-native-info-items button{border:1px solid #e9eef2;border-radius:4px;padding:8px 9px;background:#fff}
+.wh-native-vouchers b,.wh-native-info-items b{font-size:10.5px;color:#31546c}
+.wh-native-vouchers span,.wh-native-info-items span{font-size:9.5px;color:#6e8494}
+.wh-native-vouchers>div,.wh-native-info-items button{display:flex;flex-direction:column;gap:3px}
+.wh-native-info-items button{text-align:left;cursor:pointer}
+@media(min-width:901px){
+  .brand-shell-v1 .wh-native-workspace.with-panel{grid-template-columns:minmax(0,1fr) var(--mynh-panel-width,400px)!important}
+  .brand-shell-v1 .wh-native-workspace.with-panel>.wh-native-panel.mynh-slide-panel{
+    position:relative!important;inset:auto!important;min-height:0!important;height:100%!important;max-height:100%!important;
+  }
+}
+@media(max-width:900px){
+  .wh-native-workspace{min-height:360px;overflow:visible}
+  .wh-native-list{min-height:350px}
+  .brand-shell-v1 .wh-native-workspace.with-panel{grid-template-columns:minmax(0,1fr)!important}
+}
+@media(max-width:650px){
+  .wh-native-filters{align-items:stretch;flex-direction:column}
+  .wh-native-warehouse-tabs,.wh-native-phase-tabs{flex-wrap:nowrap;overflow-x:auto;max-width:100%;padding-bottom:3px}
+  .wh-native-warehouse-tabs button,.wh-native-phase-tabs button{white-space:nowrap;flex:0 0 auto}
+  .wh-native-table-toolbar{flex-wrap:wrap;gap:5px}
+  .wh-native-table-toolbar .managed-table-meta{flex:0 0 100%}
+  .wh-native-search{flex:1 1 150px}
+  .wh-native-workspace{min-height:410px}
+}
+@media(max-width:355px){.wh-native-price-row{grid-template-columns:1fr}.wh-native-price-row>div{border-right:0;border-bottom:1px solid #e6edf2}.wh-native-price-row>div:last-child{border-bottom:0}.wh-native-field-pair{grid-template-columns:1fr}}
+
+
+/* Warehouse BG/HN lane markers live inside the scrolled table. */
+.wh-native .wh-native-warehouse-separator td{
+  position:relative;
+  background:#edf3f8!important;
+  color:#2a5572!important;
+  padding:6px 10px!important;
+  font-size:10px;
+  font-weight:750;
+  letter-spacing:.015em;
+  white-space:nowrap!important;
+  border-top:1px solid #d4e1eb;
+  border-bottom:1px solid #dfe8ef;
+}
+.wh-native .wh-native-warehouse-separator td span{
+  margin-left:8px;
+  color:#738a9c;
+  font-size:9.5px;
+  font-weight:500;
+  letter-spacing:normal;
+}
+/* Auto-fit V4: every displayed column remains present in every layout.
+   JS computes pixel widths using ResizeObserver and the actual list width.
+   When one/two slidebars leave insufficient space, ONLY the table scrolls
+   horizontally; no automatic reduction from seven to four/two columns. */
+.wh-native .wh-native-workspace,
+.wh-native .wh-native-list,
+.wh-native .wh-native-table-wrap{
+  box-sizing:border-box!important;
+  min-width:0!important;
+  max-width:100%!important;
+}
+.wh-native .wh-native-list{
+  flex:1 1 0%!important;
+  width:100%!important;
+  overflow:hidden!important;
+}
+.wh-native .wh-native-table-wrap{
+  width:100%!important;
+  min-height:0!important;
+  overflow-x:auto!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+}
+.wh-native .wh-native-table{
+  display:table!important;
+  width:var(--wh-table-width,100%)!important;
+  min-width:var(--wh-table-width,100%)!important;
+  max-width:none!important;
+  table-layout:fixed!important;
+  border-collapse:separate;
+  border-spacing:0;
+}
+.wh-native .wh-native-table th,
+.wh-native .wh-native-table td{
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis;
+  white-space:nowrap!important;
+  vertical-align:middle;
+  border-right:0!important;
+}
+.wh-native .wh-native-table th{
+  position:sticky!important;
+  top:0;
+  z-index:3;
+}
+.wh-native .wh-native-table th .managed-sort-head{
+  display:flex;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  align-items:center;
+  justify-content:space-between;
+  gap:3px;
+  overflow:hidden;
+  white-space:nowrap;
+}
+.wh-native .wh-native-table th .managed-sort-head span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.wh-native .wh-native-table th .managed-sort-head i{flex:0 0 auto}
+.wh-native .wh-native-table .status-pill,
+.wh-native .wh-native-table .wh-native-order-link{
+  display:inline-flex;
+  align-items:center;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap!important;
+}
+.wh-native .wh-native-table .wh-native-order-link{
+  font-size:11px;
+  font-weight:690;
+}
+.wh-native .wh-native-product-lines{
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:3px;
+  min-width:0;
+  max-width:100%;
+  width:100%;
+  overflow:hidden;
+}
+.wh-native .wh-native-product-lines .wh-native-product-line{
+  display:block!important;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  overflow:hidden!important;
+  white-space:nowrap!important;
+  text-overflow:ellipsis!important;
+  font-size:10.7px;
+  line-height:1.5;
+  font-weight:400!important;
+  color:#385569;
+  word-break:normal;
+  overflow-wrap:normal;
+  -webkit-line-clamp:unset!important;
+}
+.wh-native .wh-native-product-cell .wh-native-product-lines{
+  min-width:0!important;
+  max-width:100%!important;
+}
+.wh-native .wh-native-table td.money{
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.wh-native .wh-native-item-list .wh-native-item-name,
+.wh-native .wh-native-info-item-name{
+  display:block;
+  max-width:100%;
+  min-width:0;
+  font-size:10.7px;
+  font-weight:400!important;
+  color:#345369;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.whx-settings-preview-readonly{
+  margin:8px 0 10px;
+  padding:8px 10px;
+  border-left:2px solid #9bbbd3;
+  background:#f3f8fc;
+  color:#526b80;
+  font-size:10.5px;
+  line-height:1.5;
+}
+@media(min-width:901px){
+  .brand-shell-v1 .wh-native-workspace.with-panel:has(> aside.mynh-slide-panel:nth-of-type(2)){
+    grid-template-columns:minmax(0,1fr) repeat(2,minmax(0,clamp(220px,21vw,320px)))!important;
+    column-gap:14px!important;
+  }
+  /* The ERP's global .warehouse-intake-panel rule assigns column 2 to every
+     panel. Explicit tracks prevent a second slidebar from overlaying the first. */
+  .brand-shell-v1 .wh-native-workspace.with-panel:has(> aside.mynh-slide-panel:nth-of-type(2))>aside.mynh-slide-panel:nth-of-type(1){
+    grid-column:2!important;
+    grid-row:1!important;
+  }
+  .brand-shell-v1 .wh-native-workspace.with-panel:has(> aside.mynh-slide-panel:nth-of-type(2))>aside.mynh-slide-panel:nth-of-type(2){
+    grid-column:3!important;
+    grid-row:1!important;
+  }
+  .brand-shell-v1 .wh-native-workspace.with-panel:has(> aside.mynh-slide-panel:nth-of-type(2))>aside.mynh-slide-panel{
+    position:relative!important;
+    inset:auto!important;
+    min-width:0!important;
+    width:100%!important;
+    max-width:100%!important;
+    height:100%!important;
+    max-height:100%!important;
+  }
+}
+
+/* Kho nhận follows the Shipping Alert HUB cards: accordion header + inline
+   operational counters + own table. The outer lane owns vertical scrolling. */
+.wh-native .wh-native-warehouse-hint{
+  font-size:10px;
+  color:#73899b;
+  white-space:nowrap;
+}
+.wh-native .wh-native-warehouse-stack{
+  display:flex;
+  flex:1 1 0%;
+  flex-direction:column;
+  gap:7px;
+  min-height:0!important;
+  min-width:0!important;
+  width:100%!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+}
+.wh-native .wh-native-warehouse-card{
+  flex:0 0 auto!important;
+  min-width:0!important;
+  width:100%!important;
+  max-width:100%!important;
+  container-type:inline-size;
+  border-radius:5px!important;
+  overflow:hidden!important;
+  box-shadow:none!important;
+}
+.wh-native .wh-native-warehouse-card .wh-native-warehouse-head{
+  display:grid!important;
+  grid-template-columns:24px minmax(132px,.68fr) minmax(0,2fr)!important;
+  align-items:center!important;
+  min-width:0;
+  width:100%;
+  padding:4px 7px 4px 3px;
+  column-gap:7px;
+  row-gap:5px;
+}
+.wh-native .wh-native-warehouse-head .tracking-hub-identity{
+  min-width:0;
+}
+.wh-native .wh-native-warehouse-head .tracking-hub-identity>div{
+  overflow:hidden;
+}
+.wh-native .wh-native-warehouse-head .tracking-hub-identity small{
+  font-size:9px;
+  line-height:1.45;
+}
+.wh-native .wh-native-warehouse-head .tracking-hub-toggle{
+  width:24px;
+  height:28px;
+}
+.wh-native .wh-native-warehouse-head .wh-native-warehouse-metrics{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  justify-content:flex-end;
+  align-content:center;
+  gap:4px;
+  max-width:100%;
+  min-width:0;
+  overflow:visible!important;
+}
+.wh-native .wh-native-warehouse-head .wh-native-warehouse-metrics>span{
+  flex:0 0 auto;
+  font-size:9px;
+  white-space:nowrap;
+  min-height:24px;
+}
+.wh-native .wh-native-warehouse-head .wh-native-warehouse-metrics>span.money{
+  margin-left:0;
+}
+.wh-native .wh-native-warehouse-card .wh-native-table-wrap{
+  display:block!important;
+  flex:0 0 auto!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:min(58dvh,660px)!important;
+  overflow:auto!important;
+  scrollbar-width:thin;
+}
+.wh-native .wh-native-warehouse-card .wh-native-table{
+  width:var(--wh-table-width,100%)!important;
+  min-width:var(--wh-table-width,100%)!important;
+  max-width:none!important;
+  table-layout:fixed!important;
+}
+.wh-native .wh-native-warehouse-card.collapsed .wh-native-warehouse-head{
+  border-bottom:0!important;
+}
+@container (max-width:790px){
+  .wh-native .wh-native-warehouse-card .wh-native-warehouse-head{
+    grid-template-columns:24px minmax(0,1fr)!important;
+  }
+  .wh-native .wh-native-warehouse-card .wh-native-warehouse-metrics{
+    grid-column:2 / -1!important;
+    justify-content:flex-start!important;
+  }
+}
+@container (max-width:390px){
+  .wh-native .wh-native-warehouse-card .wh-native-warehouse-metrics{
+    gap:3px!important;
+  }
+  .wh-native .wh-native-warehouse-card .wh-native-warehouse-metrics>span{
+    font-size:8.5px!important;
+    min-height:22px!important;
+    padding:0 4px!important;
+  }
+}
+@media(max-width:650px){
+  .wh-native .wh-native-warehouse-hint{
+    white-space:normal;
+    line-height:1.4;
+  }
+}
+
+
+/* Four KPI cards: one aggregate plus exactly three business statuses.
+   The aggregate is not a fourth workflow state. */
+.brand-shell-v1 .warehouse-command-center .tracking-status-strip-v2.wh-native-status-kpis{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+}
+.brand-shell-v1 .warehouse-command-center .wh-native-status-kpis .tracking-status-metric{
+  min-width:0;
+}
+@media(max-width:650px){
+  .brand-shell-v1 .warehouse-command-center .tracking-status-strip-v2.wh-native-status-kpis{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .brand-shell-v1 .warehouse-command-center .wh-native-status-kpis .tracking-status-metric{
+    padding:7px 6px;
+    gap:2px 4px;
+  }
+  .brand-shell-v1 .warehouse-command-center .wh-native-status-kpis .tracking-status-metric>span{
+    font-size:9.5px;
+    line-height:1.35;
+  }
+}
+
+
+/* Compact operational density without hiding or merging table columns. */
+.brand-shell-v1 .wh-native-workspace{
+  --mynh-panel-gap:14px;
+  column-gap:14px!important;
+  padding:0!important;
+}
+.brand-shell-v1 .wh-native-workspace>.wh-native-list{
+  margin:0!important;
+  padding:0!important;
+  gap:4px!important;
+  min-width:0!important;
+}
+.brand-shell-v1 .wh-native-workspace>.wh-native-panel{
+  margin:0!important;
+  min-width:0!important;
+}
+.wh-native .wh-native-warehouse-stack{gap:5px!important}
+.wh-native .wh-native-table-toolbar{min-height:33px;gap:5px;padding:2px 3px}
+.wh-native .wh-native-table-toolbar .managed-table-meta{font-size:9px}
+.wh-native .wh-native-table th{
+  font-size:9.1px!important;
+  line-height:1.25!important;
+  padding:6px 5px!important;
+}
+.wh-native .wh-native-table td{
+  font-size:9.5px!important;
+  line-height:1.28!important;
+  padding:5px 6px!important;
+}
+.wh-native .wh-native-table .wh-native-order-link{
+  font-size:9.9px!important;
+}
+.wh-native .wh-native-product-lines{
+  gap:2px!important;
+}
+.wh-native .wh-native-product-lines .wh-native-product-line{
+  font-size:9.4px!important;
+  line-height:1.25!important;
+  font-weight:400!important;
+  white-space:nowrap!important;
+  text-overflow:ellipsis!important;
+}
+.wh-native .wh-native-warehouse-head .wh-native-warehouse-metrics>span{
+  font-size:8.6px!important;
+  min-height:22px!important;
+}
+.wh-native .wh-native-warehouse-head .tracking-hub-identity b{font-size:10px}
+.wh-native .wh-native-panel .whx-panel-head{
+  padding:8px 9px 7px!important;
+}
+.wh-native .wh-native-panel .whx-panel-scroll{
+  padding:7px 9px!important;
+}
+.wh-native .wh-native-item-list button{
+  padding:6px 7px!important;
+}
+.wh-native .wh-native-field input,
+.wh-native .wh-native-field select,
+.wh-native .wh-native-field textarea{
+  font-size:10px!important;
+}
+.wh-native-existing-sku{display:flex;flex-direction:column;gap:7px;min-width:0}
+.wh-native-sku-suggestion{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:5px 8px;
+  min-width:0;
+  background:#f5f9fc;
+  border-left:2px solid #94bad4;
+  padding:8px;
+}
+.wh-native-sku-suggestion>div{
+  display:flex;flex-direction:column;gap:3px;min-width:0
+}
+.wh-native-sku-suggestion span{
+  color:#557c95;font-size:8.7px;font-weight:700;letter-spacing:.02em
+}
+.wh-native-sku-suggestion b{
+  color:#355971;font-size:10px;white-space:normal;overflow-wrap:anywhere;font-weight:650
+}
+.wh-native-sku-suggestion small{color:#73889a;font-size:9px}
+.wh-native-sku-suggestion button{
+  border:1px solid #bcd4e5;
+  border-radius:4px;
+  background:#fff;
+  color:#2e6286;
+  padding:6px 7px;
+  font-size:9.5px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.wh-native-sku-disclaimer{grid-column:1/-1}
+.wh-native .wh-native-processed-context{
+  color:#547488;
+  font-size:10px;
+  line-height:1.4;
+}
+@media(max-width:900px){
+  .brand-shell-v1 .wh-native-workspace{column-gap:0!important}
+}
+
+
+/* Strong enough to override older shared tracking-table typography. Scope to
+   this warehouse workbench only; never alter other ERP tables. */
+body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.wh-native-table thead tr > th{
+  font-size:9.1px!important;
+  padding:6px 5px!important;
+  line-height:1.25!important;
+}
+body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.wh-native-table tbody tr.wh-native-data-row > td{
+  font-size:9.5px!important;
+  padding:5px 6px!important;
+  line-height:1.28!important;
+}
+body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.wh-native-table .wh-native-product-line{
+  font-size:9.4px!important;
+  font-weight:400!important;
+  line-height:1.25!important;
+  white-space:nowrap!important;
+}
+
+
+/* Tablet/Mobile detail slidebar is a viewport overlay (not a desktop track).
+   Anchor it to the viewport, not the padded main-workspace origin; otherwise
+   an inherited 100vw width starts at +8px and protrudes off the right edge. */
+@media(max-width:900px){
+  body.brand-shell-v1 .wh-native-workspace.with-panel>aside.wh-native-panel.mynh-slide-panel{
+    position:fixed!important;
+    inset:0!important;
+    left:0!important;
+    right:0!important;
+    top:0!important;
+    bottom:0!important;
+    width:100vw!important;
+    min-width:0!important;
+    max-width:100vw!important;
+    height:100dvh!important;
+    min-height:0!important;
+    max-height:100dvh!important;
+    margin:0!important;
+    transform:none!important;
+    z-index:1000!important;
+  }
+}
+
+/* Matches the purchase order quick-date tabs: seven inline choices, with
+   calendar inputs on the same row rather than a detached select. */
+.wh-native-date-toolbar{
+  display:flex;align-items:center;gap:6px;min-width:0;margin:0 0 3px;
+}
+.wh-native-date-filter{
+  display:flex;align-items:center;gap:8px;min-width:0;
+  max-width:100%;flex-wrap:wrap;
+}
+.wh-native-date-title{
+  font-size:10px;font-weight:650;color:#4d657a;white-space:nowrap;
+}
+.wh-native-date-quick{
+  display:flex;align-items:center;gap:3px;flex-wrap:wrap;min-width:0;
+}
+.wh-native-date-option{
+  min-height:29px;display:inline-flex;align-items:center;justify-content:center;
+  padding:5px 9px;border:1px solid transparent;border-radius:5px;
+  background:transparent;color:#536e82;font-size:10px;font-weight:500;
+  text-decoration:none;white-space:nowrap;
+}
+.wh-native-date-option:hover{background:#f2f7fb}
+.wh-native-date-option.active,
+.wh-native-date-option[aria-current="page"]{
+  background:#edf5fc;border-color:#b8d3e7;color:#225d8a;font-weight:690;
+}
+.wh-native-date-calendar{
+  display:flex;align-items:center;gap:4px;min-width:0;
+}
+.wh-native-date-calendar label{
+  display:inline-flex;align-items:center;gap:5px;
+  color:#647b8e;font-size:10px;font-weight:450;
+}
+.wh-native-date-calendar input{
+  box-sizing:border-box;width:125px;height:29px;
+  padding:4px 5px;border:1px solid #d6e1ea;border-radius:5px;
+  background:#fff;color:#38556b;font-size:10px;
+}
+.wh-native-date-calendar.active input{border-color:#9fbfda}
+.wh-native-date-separator{color:#9aabba;font-size:11px}
+.wh-native-date-error{color:#aa4a2a;font-size:10px}
+@media(max-width:650px){
+  .wh-native-date-filter{gap:5px}
+  .wh-native-date-quick{gap:1px}
+  .wh-native-date-option{padding:4px 6px;font-size:9.5px}
+  .wh-native-date-calendar input{width:122px}
+}
+/* The warehouse table is NOT a Tracking table: Tracking forces a fixed
+   1050px minimum and nth-child widths, which clipped the rightmost status
+   column despite an available content width large enough to fit. */
+body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.table.wh-native-table{
+  min-width:var(--wh-table-width,100%)!important;
+  width:var(--wh-table-width,100%)!important;
+  max-width:none!important;
+  table-layout:fixed!important;
+}
+body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.wh-native-table tr>th,
+body.brand-shell-v1 .wh-native .wh-native-warehouse-card table.wh-native-table tr>td{
+  min-width:0!important;
+  max-width:none!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis;
+}
+
+/* Keep Kho nhận as the original anchored settings POPOVER, never an aside.
+   When order detail is open, shift the small popup to the free side of
+   the content, rather than drawing across the order-detail slidebar. */
+@media(min-width:901px){
+  body.brand-shell-v1 .warehouse-receive-screen:has(.wh-native-workspace>.wh-native-panel) .whx-settings-wrap>.whx-settings-popover{
+    right:calc(var(--mynh-panel-width,400px) + 28px)!important;
+    width:min(390px,max(230px,calc(100vw - 302px - var(--mynh-panel-width,400px) - 58px)))!important;
+    max-height:min(540px,calc(100dvh - 190px))!important;
+    overflow-y:auto!important;
+    z-index:125!important;
+  }
+}
+@media(max-width:900px){
+  body.brand-shell-v1 .warehouse-receive-screen .whx-settings-wrap>.whx-settings-popover{
+    max-width:calc(100vw - 24px)!important;
+    width:min(390px,calc(100vw - 24px))!important;
+    max-height:calc(100dvh - 190px)!important;
+    overflow-y:auto!important;
+  }
+}
+
+/* Shared .warehouse-intake-layout.with-panel gap is more specific than the
+   generic .wh-native-workspace declaration. Keep the intended 14px breathing
+   room even when the system slidebar is opened from an order link. */
+@media(min-width:901px){
+  body.brand-shell-v1 .wh-native-workspace.warehouse-intake-layout.with-panel{
+    gap:14px!important;
+    column-gap:14px!important;
+    row-gap:14px!important;
+  }
+}
