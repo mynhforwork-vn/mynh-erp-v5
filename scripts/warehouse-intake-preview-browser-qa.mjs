@@ -40,7 +40,7 @@ await build({
   plugins:[{name:'mock-warehouse-actions',setup(es){
     es.onResolve({filter:/[\\/]lib[\\/]actions[\\/]warehouse$/},()=>({path:'warehouse-actions',namespace:'warehouse-qa'}))
     es.onResolve({filter:/[\\/]lib[\\/]actions[\\/]warehouse-item-decisions$/},()=>({path:'item-actions',namespace:'warehouse-qa'}))
-    es.onResolve({filter:/^next\\/navigation$/},()=>({path:'next-navigation',namespace:'warehouse-qa'}))
+    es.onResolve({filter:/^next\/navigation$/},()=>({path:'next-navigation',namespace:'warehouse-qa'}))
     es.onLoad({filter:/.*/,namespace:'warehouse-qa'},args=>({
       contents:args.path==='next-navigation'
         ? 'export function useRouter(){return {refresh(){}}}'
