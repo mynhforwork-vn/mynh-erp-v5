@@ -62,6 +62,17 @@ type AuditLog={
   created_at:string
   new_value?:Record<string,unknown>|null
 }
+type ItemDecision={
+  order_item_id:string
+  order_id:string
+  product_variant_id:string
+  decision:'IN'|'SKIP'
+  sale_price:number|string
+  multiplier:number
+  skip_reason?:string|null
+  processing_state:'DRAFT'|'FINALIZED'
+  updated_at?:string
+}
 type TableCol='order'|'received'|'warehouse'|'product'|'progress'|'cod'|'status'
 const TABLE_COLUMNS:TableCol[]=['order','received','warehouse','product','progress','cod','status']
 const TABLE_LABELS:Record<TableCol,string>={
@@ -126,12 +137,16 @@ export function WarehouseIntakeWorkspace({
   variants,
   auditLogs,
   suggestions,
+  itemDecisions={},
+  simulate=true,
   previewOnly=false,
 }:{
   rows:Row[]
   variants:Variant[]
   auditLogs:AuditLog[]
   suggestions:Record<string,Suggestion>
+  itemDecisions?:Record<string,ItemDecision>
+  simulate?:boolean
   previewOnly?:boolean
 }){
   const groups=useMemo(()=>{
@@ -225,7 +240,10 @@ export function WarehouseIntakeWorkspace({
             const open=openGroups.includes(group.id)
             const waiting=group.rows.filter(row=>!isDone(row))
             const splitRows=waiting.filter(row=>!isComplete(row))
-            const readyRows=waiting.filter(isComplete)
+            // Orders with per-item drafts must use the V2 atomic finalization,
+            // never the legacy bulk receipt (which would include skipped items).
+            const readyRows=waiting.filter(row=>isComplete(row)
+              &&!row.order_items.some(item=>!!itemDecisions[item.id]))
             const doneRows=group.rows.filter(isDone)
             const tableColumns=group.code==='BG'?bgColumns:group.code==='HN'?hnColumns:otherColumns
             const tableSort=group.code==='BG'?bgSort:group.code==='HN'?hnSort:otherSort
@@ -333,7 +351,9 @@ export function WarehouseIntakeWorkspace({
     </section>
     {active&&<WarehouseIntakeDetailPreview key={active.id}
       order={active} variants={variants} auditLogs={auditLogs}
-      suggestions={suggestions} onClose={()=>setActiveId(null)}/>}
+      suggestions={suggestions} itemDecisions={itemDecisions}
+      previewOnly={previewOnly} simulate={simulate}
+      onClose={()=>setActiveId(null)}/>}
 
   </div>
 }
