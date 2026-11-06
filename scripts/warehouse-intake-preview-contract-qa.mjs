@@ -110,10 +110,31 @@ const checks=[
   ['V2 panel replaces only the detail aside and keeps receiving table unchanged',
     table.includes('<WarehouseIntakeDetailPreview key={active.id}') &&
     table.includes('className="warehouse-unified-table"') &&
-    panel.includes('<aside className="whx-detail-panel warehouse-intake-panel warehouse-detail-v2"') &&
-    panel.includes('className="whx-panel-tabs warehouse-detail-v2-tabs"') &&
+    panel.includes('<aside className="whx-detail-panel warehouse-intake-panel warehouse-detail-v2 mynh-slide-panel"') &&
+    panel.includes('className="panel-tabs warehouse-detail-v2-tabs"') &&
     page.includes("import '@/app/styles/warehouse-intake-detail-preview.css'") &&
     settings.includes('<div className="whx-settings-popover">')],
+  ['V2 tabs use the same slidebar contract as Order and User panels',
+    panel.includes('mynh-slide-panel"') &&
+    panel.includes('role="tablist"') &&
+    panel.includes('aria-selected={tab===') &&
+    panel.includes('panel-tabs warehouse-detail-v2-tabs') &&
+    !panelCss.includes('.warehouse-detail-v2-tabs button.active') &&
+    !panelCss.includes('background:#eff6fb!important') &&
+    read('app/styles/brand-responsive-v1.css').includes('.mynh-slide-panel>.panel-tabs')],
+  ['Order detail uses canonical ERP content layout and accurate paid value',
+    panel.includes('detail-grid compact-detail-grid') &&
+    panel.includes('context-order-items warehouse-detail-v2-order-items') &&
+    panel.includes('<VoucherTags value={voucherText}/>') &&
+    panel.includes("import {prepaidSourceLabel,resolveOrderValue}") &&
+    panel.includes('Giá trị đơn hàng') &&
+    panel.includes('Loại tài khoản/thẻ') &&
+    panel.includes('Kho nhận thực tế') &&
+    panel.includes("setTab('products')") &&
+    page.includes('prepaid_source_type') &&
+    page.includes('shipping_service') &&
+    page.includes('order_date,created_at') &&
+    panelCss.includes('.warehouse-detail-v2-order-info .detail-grid')],
   ['V2 per-product SKU matching price conversion and separate stock decision',
     panel.includes("type Decision='IN'|'SKIP'") &&
     panel.includes("type Choice={action:Decision") &&
