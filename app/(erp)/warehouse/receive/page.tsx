@@ -81,7 +81,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       const offset=page*batchSize
       const {data,error}=await supabase.from('orders')
       .select([
-        'id,shopee_order_id,cod,prepaid_amount,prepaid_source_label,order_date,warehouse_status,order_status,payment_status',
+        'id,shopee_order_id,cod,prepaid_amount,prepaid_source_type,prepaid_source_label,order_date,created_at,shipping_service,receive_status,warehouse_status,order_status,payment_status',
         'recipient_name,recipient_phone,recipient_address,area,destination_hub',
         'erp_users(username)',
         'shipments(carrier,tracking_number,current_tracking_status,is_active)',
