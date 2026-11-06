@@ -2,7 +2,8 @@
 
 import { useEffect,useMemo,useRef,useState } from 'react'
 import { formatDateTime,formatMoney } from '@/lib/format'
-import { mapWarehouseOrderItem,receiveOrdersIntoWarehouse,skipWarehouseOrder } from '@/lib/actions/warehouse'
+import { receiveOrdersIntoWarehouse } from '@/lib/actions/warehouse'
+import { WarehouseIntakeDetailPreview } from '@/components/warehouse-intake-detail-preview'
 import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
 
 type Variant={
@@ -37,6 +38,18 @@ type Row={
   id:string
   shopee_order_id?:string|null
   cod?:number|string|null
+  prepaid_amount?:number|string|null
+  prepaid_source_label?:string|null
+  recipient_name?:string|null
+  recipient_phone?:string|null
+  recipient_address?:string|null
+  area?:string|null
+  destination_hub?:string|null
+  order_status?:string|null
+  payment_status?:string|null
+  erp_users?:{username?:string|null}|null
+  shipments?:Array<{carrier?:string|null,tracking_number?:string|null,current_tracking_status?:string|null,is_active?:boolean}>|null
+  order_vouchers?:Array<{voucher_code?:string|null,voucher_name?:string|null,voucher_type?:string|null,voucher_tag?:string|null}>|null
   order_date?:string|null
   warehouse_status?:string|null
   receive_batch_details?:ReceiveDetail|ReceiveDetail[]|null
@@ -151,8 +164,6 @@ export function WarehouseIntakeWorkspace({
   const [openGroups,setOpenGroups]=useState<string[]>(()=>groups.map(group=>group.id))
   const [selectedGroup,setSelectedGroup]=useState<string|null>(null)
   const [selected,setSelected]=useState<string[]>([])
-  const [panelTab,setPanelTab]=useState<'products'|'info'|'history'>('products')
-  const [editingItem,setEditingItem]=useState<string|null>(null)
   // Independent column visibility/order and sorting for each real receiving warehouse.
   const bgColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-bg-columns-v1',TABLE_COLUMNS,['order'])
   const hnColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-hn-columns-v1',TABLE_COLUMNS,['order'])
@@ -177,13 +188,7 @@ export function WarehouseIntakeWorkspace({
   },[])
 
   const active=rows.find(row=>row.id===activeId)??null
-  const activeDone=active?isDone(active):false
-  const activeComplete=active?!isDone(active)&&isComplete(active):false
   const selectedSet=useMemo(()=>new Set(selected),[selected])
-  const activeLogs=active
-    ? auditLogs.filter(log=>String(log.entity_id??'')===active.id)
-    : []
-
   function toggleGroup(id:string){
     setOpenGroups(current=>current.includes(id)
       ? current.filter(x=>x!==id)
@@ -252,7 +257,7 @@ export function WarehouseIntakeWorkspace({
                     onChange={()=>toggleReady(group.id,row.id)}
                     onClick={event=>event.stopPropagation()}
                     aria-label={'Chọn '+(row.shopee_order_id??row.id)}/>}
-                  <button type="button" className="table-link" onClick={event=>{event.stopPropagation();setActiveId(row.id);setPanelTab('products');setEditingItem(null)}}>
+                  <button type="button" className="table-link" onClick={event=>{event.stopPropagation();setActiveId(row.id)}}>
                     {row.shopee_order_id??row.id.slice(0,8)}
                   </button>
                 </div>
@@ -305,7 +310,7 @@ export function WarehouseIntakeWorkspace({
                     </th>)}</tr></thead>
                     <tbody>{sorted.length
                       ? sorted.map(row=><tr key={row.id} className={activeId===row.id?'active-row':''}
-                          onClick={()=>{setActiveId(row.id);setPanelTab('products');setEditingItem(null)}}>
+                          onClick={()=>{setActiveId(row.id)}}>
                           {tableColumns.visible.map(col=>cell(row,col))}
                         </tr>)
                       : <tr><td colSpan={tableColumns.visible.length} className="empty compact">Không có đơn phù hợp.</td></tr>}
@@ -326,152 +331,9 @@ export function WarehouseIntakeWorkspace({
             </section>
           })}
     </section>
-    {active&&<aside className="whx-detail-panel warehouse-intake-panel">
-      <div className="whx-panel-head">
-        <div>
-          <span className="module-eyebrow">{activeComplete?'CHỜ NHẬP KHO':'BÓC TÁCH SKU'}</span>
-          <h2>{active.shopee_order_id??active.id.slice(0,8)}</h2>
-          <p>{batchOf(active)?.warehouses?.code??'Kho'} · {batchOf(active)?.warehouses?.address??batchOf(active)?.warehouses?.name??''} · {formatDateTime(receivedAt(active))} · {formatMoney(active.cod)}</p>
-        </div>
-        <button className="close" type="button" onClick={()=>setActiveId(null)} aria-label="Đóng">×</button>
-      </div>
+    {active&&<WarehouseIntakeDetailPreview key={active.id}
+      order={active} variants={variants} auditLogs={auditLogs}
+      suggestions={suggestions} onClose={()=>setActiveId(null)}/>}
 
-      <div className="whx-panel-tabs">
-        <button className={panelTab==='products'?'active':''} onClick={()=>setPanelTab('products')}>Sản phẩm</button>
-        <button className={panelTab==='info'?'active':''} onClick={()=>setPanelTab('info')}>Thông tin</button>
-        <button className={panelTab==='history'?'active':''} onClick={()=>setPanelTab('history')}>Lịch sử</button>
-      </div>
-
-      <div className="whx-panel-scroll">
-        {panelTab==='products'&&<div className="whx-item-list">
-          {activeComplete&&<div className="warehouse-ready-note warehouse-ready-actions">
-            <div>
-              <b>Đã bóc tách đủ SKU.</b>
-              <span>Chọn thao tác nhanh cho đơn này.</span>
-            </div>
-            <div className="warehouse-quick-actions">
-              <form action={previewOnly?undefined:receiveOrdersIntoWarehouse} onSubmit={previewOnly?event=>event.preventDefault():undefined}>
-                <input type="hidden" name="order_ids" value={active.id}/>
-                <input type="hidden" name="note" value="Nhập kho nhanh sau khi xác nhận SKU"/>
-                <button className="button primary small" type="submit" disabled={previewOnly}>Nhập kho</button>
-              </form>
-              <form
-                action={previewOnly?undefined:skipWarehouseOrder}
-                onSubmit={event=>{
-                  if(previewOnly||!window.confirm('Bỏ qua kho cho đơn này? Đơn sẽ không ghi tăng tồn kho.')){
-                    event.preventDefault()
-                  }
-                }}
-              >
-                <input type="hidden" name="order_id" value={active.id}/>
-                <input type="hidden" name="note" value="Bỏ qua kho sau khi xác nhận SKU"/>
-                <button className="button small warehouse-skip-button" type="submit" disabled={previewOnly}>Bỏ qua kho</button>
-              </form>
-            </div>
-          </div>}
-
-          {active.order_items.map(item=>{
-            const mapped=Boolean(item.product_variant_id&&item.product_variants)
-            const suggestion=suggestions[item.id]
-            const stockQty=Number(item.quantity??0)*Number(item.inventory_multiplier??1)
-            const editable=!activeDone&&!activeComplete&&(editingItem===item.id||!mapped)
-
-            return <div className={'whx-item-card '+(mapped?'mapped':'unmapped')} key={item.id}>
-              <div className="whx-item-source">
-                <div>
-                  <b>{item.product_name}</b>
-                  <span>{item.sku??'Không SKU mua'} · {item.variant??'Mặc định'} · SL mua {item.quantity}</span>
-                </div>
-                {mapped&&!activeComplete&&<button className="whx-text-button" type="button" onClick={()=>setEditingItem(editable?null:item.id)}>
-                  {editable?'Đóng':'Sửa mapping'}
-                </button>}
-              </div>
-
-              {mapped&&!editable&&<div className="whx-mapping-result">
-                <span>→</span>
-                <div>
-                  <b>{item.product_variants?.products?.sku??'SKU bán'}</b>
-                  <small>{item.product_variants?.products?.name} · {item.product_variants?.variant_name}</small>
-                </div>
-                <div className="whx-convert-chip"><span>Quy đổi</span><b>× {item.inventory_multiplier??1}</b></div>
-                <div className="whx-convert-chip"><span>SL nhập</span><b>{stockQty}</b></div>
-              </div>}
-
-              {editable&&<>
-                {suggestion&&<div className="whx-sku-suggestion">
-                  <div>
-                    <span>GỢI Ý TỪ LẦN BÓC TÁCH TRƯỚC</span>
-                    <b>{suggestion.sku??'SKU bán'} · {suggestion.product_name??''}</b>
-                    <small>{suggestion.variant_name??'Mặc định'} · quy đổi từng dùng × {suggestion.multiplier}</small>
-                  </div>
-                  <i>Chỉ gợi ý · chưa lưu</i>
-                </div>}
-
-                <form action={previewOnly?undefined:mapWarehouseOrderItem} onSubmit={previewOnly?event=>event.preventDefault():undefined} className="whx-map-form">
-                  <input type="hidden" name="item_id" value={item.id}/>
-                  <label className="full">
-                    <span>SKU tồn kho</span>
-                    <select name="existing_variant_id" defaultValue={item.product_variant_id??''}>
-                      <option value="">— Chọn SKU bán hoặc tạo mới —</option>
-                      {suggestion&&<option value={suggestion.variant_id}>
-                        ★ Gợi ý: {suggestion.sku} · {suggestion.product_name} · {suggestion.variant_name}
-                      </option>}
-                      {variants.filter(variant=>variant.id!==suggestion?.variant_id).map(variant=><option key={variant.id} value={variant.id}>
-                        {variant.products?.sku} · {variant.products?.name} · {variant.variant_name}
-                      </option>)}
-                    </select>
-                  </label>
-                  <label>
-                    <span>SKU bán mới</span>
-                    <input name="sale_sku" placeholder="Chỉ nhập khi tạo SKU mới"/>
-                  </label>
-                  <label>
-                    <span>Tên sản phẩm</span>
-                    <input name="sale_product_name" defaultValue={item.product_name}/>
-                  </label>
-                  <label>
-                    <span>Phân loại</span>
-                    <input name="sale_variant_name" defaultValue={item.variant??'Mặc định'}/>
-                  </label>
-                  <label>
-                    <span>Giá bán</span>
-                    <input name="sale_price" type="number" min="0" step="1" placeholder="0"/>
-                  </label>
-                  <label>
-                    <span>1 SP mua =</span>
-                    <input name="inventory_multiplier" type="number" min="1" step="1" defaultValue={item.inventory_multiplier??1}/>
-                  </label>
-                  <div className="whx-map-actions">
-                    <span>Chọn gợi ý không tự nhập kho. Bấm lưu để xác nhận bóc tách.</span>
-                    <button className="button primary small" type="submit" disabled={previewOnly}>Lưu bóc tách</button>
-                  </div>
-                </form>
-              </>}
-            </div>
-          })}
-        </div>}
-
-        {panelTab==='info'&&<div className="whx-info-grid">
-          <div><span>Mã đơn</span><b>{active.shopee_order_id??'—'}</b></div>
-          <div><span>Kho nhận</span><b>{batchOf(active)?.warehouses?.code??'—'} · {batchOf(active)?.warehouses?.address??batchOf(active)?.warehouses?.name??''}</b></div>
-          <div><span>Ngày nhận</span><b>{formatDateTime(receivedAt(active))}</b></div>
-          <div><span>COD</span><b>{formatMoney(active.cod)}</b></div>
-          <div><span>Số dòng SP</span><b>{active.order_items.length}</b></div>
-          <div><span>Trạng thái</span><b>{phaseLabel(active)}</b></div>
-        </div>}
-
-        {panelTab==='history'&&<div className="whx-history-list">
-          {!activeLogs.length
-            ? <div className="empty compact">Chưa có lịch sử bóc tách cho đơn này.</div>
-            : activeLogs.map(log=><div key={log.id}>
-                <i/>
-                <div>
-                  <b>{log.action==='MAP_INVENTORY_SKU'?'Bóc tách / mapping SKU':log.action}</b>
-                  <span>{formatDateTime(log.created_at)}</span>
-                </div>
-              </div>)}
-        </div>}
-      </div>
-    </aside>}
   </div>
 }
