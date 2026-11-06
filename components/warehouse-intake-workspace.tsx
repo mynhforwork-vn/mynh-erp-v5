@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo,useState } from 'react'
+import { useEffect,useMemo,useRef,useState } from 'react'
 import { formatDateTime,formatMoney } from '@/lib/format'
 import { mapWarehouseOrderItem,receiveOrdersIntoWarehouse,skipWarehouseOrder } from '@/lib/actions/warehouse'
 import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
@@ -56,7 +56,10 @@ const TABLE_LABELS:Record<TableCol,string>={
   progress:'Bóc tách',cod:'COD',status:'Trạng thái',
 }
 const TABLE_WEIGHTS:Record<TableCol,number>={
-  order:17,received:15,warehouse:10,product:26,progress:9,cod:11,status:12,
+  order:15,received:14,warehouse:7,product:34,progress:8,cod:10,status:12,
+}
+const TABLE_COMPACT_WEIGHTS:Record<TableCol,number>={
+  order:17,received:15,warehouse:6,product:33,progress:8,cod:10,status:11,
 }
 
 type Suggestion={
@@ -136,9 +139,28 @@ export function WarehouseIntakeWorkspace({
   const [selected,setSelected]=useState<string[]>([])
   const [panelTab,setPanelTab]=useState<'products'|'info'|'history'>('products')
   const [editingItem,setEditingItem]=useState<string|null>(null)
-  const [search,setSearch]=useState('')
-  const tableColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-unified-columns-v1',TABLE_COLUMNS,['order'])
-  const tableSort=useManagedSort<TableCol>('mynh-warehouse-intake-unified-sort-v1','received','desc')
+  // Independent column visibility/order and sorting for each real receiving warehouse.
+  const bgColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-bg-columns-v1',TABLE_COLUMNS,['order'])
+  const hnColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-hn-columns-v1',TABLE_COLUMNS,['order'])
+  const otherColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-other-columns-v1',TABLE_COLUMNS,['order'])
+  const bgSort=useManagedSort<TableCol>('mynh-warehouse-intake-bg-sort-v1','received','desc')
+  const hnSort=useManagedSort<TableCol>('mynh-warehouse-intake-hn-sort-v1','received','desc')
+  const otherSort=useManagedSort<TableCol>('mynh-warehouse-intake-other-sort-v1','received','desc')
+  const laneRef=useRef<HTMLElement|null>(null)
+  const [laneWidth,setLaneWidth]=useState(1100)
+  useEffect(()=>{
+    const node=laneRef.current
+    if(!node)return
+    const measure=()=>{
+      const next=Math.round(node.getBoundingClientRect().width)
+      if(next>0)setLaneWidth(current=>current===next?current:next)
+    }
+    measure()
+    const observer=typeof ResizeObserver==='undefined'?null:new ResizeObserver(measure)
+    observer?.observe(node)
+    window.addEventListener('resize',measure)
+    return ()=>{observer?.disconnect();window.removeEventListener('resize',measure)}
+  },[])
 
   const active=rows.find(row=>row.id===activeId)??null
   const activeDone=active?isDone(active):false
@@ -177,15 +199,7 @@ export function WarehouseIntakeWorkspace({
   }
 
   return <div className={'whx-intake-layout warehouse-intake-layout warehouse-intake-preview-layout '+(active?'with-panel':'')}>
-    <section className="whx-intake-main tracking-hub-stack tracking-hub-stack-v2 warehouse-receive-groups warehouse-receive-table-lane">
-      <div className="warehouse-unified-toolbar">
-        <div className="warehouse-unified-search">
-          <input type="search" aria-label="Tìm mã đơn, SKU, sản phẩm" placeholder="Tìm mã đơn, SKU, sản phẩm"
-            value={search} onChange={event=>setSearch(event.target.value)}/>
-          {search&&<button type="button" aria-label="Xóa tìm kiếm" onClick={()=>setSearch('')}>×</button>}
-        </div>
-        <ManagedColumnsMenu labels={TABLE_LABELS} manager={tableColumns}/>
-      </div>
+    <section ref={laneRef} className="whx-intake-main tracking-hub-stack tracking-hub-stack-v2 warehouse-receive-groups warehouse-receive-table-lane">
       {!groups.length
         ? <div className="card empty">Không có đơn đã nhận trong khoảng thời gian và trạng thái đang chọn.</div>
         : groups.map(group=>{
@@ -194,14 +208,10 @@ export function WarehouseIntakeWorkspace({
             const splitRows=waiting.filter(row=>!isComplete(row))
             const readyRows=waiting.filter(isComplete)
             const doneRows=group.rows.filter(isDone)
-            const filtered=group.rows.filter(row=>{
-              if(!search.trim())return true
-              const text=[row.shopee_order_id,row.id,...row.order_items.flatMap(item=>
-                [item.sku,item.product_name,item.variant,item.product_variants?.products?.sku])]
-                .filter(Boolean).join(' ').toLocaleLowerCase('vi')
-              return text.includes(search.trim().toLocaleLowerCase('vi'))
-            })
-            const sorted=[...filtered].sort((left,right)=>{
+            const tableColumns=group.code==='BG'?bgColumns:group.code==='HN'?hnColumns:otherColumns
+            const tableSort=group.code==='BG'?bgSort:group.code==='HN'?hnSort:otherSort
+            const weights=laneWidth<1050?TABLE_COMPACT_WEIGHTS:TABLE_WEIGHTS
+            const sorted=[...group.rows].sort((left,right)=>{
               const key=(row:Row,col:TableCol):number|string=>{
                 if(col==='order')return String(row.shopee_order_id??row.id)
                 if(col==='received')return new Date(receivedAt(row)??0).getTime()
@@ -219,9 +229,10 @@ export function WarehouseIntakeWorkspace({
             const readyIds=readyRows.map(row=>row.id)
             const allReadySelected=readyIds.length>0&&selectedGroup===group.id&&readyIds.every(id=>selectedSet.has(id))
             const groupSelected=selectedGroup===group.id?selected.filter(id=>readyIds.includes(id)).length:0
-            const widthTotal=tableColumns.visible.reduce((sum,key)=>sum+TABLE_WEIGHTS[key],0)
+            const widthTotal=tableColumns.visible.reduce((sum,key)=>sum+weights[key],0)
             const cell=(row:Row,col:TableCol)=>{
-              if(col==='order')return <td key={col}>
+              const attributes={'data-col':col,'data-label':TABLE_LABELS[col]}
+              if(col==='order')return <td key={col} {...attributes}>
                 <div className="warehouse-unified-order">
                   {!isDone(row)&&isComplete(row)&&<input type="checkbox"
                     checked={selectedGroup===group.id&&selectedSet.has(row.id)}
@@ -233,18 +244,20 @@ export function WarehouseIntakeWorkspace({
                   </button>
                 </div>
               </td>
-              if(col==='received')return <td key={col} className="warehouse-unified-date">{receivedAt(row)?formatDateTime(receivedAt(row)):'Chưa có ngày nhận'}</td>
-              if(col==='warehouse')return <td key={col}>{batchOf(row)?.warehouses?.code??'Chưa xác định'}</td>
-              if(col==='product')return <td key={col} className="warehouse-unified-products">
-                {row.order_items.length?row.order_items.map(item=><div key={item.id} title={[item.product_name,item.variant].filter(Boolean).join(' · ')}>
-                  {item.product_name}{item.variant?' · '+item.variant:''} <span>×{item.quantity}</span>
+              if(col==='received')return <td key={col} {...attributes} className="warehouse-unified-date">{receivedAt(row)?formatDateTime(receivedAt(row)):'Chưa có ngày nhận'}</td>
+              if(col==='warehouse')return <td key={col} {...attributes}>{batchOf(row)?.warehouses?.code??'Chưa xác định'}</td>
+              if(col==='product')return <td key={col} {...attributes} className="warehouse-unified-products">
+                {row.order_items.length?row.order_items.map(item=><div key={item.id} className="warehouse-unified-product-line"
+                  title={[item.product_name,item.variant,'SL '+item.quantity].filter(Boolean).join(' · ')}>
+                  <span className="warehouse-unified-product-name">{item.product_name}{item.variant?' · '+item.variant:''}</span>
+                  <span className="warehouse-unified-product-qty">×{item.quantity}</span>
                 </div>):'Chưa có sản phẩm'}
               </td>
-              if(col==='progress')return <td key={col} className="warehouse-unified-progress">
+              if(col==='progress')return <td key={col} {...attributes} className="warehouse-unified-progress">
                 {row.order_items.filter(item=>item.product_variant_id).length}/{row.order_items.length}
               </td>
-              if(col==='cod')return <td key={col} className="money">{formatMoney(row.cod)}</td>
-              return <td key={col}><span className={'status-pill '+(isDone(row)?'green':isComplete(row)?'status-ready_to_ship':'orange')}>{phaseLabel(row)}</span></td>
+              if(col==='cod')return <td key={col} {...attributes} className="money">{formatMoney(row.cod)}</td>
+              return <td key={col} {...attributes}><span className={'status-pill '+(isDone(row)?'green':isComplete(row)?'status-ready_to_ship':'orange')}>{phaseLabel(row)}</span></td>
             }
             return <section className={'card tracking-hub-card tracking-hub-card-v2 warehouse-receive-card warehouse-unified-group '+(open?'open':'collapsed')} key={group.id}>
               <div className="tracking-hub-head-v2 warehouse-unified-group-head">
@@ -262,13 +275,16 @@ export function WarehouseIntakeWorkspace({
                   <span className={doneRows.length?'success':''}><b>{doneRows.length}</b> đã xử lý</span>
                   <span className="money"><b>{formatMoney(totalCod)}</b> COD</span>
                 </div>
+                <div className="warehouse-unified-group-column-control">
+                  <ManagedColumnsMenu labels={TABLE_LABELS} manager={tableColumns} buttonLabel="Cột"/>
+                </div>
               </div>
               {open&&<>
                 <div className="tracking-hub-table-wrap tracking-hub-table-wrap-v2 warehouse-unified-table-wrap">
                   <table className="table tracking-hub-table tracking-hub-table-v2 warehouse-unified-table"
                     aria-label={'Danh sách Nhập kho '+group.code}>
                     <colgroup>{tableColumns.visible.map(col=><col key={col}
-                      style={{width:(TABLE_WEIGHTS[col]/widthTotal*100)+'%'}}/>)}</colgroup>
+                      style={{width:(weights[col]/widthTotal*100)+'%'}}/>)}</colgroup>
                     <thead><tr>{tableColumns.visible.map(col=><th key={col}>
                       <SortableHeader column={col} label={TABLE_LABELS[col]} sort={tableSort} onSort={tableSort.toggle}/>
                       {col==='order'&&readyIds.length>0&&<input type="checkbox" checked={allReadySelected}
