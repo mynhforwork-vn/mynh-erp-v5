@@ -377,7 +377,7 @@ export function WarehouseIntakeDetailPreview({
           <div className="warehouse-detail-v2-switch">
             <button type="button" disabled={processed||isReadOnly||busy} className={draft.mode==='existing'?'active':''}
               onClick={()=>change({mode:'existing'})}>Chọn SKU có sẵn</button>
-            <button type="button" disabled={processed} className={draft.mode==='new'?'active':''}
+            <button type="button" disabled={processed||isReadOnly||busy} className={draft.mode==='new'?'active':''}
               onClick={()=>change({mode:'new',variantId:''})}>Tạo SKU mới</button>
           </div>
           {draft.mode==='existing'?<div className="warehouse-detail-v2-fields">
@@ -389,11 +389,11 @@ export function WarehouseIntakeDetailPreview({
             </div>}
             <label className="warehouse-detail-v2-field"><span>Tìm SKU theo mã, tên hoặc phân loại</span>
               <input type="search" aria-label="Tìm SKU theo mã, tên hoặc phân loại"
-                placeholder="Tìm trong danh mục SKU" disabled={processed}
+                placeholder="Tìm trong danh mục SKU" disabled={processed||isReadOnly||busy}
                 value={draft.query} onChange={e=>change({query:e.target.value})}/>
             </label>
             <label className="warehouse-detail-v2-field"><span>Chọn SKU bán trong danh mục</span>
-              <select aria-label="Chọn SKU bán" disabled={processed} value={draft.variantId}
+              <select aria-label="Chọn SKU bán" disabled={processed||isReadOnly||busy} value={draft.variantId}
                 onChange={e=>chooseVariant(e.target.value)}>
                 <option value="">— Chọn SKU bán —</option>
                 {selectedVariant&&!matchVariants.some(v=>v.id===selectedVariant.id)&&
@@ -408,22 +408,22 @@ export function WarehouseIntakeDetailPreview({
             </label>
           </div>:<div className="warehouse-detail-v2-fields warehouse-detail-v2-pair">
             <label className="warehouse-detail-v2-field"><span>Mã SKU bán mới</span>
-              <input disabled={processed} value={draft.newSku} onChange={e=>change({newSku:e.target.value})} placeholder="Ví dụ: SKU-001"/>
+              <input disabled={processed||isReadOnly||busy} value={draft.newSku} onChange={e=>change({newSku:e.target.value})} placeholder="Ví dụ: SKU-001"/>
             </label>
             <label className="warehouse-detail-v2-field"><span>Tên sản phẩm</span>
-              <input disabled={processed} value={draft.newName} onChange={e=>change({newName:e.target.value})}/>
+              <input disabled={processed||isReadOnly||busy} value={draft.newName} onChange={e=>change({newName:e.target.value})}/>
             </label>
             <label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>Phân loại</span>
-              <input disabled={processed} value={draft.newVariant} onChange={e=>change({newVariant:e.target.value})}/>
+              <input disabled={processed||isReadOnly||busy} value={draft.newVariant} onChange={e=>change({newVariant:e.target.value})}/>
             </label>
           </div>}
           <div className="warehouse-detail-v2-pair warehouse-detail-v2-numeric">
             <label className="warehouse-detail-v2-field"><span>Giá bán (sửa được)</span>
-              <input type="number" disabled={processed} min="0" step="1" value={draft.salePrice}
+              <input type="number" disabled={processed||isReadOnly||busy} min="0" step="1" value={draft.salePrice}
                 onChange={e=>change({salePrice:e.target.value})}/>
             </label>
             <label className="warehouse-detail-v2-field"><span>Hệ số quy đổi</span>
-              <input type="number" disabled={processed} min="1" step="1" value={draft.multiplier}
+              <input type="number" disabled={processed||isReadOnly||busy} min="1" step="1" value={draft.multiplier}
                 onChange={e=>change({multiplier:e.target.value})}/>
             </label>
           </div>
@@ -433,13 +433,13 @@ export function WarehouseIntakeDetailPreview({
           </div>
           <div className="warehouse-detail-v2-section-title">Quyết định kho theo sản phẩm</div>
           <div className="warehouse-detail-v2-switch warehouse-detail-v2-decisions">
-            <button type="button" disabled={processed} className={draft.decision==='IN'?'active':''}
+            <button type="button" disabled={processed||isReadOnly||busy} className={draft.decision==='IN'?'active':''}
               onClick={()=>change({decision:'IN',reason:''})}>Nhập kho</button>
-            <button type="button" disabled={processed} className={draft.decision==='SKIP'?'active':''}
+            <button type="button" disabled={processed||isReadOnly||busy} className={draft.decision==='SKIP'?'active':''}
               onClick={()=>change({decision:'SKIP'})}>Bỏ qua kho</button>
           </div>
           {draft.decision==='SKIP'&&<label className="warehouse-detail-v2-field"><span>Lý do bỏ qua kho (bắt buộc)</span>
-            <textarea rows={2} disabled={processed} value={draft.reason}
+            <textarea rows={2} disabled={processed||isReadOnly||busy} value={draft.reason}
               onChange={e=>change({reason:e.target.value})} placeholder="Nhập lý do bỏ qua"/>
           </label>}
           {notice&&<div className="warehouse-detail-v2-notice" role="status">{notice}</div>}
