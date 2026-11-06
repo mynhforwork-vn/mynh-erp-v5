@@ -71,7 +71,11 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
   const untilDay = ['today','week','7d','30d','month','year'].includes(receivedPeriod)
     ? today : receivedPeriod === 'custom' ? dateTo : ''
   const invalidDateRange = Boolean(sinceDay && untilDay && sinceDay > untilDay)
-  const { supabase } = await requireUser()
+  const { supabase,user } = await requireUser()
+  // Cloudflare Preview has ERP_WAREHOUSE_V2_LIVE=false; only Production will
+  // enable writes, after the additive DB migration and release gates are met.
+  const isLive=process.env.ERP_WAREHOUSE_V2_LIVE==='true'
+  const canWrite=isLive&&['admin','operator'].includes(String(user.app_metadata?.role??'viewer'))
   // Count every non-archived received order, including processed and skipped ones.
   // Paginate deterministically because Supabase/PostgREST caps each response.
   async function loadReceivedOrders(){
@@ -226,6 +230,23 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     state === 'done' ? 'done' : 'all'
 
   const displayedRows = currentStatus === 'pending' ? incomplete : currentStatus === 'ready' ? ready : currentStatus === 'done' ? done : rows
+
+  // Read persistent decisions only in live mode (Preview targets the same
+  // Supabase project but must remain read-only before the migration).
+  // Query only the orders displayed, in bounded chunks for PostgREST limits.
+  const decisionList:any[]=[]
+  let decisionError:{message:string}|null=null
+  if(isLive){
+    for(let offset=0;offset<displayedRows.length;offset+=150){
+      const ids=displayedRows.slice(offset,offset+150).map(o=>o.id)
+      const {data,error:loadError}=await supabase.from('warehouse_item_decisions')
+        .select('order_item_id,order_id,product_variant_id,decision,sale_price,multiplier,skip_reason,processing_state,updated_at')
+        .in('order_id',ids).limit(4000)
+      if(loadError){decisionError=loadError;break}
+      decisionList.push(...(data??[]))
+    }
+  }
+  const itemDecisions=Object.fromEntries(decisionList.map(x=>[x.order_item_id,x]))
   const statusHref = (status: 'all' | 'pending' | 'ready' | 'done') => {
     const query = new URLSearchParams({ state: status })
     if (receivedPeriod !== 'all') query.set('received_range', receivedPeriod)
@@ -247,7 +268,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
         <WarehouseReceivingSettings
           warehouses={((receivingWarehouses ?? []).filter(w => w.is_active)) as any[]}
           defaultReceivingWarehouseId={settings?.default_receiving_warehouse_id ?? null}
-          previewOnly
+          previewOnly={!canWrite}
         />
         <Link className="button" href="/purchase/tracking?range=all&status=DELIVERED&receive=WAITING_RECEIVE">Đơn chờ nhận</Link>
       </div>
@@ -259,8 +280,8 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
         <span>Vui lòng kiểm tra liên kết phiếu nhận. Hệ thống không tự suy đoán theo HUB và không nhập kho.</span>
       </div>
     </div>}
-    {error && <div className="tracking-flash-row">
-      <div className="error-box">Không thể tải dữ liệu Kho nhận: {error.message}</div>
+    {(error||decisionError) && <div className="tracking-flash-row">
+      <div className="error-box">Không thể tải dữ liệu Kho nhận: {(error||decisionError)?.message}</div>
     </div>}
 
     <div className="warehouse-receive-date-toolbar">
@@ -291,7 +312,9 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       variants={allVariants}
       auditLogs={(auditLogs ?? []) as any[]}
       suggestions={suggestions}
-      previewOnly
+      itemDecisions={itemDecisions}
+      simulate={!isLive}
+      previewOnly={!canWrite}
     />
   </div>
 }
