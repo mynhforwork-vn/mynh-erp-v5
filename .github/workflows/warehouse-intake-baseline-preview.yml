@@ -43,6 +43,23 @@ jobs:
         run: node scripts/warehouse-intake-preview-contract-qa.mjs
       - name: TypeScript
         run: npm run typecheck
+      - name: Install isolated browser fixture QA dependencies
+        run: npm install --no-save playwright esbuild --no-audit --no-fund
+      - name: Find Chrome
+        shell: bash
+        run: |
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: Responsive warehouse table QA (8 viewports, slidebar open/close)
+        run: node scripts/warehouse-intake-preview-browser-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: warehouse-intake-preview-responsive-${{ github.sha }}
+          path: qa-warehouse-3items/
+          retention-days: 7
+          if-no-files-found: ignore
       - name: Build OpenNext from dedicated Preview branch
         run: npx opennextjs-cloudflare build
       - name: Publish dedicated Preview only (never Production)
@@ -84,6 +101,6 @@ jobs:
             echo "- Base source: main 96029492250b078d3ec182578297401160ca3bdd; reviewed warehouse Preview changes"
             echo "- Branch: preview/warehouse-intake-baseline-20261106"
             echo "- Preview: $PREVIEW_URL"
-            echo "- Warehouse contracts, typecheck, OpenNext build, /api/health and /login: PASS"
+            echo "- Warehouse contracts, typecheck, 8 viewport browser fixture, OpenNext build, /api/health and /login: PASS"
             echo "- No Production or Supabase changes"
           } >> "$GITHUB_STEP_SUMMARY"
