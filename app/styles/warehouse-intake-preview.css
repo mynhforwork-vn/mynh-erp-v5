@@ -146,6 +146,13 @@
 .warehouse-receive-screen .warehouse-confirm-stock-bar{
   margin:0;border-top:1px solid #e4edf3;
 }
+/* Shared ERP CSS forces zero gutter at some Desktop/Tablet transitions.
+   Scope a 16px gutter only to the receiving table + existing slidebar. */
+@media(min-width:901px){
+  body.brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout.with-panel{
+    gap:16px!important;column-gap:16px!important;
+  }
+}
 @media(max-width:1024px){
   .warehouse-receive-screen .warehouse-intake-preview-layout{gap:12px!important}
   .warehouse-receive-screen .warehouse-unified-metrics{gap:8px}
