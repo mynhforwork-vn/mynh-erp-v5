@@ -26,7 +26,7 @@ const source=[
   "  order_items:[{id:'20000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:long,sku:'SRC-'+i,variant:'Phân loại mẫu 500ml',quantity:2,original_price:50000,final_price:35000,inventory_multiplier:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}:null},",
   "  {id:'30000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:'Sữa tắm hương hoa nhài',sku:'SRC-OTHER',variant:'Dạng chai',quantity:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',products:{sku:'TEST-01',name:'Đã map'}}:null}]",
   '}))',
-  "function Fixture(){const [status,setStatus]=React.useState('all'); const filtered=status==='done'?rows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):rows; return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[]} suggestions={{}} auditLogs={[]} previewOnly/></>}",
+  "function Fixture(){const [status,setStatus]=React.useState('all'); const filtered=status==='done'?rows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):rows; return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}]} suggestions={{}} auditLogs={[]} previewOnly/></>}",
   "createRoot(document.getElementById('root')).render(<Fixture/>)",
 ].join('\n')
 writeFileSync(entryPath,source)
@@ -47,7 +47,7 @@ await build({
 // warehouse stylesheet. Alphabetical concatenation masked cascade regressions.
 const globalCss=readFileSync(path.join(root,'app/globals.css'),'utf8')
 const cssFiles=[...globalCss.matchAll(/@import ['"]\.\/styles\/([^'"]+\.css)['"]/g)].map(match=>match[1])
-const css=[...cssFiles,'warehouse-intake-preview.css']
+const css=[...cssFiles,'warehouse-intake-preview.css','warehouse-intake-detail-preview.css']
   .map(file=>readFileSync(path.join(root,'app/styles',file),'utf8')).join('\n')
 const harnessCss=[
   'html,body{margin:0;padding:0;max-width:100%;background:#f5f8fb;font-family:Arial,sans-serif}',
@@ -173,6 +173,10 @@ try {
         }),
         panelLeft:panel?.getBoundingClientRect().left,
         panelRight:panel?.getBoundingClientRect().right,
+        panelTabLabels:[...document.querySelectorAll('.warehouse-detail-v2-tabs button')].map(x=>x.textContent?.trim()),
+        panelHeader:panel?.querySelector('.warehouse-detail-v2-head')?.getBoundingClientRect().height,
+        panelFooter:panel?.querySelector('.warehouse-detail-v2-footer')?.getBoundingClientRect().height,
+        panelScrollHeight:panel?.querySelector('.warehouse-detail-v2-scroll')?.getBoundingClientRect().height,
         readOnlySubmit:[...document.querySelectorAll('.warehouse-intake-panel button[type="submit"]')].every(b=>b.disabled),
         labels:[...document.querySelectorAll('.warehouse-unified-table .status-pill')].map(e=>e.textContent?.trim()),
       }
@@ -182,6 +186,10 @@ try {
     assert.equal(list.products.reduce((a,b)=>a+b,0),16,'all products visible '+width)
     assert.ok(list.labels.includes('Đã bỏ qua kho')&&list.labels.includes('Đã nhập kho'),'processed statuses rendered '+width)
     assert.ok(list.readOnlySubmit,'write controls must be disabled in preview '+width)
+    assert.deepEqual(list.panelTabLabels,['Sản phẩm','Thông tin đơn','Lịch sử'],
+      'V2 slidebar must have three functional tabs '+width)
+    assert.ok(list.panelHeader>50 && list.panelFooter>35 && list.panelScrollHeight>35,
+      'slidebar header, inner scroll, footer are not present '+width)
     assert.equal(list.columnMenus,2,'per-warehouse controls must exist '+width)
     assert.equal(list.outsideControls,0,'remove global search and column toolbar '+width)
     assert.equal(list.productLines.length,16,'each product owns exactly one line '+width)
@@ -282,7 +290,34 @@ try {
       await bg.locator('.managed-column-button').click()
     }
     await page.locator('.warehouse-unified-order button.table-link').first().click()
-    assert.equal(await page.locator('aside.warehouse-intake-panel').count(),1,'open original slidebar via order '+width)
+    assert.equal(await page.locator('aside.warehouse-intake-panel').count(),1,'open V2 slidebar via order '+width)
+    if(width===1280){
+      const panel=page.locator('aside.warehouse-detail-v2')
+      assert.equal(await panel.locator('.warehouse-detail-v2-product').count(),2,'two items in V2')
+      await panel.getByLabel('Chọn SKU bán',{exact:true}).selectOption('V-SKU')
+      await panel.getByLabel('Hệ số quy đổi',{exact:true}).fill('2')
+      assert.match(await panel.locator('.warehouse-detail-v2-conversion').innerText(),/4/)
+      await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).click()
+      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã ghép SKU/)
+      await panel.locator('.warehouse-detail-v2-product').nth(1).click()
+      await panel.getByLabel('Chọn SKU bán',{exact:true}).selectOption('V-SKU')
+      await panel.getByRole('button',{name:'Bỏ qua kho',exact:true}).click()
+      await panel.getByLabel('Lý do bỏ qua kho (bắt buộc)').fill('Sản phẩm không cần nhập kho')
+      await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).click()
+      await panel.getByRole('button',{name:'Xem lựa chọn dự kiến'}).click()
+      assert.equal(await panel.locator('.warehouse-detail-v2-summary strong').count(),2,'mixed decisions are present')
+      assert.match(await panel.locator('.warehouse-detail-v2-summary').innerText(),/Nhập kho/)
+      assert.match(await panel.locator('.warehouse-detail-v2-summary').innerText(),/Bỏ qua kho/)
+      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã ghép SKU/)
+      await page.screenshot({path:path.join(output,'warehouse-v2-mixed-decisions.png')})
+      await panel.getByRole('button',{name:'Thông tin đơn'}).click()
+      assert.match(await panel.locator('.warehouse-detail-v2-info').first().innerText(),/Mã đơn/)
+      await panel.locator('.warehouse-detail-v2-info-products button').first().click()
+      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã ghép SKU/)
+      await panel.getByRole('button',{name:'Lịch sử'}).click()
+      assert.match(await panel.locator('.warehouse-detail-v2-content').innerText(),/Chưa có lịch sử/)
+      await panel.getByRole('button',{name:'Sản phẩm'}).click()
+    }
     await page.locator('aside.warehouse-intake-panel .close').click()
     await page.locator('.fixture-done').click()
     const processed=await page.locator('.warehouse-unified-table tbody tr').count()
