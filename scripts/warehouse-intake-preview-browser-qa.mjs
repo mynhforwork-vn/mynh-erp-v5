@@ -72,12 +72,15 @@ try {
       const lane=document.querySelector('.warehouse-receive-table-lane')
       const productLines=[...document.querySelectorAll('.warehouse-unified-product-line')]
       return {
-        productLines:productLines.map(e=>({
-          whiteSpace:getComputedStyle(e).whiteSpace,
-          height:e.getBoundingClientRect().height,
-          lineHeight:parseFloat(getComputedStyle(e).lineHeight),
-          nameOverflow:getComputedStyle(e.querySelector('.warehouse-unified-product-name')).textOverflow,
-        })),
+        productLines:productLines.map(e=>{
+          const name=e.querySelector('.warehouse-unified-product-name')
+          return {
+            whiteSpace:getComputedStyle(name).whiteSpace,
+            height:name.getBoundingClientRect().height,
+            lineHeight:parseFloat(getComputedStyle(name).lineHeight),
+            nameOverflow:getComputedStyle(name).textOverflow,
+          }
+        }),
         laneWidth:lane?.clientWidth,
         laneOverflow:(lane?.scrollWidth??0)-(lane?.clientWidth??0),
         tableDisplay:tables.map(t=>getComputedStyle(t).display),
