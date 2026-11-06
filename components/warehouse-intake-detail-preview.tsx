@@ -1,6 +1,8 @@
 'use client'
 
 import {useEffect,useMemo,useState} from 'react'
+import {useRouter} from 'next/navigation'
+import {saveWarehouseItemDecision,finalizeWarehouseItemDecisions} from '@/lib/actions/warehouse-item-decisions'
 import {formatDateTime,formatMoney,formatPhone,statusLabel} from '@/lib/format'
 import {prepaidSourceLabel,resolveOrderValue} from '@/lib/order-prepaid'
 import {VoucherTags} from '@/components/voucher-tags'
@@ -85,6 +87,11 @@ type Draft={
   reason:string
 }
 type Choice={action:Decision,sku:string,price:string,multiplier:number,quantity:number,reason?:string}
+type ItemDecision={
+  order_item_id:string;order_id:string;product_variant_id:string
+  decision:'IN'|'SKIP';sale_price:number|string;multiplier:number
+  skip_reason?:string|null;processing_state:'DRAFT'|'FINALIZED';updated_at?:string
+}
 type Tab='products'|'info'|'history'
 
 function batchOf(order:Order){
@@ -105,13 +112,14 @@ function actionLabel(action:string){
   if(action==='SKIP_WAREHOUSE')return 'Bỏ qua kho'
   return 'Thao tác kho'
 }
-function initialDraft(item:Item):Draft{
+function initialDraft(item:Item,saved?:ItemDecision):Draft{
   return {
-    mode:'existing',variantId:item.product_variant_id??'',query:'',
-    salePrice:item.product_variants?.sale_price===null||item.product_variants?.sale_price===undefined
+    mode:'existing',variantId:saved?.product_variant_id??item.product_variant_id??'',query:'',
+    salePrice:saved?String(saved.sale_price):item.product_variants?.sale_price===null||item.product_variants?.sale_price===undefined
       ?'':String(item.product_variants.sale_price),
     newSku:'',newName:item.product_name,newVariant:item.variant??'Mặc định',
-    multiplier:String(item.inventory_multiplier??1),decision:'IN',reason:'',
+    multiplier:String(saved?.multiplier??item.inventory_multiplier??1),
+    decision:saved?.decision??'IN',reason:saved?.skip_reason??'',
   }
 }
 const handled=new Set(['WAREHOUSE_RECEIVED','WAREHOUSE_SKIPPED','WAREHOUSE_MIXED'])
@@ -124,31 +132,54 @@ function stateLabel(order:Order){
 }
 
 export function WarehouseIntakeDetailPreview({
-  order,variants,auditLogs,suggestions,onClose
+  order,variants,auditLogs,suggestions,itemDecisions={},previewOnly=true,simulate=true,onClose
 }:{
   order:Order
   variants:Variant[]
   auditLogs:Audit[]
   suggestions:Record<string,Suggestion>
+  itemDecisions?:Record<string,ItemDecision>
+  previewOnly?:boolean
+  simulate?:boolean
   onClose:()=>void
 }){
   const [tab,setTab]=useState<Tab>('products')
   const [focusedId,setFocusedId]=useState<string>(
     order.order_items.find(item=>!item.product_variant_id)?.id??order.order_items[0]?.id??''
   )
+  const router=useRouter()
   const [drafts,setDrafts]=useState<Record<string,Draft>>({})
-  const [choices,setChoices]=useState<Record<string,Choice>>({})
+  const [choices,setChoices]=useState<Record<string,Choice>>(()=>{
+    const saved:Record<string,Choice>={}
+    for(const item of order.order_items){
+      const record=itemDecisions[item.id]
+      if(!record)continue
+      const variant=variants.find(v=>v.id===record.product_variant_id)
+      saved[item.id]={
+        action:record.decision,
+        sku:variant?.products?.sku??item.product_variants?.products?.sku??'Đã ghép SKU',
+        price:String(record.sale_price),multiplier:Number(record.multiplier),
+        quantity:Number(item.quantity)*Number(record.multiplier),
+        reason:record.skip_reason??undefined
+      }
+    }
+    return saved
+  })
+  const [busy,setBusy]=useState(false)
+  const [confirmFinalize,setConfirmFinalize]=useState(false)
+  const [liveStatus,setLiveStatus]=useState<string|null>(null)
   const [notice,setNotice]=useState('')
   const [showSummary,setShowSummary]=useState(false)
   const [copied,setCopied]=useState(false)
-  const processed=handled.has(order.warehouse_status??'')
+  const processed=handled.has(liveStatus??order.warehouse_status??'')
+  const isReadOnly=previewOnly&&!simulate
   const selected=order.order_items.find(item=>item.id===focusedId)??null
-  const draft=selected?(drafts[selected.id]??initialDraft(selected)):null
+  const draft=selected?(drafts[selected.id]??initialDraft(selected,itemDecisions[selected.id])):null
   const selectedVariant=draft
     ?variants.find(variant=>variant.id===draft.variantId)??(selected?.product_variants?.id===draft.variantId?selected.product_variants:null)
     :null
   const suggestion=selected?suggestions[selected.id]:null
-  const countSaved=order.order_items.filter(item=>!!item.product_variant_id).length
+  const countSaved=order.order_items.filter(item=>!!item.product_variant_id||(!simulate&&!!choices[item.id])).length
   const totalChoices=Object.keys(choices).length
   const activeShipment=order.shipments?.find(s=>s.is_active)??order.shipments?.[0]??null
   const warehouse=batchOf(order)?.warehouses
@@ -176,7 +207,7 @@ export function WarehouseIntakeDetailPreview({
   function change(patch:Partial<Draft>){
     if(!selected)return
     setDrafts(current=>({
-      ...current,[selected.id]:{...(current[selected.id]??initialDraft(selected)),...patch}
+      ...current,[selected.id]:{...(current[selected.id]??initialDraft(selected,itemDecisions[selected.id])),...patch}
     }))
     setNotice('')
   }
@@ -195,8 +226,8 @@ export function WarehouseIntakeDetailPreview({
       multiplier:Number.isInteger(multiplier)&&multiplier>0?String(multiplier):'1'})
     setNotice('Đã chọn gợi ý để đối chiếu. Chưa lưu SKU hoặc nhập kho.')
   }
-  function recordChoice(){
-    if(!selected||!draft||processed)return
+  async function recordChoice(){
+    if(!selected||!draft||processed||isReadOnly||busy)return
     if(draft.mode==='existing'&&!selectedVariant){
       setNotice('Vui lòng chọn SKU bán có sẵn trước khi ghi nhận.');return
     }
@@ -218,12 +249,50 @@ export function WarehouseIntakeDetailPreview({
       setNotice('Cần nhập lý do cho sản phẩm Bỏ qua kho.');return
     }
     const sku=draft.mode==='existing'?(selectedVariant?.products?.sku??'Chưa có mã SKU'):draft.newSku.trim().toUpperCase()
-    setChoices(current=>({...current,[selected.id]:{
+    const nextChoice:Choice={
       action:draft.decision,sku,price:draft.salePrice,multiplier,
       quantity:Number(selected.quantity)*multiplier,
       reason:draft.decision==='SKIP'?draft.reason.trim():undefined
-    }}))
-    setNotice('Đã ghi nhận lựa chọn thử. Không ghi SKU, giá hoặc tồn kho vào Supabase.')
+    }
+    if(simulate){
+      setChoices(current=>({...current,[selected.id]:nextChoice}))
+      setNotice('Đã ghi nhận lựa chọn thử. Không ghi SKU, giá hoặc tồn kho vào Supabase.')
+      return
+    }
+    setBusy(true)
+    try{
+      const result=await saveWarehouseItemDecision({
+        orderItemId:selected.id,
+        variantId:draft.mode==='existing'?selectedVariant?.id??null:null,
+        newSku:draft.mode==='new'?draft.newSku.trim():null,
+        newName:draft.mode==='new'?draft.newName.trim():null,
+        newVariant:draft.mode==='new'?draft.newVariant.trim():null,
+        salePrice:price,multiplier,decision:draft.decision,
+        skipReason:draft.decision==='SKIP'?draft.reason.trim():null
+      })
+      setChoices(current=>({...current,[selected.id]:nextChoice}))
+      setDrafts(current=>({...current,
+        [selected.id]:{...draft,mode:'existing',variantId:result.product_variant_id}
+      }))
+      setNotice('Đã lưu SKU, giá và quyết định kho. Chưa ghi tăng tồn kho.')
+      router.refresh()
+    }catch(error){
+      setNotice(error instanceof Error?error.message:'Không thể lưu bóc tách')
+    }finally{setBusy(false)}
+  }
+
+  async function finalizeOrder(){
+    if(processed||previewOnly||simulate||busy)return
+    setBusy(true)
+    try{
+      const result=await finalizeWarehouseItemDecisions(order.id)
+      setLiveStatus(result.warehouse_status)
+      setConfirmFinalize(false)
+      setNotice('Đã chốt xử lý kho. Tồn kho và lịch sử đã được cập nhật.')
+      router.refresh()
+    }catch(error){
+      setNotice(error instanceof Error?error.message:'Không thể chốt xử lý kho')
+    }finally{setBusy(false)}
   }
 
   const express=order.shipping_service==='EXPRESS'
@@ -274,7 +343,7 @@ export function WarehouseIntakeDetailPreview({
               <small>SL {item.quantity} · {item.sku||'Chưa có SKU mua'}</small>
             </span>
             <span className={'warehouse-detail-v2-product-state '+(choices[item.id]?'chosen':'')}>
-              {choices[item.id]?(choices[item.id].action==='IN'?'Dự kiến nhập':'Dự kiến bỏ')
+              {choices[item.id]?(choices[item.id].action==='IN'?(simulate?'Dự kiến nhập':'Đã chọn nhập'):(simulate?'Dự kiến bỏ':'Đã chọn bỏ'))
                 :item.product_variant_id?'Đã ghép SKU':'Chưa bóc tách'}
             </span>
           </button>)}
@@ -292,7 +361,7 @@ export function WarehouseIntakeDetailPreview({
           </div>}
           <div className="warehouse-detail-v2-section-title">Ghép SKU bán và quyết định giá</div>
           <div className="warehouse-detail-v2-switch">
-            <button type="button" disabled={processed} className={draft.mode==='existing'?'active':''}
+            <button type="button" disabled={processed||isReadOnly||busy} className={draft.mode==='existing'?'active':''}
               onClick={()=>change({mode:'existing'})}>Chọn SKU có sẵn</button>
             <button type="button" disabled={processed} className={draft.mode==='new'?'active':''}
               onClick={()=>change({mode:'new',variantId:''})}>Tạo SKU mới</button>
@@ -302,7 +371,7 @@ export function WarehouseIntakeDetailPreview({
               <span>GỢI Ý TỪ LẦN BÓC TÁCH TRƯỚC</span>
               <b>{suggestion.sku||'SKU bán'} · {suggestion.product_name||''}</b>
               <small>{suggestion.variant_name||'Mặc định'} · quy đổi từng dùng ×{suggestion.multiplier}</small>
-              <button type="button" onClick={applySuggestion} disabled={processed}>Chọn gợi ý</button>
+              <button type="button" onClick={applySuggestion} disabled={processed||isReadOnly||busy}>Chọn gợi ý</button>
             </div>}
             <label className="warehouse-detail-v2-field"><span>Tìm SKU theo mã, tên hoặc phân loại</span>
               <input type="search" aria-label="Tìm SKU theo mã, tên hoặc phân loại"
@@ -361,8 +430,14 @@ export function WarehouseIntakeDetailPreview({
           </label>}
           {notice&&<div className="warehouse-detail-v2-notice" role="status">{notice}</div>}
           <button type="button" className="button primary warehouse-detail-v2-record"
-            onClick={recordChoice} disabled={processed}>Ghi nhận lựa chọn thử</button>
-          <p className="warehouse-detail-v2-disclaimer">Chỉ mô phỏng · không tạo SKU hoặc ghi tồn kho vào Supabase</p>
+            onClick={recordChoice} disabled={processed||isReadOnly||busy}>
+            {busy?'Đang xử lý…':simulate?'Ghi nhận lựa chọn thử':'Lưu bóc tách và quyết định'}
+          </button>
+          <p className="warehouse-detail-v2-disclaimer">
+            {simulate?'Chỉ mô phỏng · không tạo SKU hoặc ghi tồn kho vào Supabase'
+              :isReadOnly?'Bạn không có quyền chỉnh sửa kho'
+              :'Lưu bóc tách chưa nhập tồn. Nhấn Chốt xử lý kho sau khi hoàn tất tất cả sản phẩm.'}
+          </p>
         </section>}
       </div>}
       {tab==='info'&&<div className="warehouse-detail-v2-content warehouse-detail-v2-order-info">
@@ -428,7 +503,7 @@ export function WarehouseIntakeDetailPreview({
     </div>
     <footer className="warehouse-detail-v2-footer">
       {showSummary&&<div className="warehouse-detail-v2-summary" aria-label="Các lựa chọn dự kiến">
-        <b>Danh sách lựa chọn dự kiến ({totalChoices}/{order.order_items.length})</b>
+        <b>{simulate?'Danh sách lựa chọn dự kiến':'Danh sách quyết định kho'} ({totalChoices}/{order.order_items.length})</b>
         {order.order_items.map(item=><div key={item.id}>
           <span>{item.product_name}</span>
           <strong>{choices[item.id]?(choices[item.id].action==='IN'?'Nhập kho':'Bỏ qua kho')+' · '+choices[item.id].sku+' · SL '+choices[item.id].quantity:'Chưa chọn'}</strong>
@@ -436,11 +511,22 @@ export function WarehouseIntakeDetailPreview({
         </div>)}
       </div>}
       <div className="warehouse-detail-v2-footer-actions">
-        <span><b>{totalChoices}/{order.order_items.length}</b> lựa chọn thử</span>
+        <span><b>{totalChoices}/{order.order_items.length}</b> {simulate?'lựa chọn thử':'đã lưu quyết định'}</span>
         <button type="button" className="button small" onClick={()=>setShowSummary(x=>!x)}
-          aria-expanded={showSummary}>{showSummary?'Thu gọn':'Xem lựa chọn dự kiến'}</button>
+          aria-expanded={showSummary}>{showSummary?'Thu gọn':simulate?'Xem lựa chọn dự kiến':'Xem quyết định kho'}</button>
       </div>
-      <p>Preview chỉ mô phỏng, chưa ghi dữ liệu kho.</p>
+      {!simulate&&!isReadOnly&&!processed&&totalChoices===order.order_items.length&&order.order_items.length>0&&
+        (confirmFinalize?<div className="warehouse-detail-v2-confirm">
+          <p>Chốt xử lý cả đơn theo các quyết định đã lưu? Chỉ sản phẩm chọn Nhập kho được ghi tăng tồn.</p>
+          <button type="button" className="button primary small" disabled={busy} onClick={finalizeOrder}>Xác nhận ghi tồn kho</button>
+          <button type="button" className="button small" disabled={busy} onClick={()=>setConfirmFinalize(false)}>Hủy</button>
+        </div>:<button type="button" className="button primary small" onClick={()=>{setShowSummary(true);setConfirmFinalize(true)}}>
+          Chốt xử lý kho
+        </button>)}
+      <p>{simulate?'Preview chỉ mô phỏng, chưa ghi dữ liệu kho':
+        processed?'Đơn đã được xử lý kho. Không nhập lại.':
+        isReadOnly?'Chỉ xem · không có quyền xử lý kho.':
+        'Lưu từng sản phẩm trước, sau đó xác nhận chốt kho một lần.'}</p>
     </footer>
   </aside>
 }
