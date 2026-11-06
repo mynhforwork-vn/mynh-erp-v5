@@ -41,4 +41,9 @@ jobs:
             exit 1
           fi
           grep -q '"ok":true' /tmp/mynh-primary-health || exit 1
-          echo "PASS: Primary Production health after Cloudflare propagation"
+          login_code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 25 "$primary/login")
+          test "$login_code" = "200"
+          unauth_code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 25 "$primary/api/alerts/in-app")
+          test "$unauth_code" = "401"
+          echo "PASS: Primary health=$primary_code login=$login_code unauthAlerts=$unauth_code"
+          echo "::notice::Alias erp.mynh-forwork.workers.dev HTTP 404 is a separate unconfigured Worker hostname, not a failure of the primary mynh-erp-v5 Worker."
