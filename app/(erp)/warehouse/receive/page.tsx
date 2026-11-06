@@ -71,17 +71,14 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     ? today : receivedPeriod === 'custom' ? dateTo : ''
   const invalidDateRange = Boolean(sinceDay && untilDay && sinceDay > untilDay)
   const { supabase } = await requireUser()
-  const [
-    { data: orders, error: ordersError },
-    { data: variants, error: variantsError },
-    { data: auditLogs, error: auditError },
-    { data: receiptLinks, error: receiptLinksError },
-    { data: receiptBatches, error: receiptBatchesError },
-    { data: receivingWarehouses, error: receivingWarehousesError },
-    { data: settings, error: settingsError },
-    { data: recentMappings, error: mappingError },
-  ] = await Promise.all([
-    supabase.from('orders')
+  // Count every non-archived received order, including processed and skipped ones.
+  // Paginate deterministically because Supabase/PostgREST caps each response.
+  async function loadReceivedOrders(){
+    const batchSize=500
+    const collected:any[]=[]
+    for(let page=0;page<100;page++){
+      const offset=page*batchSize
+      const {data,error}=await supabase.from('orders')
       .select([
         'id,shopee_order_id,cod,prepaid_amount,prepaid_source_label,order_date,warehouse_status,order_status,payment_status',
         'recipient_name,recipient_phone,recipient_address,area,destination_hub',
@@ -94,7 +91,27 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       .is('archived_at', null)
       .eq('receive_status', 'RECEIVED')
       .order('order_date', { ascending: false })
-      .limit(1000),
+      .order('id', { ascending: true })
+      .range(offset,offset+batchSize-1)
+      if(error)return {data:collected,error}
+      const part=(data??[]) as any[]
+      collected.push(...part)
+      if(part.length<batchSize)return {data:collected,error:null}
+    }
+    return {data:collected,error:{message:'Danh sách nhận hàng vượt giới hạn 50.000 đơn. Cần phân trang phía máy chủ.'}}
+  }
+
+  const [
+    { data: orders, error: ordersError },
+    { data: variants, error: variantsError },
+    { data: auditLogs, error: auditError },
+    { data: receiptLinks, error: receiptLinksError },
+    { data: receiptBatches, error: receiptBatchesError },
+    { data: receivingWarehouses, error: receivingWarehousesError },
+    { data: settings, error: settingsError },
+    { data: recentMappings, error: mappingError },
+  ] = await Promise.all([
+    loadReceivedOrders(),
     supabase.from('product_variants')
       .select('id,variant_name,sale_price,products(id,sku,name)')
       .order('updated_at', { ascending: false }).limit(1500),
@@ -247,7 +264,6 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
         <span>Vui lòng kiểm tra liên kết phiếu nhận. Hệ thống không tự suy đoán theo HUB và không nhập kho.</span>
       </div>
     </div>}
-    {allRows.length >= 1000 && <div className="tracking-flash-row"><div className="error-box">Danh sách đạt giới hạn 1.000 đơn; số liệu có thể chưa đủ. Không dùng KPI để đối soát khi cảnh báo này xuất hiện.</div></div>}
     {error && <div className="tracking-flash-row">
       <div className="error-box">Không thể tải dữ liệu Kho nhận: {error.message}</div>
     </div>}
