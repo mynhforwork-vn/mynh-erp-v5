@@ -1,0 +1,119 @@
+name: PR89 Approved One-Time Warehouse V2 Production Release
+
+# Approved by the MYNH ERP owner after Option 2 was selected.
+# Only runs when GitHub merges PR #89 into main with the explicit release title.
+# No Supabase mutation in this workflow: migration is reviewed/applied separately,
+# before merge, via the authenticated Supabase connector.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/pr89-warehouse-v2-production-one-shot.yml'
+
+permissions:
+  contents: read
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: "${{ startsWith(github.event.head_commit.message, 'Merge PR #89: warehouse item-level V2 approved') }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROD_URL: https://mynh-erp-v5.mynh-forwork.workers.dev
+      ALIAS_URL: https://erp.mynh-forwork.workers.dev
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify exact merge and release boundaries
+        shell: bash
+        run: |
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD^1)" = '96029492250b078d3ec182578297401160ca3bdd'
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -f supabase/migrations/0075_item_level_warehouse_decisions.sql
+          test -f lib/actions/warehouse-item-decisions.ts
+          grep -q '"ERP_WAREHOUSE_V2_LIVE": "true"' wrangler.jsonc
+          grep -q '"ERP_WAREHOUSE_V2_LIVE": "false"' wrangler.jsonc
+          grep -q 'guard_warehouse_item_legacy_transition' supabase/migrations/0075_item_level_warehouse_decisions.sql
+          echo 'Release gate: code references migration 0075; Production Supabase schema preflight verified separately.'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Warehouse contracts and cross-module regression
+        run: |
+          node scripts/warehouse-intake-preview-contract-qa.mjs
+          node --experimental-strip-types scripts/returned-shipment-cancellation-qa.mjs
+          node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+          node scripts/remediation-static-qa.mjs
+          npm run typecheck
+      - name: Isolated PostgreSQL transactional regression
+        shell: bash
+        env:
+          PGPASSWORD: postgres
+        run: |
+          if ! command -v psql >/dev/null; then sudo apt-get update -qq && sudo apt-get install -qq -y postgresql-client; fi
+          psql -X -h 127.0.0.1 -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f scripts/warehouse-item-level-db-fixture.sql \
+            -f supabase/migrations/0075_item_level_warehouse_decisions.sql \
+            -f scripts/warehouse-item-level-db-qa.sql 2>&1 | tee warehouse-db-qa.log
+          grep -q 'PASS: 0075 persistence, mixed, skip, duplicate, aggregation, audit, permissions' warehouse-db-qa.log
+      - name: Responsive and live Server Action browser fixture
+        shell: bash
+        run: |
+          npm install --no-save playwright esbuild --no-audit --no-fund
+          export CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME_BIN"
+          node scripts/warehouse-intake-preview-browser-qa.mjs
+      - name: Build and deploy only MYNH ERP Production Worker
+        run: |
+          npx opennextjs-cloudflare build
+          npx opennextjs-cloudflare deploy
+      - name: Production and alias smoke
+        shell: bash
+        run: |
+          for base in "$PROD_URL" "$ALIAS_URL"; do
+            curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 30 "$base/api/health" > health.json
+            grep -q '"ok":true' health.json
+            login="$(curl -sS -o login.html -w '%{http_code}' --max-time 30 "$base/login")"
+            test "$login" = "200"
+            grep -q 'MYNH ERP' login.html
+          done
+          unauth="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$PROD_URL/api/alerts/in-app")"
+          test "$unauth" = "401"
+      - name: Release summary
+        shell: bash
+        run: |
+          {
+            echo '## PR #89 Warehouse V2 Production'
+            echo "- main commit: $GITHUB_SHA"
+            echo '- scope: MYNH ERP V5 Worker only'
+            echo '- Preview: remains read-only with separate Cloudflare vars'
+            echo '- atomic mixed item decision PostgreSQL test: PASS'
+            echo '- frontend QA and cross-module regression: PASS'
+            echo '- Worker and alias health/login: PASS'
+            echo '- No Supabase migration from Actions, no tracking/Cron/Telegram Worker changes'
+            echo '- Previous Worker version for rollback: 2dae01f9-7a82-4a3d-9de1-0eaba65b813a'
+          } >> "$GITHUB_STEP_SUMMARY"
