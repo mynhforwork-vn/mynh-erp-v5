@@ -110,6 +110,9 @@ function actionLabel(action:string){
   if(action==='MAP_INVENTORY_SKU')return 'Bóc tách SKU'
   if(action==='RECEIVE_INTO_STOCK'||action==='RECEIVE_ORDERS_INTO_WAREHOUSE')return 'Nhập kho'
   if(action==='SKIP_WAREHOUSE')return 'Bỏ qua kho'
+  if(action==='SAVE_ITEM_DECISION')return 'Lưu SKU và quyết định sản phẩm'
+  if(action==='FINALIZE_ITEM_DECISION')return 'Chốt xử lý sản phẩm'
+  if(action==='FINALIZE_ORDER_WAREHOUSE')return 'Hoàn tất xử lý kho'
   return 'Thao tác kho'
 }
 function initialDraft(item:Item,saved?:ItemDecision):Draft{
@@ -169,6 +172,7 @@ export function WarehouseIntakeDetailPreview({
   const [confirmFinalize,setConfirmFinalize]=useState(false)
   const [liveStatus,setLiveStatus]=useState<string|null>(null)
   const [notice,setNotice]=useState('')
+  const [toast,setToast]=useState('')
   const [showSummary,setShowSummary]=useState(false)
   const [copied,setCopied]=useState(false)
   const processed=handled.has(liveStatus??order.warehouse_status??'')
@@ -193,6 +197,11 @@ export function WarehouseIntakeDetailPreview({
   },[draft?.query,variants])
   const logs=auditLogs.filter(log=>String(log.entity_id??'')===order.id)
 
+  useEffect(()=>{
+    if(!toast)return
+    const timer=window.setTimeout(()=>setToast(''),5000)
+    return ()=>window.clearTimeout(timer)
+  },[toast])
   useEffect(()=>{
     const escape=(event:KeyboardEvent)=>{if(event.key==='Escape')onClose()}
     window.addEventListener('keydown',escape)
@@ -274,7 +283,8 @@ export function WarehouseIntakeDetailPreview({
       setDrafts(current=>({...current,
         [selected.id]:{...draft,mode:'existing',variantId:result.product_variant_id}
       }))
-      setNotice('Đã lưu SKU, giá và quyết định kho. Chưa ghi tăng tồn kho.')
+      setNotice('')
+      setToast('Đã lưu SKU, giá và quyết định kho. Chưa ghi tăng tồn kho.')
       router.refresh()
     }catch(error){
       setNotice(error instanceof Error?error.message:'Không thể lưu bóc tách')
@@ -288,7 +298,8 @@ export function WarehouseIntakeDetailPreview({
       const result=await finalizeWarehouseItemDecisions(order.id)
       setLiveStatus(result.warehouse_status)
       setConfirmFinalize(false)
-      setNotice('Đã chốt xử lý kho. Tồn kho và lịch sử đã được cập nhật.')
+      setNotice('')
+      setToast('Đã chốt xử lý kho. Tồn kho và lịch sử đã được cập nhật.')
       router.refresh()
     }catch(error){
       setNotice(error instanceof Error?error.message:'Không thể chốt xử lý kho')
@@ -305,6 +316,9 @@ export function WarehouseIntakeDetailPreview({
 
   return <aside className="whx-detail-panel warehouse-intake-panel warehouse-detail-v2 mynh-slide-panel" data-system-slidebar="true"
     aria-label={'Bóc tách đơn '+(order.shopee_order_id??order.id)}>
+    {toast&&<div className="warehouse-detail-v2-toast" role="status" aria-live="polite">
+      <span>{toast}</span><button type="button" aria-label="Đóng thông báo" onClick={()=>setToast('')}>×</button>
+    </div>}
     <header className="whx-panel-head warehouse-detail-v2-head">
       <div className="warehouse-detail-v2-title">
         <span className="module-eyebrow">CHI TIẾT BÓC TÁCH · KHO {warehouse?.code??'CHƯA XÁC ĐỊNH'}</span>
@@ -498,6 +512,16 @@ export function WarehouseIntakeDetailPreview({
           <b>{actionLabel(log.action)}</b><time>{formatDateTime(log.created_at)}</time>
           {log.action==='MAP_INVENTORY_SKU'&&log.new_value&&
             <small>SKU đã ghép · Hệ số quy đổi: {String(log.new_value.inventory_multiplier??'Chưa có')}</small>}
+          {['SAVE_ITEM_DECISION','FINALIZE_ITEM_DECISION'].includes(log.action)&&log.new_value&&
+            <small>
+              {String(log.new_value.order_item_id??'')}
+              {' · '}{log.new_value.decision==='IN'?'Nhập kho':'Bỏ qua kho'}
+              {' · '}SL {String(log.new_value.quantity??'Chưa có')}
+              {' · '}Giá {displayMoney(log.new_value.sale_price as number|string|null)}
+              {log.new_value.skip_reason?' · Lý do: '+String(log.new_value.skip_reason):''}
+            </small>}
+          {log.action==='FINALIZE_ORDER_WAREHOUSE'&&log.new_value&&
+            <small>Nhập {String(log.new_value.in_items??0)} sản phẩm · Bỏ qua {String(log.new_value.skip_items??0)} sản phẩm</small>}
         </div>):<div className="empty compact">Chưa có lịch sử bóc tách của đơn.</div>}
       </div>}
     </div>
