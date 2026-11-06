@@ -39,9 +39,11 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID"
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Warehouse date, KPI, table and Preview safety contracts
+        run: node scripts/warehouse-intake-preview-contract-qa.mjs
       - name: TypeScript
         run: npm run typecheck
-      - name: Build OpenNext from unmodified main app
+      - name: Build OpenNext from dedicated Preview branch
         run: npx opennextjs-cloudflare build
       - name: Publish dedicated Preview only (never Production)
         id: preview
@@ -79,9 +81,9 @@ jobs:
         run: |
           {
             echo "## Warehouse Intake Preview"
-            echo "- App source: main 96029492250b078d3ec182578297401160ca3bdd (plus workflow only)"
+            echo "- Base source: main 96029492250b078d3ec182578297401160ca3bdd; reviewed warehouse Preview changes"
             echo "- Branch: preview/warehouse-intake-baseline-20261106"
             echo "- Preview: $PREVIEW_URL"
-            echo "- Typecheck, OpenNext build, /api/health and /login: PASS"
+            echo "- Warehouse contracts, typecheck, OpenNext build, /api/health and /login: PASS"
             echo "- No Production or Supabase changes"
           } >> "$GITHUB_STEP_SUMMARY"
