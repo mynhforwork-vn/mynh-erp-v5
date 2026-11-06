@@ -280,8 +280,8 @@ export function WarehouseIntakeWorkspace({
                 </div>
               </div>
               {open&&<>
-                <div className="tracking-hub-table-wrap tracking-hub-table-wrap-v2 warehouse-unified-table-wrap">
-                  <table className="table tracking-hub-table tracking-hub-table-v2 warehouse-unified-table"
+                <div className="warehouse-unified-table-wrap">
+                  <table className="table warehouse-unified-table"
                     aria-label={'Danh sách Nhập kho '+group.code}>
                     <colgroup>{tableColumns.visible.map(col=><col key={col}
                       style={{width:(weights[col]/widthTotal*100)+'%'}}/>)}</colgroup>
