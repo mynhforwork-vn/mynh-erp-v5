@@ -50,14 +50,17 @@ const checks=[
     table.includes('<SortableHeader') &&
     table.includes('warehouse-unified-group-column-control') &&
     !table.includes('warehouse-unified-toolbar')],
-  ['real-width Auto Fit with no horizontal table scrollbar',
+  ['real-width Auto Fit preserves seven actual table columns without blank width',
     table.includes('new ResizeObserver(measure)') &&
-    table.includes('laneRef') &&
-    table.includes('laneWidth<1050?TABLE_COMPACT_WEIGHTS:TABLE_WEIGHTS') &&
+    table.includes('autoFitColumnWidths(tableColumns.visible,laneWidth)') &&
+    table.includes('style={{width:columnWidths[index]+\'%\'}}') &&
     css.includes('container-type:inline-size') &&
     css.includes('@container warehouse-lane (max-width:850px)') &&
-    css.includes('overflow:visible!important') &&
-    css.includes('min-width:0!important') &&
+    css.includes('display:table!important') &&
+    css.includes('display:table-row!important') &&
+    css.includes('display:table-cell!important') &&
+    css.includes('display:table-header-group!important') &&
+    !css.includes('display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))') &&
     !css.includes('min-width:870px!important')],
   ['one product per line and full detail in tooltip',
     table.includes('warehouse-unified-product-line') &&
