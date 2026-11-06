@@ -86,6 +86,15 @@ const checks=[
     css.includes('table.warehouse-unified-table') &&
     css.includes('width:auto!important;min-width:0!important;max-width:none!important') &&
     !css.includes('body.brand-shell-v1')],
+  ['receiving table and unchanged detail panel consume full page height',
+    css.includes('.brand-shell-v1>.main:has(>.warehouse-receive-screen)') &&
+    css.includes('padding-bottom:8px!important') &&
+    css.includes('grid-template-rows:minmax(0,1fr)!important') &&
+    css.includes('flex:1 1 0!important') &&
+    css.includes('height:100%!important') &&
+    css.includes('overflow-y:auto!important') &&
+    css.includes('.warehouse-unified-group.open>.warehouse-unified-table-wrap') &&
+    !css.includes('margin-bottom:10px;border-radius:7px')],
   ['selectors target the real ERP shell wrapper instead of body',
     read('app/(erp)/layout.tsx').includes('className="shell brand-shell-v1"') &&
     read('app/layout.tsx').includes('<body>{children}</body>') &&
