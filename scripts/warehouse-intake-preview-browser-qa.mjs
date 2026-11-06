@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright'
 import { build } from 'esbuild'
-import { readFileSync, writeFileSync, readdirSync, mkdtempSync, mkdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdtempSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 
@@ -43,8 +43,12 @@ await build({
     }))
   }}]
 })
-const cssFiles=readdirSync(path.join(root,'app/styles')).filter(file=>file.endsWith('.css'))
-const css=cssFiles.map(file=>readFileSync(path.join(root,'app/styles',file),'utf8')).join('\n')
+// Follow the actual Next.js global CSS import order, then the page-scoped
+// warehouse stylesheet. Alphabetical concatenation masked cascade regressions.
+const globalCss=readFileSync(path.join(root,'app/globals.css'),'utf8')
+const cssFiles=[...globalCss.matchAll(/@import ['"]\.\/styles\/([^'"]+\.css)['"]/g)].map(match=>match[1])
+const css=[...cssFiles,'warehouse-intake-preview.css']
+  .map(file=>readFileSync(path.join(root,'app/styles',file),'utf8')).join('\n')
 const harnessCss=[
   'html,body{margin:0;padding:0;max-width:100%;background:#f5f8fb;font-family:Arial,sans-serif}',
   '#root{box-sizing:border-box;max-width:100%;min-width:0}',
@@ -118,6 +122,25 @@ try {
           actual:el.scrollWidth,
           right:el.getBoundingClientRect().right
         })),
+        finalColumns:tables.map(t=>{
+          const lastIndex=t.tHead.rows[0].cells.length-1
+          const header=t.tHead.rows[0].cells[lastIndex]
+          const bodyCell=t.tBodies[0].rows[0].cells[lastIndex]
+          const wrapper=t.closest('.warehouse-unified-table-wrap')
+          const tableRect=t.getBoundingClientRect()
+          const wrapRect=wrapper.getBoundingClientRect()
+          const lastHeaderRect=header.getBoundingClientRect()
+          const lastBodyRect=bodyCell.getBoundingClientRect()
+          return {
+            tableRight:tableRect.right,wrapperRight:wrapRect.right,
+            headerLeft:lastHeaderRect.left,headerRight:lastHeaderRect.right,
+            bodyRight:lastBodyRect.right,
+            headerWidth:lastHeaderRect.width,
+            fullyVisible:lastHeaderRect.right<=wrapRect.right+2 &&
+              lastBodyRect.right<=wrapRect.right+2 &&
+              lastHeaderRect.left>=wrapRect.left-2
+          }
+        }),
         statusHeaders:tables.map(t=>{
           const th=t.tHead?.rows[0]?.cells[t.tHead.rows[0].cells.length-1]
           const button=th?.querySelector('button')
@@ -159,19 +182,23 @@ try {
       'all seven columns must occupy measurable table width '+width+' '+JSON.stringify(list.tableGeometry))
     assert.ok(list.tableGeometry.every(x=>Math.abs(x.tableLeft-x.firstLeft)<=3 && Math.abs(x.tableRight-x.lastRight)<=3),
       'Auto Fit leaves unused blank space at table edges '+width+' '+JSON.stringify(list.tableGeometry))
+    assert.ok(list.finalColumns.every(x=>x.fullyVisible && x.headerWidth>3 &&
+      Math.abs(x.tableRight-x.wrapperRight)<=3),
+      'rightmost status column is clipped, beyond container, or table is not full width '+width+' '+JSON.stringify(list.finalColumns))
     if(width>900&&list.panelLeft!==undefined&&list.panelLeft!==null) {
-      assert.ok(list.panelLeft-list.laneRight>=25,'desktop panel gap must be larger '+width+' '+JSON.stringify(list))
+      assert.ok(list.panelLeft-list.laneRight>=7 && list.panelLeft-list.laneRight<=15,
+        'desktop gutter must be compact, about 10px '+width+' '+JSON.stringify(list))
       assert.ok(list.groupRights.every(right=>right<=list.laneRight+2),
         'warehouse card extends beyond available table lane '+width+' '+JSON.stringify(list))
-      assert.ok(list.groupRights.every(right=>list.panelLeft-right>=24),
-        'table card intrudes into required visual gap before slidebar '+width+' '+JSON.stringify(list))
+      assert.ok(list.groupRights.every(right=>list.panelLeft-right>=7 && list.panelLeft-right<=15),
+        'group card must fill available lane with compact spacing '+width+' '+JSON.stringify(list))
       assert.ok(list.panelRight<=width+3,'panel escapes viewport '+width+' '+JSON.stringify(list))
     } else if(width<=900){
       assert.ok(list.laneWidth>=width-30,'mobile/tablet list must own the screen under the overlay '+width+' '+JSON.stringify(list))
       assert.ok(list.panelLeft>=-2&&list.panelRight<=width+2,'mobile/tablet panel escapes viewport '+width+' '+JSON.stringify(list))
     }
     if(list.laneWidth>=700){
-      assert.ok(list.statusHeaders.every(h=>h.needed<=h.displayed+2 && h.right<=list.laneRight+2),
+      assert.ok(list.statusHeaders.every(h=>h.text?.includes('Trạng thái') && h.needed<=h.displayed+2 && h.right<=list.laneRight+2),
         'last column heading hidden or clipped behind the slidebar '+width+' '+JSON.stringify(list.statusHeaders))
       assert.ok(list.pills.every(p=>p.actual<=p.width+2 && p.right<=list.laneRight+2),
         'status values clipped at the right edge '+width+' '+JSON.stringify(list.pills))
