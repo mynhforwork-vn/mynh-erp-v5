@@ -22,7 +22,7 @@ const dashboardRanges:{key:RangeKey,label:string}[]=[
  * Giữ nguyên URL, các bộ lọc nghiệp vụ và lịch sử điều hướng; không reload document.
  */
 export function PurchaseDateFilter({
-  activeRange,from,to,label,basePath='/purchase',showAll=false,preserveParams={},
+  activeRange,from,to,label,basePath='/purchase',showAll=false,preserveParams={},rangeParam='range',dateDescription='ngày đặt đơn',
 }:{
   activeRange:RangeKey
   from:string
@@ -31,6 +31,8 @@ export function PurchaseDateFilter({
   basePath?:string
   showAll?:boolean
   preserveParams?:Record<string,string|undefined|null>
+  rangeParam?:string
+  dateDescription?:string
 }){
   const router=useRouter()
   const navRef=useRef<HTMLElement>(null)
@@ -44,9 +46,9 @@ export function PurchaseDateFilter({
   if(activeRange==='quarter')options.splice(options.length-1,0,{key:'quarter',label:'Quý này'})
   function paramsFor(nextRange:RangeKey){
     const query=new URLSearchParams()
-    query.set('range',nextRange)
+    query.set(rangeParam,nextRange)
     for(const [key,value] of preserved){
-      if(key==='range'||key==='from'||key==='to')continue
+      if(key===rangeParam||key==='from'||key==='to')continue
       query.set(key,String(value))
     }
     return query
@@ -67,7 +69,7 @@ export function PurchaseDateFilter({
     query.set('to',toDate)
     router.push(basePath+'?'+query.toString(),{scroll:false})
   }
-  return <nav ref={navRef} className="pd-time-filter" aria-label={'Lọc theo ngày đặt đơn · '+label}>
+  return <nav ref={navRef} className="pd-time-filter" aria-label={'Lọc theo '+dateDescription+' · '+label}>
     <div className="pd-time-quick" role="group" aria-label="Chọn khoảng thời gian">
       {options.map(option=><Link key={option.key} href={rangeHref(option.key)}
         prefetch={false} scroll={false}
@@ -76,8 +78,8 @@ export function PurchaseDateFilter({
     </div>
     <form className="pd-time-calendar" action={basePath} method="GET"
       aria-label="Lọc khoảng ngày tùy chỉnh" onSubmit={applyCustom}>
-      <input type="hidden" name="range" value="custom"/>
-      {preserved.filter(([key])=>!['range','from','to'].includes(key))
+      <input type="hidden" name={rangeParam} value="custom"/>
+      {preserved.filter(([key])=>![rangeParam,'from','to'].includes(key))
         .map(([key,value])=><input key={key} type="hidden" name={key} value={String(value)}/>)}
       <label><span>Từ</span><input aria-label="Từ ngày" type="date" name="from"
         defaultValue={activeRange==='all'?'':from} required/></label>
