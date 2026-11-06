@@ -77,6 +77,10 @@ const checks=[
     page.includes('rangeParam="received_range"')],
   ['more space between the receiving table and the existing desktop slidebar',
     css.includes('column-gap:26px!important')],
+  ['tablet/mobile uses full table width and fixed original slidebar overlay',
+    css.includes('grid-template-columns:minmax(0,1fr)!important') &&
+    css.includes('width:min(100vw,430px)!important') &&
+    css.includes('position:fixed!important;inset:0 0 0 auto!important')],
   ['existing detail slidebar remains old JSX and no new panel redesign',
     table.includes('<aside className="whx-detail-panel warehouse-intake-panel">')&&
     table.includes('className="whx-panel-tabs"')&&
