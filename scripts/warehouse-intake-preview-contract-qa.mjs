@@ -8,6 +8,9 @@ const settings=read('components/warehouse-receiving-settings.tsx')
 const css=read('app/styles/warehouse-intake-preview.css')
 const panel=read('components/warehouse-intake-detail-preview.tsx')
 const panelCss=read('app/styles/warehouse-intake-detail-preview.css')
+const migration=read('supabase/migrations/0075_item_level_warehouse_decisions.sql')
+const actions=read('lib/actions/warehouse-item-decisions.ts')
+const config=read('wrangler.jsonc')
 const checks=[
   ['only Warehouse receive page uses the changed scoped stylesheet',
     page.includes("import '@/app/styles/warehouse-intake-preview.css'")&&
@@ -162,6 +165,31 @@ const checks=[
     !panel.includes("from('@/lib/actions/warehouse')") &&
     panel.includes('không tạo SKU hoặc ghi tồn kho vào Supabase') &&
     settings.includes('previewOnly?undefined:saveReceivingWarehouseSettings')],
+  ['backend item decisions persist independently and finalize as one DB transaction',
+    migration.includes('CREATE TABLE IF NOT EXISTS public.warehouse_item_decisions') &&
+    migration.includes('CREATE OR REPLACE FUNCTION private.save_warehouse_item_decision_impl') &&
+    migration.includes('CREATE OR REPLACE FUNCTION private.finalize_warehouse_item_decisions_impl') &&
+    migration.includes("d.decision='IN'") &&
+    migration.includes('GROUP BY d.product_variant_id') &&
+    migration.includes('warehouse_item_skip_reason_check') &&
+    migration.includes('guard_warehouse_item_legacy_transition') &&
+    migration.includes("'WAREHOUSE_MIXED'") &&
+    migration.includes("PERFORM private.assert_operator();")],
+  ['production-only write flag and read-only Cloudflare Preview',
+    config.includes('"ERP_WAREHOUSE_V2_LIVE": "true"') &&
+    config.includes('"ERP_WAREHOUSE_V2_LIVE": "false"') &&
+    page.includes("process.env.ERP_WAREHOUSE_V2_LIVE==='true'") &&
+    page.includes('previewOnly={!canWrite}') &&
+    page.includes('simulate={!isLive}') &&
+    actions.includes('assertLive()') &&
+    actions.includes("!['admin','operator'].includes")],
+  ['live UI uses server-side persistence and double-confirm stock finalization',
+    panel.includes('saveWarehouseItemDecision(') &&
+    panel.includes('finalizeWarehouseItemDecisions(') &&
+    panel.includes('router.refresh()') &&
+    panel.includes('Xác nhận ghi tồn kho') &&
+    panel.includes('Ghi nhận lựa chọn thử') &&
+    table.includes('!row.order_items.some(item=>!!itemDecisions[item.id])')],
   ['V2 slidebar height internal scroll and fixed footer',
     panelCss.includes('.warehouse-detail-v2-scroll') &&
     panelCss.includes('flex:1 1 auto!important') &&
