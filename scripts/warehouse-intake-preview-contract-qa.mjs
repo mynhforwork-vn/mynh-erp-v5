@@ -6,6 +6,8 @@ const table=read('components/warehouse-intake-workspace.tsx')
 const filter=read('components/purchase-date-filter.tsx')
 const settings=read('components/warehouse-receiving-settings.tsx')
 const css=read('app/styles/warehouse-intake-preview.css')
+const panel=read('components/warehouse-intake-detail-preview.tsx')
+const panelCss=read('app/styles/warehouse-intake-detail-preview.css')
 const checks=[
   ['only Warehouse receive page uses the changed scoped stylesheet',
     page.includes("import '@/app/styles/warehouse-intake-preview.css'")&&
@@ -104,17 +106,47 @@ const checks=[
     css.includes('grid-template-columns:minmax(0,1fr)!important') &&
     css.includes('width:min(100vw,430px)!important') &&
     css.includes('position:fixed!important;inset:0 0 0 auto!important')],
-  ['existing detail slidebar remains old JSX and no new panel redesign',
-    table.includes('<aside className="whx-detail-panel warehouse-intake-panel">')&&
-    table.includes('className="whx-panel-tabs"')&&
-    !table.includes('wh-native-panel')&&
-    settings.includes('<div className="whx-settings-popover">')&&!settings.includes('createPortal')],
-  ['read-only Preview blocks warehouse forms and settings writes',
-    page.includes('previewOnly')&&
-    table.includes('previewOnly?undefined:receiveOrdersIntoWarehouse')&&
-    table.includes('previewOnly?undefined:skipWarehouseOrder')&&
-    table.includes('previewOnly?undefined:mapWarehouseOrderItem')&&
+  ['V2 panel replaces only the detail aside and keeps receiving table unchanged',
+    table.includes('<WarehouseIntakeDetailPreview key={active.id}') &&
+    table.includes('className="warehouse-unified-table"') &&
+    panel.includes('<aside className="whx-detail-panel warehouse-intake-panel warehouse-detail-v2"') &&
+    panel.includes('className="whx-panel-tabs warehouse-detail-v2-tabs"') &&
+    page.includes("import '@/app/styles/warehouse-intake-detail-preview.css'") &&
+    settings.includes('<div className="whx-settings-popover">')],
+  ['V2 per-product SKU matching price conversion and separate stock decision',
+    panel.includes("type Decision='IN'|'SKIP'") &&
+    panel.includes("type Choice={action:Decision") &&
+    panel.includes('Record<string,Choice>') &&
+    panel.includes('Đối chiếu giá mua') &&
+    panel.includes('Giá bán (sửa được)') &&
+    panel.includes('Hệ số quy đổi') &&
+    panel.includes('Ghi nhận lựa chọn thử') &&
+    panel.includes('Lý do bỏ qua kho (bắt buộc)') &&
+    panel.includes('Xem lựa chọn dự kiến')],
+  ['V2 tab Info/History, per-item navigation, real data only',
+    panel.includes('Thông tin đơn') &&
+    panel.includes("setTab('products')") &&
+    panel.includes("tab==='history'") &&
+    panel.includes('activeShipment') &&
+    panel.includes('order.order_vouchers') &&
+    panel.includes('Không ghi') === false],
+  ['Preview safety keeps all persisted stock and SKU operations blocked',
+    page.includes('previewOnly') &&
+    table.includes('previewOnly?undefined:receiveOrdersIntoWarehouse') &&
+    !panel.includes('mapWarehouseOrderItem') &&
+    !panel.includes('skipWarehouseOrder') &&
+    !panel.includes('receiveOrdersIntoWarehouse') &&
+    !panel.includes("from('@/lib/actions/warehouse')") &&
+    panel.includes('Không ghi') === false &&
+    panel.includes('Không lưu') === false &&
+    panel.includes('không tạo SKU hoặc ghi tồn kho vào Supabase') &&
     settings.includes('previewOnly?undefined:saveReceivingWarehouseSettings')],
+  ['V2 slidebar height internal scroll and fixed footer',
+    panelCss.includes('.warehouse-detail-v2-scroll') &&
+    panelCss.includes('flex:1 1 auto!important') &&
+    panelCss.includes('.warehouse-detail-v2-footer') &&
+    panelCss.includes('flex:0 0 auto!important') &&
+    panelCss.includes('@media(max-width:900px)')],
 ]
 for(const [title,passed] of checks){assert.ok(passed,title);console.log('PASS',title)}
 console.log(checks.length+'/'+checks.length+' warehouse Preview contracts PASS')
