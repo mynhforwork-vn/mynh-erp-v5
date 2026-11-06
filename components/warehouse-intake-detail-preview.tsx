@@ -247,10 +247,13 @@ export function WarehouseIntakeDetailPreview({
               catch{setNotice('Không sao chép được mã đơn.')}
             }}>{copied?'Đã chép':'⧉'}</button>
         </div>
-        <p>{batchOf(order)?.received_at?formatDateTime(batchOf(order)?.received_at):'Chưa có ngày nhận'} · {order.order_items.length} sản phẩm · {stateLabel(order)}</p>
       </div>
       <button className="close" type="button" onClick={onClose} aria-label="Đóng slidebar">×</button>
     </header>
+    <div className="context-stack-breadcrumb warehouse-detail-v2-meta">
+      <span>{batchOf(order)?.received_at?formatDateTime(batchOf(order)?.received_at):'Chưa có ngày nhận'}</span>
+      <i>›</i><b>{order.order_items.length} sản phẩm</b><i>›</i><strong>{stateLabel(order)}</strong>
+    </div>
     <nav className="panel-tabs warehouse-detail-v2-tabs" aria-label="Các tab chi tiết bóc tách" role="tablist">
       <button type="button" role="tab" aria-selected={tab==='products'} className={tab==='products'?'active':''} onClick={()=>setTab('products')}>Sản phẩm</button>
       <button type="button" role="tab" aria-selected={tab==='info'} className={tab==='info'?'active':''} onClick={()=>setTab('info')}>Thông tin đơn</button>
