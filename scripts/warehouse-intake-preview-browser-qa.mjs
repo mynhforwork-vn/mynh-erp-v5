@@ -26,7 +26,7 @@ const source=[
   "  order_items:[{id:'20000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:long,sku:'SRC-'+i,variant:'Phân loại mẫu 500ml',quantity:2,original_price:50000,final_price:35000,inventory_multiplier:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}:null},",
   "  {id:'30000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:'Sữa tắm hương hoa nhài',sku:'SRC-OTHER',variant:'Dạng chai',quantity:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',products:{sku:'TEST-01',name:'Đã map'}}:null}]",
   '}))',
-  "function Fixture(){const [status,setStatus]=React.useState('all'); const filtered=status==='done'?rows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):rows; return <div className='fixture-app'><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[]} suggestions={{}} auditLogs={[]} previewOnly/></div>}",
+  "function Fixture(){const [status,setStatus]=React.useState('all'); const filtered=status==='done'?rows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):rows; return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[]} suggestions={{}} auditLogs={[]} previewOnly/></>}",
   "createRoot(document.getElementById('root')).render(<Fixture/>)",
 ].join('\n')
 writeFileSync(entryPath,source)
@@ -52,14 +52,14 @@ const css=[...cssFiles,'warehouse-intake-preview.css']
 const harnessCss=[
   'html,body{margin:0;padding:0;max-width:100%;background:#f5f8fb;font-family:Arial,sans-serif}',
   '#root{box-sizing:border-box;max-width:100%;min-width:0}',
-  '.shell.brand-shell-v1{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;min-height:100dvh}',
-  '.fixture-app{box-sizing:border-box;width:calc(100% - 245px);height:calc(100dvh - 24px);margin-left:245px;padding:9px 14px;min-width:0;display:flex;flex-direction:column}',
-  '.fixture-command{display:flex;gap:6px;flex:0 0 auto;min-height:34px}',
+  '.shell.brand-shell-v1{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;height:100dvh!important;min-height:0!important}',
+  '.shell.brand-shell-v1>.main{box-sizing:border-box!important;min-height:0!important;height:100dvh!important;width:calc(100% - 245px)!important;margin-left:245px!important;overflow:hidden!important}',
+  '.fixture-date{box-sizing:border-box;flex:0 0 auto;min-height:39px;max-height:39px;border:1px solid #d7e1e9;background:white;font-size:11px;padding:10px;margin-bottom:6px}',
+  '.fixture-command{display:flex;gap:6px;flex:0 0 auto;min-height:30px;margin:0 0 5px}',
   '.fixture-command button{border:1px solid #cbd8e3;background:white;border-radius:5px;padding:5px 10px}',
-  '.fixture-app .warehouse-intake-preview-layout{flex:1;min-height:0}',
-  '@media(max-width:900px){.fixture-app{margin-left:0;width:100%;padding:7px;height:calc(100dvh - 16px)}}',
+  '@media(max-width:900px){.shell.brand-shell-v1>.main{margin-left:0!important;width:100%!important}}',
 ].join('\n')
-const html='<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'\n'+harnessCss+'</style></head><body><div class="shell brand-shell-v1"><div id="root" class="tracking-screen-v2 whx-page warehouse-receive-screen"></div></div><script>'+readFileSync(outfile,'utf8')+'</script></body></html>'
+const html='<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'\n'+harnessCss+'</style></head><body><div class="shell brand-shell-v1"><main class="main"><div id="root" class="tracking-screen tracking-screen-v2 whx-page warehouse-receive-screen"></div></main></div><script>'+readFileSync(outfile,'utf8')+'</script></body></html>'
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BIN, args:['--no-sandbox']})
 try {
   for(const [width,height] of [[320,568],[360,800],[390,844],[414,896],[568,320],[768,1024],[820,1180],[1024,768],[1180,820],[1280,800],[1366,768],[1440,900],[1536,864],[1920,1080]]){
@@ -76,7 +76,27 @@ try {
       const panel=document.querySelector('aside.warehouse-intake-panel')
       const lane=document.querySelector('.warehouse-receive-table-lane')
       const productLines=[...document.querySelectorAll('.warehouse-unified-product-line')]
+      const main=document.querySelector('.brand-shell-v1>.main')
+      const screen=document.querySelector('.warehouse-receive-screen')
+      const workspace=document.querySelector('.warehouse-intake-preview-layout')
+      const groups=[...document.querySelectorAll('.warehouse-unified-group')]
+      const mainBottom=main.getBoundingClientRect().bottom-parseFloat(getComputedStyle(main).paddingBottom)
+      const rectOf=(element)=>element?.getBoundingClientRect()
       return {
+        heights:{
+          mainBottom,windowBottom:window.innerHeight,
+          mainPaddingBottom:parseFloat(getComputedStyle(main).paddingBottom),
+          screenBottom:rectOf(screen)?.bottom,
+          workspaceBottom:rectOf(workspace)?.bottom,
+          laneBottom:rectOf(lane)?.bottom,
+          panelBottom:rectOf(panel)?.bottom,
+          panelTop:rectOf(panel)?.top,
+          groupBottoms:groups.map(group=>rectOf(group).bottom),
+          groupHeights:groups.map(group=>rectOf(group).height),
+          dataHeights:wraps.map(wrap=>rectOf(wrap).height),
+          scrollHeights:wraps.map(wrap=>wrap.scrollHeight),
+          viewHeights:wraps.map(wrap=>wrap.clientHeight)
+        },
         productLines:productLines.map(e=>{
           const name=e.querySelector('.warehouse-unified-product-name')
           return {
@@ -169,6 +189,24 @@ try {
       'product text wrapped to multiple lines '+width+' '+JSON.stringify(list.productLines))
     assert.ok(list.productLines.every(x=>x.nameOverflow==='ellipsis'),'long name must use ellipsis '+width)
     assert.ok(list.actualShell,'Fixture does not reproduce actual ERP .shell.brand-shell-v1 wrapper '+width)
+    assert.ok(list.heights.mainPaddingBottom<=9,'ERP main still reserves unused bottom padding '+width+' '+JSON.stringify(list.heights))
+    assert.ok(Math.abs(list.heights.screenBottom-list.heights.mainBottom)<=3,
+      'page does not reach main content bottom '+width+' '+JSON.stringify(list.heights))
+    assert.ok(Math.abs(list.heights.workspaceBottom-list.heights.mainBottom)<=3,
+      'receiving workspace fails to fill remaining page height '+width+' '+JSON.stringify(list.heights))
+    assert.ok(Math.abs(list.heights.laneBottom-list.heights.workspaceBottom)<=3,
+      'table lane is shorter than the slidebar workspace '+width+' '+JSON.stringify(list.heights))
+    if(width>900){
+      assert.ok(Math.abs(list.heights.panelBottom-list.heights.mainBottom)<=3,
+        'desktop slidebar stops before the end of the available page '+width+' '+JSON.stringify(list.heights))
+      assert.ok(list.heights.groupBottoms.at(-1)>=list.heights.laneBottom-3,
+        'last warehouse group leaves blank area below the table '+width+' '+JSON.stringify(list.heights))
+      assert.ok(list.heights.groupHeights.every(h=>h>100),
+        'warehouse groups became unusably short '+width+' '+JSON.stringify(list.heights))
+    }else{
+      assert.ok(Math.abs(list.heights.panelBottom-height)<=3,
+        'narrow viewport slidebar does not reach full visible screen height '+width+' '+JSON.stringify(list.heights))
+    }
     assert.ok(list.widths.every(x=>Math.abs(x.table-x.client)<=3 && x.scroll<=x.client+3),
       'table must exactly auto-fit without horizontal scroll '+width+' '+JSON.stringify(list))
     assert.ok(list.laneOverflow<=3,'lane has horizontal overflow '+width+' '+JSON.stringify(list))
@@ -206,6 +244,15 @@ try {
     await page.screenshot({path:path.join(output,width+'-'+height+'-open.png')})
     await page.locator('aside.warehouse-intake-panel .close').click()
     await page.screenshot({path:path.join(output,width+'-'+height+'-closed.png')})
+    const afterCloseVertical=await page.locator('.warehouse-intake-preview-layout').evaluate(el=>({
+      workspaceBottom:el.getBoundingClientRect().bottom,
+      lastGroupBottom:el.querySelector('.warehouse-unified-group:last-of-type')?.getBoundingClientRect().bottom,
+      laneBottom:el.querySelector('.warehouse-receive-table-lane')?.getBoundingClientRect().bottom,
+    }))
+    assert.ok(Math.abs(afterCloseVertical.workspaceBottom-list.heights.workspaceBottom)<=3,
+      'closing slidebar changes overall workspace height '+width+' '+JSON.stringify(afterCloseVertical))
+    if(width>900)assert.ok(afterCloseVertical.lastGroupBottom>=afterCloseVertical.laneBottom-3,
+      'closing slidebar leaves blank area below the table '+width+' '+JSON.stringify(afterCloseVertical))
     assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,'close slidebar '+width)
     const closedLaneWidth=await page.locator('.warehouse-receive-table-lane').evaluate(e=>e.clientWidth)
     if(width>900)assert.ok(closedLaneWidth>list.laneWidth+130,
@@ -241,7 +288,7 @@ try {
     const processed=await page.locator('.warehouse-unified-table tbody tr').count()
     assert.equal(processed,2,'processed KPI must show stored and skipped '+width)
     assert.deepEqual(errors,[],'no runtime errors '+width+': '+errors.join('; '))
-    console.log('PASS '+width+'x'+height+' · no horizontal scroll · Auto Fit · single-line products · per-warehouse controls')
+    console.log('PASS '+width+'x'+height+' · full page height · full slidebar height · internal table scrolling · 7 columns')
     await page.close()
   }
 }finally{await browser.close()}
