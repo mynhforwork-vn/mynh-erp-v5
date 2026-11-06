@@ -60,7 +60,7 @@ const checks=[
     css.includes('display:table-row!important') &&
     css.includes('display:table-cell!important') &&
     css.includes('display:table-header-group!important') &&
-    !css.includes('display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))') &&
+    !css.includes('.warehouse-unified-table tbody tr{\n    display:grid!important') &&
     !css.includes('min-width:870px!important')],
   ['one product per line and full detail in tooltip',
     table.includes('warehouse-unified-product-line') &&
