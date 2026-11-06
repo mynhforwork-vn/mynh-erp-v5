@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect,useRef,useState } from 'react'
-import { createPortal } from 'react-dom'
 import { saveReceivingWarehouseSettings } from '@/lib/actions/warehouse'
 
 type Warehouse={
@@ -15,30 +14,21 @@ export function WarehouseReceivingSettings({
   warehouses,
   defaultReceivingWarehouseId,
   previewOnly=false,
-  dockToWorkspace=false,
 }:{
   warehouses:Warehouse[]
   defaultReceivingWarehouseId?:string|null
   previewOnly?:boolean
-  dockToWorkspace?:boolean
 }){
   const [open,setOpen]=useState(false)
-  const [dockNode,setDockNode]=useState<HTMLElement|null>(null)
   const wrapRef=useRef<HTMLDivElement|null>(null)
   const active=warehouses.find(w=>w.id===defaultReceivingWarehouseId)??null
 
-  useEffect(()=>{
-    if(!dockToWorkspace)return
-    // Mount the settings panel inside the same workspace grid as the detail
-    // slidebar. Never anchor it above the KPI/table as an absolute popover.
-    setDockNode(document.querySelector<HTMLElement>('.wh-native-workspace'))
-  },[dockToWorkspace])
 
   useEffect(()=>{
     if(!open)return
     function outside(event:PointerEvent){
       const target=event.target as Node|null
-      if(!dockToWorkspace && target && !wrapRef.current?.contains(target))setOpen(false)
+      if(target&&!wrapRef.current?.contains(target))setOpen(false)
     }
     function esc(event:KeyboardEvent){
       if(event.key==='Escape')setOpen(false)
@@ -49,7 +39,7 @@ export function WarehouseReceivingSettings({
       document.removeEventListener('pointerdown',outside)
       document.removeEventListener('keydown',esc)
     }
-  },[open,dockToWorkspace])
+  },[open])
 
   const settingsContent = <>
       <div className="whx-settings-head">
@@ -114,11 +104,6 @@ export function WarehouseReceivingSettings({
       Cài đặt Kho nhận
     </button>
 
-    {open && (dockToWorkspace && dockNode
-      ? createPortal(<aside className="whx-settings-popover mynh-slide-panel wh-native-settings-panel"
-          data-system-slidebar="true" role="region" aria-label="Cài đặt Kho nhận">
-          {settingsContent}
-        </aside>,dockNode)
-      : <div className="whx-settings-popover">{settingsContent}</div>)}
+    {open && <div className="whx-settings-popover" role="dialog" aria-label="Cài đặt Kho nhận">{settingsContent}</div>}
   </div>
 }
