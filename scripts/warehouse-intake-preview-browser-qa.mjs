@@ -84,6 +84,21 @@ try {
         laneWidth:lane?.clientWidth,
         laneOverflow:(lane?.scrollWidth??0)-(lane?.clientWidth??0),
         tableDisplay:tables.map(t=>getComputedStyle(t).display),
+        tableGeometry:tables.map(t=>{
+          const header=t.tHead?.rows[0]
+          const first=header?.cells[0]?.getBoundingClientRect()
+          const last=header?.cells[header.cells.length-1]?.getBoundingClientRect()
+          const rect=t.getBoundingClientRect()
+          return {
+            tableLeft:rect.left,tableRight:rect.right,
+            firstLeft:first?.left,lastRight:last?.right,
+            headerDisplay:t.tHead?getComputedStyle(t.tHead).display:'missing',
+            tbodyDisplay:getComputedStyle(t.tBodies[0]).display,
+            rowDisplay:getComputedStyle(t.tBodies[0].rows[0]).display,
+            cellWidths:[...(header?.cells??[])].map(td=>td.getBoundingClientRect().width),
+            productWidth:header?.cells[3]?.getBoundingClientRect().width??0,
+          }
+        }),
         columnMenus:document.querySelectorAll('.warehouse-unified-group-column-control .managed-column-button').length,
         outsideControls:document.querySelectorAll('.warehouse-unified-toolbar').length,
         headers:tables.map(t=>t.querySelectorAll('th').length),
@@ -113,9 +128,15 @@ try {
       'table must exactly auto-fit without horizontal scroll '+width+' '+JSON.stringify(list))
     assert.ok(list.laneOverflow<=3,'lane has horizontal overflow '+width+' '+JSON.stringify(list))
     assert.ok(list.pageOverflow<=3,'document overflow '+width+' '+JSON.stringify(list))
-    const compact=list.laneWidth<=850
-    assert.ok(list.tableDisplay.every(x=>compact?x==='block':x==='table'),
-      'responsive mode must follow available lane width '+width+' '+JSON.stringify(list))
+    assert.ok(list.tableDisplay.every(x=>x==='table'),
+      'table must remain native table in all viewports '+width+' '+JSON.stringify(list))
+    assert.ok(list.tableGeometry.every(x=>x.headerDisplay==='table-header-group'&&
+      x.tbodyDisplay==='table-row-group'&&x.rowDisplay==='table-row'),
+      'header, body and rows must retain their table structure '+width+' '+JSON.stringify(list.tableGeometry))
+    assert.ok(list.tableGeometry.every(x=>x.cellWidths.length===7&&x.cellWidths.every(w=>w>0)),
+      'all seven columns must occupy measurable table width '+width+' '+JSON.stringify(list.tableGeometry))
+    assert.ok(list.tableGeometry.every(x=>Math.abs(x.tableLeft-x.firstLeft)<=3 && Math.abs(x.tableRight-x.lastRight)<=3),
+      'Auto Fit leaves unused blank space at table edges '+width+' '+JSON.stringify(list.tableGeometry))
     if(width>900&&list.panelLeft!==undefined&&list.panelLeft!==null) {
       assert.ok(list.panelLeft-list.laneRight>=25,'desktop panel gap must be larger '+width+' '+JSON.stringify(list))
       assert.ok(list.panelRight<=width+3,'panel escapes viewport '+width+' '+JSON.stringify(list))
@@ -130,8 +151,18 @@ try {
     const closedLaneWidth=await page.locator('.warehouse-receive-table-lane').evaluate(e=>e.clientWidth)
     if(width>900)assert.ok(closedLaneWidth>list.laneWidth+130,
       'closing right slidebar must expand available table area '+width+' '+closedLaneWidth+' vs '+list.laneWidth)
-    const afterClose=await page.locator('.warehouse-unified-table-wrap').first().evaluate(e=>({client:e.clientWidth,scroll:e.scrollWidth}))
+    const afterClose=await page.locator('.warehouse-unified-table-wrap').first().evaluate(e=>{
+      const table=e.querySelector('table')
+      return {client:e.clientWidth,scroll:e.scrollWidth,table:table?.getBoundingClientRect().width,
+        productWidth:table?.tHead?.rows[0]?.cells[3]?.getBoundingClientRect().width}
+    })
     assert.ok(afterClose.scroll<=afterClose.client+3,'closed panel table still overflows '+width+' '+JSON.stringify(afterClose))
+    assert.ok(Math.abs(afterClose.table-afterClose.client)<=3,
+      'table does not expand after slidebar closes '+width+' '+JSON.stringify(afterClose))
+    if(width>900){
+      assert.ok(afterClose.productWidth>list.tableGeometry[0].productWidth+60,
+        'product column must expand to use newly available table width '+width+' '+JSON.stringify(afterClose))
+    }
     if(width===1280){
       const bg=page.locator('.warehouse-unified-group').first()
       const hn=page.locator('.warehouse-unified-group').last()
