@@ -55,11 +55,25 @@ const TABLE_LABELS:Record<TableCol,string>={
   order:'Mã đơn',received:'Ngày nhận',warehouse:'Kho nhận',product:'Sản phẩm',
   progress:'Bóc tách',cod:'COD',status:'Trạng thái',
 }
-const TABLE_WEIGHTS:Record<TableCol,number>={
-  order:15,received:14,warehouse:7,product:34,progress:8,cod:10,status:12,
+// Preserve the seven original table fields at every breakpoint. Resize the
+// columns *inside the table*, not the row structure, whenever a slidebar opens.
+const COLUMN_BASE:Record<TableCol,number>={
+  order:130,received:120,warehouse:70,product:210,progress:80,cod:100,status:130,
 }
-const TABLE_COMPACT_WEIGHTS:Record<TableCol,number>={
-  order:17,received:15,warehouse:6,product:33,progress:8,cod:10,status:11,
+const COLUMN_GROW:Record<TableCol,number>={
+  order:1,received:0.45,warehouse:0.1,product:6,progress:0.15,cod:0.4,status:0.9,
+}
+function autoFitColumnWidths(columns:TableCol[], availableWidth:number){
+  const width=Math.max(1,availableWidth)
+  const base=columns.map(column=>COLUMN_BASE[column])
+  const baseSum=base.reduce((sum,value)=>sum+value,0)
+  const extra=Math.max(0,width-baseSum)
+  const weightTotal=columns.reduce((sum,column)=>sum+COLUMN_GROW[column],0)
+  const adjusted=base.map((size,index)=>extra>0
+    ? size+extra*COLUMN_GROW[columns[index]]/weightTotal
+    : size*width/baseSum)
+  const total=adjusted.reduce((sum,value)=>sum+value,0)
+  return adjusted.map(value=>100*value/total)
 }
 
 type Suggestion={
@@ -210,7 +224,6 @@ export function WarehouseIntakeWorkspace({
             const doneRows=group.rows.filter(isDone)
             const tableColumns=group.code==='BG'?bgColumns:group.code==='HN'?hnColumns:otherColumns
             const tableSort=group.code==='BG'?bgSort:group.code==='HN'?hnSort:otherSort
-            const weights=laneWidth<1050?TABLE_COMPACT_WEIGHTS:TABLE_WEIGHTS
             const sorted=[...group.rows].sort((left,right)=>{
               const key=(row:Row,col:TableCol):number|string=>{
                 if(col==='order')return String(row.shopee_order_id??row.id)
@@ -229,7 +242,7 @@ export function WarehouseIntakeWorkspace({
             const readyIds=readyRows.map(row=>row.id)
             const allReadySelected=readyIds.length>0&&selectedGroup===group.id&&readyIds.every(id=>selectedSet.has(id))
             const groupSelected=selectedGroup===group.id?selected.filter(id=>readyIds.includes(id)).length:0
-            const widthTotal=tableColumns.visible.reduce((sum,key)=>sum+weights[key],0)
+            const columnWidths=autoFitColumnWidths(tableColumns.visible,laneWidth)
             const cell=(row:Row,col:TableCol)=>{
               const attributes={'data-col':col,'data-label':TABLE_LABELS[col]}
               if(col==='order')return <td key={col} {...attributes}>
@@ -283,8 +296,8 @@ export function WarehouseIntakeWorkspace({
                 <div className="warehouse-unified-table-wrap">
                   <table className="table warehouse-unified-table"
                     aria-label={'Danh sách Nhập kho '+group.code}>
-                    <colgroup>{tableColumns.visible.map(col=><col key={col}
-                      style={{width:(weights[col]/widthTotal*100)+'%'}}/>)}</colgroup>
+                    <colgroup>{tableColumns.visible.map((col,index)=><col key={col}
+                      style={{width:columnWidths[index]+'%'}}/>)}</colgroup>
                     <thead><tr>{tableColumns.visible.map(col=><th key={col}>
                       <SortableHeader column={col} label={TABLE_LABELS[col]} sort={tableSort} onSort={tableSort.toggle}/>
                       {col==='order'&&readyIds.length>0&&<input type="checkbox" checked={allReadySelected}
