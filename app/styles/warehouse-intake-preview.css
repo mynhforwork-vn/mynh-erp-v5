@@ -1,71 +1,50 @@
-/* Warehouse receiving preview - UI-only; scoped to /warehouse/receive.
-   Reuses the existing purchase/tracking date tabs and existing detail slidebar. */
+/* Warehouse receive Preview – scoped layout only.
+   Keep the original detail slidebar; never change shared table or slidebar rules. */
 .warehouse-receive-screen{min-width:0}
 .warehouse-receive-screen .warehouse-receive-date-toolbar{
-  display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0;
-  margin:0 0 8px;padding:0;
+  display:flex;align-items:center;min-width:0;margin:0 0 8px;padding:0;
 }
-.warehouse-receive-screen .warehouse-receive-date-label{
-  flex:0 0 auto;color:#47647a;font-size:11px;font-weight:650;white-space:nowrap;
-}
-.warehouse-receive-screen .warehouse-receive-date-toolbar .pd-time-filter{
-  flex:1 1 auto;min-width:0;
-}
-.warehouse-receive-screen .warehouse-receive-date-error{
-  color:#b14637;font-size:11px;
-}
+.warehouse-receive-screen .warehouse-receive-date-toolbar .pd-time-filter{flex:1 1 auto;min-width:0}
+.warehouse-receive-screen .warehouse-receive-date-error{color:#a94131;font-size:11px}
 .warehouse-receive-screen .wh-native-status-kpis{
-  display:flex!important;flex-wrap:nowrap!important;gap:8px!important;overflow:visible!important;
-  padding:0!important;margin:0!important;
+  display:flex!important;flex-wrap:nowrap!important;gap:8px!important;
+  overflow:visible!important;margin:0!important;padding:0!important;
 }
 .warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric{
-  flex:1 1 0!important;min-width:0!important;
-  border-radius:7px!important;padding:12px 13px!important;
+  flex:1 1 0!important;min-width:0!important;border-radius:7px!important;padding:12px 13px!important;
 }
-.warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric span{
-  font-size:12px!important;
-}
-.warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric b{
-  font-variant-numeric:tabular-nums;
-}
-.warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric small{
-  white-space:normal;line-height:1.4;
-}
+.warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric span{font-size:12px!important}
+.warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric b{font-variant-numeric:tabular-nums}
+.warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric small{white-space:normal;line-height:1.4}
 .warehouse-receive-screen .warehouse-command-center{margin-bottom:7px}
+
+/* The table lane is measured by ResizeObserver; the table has no horizontal scroller. */
 .warehouse-receive-screen .warehouse-intake-preview-layout{
-  width:100%;min-width:0;min-height:0;gap:16px!important;
-  align-items:stretch;
+  width:100%;min-width:0;min-height:0;gap:26px!important;align-items:stretch;
+}
+body.brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout.with-panel{
+  column-gap:26px!important;gap:26px!important;
 }
 .warehouse-receive-screen .warehouse-receive-table-lane{
-  min-width:0;width:100%;overflow:hidden;
+  min-width:0!important;width:100%;min-height:0;
+  container-type:inline-size;container-name:warehouse-lane;
 }
-.warehouse-receive-screen .warehouse-unified-toolbar{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  min-width:0;padding:7px 2px 9px;
-}
-.warehouse-receive-screen .warehouse-unified-search{
-  display:flex;align-items:center;gap:5px;min-width:0;flex:1 1 360px;max-width:430px;
-}
-.warehouse-receive-screen .warehouse-unified-search input{
-  width:100%;min-width:0;height:35px;border:1px solid #d8e2e9;background:#fff;
-  border-radius:6px;padding:7px 10px;font-size:12px;color:#29475c;
-}
-.warehouse-receive-screen .warehouse-unified-search button{
-  flex:0 0 30px;height:30px;border:1px solid #d8e2e9;border-radius:5px;
-  background:#fff;color:#567087;cursor:pointer;
-}
-.warehouse-receive-screen .warehouse-unified-toolbar .managed-column-wrap{
-  flex:0 0 auto;z-index:7;
+body.brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout>.warehouse-receive-table-lane{
+  overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;
 }
 .warehouse-receive-screen .warehouse-unified-group{
-  min-width:0;margin-bottom:9px;overflow:visible;border-radius:7px;
+  min-width:0;margin-bottom:10px;border-radius:7px;position:relative;
 }
+body.brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group{
+  overflow:visible!important;
+}
+.warehouse-receive-screen .warehouse-unified-group:has(.managed-column-menu){z-index:21}
 .warehouse-receive-screen .warehouse-unified-group-head{
-  min-width:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-  padding:10px 12px;
+  min-width:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;
+  overflow:visible!important;
 }
 .warehouse-receive-screen .warehouse-unified-group-head .tracking-hub-identity{
-  min-width:0;flex:1 1 245px;
+  min-width:0;flex:1 1 215px;
 }
 .warehouse-receive-screen .warehouse-unified-group-head .tracking-hub-identity b{
   font-size:12px;font-weight:650;
@@ -74,94 +53,136 @@
   font-size:10px;color:#758797;
 }
 .warehouse-receive-screen .warehouse-unified-metrics{
-  flex:0 1 auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  min-width:0;flex:0 1 auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap;
 }
-.warehouse-receive-screen .warehouse-unified-metrics span{
+.warehouse-receive-screen .warehouse-unified-metrics span{font-size:10.5px;white-space:nowrap}
+.warehouse-receive-screen .warehouse-unified-group-column-control{
+  margin-left:auto;flex:0 0 auto;position:relative;z-index:8;
+}
+.warehouse-receive-screen .warehouse-unified-group-column-control .managed-column-wrap{position:relative}
+.warehouse-receive-screen .warehouse-unified-group-column-control .managed-column-button{
   font-size:11px;white-space:nowrap;
 }
-.warehouse-receive-screen .warehouse-unified-table-wrap{
-  min-width:0;width:100%;max-width:100%;
-  max-height:min(55vh,610px);
-  overflow:auto!important;overscroll-behavior:contain;scrollbar-width:thin;
+.warehouse-receive-screen .warehouse-unified-group-column-control .managed-column-menu{
+  z-index:30;max-width:min(310px,calc(100vw - 30px));
+}
+
+/* Seven fields share exactly the actual lane width, never a forced minimum width. */
+body.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table-wrap{
+  min-width:0!important;width:100%!important;max-width:100%!important;
+  max-height:none!important;overflow:visible!important;scrollbar-width:none;
   border-top:1px solid #e8edf2;background:#fff;
 }
-.warehouse-receive-screen .warehouse-unified-table{
-  width:100%!important;min-width:870px!important;
-  border-collapse:separate;border-spacing:0;table-layout:fixed;
+body.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table{
+  box-sizing:border-box;width:100%!important;min-width:0!important;max-width:100%!important;
+  border-collapse:separate;border-spacing:0;table-layout:fixed!important;
 }
 .warehouse-receive-screen .warehouse-unified-table th{
   position:sticky;top:0;z-index:3;
-  background:#f4f8fb;color:#49637a;font-size:11px;font-weight:650;
-  border-bottom:1px solid #dce6ed;white-space:nowrap;
+  background:#f4f8fb;color:#49637a;font-size:10.5px;font-weight:650;
+  border-bottom:1px solid #dce6ed;white-space:nowrap;overflow:hidden;
 }
-.warehouse-receive-screen .warehouse-unified-table th:first-child{
-  display:table-cell;
-}
+.warehouse-receive-screen .warehouse-unified-table th:first-child{display:table-cell}
 .warehouse-receive-screen .warehouse-unified-table th:first-child input{
-  width:13px;height:13px;margin-left:7px;vertical-align:middle;accent-color:#3977a3;
+  width:13px;height:13px;margin-left:4px;vertical-align:middle;accent-color:#3977a3;
 }
-.warehouse-receive-screen .warehouse-unified-table td{
-  padding:9px 10px!important;font-size:11px;line-height:1.5;
-  overflow-wrap:anywhere;vertical-align:top;color:#2f4d61;
-  border-bottom:1px solid #edf1f4;
+body.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table td{
+  padding:9px 7px!important;font-size:11px;line-height:1.5;
+  min-width:0;max-width:none;overflow:hidden!important;
+  vertical-align:top;color:#2f4d61;border-bottom:1px solid #edf1f4;
+  overflow-wrap:normal;word-break:normal;
 }
-.warehouse-receive-screen .warehouse-unified-table tbody tr{
-  cursor:pointer;
-}
-.warehouse-receive-screen .warehouse-unified-table tbody tr:hover{
-  background:#f5f9fc;
-}
+.warehouse-receive-screen .warehouse-unified-table td::before{content:none}
+.warehouse-receive-screen .warehouse-unified-table tbody tr{cursor:pointer}
+.warehouse-receive-screen .warehouse-unified-table tbody tr:hover{background:#f5f9fc}
 .warehouse-receive-screen .warehouse-unified-table .warehouse-unified-order{
-  display:flex;align-items:flex-start;gap:6px;min-width:0;
+  display:flex;align-items:flex-start;gap:5px;min-width:0;max-width:100%;
 }
 .warehouse-receive-screen .warehouse-unified-order input{
   flex:0 0 13px;width:13px;height:13px;accent-color:#3977a3;margin:3px 0 0;
 }
 .warehouse-receive-screen .warehouse-unified-order .table-link{
-  display:inline-block;white-space:normal;text-align:left;
-  overflow-wrap:anywhere;border:0;background:none;padding:0;
+  display:block;min-width:0;width:100%;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;text-align:left;border:0;background:none;padding:0;
   font-weight:650;font-size:11px;cursor:pointer;color:#21668f;
 }
 .warehouse-receive-screen .warehouse-unified-table .warehouse-unified-date{
-  white-space:normal;font-variant-numeric:tabular-nums;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;
 }
 .warehouse-receive-screen .warehouse-unified-table .warehouse-unified-products{
-  white-space:normal;max-width:none;min-width:0;
+  max-width:none;min-width:0;white-space:normal;
 }
-.warehouse-receive-screen .warehouse-unified-products>div+div{
-  border-top:1px solid #f0f3f6;margin-top:5px;padding-top:5px;
+.warehouse-receive-screen .warehouse-unified-products .warehouse-unified-product-line{
+  display:flex;align-items:baseline;min-width:0;max-width:100%;gap:6px;
+  overflow:hidden;white-space:nowrap;line-height:1.5;
 }
-.warehouse-receive-screen .warehouse-unified-products>div span{
-  color:#6a8193;white-space:nowrap;font-variant-numeric:tabular-nums;
+.warehouse-receive-screen .warehouse-unified-products .warehouse-unified-product-line+.warehouse-unified-product-line{
+  border-top:1px solid #f0f3f6;margin-top:4px;padding-top:4px;
+}
+.warehouse-receive-screen .warehouse-unified-product-name{
+  display:block;min-width:0;flex:1 1 auto;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;font-weight:400;
+}
+.warehouse-receive-screen .warehouse-unified-product-qty{
+  flex:0 0 auto;white-space:nowrap;color:#6a8193;font-variant-numeric:tabular-nums;
 }
 .warehouse-receive-screen .warehouse-unified-progress{
   text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap;
 }
 .warehouse-receive-screen .warehouse-unified-table td.money{
-  text-align:right;font-variant-numeric:tabular-nums;white-space:normal;
+  text-align:right;font-variant-numeric:tabular-nums;
+  white-space:nowrap;text-overflow:ellipsis;
 }
-.warehouse-receive-screen .warehouse-unified-table td:last-child .status-pill{
-  display:inline-flex;max-width:100%;white-space:normal;line-height:1.4;
+.warehouse-receive-screen .warehouse-unified-table td[data-col="status"] .status-pill{
+  display:inline-flex;max-width:100%;white-space:normal;line-height:1.35;
 }
-.warehouse-receive-screen .warehouse-confirm-stock-bar{
-  margin:0;border-top:1px solid #e4edf3;
-}
-/* Shared ERP CSS forces zero gutter at some Desktop/Tablet transitions.
-   Scope a 16px gutter only to the receiving table + existing slidebar. */
-@media(min-width:901px){
-  body.brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout.with-panel{
-    gap:16px!important;column-gap:16px!important;
+.warehouse-receive-screen .warehouse-confirm-stock-bar{margin:0;border-top:1px solid #e4edf3}
+
+/* When slidebars reduce the REAL list area, rows become two-column compact
+   records instead of shrinking seven table cells or enabling horizontal scroll. */
+@container warehouse-lane (max-width:850px){
+  .warehouse-receive-screen .warehouse-unified-table-wrap{
+    overflow:visible!important;max-height:none!important;
+  }
+  .warehouse-receive-screen .warehouse-unified-table,
+  .warehouse-receive-screen .warehouse-unified-table tbody{
+    display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;
+  }
+  .warehouse-receive-screen .warehouse-unified-table colgroup,
+  .warehouse-receive-screen .warehouse-unified-table thead{display:none!important}
+  .warehouse-receive-screen .warehouse-unified-table tbody tr{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px 12px;min-width:0;padding:10px 12px;
+    border-bottom:1px solid #e6edf2;
+  }
+  body.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table tbody td{
+    display:block!important;min-width:0;max-width:100%;padding:0!important;
+    border:0!important;overflow:hidden!important;
+    font-size:11px;
+  }
+  .warehouse-receive-screen .warehouse-unified-table td[data-col="order"],
+  .warehouse-receive-screen .warehouse-unified-table td[data-col="product"],
+  .warehouse-receive-screen .warehouse-unified-table td.empty{
+    grid-column:1/-1;
+  }
+  .warehouse-receive-screen .warehouse-unified-table tbody td::before{
+    content:attr(data-label);display:block;font-size:9.5px;font-weight:600;
+    color:#7890a1;line-height:1.45;margin-bottom:2px;
+  }
+  .warehouse-receive-screen .warehouse-unified-table tbody td.empty::before{content:none}
+  .warehouse-receive-screen .warehouse-unified-products .warehouse-unified-product-line{
+    line-height:1.4;white-space:nowrap;
+  }
+  .warehouse-receive-screen .warehouse-unified-table .warehouse-unified-progress{text-align:left}
+  .warehouse-receive-screen .warehouse-unified-table td.money{text-align:left}
+  .warehouse-receive-screen .warehouse-unified-table td[data-col="status"] .status-pill{
+    white-space:normal;
   }
 }
-@media(max-width:1024px){
+@media(max-width:900px){
   .warehouse-receive-screen .warehouse-intake-preview-layout{gap:12px!important}
-  .warehouse-receive-screen .warehouse-unified-metrics{gap:8px}
-  .warehouse-receive-screen .warehouse-unified-group-head{align-items:flex-start}
-  .warehouse-receive-screen .warehouse-unified-table-wrap{max-height:52vh}
 }
 @media(max-width:768px){
-  .warehouse-receive-screen .warehouse-receive-date-toolbar{align-items:stretch;gap:5px}
-  .warehouse-receive-screen .warehouse-receive-date-label{width:100%}
   .warehouse-receive-screen .wh-native-status-kpis{
     display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
     gap:6px!important;overflow:visible!important;
@@ -169,16 +190,11 @@
   .warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric{
     min-width:0!important;max-width:none!important;padding:9px 10px!important;
   }
-  .warehouse-receive-screen .warehouse-intake-preview-layout{gap:10px!important}
-  .warehouse-receive-screen .warehouse-unified-table-wrap{max-height:50vh}
-  .warehouse-receive-screen .warehouse-unified-toolbar{flex-wrap:wrap}
-  .warehouse-receive-screen .warehouse-unified-search{flex:1 1 170px}
-}
-@media(max-width:400px){
-  .warehouse-receive-screen .warehouse-unified-group-head{padding:8px}
+  .warehouse-receive-screen .warehouse-unified-group-head{padding:9px}
   .warehouse-receive-screen .warehouse-unified-metrics{gap:6px}
   .warehouse-receive-screen .warehouse-unified-metrics span{font-size:10px}
-  .warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric small{
-    font-size:10px!important;
-  }
+}
+@media(max-width:400px){
+  .warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric small{font-size:10px!important}
+  .warehouse-receive-screen .warehouse-unified-group-column-control .managed-column-button{padding:5px 8px}
 }
