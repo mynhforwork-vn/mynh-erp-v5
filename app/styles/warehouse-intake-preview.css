@@ -54,7 +54,7 @@
 }
 .warehouse-receive-screen .warehouse-unified-group{
   box-sizing:border-box!important;width:100%!important;max-width:100%!important;
-  min-width:0!important;margin-bottom:10px;border-radius:7px;position:relative;
+  min-width:0!important;margin-bottom:0!important;border-radius:7px;position:relative;
 }
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group{
   overflow:visible!important;
@@ -295,10 +295,16 @@
   }
 }
 @media(max-width:768px){
-  /* Short phone viewports: retain full screen lane and let the data area
-     scroll inside each expanded warehouse, without a horizontal scrollbar. */
+  /* Small portrait/landscape viewports cannot display both warehouse groups
+     simultaneously. Keep the workspace full height and scroll groups vertically,
+     while each expanded table still scrolls its own data when necessary. */
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout>.warehouse-receive-table-lane{
+    overflow-y:auto!important;
+  }
   .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open{
-    min-height:0!important;
+    flex:0 0 auto!important;
+    min-height:150px!important;
+    max-height:clamp(150px,43dvh,410px)!important;
   }
   .warehouse-receive-screen .wh-native-status-kpis{
     display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
