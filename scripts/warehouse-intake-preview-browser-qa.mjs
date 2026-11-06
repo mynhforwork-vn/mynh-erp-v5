@@ -46,7 +46,7 @@ await build({
 const cssFiles=readdirSync(path.join(root,'app/styles')).filter(file=>file.endsWith('.css'))
 const css=cssFiles.map(file=>readFileSync(path.join(root,'app/styles',file),'utf8')).join('\n')
 const harnessCss=[
-  'html,body{margin:0;padding:0;max-width:100%;overflow-x:hidden;background:#f5f8fb;font-family:Arial,sans-serif}',
+  'html,body{margin:0;padding:0;max-width:100%;background:#f5f8fb;font-family:Arial,sans-serif}',
   '#root{box-sizing:border-box;max-width:100%;min-width:0}',
   '.fixture-app{box-sizing:border-box;width:calc(100% - 245px);height:calc(100dvh - 24px);margin-left:245px;padding:9px 14px;min-width:0;display:flex;flex-direction:column}',
   '.fixture-command{display:flex;gap:6px;flex:0 0 auto;min-height:34px}',
@@ -57,7 +57,7 @@ const harnessCss=[
 const html='<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'\n'+harnessCss+'</style></head><body class="brand-shell-v1"><div id="root" class="tracking-screen-v2 whx-page warehouse-receive-screen"></div><script>'+readFileSync(outfile,'utf8')+'</script></body></html>'
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BIN, args:['--no-sandbox']})
 try {
-  for(const [width,height] of [[320,568],[390,844],[768,1024],[1024,768],[1280,800],[1366,768],[1440,900],[1536,864]]){
+  for(const [width,height] of [[320,568],[360,800],[390,844],[414,896],[568,320],[768,1024],[820,1180],[1024,768],[1180,820],[1280,800],[1366,768],[1440,900],[1536,864],[1920,1080]]){
     const page=await browser.newPage({viewport:{width,height}})
     const errors=[]
     page.on('pageerror',error=>errors.push(error.message))
@@ -70,7 +70,19 @@ try {
       const wraps=[...document.querySelectorAll('.warehouse-unified-table-wrap')]
       const panel=document.querySelector('aside.warehouse-intake-panel')
       const lane=document.querySelector('.warehouse-receive-table-lane')
+      const productLines=[...document.querySelectorAll('.warehouse-unified-product-line')]
       return {
+        productLines:productLines.map(e=>({
+          whiteSpace:getComputedStyle(e).whiteSpace,
+          height:e.getBoundingClientRect().height,
+          lineHeight:parseFloat(getComputedStyle(e).lineHeight),
+          nameOverflow:getComputedStyle(e.querySelector('.warehouse-unified-product-name')).textOverflow,
+        })),
+        laneWidth:lane?.clientWidth,
+        laneOverflow:(lane?.scrollWidth??0)-(lane?.clientWidth??0),
+        tableDisplay:tables.map(t=>getComputedStyle(t).display),
+        columnMenus:document.querySelectorAll('.warehouse-unified-group-column-control .managed-column-button').length,
+        outsideControls:document.querySelectorAll('.warehouse-unified-toolbar').length,
         headers:tables.map(t=>t.querySelectorAll('th').length),
         rows:tables.map(t=>t.querySelectorAll('tbody tr').length),
         products:tables.map(t=>t.querySelectorAll('.warehouse-unified-products>div').length),
@@ -88,16 +100,44 @@ try {
     assert.equal(list.products.reduce((a,b)=>a+b,0),16,'all products visible '+width)
     assert.ok(list.labels.includes('Đã bỏ qua kho')&&list.labels.includes('Đã nhập kho'),'processed statuses rendered '+width)
     assert.ok(list.readOnlySubmit,'write controls must be disabled in preview '+width)
-    assert.ok(list.widths.every(x=>x.table>=x.client-3 && x.scroll>=x.client),'table must fill lane or scroll internally '+width)
+    assert.equal(list.columnMenus,2,'per-warehouse controls must exist '+width)
+    assert.equal(list.outsideControls,0,'remove global search and column toolbar '+width)
+    assert.equal(list.productLines.length,16,'each product owns exactly one line '+width)
+    assert.ok(list.productLines.every(x=>x.whiteSpace==='nowrap' && x.height<=x.lineHeight+3),
+      'product text wrapped to multiple lines '+width+' '+JSON.stringify(list.productLines))
+    assert.ok(list.productLines.every(x=>x.nameOverflow==='ellipsis'),'long name must use ellipsis '+width)
+    assert.ok(list.widths.every(x=>Math.abs(x.table-x.client)<=3 && x.scroll<=x.client+3),
+      'table must exactly auto-fit without horizontal scroll '+width+' '+JSON.stringify(list))
+    assert.ok(list.laneOverflow<=3,'lane has horizontal overflow '+width+' '+JSON.stringify(list))
     assert.ok(list.pageOverflow<=3,'document overflow '+width+' '+JSON.stringify(list))
+    const compact=list.laneWidth<=850
+    assert.ok(list.tableDisplay.every(x=>compact?x==='block':x==='table'),
+      'responsive mode must follow available lane width '+width+' '+JSON.stringify(list))
     if(width>900&&list.panelLeft!==undefined&&list.panelLeft!==null) {
-      assert.ok(list.panelLeft-list.laneRight>=10,'desktop panel overlaps table '+width+' '+JSON.stringify(list))
+      assert.ok(list.panelLeft-list.laneRight>=25,'desktop panel gap must be larger '+width+' '+JSON.stringify(list))
       assert.ok(list.panelRight<=width+3,'panel escapes viewport '+width+' '+JSON.stringify(list))
     }
     await page.screenshot({path:path.join(output,width+'-'+height+'-open.png')})
     await page.locator('aside.warehouse-intake-panel .close').click()
     await page.screenshot({path:path.join(output,width+'-'+height+'-closed.png')})
     assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,'close slidebar '+width)
+    const closedLaneWidth=await page.locator('.warehouse-receive-table-lane').evaluate(e=>e.clientWidth)
+    if(width>900)assert.ok(closedLaneWidth>list.laneWidth+130,
+      'closing right slidebar must expand available table area '+width+' '+closedLaneWidth+' vs '+list.laneWidth)
+    const afterClose=await page.locator('.warehouse-unified-table-wrap').first().evaluate(e=>({client:e.clientWidth,scroll:e.scrollWidth}))
+    assert.ok(afterClose.scroll<=afterClose.client+3,'closed panel table still overflows '+width+' '+JSON.stringify(afterClose))
+    if(width===1280){
+      const bg=page.locator('.warehouse-unified-group').first()
+      const hn=page.locator('.warehouse-unified-group').last()
+      await bg.locator('.managed-column-button').click()
+      assert.equal(await bg.locator('.managed-column-menu').count(),1,'BG menu opens')
+      assert.equal(await hn.locator('.managed-column-menu').count(),0,'HN menu must stay closed')
+      await bg.locator('.managed-column-row').filter({hasText:'COD'}).locator('input').uncheck()
+      assert.equal(await bg.locator('thead th').count(),6,'BG custom visibility takes effect')
+      assert.equal(await hn.locator('thead th').count(),7,'HN columns remain independent')
+      await bg.locator('.managed-column-row').filter({hasText:'COD'}).locator('input').check()
+      await bg.locator('.managed-column-button').click()
+    }
     await page.locator('.warehouse-unified-order button.table-link').first().click()
     assert.equal(await page.locator('aside.warehouse-intake-panel').count(),1,'open original slidebar via order '+width)
     await page.locator('aside.warehouse-intake-panel .close').click()
@@ -105,8 +145,8 @@ try {
     const processed=await page.locator('.warehouse-unified-table tbody tr').count()
     assert.equal(processed,2,'processed KPI must show stored and skipped '+width)
     assert.deepEqual(errors,[],'no runtime errors '+width+': '+errors.join('; '))
-    console.log('PASS '+width+'x'+height+' 7 columns · 2 warehouses · 8 orders (2 processed) · old slidebar · no document overflow')
+    console.log('PASS '+width+'x'+height+' · no horizontal scroll · Auto Fit · single-line products · per-warehouse controls')
     await page.close()
   }
 }finally{await browser.close()}
-console.log('8/8 responsive warehouse fixture QA PASS. These are mocked fixtures, not authenticated production data.')
+console.log('14/14 responsive warehouse fixture QA PASS. These are mocked fixtures, not authenticated production data.')
