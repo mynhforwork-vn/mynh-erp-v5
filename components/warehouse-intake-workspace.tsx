@@ -294,7 +294,7 @@ export function WarehouseIntakeWorkspace({
               </div>
               {open&&<>
                 <div className="warehouse-unified-table-wrap">
-                  <table className="table warehouse-unified-table"
+                  <table className="warehouse-unified-table"
                     aria-label={'Danh sách Nhập kho '+group.code}>
                     <colgroup>{tableColumns.visible.map((col,index)=><col key={col}
                       style={{width:columnWidths[index]+'%'}}/>)}</colgroup>
