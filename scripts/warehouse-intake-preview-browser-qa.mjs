@@ -119,6 +119,9 @@ try {
     if(width>900&&list.panelLeft!==undefined&&list.panelLeft!==null) {
       assert.ok(list.panelLeft-list.laneRight>=25,'desktop panel gap must be larger '+width+' '+JSON.stringify(list))
       assert.ok(list.panelRight<=width+3,'panel escapes viewport '+width+' '+JSON.stringify(list))
+    } else if(width<=900){
+      assert.ok(list.laneWidth>=width-30,'mobile/tablet list must own the screen under the overlay '+width+' '+JSON.stringify(list))
+      assert.ok(list.panelLeft>=-2&&list.panelRight<=width+2,'mobile/tablet panel escapes viewport '+width+' '+JSON.stringify(list))
     }
     await page.screenshot({path:path.join(output,width+'-'+height+'-open.png')})
     await page.locator('aside.warehouse-intake-panel .close').click()
