@@ -26,7 +26,7 @@ const entry=[
   "rows[3].warehouse_status='WAREHOUSE_SKIPPED'",
   "const skuVariant={id:'SKU-SALE-EXISTING',variant_name:'110ml',sale_price:155000,products:{sku:'SKU-EXISTING-110',name:'Dầu gội đầu dành cho nam Clear Men'}}",
   "const suggestions={[rows[0].order_items[0].id]:{variant_id:skuVariant.id,sku:'SKU-EXISTING-110',product_name:'Dầu gội đầu dành cho nam Clear Men',variant_name:'110ml',multiplier:2}}",
-  "function Harness(){const [phase,setPhase]=React.useState('all');return <><div className='fixture-controls'><button className='fixture-done-kpi' onClick={()=>setPhase('done')}>KPI Đã xử lý</button><button className='fixture-work-kpi' onClick={()=>setPhase('all')}>KPI Tất cả</button><button className='fixture-pending-kpi' onClick={()=>setPhase('pending')}>KPI Chờ bóc tách</button><button className='fixture-ready-kpi' onClick={()=>setPhase('ready')}>KPI Chờ nhập kho</button><WarehouseReceivingSettings warehouses={[{id:'HN',code:'HN',name:'Kho HN',address:'164 Hồng Mai'},{id:'BG',code:'BG',name:'Kho BG',address:'320 Nguyễn Công Hãng'}]} defaultReceivingWarehouseId='HN' previewOnly dockToWorkspace/></div><div className='fixture-shell'><WarehouseIntakeNativeDesign rows={rows} variants={[skuVariant]} suggestions={suggestions} auditLogs={[]} initialPhase={phase}/></div></>}",
+  "function Harness(){const [phase,setPhase]=React.useState('all');return <><div className='fixture-controls'><button className='fixture-done-kpi' onClick={()=>setPhase('done')}>KPI Đã xử lý</button><button className='fixture-work-kpi' onClick={()=>setPhase('all')}>KPI Tất cả</button><button className='fixture-pending-kpi' onClick={()=>setPhase('pending')}>KPI Chờ bóc tách</button><button className='fixture-ready-kpi' onClick={()=>setPhase('ready')}>KPI Chờ nhập kho</button><WarehouseReceivingSettings warehouses={[{id:'HN',code:'HN',name:'Kho HN',address:'164 Hồng Mai'},{id:'BG',code:'BG',name:'Kho BG',address:'320 Nguyễn Công Hãng'}]} defaultReceivingWarehouseId='HN' previewOnly/></div><div className='fixture-shell'><WarehouseIntakeNativeDesign rows={rows} variants={[skuVariant]} suggestions={suggestions} auditLogs={[]} initialPhase={phase}/></div></>}",
   "createRoot(document.getElementById('root')).render(<Harness/>)"
 ].join('\n');
 const entryPath=path.join(tmp,'entry.tsx'), outfile=path.join(tmp,'bundle.js');
@@ -34,7 +34,7 @@ writeFileSync(entryPath,entry);
 await build({entryPoints:[entryPath],outfile,absWorkingDir:root,bundle:true,platform:'browser',format:'iife',jsx:'automatic',
   define:{'process.env.NODE_ENV':'"production"'},alias:{'@':root},nodePaths:[path.join(root,'node_modules')],
   // Only the server-action import is mocked; the settings UI is the actual
-  // application component and is mounted as a real portaled slidebar.
+  // application settings component remains the approved anchored popover.
   plugins:[{name:'mock-server-action',setup(build){
     build.onResolve({filter:new RegExp('actions/warehouse')},()=>({path:'warehouse-actions',namespace:'qa-action'}));
     build.onLoad({filter:/.*/,namespace:'qa-action'},()=>({contents:'export async function saveReceivingWarehouseSettings(){}',loader:'js'}));
@@ -42,8 +42,8 @@ await build({entryPoints:[entryPath],outfile,absWorkingDir:root,bundle:true,plat
 });
 const cssFiles=readdirSync(path.join(root,'app/styles')).filter(f=>f.endsWith('.css')&&f!=='warehouse-native-design.css');
 const css=cssFiles.map(f=>readFileSync(path.join(root,'app/styles',f),'utf8')).join('\n')+'\n'+readFileSync(path.join(root,'app/styles/warehouse-native-design.css'),'utf8');
-const shellCss='body{margin:0;background:#f5f7fa;font-family:Arial,sans-serif}.fixture-controls{position:fixed;left:3px;top:3px;z-index:40;display:flex;gap:4px}.fixture-controls button{font-size:9px;border:1px solid #ccd;background:white}.fixture-shell{margin-left:252px;width:calc(100vw - 252px);padding:12px 16px;height:calc(100dvh - 24px);display:flex;min-width:0}.fixture-shell .wh-native{width:100%;height:100%;min-width:0}.fixture-shell .wh-native-workspace{height:calc(100% - 85px);min-height:0}@media(max-width:900px){.fixture-shell{margin-left:0;width:100%;padding:8px;height:100dvh}.fixture-shell .wh-native-workspace{height:calc(100% - 110px)}}';
-const html='<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'\n'+shellCss+'</style></head><body class="brand-shell-v1"><div id="root"></div><script>'+readFileSync(outfile,'utf8')+'</script></body></html>';
+const shellCss='body{margin:0;background:#f5f7fa;font-family:Arial,sans-serif}.fixture-controls{position:fixed;right:110px;top:80px;z-index:40;display:flex;gap:4px}.fixture-controls button{font-size:9px;border:1px solid #ccd;background:white}.fixture-shell{margin-left:252px;width:calc(100vw - 252px);padding:12px 16px;height:calc(100dvh - 24px);display:flex;min-width:0}.fixture-shell .wh-native{width:100%;height:100%;min-width:0}.fixture-shell .wh-native-workspace{height:calc(100% - 85px);min-height:0}@media(max-width:900px){.fixture-shell{margin-left:0;width:100%;padding:8px;height:100dvh}.fixture-shell .wh-native-workspace{height:calc(100% - 110px)}}';
+const html='<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'\n'+shellCss+'</style></head><body class="brand-shell-v1"><div id="root" class="warehouse-receive-screen"></div><script>'+readFileSync(outfile,'utf8')+'</script></body></html>';
 const executable=process.env.CHROME_BIN||'/usr/bin/chromium';
 const browser=await chromium.launch({headless:true,executablePath:executable,args:['--no-sandbox']});
 try{
@@ -209,15 +209,23 @@ try{
   }
   if(w>=1024){
    await page.locator('.whx-settings-wrap > button').click();
-   await page.waitForSelector('.wh-native-workspace > aside.wh-native-settings-panel');
-   assert.equal(await page.locator('.wh-native-workspace > aside.mynh-slide-panel').count(),2,
-     'actual settings and order detail must be separately docked');
-   const two=await check('two-panels');
-   assert.equal(two.cols,7);
-   assert.ok(two.contentWidth>two.available+3,'two real slidebars must use inner table scroll');
-   await page.locator('.wh-native-settings-panel [aria-label="Đóng cài đặt Kho nhận"]').click();
-   await page.waitForSelector('.wh-native-settings-panel',{state:'detached'});
-   await check('second-closed');
+   await page.waitForSelector('.whx-settings-popover');
+   assert.equal(await page.locator('.wh-native-workspace > aside.mynh-slide-panel').count(),1,
+     'only order details are a slidebar; settings must remain an anchored popup');
+   assert.equal(await page.locator('.wh-native-workspace > aside.wh-native-settings-panel').count(),0,
+     'settings must NEVER become another slidebar');
+   const positions=await page.evaluate(()=>{
+     const pop=document.querySelector('.whx-settings-popover').getBoundingClientRect();
+     const detail=document.querySelector('.wh-native-panel').getBoundingClientRect();
+     return {popup:{left:pop.left,right:pop.right,top:pop.top,bottom:pop.bottom},detail:{left:detail.left,right:detail.right}};
+   });
+   assert.ok(positions.popup.right<=positions.detail.left-8,
+     'settings popup must not obscure order detail at '+w+': '+JSON.stringify(positions));
+   assert.ok(positions.popup.left>=0,'settings popup extends off screen '+w+': '+JSON.stringify(positions));
+   await check('settings-popup-open');
+   await page.locator('.whx-settings-popover [aria-label="Đóng cài đặt Kho nhận"]').click();
+   await page.waitForSelector('.whx-settings-popover',{state:'detached'});
+   await check('settings-popup-closed');
    await page.evaluate(()=>{
      const shell=document.querySelector('.fixture-shell');
      shell.style.marginLeft='72px';
@@ -237,5 +245,5 @@ try{
   assert.deepEqual(errors,[]);
   await page.close();
  }
- console.log('PASS: actual settings + order slidebars docked; 14px gaps, seven columns, no redundant status toolbar');
+ console.log('PASS: settings remains an anchored popover (no slidebar); detail unobscured, auto-fit seven columns');
 }finally{await browser.close()}
