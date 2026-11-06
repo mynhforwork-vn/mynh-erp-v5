@@ -185,6 +185,8 @@ try {
           border:getComputedStyle(button).borderBottomWidth,
         })),
         panelHeader:panel?.querySelector('.warehouse-detail-v2-head')?.getBoundingClientRect().height,
+        panelMeta:panel?.querySelector('.warehouse-detail-v2-meta')?.getBoundingClientRect().height,
+        panelMetaLabels:panel?.querySelector('.warehouse-detail-v2-meta')?.innerText,
         panelFooter:panel?.querySelector('.warehouse-detail-v2-footer')?.getBoundingClientRect().height,
         panelScrollHeight:panel?.querySelector('.warehouse-detail-v2-scroll')?.getBoundingClientRect().height,
         readOnlySubmit:[...document.querySelectorAll('.warehouse-intake-panel button[type="submit"]')].every(b=>b.disabled),
@@ -201,6 +203,8 @@ try {
     assert.ok(list.panelTabShared,'V2 must use shared system slidebar tabs '+width)
     assert.ok(list.panelTabMetrics.every(t=>t.background==='rgba(0, 0, 0, 0)'||t.background==='transparent'),
       'Tab has filled background rather than system-standard underline '+width+' '+JSON.stringify(list.panelTabMetrics))
+    assert.ok(list.panelMeta>=25 && list.panelMetaLabels?.includes('sản phẩm'),
+      'standard order breadcrumb missing below the panel header '+width)
     assert.ok(list.panelHeader>50 && list.panelFooter>35 && list.panelScrollHeight>35,
       'slidebar header, inner scroll, footer are not present '+width)
     assert.equal(list.columnMenus,2,'per-warehouse controls must exist '+width)
