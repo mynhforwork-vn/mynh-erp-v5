@@ -21,7 +21,9 @@ const source=[
   "  id:'10000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),",
   "  shopee_order_id:'261106SPXITEM'+String(i+1).padStart(3,'0'),",
   "  warehouse_status:i===2?'WAREHOUSE_RECEIVED':i===3?'WAREHOUSE_SKIPPED':'READY_TO_TRANSFER',",
-  "  cod:50000*(i+1),order_date:'2026-11-01T12:00:00+07:00',",
+  "  cod:50000*(i+1),order_date:'2026-11-01T12:00:00+07:00',created_at:'2026-11-01T12:02:00+07:00',",
+  "  shipping_service:'STANDARD',receive_status:'RECEIVED',order_status:'DELIVERED',",
+  "  payment_status:i===0?'PARTIAL':'UNPAID',prepaid_amount:i===0?25000:null,prepaid_source_type:i===0?'DEBIT_CARD':null,prepaid_source_label:i===0?'Ngân hàng thử nghiệm':null,",
   "  receive_batch_details:[{receive_batches:{warehouse_id:i<4?'BG':'HN',received_at:'2026-11-06T08:00:00+07:00',warehouses:{code:i<4?'BG':'HN',name:'Kho nhận',address:i<4?'320 Nguyễn Công Hãng':'164 Hồng Mai'}}}],",
   "  order_items:[{id:'20000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:long,sku:'SRC-'+i,variant:'Phân loại mẫu 500ml',quantity:2,original_price:50000,final_price:35000,inventory_multiplier:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}:null},",
   "  {id:'30000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:'Sữa tắm hương hoa nhài',sku:'SRC-OTHER',variant:'Dạng chai',quantity:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',products:{sku:'TEST-01',name:'Đã map'}}:null}]",
@@ -174,6 +176,14 @@ try {
         panelLeft:panel?.getBoundingClientRect().left,
         panelRight:panel?.getBoundingClientRect().right,
         panelTabLabels:[...document.querySelectorAll('.warehouse-detail-v2-tabs button')].map(x=>x.textContent?.trim()),
+        panelTabShared:!!panel?.classList.contains('mynh-slide-panel') &&
+          !!panel.querySelector('.panel-tabs[role="tablist"]'),
+        panelTabMetrics:[...document.querySelectorAll('.warehouse-detail-v2-tabs button')].map(button=>({
+          background:getComputedStyle(button).backgroundColor,
+          fontSize:getComputedStyle(button).fontSize,
+          flex:getComputedStyle(button).flex,
+          border:getComputedStyle(button).borderBottomWidth,
+        })),
         panelHeader:panel?.querySelector('.warehouse-detail-v2-head')?.getBoundingClientRect().height,
         panelFooter:panel?.querySelector('.warehouse-detail-v2-footer')?.getBoundingClientRect().height,
         panelScrollHeight:panel?.querySelector('.warehouse-detail-v2-scroll')?.getBoundingClientRect().height,
@@ -188,6 +198,9 @@ try {
     assert.ok(list.readOnlySubmit,'write controls must be disabled in preview '+width)
     assert.deepEqual(list.panelTabLabels,['Sản phẩm','Thông tin đơn','Lịch sử'],
       'V2 slidebar must have three functional tabs '+width)
+    assert.ok(list.panelTabShared,'V2 must use shared system slidebar tabs '+width)
+    assert.ok(list.panelTabMetrics.every(t=>t.background==='rgba(0, 0, 0, 0)'||t.background==='transparent'),
+      'Tab has filled background rather than system-standard underline '+width+' '+JSON.stringify(list.panelTabMetrics))
     assert.ok(list.panelHeader>50 && list.panelFooter>35 && list.panelScrollHeight>35,
       'slidebar header, inner scroll, footer are not present '+width)
     assert.equal(list.columnMenus,2,'per-warehouse controls must exist '+width)
@@ -310,13 +323,20 @@ try {
       assert.match(await panel.locator('.warehouse-detail-v2-summary').innerText(),/Bỏ qua kho/)
       assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã ghép SKU/)
       await page.screenshot({path:path.join(output,'warehouse-v2-mixed-decisions.png')})
-      await panel.getByRole('button',{name:'Thông tin đơn'}).click()
-      assert.match(await panel.locator('.warehouse-detail-v2-info').first().innerText(),/Mã đơn/)
-      await panel.locator('.warehouse-detail-v2-info-products button').first().click()
+      await panel.getByRole('tab',{name:'Thông tin đơn'}).click()
+      const info=panel.locator('.warehouse-detail-v2-order-info')
+      assert.equal(await info.locator('.detail-grid.compact-detail-grid').count(),1,'system detail grid used')
+      assert.equal(await info.locator('.context-order-items>div').count(),2,'system order product list used')
+      assert.match(await info.innerText(),/Giá trị đơn hàng/)
+      assert.match(await info.innerText(),/75\.000/)
+      assert.match(await info.innerText(),/Loại tài khoản\/thẻ/)
+      assert.match(await info.innerText(),/Thẻ ghi nợ/)
+      assert.match(await info.innerText(),/Kho nhận thực tế/)
+      await info.locator('.warehouse-detail-v2-product-link').first().click()
       assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã ghép SKU/)
-      await panel.getByRole('button',{name:'Lịch sử'}).click()
+      await panel.getByRole('tab',{name:'Lịch sử'}).click()
       assert.match(await panel.locator('.warehouse-detail-v2-content').innerText(),/Chưa có lịch sử/)
-      await panel.getByRole('button',{name:'Sản phẩm'}).click()
+      await panel.getByRole('tab',{name:'Sản phẩm'}).click()
     }
     await page.locator('aside.warehouse-intake-panel .close').click()
     await page.locator('.fixture-done').click()
