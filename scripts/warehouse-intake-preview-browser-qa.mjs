@@ -28,7 +28,7 @@ const source=[
   "  order_items:[{id:'20000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:long,sku:'SRC-'+i,variant:'Phân loại mẫu 500ml',quantity:2,original_price:50000,final_price:35000,inventory_multiplier:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}:null},",
   "  {id:'30000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:'Sữa tắm hương hoa nhài',sku:'SRC-OTHER',variant:'Dạng chai',quantity:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',products:{sku:'TEST-01',name:'Đã map'}}:null}]",
   '}))',
-  "function Fixture(){const [status,setStatus]=React.useState('all'); const filtered=status==='done'?rows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):rows; return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}]} suggestions={{}} auditLogs={[]} previewOnly/></>}",
+  "function Fixture(){const [status,setStatus]=React.useState('all');const live=document.documentElement.dataset.live==='true'; const filtered=status==='done'?rows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):rows; return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}]} suggestions={{}} auditLogs={[]} previewOnly={!live} simulate={!live}/></>}",
   "createRoot(document.getElementById('root')).render(<Fixture/>)",
 ].join('\n')
 writeFileSync(entryPath,source)
@@ -43,9 +43,9 @@ await build({
     es.onResolve({filter:/^next\/navigation$/},()=>({path:'next-navigation',namespace:'warehouse-qa'}))
     es.onLoad({filter:/.*/,namespace:'warehouse-qa'},args=>({
       contents:args.path==='next-navigation'
-        ? 'export function useRouter(){return {refresh(){}}}'
+        ? 'export function useRouter(){return {refresh(){window.__refreshCalls=(window.__refreshCalls||0)+1}}}'
         : args.path==='item-actions'
-        ? 'export async function saveWarehouseItemDecision(){throw new Error("Preview blocked")} export async function finalizeWarehouseItemDecisions(){throw new Error("Preview blocked")}'
+        ? 'export async function saveWarehouseItemDecision(input){window.__warehouseCalls=(window.__warehouseCalls||[]);window.__warehouseCalls.push({name:"save",input});return {product_variant_id:input.variantId||"V-SKU",decision:input.decision,quantity:2,order_item_id:input.orderItemId}} export async function finalizeWarehouseItemDecisions(id){window.__warehouseCalls.push({name:"finalize",id});return {warehouse_status:"WAREHOUSE_MIXED",in_items:1,skip_items:1,transaction_count:1}}'
         : 'export async function mapWarehouseOrderItem(){throw new Error("blocked")} export async function receiveOrdersIntoWarehouse(){throw new Error("blocked")} export async function skipWarehouseOrder(){throw new Error("blocked")}',
       loader:'js'
     }))
@@ -357,4 +357,38 @@ try {
     await page.close()
   }
 }finally{await browser.close()}
+
+// A second independent browser scenario exercises the live Server Action
+// bridge with stubbed RPCs. It never contacts Supabase.
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true">'),{waitUntil:'load'})
+  const panel=page.locator('aside.warehouse-detail-v2')
+  await panel.locator('.warehouse-detail-v2-product').first().waitFor()
+  assert.equal(await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).count(),0,
+    'live mode must not expose simulator save button')
+  await panel.getByLabel('Chọn SKU bán',{exact:true}).selectOption('V-SKU')
+  await panel.getByRole('button',{name:'Lưu bóc tách và quyết định'}).click()
+  await panel.getByText('Đã lưu SKU, giá và quyết định kho.',{exact:false}).waitFor()
+  await panel.locator('.warehouse-detail-v2-product').nth(1).click()
+  await panel.getByLabel('Chọn SKU bán',{exact:true}).selectOption('V-SKU')
+  await panel.getByRole('button',{name:'Bỏ qua kho',exact:true}).click()
+  await panel.getByLabel('Lý do bỏ qua kho (bắt buộc)').fill('Không nhập kho')
+  await panel.getByRole('button',{name:'Lưu bóc tách và quyết định'}).click()
+  await panel.getByRole('button',{name:'Chốt xử lý kho'}).click()
+  await panel.getByRole('button',{name:'Xác nhận ghi tồn kho'}).click()
+  await panel.getByText('Đã chốt xử lý kho.',{exact:false}).waitFor()
+  const calls=await page.evaluate(()=>({calls:window.__warehouseCalls||[],refreshes:window.__refreshCalls||0}))
+  assert.deepEqual(calls.calls.map(x=>x.name),['save','save','finalize'],
+    'live UI must call two persisted saves then one atomic finalization')
+  assert.deepEqual(calls.calls.slice(0,2).map(x=>x.input.decision),['IN','SKIP'],
+    'live UI must preserve independent per-item decisions')
+  assert.ok(calls.refreshes>=3,'live saves/finalize must refresh authoritative server data')
+  assert.equal(await panel.getByRole('button',{name:'Chốt xử lý kho'}).count(),0,
+    'processed order must not offer a second stock receipt')
+  await page.screenshot({path:path.join(output,'warehouse-v2-live-action-mock.png')})
+  await page.close()
+  console.log('PASS 1280x800 live action bridge · save per item ×2 · atomic finalize ×1 (mock)')
+}
+
 console.log('14/14 responsive warehouse fixture QA PASS. These are mocked fixtures, not authenticated production data.')
