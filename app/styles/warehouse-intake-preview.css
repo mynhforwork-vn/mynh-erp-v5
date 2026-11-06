@@ -20,10 +20,10 @@
 
 /* The table lane is measured by ResizeObserver; the table has no horizontal scroller. */
 .warehouse-receive-screen .warehouse-intake-preview-layout{
-  width:100%;min-width:0;min-height:0;gap:26px!important;align-items:stretch;
+  width:100%;min-width:0;min-height:0;gap:10px!important;align-items:stretch;
 }
 .brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout.with-panel{
-  column-gap:26px!important;gap:26px!important;
+  column-gap:10px!important;gap:10px!important;
 }
 .warehouse-receive-screen .warehouse-receive-table-lane{
   min-width:0!important;width:100%;min-height:0;
@@ -33,7 +33,8 @@
   overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;
 }
 .warehouse-receive-screen .warehouse-unified-group{
-  min-width:0;margin-bottom:10px;border-radius:7px;position:relative;
+  box-sizing:border-box!important;width:100%!important;max-width:100%!important;
+  min-width:0!important;margin-bottom:10px;border-radius:7px;position:relative;
 }
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group{
   overflow:visible!important;
@@ -73,14 +74,44 @@
   max-height:none!important;overflow:visible!important;scrollbar-width:none;
   border-top:1px solid #e8edf2;background:#fff;
 }
-.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table{
-  box-sizing:border-box;width:100%!important;min-width:0!important;max-width:100%!important;
+.brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table{
+  display:table!important;box-sizing:border-box!important;
+  width:100%!important;min-width:0!important;max-width:100%!important;
   border-collapse:separate;border-spacing:0;table-layout:fixed!important;
+  color:#2f4d61;font-size:11px;font-variant-numeric:tabular-nums;
+}
+.brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table col{
+  min-width:0!important;max-width:none!important;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table th,
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table td{
+  box-sizing:border-box!important;
+  width:auto!important;min-width:0!important;max-width:none!important;
+  overflow:hidden!important;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table th{
+  height:32px!important;padding:0 5px!important;
+  text-align:left;line-height:1.25!important;
+  border-bottom:1px solid #dae5ed!important;
 }
 .warehouse-receive-screen .warehouse-unified-table th{
   position:sticky;top:0;z-index:3;
   background:#f4f8fb;color:#49637a;font-size:10.5px;font-weight:650;
   border-bottom:1px solid #dce6ed;white-space:nowrap;overflow:hidden;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table .managed-sort-head{
+  display:flex!important;align-items:center!important;
+  min-width:0!important;max-width:100%!important;width:100%!important;
+  padding:0!important;gap:3px!important;overflow:hidden!important;
+  background:transparent!important;border:0!important;
+  white-space:nowrap!important;text-align:left;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table .managed-sort-head span{
+  flex:1 1 auto;display:block;min-width:0!important;max-width:100%;
+  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table .managed-sort-head i{
+  flex:0 0 auto;font-size:9px;
 }
 .warehouse-receive-screen .warehouse-unified-table th:first-child{display:table-cell}
 .warehouse-receive-screen .warehouse-unified-table th:first-child input{
@@ -134,7 +165,9 @@
   white-space:nowrap;text-overflow:ellipsis;
 }
 .warehouse-receive-screen .warehouse-unified-table td[data-col="status"] .status-pill{
-  display:inline-flex;max-width:100%;white-space:normal;line-height:1.35;
+  display:inline-flex;max-width:100%;white-space:nowrap;line-height:1.35;
+  box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;
+  padding:3px 5px!important;font-size:10px;
 }
 .warehouse-receive-screen .warehouse-confirm-stock-bar{margin:0;border-top:1px solid #e4edf3}
 
