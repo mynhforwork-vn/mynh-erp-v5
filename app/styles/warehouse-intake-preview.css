@@ -180,7 +180,29 @@ body.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table td{
   }
 }
 @media(max-width:900px){
-  .warehouse-receive-screen .warehouse-intake-preview-layout{gap:12px!important}
+  /* The shared desktop grid must not reserve a fixed slidebar column on
+     phones/tablets. Overlay the existing panel without changing its internals. */
+  body.brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout,
+  body.brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout.with-panel{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:minmax(0,1fr)!important;
+    gap:0!important;column-gap:0!important;
+    width:100%!important;min-width:0!important;
+  }
+  body.brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout>.warehouse-receive-table-lane{
+    grid-column:1!important;grid-row:1!important;
+    width:100%!important;min-width:0!important;
+  }
+  body.brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout.with-panel>.warehouse-intake-panel{
+    grid-column:auto!important;grid-row:auto!important;
+    position:fixed!important;inset:0 0 0 auto!important;
+    box-sizing:border-box!important;
+    width:min(100vw,430px)!important;min-width:0!important;
+    max-width:100vw!important;height:100dvh!important;max-height:100dvh!important;
+    z-index:1500!important;margin:0!important;
+    overflow:hidden!important;
+  }
 }
 @media(max-width:768px){
   .warehouse-receive-screen .wh-native-status-kpis{
