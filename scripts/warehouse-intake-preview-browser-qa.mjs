@@ -356,7 +356,6 @@ try {
     console.log('PASS '+width+'x'+height+' · full page height · full slidebar height · internal table scrolling · 7 columns')
     await page.close()
   }
-}finally{await browser.close()}
 
 // A second independent browser scenario exercises the live Server Action
 // bridge with stubbed RPCs. It never contacts Supabase.
@@ -390,5 +389,6 @@ try {
   await page.close()
   console.log('PASS 1280x800 live action bridge · save per item ×2 · atomic finalize ×1 (mock)')
 }
+}finally{await browser.close()}
 
 console.log('14/14 responsive warehouse fixture QA PASS. These are mocked fixtures, not authenticated production data.')
