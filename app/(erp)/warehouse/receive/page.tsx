@@ -230,7 +230,6 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
           warehouses={((receivingWarehouses ?? []).filter(w => w.is_active)) as any[]}
           defaultReceivingWarehouseId={settings?.default_receiving_warehouse_id ?? null}
           previewOnly
-          dockToWorkspace
         />
         <Link className="button" href="/purchase/tracking?range=all&status=DELIVERED&receive=WAITING_RECEIVE">Đơn chờ nhận</Link>
       </div>
