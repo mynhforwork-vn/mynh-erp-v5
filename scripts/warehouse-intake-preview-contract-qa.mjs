@@ -117,6 +117,7 @@ const checks=[
   ['V2 tabs use the same slidebar contract as Order and User panels',
     panel.includes('mynh-slide-panel"') &&
     panel.includes('role="tablist"') &&
+    panel.includes('context-stack-breadcrumb warehouse-detail-v2-meta') &&
     panel.includes('aria-selected={tab===') &&
     panel.includes('panel-tabs warehouse-detail-v2-tabs') &&
     !panelCss.includes('.warehouse-detail-v2-tabs button.active') &&
