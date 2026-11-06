@@ -1,0 +1,111 @@
+name: Warehouse Intake Baseline Preview 2026-11-06
+
+on:
+  push:
+    branches:
+      - preview/warehouse-intake-baseline-20261106
+    paths:
+      - '.github/workflows/warehouse-intake-baseline-preview.yml'
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'scripts/**'
+      - 'wrangler.jsonc'
+      - 'package.json'
+      - 'open-next.config.ts'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: warehouse-intake-baseline-preview-20261106
+  cancel-in-progress: true
+
+jobs:
+  build-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check Cloudflare authentication is configured
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Warehouse date, KPI, table and Preview safety contracts
+        run: node scripts/warehouse-intake-preview-contract-qa.mjs
+      - name: Cross-module Warehouse / Returned / Notifications regression
+        run: |
+          node scripts/remediation-static-qa.mjs
+          node --experimental-strip-types scripts/returned-shipment-cancellation-qa.mjs
+          node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Install isolated browser fixture QA dependencies
+        run: npm install --no-save playwright esbuild --no-audit --no-fund
+      - name: Find Chrome
+        shell: bash
+        run: |
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: Responsive warehouse Auto Fit QA (14 viewports, close/open slidebar, no x-scroll)
+        run: node scripts/warehouse-intake-preview-browser-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: warehouse-intake-preview-responsive-${{ github.sha }}
+          path: qa-warehouse-3items/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Build OpenNext from dedicated Preview branch
+        run: npx opennextjs-cloudflare build
+      - name: Publish dedicated Preview only (never Production)
+        id: preview
+        shell: bash
+        run: |
+          npx wrangler preview --name warehouse-intake-baseline-20261106 --worker-name mynh-erp-v5 --message "Warehouse intake baseline from main 96029492250b078d3ec182578297401160ca3bdd" --json > warehouse-preview-result.json
+          node - <<'NODE'
+          const fs = require('fs')
+          const str = fs.readFileSync('warehouse-preview-result.json', 'utf8')
+          const data = JSON.parse(str.slice(str.indexOf('{'), str.lastIndexOf('}')+1))
+          const urls=[]
+          function visit(x) {
+            if(typeof x === 'string' && x.startsWith('https://')) urls.push(x)
+            else if(Array.isArray(x)) x.forEach(visit)
+            else if(x && typeof x === 'object') Object.values(x).forEach(visit)
+          }
+          visit(data)
+          const url=urls.find(x=>x.includes('warehouse-intake-baseline-20261106') && x.includes('workers.dev'))
+          if(!url) throw new Error('Expected dedicated Preview URL not returned')
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'url='+url+'\n')
+          console.log('Preview URL: '+url)
+          NODE
+      - name: Read-only health and login smoke
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+        run: |
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 "$PREVIEW_URL/api/health" > health.json
+          grep -q '"ok":true' health.json
+          code=$(curl -L -sS -o login.html -w '%{http_code}' "$PREVIEW_URL/login")
+          test "$code" = 200
+          grep -q 'MYNH ERP' login.html
+      - name: Summary
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+        run: |
+          {
+            echo "## Warehouse Intake Preview"
+            echo "- Base source: main 96029492250b078d3ec182578297401160ca3bdd; reviewed warehouse Preview changes"
+            echo "- Branch: preview/warehouse-intake-baseline-20261106"
+            echo "- Preview: $PREVIEW_URL"
+            echo "- Warehouse contracts, typecheck, 14 viewport responsive QA, OpenNext build, /api/health and /login: PASS"
+            echo "- No Production or Supabase changes"
+          } >> "$GITHUB_STEP_SUMMARY"

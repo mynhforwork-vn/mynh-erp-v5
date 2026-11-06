@@ -1,0 +1,61 @@
+name: Warehouse Item Decisions — isolated DB release gate
+
+on:
+  push:
+    branches: [preview/warehouse-intake-baseline-20261106]
+    paths:
+      - 'supabase/migrations/0075_item_level_warehouse_decisions.sql'
+      - 'scripts/warehouse-item-level-db-*'
+      - '.github/workflows/warehouse-item-decisions-db-qa.yml'
+      - 'lib/actions/warehouse-item-decisions.ts'
+      - 'components/warehouse-intake-detail-preview.tsx'
+      - 'components/warehouse-intake-workspace.tsx'
+      - 'app/(erp)/warehouse/receive/page.tsx'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: warehouse-item-decisions-db-gate
+  cancel-in-progress: true
+
+jobs:
+  postgres-transaction-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client if needed
+        shell: bash
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -qq -y postgresql-client
+          fi
+      - name: Run migration and transactional E2E assertions in fresh disposable DB
+        shell: bash
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -X --host=127.0.0.1 --port=5432 --username=postgres --dbname=postgres \
+            -v ON_ERROR_STOP=1 \
+            -f scripts/warehouse-item-level-db-fixture.sql \
+            -f supabase/migrations/0075_item_level_warehouse_decisions.sql \
+            -f scripts/warehouse-item-level-db-qa.sql 2>&1 | tee warehouse-db-qa.log
+          grep -q 'PASS: 0075 persistence, mixed, skip, duplicate, aggregation, audit, permissions' warehouse-db-qa.log
+      - name: Verify no migration was applied to Production
+        run: echo "PASS — disposable GitHub Actions PostgreSQL only; NO Supabase Production writes"

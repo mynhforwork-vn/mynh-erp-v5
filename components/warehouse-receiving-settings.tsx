@@ -13,9 +13,11 @@ type Warehouse={
 export function WarehouseReceivingSettings({
   warehouses,
   defaultReceivingWarehouseId,
+  previewOnly=false,
 }:{
   warehouses:Warehouse[]
   defaultReceivingWarehouseId?:string|null
+  previewOnly?:boolean
 }){
   const [open,setOpen]=useState(false)
   const wrapRef=useRef<HTMLDivElement|null>(null)
@@ -58,7 +60,7 @@ export function WarehouseReceivingSettings({
         <button type="button" onClick={()=>setOpen(false)} aria-label="Đóng">×</button>
       </div>
 
-      <form action={saveReceivingWarehouseSettings}>
+      <form action={previewOnly?undefined:saveReceivingWarehouseSettings} onSubmit={previewOnly?event=>event.preventDefault():undefined}>
         <label>
           <span>Kho nhận mặc định</span>
           <select name="default_receiving_warehouse_id" required defaultValue={defaultReceivingWarehouseId??''}>
@@ -91,9 +93,10 @@ export function WarehouseReceivingSettings({
           </div>)}
         </div>
 
+        {previewOnly&&<small>Preview chỉ xem, không lưu thay đổi kho vào dữ liệu thật.</small>}
         <div className="whx-settings-actions">
           <button className="button small" type="button" onClick={()=>setOpen(false)}>Hủy</button>
-          <button className="button primary small" type="submit">Lưu cấu hình</button>
+          <button className="button primary small" type="submit" disabled={previewOnly}>Lưu cấu hình</button>
         </div>
       </form>
     </div>}

@@ -1,0 +1,323 @@
+/* Warehouse receive Preview – scoped layout only.
+   Keep the original detail slidebar; never change shared table or slidebar rules. */
+.warehouse-receive-screen{min-width:0}
+/* The ERP main shell reserves 24–30px below every page. Receiving is an
+   operational full-height workspace: leave only a compact safe bottom inset. */
+.brand-shell-v1>.main:has(>.warehouse-receive-screen){
+  padding-bottom:8px!important;
+  min-height:0!important;
+}
+.brand-shell-v1>.main>.warehouse-receive-screen{
+  height:100%!important;
+  min-height:0!important;max-height:100%!important;
+  display:flex!important;flex-direction:column!important;
+  overflow:hidden!important;
+}
+.warehouse-receive-screen .warehouse-receive-date-toolbar{
+  display:flex;align-items:center;min-width:0;margin:0 0 8px;padding:0;
+}
+.warehouse-receive-screen .warehouse-receive-date-toolbar .pd-time-filter{flex:1 1 auto;min-width:0}
+.warehouse-receive-screen .warehouse-receive-date-error{color:#a94131;font-size:11px}
+.warehouse-receive-screen .wh-native-status-kpis{
+  display:flex!important;flex-wrap:nowrap!important;gap:8px!important;
+  overflow:visible!important;margin:0!important;padding:0!important;
+}
+.warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric{
+  flex:1 1 0!important;min-width:0!important;border-radius:7px!important;padding:12px 13px!important;
+}
+.warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric span{font-size:12px!important}
+.warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric b{font-variant-numeric:tabular-nums}
+.warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric small{white-space:normal;line-height:1.4}
+.warehouse-receive-screen .warehouse-command-center{margin-bottom:7px}
+
+/* The table lane is measured by ResizeObserver; the table has no horizontal scroller. */
+.warehouse-receive-screen .warehouse-intake-preview-layout{
+  box-sizing:border-box;display:grid!important;
+  width:100%!important;max-width:100%!important;
+  flex:1 1 auto!important;height:auto!important;min-height:0!important;
+  grid-template-rows:minmax(0,1fr)!important;
+  gap:10px!important;align-items:stretch!important;overflow:hidden!important;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout.with-panel{
+  column-gap:10px!important;gap:10px!important;
+}
+.warehouse-receive-screen .warehouse-receive-table-lane{
+  box-sizing:border-box!important;
+  display:flex!important;flex-direction:column!important;
+  flex:1 1 auto!important;min-width:0!important;min-height:0!important;
+  width:100%!important;height:100%!important;
+  padding-bottom:0!important;margin-bottom:0!important;
+  container-type:inline-size;container-name:warehouse-lane;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout>.warehouse-receive-table-lane{
+  overflow-x:hidden!important;overflow-y:hidden!important;overscroll-behavior:contain;
+}
+.warehouse-receive-screen .warehouse-unified-group{
+  box-sizing:border-box!important;width:100%!important;max-width:100%!important;
+  min-width:0!important;margin-bottom:0!important;border-radius:7px;position:relative;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group{
+  overflow:visible!important;
+}
+/* Actual receiving groups share the full remaining vertical lane, with
+   independent DATA scrolling and the column header visible. Previously the
+   shared enterprise stylesheet forced flex:0 0 auto / height:auto. */
+.brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open{
+  box-sizing:border-box!important;display:flex!important;flex-direction:column!important;
+  flex:1 1 0!important;min-height:0!important;height:auto!important;
+  max-height:none!important;overflow:hidden!important;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.collapsed{
+  flex:0 0 auto!important;min-height:0!important;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-group.open>.warehouse-unified-group-head{
+  flex:0 0 auto!important;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-group.open>.warehouse-unified-table-wrap{
+  box-sizing:border-box!important;display:block!important;
+  flex:1 1 auto!important;min-height:0!important;height:auto!important;
+  max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;
+  overscroll-behavior:contain;scrollbar-width:thin;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-group.open>.warehouse-confirm-stock-bar{
+  flex:0 0 auto!important;
+}
+.warehouse-receive-screen .warehouse-unified-group:has(.managed-column-menu){z-index:21}
+.warehouse-receive-screen .warehouse-unified-group-head{
+  min-width:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;
+  overflow:visible!important;
+}
+.warehouse-receive-screen .warehouse-unified-group-head .tracking-hub-identity{
+  min-width:0;flex:1 1 215px;
+}
+.warehouse-receive-screen .warehouse-unified-group-head .tracking-hub-identity b{
+  font-size:12px;font-weight:650;
+}
+.warehouse-receive-screen .warehouse-unified-group-head .tracking-hub-identity small{
+  font-size:10px;color:#758797;
+}
+.warehouse-receive-screen .warehouse-unified-metrics{
+  min-width:0;flex:0 1 auto;display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+}
+.warehouse-receive-screen .warehouse-unified-metrics span{font-size:10.5px;white-space:nowrap}
+.warehouse-receive-screen .warehouse-unified-group-column-control{
+  margin-left:auto;flex:0 0 auto;position:relative;z-index:8;
+}
+.warehouse-receive-screen .warehouse-unified-group-column-control .managed-column-wrap{position:relative}
+.warehouse-receive-screen .warehouse-unified-group-column-control .managed-column-button{
+  font-size:11px;white-space:nowrap;
+}
+.warehouse-receive-screen .warehouse-unified-group-column-control .managed-column-menu{
+  z-index:30;max-width:min(310px,calc(100vw - 30px));
+}
+
+/* Seven fields share exactly the actual lane width, never a forced minimum width. */
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table-wrap{
+  min-width:0!important;width:100%!important;max-width:100%!important;
+  max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;
+  overscroll-behavior:contain;scrollbar-width:thin;
+  border-top:1px solid #e8edf2;background:#fff;
+}
+.brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table{
+  display:table!important;box-sizing:border-box!important;
+  width:100%!important;min-width:0!important;max-width:100%!important;
+  border-collapse:separate;border-spacing:0;table-layout:fixed!important;
+  color:#2f4d61;font-size:11px;font-variant-numeric:tabular-nums;
+}
+.brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table col{
+  min-width:0!important;max-width:none!important;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table th,
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table td{
+  box-sizing:border-box!important;
+  width:auto!important;min-width:0!important;max-width:none!important;
+  overflow:hidden!important;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table th{
+  height:32px!important;padding:0 5px!important;
+  text-align:left;line-height:1.25!important;
+  border-bottom:1px solid #dae5ed!important;
+}
+.warehouse-receive-screen .warehouse-unified-table th{
+  position:sticky;top:0;z-index:3;
+  background:#f4f8fb;color:#49637a;font-size:10.5px;font-weight:650;
+  border-bottom:1px solid #dce6ed;white-space:nowrap;overflow:hidden;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table .managed-sort-head{
+  display:flex!important;align-items:center!important;
+  min-width:0!important;max-width:100%!important;width:100%!important;
+  padding:0!important;gap:3px!important;overflow:hidden!important;
+  background:transparent!important;border:0!important;
+  white-space:nowrap!important;text-align:left;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table .managed-sort-head span{
+  flex:1 1 auto;display:block;min-width:0!important;max-width:100%;
+  white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table .managed-sort-head i{
+  flex:0 0 auto;font-size:9px;
+}
+.warehouse-receive-screen .warehouse-unified-table th:first-child{display:table-cell}
+.warehouse-receive-screen .warehouse-unified-table th:first-child input{
+  width:13px;height:13px;margin-left:4px;vertical-align:middle;accent-color:#3977a3;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table td{
+  padding:9px 7px!important;font-size:11px;line-height:1.5;
+  min-width:0;max-width:none;overflow:hidden!important;
+  vertical-align:top;color:#2f4d61;border-bottom:1px solid #edf1f4;
+  overflow-wrap:normal;word-break:normal;
+}
+.warehouse-receive-screen .warehouse-unified-table td::before{content:none}
+.warehouse-receive-screen .warehouse-unified-table tbody tr{cursor:pointer}
+.warehouse-receive-screen .warehouse-unified-table tbody tr:hover{background:#f5f9fc}
+.warehouse-receive-screen .warehouse-unified-table .warehouse-unified-order{
+  display:flex;align-items:flex-start;gap:5px;min-width:0;max-width:100%;
+}
+.warehouse-receive-screen .warehouse-unified-order input{
+  flex:0 0 13px;width:13px;height:13px;accent-color:#3977a3;margin:3px 0 0;
+}
+.warehouse-receive-screen .warehouse-unified-order .table-link{
+  display:block;min-width:0;width:100%;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;text-align:left;border:0;background:none;padding:0;
+  font-weight:650;font-size:11px;cursor:pointer;color:#21668f;
+}
+.warehouse-receive-screen .warehouse-unified-table .warehouse-unified-date{
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;
+}
+.warehouse-receive-screen .warehouse-unified-table .warehouse-unified-products{
+  max-width:none;min-width:0;white-space:normal;
+}
+.warehouse-receive-screen .warehouse-unified-products .warehouse-unified-product-line{
+  display:flex;align-items:baseline;min-width:0;max-width:100%;gap:6px;
+  overflow:hidden;white-space:nowrap;line-height:1.5;
+}
+.warehouse-receive-screen .warehouse-unified-products .warehouse-unified-product-line+.warehouse-unified-product-line{
+  border-top:1px solid #f0f3f6;margin-top:4px;padding-top:4px;
+}
+.warehouse-receive-screen .warehouse-unified-product-name{
+  display:block;min-width:0;flex:1 1 auto;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;font-weight:400;
+}
+.warehouse-receive-screen .warehouse-unified-product-qty{
+  flex:0 0 auto;white-space:nowrap;color:#6a8193;font-variant-numeric:tabular-nums;
+}
+.warehouse-receive-screen .warehouse-unified-progress{
+  text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.warehouse-receive-screen .warehouse-unified-table td.money{
+  text-align:right;font-variant-numeric:tabular-nums;
+  white-space:nowrap;text-overflow:ellipsis;
+}
+.warehouse-receive-screen .warehouse-unified-table td[data-col="status"] .status-pill{
+  display:inline-flex;max-width:100%;white-space:nowrap;line-height:1.35;
+  box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;
+  padding:3px 5px!important;font-size:10px;
+}
+.warehouse-receive-screen .warehouse-confirm-stock-bar{margin:0;border-top:1px solid #e4edf3}
+
+/* Always preserve the native 7-column table. On a narrow lane shrink cell
+   padding/typography and truncate text; never switch <tr> into a grid/card. */
+@container warehouse-lane (max-width:850px){
+  .warehouse-receive-screen .warehouse-unified-table-wrap{
+    max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table{
+    display:table!important;table-layout:fixed!important;width:100%!important;
+    min-width:0!important;max-width:100%!important;
+  }
+  .warehouse-receive-screen .warehouse-unified-table colgroup{display:table-column-group!important}
+  .warehouse-receive-screen .warehouse-unified-table thead{display:table-header-group!important}
+  .warehouse-receive-screen .warehouse-unified-table tbody{display:table-row-group!important}
+  .warehouse-receive-screen .warehouse-unified-table tr{display:table-row!important}
+  .warehouse-receive-screen .warehouse-unified-table th{display:table-cell!important}
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table td{
+    display:table-cell!important;padding:7px 3px!important;font-size:10px!important;
+    white-space:nowrap;overflow:hidden!important;text-overflow:ellipsis;
+  }
+  .warehouse-receive-screen .warehouse-unified-table th{
+    padding:0 2px!important;font-size:9px!important;
+  }
+  .warehouse-receive-screen .warehouse-unified-table .managed-sort-head{
+    display:flex;min-width:0;max-width:100%;width:100%;overflow:hidden;
+    font-size:9px!important;padding:0!important;
+  }
+  .warehouse-receive-screen .warehouse-unified-table .managed-sort-head span{
+    display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .warehouse-receive-screen .warehouse-unified-table .managed-sort-head i{
+    flex:0 0 auto;font-size:8px;
+  }
+  .warehouse-receive-screen .warehouse-unified-table .warehouse-unified-product-line{
+    display:flex!important;min-width:0;overflow:hidden;white-space:nowrap;
+  }
+  .warehouse-receive-screen .warehouse-unified-table td::before{content:none!important}
+  .warehouse-receive-screen .warehouse-unified-table td[data-col="status"] .status-pill{
+    white-space:nowrap!important;max-width:100%;overflow:hidden;text-overflow:ellipsis;
+    padding:2px 4px!important;font-size:9px!important;
+  }
+  .warehouse-receive-screen .warehouse-unified-order{gap:2px!important}
+  .warehouse-receive-screen .warehouse-unified-order input{
+    width:11px!important;height:11px!important;flex-basis:11px!important;
+  }
+}
+@container warehouse-lane (max-width:475px){
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table td{
+    padding:6px 2px!important;font-size:9px!important;
+  }
+  .warehouse-receive-screen .warehouse-unified-table .managed-sort-head i{display:none}
+  .warehouse-receive-screen .warehouse-unified-table .warehouse-unified-product-qty{
+    font-size:9px;
+  }
+}
+@media(max-width:900px){
+  /* The shared desktop grid must not reserve a fixed slidebar column on
+     phones/tablets. Overlay the existing panel without changing its internals. */
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout,
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout.with-panel{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:minmax(0,1fr)!important;
+    gap:0!important;column-gap:0!important;
+    width:100%!important;min-width:0!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout>.warehouse-receive-table-lane{
+    grid-column:1!important;grid-row:1!important;
+    width:100%!important;min-width:0!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout.with-panel>.warehouse-intake-panel{
+    grid-column:auto!important;grid-row:auto!important;
+    position:fixed!important;inset:0 0 0 auto!important;
+    box-sizing:border-box!important;
+    width:min(100vw,430px)!important;min-width:0!important;
+    max-width:100vw!important;height:100dvh!important;max-height:100dvh!important;
+    z-index:1500!important;margin:0!important;
+    overflow:hidden!important;
+  }
+}
+@media(max-width:768px){
+  /* Small portrait/landscape viewports cannot display both warehouse groups
+     simultaneously. Keep the workspace full height and scroll groups vertically,
+     while each expanded table still scrolls its own data when necessary. */
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout>.warehouse-receive-table-lane{
+    overflow-y:auto!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open{
+    flex:0 0 auto!important;
+    min-height:150px!important;
+    max-height:clamp(150px,43dvh,410px)!important;
+  }
+  .warehouse-receive-screen .wh-native-status-kpis{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:6px!important;overflow:visible!important;
+  }
+  .warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric{
+    min-width:0!important;max-width:none!important;padding:9px 10px!important;
+  }
+  .warehouse-receive-screen .warehouse-unified-group-head{padding:9px}
+  .warehouse-receive-screen .warehouse-unified-metrics{gap:6px}
+  .warehouse-receive-screen .warehouse-unified-metrics span{font-size:10px}
+}
+@media(max-width:400px){
+  .warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric small{font-size:10px!important}
+  .warehouse-receive-screen .warehouse-unified-group-column-control .managed-column-button{padding:5px 8px}
+}

@@ -1,0 +1,394 @@
+import assert from 'node:assert/strict'
+import { chromium } from 'playwright'
+import { build } from 'esbuild'
+import { readFileSync, writeFileSync, mkdtempSync, mkdirSync } from 'node:fs'
+import path from 'node:path'
+import os from 'node:os'
+
+const root=process.cwd()
+const tmp=mkdtempSync(path.join(os.tmpdir(),'warehouse-3items-'))
+const output=path.join(root,'qa-warehouse-3items')
+mkdirSync(output,{recursive:true})
+const component=path.join(root,'components/warehouse-intake-workspace.tsx')
+const entryPath=path.join(tmp,'fixture.tsx')
+const outfile=path.join(tmp,'bundle.js')
+const source=[
+  "import React from 'react'",
+  "import {createRoot} from 'react-dom/client'",
+  "import {WarehouseIntakeWorkspace} from "+JSON.stringify(component),
+  "const long='Sản phẩm chăm sóc cá nhân dùng hàng ngày - dạng chai 500ml, phiên bản dài tên để kiểm thử cột không bị tràn'",
+  "const rows=Array.from({length:8},(_,i)=>({",
+  "  id:'10000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),",
+  "  shopee_order_id:'261106SPXITEM'+String(i+1).padStart(3,'0'),",
+  "  warehouse_status:i===2?'WAREHOUSE_RECEIVED':i===3?'WAREHOUSE_SKIPPED':'READY_TO_TRANSFER',",
+  "  cod:50000*(i+1),order_date:'2026-11-01T12:00:00+07:00',created_at:'2026-11-01T12:02:00+07:00',",
+  "  shipping_service:'STANDARD',receive_status:'RECEIVED',order_status:'DELIVERED',",
+  "  payment_status:i===0?'PARTIAL':'UNPAID',prepaid_amount:i===0?25000:null,prepaid_source_type:i===0?'DEBIT_CARD':null,prepaid_source_label:i===0?'Ngân hàng thử nghiệm':null,",
+  "  receive_batch_details:[{receive_batches:{warehouse_id:i<4?'BG':'HN',received_at:'2026-11-06T08:00:00+07:00',warehouses:{code:i<4?'BG':'HN',name:'Kho nhận',address:i<4?'320 Nguyễn Công Hãng':'164 Hồng Mai'}}}],",
+  "  order_items:[{id:'20000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:long,sku:'SRC-'+i,variant:'Phân loại mẫu 500ml',quantity:2,original_price:50000,final_price:35000,inventory_multiplier:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}:null},",
+  "  {id:'30000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:'Sữa tắm hương hoa nhài',sku:'SRC-OTHER',variant:'Dạng chai',quantity:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',products:{sku:'TEST-01',name:'Đã map'}}:null}]",
+  '}))',
+  "function Fixture(){const [status,setStatus]=React.useState('all');const live=document.documentElement.dataset.live==='true'; const filtered=status==='done'?rows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):rows; return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}]} suggestions={{}} auditLogs={[]} previewOnly={!live} simulate={!live}/></>}",
+  "createRoot(document.getElementById('root')).render(<Fixture/>)",
+].join('\n')
+writeFileSync(entryPath,source)
+await build({
+  entryPoints:[entryPath],outfile,absWorkingDir:root,bundle:true,
+  platform:'browser',format:'iife',jsx:'automatic',
+  define:{'process.env.NODE_ENV':'"production"'},
+  alias:{'@':root},nodePaths:[path.join(root,'node_modules')],
+  plugins:[{name:'mock-warehouse-actions',setup(es){
+    es.onResolve({filter:/[\\/]lib[\\/]actions[\\/]warehouse$/},()=>({path:'warehouse-actions',namespace:'warehouse-qa'}))
+    es.onResolve({filter:/[\\/]lib[\\/]actions[\\/]warehouse-item-decisions$/},()=>({path:'item-actions',namespace:'warehouse-qa'}))
+    es.onResolve({filter:/^next\/navigation$/},()=>({path:'next-navigation',namespace:'warehouse-qa'}))
+    es.onLoad({filter:/.*/,namespace:'warehouse-qa'},args=>({
+      contents:args.path==='next-navigation'
+        ? 'export function useRouter(){return {refresh(){window.__refreshCalls=(window.__refreshCalls||0)+1}}}'
+        : args.path==='item-actions'
+        ? 'export async function saveWarehouseItemDecision(input){window.__warehouseCalls=(window.__warehouseCalls||[]);window.__warehouseCalls.push({name:"save",input});return {product_variant_id:input.variantId||"V-SKU",decision:input.decision,quantity:2,order_item_id:input.orderItemId}} export async function finalizeWarehouseItemDecisions(id){window.__warehouseCalls.push({name:"finalize",id});return {warehouse_status:"WAREHOUSE_MIXED",in_items:1,skip_items:1,transaction_count:1}}'
+        : 'export async function mapWarehouseOrderItem(){throw new Error("blocked")} export async function receiveOrdersIntoWarehouse(){throw new Error("blocked")} export async function skipWarehouseOrder(){throw new Error("blocked")}',
+      loader:'js'
+    }))
+  }}]
+})
+// Follow the actual Next.js global CSS import order, then the page-scoped
+// warehouse stylesheet. Alphabetical concatenation masked cascade regressions.
+const globalCss=readFileSync(path.join(root,'app/globals.css'),'utf8')
+const cssFiles=[...globalCss.matchAll(/@import ['"]\.\/styles\/([^'"]+\.css)['"]/g)].map(match=>match[1])
+const css=[...cssFiles,'warehouse-intake-preview.css','warehouse-intake-detail-preview.css']
+  .map(file=>readFileSync(path.join(root,'app/styles',file),'utf8')).join('\n')
+const harnessCss=[
+  'html,body{margin:0;padding:0;max-width:100%;background:#f5f8fb;font-family:Arial,sans-serif}',
+  '#root{box-sizing:border-box;max-width:100%;min-width:0}',
+  '.shell.brand-shell-v1{display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;height:100dvh!important;min-height:0!important}',
+  '.shell.brand-shell-v1>.main{box-sizing:border-box!important;min-height:0!important;height:100dvh!important;width:calc(100% - 245px)!important;margin-left:245px!important;overflow:hidden!important}',
+  '.fixture-date{box-sizing:border-box;flex:0 0 auto;min-height:39px;max-height:39px;border:1px solid #d7e1e9;background:white;font-size:11px;padding:10px;margin-bottom:6px}',
+  '.fixture-command{display:flex;gap:6px;flex:0 0 auto;min-height:30px;margin:0 0 5px}',
+  '.fixture-command button{border:1px solid #cbd8e3;background:white;border-radius:5px;padding:5px 10px}',
+  '@media(max-width:900px){.shell.brand-shell-v1>.main{margin-left:0!important;width:100%!important}}',
+].join('\n')
+const html='<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'\n'+harnessCss+'</style></head><body><div class="shell brand-shell-v1"><main class="main"><div id="root" class="tracking-screen tracking-screen-v2 whx-page warehouse-receive-screen"></div></main></div><script>'+readFileSync(outfile,'utf8')+'</script></body></html>'
+const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BIN, args:['--no-sandbox']})
+try {
+  for(const [width,height] of [[320,568],[360,800],[390,844],[414,896],[568,320],[768,1024],[820,1180],[1024,768],[1180,820],[1280,800],[1366,768],[1440,900],[1536,864],[1920,1080]]){
+    const page=await browser.newPage({viewport:{width,height}})
+    const errors=[]
+    page.on('pageerror',error=>errors.push(error.message))
+    await page.setContent(html,{waitUntil:'load'})
+    await page.locator('.warehouse-unified-table tbody tr').first().waitFor({timeout:20000})
+    const cards=page.locator('.warehouse-unified-group')
+    assert.equal(await cards.count(),2,'two real receiving warehouses '+width)
+    const list=await page.evaluate(()=>{
+      const tables=[...document.querySelectorAll('.warehouse-unified-table')]
+      const wraps=[...document.querySelectorAll('.warehouse-unified-table-wrap')]
+      const panel=document.querySelector('aside.warehouse-intake-panel')
+      const lane=document.querySelector('.warehouse-receive-table-lane')
+      const productLines=[...document.querySelectorAll('.warehouse-unified-product-line')]
+      const main=document.querySelector('.brand-shell-v1>.main')
+      const screen=document.querySelector('.warehouse-receive-screen')
+      const workspace=document.querySelector('.warehouse-intake-preview-layout')
+      const groups=[...document.querySelectorAll('.warehouse-unified-group')]
+      const mainBottom=main.getBoundingClientRect().bottom-parseFloat(getComputedStyle(main).paddingBottom)
+      const rectOf=(element)=>element?.getBoundingClientRect()
+      return {
+        heights:{
+          mainBottom,windowBottom:window.innerHeight,
+          mainPaddingBottom:parseFloat(getComputedStyle(main).paddingBottom),
+          screenBottom:rectOf(screen)?.bottom,
+          workspaceBottom:rectOf(workspace)?.bottom,
+          laneBottom:rectOf(lane)?.bottom,
+          panelBottom:rectOf(panel)?.bottom,
+          panelTop:rectOf(panel)?.top,
+          groupBottoms:groups.map(group=>rectOf(group).bottom),
+          groupHeights:groups.map(group=>rectOf(group).height),
+          dataHeights:wraps.map(wrap=>rectOf(wrap).height),
+          scrollHeights:wraps.map(wrap=>wrap.scrollHeight),
+          viewHeights:wraps.map(wrap=>wrap.clientHeight)
+        },
+        productLines:productLines.map(e=>{
+          const name=e.querySelector('.warehouse-unified-product-name')
+          return {
+            whiteSpace:getComputedStyle(name).whiteSpace,
+            height:name.getBoundingClientRect().height,
+            lineHeight:parseFloat(getComputedStyle(name).lineHeight),
+            nameOverflow:getComputedStyle(name).textOverflow,
+          }
+        }),
+        laneWidth:lane?.clientWidth,
+        laneOverflow:(lane?.scrollWidth??0)-(lane?.clientWidth??0),
+        tableDisplay:tables.map(t=>getComputedStyle(t).display),
+        tableGeometry:tables.map(t=>{
+          const header=t.tHead?.rows[0]
+          const first=header?.cells[0]?.getBoundingClientRect()
+          const last=header?.cells[header.cells.length-1]?.getBoundingClientRect()
+          const rect=t.getBoundingClientRect()
+          return {
+            tableLeft:rect.left,tableRight:rect.right,
+            firstLeft:first?.left,lastRight:last?.right,
+            headerDisplay:t.tHead?getComputedStyle(t.tHead).display:'missing',
+            tbodyDisplay:getComputedStyle(t.tBodies[0]).display,
+            rowDisplay:getComputedStyle(t.tBodies[0].rows[0]).display,
+            cellWidths:[...(header?.cells??[])].map(td=>td.getBoundingClientRect().width),
+            productWidth:header?.cells[3]?.getBoundingClientRect().width??0,
+          }
+        }),
+        columnMenus:document.querySelectorAll('.warehouse-unified-group-column-control .managed-column-button').length,
+        outsideControls:document.querySelectorAll('.warehouse-unified-toolbar').length,
+        headers:tables.map(t=>t.querySelectorAll('th').length),
+        rows:tables.map(t=>t.querySelectorAll('tbody tr').length),
+        products:tables.map(t=>t.querySelectorAll('.warehouse-unified-products>div').length),
+        widths:wraps.map(e=>({client:e.clientWidth,scroll:e.scrollWidth,table:e.querySelector('table')?.getBoundingClientRect().width})),
+        pageOverflow:document.documentElement.scrollWidth-window.innerWidth,
+        actualShell:document.body.classList.contains('brand-shell-v1')===false &&
+          !!document.querySelector('.shell.brand-shell-v1 .warehouse-receive-screen'),
+        computedGap:getComputedStyle(document.querySelector('.warehouse-intake-preview-layout')).columnGap,
+        laneRight:lane?.getBoundingClientRect().right,
+        groupRights:[...document.querySelectorAll('.warehouse-unified-group')].map(e=>e.getBoundingClientRect().right),
+        pills:[...document.querySelectorAll('.warehouse-unified-table td[data-col="status"] .status-pill')].map(el=>({
+          label:el.textContent?.trim(),
+          width:el.clientWidth,
+          actual:el.scrollWidth,
+          right:el.getBoundingClientRect().right
+        })),
+        finalColumns:tables.map(t=>{
+          const lastIndex=t.tHead.rows[0].cells.length-1
+          const header=t.tHead.rows[0].cells[lastIndex]
+          const bodyCell=t.tBodies[0].rows[0].cells[lastIndex]
+          const wrapper=t.closest('.warehouse-unified-table-wrap')
+          const tableRect=t.getBoundingClientRect()
+          const wrapRect=wrapper.getBoundingClientRect()
+          const lastHeaderRect=header.getBoundingClientRect()
+          const lastBodyRect=bodyCell.getBoundingClientRect()
+          return {
+            tableRight:tableRect.right,wrapperRight:wrapRect.right,
+            headerLeft:lastHeaderRect.left,headerRight:lastHeaderRect.right,
+            bodyRight:lastBodyRect.right,
+            headerWidth:lastHeaderRect.width,
+            fullyVisible:lastHeaderRect.right<=wrapRect.right+2 &&
+              lastBodyRect.right<=wrapRect.right+2 &&
+              lastHeaderRect.left>=wrapRect.left-2
+          }
+        }),
+        statusHeaders:tables.map(t=>{
+          const th=t.tHead?.rows[0]?.cells[t.tHead.rows[0].cells.length-1]
+          const button=th?.querySelector('button')
+          return {
+            text:th?.textContent?.trim(),
+            displayed:th?.clientWidth,
+            needed:button?.scrollWidth,
+            right:th?.getBoundingClientRect().right
+          }
+        }),
+        panelLeft:panel?.getBoundingClientRect().left,
+        panelRight:panel?.getBoundingClientRect().right,
+        panelTabLabels:[...document.querySelectorAll('.warehouse-detail-v2-tabs button')].map(x=>x.textContent?.trim()),
+        panelTabShared:!!panel?.classList.contains('mynh-slide-panel') &&
+          !!panel.querySelector('.panel-tabs[role="tablist"]'),
+        panelTabMetrics:[...document.querySelectorAll('.warehouse-detail-v2-tabs button')].map(button=>({
+          background:getComputedStyle(button).backgroundColor,
+          fontSize:getComputedStyle(button).fontSize,
+          flex:getComputedStyle(button).flex,
+          border:getComputedStyle(button).borderBottomWidth,
+        })),
+        panelHeader:panel?.querySelector('.warehouse-detail-v2-head')?.getBoundingClientRect().height,
+        panelMeta:panel?.querySelector('.warehouse-detail-v2-meta')?.getBoundingClientRect().height,
+        panelMetaLabels:panel?.querySelector('.warehouse-detail-v2-meta')?.innerText,
+        panelFooter:panel?.querySelector('.warehouse-detail-v2-footer')?.getBoundingClientRect().height,
+        panelScrollHeight:panel?.querySelector('.warehouse-detail-v2-scroll')?.getBoundingClientRect().height,
+        readOnlySubmit:[...document.querySelectorAll('.warehouse-intake-panel button[type="submit"]')].every(b=>b.disabled),
+        labels:[...document.querySelectorAll('.warehouse-unified-table .status-pill')].map(e=>e.textContent?.trim()),
+      }
+    })
+    assert.ok(list.headers.every(count=>count===7),'seven columns preserved '+width+' '+JSON.stringify(list))
+    assert.equal(list.rows.reduce((a,b)=>a+b,0),8,'all includes processed and skipped '+width)
+    assert.equal(list.products.reduce((a,b)=>a+b,0),16,'all products visible '+width)
+    assert.ok(list.labels.includes('Đã bỏ qua kho')&&list.labels.includes('Đã nhập kho'),'processed statuses rendered '+width)
+    assert.ok(list.readOnlySubmit,'write controls must be disabled in preview '+width)
+    assert.deepEqual(list.panelTabLabels,['Sản phẩm','Thông tin đơn','Lịch sử'],
+      'V2 slidebar must have three functional tabs '+width)
+    assert.ok(list.panelTabShared,'V2 must use shared system slidebar tabs '+width)
+    assert.ok(list.panelTabMetrics.every(t=>t.background==='rgba(0, 0, 0, 0)'||t.background==='transparent'),
+      'Tab has filled background rather than system-standard underline '+width+' '+JSON.stringify(list.panelTabMetrics))
+    assert.ok(list.panelMeta>=25 && list.panelMetaLabels?.includes('sản phẩm'),
+      'standard order breadcrumb missing below the panel header '+width)
+    assert.ok(list.panelHeader>50 && list.panelFooter>35 && list.panelScrollHeight>35,
+      'slidebar header, inner scroll, footer are not present '+width)
+    assert.equal(list.columnMenus,2,'per-warehouse controls must exist '+width)
+    assert.equal(list.outsideControls,0,'remove global search and column toolbar '+width)
+    assert.equal(list.productLines.length,16,'each product owns exactly one line '+width)
+    assert.ok(list.productLines.every(x=>x.whiteSpace==='nowrap' && x.height<=x.lineHeight+3),
+      'product text wrapped to multiple lines '+width+' '+JSON.stringify(list.productLines))
+    assert.ok(list.productLines.every(x=>x.nameOverflow==='ellipsis'),'long name must use ellipsis '+width)
+    assert.ok(list.actualShell,'Fixture does not reproduce actual ERP .shell.brand-shell-v1 wrapper '+width)
+    assert.ok(list.heights.mainPaddingBottom<=9,'ERP main still reserves unused bottom padding '+width+' '+JSON.stringify(list.heights))
+    assert.ok(Math.abs(list.heights.screenBottom-list.heights.mainBottom)<=3,
+      'page does not reach main content bottom '+width+' '+JSON.stringify(list.heights))
+    assert.ok(Math.abs(list.heights.workspaceBottom-list.heights.mainBottom)<=3,
+      'receiving workspace fails to fill remaining page height '+width+' '+JSON.stringify(list.heights))
+    assert.ok(Math.abs(list.heights.laneBottom-list.heights.workspaceBottom)<=3,
+      'table lane is shorter than the slidebar workspace '+width+' '+JSON.stringify(list.heights))
+    if(width>900){
+      assert.ok(Math.abs(list.heights.panelBottom-list.heights.mainBottom)<=3,
+        'desktop slidebar stops before the end of the available page '+width+' '+JSON.stringify(list.heights))
+      assert.ok(list.heights.groupBottoms.at(-1)>=list.heights.laneBottom-3,
+        'last warehouse group leaves blank area below the table '+width+' '+JSON.stringify(list.heights))
+      assert.ok(list.heights.groupHeights.every(h=>h>100),
+        'warehouse groups became unusably short '+width+' '+JSON.stringify(list.heights))
+    }else{
+      assert.ok(Math.abs(list.heights.panelBottom-height)<=3,
+        'narrow viewport slidebar does not reach full visible screen height '+width+' '+JSON.stringify(list.heights))
+    }
+    assert.ok(list.widths.every(x=>Math.abs(x.table-x.client)<=3 && x.scroll<=x.client+3),
+      'table must exactly auto-fit without horizontal scroll '+width+' '+JSON.stringify(list))
+    assert.ok(list.laneOverflow<=3,'lane has horizontal overflow '+width+' '+JSON.stringify(list))
+    assert.ok(list.pageOverflow<=3,'document overflow '+width+' '+JSON.stringify(list))
+    assert.ok(list.tableDisplay.every(x=>x==='table'),
+      'table must remain native table in all viewports '+width+' '+JSON.stringify(list))
+    assert.ok(list.tableGeometry.every(x=>x.headerDisplay==='table-header-group'&&
+      x.tbodyDisplay==='table-row-group'&&x.rowDisplay==='table-row'),
+      'header, body and rows must retain their table structure '+width+' '+JSON.stringify(list.tableGeometry))
+    assert.ok(list.tableGeometry.every(x=>x.cellWidths.length===7&&x.cellWidths.every(w=>w>0)),
+      'all seven columns must occupy measurable table width '+width+' '+JSON.stringify(list.tableGeometry))
+    assert.ok(list.tableGeometry.every(x=>Math.abs(x.tableLeft-x.firstLeft)<=3 && Math.abs(x.tableRight-x.lastRight)<=3),
+      'Auto Fit leaves unused blank space at table edges '+width+' '+JSON.stringify(list.tableGeometry))
+    assert.ok(list.finalColumns.every(x=>x.fullyVisible && x.headerWidth>3 &&
+      Math.abs(x.tableRight-x.wrapperRight)<=3),
+      'rightmost status column is clipped, beyond container, or table is not full width '+width+' '+JSON.stringify(list.finalColumns))
+    if(width>900&&list.panelLeft!==undefined&&list.panelLeft!==null) {
+      assert.ok(list.panelLeft-list.laneRight>=7 && list.panelLeft-list.laneRight<=15,
+        'desktop gutter must be compact, about 10px '+width+' '+JSON.stringify(list))
+      assert.ok(list.groupRights.every(right=>right<=list.laneRight+2),
+        'warehouse card extends beyond available table lane '+width+' '+JSON.stringify(list))
+      assert.ok(list.groupRights.every(right=>list.panelLeft-right>=7 && list.panelLeft-right<=15),
+        'group card must fill available lane with compact spacing '+width+' '+JSON.stringify(list))
+      assert.ok(list.panelRight<=width+3,'panel escapes viewport '+width+' '+JSON.stringify(list))
+    } else if(width<=900){
+      assert.ok(list.laneWidth>=width-30,'mobile/tablet list must own the screen under the overlay '+width+' '+JSON.stringify(list))
+      assert.ok(list.panelLeft>=-2&&list.panelRight<=width+2,'mobile/tablet panel escapes viewport '+width+' '+JSON.stringify(list))
+    }
+    if(list.laneWidth>=700){
+      assert.ok(list.statusHeaders.every(h=>h.text?.includes('Trạng thái') && h.needed<=h.displayed+2 && h.right<=list.laneRight+2),
+        'last column heading hidden or clipped behind the slidebar '+width+' '+JSON.stringify(list.statusHeaders))
+      assert.ok(list.pills.every(p=>p.actual<=p.width+2 && p.right<=list.laneRight+2),
+        'status values clipped at the right edge '+width+' '+JSON.stringify(list.pills))
+    }
+    await page.screenshot({path:path.join(output,width+'-'+height+'-open.png')})
+    await page.locator('aside.warehouse-intake-panel .close').click()
+    await page.screenshot({path:path.join(output,width+'-'+height+'-closed.png')})
+    const afterCloseVertical=await page.locator('.warehouse-intake-preview-layout').evaluate(el=>({
+      workspaceBottom:el.getBoundingClientRect().bottom,
+      lastGroupBottom:el.querySelector('.warehouse-unified-group:last-of-type')?.getBoundingClientRect().bottom,
+      laneBottom:el.querySelector('.warehouse-receive-table-lane')?.getBoundingClientRect().bottom,
+    }))
+    assert.ok(Math.abs(afterCloseVertical.workspaceBottom-list.heights.workspaceBottom)<=3,
+      'closing slidebar changes overall workspace height '+width+' '+JSON.stringify(afterCloseVertical))
+    if(width>900)assert.ok(afterCloseVertical.lastGroupBottom>=afterCloseVertical.laneBottom-3,
+      'closing slidebar leaves blank area below the table '+width+' '+JSON.stringify(afterCloseVertical))
+    assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,'close slidebar '+width)
+    const closedLaneWidth=await page.locator('.warehouse-receive-table-lane').evaluate(e=>e.clientWidth)
+    if(width>900)assert.ok(closedLaneWidth>list.laneWidth+130,
+      'closing right slidebar must expand available table area '+width+' '+closedLaneWidth+' vs '+list.laneWidth)
+    const afterClose=await page.locator('.warehouse-unified-table-wrap').first().evaluate(e=>{
+      const table=e.querySelector('table')
+      return {client:e.clientWidth,scroll:e.scrollWidth,table:table?.getBoundingClientRect().width,
+        productWidth:table?.tHead?.rows[0]?.cells[3]?.getBoundingClientRect().width}
+    })
+    assert.ok(afterClose.scroll<=afterClose.client+3,'closed panel table still overflows '+width+' '+JSON.stringify(afterClose))
+    assert.ok(Math.abs(afterClose.table-afterClose.client)<=3,
+      'table does not expand after slidebar closes '+width+' '+JSON.stringify(afterClose))
+    if(width>900){
+      assert.ok(afterClose.productWidth>list.tableGeometry[0].productWidth+60,
+        'product column must expand to use newly available table width '+width+' '+JSON.stringify(afterClose))
+    }
+    if(width===1280){
+      const bg=page.locator('.warehouse-unified-group').first()
+      const hn=page.locator('.warehouse-unified-group').last()
+      await bg.locator('.managed-column-button').click()
+      assert.equal(await bg.locator('.managed-column-menu').count(),1,'BG menu opens')
+      assert.equal(await hn.locator('.managed-column-menu').count(),0,'HN menu must stay closed')
+      await bg.locator('.managed-column-row').filter({hasText:'COD'}).locator('input').uncheck()
+      assert.equal(await bg.locator('thead th').count(),6,'BG custom visibility takes effect')
+      assert.equal(await hn.locator('thead th').count(),7,'HN columns remain independent')
+      await bg.locator('.managed-column-row').filter({hasText:'COD'}).locator('input').check()
+      await bg.locator('.managed-column-button').click()
+    }
+    await page.locator('.warehouse-unified-order button.table-link').first().click()
+    assert.equal(await page.locator('aside.warehouse-intake-panel').count(),1,'open V2 slidebar via order '+width)
+    if(width===1280){
+      const panel=page.locator('aside.warehouse-detail-v2')
+      assert.equal(await panel.locator('.warehouse-detail-v2-product').count(),2,'two items in V2')
+      await panel.getByLabel('Chọn SKU bán',{exact:true}).selectOption('V-SKU')
+      await panel.getByLabel('Hệ số quy đổi',{exact:true}).fill('2')
+      assert.match(await panel.locator('.warehouse-detail-v2-conversion').innerText(),/4/)
+      await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).click()
+      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã ghép SKU/)
+      await panel.locator('.warehouse-detail-v2-product').nth(1).click()
+      await panel.getByLabel('Chọn SKU bán',{exact:true}).selectOption('V-SKU')
+      await panel.getByRole('button',{name:'Bỏ qua kho',exact:true}).click()
+      await panel.getByLabel('Lý do bỏ qua kho (bắt buộc)').fill('Sản phẩm không cần nhập kho')
+      await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).click()
+      await panel.getByRole('button',{name:'Xem lựa chọn dự kiến'}).click()
+      assert.equal(await panel.locator('.warehouse-detail-v2-summary strong').count(),2,'mixed decisions are present')
+      assert.match(await panel.locator('.warehouse-detail-v2-summary').innerText(),/Nhập kho/)
+      assert.match(await panel.locator('.warehouse-detail-v2-summary').innerText(),/Bỏ qua kho/)
+      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã ghép SKU/)
+      await page.screenshot({path:path.join(output,'warehouse-v2-mixed-decisions.png')})
+      await panel.getByRole('tab',{name:'Thông tin đơn'}).click()
+      const info=panel.locator('.warehouse-detail-v2-order-info')
+      assert.equal(await info.locator('.detail-grid.compact-detail-grid').count(),1,'system detail grid used')
+      assert.equal(await info.locator('.context-order-items>div').count(),2,'system order product list used')
+      assert.match(await info.innerText(),/Giá trị đơn hàng/)
+      assert.match(await info.innerText(),/75\.000/)
+      assert.match(await info.innerText(),/Loại tài khoản\/thẻ/)
+      assert.match(await info.innerText(),/Thẻ ghi nợ/)
+      assert.match(await info.innerText(),/Kho nhận thực tế/)
+      await info.locator('.warehouse-detail-v2-product-link').first().click()
+      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã ghép SKU/)
+      await panel.getByRole('tab',{name:'Lịch sử'}).click()
+      assert.match(await panel.locator('.warehouse-detail-v2-content').innerText(),/Chưa có lịch sử/)
+      await panel.getByRole('tab',{name:'Sản phẩm'}).click()
+    }
+    await page.locator('aside.warehouse-intake-panel .close').click()
+    await page.locator('.fixture-done').click()
+    const processed=await page.locator('.warehouse-unified-table tbody tr').count()
+    assert.equal(processed,2,'processed KPI must show stored and skipped '+width)
+    assert.deepEqual(errors,[],'no runtime errors '+width+': '+errors.join('; '))
+    console.log('PASS '+width+'x'+height+' · full page height · full slidebar height · internal table scrolling · 7 columns')
+    await page.close()
+  }
+
+// A second independent browser scenario exercises the live Server Action
+// bridge with stubbed RPCs. It never contacts Supabase.
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true">'),{waitUntil:'load'})
+  const panel=page.locator('aside.warehouse-detail-v2')
+  await panel.locator('.warehouse-detail-v2-product').first().waitFor()
+  assert.equal(await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).count(),0,
+    'live mode must not expose simulator save button')
+  await panel.getByLabel('Chọn SKU bán',{exact:true}).selectOption('V-SKU')
+  await panel.getByRole('button',{name:'Lưu bóc tách và quyết định'}).click()
+  await panel.getByText('Đã lưu SKU, giá và quyết định kho.',{exact:false}).waitFor()
+  await panel.locator('.warehouse-detail-v2-product').nth(1).click()
+  await panel.getByLabel('Chọn SKU bán',{exact:true}).selectOption('V-SKU')
+  await panel.getByRole('button',{name:'Bỏ qua kho',exact:true}).click()
+  await panel.getByLabel('Lý do bỏ qua kho (bắt buộc)').fill('Không nhập kho')
+  await panel.getByRole('button',{name:'Lưu bóc tách và quyết định'}).click()
+  await panel.getByRole('button',{name:'Chốt xử lý kho'}).click()
+  await panel.getByRole('button',{name:'Xác nhận ghi tồn kho'}).click()
+  await panel.getByText('Đã chốt xử lý kho.',{exact:false}).waitFor()
+  const calls=await page.evaluate(()=>({calls:window.__warehouseCalls||[],refreshes:window.__refreshCalls||0}))
+  assert.deepEqual(calls.calls.map(x=>x.name),['save','save','finalize'],
+    'live UI must call two persisted saves then one atomic finalization')
+  assert.deepEqual(calls.calls.slice(0,2).map(x=>x.input.decision),['IN','SKIP'],
+    'live UI must preserve independent per-item decisions')
+  assert.ok(calls.refreshes>=3,'live saves/finalize must refresh authoritative server data')
+  assert.equal(await panel.getByRole('button',{name:'Chốt xử lý kho'}).count(),0,
+    'processed order must not offer a second stock receipt')
+  await page.screenshot({path:path.join(output,'warehouse-v2-live-action-mock.png')})
+  await page.close()
+  console.log('PASS 1280x800 live action bridge · save per item ×2 · atomic finalize ×1 (mock)')
+}
+}finally{await browser.close()}
+
+console.log('14/14 responsive warehouse fixture QA PASS. These are mocked fixtures, not authenticated production data.')
