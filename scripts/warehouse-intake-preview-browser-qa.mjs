@@ -28,7 +28,10 @@ const source=[
   "  order_items:[{id:'20000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:long,sku:'SRC-'+i,variant:'Phân loại mẫu 500ml',quantity:2,original_price:50000,final_price:35000,inventory_multiplier:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}:null},",
   "  {id:'30000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:'Sữa tắm hương hoa nhài',sku:'SRC-OTHER',variant:'Dạng chai',quantity:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',products:{sku:'TEST-01',name:'Đã map'}}:null}]",
   '}))',
-  "function Fixture(){const [status,setStatus]=React.useState('all');const live=document.documentElement.dataset.live==='true';const scenario=document.documentElement.dataset.scenario||'';const sourceRows=scenario==='hn-done'?rows.map((r,i)=>i>=4?{...r,warehouse_status:'WAREHOUSE_RECEIVED'}:r):scenario==='all-done'?rows.map(r=>({...r,warehouse_status:'WAREHOUSE_RECEIVED'})):scenario==='uneven'?rows.map((r,i)=>i>=1&&i<=3?{...r,receive_batch_details:[{receive_batches:{...r.receive_batch_details[0].receive_batches,warehouse_id:'HN',warehouses:{code:'HN',name:'Kho nhận',address:'164 Hồng Mai'}}}]}:r):scenario==='bulk'?rows.map((r,i)=>i===0?{...r,order_items:r.order_items.map(item=>({...item,product_variant_id:'V-SKU',product_variants:{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}}))}:r):rows; const filtered=status==='done'?sourceRows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):sourceRows; const itemDecisions=Object.fromEntries(sourceRows[4].order_items.map((item,i)=>[item.id,{order_item_id:item.id,order_id:sourceRows[4].id,product_variant_id:'V-SKU',decision:i===0?'IN':'SKIP',sale_price:90000,multiplier:1,skip_reason:i===0?null:'Không nhập mẫu',processing_state:'DRAFT'}])); return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}]}  suggestions={{}} itemDecisions={itemDecisions} auditLogs={[]} previewOnly={!live} simulate={!live} showProcessedOnly={status==='done'}/></>}",
+  "function Fixture(){const [status,setStatus]=React.useState('all');const live=document.documentElement.dataset.live==='true';const scenario=document.documentElement.dataset.scenario||'';const sourceRows=scenario==='hn-done'?rows.map((r,i)=>i>=4?{...r,warehouse_status:'WAREHOUSE_RECEIVED'}:r):scenario==='all-done'?rows.map(r=>({...r,warehouse_status:'WAREHOUSE_RECEIVED'})):scenario==='uneven'?rows.map((r,i)=>i>=1&&i<=3?{...r,receive_batch_details:[{receive_batches:{...r.receive_batch_details[0].receive_batches,warehouse_id:'HN',warehouses:{code:'HN',name:'Kho nhận',address:'164 Hồng Mai'}}}]}:r):scenario==='bulk'?rows.map((r,i)=>i===0?{...r,order_items:r.order_items.map(item=>({...item,product_variant_id:'V-SKU',product_variants:{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}}))}:r):rows; const filtered=status==='done'?sourceRows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):sourceRows; const itemDecisions=Object.fromEntries(sourceRows[4].order_items.map((item,i)=>[item.id,{order_item_id:item.id,order_id:sourceRows[4].id,product_variant_id:'V-SKU',decision:i===0?'IN':'SKIP',sale_price:90000,multiplier:1,skip_reason:i===0?null:'Không nhập mẫu',processing_state:'DRAFT'}])); const historySuggestions=scenario==='history'?{[sourceRows[0].order_items[0].id]:[
+    {variant_id:'V-SKU',sku:'TEST-01',product_name:'Đã map',variant_name:'Mẫu',multiplier:2,history_count:3,match_kind:'exact'},
+    {variant_id:'V-ALT',sku:'ALT-02',product_name:'SKU bán khác',variant_name:'Chai',multiplier:1,history_count:1,match_kind:'sku_variant'}
+  ]}:{}; return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}},{id:'V-ALT',variant_name:'Chai',sale_price:65000,products:{sku:'ALT-02',name:'SKU bán khác'}}]}  suggestions={historySuggestions} itemDecisions={itemDecisions} auditLogs={[]} previewOnly={!live} simulate={!live} showProcessedOnly={status==='done'}/></>}",
   "createRoot(document.getElementById('root')).render(<Fixture/>)",
 ].join('\n')
 writeFileSync(entryPath,source)
@@ -218,6 +221,12 @@ try {
       'received date should appear below each order code '+width)
     assert.ok((merged.skuCell??'').includes('TEST-01')&&(merged.skuSale??'').includes('Đã map'),
       'mapped sale product name must be displayed after SKU '+width)
+    const originalPrice=await page.locator('.warehouse-unified-table').first()
+      .locator('tbody tr:first-child td[data-col="purchase"]').innerText()
+    assert.match(originalPrice,/50[.,]000/,
+      'Giá gốc must show original price 50.000, not 35.000 after discount '+width)
+    assert.ok((merged.headers??[]).includes('Giá gốc'),
+      'main table must label original purchase price Giá gốc '+width)
     assert.ok(list.readOnlySubmit,'write controls must be disabled in preview '+width)
     assert.deepEqual(list.panelTabLabels,['Sản phẩm','Thông tin đơn','Lịch sử'],
       'V2 slidebar must have three functional tabs '+width)
@@ -460,7 +469,7 @@ console.log('PASS adaptive groups · hide empty-action warehouse · completed hi
   assert.match(await review.innerText(),/1\s*dòng bỏ qua/)
   assert.match(await review.innerText(),/Bỏ qua kho/)
   assert.match(await review.innerText(),/SKU bán ghép/)
-  assert.match(await review.innerText(),/Giá nhập\/SP/)
+  assert.match(await review.innerText(),/Giá gốc\/SP/)
   assert.match(await review.innerText(),/Giá bán\/SP/)
   assert.match(await review.innerText(),/35\\.000|35,000|35000|Chưa có/)
   assert.equal(await review.getByRole('button',{name:/Xác nhận nhập/}).isDisabled(),true,
@@ -557,6 +566,36 @@ for(const [width,height] of [[360,800],[568,320]]){
 console.log('PASS bulk mobile review · 360x800 and 568x320 · no horizontal overflow')
 
 console.log('PASS bulk warehouse Preview safety · V2 SKIP summary · partial success retained')
+
+// Prior SKU history: two conflicting saved mappings are shown separately.
+// Choosing one changes ONLY the client draft; save/persistence stays explicit.
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="history">'),{waitUntil:'load'})
+  const panel=page.locator('.warehouse-intake-panel')
+  const history=panel.locator('.warehouse-detail-v2-suggestion')
+  await history.waitFor()
+  assert.equal(await history.locator('.warehouse-detail-v2-suggestion-entry').count(),2,
+    'multiple historically mapped SKU variants must be offered separately')
+  assert.match(await history.innerText(),/3 đơn trước đã ghép/)
+  assert.match(await history.innerText(),/1 đơn trước đã ghép/)
+  assert.match(await history.innerText(),/nhiều SKU/)
+  assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã ghép SKU/)
+  await history.getByRole('button',{name:'Chọn gợi ý ALT-02'}).click()
+  assert.equal(await panel.getByLabel('Chọn SKU bán',{exact:true}).inputValue(),'V-ALT',
+    'explicit history suggestion should select its exact variant ID')
+  assert.equal(await panel.getByLabel('Hệ số quy đổi').inputValue(),'1',
+    'suggestion should carry prior saved conversion multiplier')
+  assert.equal(await panel.getByLabel('Giá bán (sửa được)').inputValue(),'65000',
+    'catalog sale price is prefilled for manual edit, not persisted automatically')
+  assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã ghép SKU/,
+    'clicking historical SKU suggestion must NOT claim a saved mapping')
+  assert.deepEqual(await page.evaluate(()=>window.__warehouseCalls??[]),[],
+    'suggestions may not call server actions or write stock')
+  await page.screenshot({path:path.join(output,'warehouse-sku-history-choices.png')})
+  await page.close()
+}
+console.log('PASS history suggestions · multiple candidates · manual select · no auto-write')
 
 // A second independent browser scenario exercises the live Server Action
 // bridge with stubbed RPCs. It never contacts Supabase.
