@@ -442,15 +442,20 @@ console.log('PASS adaptive groups · hide empty-action warehouse · completed hi
   assert.equal(await hn.locator('.warehouse-bulk-shortcut').count(),1,
     'V2 saved decisions must be eligible for batch processing')
   await hn.locator('.warehouse-bulk-shortcut').click()
-  const review=hn.locator('.warehouse-bulk-review')
-  assert.match(await review.innerText(),/Kiểm tra trước khi nhập kho/)
+  const review=page.locator('[role="dialog"][data-warehouse-bulk-popup="HN"]')
+  await review.waitFor()
+  assert.match(await review.innerText(),/Kiểm tra trước khi ghi tồn/)
   assert.match(await review.innerText(),/1 dòng bỏ qua/)
-  assert.match(await review.innerText(),/Quyết định theo sản phẩm/)
+  assert.match(await review.innerText(),/Bỏ qua kho/)
+  assert.match(await review.innerText(),/SKU bán ghép/)
+  assert.match(await review.innerText(),/Giá nhập\/SP/)
+  assert.match(await review.innerText(),/Giá bán\/SP/)
+  assert.match(await review.innerText(),/35\\.000|35,000|35000|Chưa có/)
   assert.equal(await review.getByRole('button',{name:/Xác nhận nhập/}).isDisabled(),true,
     'Preview must never allow the stock submission')
   await page.screenshot({path:path.join(output,'warehouse-bulk-preview-v2-skip.png')})
-  await hn.getByRole('button',{name:'Bỏ chọn'}).click()
-  assert.equal(await hn.locator('.warehouse-bulk-review').count(),0,'cancel bulk review')
+  await review.getByRole('button',{name:'Hủy'}).click()
+  assert.equal(await page.locator('[role="dialog"][data-warehouse-bulk-popup="HN"]').count(),0,'cancel bulk popup')
   await page.close()
 }
 {
@@ -458,10 +463,11 @@ console.log('PASS adaptive groups · hide empty-action warehouse · completed hi
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="bulk">'),{waitUntil:'load'})
   const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
   await bg.locator('.warehouse-bulk-shortcut').click()
-  const review=bg.locator('.warehouse-bulk-review')
-  assert.match(await bg.locator('.warehouse-bulk-toolbar').innerText(),/2 đơn được chọn/)
+  const review=page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]')
+  await review.waitFor()
+  assert.match(await bg.locator('.warehouse-bulk-toolbar').innerText(),/2 đơn đã chọn/)
   assert.match(await review.innerText(),/2 đơn nhập toàn bộ/)
-  await review.getByRole('checkbox',{name:/Tôi đã kiểm tra/}).check()
+  await review.getByRole('checkbox',{name:/Tôi đã đối chiếu/}).check()
   await page.evaluate(()=>{window.__bulkPartial=true})
   await review.getByRole('button',{name:'Xác nhận nhập 2 đơn'}).click()
   await page.getByText('1 đơn đã xử lý thành công',{exact:false}).waitFor()
@@ -485,8 +491,8 @@ for(const [width,height] of [[360,800],[568,320]]){
   await page.locator('aside.warehouse-intake-panel .close').click()
   const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
   await bg.locator('.warehouse-bulk-shortcut').click()
-  const review=bg.locator('.warehouse-bulk-review')
-  await review.getByText('Kiểm tra trước khi nhập kho').waitFor()
+  const review=page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]')
+  await review.waitFor()
   const horizontal=await page.evaluate(()=>({
     document:document.documentElement.scrollWidth-window.innerWidth,
     lane:document.querySelector('.warehouse-receive-table-lane').scrollWidth-
@@ -498,8 +504,8 @@ for(const [width,height] of [[360,800],[568,320]]){
     'Preview must block bulk writes even on mobile '+width)
   await page.screenshot({path:path.join(output,'warehouse-bulk-'+width+'-'+height+'.png')})
   await review.getByRole('button',{name:'Hủy'}).click({timeout:10000})
-  assert.equal(await bg.locator('.warehouse-bulk-review').count(),0,
-    'bulk confirmation must be dismissible on mobile '+width)
+  assert.equal(await page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]').count(),0,
+    'bulk popup must be dismissible on mobile '+width)
   await page.close()
 }
 console.log('PASS bulk mobile review · 360x800 and 568x320 · no horizontal overflow')
