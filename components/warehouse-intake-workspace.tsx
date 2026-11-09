@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect,useMemo,useRef,useState } from 'react'
+import { useEffect,useMemo,useRef,useState,type CSSProperties } from 'react'
 import { formatDateTime,formatMoney } from '@/lib/format'
 import { receiveOrdersIntoWarehouse } from '@/lib/actions/warehouse'
 import { WarehouseIntakeDetailPreview } from '@/components/warehouse-intake-detail-preview'
@@ -140,6 +140,7 @@ export function WarehouseIntakeWorkspace({
   itemDecisions={},
   simulate=true,
   previewOnly=false,
+  showProcessedOnly=false,
 }:{
   rows:Row[]
   variants:Variant[]
@@ -148,6 +149,7 @@ export function WarehouseIntakeWorkspace({
   itemDecisions?:Record<string,ItemDecision>
   simulate?:boolean
   previewOnly?:boolean
+  showProcessedOnly?:boolean
 }){
   const groups=useMemo(()=>{
     const map=new Map<string,{
@@ -171,10 +173,17 @@ export function WarehouseIntakeWorkspace({
       existing.rows.push(row)
       map.set(id,existing)
     }
-    return [...map.values()].sort((a,b)=>a.code.localeCompare(b.code,'vi'))
-  },[rows])
+    // Active workspaces only render warehouses with orders requiring action.
+    // The completed KPI remains available to inspect every historical receipt.
+    return [...map.values()]
+      .filter(group=>showProcessedOnly||group.rows.some(row=>!isDone(row)))
+      .sort((a,b)=>a.code.localeCompare(b.code,'vi'))
+  },[rows,showProcessedOnly])
 
-  const firstIncomplete=rows.find(row=>!isComplete(row))??rows[0]??null
+  const visibleRows=useMemo(()=>groups.flatMap(group=>group.rows),[groups])
+  const firstIncomplete=visibleRows.find(row=>!isDone(row)&&!isComplete(row))
+    ??visibleRows.find(row=>!isDone(row))
+    ??visibleRows[0]??null
   const [activeId,setActiveId]=useState<string|null>(firstIncomplete?.id??null)
   const [openGroups,setOpenGroups]=useState<string[]>(()=>groups.map(group=>group.id))
   const [selectedGroup,setSelectedGroup]=useState<string|null>(null)
@@ -202,7 +211,10 @@ export function WarehouseIntakeWorkspace({
     return ()=>{observer?.disconnect();window.removeEventListener('resize',measure)}
   },[])
 
-  const active=rows.find(row=>row.id===activeId)??null
+  const active=visibleRows.find(row=>row.id===activeId)??null
+  useEffect(()=>{
+    if(activeId&&!visibleRows.some(row=>row.id===activeId))setActiveId(null)
+  },[activeId,visibleRows])
   const selectedSet=useMemo(()=>new Set(selected),[selected])
   function toggleGroup(id:string){
     setOpenGroups(current=>current.includes(id)
@@ -235,7 +247,11 @@ export function WarehouseIntakeWorkspace({
   return <div className={'whx-intake-layout warehouse-intake-layout warehouse-intake-preview-layout '+(active?'with-panel':'')}>
     <section ref={laneRef} className="whx-intake-main tracking-hub-stack tracking-hub-stack-v2 warehouse-receive-groups warehouse-receive-table-lane">
       {!groups.length
-        ? <div className="card empty">Không có đơn đã nhận trong khoảng thời gian và trạng thái đang chọn.</div>
+        ? <div className="card empty">{showProcessedOnly
+          ? 'Chưa có đơn đã xử lý trong khoảng thời gian đang chọn.'
+          : rows.length
+            ? 'Các kho đã hết đơn cần xử lý. Chọn KPI Đã xử lý để xem những đơn đã hoàn tất.'
+            : 'Không có đơn cần xử lý trong khoảng thời gian và trạng thái đang chọn.'}</div>
         : groups.map(group=>{
             const open=openGroups.includes(group.id)
             const waiting=group.rows.filter(row=>!isDone(row))
@@ -295,7 +311,11 @@ export function WarehouseIntakeWorkspace({
               if(col==='cod')return <td key={col} {...attributes} className="money">{formatMoney(row.cod)}</td>
               return <td key={col} {...attributes}><span className={'status-pill '+(isDone(row)?'green':isComplete(row)?'status-ready_to_ship':'orange')}>{phaseLabel(row)}</span></td>
             }
-            return <section className={'card tracking-hub-card tracking-hub-card-v2 warehouse-receive-card warehouse-unified-group '+(open?'open':'collapsed')} key={group.id}>
+            return <section className={'card tracking-hub-card tracking-hub-card-v2 warehouse-receive-card warehouse-unified-group '+(open?'open':'collapsed')}
+              key={group.id} data-warehouse-code={group.code}
+              data-warehouse-rows={group.rows.length}
+              data-warehouse-actionable={waiting.length}
+              style={{'--warehouse-row-weight':Math.min(group.rows.length,30)} as CSSProperties}>
               <div className="tracking-hub-head-v2 warehouse-unified-group-head">
                 <button type="button" className="tracking-hub-toggle" aria-label={(open?'Thu gọn ':'Mở ')+group.code}
                   aria-expanded={open} onClick={()=>toggleGroup(group.id)}><span>{open?'⌄':'›'}</span></button>
