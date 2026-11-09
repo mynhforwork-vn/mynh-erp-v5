@@ -466,6 +466,23 @@ console.log('PASS adaptive groups · hide empty-action warehouse · completed hi
   const review=page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]')
   await review.waitFor()
   assert.match(await bg.locator('.warehouse-bulk-toolbar').innerText(),/2 đơn được chọn/)
+  assert.equal(await review.locator('.warehouse-bulk-order-group').count(),2,
+    'visually similar orders must stay as two separate order groups')
+  assert.equal(await review.locator('.warehouse-bulk-order-heading').count(),2,
+    'each order code appears once in its own concise header')
+  assert.equal(await review.locator('.warehouse-bulk-order-details').count(),1,
+    'only the first order is expanded by default, avoiding repeated product rows')
+  assert.equal(await review.locator('.warehouse-bulk-review-table tbody tr').count(),2,
+    'first order still has complete SKU and price comparison rows')
+  await review.locator('.warehouse-bulk-order-toggle').nth(1).click()
+  assert.equal(await review.locator('.warehouse-bulk-order-details').count(),2,
+    'operator can expand a second order without losing the first')
+  await review.getByRole('button',{name:'Thu gọn tất cả'}).click()
+  assert.equal(await review.locator('.warehouse-bulk-order-details').count(),0,
+    'operator can collapse all similar orders')
+  await review.getByRole('button',{name:'Mở tất cả'}).click()
+  assert.equal(await review.locator('.warehouse-bulk-review-table tbody tr').count(),4,
+    'expand all preserves each order and each item; never merges different orders')
   assert.match(await review.innerText(),/2 đơn nhập toàn bộ/)
   await review.getByRole('checkbox',{name:/Tôi đã đối chiếu/}).check()
   await page.evaluate(()=>{window.__bulkPartial=true})
@@ -502,6 +519,16 @@ for(const [width,height] of [[360,800],[568,320]]){
     'bulk review causes horizontal overflow at '+width+'x'+height+': '+JSON.stringify(horizontal))
   assert.ok(await review.getByRole('button',{name:/Xác nhận nhập/}).isDisabled(),
     'Preview must block bulk writes even on mobile '+width)
+  assert.equal(await review.locator('.warehouse-bulk-order-heading').count(),2,
+    'mobile group headings must distinguish identical-looking orders '+width)
+  assert.equal(await review.locator('.warehouse-bulk-order-details').count(),1,
+    'mobile initially expands only one order '+width)
+  await review.locator('.warehouse-bulk-order-toggle').first().click()
+  assert.equal(await review.locator('.warehouse-bulk-order-details').count(),0,
+    'mobile order group can collapse '+width)
+  await review.locator('.warehouse-bulk-order-toggle').first().click()
+  assert.equal(await review.locator('.warehouse-bulk-order-details').count(),1,
+    'mobile order group can expand '+width)
   await page.screenshot({path:path.join(output,'warehouse-bulk-'+width+'-'+height+'.png')})
   await review.getByRole('button',{name:'Hủy'}).click({timeout:10000})
   assert.equal(await page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]').count(),0,
