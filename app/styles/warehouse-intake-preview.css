@@ -50,7 +50,8 @@
   container-type:inline-size;container-name:warehouse-lane;
 }
 .brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout>.warehouse-receive-table-lane{
-  overflow-x:hidden!important;overflow-y:hidden!important;overscroll-behavior:contain;
+  overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;
+  scrollbar-width:thin;
 }
 .warehouse-receive-screen .warehouse-unified-group{
   box-sizing:border-box!important;width:100%!important;max-width:100%!important;
@@ -59,12 +60,15 @@
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group{
   overflow:visible!important;
 }
+/* Warehouse group heights respond to real displayed row counts. 1 vs 9 rows
+   should not receive a fixed 50/50 split. When only one active warehouse
+   remains it naturally fills the available height. */
 /* Actual receiving groups share the full remaining vertical lane, with
    independent DATA scrolling and the column header visible. Previously the
    shared enterprise stylesheet forced flex:0 0 auto / height:auto. */
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open{
   box-sizing:border-box!important;display:flex!important;flex-direction:column!important;
-  flex:1 1 0!important;min-height:0!important;height:auto!important;
+  flex:var(--warehouse-row-weight,1) 1 0!important;min-height:145px!important;height:auto!important;
   max-height:none!important;overflow:hidden!important;
 }
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.collapsed{
@@ -302,9 +306,11 @@
     overflow-y:auto!important;
   }
   .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open{
-    flex:0 0 auto!important;
+    /* One warehouse fills the lane; multiple follow their row-count weights.
+       The lane itself scrolls when minimum usable card heights exceed space. */
+    flex:var(--warehouse-row-weight,1) 1 0!important;
     min-height:150px!important;
-    max-height:clamp(150px,43dvh,410px)!important;
+    max-height:none!important;
   }
   .warehouse-receive-screen .wh-native-status-kpis{
     display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
