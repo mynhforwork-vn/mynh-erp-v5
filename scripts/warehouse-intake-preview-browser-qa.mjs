@@ -132,7 +132,7 @@ try {
             tbodyDisplay:getComputedStyle(t.tBodies[0]).display,
             rowDisplay:getComputedStyle(t.tBodies[0].rows[0]).display,
             cellWidths:[...(header?.cells??[])].map(td=>td.getBoundingClientRect().width),
-            productWidth:header?.cells[3]?.getBoundingClientRect().width??0,
+            productWidth:header?.cells[2]?.getBoundingClientRect().width??0,
           }
         }),
         columnMenus:document.querySelectorAll('.warehouse-unified-group-column-control .managed-column-button').length,
@@ -202,10 +202,22 @@ try {
         labels:[...document.querySelectorAll('.warehouse-unified-table .status-pill')].map(e=>e.textContent?.trim()),
       }
     })
-    assert.ok(list.headers.every(count=>count===7),'seven columns preserved '+width+' '+JSON.stringify(list))
+    assert.ok(list.headers.every(count=>count===6),'six merged columns preserved '+width+' '+JSON.stringify(list))
     assert.equal(list.rows.reduce((a,b)=>a+b,0),8,'all includes processed and skipped '+width)
     assert.equal(list.products.reduce((a,b)=>a+b,0),16,'all products visible '+width)
     assert.ok(list.labels.includes('Đã bỏ qua kho')&&list.labels.includes('Đã nhập kho'),'processed statuses rendered '+width)
+    const merged=await page.locator('.warehouse-unified-table').first().evaluate(table=>({
+      headers:[...table.tHead.rows[0].cells].map(cell=>cell.innerText.trim()),
+      received:table.querySelector('tbody tr:first-child td[data-col="order"] .warehouse-unified-received-at')?.textContent?.trim(),
+      skuCell:table.querySelector('tbody tr:nth-child(2) td[data-col="sku"]')?.innerText,
+      skuSale:table.querySelector('tbody tr:nth-child(2) td[data-col="sku"] .warehouse-unified-sku-title')?.textContent,
+    }))
+    assert.ok(merged.headers[0].includes('Ngày nhận')&&merged.headers.length===6,
+      'date must share the order column, no separate date column '+width)
+    assert.match(merged.received??'',/06\\/11\\/2026/,
+      'received date should appear below each order code '+width)
+    assert.ok((merged.skuCell??'').includes('TEST-01')&&(merged.skuSale??'').includes('Đã map'),
+      'mapped sale product name must be displayed after SKU '+width)
     assert.ok(list.readOnlySubmit,'write controls must be disabled in preview '+width)
     assert.deepEqual(list.panelTabLabels,['Sản phẩm','Thông tin đơn','Lịch sử'],
       'V2 slidebar must have three functional tabs '+width)
@@ -250,8 +262,8 @@ try {
     assert.ok(list.tableGeometry.every(x=>x.headerDisplay==='table-header-group'&&
       x.tbodyDisplay==='table-row-group'&&x.rowDisplay==='table-row'),
       'header, body and rows must retain their table structure '+width+' '+JSON.stringify(list.tableGeometry))
-    assert.ok(list.tableGeometry.every(x=>x.cellWidths.length===7&&x.cellWidths.every(w=>w>0)),
-      'all seven columns must occupy measurable table width '+width+' '+JSON.stringify(list.tableGeometry))
+    assert.ok(list.tableGeometry.every(x=>x.cellWidths.length===6&&x.cellWidths.every(w=>w>0)),
+      'all six columns must occupy measurable table width '+width+' '+JSON.stringify(list.tableGeometry))
     assert.ok(list.tableGeometry.every(x=>Math.abs(x.tableLeft-x.firstLeft)<=3 && Math.abs(x.tableRight-x.lastRight)<=3),
       'Auto Fit leaves unused blank space at table edges '+width+' '+JSON.stringify(list.tableGeometry))
     assert.ok(list.finalColumns.every(x=>x.fullyVisible && x.headerWidth>3 &&
@@ -294,7 +306,7 @@ try {
     const afterClose=await page.locator('.warehouse-unified-table-wrap').first().evaluate(e=>{
       const table=e.querySelector('table')
       return {client:e.clientWidth,scroll:e.scrollWidth,table:table?.getBoundingClientRect().width,
-        productWidth:table?.tHead?.rows[0]?.cells[3]?.getBoundingClientRect().width}
+        productWidth:table?.tHead?.rows[0]?.cells[2]?.getBoundingClientRect().width}
     })
     assert.ok(afterClose.scroll<=afterClose.client+3,'closed panel table still overflows '+width+' '+JSON.stringify(afterClose))
     assert.ok(Math.abs(afterClose.table-afterClose.client)<=3,
@@ -310,8 +322,8 @@ try {
       assert.equal(await bg.locator('.managed-column-menu').count(),1,'BG menu opens')
       assert.equal(await hn.locator('.managed-column-menu').count(),0,'HN menu must stay closed')
       await bg.locator('.managed-column-row').filter({hasText:'Giá bán'}).locator('input').uncheck()
-      assert.equal(await bg.locator('thead th').count(),6,'BG custom visibility takes effect')
-      assert.equal(await hn.locator('thead th').count(),7,'HN columns remain independent')
+      assert.equal(await bg.locator('thead th').count(),5,'BG custom visibility takes effect')
+      assert.equal(await hn.locator('thead th').count(),6,'HN columns remain independent')
       await bg.locator('.managed-column-row').filter({hasText:'Giá bán'}).locator('input').check()
       await bg.locator('.managed-column-button').click()
     }
@@ -356,7 +368,7 @@ try {
     const processed=await page.locator('.warehouse-unified-table tbody tr').count()
     assert.equal(processed,2,'processed KPI must show stored and skipped '+width)
     assert.deepEqual(errors,[],'no runtime errors '+width+': '+errors.join('; '))
-    console.log('PASS '+width+'x'+height+' · full page height · full slidebar height · internal table scrolling · 7 columns')
+    console.log('PASS '+width+'x'+height+' · full page height · full slidebar height · internal table scrolling · 6 columns')
     await page.close()
   }
 
@@ -466,23 +478,25 @@ console.log('PASS adaptive groups · hide empty-action warehouse · completed hi
   const review=page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]')
   await review.waitFor()
   assert.match(await bg.locator('.warehouse-bulk-toolbar').innerText(),/2 đơn được chọn/)
-  assert.equal(await review.locator('.warehouse-bulk-order-group').count(),2,
-    'visually similar orders must stay as two separate order groups')
-  assert.equal(await review.locator('.warehouse-bulk-order-heading').count(),2,
-    'each order code appears once in its own concise header')
-  assert.equal(await review.locator('.warehouse-bulk-order-details').count(),1,
-    'only the first order is expanded by default, avoiding repeated product rows')
-  assert.equal(await review.locator('.warehouse-bulk-review-table tbody tr').count(),2,
-    'first order still has complete SKU and price comparison rows')
-  await review.locator('.warehouse-bulk-order-toggle').nth(1).click()
-  assert.equal(await review.locator('.warehouse-bulk-order-details').count(),2,
-    'operator can expand a second order without losing the first')
-  await review.getByRole('button',{name:'Thu gọn tất cả'}).click()
-  assert.equal(await review.locator('.warehouse-bulk-order-details').count(),0,
-    'operator can collapse all similar orders')
-  await review.getByRole('button',{name:'Mở tất cả'}).click()
+  assert.equal(await review.locator('.warehouse-bulk-review-table').count(),1,
+    'one flat table only; no accordion per order')
+  assert.equal(await review.locator('.warehouse-bulk-review-table thead th').count(),7,
+    'bulk preview retains 7 comparison columns')
   assert.equal(await review.locator('.warehouse-bulk-review-table tbody tr').count(),4,
-    'expand all preserves each order and each item; never merges different orders')
+    'all product lines shown without opening an order')
+  const orderCells=await review.locator('.warehouse-bulk-order-cell').evaluateAll(cells=>
+    cells.map(cell=>({rowspan:cell.rowSpan,text:cell.querySelector('button')?.textContent?.trim()})))
+  assert.equal(orderCells.length,2,'order code appears exactly once per order')
+  assert.deepEqual(orderCells.map(cell=>cell.rowspan),[2,2],
+    'each code must span its own two product lines')
+  assert.equal(new Set(orderCells.map(cell=>cell.text)).size,2,
+    'different orders must keep separate codes even with identical products')
+  assert.deepEqual(await review.locator('tbody tr').evaluateAll(rows=>
+    rows.map(row=>row.dataset.reviewOrder).reduce((acc,id)=>{
+      acc[id]=(acc[id]??0)+1;return acc
+    },{})),Object.fromEntries(await review.locator('.warehouse-bulk-order-cell').evaluateAll(cells=>
+      cells.map(cell=>[cell.parentElement?.dataset.reviewOrder,2]))),
+    'each product row must remain linked to its original order')
   assert.match(await review.innerText(),/2 đơn nhập toàn bộ/)
   await review.getByRole('checkbox',{name:/Tôi đã đối chiếu/}).check()
   await page.evaluate(()=>{window.__bulkPartial=true})
@@ -520,16 +534,20 @@ for(const [width,height] of [[360,800],[568,320]]){
     'bulk review causes horizontal overflow at '+width+'x'+height+': '+JSON.stringify(horizontal))
   assert.ok(await review.getByRole('button',{name:/Xác nhận nhập/}).isDisabled(),
     'Preview must block bulk writes even on mobile '+width)
-  assert.equal(await review.locator('.warehouse-bulk-order-heading').count(),2,
-    'mobile group headings must distinguish identical-looking orders '+width)
-  assert.equal(await review.locator('.warehouse-bulk-order-details').count(),1,
-    'mobile initially expands only one order '+width)
-  await review.locator('.warehouse-bulk-order-toggle').first().click()
-  assert.equal(await review.locator('.warehouse-bulk-order-details').count(),0,
-    'mobile order group can collapse '+width)
-  await review.locator('.warehouse-bulk-order-toggle').first().click()
-  assert.equal(await review.locator('.warehouse-bulk-order-details').count(),1,
-    'mobile order group can expand '+width)
+  assert.equal(await review.locator('.warehouse-bulk-review-table').count(),1,
+    'mobile popup must remain one table '+width)
+  assert.equal(await review.locator('.warehouse-bulk-order-cell').count(),2,
+    'mobile order code appears once per order '+width)
+  const mobileTable=await review.locator('.warehouse-bulk-review').evaluate(node=>({
+    scrollX:node.scrollWidth-node.clientWidth,
+    viewportX:document.documentElement.scrollWidth-window.innerWidth,
+    tableDisplay:getComputedStyle(node.querySelector('table')).display,
+    tbodyDisplay:getComputedStyle(node.querySelector('tbody')).display,
+  }))
+  assert.equal(mobileTable.tableDisplay,'table','mobile must preserve single actual table '+width)
+  assert.equal(mobileTable.tbodyDisplay,'table-row-group','mobile must preserve native tbody '+width)
+  assert.ok(mobileTable.scrollX>150,'mobile popup must allow horizontal swipe inside table '+width)
+  assert.ok(mobileTable.viewportX<=3,'mobile popup must not overflow whole document '+width)
   await page.screenshot({path:path.join(output,'warehouse-bulk-'+width+'-'+height+'.png')})
   await review.getByRole('button',{name:'Hủy'}).click({timeout:10000})
   assert.equal(await page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]').count(),0,
