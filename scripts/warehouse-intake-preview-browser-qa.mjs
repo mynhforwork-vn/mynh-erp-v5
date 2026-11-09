@@ -502,7 +502,8 @@ console.log('PASS adaptive groups · hide empty-action warehouse · completed hi
 // on narrow portrait/landscape devices, not just a Desktop-only action.
 for(const [width,height] of [[360,800],[568,320]]){
   const page=await browser.newPage({viewport:{width,height}})
-  await page.setContent(html,{waitUntil:'load'})
+  // Two visually similar BG orders while remaining strictly Preview read-only.
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="bulk">'),{waitUntil:'load'})
   // The established mobile detail slidebar intentionally overlays the table.
   // Close it through its native control before opening table actions.
   await page.locator('aside.warehouse-intake-panel .close').click()
