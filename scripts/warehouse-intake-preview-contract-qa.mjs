@@ -43,21 +43,21 @@ const checks=[
   ['status and date preserved across navigation',
     page.includes("if (receivedPeriod !== 'all') query.set('received_range'")&&
     page.includes('preserveParams={{state:currentStatus}}')],
-  ['one 7-column table per confirmed warehouse with actual product details',
-    table.includes("type TableCol='order'|'received'|'sku'|'product'|'purchase'|'sale'|'status'")&&
+  ['one 6-column table per confirmed warehouse with date under order',
+    table.includes("type TableCol='order'|'sku'|'product'|'purchase'|'sale'|'status'")&&
     table.includes('warehouse-unified-table')&&
     table.includes('row.order_items.map(item=><div')&&
     !table.includes('warehouse-split-table')&&
     !table.includes('warehouse-ready-table')],
   ['independent column menu per receiving warehouse and sortable columns',
-    table.includes("mynh-warehouse-intake-bg-columns-v2") &&
-    table.includes("mynh-warehouse-intake-hn-columns-v2") &&
+    table.includes("mynh-warehouse-intake-bg-columns-v3") &&
+    table.includes("mynh-warehouse-intake-hn-columns-v3") &&
     table.includes("group.code==='BG'?bgColumns:group.code==='HN'?hnColumns:otherColumns") &&
     table.includes('<ManagedColumnsMenu labels={TABLE_LABELS}')&&
     table.includes('<SortableHeader') &&
     table.includes('warehouse-unified-group-column-control') &&
     !table.includes('warehouse-unified-toolbar')],
-  ['real-width Auto Fit preserves seven actual table columns without blank width',
+  ['real-width Auto Fit preserves six actual table columns without blank width',
     table.includes('new ResizeObserver(measure)') &&
     table.includes('autoFitColumnWidths(tableColumns.visible,laneWidth)') &&
     table.includes('style={{width:columnWidths[index]+\'%\'}}') &&
@@ -244,26 +244,29 @@ const checks=[
     bulkBar.includes("onOpenOrder(order.id)") &&
     css.includes('.warehouse-bulk-backdrop .warehouse-bulk-review-table') &&
     css.includes('@media(max-width:720px)')],
-  ['bulk review groups visually identical orders without losing per-item decisions',
-    bulkBar.includes("orders.map((order,index)=>") &&
+  ['bulk preview is ONE table with exactly one order code per order via row span',
+    bulkBar.includes('orders.flatMap((order,orderIndex)=>order.items.map((item,itemIndex)=>') &&
+    bulkBar.includes('itemIndex===0&&<td rowSpan={order.items.length}') &&
     bulkBar.includes('data-review-order={order.id}') &&
-    bulkBar.includes('aria-expanded={expanded}') &&
-    bulkBar.includes('expandedOrders.includes(order.id)') &&
-    bulkBar.includes('setExpandedOrders(orders[0]?[orders[0].id]:[])') &&
-    bulkBar.includes("'Thu gọn tất cả':'Mở tất cả'") &&
-    bulkBar.includes('order.items.map(item=>') &&
-    bulkBar.includes('warehouse-bulk-order-heading') &&
+    bulkBar.includes('data-order-first={itemIndex===0?') &&
     bulkBar.includes("item.decision==='IN'?'Nhập kho':'Bỏ qua kho'") &&
-    css.includes('.warehouse-bulk-order-identity') &&
-    css.includes('.warehouse-bulk-order-details')],
-  ['receiving table shows seven focused columns including matched SKU and prices',
-    table.includes("const TABLE_COLUMNS:TableCol[]=['order','received','sku','product','purchase','sale','status']") &&
-    table.includes("purchase:'Giá nhập',sale:'Giá bán'") &&
-    table.includes("item.product_variants?.products?.sku") &&
-    table.includes("linePrice(item.final_price)") &&
-    table.includes("saved?.sale_price??item.product_variants?.sale_price") &&
-    table.includes("saved?.decision==='SKIP'?'Bỏ qua kho'") &&
-    table.includes("mynh-warehouse-intake-hn-columns-v2")],
+    bulkBar.includes('onOpenOrder(order.id)') &&
+    !bulkBar.includes('expandedOrders') &&
+    !bulkBar.includes('warehouse-bulk-order-toggle') &&
+    !bulkBar.includes('Thu gọn tất cả') &&
+    css.includes('warehouse-bulk-order-cell') &&
+    !css.includes('warehouse-bulk-order-group')],
+  ['receiving table combines received date with order and SKU with sale name',
+    table.includes("const TABLE_COLUMNS:TableCol[]=['order','sku','product','purchase','sale','status']") &&
+    table.includes('warehouse-unified-received-at') &&
+    table.includes('formatDateTime(receivedAt(row))') &&
+    table.includes('warehouse-unified-sku-identity') &&
+    table.includes('warehouse-unified-sku-title') &&
+    table.includes('item.product_variants.products.name') &&
+    table.includes("if(col==='order')return new Date(receivedAt(row)??0).getTime()") &&
+    table.includes("mynh-warehouse-intake-hn-columns-v3") &&
+    css.includes('.warehouse-unified-sku-title') &&
+    css.includes('.warehouse-unified-received-at')],
   ['V2 slidebar height internal scroll and fixed footer',
     panelCss.includes('.warehouse-detail-v2-scroll') &&
     panelCss.includes('flex:1 1 auto!important') &&
