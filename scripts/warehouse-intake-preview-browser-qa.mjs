@@ -207,7 +207,7 @@ try {
     assert.equal(list.products.reduce((a,b)=>a+b,0),16,'all products visible '+width)
     assert.ok(list.labels.includes('Đã bỏ qua kho')&&list.labels.includes('Đã nhập kho'),'processed statuses rendered '+width)
     const merged=await page.locator('.warehouse-unified-table').first().evaluate(table=>({
-      headers:[...table.tHead.rows[0].cells].map(cell=>cell.innerText.trim()),
+      headers:[...table.tHead.rows[0].cells].map(cell=>cell.textContent?.trim()??''),
       received:table.querySelector('tbody tr:first-child td[data-col="order"] .warehouse-unified-received-at')?.textContent?.trim(),
       skuCell:table.querySelector('tbody tr:nth-child(2) td[data-col="sku"]')?.innerText,
       skuSale:table.querySelector('tbody tr:nth-child(2) td[data-col="sku"] .warehouse-unified-sku-title')?.textContent,
