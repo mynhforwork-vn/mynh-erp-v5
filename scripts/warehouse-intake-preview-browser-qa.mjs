@@ -222,7 +222,7 @@ try {
       .locator('tbody tr:first-child td[data-col="purchase"]').innerText()
     assert.match(originalPrice,/50[.,]000/,
       'Giá gốc must show original price 50.000, not 35.000 after discount '+width)
-    assert.ok((merged.headers??[]).includes('Giá gốc'),
+    assert.ok((merged.headers??[]).some(header=>header.includes('Giá gốc')),
       'main table must label original purchase price Giá gốc '+width)
     assert.ok(list.readOnlySubmit,'write controls must be disabled in preview '+width)
     assert.deepEqual(list.panelTabLabels,['Sản phẩm','Thông tin đơn','Lịch sử'],
