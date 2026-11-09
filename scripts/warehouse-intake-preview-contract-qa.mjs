@@ -10,6 +10,8 @@ const panel=read('components/warehouse-intake-detail-preview.tsx')
 const panelCss=read('app/styles/warehouse-intake-detail-preview.css')
 const migration=read('supabase/migrations/0075_item_level_warehouse_decisions.sql')
 const actions=read('lib/actions/warehouse-item-decisions.ts')
+const bulkActions=read('lib/actions/warehouse-bulk-receive.ts')
+const bulkBar=read('components/warehouse-bulk-receive-bar.tsx')
 const config=read('wrangler.jsonc')
 const checks=[
   ['only Warehouse receive page uses the changed scoped stylesheet',
@@ -172,7 +174,8 @@ const checks=[
     panel.includes('order.order_vouchers')],
   ['Preview safety keeps all persisted stock and SKU operations blocked',
     page.includes('previewOnly') &&
-    table.includes('previewOnly?undefined:receiveOrdersIntoWarehouse') &&
+    table.includes('previewOnly={previewOnly}') &&
+    bulkBar.includes('if(previewOnly||busy') &&
     !panel.includes('mapWarehouseOrderItem') &&
     !panel.includes('skipWarehouseOrder') &&
     !panel.includes('receiveOrdersIntoWarehouse') &&
@@ -203,7 +206,31 @@ const checks=[
     panel.includes('router.refresh()') &&
     panel.includes('Xác nhận ghi tồn kho') &&
     panel.includes('Ghi nhận lựa chọn thử') &&
-    table.includes('!row.order_items.some(item=>!!itemDecisions[item.id])')],
+    table.includes('bulkPreview(row,itemDecisions)') &&
+    bulkActions.includes("supabase.rpc('finalize_warehouse_item_decisions'")],
+  ['bulk receipt preflights selected legacy and V2 orders and permissions',
+    bulkActions.includes("ERP_WAREHOUSE_V2_LIVE!=='true'") &&
+    bulkActions.includes("!['admin','operator'].includes") &&
+    bulkActions.includes("p_order_ids:legacy") &&
+    bulkActions.includes("p_order_id:row.id") &&
+    bulkActions.includes("warehouse_item_decisions") &&
+    bulkActions.includes("receive_batch_details") &&
+    bulkActions.includes('WAREHOUSE_BULK_LIMIT=25') &&
+    bulkActions.includes("row.warehouse_status!=='READY_TO_TRANSFER'") &&
+    bulkActions.includes('result.failed.push(') &&
+    bulkActions.includes('result.succeeded.push(')],
+  ['bulk UI supports 25 order selection, explicit review, and partial failure',
+    table.includes('function bulkPreview(row:Row,decisions:Record<string,ItemDecision>)') &&
+    table.includes('const capped=readyIds.slice(0,25)') &&
+    table.includes('className="button small warehouse-bulk-shortcut"') &&
+    table.includes('<WarehouseBulkReceiveBar') &&
+    table.includes('setSelected(current=>current.filter(id=>failedIds.has(id)))') &&
+    bulkBar.includes('Xem trước nhập hàng loạt') &&
+    bulkBar.includes('Xác nhận nhập ') &&
+    bulkBar.includes('warehouseId,orderIds:orders.map(x=>x.id),note') &&
+    bulkBar.includes('if(previewOnly||busy||orders.length===0') &&
+    css.includes('.warehouse-bulk-review') &&
+    !table.includes('action={previewOnly?undefined:receiveOrdersIntoWarehouse}')],
   ['V2 slidebar height internal scroll and fixed footer',
     panelCss.includes('.warehouse-detail-v2-scroll') &&
     panelCss.includes('flex:1 1 auto!important') &&
