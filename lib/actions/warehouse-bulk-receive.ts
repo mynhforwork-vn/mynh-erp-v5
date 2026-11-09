@@ -5,7 +5,7 @@ import {requireUser} from '@/lib/supabase/auth'
 
 // Bound one batch to protect the Worker request budget and ensure operators can
 // inspect/retry individual failures without repeating successful stock writes.
-export const WAREHOUSE_BULK_LIMIT=25
+const WAREHOUSE_BULK_LIMIT=25
 
 type BulkInput={
   warehouseId:string
