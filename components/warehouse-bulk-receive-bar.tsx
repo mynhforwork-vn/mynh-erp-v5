@@ -16,7 +16,7 @@ export type BulkItemPreview={
   multiplier:number
   stockUnits:number
   originalPrice:number|string|null
-  purchasePrice:number|string|null
+  discountedPrice:number|string|null
   salePrice:number|string|null
   salePriceSource:'SAVED'|'CATALOG'|'MISSING'
   decision:'IN'|'SKIP'
@@ -130,11 +130,11 @@ export function WarehouseBulkReceiveBar({
               <span><b>{stockUnits}</b> đơn vị nhập</span>
             </div>
             <p className="warehouse-bulk-explain">{legacy} đơn nhập toàn bộ · {v2} đơn theo quyết định sản phẩm.
-              Giá nhập dùng giá sau giảm/SP đã có; giá bán ưu tiên giá đã lưu khi bóc tách. Giá thiếu không tự đoán.</p>
+              Giá gốc lấy từ giá gốc/SP đã lưu trong đơn; giá bán ưu tiên giá đã lưu khi bóc tách. Giá thiếu không tự đoán.</p>
             <div className="warehouse-bulk-review" aria-label="Đối chiếu sản phẩm mua, SKU, giá và quyết định kho">
               <table className="warehouse-bulk-review-table">
                 <thead><tr><th>Mã đơn</th><th>Sản phẩm mua</th><th>SKU bán ghép</th>
-                  <th>SL mua → nhập</th><th>Giá nhập/SP</th><th>Giá bán/SP</th><th>Quyết định</th></tr></thead>
+                  <th>SL mua → nhập</th><th>Giá gốc/SP</th><th>Giá bán/SP</th><th>Quyết định</th></tr></thead>
                 <tbody>{orders.flatMap((order,orderIndex)=>order.items.map((item,itemIndex)=>
                   <tr key={order.id+'-'+item.id}
                     data-review-order={order.id}
@@ -155,8 +155,8 @@ export function WarehouseBulkReceiveBar({
                       <small>{item.skuName??'Chưa có tên SKU'}</small></td>
                     <td data-label="SL mua → nhập"><b>{item.quantity} → {item.decision==='SKIP'?0:item.stockUnits}</b>
                       <small>Quy đổi ×{item.multiplier}</small></td>
-                    <td data-label="Giá nhập/SP" title={'Giá gốc/SP: '+price(item.originalPrice)}>
-                      <b>{price(item.purchasePrice)}</b><small>Sau giảm/SP</small></td>
+                    <td data-label="Giá gốc/SP" title={'Sau giảm/SP: '+price(item.discountedPrice)}>
+                      <b>{price(item.originalPrice)}</b><small>Giá mua gốc/SP</small></td>
                     <td data-label="Giá bán/SP"><b>{price(item.salePrice)}</b><small>
                       {item.salePriceSource==='SAVED'?'Đã lưu khi bóc tách':
                         item.salePriceSource==='CATALOG'?'Giá bán danh mục':'Chưa có giá bán'}</small></td>
