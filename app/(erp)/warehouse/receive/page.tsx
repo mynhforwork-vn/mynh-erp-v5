@@ -175,7 +175,13 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
   // Historical suggestions are only produced from persisted, previously
   // mapped lines of OTHER orders. Multiple mappings remain separate options.
   // No suggestion is applied automatically and Preview never writes mappings.
-  const history=(recentMappings??[]) as HistoricSkuMapping[]
+  // The nested PostgREST relation may be represented as an array in generated
+  // types; normalize both relational shapes before calculating history.
+  const history:HistoricSkuMapping[]=((recentMappings??[]) as unknown as any[]).map(item=>{
+    const variant=Array.isArray(item.product_variants)?item.product_variants[0]:item.product_variants
+    const product=Array.isArray(variant?.products)?variant.products[0]:variant?.products
+    return {...item,product_variants:variant?{...variant,products:product??null}:null}
+  })
   const historicIndex=indexHistoricalSkuMappings(history)
   // Preserve SKUs found in earlier mappings even if not within the newest
   // 1,500 edited variants. Existing catalog entry is still checked on click.
