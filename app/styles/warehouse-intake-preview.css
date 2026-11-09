@@ -106,6 +106,7 @@
 .warehouse-receive-screen .warehouse-unified-metrics span{font-size:10.5px;white-space:nowrap}
 .warehouse-receive-screen .warehouse-unified-group-column-control{
   margin-left:auto;flex:0 0 auto;position:relative;z-index:8;
+  display:flex;align-items:center;gap:6px;
 }
 .warehouse-receive-screen .warehouse-unified-group-column-control .managed-column-wrap{position:relative}
 .warehouse-receive-screen .warehouse-unified-group-column-control .managed-column-button{
@@ -326,4 +327,113 @@
 @media(max-width:400px){
   .warehouse-receive-screen .wh-native-status-kpis>.tracking-status-metric small{font-size:10px!important}
   .warehouse-receive-screen .warehouse-unified-group-column-control .managed-column-button{padding:5px 8px}
+}
+
+/* Bulk warehouse receiving — only shown when eligible orders are selected.
+   This inline review does not replace the order detail slidebar or table. */
+.warehouse-receive-screen .warehouse-bulk-shortcut{
+  flex:0 0 auto;white-space:nowrap;font-size:10px!important;padding:6px 9px!important;
+}
+.warehouse-receive-screen .warehouse-bulk-bar{
+  flex:0 0 auto;min-width:0;max-width:100%;border-top:1px solid #dce8f0;
+  background:#f8fbfd;padding:9px 11px;
+  display:flex;flex-direction:column;gap:8px;
+}
+.warehouse-receive-screen .warehouse-bulk-toolbar,
+.warehouse-receive-screen .warehouse-bulk-actions{
+  display:flex;align-items:center;flex-wrap:wrap;gap:7px;
+}
+.warehouse-receive-screen .warehouse-bulk-toolbar{justify-content:space-between}
+.warehouse-receive-screen .warehouse-bulk-toolbar>span{
+  color:#405f77;font-size:10.5px;
+}
+.warehouse-receive-screen .warehouse-bulk-toolbar button,
+.warehouse-receive-screen .warehouse-bulk-review-actions button{
+  font-size:10px!important;padding:6px 9px!important;
+}
+.warehouse-receive-screen .warehouse-bulk-review{
+  display:flex;flex-direction:column;gap:9px;min-width:0;
+  border-top:1px solid #e2eaf1;padding-top:9px;
+}
+.warehouse-receive-screen .warehouse-bulk-review>strong{
+  color:#2b536b;font-size:11px;
+}
+.warehouse-receive-screen .warehouse-bulk-summary{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;
+}
+.warehouse-receive-screen .warehouse-bulk-summary span{
+  min-width:0;padding:7px;background:#edf4f8;border-radius:4px;
+  font-size:9.6px;color:#527082;
+}
+.warehouse-receive-screen .warehouse-bulk-summary b{color:#255774;font-weight:750}
+.warehouse-receive-screen .warehouse-bulk-review>p{
+  font-size:10px;color:#61788a;line-height:1.5;margin:0;
+}
+.warehouse-receive-screen .warehouse-bulk-review-list{
+  min-width:0;max-height:128px;overflow-y:auto;scrollbar-width:thin;
+  border-top:1px solid #e1e9ef;border-bottom:1px solid #e1e9ef;
+}
+.warehouse-receive-screen .warehouse-bulk-review-list>div{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;padding:5px 1px;border-bottom:1px solid #edf2f5;
+  font-size:9.5px;color:#5b7688;
+}
+.warehouse-receive-screen .warehouse-bulk-review-list>div:last-child{border-bottom:0}
+.warehouse-receive-screen .warehouse-bulk-review-list b{
+  font-weight:650;color:#34566d;min-width:0;overflow:hidden;
+  white-space:nowrap;text-overflow:ellipsis;
+}
+.warehouse-receive-screen .warehouse-bulk-review-list span{
+  font-size:9px;color:#71889a;text-align:right;
+}
+.warehouse-receive-screen .warehouse-bulk-note{
+  display:flex;flex-direction:column;gap:4px;
+  font-size:9.5px;font-weight:640;color:#577184;
+}
+.warehouse-receive-screen .warehouse-bulk-note input{
+  width:100%;min-width:0;max-width:100%;height:31px;
+  border-radius:5px;border:1px solid #cddce7;background:#fff;
+  padding:6px 9px;font-size:10px;font-weight:400;color:#35546b;
+}
+.warehouse-receive-screen .warehouse-bulk-agreement{
+  display:flex;gap:8px;align-items:flex-start;
+  font-size:9.5px;line-height:1.5;color:#516f80;
+}
+.warehouse-receive-screen .warehouse-bulk-agreement input{
+  width:14px;height:14px;flex:0 0 14px;margin:0;accent-color:#3378aa;
+}
+.warehouse-receive-screen .warehouse-bulk-review-actions{
+  display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;
+}
+.warehouse-receive-screen .warehouse-bulk-review .warehouse-bulk-preview-note{
+  color:#6c8091;font-size:9.5px;
+}
+.warehouse-receive-screen .warehouse-bulk-review .warehouse-bulk-error{
+  color:#a53d3d;font-size:10px;
+}
+.warehouse-receive-screen .warehouse-bulk-feedback{
+  flex:0 0 auto;display:flex;justify-content:space-between;gap:12px;
+  padding:10px 12px;background:#f1f7fb;border-left:3px solid #5288ab;
+  color:#315c77;font-size:10px;line-height:1.5;
+}
+.warehouse-receive-screen .warehouse-bulk-feedback>div{
+  display:flex;flex-direction:column;gap:3px;min-width:0;
+}
+.warehouse-receive-screen .warehouse-bulk-feedback span{color:#677c8c}
+.warehouse-receive-screen .warehouse-bulk-feedback ul{
+  margin:3px 0 0;padding-left:16px;max-height:75px;overflow:auto;
+}
+.warehouse-receive-screen .warehouse-bulk-feedback button{
+  flex:0 0 auto;align-self:flex-start;cursor:pointer;
+  border:0;background:transparent;color:#60798b;font-size:17px;
+}
+@media(max-width:600px){
+  .warehouse-receive-screen .warehouse-bulk-review{
+    max-height:48dvh;overflow-y:auto;
+  }
+  .warehouse-receive-screen .warehouse-bulk-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .warehouse-receive-screen .warehouse-bulk-review-list>div{
+    align-items:flex-start;flex-direction:column;gap:3px;
+  }
+  .warehouse-receive-screen .warehouse-bulk-review-list span{text-align:left}
 }
