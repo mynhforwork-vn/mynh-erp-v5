@@ -445,7 +445,7 @@ console.log('PASS adaptive groups · hide empty-action warehouse · completed hi
   const review=page.locator('[role="dialog"][data-warehouse-bulk-popup="HN"]')
   await review.waitFor()
   assert.match(await review.innerText(),/Kiểm tra trước khi ghi tồn/)
-  assert.match(await review.innerText(),/1 dòng bỏ qua/)
+  assert.match(await review.innerText(),/1\s*dòng bỏ qua/)
   assert.match(await review.innerText(),/Bỏ qua kho/)
   assert.match(await review.innerText(),/SKU bán ghép/)
   assert.match(await review.innerText(),/Giá nhập\/SP/)
