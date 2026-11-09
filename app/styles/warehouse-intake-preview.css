@@ -437,3 +437,141 @@
   }
   .warehouse-receive-screen .warehouse-bulk-review-list span{text-align:left}
 }
+
+/* Batch stock confirmation reuses the Tracking receiving dialog chrome.
+   Portal renders under body so these rules intentionally target the dialog
+   itself, outside .warehouse-receive-screen and outside any slidebar. */
+.warehouse-bulk-backdrop.receive-confirm-backdrop{z-index:2400;padding:16px}
+.warehouse-bulk-backdrop .warehouse-bulk-modal.receive-confirm-modal{
+  width:min(1100px,calc(100vw - 32px));max-height:calc(100dvh - 32px);
+  display:flex;flex-direction:column;overflow:hidden;
+  border-radius:7px;background:#fff;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-modal-head{flex:0 0 auto}
+.warehouse-bulk-backdrop .warehouse-bulk-modal-scroll{
+  flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  padding:12px 14px;display:flex;flex-direction:column;gap:11px;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-summary{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-summary span{
+  display:flex;align-items:center;justify-content:space-between;gap:5px;
+  background:#f1f6fa;padding:8px 10px;color:#617b8d;font-size:11px;border-radius:4px;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-summary b{color:#2a5879;font-size:14px}
+.warehouse-bulk-backdrop .warehouse-bulk-explain{
+  margin:0;font-size:11px;line-height:1.6;color:#687d8c;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-review{
+  border:1px solid #dde6ee;border-radius:5px;min-height:0;
+  max-height:min(47dvh,430px);overflow:auto;scrollbar-width:thin;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table{
+  width:100%;min-width:850px;border-collapse:separate;border-spacing:0;
+  table-layout:fixed;font-size:10.5px;color:#3e5c71;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table th,
+.warehouse-bulk-backdrop .warehouse-bulk-review-table td{
+  padding:9px 8px;text-align:left;vertical-align:top;border-bottom:1px solid #e7edf2;
+  min-width:0;overflow:hidden;overflow-wrap:anywhere;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table th{
+  position:sticky;top:0;z-index:2;white-space:nowrap;font-size:10px;
+  color:#53718a;background:#f3f8fb;font-weight:650;border-bottom:1px solid #d7e2eb;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(1){width:15%}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(2){width:19%}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(3){width:18%}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(4){width:11%}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(5){width:12%}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(6){width:12%}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(7){width:13%}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table td b{
+  display:block;font-weight:650;white-space:normal;line-height:1.5;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table td small{
+  display:block;color:#8091a0;margin-top:3px;font-size:9px;line-height:1.35;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-order-link{
+  color:#2677ae;font-size:10.5px;font-weight:700;white-space:nowrap;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-decision{font-size:10px}
+.warehouse-bulk-backdrop .warehouse-bulk-decision.in{color:#23815f}
+.warehouse-bulk-backdrop .warehouse-bulk-decision.skip{color:#a16840}
+.warehouse-bulk-backdrop .warehouse-bulk-skip-row{background:#fdfbf8}
+.warehouse-bulk-backdrop .warehouse-bulk-note-info{
+  display:flex;flex-direction:column;gap:3px;border:1px solid #e0e8ef;
+  background:#f8fafc;padding:9px 10px;border-radius:5px;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-note-info b{color:#345a76;font-size:10px}
+.warehouse-bulk-backdrop .warehouse-bulk-note-info span{color:#738899;font-size:10px;line-height:1.5}
+.warehouse-bulk-backdrop .warehouse-bulk-note{
+  display:flex;flex-direction:column;gap:4px;font-size:10px;color:#526e82;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-note input{
+  min-height:34px;max-width:100%;padding:7px 9px;border:1px solid #cad9e5;
+  border-radius:5px;font-size:11px;background:white;color:#314f68;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-agreement{
+  display:flex;gap:9px;align-items:flex-start;color:#526c80;
+  font-size:10.5px;line-height:1.5;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-agreement input{
+  width:14px;height:14px;flex:0 0 14px;accent-color:#3679a9;margin-top:2px;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-preview-note{
+  color:#728a9a;font-size:10px;margin:0;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-error{
+  margin:0;color:#a64646;font-size:10.5px;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-modal-footer{
+  flex:0 0 auto;display:flex;justify-content:flex-end;
+  margin:0;padding:11px 14px;border-top:1px solid #dce5ed;background:#f8fafc;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-modal-footer .button:disabled{opacity:.55;cursor:not-allowed}
+.warehouse-receive-screen .warehouse-unified-skus .warehouse-unified-product-line,
+.warehouse-receive-screen .warehouse-unified-prices .warehouse-unified-product-line,
+.warehouse-receive-screen .warehouse-unified-status .warehouse-unified-product-line,
+.warehouse-receive-screen .warehouse-unified-products .warehouse-unified-product-line{
+  min-height:24px;align-items:center;
+}
+.warehouse-receive-screen .warehouse-unified-skus .warehouse-unified-product-line+.warehouse-unified-product-line,
+.warehouse-receive-screen .warehouse-unified-prices .warehouse-unified-product-line+.warehouse-unified-product-line,
+.warehouse-receive-screen .warehouse-unified-status .warehouse-unified-product-line+.warehouse-unified-product-line{
+  border-top:1px solid #f0f3f6;margin-top:4px;padding-top:4px;
+}
+.warehouse-receive-screen .warehouse-unified-skus{color:#306c91}
+.warehouse-receive-screen .warehouse-unified-prices .warehouse-unified-product-name{font-variant-numeric:tabular-nums}
+.warehouse-receive-screen .warehouse-unified-status .status-pill{
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;
+  font-size:9.4px;white-space:nowrap;
+}
+@media(max-width:720px){
+  .warehouse-bulk-backdrop.receive-confirm-backdrop{padding:7px}
+  .warehouse-bulk-backdrop .warehouse-bulk-modal.receive-confirm-modal{
+    width:calc(100vw - 14px);max-height:calc(100dvh - 14px);
+  }
+  .warehouse-bulk-backdrop .warehouse-bulk-modal-scroll{padding:9px}
+  .warehouse-bulk-backdrop .warehouse-bulk-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .warehouse-bulk-backdrop .warehouse-bulk-review{max-height:48dvh;overflow:auto}
+  .warehouse-bulk-backdrop .warehouse-bulk-review-table{
+    display:block;min-width:0;width:100%;font-size:10px;
+  }
+  .warehouse-bulk-backdrop .warehouse-bulk-review-table thead{display:none}
+  .warehouse-bulk-backdrop .warehouse-bulk-review-table tbody{display:flex;flex-direction:column;gap:8px;padding:7px}
+  .warehouse-bulk-backdrop .warehouse-bulk-review-table tr{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;
+    border:1px solid #dfe7ee;border-radius:5px;overflow:hidden;background:white;
+  }
+  .warehouse-bulk-backdrop .warehouse-bulk-review-table td{
+    display:flex;flex-direction:column;gap:2px;width:100%;min-width:0;
+    padding:8px;border-bottom:1px solid #edf1f5;
+  }
+  .warehouse-bulk-backdrop .warehouse-bulk-review-table td:nth-child(-n+3){grid-column:1/-1}
+  .warehouse-bulk-backdrop .warehouse-bulk-review-table td::before{
+    content:attr(data-label);display:block;color:#788a9b;font-size:9px;font-weight:550;
+  }
+  .warehouse-bulk-backdrop .warehouse-bulk-modal-footer{padding:9px;flex-wrap:wrap}
+}
