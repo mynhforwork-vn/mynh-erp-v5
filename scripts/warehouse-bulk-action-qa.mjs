@@ -53,6 +53,9 @@ const decisions=[
   {order_id:ids[2],order_item_id:rows[2].order_items[0].id,
     product_variant_id:variantId,multiplier:1,sale_price:90000,
     decision:'IN',skip_reason:null,processing_state:'DRAFT'},
+  {order_id:ids[3],order_item_id:rows[3].order_items[0].id,
+    product_variant_id:variantId,multiplier:1,sale_price:90000,
+    decision:'IN',skip_reason:null,processing_state:'DRAFT'},
 ]
 const state={
   user:{app_metadata:{role:'operator'}},
@@ -114,7 +117,8 @@ process.env.ERP_WAREHOUSE_V2_LIVE='true'
 state.user.app_metadata.role='viewer'
 await assert.rejects(bulkReceiveWarehouseOrders(input([ids[0]])),/Không có quyền nhập kho/)
 state.user.app_metadata.role='operator'
-await assert.rejects(bulkReceiveWarehouseOrders(input(Array(26).fill(ids[0]))),/Danh sách đơn/) .catch(()=>{})
+await assert.rejects(bulkReceiveWarehouseOrders(input(Array.from({length:26},(_,i)=>
+  '10000000-0000-4000-8000-'+String(100+i).padStart(12,'0')))),/Danh sách đơn/)
 await assert.rejects(bulkReceiveWarehouseOrders({warehouseId:'HUB-NONE',orderIds:[ids[0]]}),/Danh sách đơn/)
 assert.equal(state.calls.length,0,'invalid/unauthorized input never calls an RPC')
 
@@ -141,7 +145,8 @@ assert.equal(state.calls.length,2,'retries rejected during preflight, no RPC cal
 
 state.failV2=true
 const failed=await bulkReceiveWarehouseOrders(input([ids[3]]))
-assert.deepEqual(failed.succeeded,[ids[3]],'legacy without decisions remains available')
-assert.equal(state.stock.length,3)
+assert.deepEqual(failed.succeeded,[],'a failed V2 RPC cannot be reported successful')
+assert.equal(failed.failed.length,1,'a failed V2 order remains available for operator review')
+assert.equal(state.stock.length,2,'V2 errors cannot add simulated inventory')
 
 console.log('PASS: 10 bulk action assertions; auth, preview, preflight, legacy, V2, partial result, idempotency')
