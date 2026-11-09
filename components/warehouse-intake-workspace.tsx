@@ -74,19 +74,19 @@ type ItemDecision={
   processing_state:'DRAFT'|'FINALIZED'
   updated_at?:string
 }
-type TableCol='order'|'received'|'warehouse'|'product'|'progress'|'cod'|'status'
-const TABLE_COLUMNS:TableCol[]=['order','received','warehouse','product','progress','cod','status']
+type TableCol='order'|'received'|'sku'|'product'|'purchase'|'sale'|'status'
+const TABLE_COLUMNS:TableCol[]=['order','received','sku','product','purchase','sale','status']
 const TABLE_LABELS:Record<TableCol,string>={
-  order:'Mã đơn',received:'Ngày nhận',warehouse:'Kho nhận',product:'Sản phẩm',
-  progress:'Bóc tách',cod:'COD',status:'Trạng thái',
+  order:'Mã đơn',received:'Ngày nhận',sku:'SKU bán',product:'Sản phẩm mua',
+  purchase:'Giá nhập',sale:'Giá bán',status:'Trạng thái',
 }
 // Preserve the seven original table fields at every breakpoint. Resize the
 // columns *inside the table*, not the row structure, whenever a slidebar opens.
 const COLUMN_BASE:Record<TableCol,number>={
-  order:130,received:120,warehouse:70,product:210,progress:80,cod:100,status:130,
+  order:126,received:112,sku:110,product:195,purchase:87,sale:87,status:123,
 }
 const COLUMN_GROW:Record<TableCol,number>={
-  order:1,received:0.45,warehouse:0.1,product:6,progress:0.15,cod:0.4,status:0.9,
+  order:0.9,received:0.4,sku:1.5,product:4.5,purchase:0.7,sale:0.7,status:0.9,
 }
 function autoFitColumnWidths(columns:TableCol[], availableWidth:number){
   const width=Math.max(1,availableWidth)
@@ -154,15 +154,29 @@ function bulkPreview(row:Row,decisions:Record<string,ItemDecision>):BulkOrderPre
       (record.decision==='SKIP'&&!String(record.skip_reason??'').trim())
   }))return null
   let stockUnits=0,skippedLines=0
-  for(let index=0;index<row.order_items.length;index++){
-    const item=row.order_items[index]
-    if(hasDraft&&saved[index]?.decision==='SKIP'){skippedLines++;continue}
-    stockUnits+=Number(item.quantity)*Number(item.inventory_multiplier??1)
-  }
+  const items=row.order_items.map((item,index)=>{
+    const decision=saved[index]
+    const skip=hasDraft&&decision?.decision==='SKIP'
+    if(skip)skippedLines++
+    const converted=Number(item.quantity)*Number(item.inventory_multiplier??1)
+    if(!skip)stockUnits+=converted
+    const variant=item.product_variants
+    const salePrice=decision?.sale_price??variant?.sale_price??null
+    return {
+      id:item.id,name:item.product_name,variant:item.variant??null,
+      sku:variant?.products?.sku??null,skuName:variant?.products?.name??null,
+      quantity:Number(item.quantity),multiplier:Number(item.inventory_multiplier??1),
+      stockUnits:skip?0:converted,
+      originalPrice:item.original_price??null,purchasePrice:item.final_price??null,
+      salePrice,salePriceSource:(decision?'SAVED':variant?.sale_price!==null&&variant?.sale_price!==undefined?'CATALOG':'MISSING') as 'SAVED'|'CATALOG'|'MISSING',
+      decision:(skip?'SKIP':'IN') as 'IN'|'SKIP',decisionSaved:!!decision,
+      reason:decision?.skip_reason??null
+    }
+  })
   return {
     id:row.id,label:row.shopee_order_id??row.id.slice(0,8),
     mode:hasDraft?'V2':'LEGACY',lines:row.order_items.length,
-    inLines:row.order_items.length-skippedLines,skippedLines,stockUnits,
+    inLines:row.order_items.length-skippedLines,skippedLines,stockUnits,items,
   }
 }
 
@@ -454,6 +468,7 @@ export function WarehouseIntakeWorkspace({
                     setSelectedGroup(null)
                     setBulkReviewGroup(null)
                   }}
+                  onOpenOrder={id=>{setBulkReviewGroup(null);setActiveId(id)}}
                   onResult={handleBulkResult}
                 />}
               </>}
