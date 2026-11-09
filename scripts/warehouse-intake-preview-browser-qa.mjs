@@ -475,6 +475,32 @@ console.log('PASS adaptive groups · hide empty-action warehouse · completed hi
   await page.screenshot({path:path.join(output,'warehouse-bulk-partial-result.png')})
   await page.close()
 }
+// The bulk preview must remain operable as part of the native table workspace
+// on narrow portrait/landscape devices, not just a Desktop-only action.
+for(const [width,height] of [[360,800],[568,320]]){
+  const page=await browser.newPage({viewport:{width,height}})
+  await page.setContent(html,{waitUntil:'load'})
+  const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
+  await bg.locator('.warehouse-bulk-shortcut').click()
+  const review=bg.locator('.warehouse-bulk-review')
+  await review.getByText('Kiểm tra trước khi nhập kho').waitFor()
+  const horizontal=await page.evaluate(()=>({
+    document:document.documentElement.scrollWidth-window.innerWidth,
+    lane:document.querySelector('.warehouse-receive-table-lane').scrollWidth-
+      document.querySelector('.warehouse-receive-table-lane').clientWidth,
+  }))
+  assert.ok(horizontal.document<=3 && horizontal.lane<=3,
+    'bulk review causes horizontal overflow at '+width+'x'+height+': '+JSON.stringify(horizontal))
+  assert.ok(await review.getByRole('button',{name:/Xác nhận nhập/}).isDisabled(),
+    'Preview must block bulk writes even on mobile '+width)
+  await page.screenshot({path:path.join(output,'warehouse-bulk-'+width+'-'+height+'.png')})
+  await review.getByRole('button',{name:'Hủy'}).click({timeout:10000})
+  assert.equal(await bg.locator('.warehouse-bulk-review').count(),0,
+    'bulk confirmation must be dismissible on mobile '+width)
+  await page.close()
+}
+console.log('PASS bulk mobile review · 360x800 and 568x320 · no horizontal overflow')
+
 console.log('PASS bulk warehouse Preview safety · V2 SKIP summary · partial success retained')
 
 // A second independent browser scenario exercises the live Server Action
