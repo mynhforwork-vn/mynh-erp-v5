@@ -6,6 +6,7 @@ import {saveWarehouseItemDecision,finalizeWarehouseItemDecisions} from '@/lib/ac
 import {formatDateTime,formatMoney,formatPhone,statusLabel} from '@/lib/format'
 import {prepaidSourceLabel,resolveOrderValue} from '@/lib/order-prepaid'
 import {VoucherTags} from '@/components/voucher-tags'
+import type {HistoricalSuggestion} from '@/lib/warehouse-sku-suggestions'
 
 type Variant={
   id:string
@@ -65,13 +66,7 @@ type Audit={
   old_value?:Record<string,unknown>|null
   new_value?:Record<string,unknown>|null
 }
-type Suggestion={
-  variant_id:string
-  sku?:string|null
-  product_name?:string|null
-  variant_name?:string|null
-  multiplier:number
-}
+type Suggestion=HistoricalSuggestion
 type Mode='existing'|'new'
 type Decision='IN'|'SKIP'
 type Draft={
@@ -140,7 +135,7 @@ export function WarehouseIntakeDetailPreview({
   order:Order
   variants:Variant[]
   auditLogs:Audit[]
-  suggestions:Record<string,Suggestion>
+  suggestions:Record<string,Suggestion[]>
   itemDecisions?:Record<string,ItemDecision>
   previewOnly?:boolean
   simulate?:boolean
@@ -182,7 +177,7 @@ export function WarehouseIntakeDetailPreview({
   const selectedVariant=draft
     ?variants.find(variant=>variant.id===draft.variantId)??(selected?.product_variants?.id===draft.variantId?selected.product_variants:null)
     :null
-  const suggestion=selected?suggestions[selected.id]:null
+  const suggestionOptions=selected?(suggestions[selected.id]??[]):[]
   const countSaved=order.order_items.filter(item=>!!item.product_variant_id||(!simulate&&!!choices[item.id])).length
   const totalChoices=Object.keys(choices).length
   const activeShipment=order.shipments?.find(s=>s.is_active)??order.shipments?.[0]??null
@@ -225,8 +220,7 @@ export function WarehouseIntakeDetailPreview({
     change({variantId:id,salePrice:variant?.sale_price===null||variant?.sale_price===undefined
       ?'':String(variant.sale_price)})
   }
-  function applySuggestion(){
-    if(!suggestion)return
+  function applySuggestion(suggestion:Suggestion){
     const variant=variants.find(v=>v.id===suggestion.variant_id)
     if(!variant){setNotice('SKU gợi ý không còn trong danh mục. Hãy chọn SKU khác.');return}
     const multiplier=Number(suggestion.multiplier)
@@ -381,11 +375,27 @@ export function WarehouseIntakeDetailPreview({
               onClick={()=>change({mode:'new',variantId:''})}>Tạo SKU mới</button>
           </div>
           {draft.mode==='existing'?<div className="warehouse-detail-v2-fields">
-            {suggestion&&<div className="warehouse-detail-v2-suggestion">
-              <span>GỢI Ý TỪ LẦN BÓC TÁCH TRƯỚC</span>
-              <b>{suggestion.sku||'SKU bán'} · {suggestion.product_name||''}</b>
-              <small>{suggestion.variant_name||'Mặc định'} · quy đổi từng dùng ×{suggestion.multiplier}</small>
-              <button type="button" onClick={applySuggestion} disabled={processed||isReadOnly||busy}>Chọn gợi ý</button>
+            {suggestionOptions.length>0&&<div className="warehouse-detail-v2-suggestion" aria-label="Gợi ý SKU từ lịch sử ghép">
+              <span>GỢI Ý SKU TỪ LỊCH SỬ ĐÃ LƯU</span>
+              <small>{suggestionOptions.length>1
+                ?'Đã từng ghép với nhiều SKU. Hãy đối chiếu trước khi chọn.'
+                :'Gợi ý tham khảo, chưa tự động ghép SKU hoặc thay đổi tồn kho.'}</small>
+              <div className="warehouse-detail-v2-suggestion-list">
+                {suggestionOptions.map((option,index)=><div className="warehouse-detail-v2-suggestion-entry" key={option.variant_id}>
+                  <div className="warehouse-detail-v2-suggestion-detail">
+                    <b>{index+1}. {option.sku||'SKU bán'} · {option.product_name||''}</b>
+                    <small>{option.variant_name||'Mặc định'} · quy đổi ×{option.multiplier}</small>
+                    <small>{option.history_count} đơn trước đã ghép · {option.match_kind==='exact'
+                      ?'Khớp mã, tên và phân loại'
+                      :option.match_kind==='sku_variant'?'Khớp mã SKU mua và phân loại'
+                      :'Khớp tên và phân loại'}</small>
+                  </div>
+                  <button type="button" onClick={()=>applySuggestion(option)}
+                    disabled={processed||isReadOnly||busy} aria-label={'Chọn gợi ý '+(option.sku??option.product_name??option.variant_id)}>
+                    Chọn
+                  </button>
+                </div>)}
+              </div>
             </div>}
             <label className="warehouse-detail-v2-field"><span>Tìm SKU theo mã, tên hoặc phân loại</span>
               <input type="search" aria-label="Tìm SKU theo mã, tên hoặc phân loại"
