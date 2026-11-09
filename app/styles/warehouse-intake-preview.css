@@ -465,10 +465,10 @@
 }
 .warehouse-bulk-backdrop .warehouse-bulk-review{
   border:1px solid #dde6ee;border-radius:5px;min-height:0;
-  max-height:min(47dvh,430px);overflow:auto;scrollbar-width:thin;
+  max-height:min(47dvh,430px);overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;
 }
 .warehouse-bulk-backdrop .warehouse-bulk-review-table{
-  width:100%;min-width:850px;border-collapse:separate;border-spacing:0;
+  width:100%;min-width:760px;border-collapse:separate;border-spacing:0;
   table-layout:fixed;font-size:10.5px;color:#3e5c71;
 }
 .warehouse-bulk-backdrop .warehouse-bulk-review-table th,
@@ -480,22 +480,79 @@
   position:sticky;top:0;z-index:2;white-space:nowrap;font-size:10px;
   color:#53718a;background:#f3f8fb;font-weight:650;border-bottom:1px solid #d7e2eb;
 }
-.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(1){width:15%}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(1){width:24%}
 .warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(2){width:19%}
-.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(3){width:18%}
-.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(4){width:11%}
-.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(5){width:12%}
-.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(6){width:12%}
-.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(7){width:13%}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(3){width:12%}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(4){width:14%}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(5){width:14%}
+.warehouse-bulk-backdrop .warehouse-bulk-review-table th:nth-child(6){width:17%}
 .warehouse-bulk-backdrop .warehouse-bulk-review-table td b{
   display:block;font-weight:650;white-space:normal;line-height:1.5;
 }
 .warehouse-bulk-backdrop .warehouse-bulk-review-table td small{
   display:block;color:#8091a0;margin-top:3px;font-size:9px;line-height:1.35;
 }
-.warehouse-bulk-backdrop .warehouse-bulk-order-link{
-  color:#2677ae;font-size:10.5px;font-weight:700;white-space:nowrap;
+/* Compact order headers prevent repeated order codes for every product.
+   Order-level summaries remain visible; detailed SKU rows expand on demand. */
+.warehouse-bulk-backdrop .warehouse-bulk-review-toolbar{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
 }
+.warehouse-bulk-backdrop .warehouse-bulk-review-toolbar>div{
+  display:flex;flex-direction:column;gap:3px;min-width:0;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-review-toolbar strong{
+  color:#365873;font-size:11px;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-review-toolbar span{
+  font-size:10px;color:#788c9d;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-review-toolbar button{
+  flex:0 0 auto;font-size:10px;padding:5px 9px;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-order-group{
+  min-width:0;border-bottom:1px solid #dfe7ee;background:#fff;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-order-group:last-child{border-bottom:0}
+.warehouse-bulk-backdrop .warehouse-bulk-order-group.expanded{background:#fcfdfe}
+.warehouse-bulk-backdrop .warehouse-bulk-order-heading{
+  display:flex;align-items:stretch;gap:8px;padding:3px 9px;min-height:52px;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-order-toggle{
+  display:flex;align-items:center;flex:1;min-width:0;gap:10px;
+  text-align:left;background:transparent;border:0;cursor:pointer;padding:6px 0;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-order-toggle:hover .warehouse-bulk-order-identity b{color:#266d9b}
+.warehouse-bulk-backdrop .warehouse-bulk-order-number{
+  display:grid;place-items:center;flex:0 0 22px;height:22px;
+  border-radius:4px;background:#edf3f7;color:#657c8d;
+  font-size:10px;font-weight:700;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-order-identity{
+  display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-order-identity b{
+  font-size:11.5px;line-height:1.25;color:#305875;
+  font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-order-identity small{
+  color:#728b9b;font-size:10px;line-height:1.4;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-expand-icon{
+  color:#71899b;font-size:19px;flex:0 0 14px;text-align:center;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-edit-order{
+  flex:0 0 auto;align-self:center;border:0;background:transparent;
+  cursor:pointer;color:#2d78a2;font-size:10px;font-weight:650;padding:7px 4px;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-order-toggle:focus-visible,
+.warehouse-bulk-backdrop .warehouse-bulk-edit-order:focus-visible{
+  outline:2px solid #4b88af;outline-offset:2px;border-radius:3px;
+}
+.warehouse-bulk-backdrop .warehouse-bulk-order-details{
+  margin:0 9px 9px 41px;overflow-x:auto;max-width:100%;
+  border:1px solid #e5edf2;border-radius:4px;background:#fff;
+}
+
 .warehouse-bulk-backdrop .warehouse-bulk-decision{font-size:10px}
 .warehouse-bulk-backdrop .warehouse-bulk-decision.in{color:#23815f}
 .warehouse-bulk-backdrop .warehouse-bulk-decision.skip{color:#a16840}
@@ -555,7 +612,15 @@
   }
   .warehouse-bulk-backdrop .warehouse-bulk-modal-scroll{padding:9px}
   .warehouse-bulk-backdrop .warehouse-bulk-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .warehouse-bulk-backdrop .warehouse-bulk-review{max-height:48dvh;overflow:auto}
+  .warehouse-bulk-backdrop .warehouse-bulk-review{max-height:48dvh;overflow-y:auto;overflow-x:hidden}
+  .warehouse-bulk-backdrop .warehouse-bulk-order-heading{padding:3px 7px;gap:4px}
+  .warehouse-bulk-backdrop .warehouse-bulk-order-toggle{gap:6px}
+  .warehouse-bulk-backdrop .warehouse-bulk-order-identity b{font-size:10.5px}
+  .warehouse-bulk-backdrop .warehouse-bulk-order-identity small{font-size:9px}
+  .warehouse-bulk-backdrop .warehouse-bulk-edit-order{font-size:9px;padding:6px 3px}
+  .warehouse-bulk-backdrop .warehouse-bulk-order-details{
+    margin:0 7px 7px;padding:0;overflow-x:hidden;max-width:none;
+  }
   .warehouse-bulk-backdrop .warehouse-bulk-review-table{
     display:block;min-width:0;width:100%;font-size:10px;
   }
@@ -563,13 +628,14 @@
   .warehouse-bulk-backdrop .warehouse-bulk-review-table tbody{display:flex;flex-direction:column;gap:8px;padding:7px}
   .warehouse-bulk-backdrop .warehouse-bulk-review-table tr{
     display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;
-    border:1px solid #dfe7ee;border-radius:5px;overflow:hidden;background:white;
+    border-bottom:1px solid #dfe7ee;overflow:hidden;background:white;
   }
+  .warehouse-bulk-backdrop .warehouse-bulk-review-table tr:last-child{border-bottom:0}
   .warehouse-bulk-backdrop .warehouse-bulk-review-table td{
     display:flex;flex-direction:column;gap:2px;width:100%;min-width:0;
     padding:8px;border-bottom:1px solid #edf1f5;
   }
-  .warehouse-bulk-backdrop .warehouse-bulk-review-table td:nth-child(-n+3){grid-column:1/-1}
+  .warehouse-bulk-backdrop .warehouse-bulk-review-table td:nth-child(-n+2){grid-column:1/-1}
   .warehouse-bulk-backdrop .warehouse-bulk-review-table td::before{
     content:attr(data-label);display:block;color:#788a9b;font-size:9px;font-weight:550;
   }
