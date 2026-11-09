@@ -186,8 +186,22 @@ export function WarehouseIntakeWorkspace({
     ??visibleRows[0]??null
   const [activeId,setActiveId]=useState<string|null>(firstIncomplete?.id??null)
   const [openGroups,setOpenGroups]=useState<string[]>(()=>groups.map(group=>group.id))
+  const knownGroupIds=useRef<Set<string>>(new Set(groups.map(group=>group.id)))
+  useEffect(()=>{
+    // First-time visible warehouses (e.g. switching All -> Completed)
+    // should open automatically. Preserve manual collapse for known groups.
+    const fresh=groups.map(group=>group.id).filter(id=>!knownGroupIds.current.has(id))
+    groups.forEach(group=>knownGroupIds.current.add(group.id))
+    if(fresh.length)setOpenGroups(current=>[...current,...fresh])
+  },[groups])
   const [selectedGroup,setSelectedGroup]=useState<string|null>(null)
   const [selected,setSelected]=useState<string[]>([])
+  useEffect(()=>{
+    if(selectedGroup&&!groups.some(group=>group.id===selectedGroup)){
+      setSelectedGroup(null)
+      setSelected([])
+    }
+  },[selectedGroup,groups])
   // Independent column visibility/order and sorting for each real receiving warehouse.
   const bgColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-bg-columns-v1',TABLE_COLUMNS,['order'])
   const hnColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-hn-columns-v1',TABLE_COLUMNS,['order'])
