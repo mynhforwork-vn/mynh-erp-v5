@@ -78,7 +78,7 @@ type TableCol='order'|'sku'|'product'|'purchase'|'sale'|'status'
 const TABLE_COLUMNS:TableCol[]=['order','sku','product','purchase','sale','status']
 const TABLE_LABELS:Record<TableCol,string>={
   order:'Mã đơn / Ngày nhận',sku:'SKU bán',product:'Sản phẩm mua',
-  purchase:'Giá nhập',sale:'Giá bán',status:'Trạng thái',
+  purchase:'Giá gốc',sale:'Giá bán',status:'Trạng thái',
 }
 // Six native columns: receiving date is nested beneath each order code.
 // Keep width fitted inside the table, including when the detail slidebar opens.
@@ -167,7 +167,7 @@ function bulkPreview(row:Row,decisions:Record<string,ItemDecision>):BulkOrderPre
       sku:variant?.products?.sku??null,skuName:variant?.products?.name??null,
       quantity:Number(item.quantity),multiplier:Number(item.inventory_multiplier??1),
       stockUnits:skip?0:converted,
-      originalPrice:item.original_price??null,purchasePrice:item.final_price??null,
+      originalPrice:item.original_price??null,discountedPrice:item.final_price??null,
       salePrice,salePriceSource:(decision?'SAVED':variant?.sale_price!==null&&variant?.sale_price!==undefined?'CATALOG':'MISSING') as 'SAVED'|'CATALOG'|'MISSING',
       decision:(skip?'SKIP':'IN') as 'IN'|'SKIP',decisionSaved:!!decision,
       reason:decision?.skip_reason??null
@@ -350,7 +350,7 @@ export function WarehouseIntakeWorkspace({
                 if(col==='order')return new Date(receivedAt(row)??0).getTime()
                 if(col==='sku')return String(row.order_items[0]?.product_variants?.products?.sku??'')
                 if(col==='product')return row.order_items[0]?.product_name??''
-                if(col==='purchase')return Number(row.order_items[0]?.final_price??0)
+                if(col==='purchase')return Number(row.order_items[0]?.original_price??0)
                 if(col==='sale')return Number(itemDecisions[row.order_items[0]?.id]?.sale_price??row.order_items[0]?.product_variants?.sale_price??0)
                 return phaseLabel(row)
               }
@@ -410,8 +410,8 @@ export function WarehouseIntakeWorkspace({
               </td>
               if(col==='purchase')return <td key={col} {...attributes} className="money warehouse-unified-prices">
                 {row.order_items.map(item=><div key={item.id} className="warehouse-unified-product-line"
-                  title={'Giá sau giảm/SP: '+linePrice(item.final_price)+' · Giá gốc/SP: '+linePrice(item.original_price)}>
-                  <span className="warehouse-unified-product-name">{linePrice(item.final_price)}</span>
+                  title={'Giá gốc/SP: '+linePrice(item.original_price)+' · Sau giảm/SP: '+linePrice(item.final_price)}>
+                  <span className="warehouse-unified-product-name">{linePrice(item.original_price)}</span>
                 </div>)}
               </td>
               if(col==='sale')return <td key={col} {...attributes} className="money warehouse-unified-prices">
