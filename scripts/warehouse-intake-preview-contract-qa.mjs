@@ -44,14 +44,14 @@ const checks=[
     page.includes("if (receivedPeriod !== 'all') query.set('received_range'")&&
     page.includes('preserveParams={{state:currentStatus}}')],
   ['one 7-column table per confirmed warehouse with actual product details',
-    table.includes("type TableCol='order'|'received'|'warehouse'|'product'|'progress'|'cod'|'status'")&&
+    table.includes("type TableCol='order'|'received'|'sku'|'product'|'purchase'|'sale'|'status'")&&
     table.includes('warehouse-unified-table')&&
     table.includes('row.order_items.map(item=><div')&&
     !table.includes('warehouse-split-table')&&
     !table.includes('warehouse-ready-table')],
   ['independent column menu per receiving warehouse and sortable columns',
-    table.includes("mynh-warehouse-intake-bg-columns-v1") &&
-    table.includes("mynh-warehouse-intake-hn-columns-v1") &&
+    table.includes("mynh-warehouse-intake-bg-columns-v2") &&
+    table.includes("mynh-warehouse-intake-hn-columns-v2") &&
     table.includes("group.code==='BG'?bgColumns:group.code==='HN'?hnColumns:otherColumns") &&
     table.includes('<ManagedColumnsMenu labels={TABLE_LABELS}')&&
     table.includes('<SortableHeader') &&
@@ -90,7 +90,7 @@ const checks=[
     css.includes('white-space:nowrap') &&
     css.includes('text-overflow:ellipsis')],
   ['receive warehouse is actual batch; BG and HN stay distinct',
-    table.includes('batchOf(row)?.warehouses?.code')&&
+    table.includes('const warehouse=batch?.warehouses')&&
     table.includes('BG - 320 Nguyễn Công Hãng')&&
     table.includes('HN - 164 Hồng Mai')&&
     table.includes('const batch=batchOf(row)')&&
@@ -231,6 +231,27 @@ const checks=[
     bulkBar.includes('if(previewOnly||busy||orders.length===0') &&
     css.includes('.warehouse-bulk-review') &&
     !table.includes('action={previewOnly?undefined:receiveOrdersIntoWarehouse}')],
+  ['bulk receipt preview is a receiving-style modal with true item-level audit fields',
+    bulkBar.includes('createPortal(') &&
+    bulkBar.includes('receive-confirm-backdrop warehouse-bulk-backdrop') &&
+    bulkBar.includes('receive-confirm-modal warehouse-bulk-modal') &&
+    bulkBar.includes('role="dialog" aria-modal="true"') &&
+    bulkBar.includes('warehouse-bulk-review-table') &&
+    bulkBar.includes('price(item.purchasePrice)') &&
+    bulkBar.includes('price(item.salePrice)') &&
+    bulkBar.includes('item.sku') &&
+    bulkBar.includes("item.decision==='IN'?'Nhập kho':'Bỏ qua kho'") &&
+    bulkBar.includes("onOpenOrder(order.id)") &&
+    css.includes('.warehouse-bulk-backdrop .warehouse-bulk-review-table') &&
+    css.includes('@media(max-width:720px)')],
+  ['receiving table shows seven focused columns including matched SKU and prices',
+    table.includes("const TABLE_COLUMNS:TableCol[]=['order','received','sku','product','purchase','sale','status']") &&
+    table.includes("purchase:'Giá nhập',sale:'Giá bán'") &&
+    table.includes("item.product_variants?.products?.sku") &&
+    table.includes("linePrice(item.final_price)") &&
+    table.includes("saved?.sale_price??item.product_variants?.sale_price") &&
+    table.includes("saved?.decision==='SKIP'?'Bỏ qua kho'") &&
+    table.includes("mynh-warehouse-intake-hn-columns-v2")],
   ['V2 slidebar height internal scroll and fixed footer',
     panelCss.includes('.warehouse-detail-v2-scroll') &&
     panelCss.includes('flex:1 1 auto!important') &&
