@@ -2,7 +2,8 @@
 
 import { useEffect,useMemo,useRef,useState,type CSSProperties } from 'react'
 import { formatDateTime,formatMoney } from '@/lib/format'
-import { receiveOrdersIntoWarehouse } from '@/lib/actions/warehouse'
+import { WarehouseBulkReceiveBar,type BulkOrderPreview } from '@/components/warehouse-bulk-receive-bar'
+import type { WarehouseBulkResult } from '@/lib/actions/warehouse-bulk-receive'
 import { WarehouseIntakeDetailPreview } from '@/components/warehouse-intake-detail-preview'
 import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
 
@@ -132,6 +133,39 @@ function isComplete(row:Row){
   return row.order_items.length>0&&row.order_items.every(item=>Boolean(item.product_variant_id))
 }
 
+// Bulk actions must validate the same stored item-level decisions that the V2
+// RPC requires. An order with any draft must NEVER use legacy bulk receipt.
+function bulkPreview(row:Row,decisions:Record<string,ItemDecision>):BulkOrderPreview|null{
+  if(row.warehouse_status!=='READY_TO_TRANSFER'||!row.order_items.length||
+    row.order_items.some(item=>!item.product_variant_id||
+      !Number.isInteger(Number(item.quantity))||Number(item.quantity)<1||
+      !Number.isInteger(Number(item.inventory_multiplier??1))||Number(item.inventory_multiplier??1)<1)){
+    return null
+  }
+  const saved=row.order_items.map(item=>decisions[item.id])
+  const hasDraft=saved.some(Boolean)
+  if(hasDraft&&saved.some((record,index)=>{
+    const item=row.order_items[index]
+    return !record||record.processing_state!=='DRAFT'||
+      record.product_variant_id!==item.product_variant_id||
+      Number(record.multiplier)!==Number(item.inventory_multiplier??1)||
+      !Number.isFinite(Number(record.sale_price))||Number(record.sale_price)<0||
+      !['IN','SKIP'].includes(record.decision)||
+      (record.decision==='SKIP'&&!String(record.skip_reason??'').trim())
+  }))return null
+  let stockUnits=0,skippedLines=0
+  for(let index=0;index<row.order_items.length;index++){
+    const item=row.order_items[index]
+    if(hasDraft&&saved[index]?.decision==='SKIP'){skippedLines++;continue}
+    stockUnits+=Number(item.quantity)*Number(item.inventory_multiplier??1)
+  }
+  return {
+    id:row.id,label:row.shopee_order_id??row.id.slice(0,8),
+    mode:hasDraft?'V2':'LEGACY',lines:row.order_items.length,
+    inLines:row.order_items.length-skippedLines,skippedLines,stockUnits,
+  }
+}
+
 export function WarehouseIntakeWorkspace({
   rows,
   variants,
@@ -196,6 +230,15 @@ export function WarehouseIntakeWorkspace({
   },[groups])
   const [selectedGroup,setSelectedGroup]=useState<string|null>(null)
   const [selected,setSelected]=useState<string[]>([])
+  const [bulkReviewGroup,setBulkReviewGroup]=useState<string|null>(null)
+  const [bulkFeedback,setBulkFeedback]=useState<WarehouseBulkResult|null>(null)
+  function handleBulkResult(result:WarehouseBulkResult){
+    setBulkFeedback(result)
+    const failedIds=new Set(result.failed.map(item=>item.orderId))
+    setSelected(current=>current.filter(id=>failedIds.has(id)))
+    if(!failedIds.size)setSelectedGroup(null)
+    setBulkReviewGroup(null)
+  }
   useEffect(()=>{
     if(selectedGroup&&!groups.some(group=>group.id===selectedGroup)){
       setSelectedGroup(null)
@@ -237,6 +280,7 @@ export function WarehouseIntakeWorkspace({
   }
 
   function toggleReady(groupId:string,id:string){
+    setBulkReviewGroup(null)
     if(selectedGroup!==groupId){
       setSelectedGroup(groupId)
       setSelected([id])
@@ -244,22 +288,33 @@ export function WarehouseIntakeWorkspace({
     }
     setSelected(current=>current.includes(id)
       ? current.filter(x=>x!==id)
-      : [...current,id])
+      : current.length>=25?current:[...current,id])
   }
 
   function toggleAllReady(groupId:string,readyIds:string[]){
-    const all=selectedGroup===groupId&&readyIds.every(id=>selectedSet.has(id))
+    const capped=readyIds.slice(0,25)
+    const all=selectedGroup===groupId&&capped.every(id=>selectedSet.has(id))
+    setBulkReviewGroup(null)
     if(all){
       setSelected([])
       setSelectedGroup(null)
       return
     }
     setSelectedGroup(groupId)
-    setSelected(readyIds)
+    setSelected(capped)
   }
 
   return <div className={'whx-intake-layout warehouse-intake-layout warehouse-intake-preview-layout '+(active?'with-panel':'')}>
     <section ref={laneRef} className="whx-intake-main tracking-hub-stack tracking-hub-stack-v2 warehouse-receive-groups warehouse-receive-table-lane">
+      {bulkFeedback&&<div className="warehouse-bulk-feedback" role="status">
+        <div>
+          <b>{bulkFeedback.succeeded.length} đơn đã xử lý thành công · {bulkFeedback.failed.length} đơn chưa xử lý</b>
+          <span>Đơn hoàn thành không được nhập lại. Các đơn lỗi có thể kiểm tra và chọn lại.</span>
+          {bulkFeedback.failed.length>0&&<ul>{bulkFeedback.failed.map(row=>
+            <li key={row.orderId}>{row.orderId.slice(0,8)} · {row.message}</li>)}</ul>}
+        </div>
+        <button type="button" aria-label="Đóng kết quả nhập hàng loạt" onClick={()=>setBulkFeedback(null)}>×</button>
+      </div>}
       {!groups.length
         ? <div className="card empty">{showProcessedOnly
           ? 'Chưa có đơn đã xử lý trong khoảng thời gian đang chọn.'
@@ -270,10 +325,9 @@ export function WarehouseIntakeWorkspace({
             const open=openGroups.includes(group.id)
             const waiting=group.rows.filter(row=>!isDone(row))
             const splitRows=waiting.filter(row=>!isComplete(row))
-            // Orders with per-item drafts must use the V2 atomic finalization,
-            // never the legacy bulk receipt (which would include skipped items).
-            const readyRows=waiting.filter(row=>isComplete(row)
-              &&!row.order_items.some(item=>!!itemDecisions[item.id]))
+            // Include both orders with complete V2 decisions and legacy
+            // fully mapped orders. Exclude partial or stale decisions.
+            const readyRows=waiting.filter(row=>!!bulkPreview(row,itemDecisions))
             const doneRows=group.rows.filter(isDone)
             const tableColumns=group.code==='BG'?bgColumns:group.code==='HN'?hnColumns:otherColumns
             const tableSort=group.code==='BG'?bgSort:group.code==='HN'?hnSort:otherSort
@@ -293,14 +347,21 @@ export function WarehouseIntakeWorkspace({
             })
             const totalCod=group.rows.reduce((sum,row)=>sum+Number(row.cod??0),0)
             const readyIds=readyRows.map(row=>row.id)
-            const allReadySelected=readyIds.length>0&&selectedGroup===group.id&&readyIds.every(id=>selectedSet.has(id))
-            const groupSelected=selectedGroup===group.id?selected.filter(id=>readyIds.includes(id)).length:0
+            const cappedIds=readyIds.slice(0,25)
+            const allReadySelected=cappedIds.length>0&&selectedGroup===group.id&&cappedIds.every(id=>selectedSet.has(id))
+            const selectedOrders=(selectedGroup===group.id
+              ? selected.filter(id=>readyIds.includes(id))
+              : []).map(id=>readyRows.find(row=>row.id===id))
+                .filter((row):row is Row=>!!row)
+                .map(row=>bulkPreview(row,itemDecisions))
+                .filter((item):item is BulkOrderPreview=>!!item)
+            const groupSelected=selectedOrders.length
             const columnWidths=autoFitColumnWidths(tableColumns.visible,laneWidth)
             const cell=(row:Row,col:TableCol)=>{
               const attributes={'data-col':col,'data-label':TABLE_LABELS[col]}
               if(col==='order')return <td key={col} {...attributes}>
                 <div className="warehouse-unified-order">
-                  {!isDone(row)&&isComplete(row)&&<input type="checkbox"
+                  {!!bulkPreview(row,itemDecisions)&&<input type="checkbox"
                     checked={selectedGroup===group.id&&selectedSet.has(row.id)}
                     onChange={()=>toggleReady(group.id,row.id)}
                     onClick={event=>event.stopPropagation()}
@@ -346,6 +407,16 @@ export function WarehouseIntakeWorkspace({
                   <span className="money"><b>{formatMoney(totalCod)}</b> COD</span>
                 </div>
                 <div className="warehouse-unified-group-column-control">
+                  {readyIds.length>0&&!showProcessedOnly&&<button type="button"
+                    className="button small warehouse-bulk-shortcut"
+                    onClick={()=>{
+                      setSelectedGroup(group.id)
+                      setSelected(readyIds.slice(0,25))
+                      setBulkReviewGroup(group.id)
+                      setBulkFeedback(null)
+                    }}>
+                    Nhập kho hàng loạt
+                  </button>}
                   <ManagedColumnsMenu labels={TABLE_LABELS} manager={tableColumns} buttonLabel="Cột"/>
                 </div>
               </div>
@@ -358,7 +429,7 @@ export function WarehouseIntakeWorkspace({
                     <thead><tr>{tableColumns.visible.map(col=><th key={col}>
                       <SortableHeader column={col} label={TABLE_LABELS[col]} sort={tableSort} onSort={tableSort.toggle}/>
                       {col==='order'&&readyIds.length>0&&<input type="checkbox" checked={allReadySelected}
-                        onChange={()=>toggleAllReady(group.id,readyIds)} aria-label={'Chọn toàn bộ đơn chờ nhập '+group.code}/>}
+                        onChange={()=>toggleAllReady(group.id,readyIds)} aria-label={'Chọn tối đa 25 đơn chờ nhập '+group.code}/>}
                     </th>)}</tr></thead>
                     <tbody>{sorted.length
                       ? sorted.map(row=><tr key={row.id} className={activeId===row.id?'active-row':''}
@@ -369,16 +440,18 @@ export function WarehouseIntakeWorkspace({
                     </tbody>
                   </table>
                 </div>
-                {groupSelected>0&&<form action={previewOnly?undefined:receiveOrdersIntoWarehouse}
-                  onSubmit={previewOnly?event=>event.preventDefault():undefined}
-                  className="warehouse-confirm-stock-bar">
-                  <div><b>{groupSelected} đơn đã chọn · {group.code}</b>
-                    <span>Kho nhận dựa trên phiếu xác nhận thực tế. {previewOnly?'Preview chỉ xem, không ghi tồn kho.':'Nhập kho chỉ sau khi xác nhận.'}</span></div>
-                  {selected.filter(id=>readyIds.includes(id)).map(id=><input key={id} type="hidden" name="order_ids" value={id}/>)}
-                  <label><span>Ghi chú nhập kho</span><input name="note" placeholder="Không bắt buộc"/></label>
-                  <button className="button primary small" type="submit" disabled={previewOnly}>Xác nhận nhập kho</button>
-                  <button className="button small" type="button" onClick={()=>{setSelected([]);setSelectedGroup(null)}}>Bỏ chọn</button>
-                </form>}
+                {groupSelected>0&&<WarehouseBulkReceiveBar
+                  warehouseId={group.id} warehouseCode={group.code}
+                  orders={selectedOrders} previewOnly={previewOnly}
+                  reviewOpen={bulkReviewGroup===group.id}
+                  onReview={()=>setBulkReviewGroup(group.id)}
+                  onCancel={()=>{
+                    setSelected([])
+                    setSelectedGroup(null)
+                    setBulkReviewGroup(null)
+                  }}
+                  onResult={handleBulkResult}
+                />}
               </>}
             </section>
           })}
