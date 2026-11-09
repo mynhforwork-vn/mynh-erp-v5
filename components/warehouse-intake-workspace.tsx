@@ -260,12 +260,12 @@ export function WarehouseIntakeWorkspace({
     }
   },[selectedGroup,groups])
   // Independent column visibility/order and sorting for each real receiving warehouse.
-  const bgColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-bg-columns-v1',TABLE_COLUMNS,['order'])
-  const hnColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-hn-columns-v1',TABLE_COLUMNS,['order'])
-  const otherColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-other-columns-v1',TABLE_COLUMNS,['order'])
-  const bgSort=useManagedSort<TableCol>('mynh-warehouse-intake-bg-sort-v1','received','desc')
-  const hnSort=useManagedSort<TableCol>('mynh-warehouse-intake-hn-sort-v1','received','desc')
-  const otherSort=useManagedSort<TableCol>('mynh-warehouse-intake-other-sort-v1','received','desc')
+  const bgColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-bg-columns-v2',TABLE_COLUMNS,['order'])
+  const hnColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-hn-columns-v2',TABLE_COLUMNS,['order'])
+  const otherColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-other-columns-v2',TABLE_COLUMNS,['order'])
+  const bgSort=useManagedSort<TableCol>('mynh-warehouse-intake-bg-sort-v2','received','desc')
+  const hnSort=useManagedSort<TableCol>('mynh-warehouse-intake-hn-sort-v2','received','desc')
+  const otherSort=useManagedSort<TableCol>('mynh-warehouse-intake-other-sort-v2','received','desc')
   const laneRef=useRef<HTMLElement|null>(null)
   const [laneWidth,setLaneWidth]=useState(1100)
   useEffect(()=>{
@@ -349,10 +349,10 @@ export function WarehouseIntakeWorkspace({
               const key=(row:Row,col:TableCol):number|string=>{
                 if(col==='order')return String(row.shopee_order_id??row.id)
                 if(col==='received')return new Date(receivedAt(row)??0).getTime()
-                if(col==='warehouse')return String(batchOf(row)?.warehouses?.code??'')
+                if(col==='sku')return String(row.order_items[0]?.product_variants?.products?.sku??'')
                 if(col==='product')return row.order_items[0]?.product_name??''
-                if(col==='progress')return row.order_items.filter(item=>item.product_variant_id).length
-                if(col==='cod')return Number(row.cod??0)
+                if(col==='purchase')return Number(row.order_items[0]?.final_price??0)
+                if(col==='sale')return Number(itemDecisions[row.order_items[0]?.id]?.sale_price??row.order_items[0]?.product_variants?.sale_price??0)
                 return phaseLabel(row)
               }
               const x=key(left,tableSort.key),y=key(right,tableSort.key)
@@ -386,7 +386,16 @@ export function WarehouseIntakeWorkspace({
                 </div>
               </td>
               if(col==='received')return <td key={col} {...attributes} className="warehouse-unified-date">{receivedAt(row)?formatDateTime(receivedAt(row)):'Chưa có ngày nhận'}</td>
-              if(col==='warehouse')return <td key={col} {...attributes}>{batchOf(row)?.warehouses?.code??'Chưa xác định'}</td>
+              const linePrice=(value:number|string|null|undefined)=>{
+                if(value===null||value===undefined||value===''||!Number.isFinite(Number(value)))return 'Chưa có'
+                return formatMoney(value)
+              }
+              if(col==='sku')return <td key={col} {...attributes} className="warehouse-unified-skus">
+                {row.order_items.map(item=><div key={item.id} className="warehouse-unified-product-line"
+                  title={[item.product_variants?.products?.sku??'Chưa ghép SKU',item.product_variants?.products?.name].filter(Boolean).join(' · ')}>
+                  <span className="warehouse-unified-product-name">{item.product_variants?.products?.sku??'Chưa ghép'}</span>
+                </div>)}
+              </td>
               if(col==='product')return <td key={col} {...attributes} className="warehouse-unified-products">
                 {row.order_items.length?row.order_items.map(item=><div key={item.id} className="warehouse-unified-product-line"
                   title={[item.product_name,item.variant,'SL '+item.quantity].filter(Boolean).join(' · ')}>
@@ -394,11 +403,36 @@ export function WarehouseIntakeWorkspace({
                   <span className="warehouse-unified-product-qty">×{item.quantity}</span>
                 </div>):'Chưa có sản phẩm'}
               </td>
-              if(col==='progress')return <td key={col} {...attributes} className="warehouse-unified-progress">
-                {row.order_items.filter(item=>item.product_variant_id).length}/{row.order_items.length}
+              if(col==='purchase')return <td key={col} {...attributes} className="money warehouse-unified-prices">
+                {row.order_items.map(item=><div key={item.id} className="warehouse-unified-product-line"
+                  title={'Giá sau giảm/SP: '+linePrice(item.final_price)+' · Giá gốc/SP: '+linePrice(item.original_price)}>
+                  <span className="warehouse-unified-product-name">{linePrice(item.final_price)}</span>
+                </div>)}
               </td>
-              if(col==='cod')return <td key={col} {...attributes} className="money">{formatMoney(row.cod)}</td>
-              return <td key={col} {...attributes}><span className={'status-pill '+(isDone(row)?'green':isComplete(row)?'status-ready_to_ship':'orange')}>{phaseLabel(row)}</span></td>
+              if(col==='sale')return <td key={col} {...attributes} className="money warehouse-unified-prices">
+                {row.order_items.map(item=>{
+                  const saved=itemDecisions[item.id]
+                  const price=saved?.sale_price??item.product_variants?.sale_price
+                  return <div key={item.id} className="warehouse-unified-product-line"
+                    title={(saved?'Giá bán đã lưu: ':'Giá bán danh mục: ')+linePrice(price)}>
+                    <span className="warehouse-unified-product-name">{linePrice(price)}</span>
+                  </div>
+                })}
+              </td>
+              return <td key={col} {...attributes} className="warehouse-unified-status">
+                {row.order_items.map(item=>{
+                  const saved=itemDecisions[item.id]
+                  const status=saved?.decision==='SKIP'?'Bỏ qua kho':
+                    saved?.decision==='IN'?'Nhập kho':
+                    isDone(row)?phaseLabel(row):
+                    item.product_variant_id?'Dự kiến nhập':'Chưa ghép'
+                  return <div key={item.id} className="warehouse-unified-product-line"
+                    title={saved?status+' · Đã lưu quyết định'+(saved.skip_reason?' · '+saved.skip_reason:''):status}>
+                    <span className={'status-pill '+(saved?.decision==='IN'||isDone(row)?'green':
+                      saved?.decision==='SKIP'?'status-muted':'orange')}>{status}</span>
+                  </div>
+                })}
+              </td>
             }
             return <section className={'card tracking-hub-card tracking-hub-card-v2 warehouse-receive-card warehouse-unified-group '+(open?'open':'collapsed')}
               key={group.id} data-warehouse-code={group.code}
