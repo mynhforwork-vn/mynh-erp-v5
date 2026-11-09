@@ -41,8 +41,8 @@ assert.equal(matches[1].history_count,1,'show alternative, never silently discar
 assert.equal(suggestSkusFromHistory(target,index,1).length,1,'respect top-N limit')
 assert.equal(suggestSkusFromHistory({...target,sku:'DIFFERENT'},index).length,1,
   'different purchase SKU must exclude incompatible candidate')
-assert.equal(suggestSkusFromHistory({...target,sku:null},index).length,2,
-  'missing purchase SKU may use exact normalized name and variant')
+assert.equal(suggestSkusFromHistory({...target,sku:null},index).length,3,
+  'missing purchase SKU can show several prior name-and-variant matches without choosing one')
 assert.equal(suggestSkusFromHistory({...target,product_name:'Không khớp',sku:null},index).length,0,
   'no guessed SKU without historical match')
 assert.equal(suggestSkusFromHistory({...target,variant:'Hộp'},index).length,0,
