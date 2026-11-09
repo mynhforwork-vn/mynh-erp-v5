@@ -311,7 +311,7 @@ export function WarehouseIntakeWorkspace({
           <b>{bulkFeedback.succeeded.length} đơn đã xử lý thành công · {bulkFeedback.failed.length} đơn chưa xử lý</b>
           <span>Đơn hoàn thành không được nhập lại. Các đơn lỗi có thể kiểm tra và chọn lại.</span>
           {bulkFeedback.failed.length>0&&<ul>{bulkFeedback.failed.map(row=>
-            <li key={row.orderId}>{row.orderId.slice(0,8)} · {row.message}</li>)}</ul>}
+            <li key={row.orderId}>{rows.find(order=>order.id===row.orderId)?.shopee_order_id??row.orderId} · {row.message}</li>)}</ul>}
         </div>
         <button type="button" aria-label="Đóng kết quả nhập hàng loạt" onClick={()=>setBulkFeedback(null)}>×</button>
       </div>}
@@ -407,8 +407,12 @@ export function WarehouseIntakeWorkspace({
                   <span className="money"><b>{formatMoney(totalCod)}</b> COD</span>
                 </div>
                 <div className="warehouse-unified-group-column-control">
-                  {readyIds.length>0&&!showProcessedOnly&&<button type="button"
+                  {!showProcessedOnly&&<button type="button"
                     className="button small warehouse-bulk-shortcut"
+                    disabled={!readyIds.length}
+                    title={readyIds.length
+                      ? readyIds.length+' đơn đủ điều kiện · tối đa 25 đơn/lượt'
+                      : 'Chưa có đơn đã ghép SKU và lưu đủ quyết định kho'}
                     onClick={()=>{
                       setSelectedGroup(group.id)
                       setSelected(readyIds.slice(0,25))
