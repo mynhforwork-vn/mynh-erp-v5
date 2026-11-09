@@ -56,6 +56,8 @@ jobs:
           CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME_PATH"
           echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: Historical SKU suggestion QA (matching, conflicts, no auto-write)
+        run: node scripts/warehouse-sku-suggestion-qa.mjs
       - name: Mocked warehouse bulk Server Action QA (role, decisions, replay)
         run: node scripts/warehouse-bulk-action-qa.mjs
       - name: Responsive QA (14 viewports + dynamic groups + bulk receipt)
