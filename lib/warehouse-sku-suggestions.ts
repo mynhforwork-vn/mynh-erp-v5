@@ -33,11 +33,11 @@ type IndexedHistory={
 }
 
 const clean=(value:string|null|undefined)=>
-  String(value??'').normalize('NFKC').trim().replace(/\\s+/g,' ').toLocaleLowerCase('vi')
+  String(value??'').normalize('NFKC').trim().replace(/\s+/g,' ').toLocaleLowerCase('vi')
 const sourceSku=(item:HistoricSkuMapping)=>clean(item.sku)
 const sourceName=(item:HistoricSkuMapping)=>clean(item.product_name)
 const sourceVariant=(item:HistoricSkuMapping)=>clean(item.variant)
-const combine=(left:string,right:string)=>left+'\\u0000'+right
+const combine=(left:string,right:string)=>left+String.fromCharCode(0)+right
 
 export function indexHistoricalSkuMappings(rows:HistoricSkuMapping[]):IndexedHistory{
   const bySkuVariant=new Map<string,HistoricSkuMapping[]>()
