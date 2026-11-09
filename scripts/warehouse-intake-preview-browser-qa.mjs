@@ -309,10 +309,10 @@ try {
       await bg.locator('.managed-column-button').click()
       assert.equal(await bg.locator('.managed-column-menu').count(),1,'BG menu opens')
       assert.equal(await hn.locator('.managed-column-menu').count(),0,'HN menu must stay closed')
-      await bg.locator('.managed-column-row').filter({hasText:'COD'}).locator('input').uncheck()
+      await bg.locator('.managed-column-row').filter({hasText:'Giá bán'}).locator('input').uncheck()
       assert.equal(await bg.locator('thead th').count(),6,'BG custom visibility takes effect')
       assert.equal(await hn.locator('thead th').count(),7,'HN columns remain independent')
-      await bg.locator('.managed-column-row').filter({hasText:'COD'}).locator('input').check()
+      await bg.locator('.managed-column-row').filter({hasText:'Giá bán'}).locator('input').check()
       await bg.locator('.managed-column-button').click()
     }
     await page.locator('.warehouse-unified-order button.table-link').first().click()
