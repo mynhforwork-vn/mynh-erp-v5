@@ -6,6 +6,7 @@ import { WarehouseBulkReceiveBar,type BulkOrderPreview } from '@/components/ware
 import type { WarehouseBulkResult } from '@/lib/actions/warehouse-bulk-receive'
 import { WarehouseIntakeDetailPreview } from '@/components/warehouse-intake-detail-preview'
 import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
+import type {HistoricalSuggestion} from '@/lib/warehouse-sku-suggestions'
 
 type Variant={
   id:string
@@ -101,13 +102,7 @@ function autoFitColumnWidths(columns:TableCol[], availableWidth:number){
   return adjusted.map(value=>100*value/total)
 }
 
-type Suggestion={
-  variant_id:string
-  sku?:string|null
-  product_name?:string|null
-  variant_name?:string|null
-  multiplier:number
-}
+type Suggestion=HistoricalSuggestion
 
 function batchOf(row:Row){
   const detail=Array.isArray(row.receive_batch_details)
@@ -193,7 +188,7 @@ export function WarehouseIntakeWorkspace({
   rows:Row[]
   variants:Variant[]
   auditLogs:AuditLog[]
-  suggestions:Record<string,Suggestion>
+  suggestions:Record<string,Suggestion[]>
   itemDecisions?:Record<string,ItemDecision>
   simulate?:boolean
   previewOnly?:boolean
