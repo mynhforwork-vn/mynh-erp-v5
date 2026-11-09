@@ -480,6 +480,9 @@ console.log('PASS adaptive groups · hide empty-action warehouse · completed hi
 for(const [width,height] of [[360,800],[568,320]]){
   const page=await browser.newPage({viewport:{width,height}})
   await page.setContent(html,{waitUntil:'load'})
+  // The established mobile detail slidebar intentionally overlays the table.
+  // Close it through its native control before opening table actions.
+  await page.locator('aside.warehouse-intake-panel .close').click()
   const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
   await bg.locator('.warehouse-bulk-shortcut').click()
   const review=bg.locator('.warehouse-bulk-review')
