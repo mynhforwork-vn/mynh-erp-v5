@@ -72,7 +72,8 @@ export async function bulkReceiveWarehouseOrders(input:BulkInput):Promise<Wareho
   const rows=new Map((ordersRes.data??[]).map(row=>[row.id,row]))
   const receipts=new Map<string,string[]>()
   for(const entry of receiptsRes.data??[]){
-    const batch=entry.receive_batches
+    const batch=entry.receive_batches as unknown as
+      {warehouse_id:string}|Array<{warehouse_id:string}>|null
     const warehouse=Array.isArray(batch)?batch[0]?.warehouse_id:batch?.warehouse_id
     const list=receipts.get(entry.order_id)??[]
     list.push(String(warehouse??''))
