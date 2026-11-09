@@ -28,7 +28,7 @@ const source=[
   "  order_items:[{id:'20000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:long,sku:'SRC-'+i,variant:'Phân loại mẫu 500ml',quantity:2,original_price:50000,final_price:35000,inventory_multiplier:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}:null},",
   "  {id:'30000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:'Sữa tắm hương hoa nhài',sku:'SRC-OTHER',variant:'Dạng chai',quantity:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',products:{sku:'TEST-01',name:'Đã map'}}:null}]",
   '}))',
-  "function Fixture(){const [status,setStatus]=React.useState('all');const live=document.documentElement.dataset.live==='true'; const filtered=status==='done'?rows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):rows; return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}]} suggestions={{}} auditLogs={[]} previewOnly={!live} simulate={!live}/></>}",
+  "function Fixture(){const [status,setStatus]=React.useState('all');const live=document.documentElement.dataset.live==='true';const scenario=document.documentElement.dataset.scenario||'';const sourceRows=scenario==='hn-done'?rows.map((r,i)=>i>=4?{...r,warehouse_status:'WAREHOUSE_RECEIVED'}:r):scenario==='all-done'?rows.map(r=>({...r,warehouse_status:'WAREHOUSE_RECEIVED'})):scenario==='uneven'?rows.map((r,i)=>i>=1&&i<=3?{...r,receive_batch_details:[{receive_batches:{...r.receive_batch_details[0].receive_batches,warehouse_id:'HN',warehouses:{code:'HN',name:'Kho nhận',address:'164 Hồng Mai'}}}]}:r):rows; const filtered=status==='done'?sourceRows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):sourceRows; return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}]} suggestions={{}} auditLogs={[]} previewOnly={!live} simulate={!live} showProcessedOnly={status==='done'}/></>}",
   "createRoot(document.getElementById('root')).render(<Fixture/>)",
 ].join('\n')
 writeFileSync(entryPath,source)
@@ -356,6 +356,74 @@ try {
     console.log('PASS '+width+'x'+height+' · full page height · full slidebar height · internal table scrolling · 7 columns')
     await page.close()
   }
+
+// Adaptive warehouse groups: visibility and vertical allocation come from
+// ACTIONABLE warehouse rows, not a permanently rendered BG/HN 50/50 layout.
+{
+  const page=await browser.newPage({viewport:{width:1440,height:900}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="hn-done">'),{waitUntil:'load'})
+  await page.locator('.warehouse-unified-group').first().waitFor()
+  assert.deepEqual(await page.locator('.warehouse-unified-group').evaluateAll(nodes=>nodes.map(n=>n.dataset.warehouseCode)),['BG'],
+    'warehouse with no active orders must disappear in All')
+  assert.equal(await page.locator('.warehouse-unified-table tbody tr').count(),4,
+    'the remaining BG group still shows its own rows')
+  const single=await page.evaluate(()=>{
+    const lane=document.querySelector('.warehouse-receive-table-lane').getBoundingClientRect()
+    const group=document.querySelector('.warehouse-unified-group').getBoundingClientRect()
+    const panel=document.querySelector('.warehouse-intake-panel')?.getBoundingClientRect()
+    return {laneBottom:lane.bottom,groupBottom:group.bottom,panelBottom:panel?.bottom}
+  })
+  assert.ok(Math.abs(single.laneBottom-single.groupBottom)<=3,
+    'one remaining warehouse must fill full vertical lane '+JSON.stringify(single))
+  assert.ok(Math.abs(single.panelBottom-single.laneBottom)<=3,
+    'slidebar and the remaining group must end at the same bottom '+JSON.stringify(single))
+  await page.locator('.fixture-done').click()
+  assert.deepEqual(await page.locator('.warehouse-unified-group').evaluateAll(nodes=>nodes.map(n=>n.dataset.warehouseCode)),['BG','HN'],
+    'completed KPI must still show warehouses with only completed orders')
+  assert.equal(await page.locator('.warehouse-unified-table tbody tr').count(),6,
+    'completed KPI must retain all six processed orders')
+  await page.locator('.fixture-all').click()
+  assert.deepEqual(await page.locator('.warehouse-unified-group').evaluateAll(nodes=>nodes.map(n=>n.dataset.warehouseCode)),['BG'],
+    'returning to All must hide empty-action warehouse again')
+  await page.screenshot({path:path.join(output,'warehouse-dynamic-single-active.png')})
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1440,height:900}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="all-done">'),{waitUntil:'load'})
+  await page.getByText('Các kho đã hết đơn cần xử lý.',{exact:false}).waitFor()
+  assert.equal(await page.locator('.warehouse-unified-group').count(),0,
+    'no zero-work warehouse card when all orders are completed')
+  assert.equal(await page.locator('.warehouse-intake-panel').count(),0,
+    'no stale slidebar for hidden warehouse')
+  await page.locator('.fixture-done').click()
+  assert.equal(await page.locator('.warehouse-unified-group').count(),2,
+    'completed KPI still allows inspecting both warehouse histories')
+  assert.equal(await page.locator('.warehouse-unified-table tbody tr').count(),8,
+    'completed KPI must preserve all eight historical orders')
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1440,height:900}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="uneven">'),{waitUntil:'load'})
+  const sizes=await page.locator('.warehouse-unified-group').evaluateAll(nodes=>nodes.map(n=>({
+    code:n.dataset.warehouseCode,rows:Number(n.dataset.warehouseRows),
+    height:n.getBoundingClientRect().height
+  })))
+  assert.deepEqual(sizes.map(x=>x.rows),[1,7],'expected one BG row and seven HN rows')
+  assert.ok(sizes[1].height>sizes[0].height+90,
+    'large warehouse must use more vertical space than small warehouse '+JSON.stringify(sizes))
+  const geom=await page.locator('.warehouse-receive-table-lane').evaluate(node=>({
+    scrollX:node.scrollWidth-node.clientWidth,
+    bottom:node.getBoundingClientRect().bottom,
+    lastGroupBottom:node.querySelector('.warehouse-unified-group:last-of-type').getBoundingClientRect().bottom
+  }))
+  assert.ok(geom.scrollX<=3,'uneven warehouse groups must not overflow horizontally')
+  assert.ok(geom.lastGroupBottom>=geom.bottom-3,'uneven groups must occupy available page height')
+  await page.screenshot({path:path.join(output,'warehouse-dynamic-uneven-heights.png')})
+  await page.close()
+}
+console.log('PASS adaptive groups · hide empty-action warehouse · completed history · 1/7 proportional heights')
 
 // A second independent browser scenario exercises the live Server Action
 // bridge with stubbed RPCs. It never contacts Supabase.
