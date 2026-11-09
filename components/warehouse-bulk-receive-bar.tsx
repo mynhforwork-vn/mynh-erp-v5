@@ -165,7 +165,7 @@ export function WarehouseBulkReceiveBar({
                       <small>{item.decisionSaved?'Đã lưu quyết định':'Theo luồng nhập toàn bộ'}</small>
                       {item.reason&&<small title={item.reason}>Lý do: {item.reason}</small>}</td>
                   </tr>
-                )))}</tbody>
+                ))}</tbody>
               </table>
             </div>
             <div className="warehouse-bulk-note-info"><b>Kiểm tra trước khi ghi tồn</b>
