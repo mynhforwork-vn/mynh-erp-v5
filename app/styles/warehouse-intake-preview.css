@@ -464,8 +464,10 @@
   margin:0;font-size:11px;line-height:1.6;color:#687d8c;
 }
 .warehouse-bulk-backdrop .warehouse-bulk-review{
-  border:1px solid #dde6ee;border-radius:5px;min-height:0;
-  max-height:none;overflow:visible;
+  /* Never flex-shrink open order groups under the following note/confirmation.
+     Their natural height is scrolled by the one modal scroll container. */
+  flex:0 0 auto;min-height:auto;
+  border:1px solid #dde6ee;border-radius:5px;max-height:none;overflow:visible;
 }
 .warehouse-bulk-backdrop .warehouse-bulk-review-table{
   width:100%;min-width:760px;border-collapse:separate;border-spacing:0;
