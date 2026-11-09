@@ -325,6 +325,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       itemDecisions={itemDecisions}
       simulate={!isLive}
       previewOnly={!canWrite}
+      showProcessedOnly={currentStatus==='done'}
     />
   </div>
 }
