@@ -465,7 +465,7 @@ console.log('PASS adaptive groups · hide empty-action warehouse · completed hi
   await bg.locator('.warehouse-bulk-shortcut').click()
   const review=page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]')
   await review.waitFor()
-  assert.match(await bg.locator('.warehouse-bulk-toolbar').innerText(),/2 đơn đã chọn/)
+  assert.match(await bg.locator('.warehouse-bulk-toolbar').innerText(),/2 đơn được chọn/)
   assert.match(await review.innerText(),/2 đơn nhập toàn bộ/)
   await review.getByRole('checkbox',{name:/Tôi đã đối chiếu/}).check()
   await page.evaluate(()=>{window.__bulkPartial=true})
