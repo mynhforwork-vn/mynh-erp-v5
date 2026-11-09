@@ -12,6 +12,7 @@ const migration=read('supabase/migrations/0075_item_level_warehouse_decisions.sq
 const actions=read('lib/actions/warehouse-item-decisions.ts')
 const bulkActions=read('lib/actions/warehouse-bulk-receive.ts')
 const bulkBar=read('components/warehouse-bulk-receive-bar.tsx')
+const skuHistory=read('lib/warehouse-sku-suggestions.ts')
 const config=read('wrangler.jsonc')
 const checks=[
   ['only Warehouse receive page uses the changed scoped stylesheet',
@@ -237,7 +238,7 @@ const checks=[
     bulkBar.includes('receive-confirm-modal warehouse-bulk-modal') &&
     bulkBar.includes('role="dialog" aria-modal="true"') &&
     bulkBar.includes('warehouse-bulk-review-table') &&
-    bulkBar.includes('price(item.purchasePrice)') &&
+    bulkBar.includes('price(item.originalPrice)') &&
     bulkBar.includes('price(item.salePrice)') &&
     bulkBar.includes('item.sku') &&
     bulkBar.includes("item.decision==='IN'?'Nhập kho':'Bỏ qua kho'") &&
@@ -267,6 +268,29 @@ const checks=[
     table.includes("mynh-warehouse-intake-hn-columns-v3") &&
     css.includes('.warehouse-unified-sku-title') &&
     css.includes('.warehouse-unified-received-at')],
+  ['Giá gốc uses stored original price (not after-discount) in table and popup',
+    table.includes("purchase:'Giá gốc'") &&
+    table.includes("if(col==='purchase')return Number(row.order_items[0]?.original_price??0)") &&
+    table.includes('linePrice(item.original_price)') &&
+    bulkBar.includes('<th>Giá gốc/SP</th>') &&
+    bulkBar.includes('price(item.originalPrice)') &&
+    bulkBar.includes('price(item.discountedPrice)') &&
+    !bulkBar.includes('purchasePrice') &&
+    !bulkBar.includes('Giá nhập/SP')],
+  ['suggestions derive from persisted prior-order SKU history, not guessed text',
+    page.includes('indexHistoricalSkuMappings(history)') &&
+    page.includes('suggestSkusFromHistory({...item,order_id:order.id},historicIndex,3)') &&
+    page.includes("'id,order_id,sku,product_name,variant,product_variant_id,inventory_multiplier,created_at") &&
+    skuHistory.includes('row.order_id===target.order_id') &&
+    skuHistory.includes("if(sku&&previousSku&&sku!==previousSku)continue") &&
+    skuHistory.includes('history_count:entry.orderIds.size') &&
+    skuHistory.includes('previous.multipliers.set') &&
+    panel.includes('suggestionOptions.map((option,index)=>') &&
+    panel.includes('onClick={()=>applySuggestion(option)}') &&
+    panel.includes('GỢI Ý SKU TỪ LỊCH SỬ ĐÃ LƯU') &&
+    panel.includes('Đã từng ghép với nhiều SKU') &&
+    !panel.includes('onClick={applySuggestion}') &&
+    panelCss.includes('.warehouse-detail-v2-suggestion-entry')],
   ['V2 slidebar height internal scroll and fixed footer',
     panelCss.includes('.warehouse-detail-v2-scroll') &&
     panelCss.includes('flex:1 1 auto!important') &&
