@@ -74,19 +74,19 @@ type ItemDecision={
   processing_state:'DRAFT'|'FINALIZED'
   updated_at?:string
 }
-type TableCol='order'|'received'|'sku'|'product'|'purchase'|'sale'|'status'
-const TABLE_COLUMNS:TableCol[]=['order','received','sku','product','purchase','sale','status']
+type TableCol='order'|'sku'|'product'|'purchase'|'sale'|'status'
+const TABLE_COLUMNS:TableCol[]=['order','sku','product','purchase','sale','status']
 const TABLE_LABELS:Record<TableCol,string>={
-  order:'Mã đơn',received:'Ngày nhận',sku:'SKU bán',product:'Sản phẩm mua',
+  order:'Mã đơn / Ngày nhận',sku:'SKU bán',product:'Sản phẩm mua',
   purchase:'Giá nhập',sale:'Giá bán',status:'Trạng thái',
 }
-// Preserve the seven original table fields at every breakpoint. Resize the
-// columns *inside the table*, not the row structure, whenever a slidebar opens.
+// Six native columns: receiving date is nested beneath each order code.
+// Keep width fitted inside the table, including when the detail slidebar opens.
 const COLUMN_BASE:Record<TableCol,number>={
-  order:126,received:112,sku:110,product:195,purchase:87,sale:87,status:123,
+  order:168,sku:190,product:210,purchase:95,sale:95,status:123,
 }
 const COLUMN_GROW:Record<TableCol,number>={
-  order:0.9,received:0.4,sku:1.5,product:4.5,purchase:0.7,sale:0.7,status:0.9,
+  order:1.2,sku:3.1,product:4.0,purchase:0.7,sale:0.7,status:1,
 }
 function autoFitColumnWidths(columns:TableCol[], availableWidth:number){
   const width=Math.max(1,availableWidth)
@@ -260,12 +260,12 @@ export function WarehouseIntakeWorkspace({
     }
   },[selectedGroup,groups])
   // Independent column visibility/order and sorting for each real receiving warehouse.
-  const bgColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-bg-columns-v2',TABLE_COLUMNS,['order'])
-  const hnColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-hn-columns-v2',TABLE_COLUMNS,['order'])
-  const otherColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-other-columns-v2',TABLE_COLUMNS,['order'])
-  const bgSort=useManagedSort<TableCol>('mynh-warehouse-intake-bg-sort-v2','received','desc')
-  const hnSort=useManagedSort<TableCol>('mynh-warehouse-intake-hn-sort-v2','received','desc')
-  const otherSort=useManagedSort<TableCol>('mynh-warehouse-intake-other-sort-v2','received','desc')
+  const bgColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-bg-columns-v3',TABLE_COLUMNS,['order'])
+  const hnColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-hn-columns-v3',TABLE_COLUMNS,['order'])
+  const otherColumns=useManagedColumns<TableCol>('mynh-warehouse-intake-other-columns-v3',TABLE_COLUMNS,['order'])
+  const bgSort=useManagedSort<TableCol>('mynh-warehouse-intake-bg-sort-v3','order','desc')
+  const hnSort=useManagedSort<TableCol>('mynh-warehouse-intake-hn-sort-v3','order','desc')
+  const otherSort=useManagedSort<TableCol>('mynh-warehouse-intake-other-sort-v3','order','desc')
   const laneRef=useRef<HTMLElement|null>(null)
   const [laneWidth,setLaneWidth]=useState(1100)
   useEffect(()=>{
@@ -347,8 +347,7 @@ export function WarehouseIntakeWorkspace({
             const tableSort=group.code==='BG'?bgSort:group.code==='HN'?hnSort:otherSort
             const sorted=[...group.rows].sort((left,right)=>{
               const key=(row:Row,col:TableCol):number|string=>{
-                if(col==='order')return String(row.shopee_order_id??row.id)
-                if(col==='received')return new Date(receivedAt(row)??0).getTime()
+                if(col==='order')return new Date(receivedAt(row)??0).getTime()
                 if(col==='sku')return String(row.order_items[0]?.product_variants?.products?.sku??'')
                 if(col==='product')return row.order_items[0]?.product_name??''
                 if(col==='purchase')return Number(row.order_items[0]?.final_price??0)
@@ -384,8 +383,10 @@ export function WarehouseIntakeWorkspace({
                     {row.shopee_order_id??row.id.slice(0,8)}
                   </button>
                 </div>
+                <time className="warehouse-unified-received-at" title="Ngày nhận thực tế">
+                  {receivedAt(row)?formatDateTime(receivedAt(row)):'Chưa có ngày nhận'}
+                </time>
               </td>
-              if(col==='received')return <td key={col} {...attributes} className="warehouse-unified-date">{receivedAt(row)?formatDateTime(receivedAt(row)):'Chưa có ngày nhận'}</td>
               const linePrice=(value:number|string|null|undefined)=>{
                 if(value===null||value===undefined||value===''||!Number.isFinite(Number(value)))return 'Chưa có'
                 return formatMoney(value)
@@ -393,7 +394,11 @@ export function WarehouseIntakeWorkspace({
               if(col==='sku')return <td key={col} {...attributes} className="warehouse-unified-skus">
                 {row.order_items.map(item=><div key={item.id} className="warehouse-unified-product-line"
                   title={[item.product_variants?.products?.sku??'Chưa ghép SKU',item.product_variants?.products?.name].filter(Boolean).join(' · ')}>
-                  <span className="warehouse-unified-product-name">{item.product_variants?.products?.sku??'Chưa ghép'}</span>
+                  <span className="warehouse-unified-sku-identity">
+                    <b>{item.product_variants?.products?.sku??'Chưa ghép'}</b>
+                    {item.product_variants?.products?.name&&
+                      <span className="warehouse-unified-sku-title">{item.product_variants.products.name}</span>}
+                  </span>
                 </div>)}
               </td>
               if(col==='product')return <td key={col} {...attributes} className="warehouse-unified-products">
