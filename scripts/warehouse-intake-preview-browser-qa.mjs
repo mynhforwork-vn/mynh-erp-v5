@@ -28,7 +28,7 @@ const source=[
   "  order_items:[{id:'20000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:long,sku:'SRC-'+i,variant:'Phân loại mẫu 500ml',quantity:2,original_price:50000,final_price:35000,inventory_multiplier:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}:null},",
   "  {id:'30000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:'Sữa tắm hương hoa nhài',sku:'SRC-OTHER',variant:'Dạng chai',quantity:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',products:{sku:'TEST-01',name:'Đã map'}}:null}]",
   '}))',
-  "function Fixture(){const [status,setStatus]=React.useState('all');const live=document.documentElement.dataset.live==='true';const scenario=document.documentElement.dataset.scenario||'';const sourceRows=scenario==='hn-done'?rows.map((r,i)=>i>=4?{...r,warehouse_status:'WAREHOUSE_RECEIVED'}:r):scenario==='all-done'?rows.map(r=>({...r,warehouse_status:'WAREHOUSE_RECEIVED'})):scenario==='uneven'?rows.map((r,i)=>i>=1&&i<=3?{...r,receive_batch_details:[{receive_batches:{...r.receive_batch_details[0].receive_batches,warehouse_id:'HN',warehouses:{code:'HN',name:'Kho nhận',address:'164 Hồng Mai'}}}]}:r):rows; const filtered=status==='done'?sourceRows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):sourceRows; return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}]} suggestions={{}} auditLogs={[]} previewOnly={!live} simulate={!live} showProcessedOnly={status==='done'}/></>}",
+  "function Fixture(){const [status,setStatus]=React.useState('all');const live=document.documentElement.dataset.live==='true';const scenario=document.documentElement.dataset.scenario||'';const sourceRows=scenario==='hn-done'?rows.map((r,i)=>i>=4?{...r,warehouse_status:'WAREHOUSE_RECEIVED'}:r):scenario==='all-done'?rows.map(r=>({...r,warehouse_status:'WAREHOUSE_RECEIVED'})):scenario==='uneven'?rows.map((r,i)=>i>=1&&i<=3?{...r,receive_batch_details:[{receive_batches:{...r.receive_batch_details[0].receive_batches,warehouse_id:'HN',warehouses:{code:'HN',name:'Kho nhận',address:'164 Hồng Mai'}}}]}:r):scenario==='bulk'?rows.map((r,i)=>i===0?{...r,order_items:r.order_items.map(item=>({...item,product_variant_id:'V-SKU',product_variants:{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}}))}:r):rows; const filtered=status==='done'?sourceRows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):sourceRows; const itemDecisions=Object.fromEntries(sourceRows[4].order_items.map((item,i)=>[item.id,{order_item_id:item.id,order_id:sourceRows[4].id,product_variant_id:'V-SKU',decision:i===0?'IN':'SKIP',sale_price:90000,multiplier:1,skip_reason:i===0?null:'Không nhập mẫu',processing_state:'DRAFT'}])); return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}]}  suggestions={{}} itemDecisions={itemDecisions} auditLogs={[]} previewOnly={!live} simulate={!live} showProcessedOnly={status==='done'}/></>}",
   "createRoot(document.getElementById('root')).render(<Fixture/>)",
 ].join('\n')
 writeFileSync(entryPath,source)
@@ -40,12 +40,15 @@ await build({
   plugins:[{name:'mock-warehouse-actions',setup(es){
     es.onResolve({filter:/[\\/]lib[\\/]actions[\\/]warehouse$/},()=>({path:'warehouse-actions',namespace:'warehouse-qa'}))
     es.onResolve({filter:/[\\/]lib[\\/]actions[\\/]warehouse-item-decisions$/},()=>({path:'item-actions',namespace:'warehouse-qa'}))
+    es.onResolve({filter:/[\\/]lib[\\/]actions[\\/]warehouse-bulk-receive$/},()=>({path:'bulk-actions',namespace:'warehouse-qa'}))
     es.onResolve({filter:/^next\/navigation$/},()=>({path:'next-navigation',namespace:'warehouse-qa'}))
     es.onLoad({filter:/.*/,namespace:'warehouse-qa'},args=>({
       contents:args.path==='next-navigation'
         ? 'export function useRouter(){return {refresh(){window.__refreshCalls=(window.__refreshCalls||0)+1}}}'
         : args.path==='item-actions'
         ? 'export async function saveWarehouseItemDecision(input){window.__warehouseCalls=(window.__warehouseCalls||[]);window.__warehouseCalls.push({name:"save",input});return {product_variant_id:input.variantId||"V-SKU",decision:input.decision,quantity:2,order_item_id:input.orderItemId}} export async function finalizeWarehouseItemDecisions(id){window.__warehouseCalls.push({name:"finalize",id});return {warehouse_status:"WAREHOUSE_MIXED",in_items:1,skip_items:1,transaction_count:1}}'
+        : args.path==='bulk-actions'
+        ? 'export async function bulkReceiveWarehouseOrders(input){window.__bulkCalls=window.__bulkCalls||[];window.__bulkCalls.push(input);if(window.__bulkPartial){return {succeeded:input.orderIds.slice(0,1),failed:input.orderIds.slice(1).map(id=>({orderId:id,message:"Cần kiểm tra lại trạng thái"})),legacyOrders:1,itemDecisionOrders:0,stockItemLines:2,skippedItemLines:0}}return {succeeded:input.orderIds,failed:[],legacyOrders:input.orderIds.length,itemDecisionOrders:0,stockItemLines:2,skippedItemLines:0}}'
         : 'export async function mapWarehouseOrderItem(){throw new Error("blocked")} export async function receiveOrdersIntoWarehouse(){throw new Error("blocked")} export async function skipWarehouseOrder(){throw new Error("blocked")}',
       loader:'js'
     }))
@@ -426,6 +429,53 @@ try {
   await page.close()
 }
 console.log('PASS adaptive groups · hide empty-action warehouse · completed history · 1/7 proportional heights')
+
+// Bulk receipt QA: non-destructive Preview confirmation and saved V2 mixed
+// decisions, then a live-mode mock with partial success and retry visibility.
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html,{waitUntil:'load'})
+  const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
+  const hn=page.locator('.warehouse-unified-group[data-warehouse-code="HN"]')
+  assert.equal(await bg.locator('.warehouse-bulk-shortcut').count(),1,
+    'BG bulk receipt shortcut must be discoverable')
+  assert.equal(await hn.locator('.warehouse-bulk-shortcut').count(),1,
+    'V2 saved decisions must be eligible for batch processing')
+  await hn.locator('.warehouse-bulk-shortcut').click()
+  const review=hn.locator('.warehouse-bulk-review')
+  assert.match(await review.innerText(),/Kiểm tra trước khi nhập kho/)
+  assert.match(await review.innerText(),/1 dòng bỏ qua/)
+  assert.match(await review.innerText(),/Quyết định theo sản phẩm/)
+  assert.equal(await review.getByRole('button',{name:/Xác nhận nhập/}).isDisabled(),true,
+    'Preview must never allow the stock submission')
+  await page.screenshot({path:path.join(output,'warehouse-bulk-preview-v2-skip.png')})
+  await hn.getByRole('button',{name:'Bỏ chọn'}).click()
+  assert.equal(await hn.locator('.warehouse-bulk-review').count(),0,'cancel bulk review')
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="bulk">'),{waitUntil:'load'})
+  const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
+  await bg.locator('.warehouse-bulk-shortcut').click()
+  const review=bg.locator('.warehouse-bulk-review')
+  assert.match(await bg.locator('.warehouse-bulk-toolbar').innerText(),/2 đơn được chọn/)
+  assert.match(await review.innerText(),/2 đơn nhập toàn bộ/)
+  await review.getByRole('checkbox',{name:/Tôi đã kiểm tra/}).check()
+  await page.evaluate(()=>{window.__bulkPartial=true})
+  await review.getByRole('button',{name:'Xác nhận nhập 2 đơn'}).click()
+  await page.getByText('1 đơn đã xử lý thành công',{exact:false}).waitFor()
+  const calls=await page.evaluate(()=>({calls:window.__bulkCalls||[],refresh:window.__refreshCalls||0}))
+  assert.equal(calls.calls.length,1,'only one batched Server Action call')
+  assert.equal(calls.calls[0].orderIds.length,2,'two selected orders passed to one action')
+  assert.ok(calls.refresh>0,'successful batch requests refresh stored order state')
+  assert.match(await bg.locator('.warehouse-bulk-toolbar').innerText(),/1 đơn được chọn/,
+    'only failed orders remain selected after partial batch receipt')
+  assert.match(await page.locator('.warehouse-bulk-feedback').innerText(),/1 đơn chưa xử lý/)
+  await page.screenshot({path:path.join(output,'warehouse-bulk-partial-result.png')})
+  await page.close()
+}
+console.log('PASS bulk warehouse Preview safety · V2 SKIP summary · partial success retained')
 
 // A second independent browser scenario exercises the live Server Action
 // bridge with stubbed RPCs. It never contacts Supabase.
