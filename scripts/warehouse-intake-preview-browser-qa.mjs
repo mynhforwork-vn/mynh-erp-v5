@@ -378,6 +378,7 @@ try {
   assert.ok(Math.abs(single.panelBottom-single.laneBottom)<=3,
     'slidebar and the remaining group must end at the same bottom '+JSON.stringify(single))
   await page.locator('.fixture-done').click()
+  await page.locator('.warehouse-unified-table tbody tr').nth(5).waitFor()
   assert.deepEqual(await page.locator('.warehouse-unified-group').evaluateAll(nodes=>nodes.map(n=>n.dataset.warehouseCode)),['BG','HN'],
     'completed KPI must still show warehouses with only completed orders')
   assert.equal(await page.locator('.warehouse-unified-table tbody tr').count(),6,
@@ -397,6 +398,7 @@ try {
   assert.equal(await page.locator('.warehouse-intake-panel').count(),0,
     'no stale slidebar for hidden warehouse')
   await page.locator('.fixture-done').click()
+  await page.locator('.warehouse-unified-table tbody tr').nth(7).waitFor()
   assert.equal(await page.locator('.warehouse-unified-group').count(),2,
     'completed KPI still allows inspecting both warehouse histories')
   assert.equal(await page.locator('.warehouse-unified-table tbody tr').count(),8,
