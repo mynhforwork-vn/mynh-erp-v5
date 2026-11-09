@@ -1,9 +1,9 @@
-name: Warehouse Intake Baseline Preview 2026-11-06
+name: Warehouse Auto-Groups QA Preview 2026-11-09
 
 on:
   push:
     branches:
-      - preview/warehouse-intake-baseline-20261106
+      - preview/warehouse-auto-groups-20261109
     paths:
       - '.github/workflows/warehouse-intake-baseline-preview.yml'
       - 'app/**'
@@ -18,7 +18,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: warehouse-intake-baseline-preview-20261106
+  group: warehouse-auto-groups-preview-20261109
   cancel-in-progress: true
 
 jobs:
@@ -39,7 +39,7 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID"
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Warehouse date, KPI, table and Preview safety contracts
+      - name: Warehouse dynamic groups, date, KPI, Auto Fit and Preview safety contracts
         run: node scripts/warehouse-intake-preview-contract-qa.mjs
       - name: Cross-module Warehouse / Returned / Notifications regression
         run: |
@@ -56,7 +56,7 @@ jobs:
           CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME_PATH"
           echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
-      - name: Responsive warehouse Auto Fit QA (14 viewports, close/open slidebar, no x-scroll)
+      - name: Responsive QA (14 viewports + hidden/uneven groups, 7 columns, slidebar)
         run: node scripts/warehouse-intake-preview-browser-qa.mjs
       - uses: actions/upload-artifact@v4
         if: always()
@@ -71,7 +71,7 @@ jobs:
         id: preview
         shell: bash
         run: |
-          npx wrangler preview --name warehouse-intake-baseline-20261106 --worker-name mynh-erp-v5 --message "Warehouse intake baseline from main 96029492250b078d3ec182578297401160ca3bdd" --json > warehouse-preview-result.json
+          npx wrangler preview --name warehouse-intake-baseline-20261106 --worker-name mynh-erp-v5 --message "Warehouse adaptive BG/HN group layout from main 930b48b3d17007b8566713b9c5ded04360dd0f2f" --json > warehouse-preview-result.json
           node - <<'NODE'
           const fs = require('fs')
           const str = fs.readFileSync('warehouse-preview-result.json', 'utf8')
@@ -103,9 +103,9 @@ jobs:
         run: |
           {
             echo "## Warehouse Intake Preview"
-            echo "- Base source: main 96029492250b078d3ec182578297401160ca3bdd; reviewed warehouse Preview changes"
-            echo "- Branch: preview/warehouse-intake-baseline-20261106"
+            echo "- Base source: main 930b48b3d17007b8566713b9c5ded04360dd0f2f; adaptive warehouse group layout only"
+            echo "- Branch: preview/warehouse-auto-groups-20261109"
             echo "- Preview: $PREVIEW_URL"
-            echo "- Warehouse contracts, typecheck, 14 viewport responsive QA, OpenNext build, /api/health and /login: PASS"
+            echo "- Dynamic warehouses (hidden empty, 1/7 row heights, history KPI), typecheck, 14 viewport responsive QA, OpenNext build and smoke: PASS"
             echo "- No Production or Supabase changes"
           } >> "$GITHUB_STEP_SUMMARY"
