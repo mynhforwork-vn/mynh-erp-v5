@@ -3,16 +3,10 @@ import { requireUser } from '@/lib/supabase/auth'
 import { WarehouseIntakeWorkspace } from '@/components/warehouse-intake-workspace'
 import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
+import {indexHistoricalSkuMappings,suggestSkusFromHistory,type HistoricSkuMapping,type HistoricalSuggestion}
+  from '@/lib/warehouse-sku-suggestions'
 import '@/app/styles/warehouse-intake-preview.css'
 import '@/app/styles/warehouse-intake-detail-preview.css'
-
-function suggestionKey(item: { sku?: string | null; product_name?: string | null; variant?: string | null }) {
-  return [
-    String(item.sku ?? '').trim().toUpperCase(),
-    String(item.product_name ?? '').trim().toLocaleLowerCase('vi'),
-    String(item.variant ?? '').trim().toLocaleLowerCase('vi'),
-  ].join('|')
-}
 
 function batchOf(row: any) {
   const detail = Array.isArray(row.receive_batch_details)
@@ -134,7 +128,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       .select('default_receiving_warehouse_id').eq('id', 'main').single(),
     // Same read-only suggestion source already used by the Production receiving screen.
     supabase.from('order_items')
-      .select('sku,product_name,variant,product_variant_id,inventory_multiplier,created_at,product_variants(id,variant_name,sale_price,products(id,sku,name))')
+      .select('id,order_id,sku,product_name,variant,product_variant_id,inventory_multiplier,created_at,product_variants(id,variant_name,sale_price,products(id,sku,name))')
       .not('product_variant_id', 'is', null)
       .order('created_at', { ascending: false }).limit(3000),
   ])
@@ -178,34 +172,25 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     return !!day && (!sinceDay || day >= sinceDay) && (!untilDay || day <= untilDay)
   })
 
-  const mappingByKey = new Map<string, any>()
-  for (const item of (recentMappings ?? []) as any[]) {
-    const key = suggestionKey(item)
-    if (!mappingByKey.has(key) && item.product_variant_id && item.product_variants) {
-      mappingByKey.set(key, item)
-    }
+  // Historical suggestions are only produced from persisted, previously
+  // mapped lines of OTHER orders. Multiple mappings remain separate options.
+  // No suggestion is applied automatically and Preview never writes mappings.
+  const history=(recentMappings??[]) as HistoricSkuMapping[]
+  const historicIndex=indexHistoricalSkuMappings(history)
+  // Preserve SKUs found in earlier mappings even if not within the newest
+  // 1,500 edited variants. Existing catalog entry is still checked on click.
+  const knownVariants=new Map<string,any>()
+  for(const variant of (variants??[]) as any[])knownVariants.set(variant.id,variant)
+  for(const source of history){
+    const variant=source.product_variants
+    if(variant?.id&&!knownVariants.has(variant.id))knownVariants.set(variant.id,variant)
   }
-  // Preserve historically matched SKUs even when they fall outside the
-  // latest 1,500 edited variants (read-only, deduplicated by variant ID).
-  const knownVariants = new Map<string, any>()
-  for (const variant of (variants ?? []) as any[]) knownVariants.set(variant.id, variant)
-  for (const item of (recentMappings ?? []) as any[]) {
-    const variant = item.product_variants
-    if (variant?.id && !knownVariants.has(variant.id)) knownVariants.set(variant.id, variant)
-  }
-  const allVariants = [...knownVariants.values()]
-  const suggestions: Record<string, { variant_id: string; sku: string | null; product_name: string | null; variant_name: string | null; multiplier: number }> = {}
-  for (const order of rows) for (const item of order.order_items ?? []) {
-    if (item.product_variant_id) continue
-    const previous = mappingByKey.get(suggestionKey(item))
-    if (!previous?.product_variant_id || !previous?.product_variants) continue
-    suggestions[item.id] = {
-      variant_id: previous.product_variant_id,
-      sku: previous.product_variants.products?.sku ?? null,
-      product_name: previous.product_variants.products?.name ?? null,
-      variant_name: previous.product_variants.variant_name ?? null,
-      multiplier: Number(previous.inventory_multiplier ?? 1),
-    }
+  const allVariants=[...knownVariants.values()]
+  const suggestions:Record<string,HistoricalSuggestion[]>={}
+  for(const order of rows)for(const item of order.order_items??[]){
+    if(item.product_variant_id)continue
+    const candidates=suggestSkusFromHistory({...item,order_id:order.id},historicIndex,3)
+    if(candidates.length)suggestions[item.id]=candidates
   }
 
   const assignedCount = rows.filter(row => {
