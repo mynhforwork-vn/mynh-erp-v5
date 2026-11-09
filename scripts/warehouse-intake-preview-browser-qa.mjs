@@ -86,7 +86,7 @@ try {
       const wraps=[...document.querySelectorAll('.warehouse-unified-table-wrap')]
       const panel=document.querySelector('aside.warehouse-intake-panel')
       const lane=document.querySelector('.warehouse-receive-table-lane')
-      const productLines=[...document.querySelectorAll('.warehouse-unified-product-line')]
+      const productLines=[...document.querySelectorAll('.warehouse-unified-products .warehouse-unified-product-line')]
       const main=document.querySelector('.brand-shell-v1>.main')
       const screen=document.querySelector('.warehouse-receive-screen')
       const workspace=document.querySelector('.warehouse-intake-preview-layout')
