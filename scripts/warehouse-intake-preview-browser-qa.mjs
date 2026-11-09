@@ -214,7 +214,7 @@ try {
     }))
     assert.ok(merged.headers[0].includes('Ngày nhận')&&merged.headers.length===6,
       'date must share the order column, no separate date column '+width)
-    assert.match(merged.received??'',/06\\/11\\/2026/,
+    assert.match(merged.received??'',/06\/11\/2026/,
       'received date should appear below each order code '+width)
     assert.ok((merged.skuCell??'').includes('TEST-01')&&(merged.skuSale??'').includes('Đã map'),
       'mapped sale product name must be displayed after SKU '+width)
