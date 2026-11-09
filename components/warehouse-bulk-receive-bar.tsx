@@ -59,8 +59,10 @@ export function WarehouseBulkReceiveBar({
   const [note,setNote]=useState('')
   const [error,setError]=useState('')
   const [confirmText,setConfirmText]=useState(false)
+  const [expandedOrders,setExpandedOrders]=useState<string[]>([])
   useEffect(()=>{
     if(!reviewOpen){setError('');setConfirmText(false)}
+    else setExpandedOrders(orders[0]?[orders[0].id]:[])
   },[reviewOpen])
   useEffect(()=>{
     if(!reviewOpen)return
@@ -131,32 +133,65 @@ export function WarehouseBulkReceiveBar({
             </div>
             <p className="warehouse-bulk-explain">{legacy} đơn nhập toàn bộ · {v2} đơn theo quyết định sản phẩm.
               Giá nhập dùng giá sau giảm/SP đã có; giá bán ưu tiên giá đã lưu khi bóc tách. Giá thiếu không tự đoán.</p>
+            <div className="warehouse-bulk-review-toolbar">
+              <div>
+                <strong>Đối chiếu từng đơn</strong>
+                <span>Mỗi đơn một nhóm, chỉ mở chi tiết khi cần kiểm tra.</span>
+              </div>
+              <button type="button" className="button small" disabled={busy}
+                onClick={()=>setExpandedOrders(expandedOrders.length===orders.length?[]:orders.map(order=>order.id))}>
+                {expandedOrders.length===orders.length?'Thu gọn tất cả':'Mở tất cả'}
+              </button>
+            </div>
             <div className="warehouse-bulk-review" aria-label="Đối chiếu sản phẩm mua, SKU, giá và quyết định kho">
-              <table className="warehouse-bulk-review-table">
-                <thead><tr><th>Mã đơn</th><th>Sản phẩm mua</th><th>SKU bán ghép</th>
-                  <th>SL mua → nhập</th><th>Giá nhập/SP</th><th>Giá bán/SP</th><th>Quyết định</th></tr></thead>
-                <tbody>{orders.flatMap(order=>order.items.map(item=>
-                  <tr key={order.id+'-'+item.id} className={item.decision==='SKIP'?'warehouse-bulk-skip-row':''}>
-                    <td data-label="Mã đơn"><button type="button" className="table-link warehouse-bulk-order-link"
-                      onClick={()=>onOpenOrder(order.id)}>{order.label}</button>
-                      <small>{order.mode==='V2'?'Theo sản phẩm':'Nhập toàn bộ'}</small></td>
-                    <td data-label="Sản phẩm mua" title={item.name}><b>{item.name}</b>
-                      {item.variant&&<small>{item.variant}</small>}</td>
-                    <td data-label="SKU bán ghép" title={item.skuName??''}><b>{item.sku??'Chưa ghép'}</b>
-                      <small>{item.skuName??'Chưa có tên SKU'}</small></td>
-                    <td data-label="SL mua → nhập"><b>{item.quantity} → {item.decision==='SKIP'?0:item.stockUnits}</b>
-                      <small>Quy đổi ×{item.multiplier}</small></td>
-                    <td data-label="Giá nhập/SP" title={'Giá gốc/SP: '+price(item.originalPrice)}>
-                      <b>{price(item.purchasePrice)}</b><small>Sau giảm/SP</small></td>
-                    <td data-label="Giá bán/SP"><b>{price(item.salePrice)}</b><small>
-                      {item.salePriceSource==='SAVED'?'Đã lưu khi bóc tách':
-                        item.salePriceSource==='CATALOG'?'Giá bán danh mục':'Chưa có giá bán'}</small></td>
-                    <td data-label="Quyết định"><b className={'warehouse-bulk-decision '+(item.decision==='IN'?'in':'skip')}>
-                      {item.decision==='IN'?'Nhập kho':'Bỏ qua kho'}</b>
-                      <small>{item.decisionSaved?'Đã lưu quyết định':'Theo luồng nhập toàn bộ'}</small>
-                      {item.reason&&<small title={item.reason}>Lý do: {item.reason}</small>}</td>
-                  </tr>))}</tbody>
-              </table>
+              {orders.map((order,index)=>{
+                const expanded=expandedOrders.includes(order.id)
+                return <section className={'warehouse-bulk-order-group'+(expanded?' expanded':'')}
+                  key={order.id} data-review-order={order.id}>
+                  <div className="warehouse-bulk-order-heading">
+                    <button type="button" className="warehouse-bulk-order-toggle" disabled={busy}
+                      aria-expanded={expanded}
+                      onClick={()=>setExpandedOrders(current=>current.includes(order.id)
+                        ?current.filter(id=>id!==order.id):[...current,order.id])}>
+                      <span className="warehouse-bulk-order-number">{index+1}</span>
+                      <span className="warehouse-bulk-order-identity">
+                        <b>{order.label}</b>
+                        <small>{order.lines} sản phẩm · {order.inLines} nhập · {order.skippedLines} bỏ qua · {order.stockUnits} đơn vị</small>
+                      </span>
+                      <span aria-hidden="true" className="warehouse-bulk-expand-icon">{expanded?'⌄':'›'}</span>
+                    </button>
+                    <button type="button" className="warehouse-bulk-edit-order" disabled={busy}
+                      onClick={()=>onOpenOrder(order.id)} title={'Mở bóc tách đơn '+order.label}>
+                      Sửa bóc tách
+                    </button>
+                  </div>
+                  {expanded&&<div className="warehouse-bulk-order-details">
+                    <table className="warehouse-bulk-review-table">
+                      <thead><tr><th>Sản phẩm mua</th><th>SKU bán ghép</th>
+                        <th>SL mua → nhập</th><th>Giá nhập/SP</th>
+                        <th>Giá bán/SP</th><th>Quyết định</th></tr></thead>
+                      <tbody>{order.items.map(item=>
+                        <tr key={item.id} className={item.decision==='SKIP'?'warehouse-bulk-skip-row':''}>
+                          <td data-label="Sản phẩm mua" title={item.name}><b>{item.name}</b>
+                            {item.variant&&<small>{item.variant}</small>}</td>
+                          <td data-label="SKU bán ghép" title={item.skuName??''}><b>{item.sku??'Chưa ghép'}</b>
+                            <small>{item.skuName??'Chưa có tên SKU'}</small></td>
+                          <td data-label="SL mua → nhập"><b>{item.quantity} → {item.decision==='SKIP'?0:item.stockUnits}</b>
+                            <small>Quy đổi ×{item.multiplier}</small></td>
+                          <td data-label="Giá nhập/SP" title={'Giá gốc/SP: '+price(item.originalPrice)}>
+                            <b>{price(item.purchasePrice)}</b><small>Sau giảm/SP</small></td>
+                          <td data-label="Giá bán/SP"><b>{price(item.salePrice)}</b><small>
+                            {item.salePriceSource==='SAVED'?'Đã lưu khi bóc tách':
+                              item.salePriceSource==='CATALOG'?'Giá bán danh mục':'Chưa có giá bán'}</small></td>
+                          <td data-label="Quyết định"><b className={'warehouse-bulk-decision '+(item.decision==='IN'?'in':'skip')}>
+                            {item.decision==='IN'?'Nhập kho':'Bỏ qua kho'}</b>
+                            <small>{item.decisionSaved?'Đã lưu quyết định':'Theo luồng nhập toàn bộ'}</small>
+                            {item.reason&&<small title={item.reason}>Lý do: {item.reason}</small>}</td>
+                        </tr>)}</tbody>
+                    </table>
+                  </div>}
+                </section>
+              })}
             </div>
             <div className="warehouse-bulk-note-info"><b>Kiểm tra trước khi ghi tồn</b>
               <span>Dòng Bỏ qua không làm tăng tồn. Bấm mã đơn để quay lại slidebar và sửa SKU, giá bán hoặc quyết định kho.</span></div>
