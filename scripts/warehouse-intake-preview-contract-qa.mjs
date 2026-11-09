@@ -244,6 +244,18 @@ const checks=[
     bulkBar.includes("onOpenOrder(order.id)") &&
     css.includes('.warehouse-bulk-backdrop .warehouse-bulk-review-table') &&
     css.includes('@media(max-width:720px)')],
+  ['bulk review groups visually identical orders without losing per-item decisions',
+    bulkBar.includes("orders.map((order,index)=>") &&
+    bulkBar.includes('data-review-order={order.id}') &&
+    bulkBar.includes('aria-expanded={expanded}') &&
+    bulkBar.includes('expandedOrders.includes(order.id)') &&
+    bulkBar.includes('setExpandedOrders(orders[0]?[orders[0].id]:[])') &&
+    bulkBar.includes("'Thu gọn tất cả':'Mở tất cả'") &&
+    bulkBar.includes('order.items.map(item=>') &&
+    bulkBar.includes('warehouse-bulk-order-heading') &&
+    bulkBar.includes("item.decision==='IN'?'Nhập kho':'Bỏ qua kho'") &&
+    css.includes('.warehouse-bulk-order-identity') &&
+    css.includes('.warehouse-bulk-order-details')],
   ['receiving table shows seven focused columns including matched SKU and prices',
     table.includes("const TABLE_COLUMNS:TableCol[]=['order','received','sku','product','purchase','sale','status']") &&
     table.includes("purchase:'Giá nhập',sale:'Giá bán'") &&
