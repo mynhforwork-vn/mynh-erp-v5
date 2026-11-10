@@ -4,6 +4,7 @@ import { useEffect,useMemo,useRef,useState,type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatDateTime,formatMoney } from '@/lib/format'
 import { WarehouseBulkReceiveBar,type BulkOrderPreview } from '@/components/warehouse-bulk-receive-bar'
+import { WarehouseInlineSkuHistoryPicker } from '@/components/warehouse-inline-sku-history-picker'
 import { bulkReceiveWarehouseOrders,type WarehouseBulkResult } from '@/lib/actions/warehouse-bulk-receive'
 import { WarehouseIntakeDetailPreview } from '@/components/warehouse-intake-detail-preview'
 import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
@@ -242,6 +243,10 @@ export function WarehouseIntakeWorkspace({
   const [selected,setSelected]=useState<string[]>([])
   const [bulkReviewGroup,setBulkReviewGroup]=useState<string|null>(null)
   const [bulkFeedback,setBulkFeedback]=useState<WarehouseBulkResult|null>(null)
+  const [quickSkuTarget,setQuickSkuTarget]=useState<{
+    orderItemId:string;orderLabel:string;productName:string;
+    sourceVariant:string|null;quantity:number;left:number;top:number;bottom:number
+  }|null>(null)
   const router=useRouter()
   const quickInFlight=useRef(false)
   const [quickReceivingId,setQuickReceivingId]=useState<string|null>(null)
@@ -279,6 +284,19 @@ export function WarehouseIntakeWorkspace({
       quickInFlight.current=false
       setQuickReceivingId(null)
     }
+  }
+  function openSkuHistory(event:React.MouseEvent<HTMLButtonElement>,row:Row,item:Item){
+    event.stopPropagation()
+    if(isDone(row)||item.product_variant_id)return
+    const matches=(suggestions[item.id]??[])
+      .filter(suggestion=>variants.some(variant=>variant.id===suggestion.variant_id))
+    if(!matches.length)return
+    const rect=event.currentTarget.getBoundingClientRect()
+    setQuickSkuTarget({
+      orderItemId:item.id,orderLabel:row.shopee_order_id??row.id.slice(0,8),
+      productName:item.product_name,sourceVariant:item.variant??null,
+      quantity:Number(item.quantity),left:rect.left,top:rect.top,bottom:rect.bottom
+    })
   }
   function handleBulkResult(result:WarehouseBulkResult){
     setBulkFeedback(result)
@@ -466,14 +484,25 @@ export function WarehouseIntakeWorkspace({
                 return formatMoney(value)
               }
               if(col==='sku')return <td key={col} {...attributes} className="warehouse-unified-skus">
-                {row.order_items.map(item=><div key={item.id} className="warehouse-unified-product-line"
-                  title={[item.product_variants?.products?.sku??'Chưa ghép SKU',item.product_variants?.products?.name].filter(Boolean).join(' · ')}>
-                  <span className="warehouse-unified-sku-identity">
-                    <b>{item.product_variants?.products?.sku??'Chưa ghép'}</b>
-                    {item.product_variants?.products?.name&&
-                      <span className="warehouse-unified-sku-title">{item.product_variants.products.name}</span>}
-                  </span>
-                </div>)}
+                {row.order_items.map(item=>{
+                  const historical=(suggestions[item.id]??[])
+                    .filter(option=>variants.some(variant=>variant.id===option.variant_id))
+                  const canSuggest=!isDone(row)&&!item.product_variant_id&&historical.length>0
+                  return <div key={item.id} className="warehouse-unified-product-line"
+                    title={[item.product_variants?.products?.sku??'Chưa ghép SKU',item.product_variants?.products?.name].filter(Boolean).join(' · ')}>
+                    <span className="warehouse-unified-sku-identity">
+                      {canSuggest?<button type="button" className="warehouse-inline-sku-trigger"
+                        title={'Có '+historical.length+' gợi ý SKU từ lịch sử đã lưu'}
+                        aria-label={'Chờ ghép SKU · '+historical.length+' gợi ý cho '+item.product_name}
+                        aria-haspopup="dialog" aria-expanded={quickSkuTarget?.orderItemId===item.id}
+                        onClick={event=>openSkuHistory(event,row,item)}>
+                        Chờ ghép <small>{historical.length} gợi ý</small>
+                      </button>:<b>{item.product_variants?.products?.sku??'Chưa ghép'}</b>}
+                      {item.product_variants?.products?.name&&
+                        <span className="warehouse-unified-sku-title">{item.product_variants.products.name}</span>}
+                    </span>
+                  </div>
+                })}
               </td>
               if(col==='product')return <td key={col} {...attributes} className="warehouse-unified-products">
                 {row.order_items.length?row.order_items.map(item=><div key={item.id} className="warehouse-unified-product-line"
@@ -507,8 +536,14 @@ export function WarehouseIntakeWorkspace({
                     item.product_variant_id?'Dự kiến nhập':'Chưa ghép'
                   return <div key={item.id} className="warehouse-unified-product-line"
                     title={saved?status+' · Đã lưu quyết định'+(saved.skip_reason?' · '+saved.skip_reason:''):status}>
-                    <span className={'status-pill '+(saved?.decision==='IN'||isDone(row)?'green':
-                      saved?.decision==='SKIP'?'status-muted':'orange')}>{status}</span>
+                    {!isDone(row)&&!item.product_variant_id&&
+                      (suggestions[item.id]??[]).some(option=>variants.some(variant=>variant.id===option.variant_id))
+                      ?<button type="button" className="status-pill orange warehouse-inline-sku-status-trigger"
+                        aria-label={'Chờ ghép SKU từ lịch sử cho '+item.product_name}
+                        aria-haspopup="dialog" aria-expanded={quickSkuTarget?.orderItemId===item.id}
+                        onClick={event=>openSkuHistory(event,row,item)}>Chờ ghép</button>
+                      :<span className={'status-pill '+(saved?.decision==='IN'||isDone(row)?'green':
+                        saved?.decision==='SKIP'?'status-muted':'orange')}>{status}</span>}
                   </div>
                 })}
               </td>
@@ -596,6 +631,14 @@ export function WarehouseIntakeWorkspace({
             </section>
           })}
     </section>
+    {quickSkuTarget&&<WarehouseInlineSkuHistoryPicker
+      key={quickSkuTarget.orderItemId}
+      target={quickSkuTarget}
+      history={suggestions[quickSkuTarget.orderItemId]??[]}
+      variants={variants} previewOnly={previewOnly}
+      onClose={()=>setQuickSkuTarget(null)}
+      onSaved={label=>setQuickNotice({kind:'success',message:'Đã lưu ghép SKU cho đơn '+label+' · Chưa nhập kho.'})}
+    />}
     {active&&<WarehouseIntakeDetailPreview key={active.id}
       order={active} variants={variants} auditLogs={auditLogs}
       suggestions={suggestions} itemDecisions={itemDecisions}
