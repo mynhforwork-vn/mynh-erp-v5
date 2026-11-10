@@ -551,7 +551,7 @@ export function WarehouseIntakeWorkspace({
                           ?<>{variant.products?.sku??'SKU gợi ý'}
                             {historical.length>1&&<small>+{historical.length-1}</small>}</>
                           :'Chờ ghép'}
-                      </button>}
+                      </button>
                       {canSuggest&&proposed&&variant&&
                         <button type="button" className="warehouse-inline-sku-confirm"
                           title={canConfirm
