@@ -392,7 +392,7 @@ const checks=[
     inlinePicker.includes('Tạo SKU mới') &&
     inlinePicker.includes('Mã SKU bán mới ghép nhanh') &&
     inlinePicker.includes("mode==='new'?newCode:null") &&
-    inlinePicker.includes("mode==='new'?validNew:!!selected||unmappedSkip") &&
+    inlinePicker.includes("mode==='new'?validNew:mode==='variant'?validVariant:!!selected||unmappedSkip") &&
     inlinePicker.includes("decision==='SKIP'?skipReason.trim():null") &&
     inlinePicker.includes('await saveWarehouseItemDecision({') &&
     inlinePicker.includes('const canSave=!previewOnly') &&
