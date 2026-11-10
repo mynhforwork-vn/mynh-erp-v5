@@ -489,6 +489,9 @@ export function WarehouseIntakeWorkspace({
                 .map(row=>bulkPreview(row,itemDecisions))
                 .filter((item):item is BulkOrderPreview=>!!item)
             const groupSelected=selectedOrders.length
+            // Layout class comes from orders actually displayed in this warehouse.
+            // 0 orders: no card; 1/2: compact content; 3+: elastic, scrollable.
+            const groupRowMode=group.rows.length===1?'one':group.rows.length===2?'two':'many'
             const columnWidths=autoFitColumnWidths(tableColumns.visible,laneWidth)
             const cell=(row:Row,col:TableCol)=>{
               const attributes={'data-col':col,'data-label':TABLE_LABELS[col]}
@@ -653,10 +656,12 @@ export function WarehouseIntakeWorkspace({
                 })}
               </td>
             }
-            return <section className={'card tracking-hub-card tracking-hub-card-v2 warehouse-receive-card warehouse-unified-group '+(open?'open':'collapsed')+(groupSelected>0?' with-bulk-selection':'')}
+            return <section className={'card tracking-hub-card tracking-hub-card-v2 warehouse-receive-card warehouse-unified-group warehouse-rows-'+groupRowMode+' '+(open?'open':'collapsed')+(groupSelected>0?' with-bulk-selection':'')}
               key={group.id} data-warehouse-code={group.code}
               data-warehouse-rows={group.rows.length}
-              data-warehouse-actionable={waiting.length}>
+              data-warehouse-row-mode={groupRowMode}
+              data-warehouse-actionable={waiting.length}
+              style={{'--warehouse-dense-weight':Math.min(group.rows.length,30)} as React.CSSProperties}>
               <div className="tracking-hub-head-v2 warehouse-unified-group-head">
                 <button type="button" className="tracking-hub-toggle" aria-label={(open?'Thu gọn ':'Mở ')+group.code}
                   aria-expanded={open} onClick={()=>toggleGroup(group.id)}><span>{open?'⌄':'›'}</span></button>
