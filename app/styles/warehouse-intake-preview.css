@@ -752,19 +752,22 @@
 .warehouse-receive-screen .warehouse-inline-sku-status-trigger:hover{
   border-color:#bd9257;background:#fff2db;
 }
-/* Per-product skip is an independent action in the status column, not a
-   substitute SKU. Its confirmation asks for a reason and creates no stock. */
-.warehouse-receive-screen .warehouse-unified-status .warehouse-inline-item-skip-trigger{
-  display:inline-flex;align-items:center;justify-content:center;
-  box-sizing:border-box;max-width:100%;min-height:22px;
-  padding:2px 6px;border:1px solid #dcc9ae;border-radius:5px;
+/* Bỏ qua kho is paired with Chờ ghép/SKU in the SKU column, while the
+   status column remains informative. Keep the action compact and aligned. */
+.warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-sku-pair .warehouse-inline-item-skip-trigger{
+  display:inline-flex;align-items:center;justify-content:center;gap:3px;
+  box-sizing:border-box;flex:0 0 auto;min-height:19px;min-width:19px;
+  margin:0;padding:1px 4px;border:1px solid #dcc9ae;border-radius:4px;
   background:#fff8ef;color:#805e38;cursor:pointer;
-  font-size:9.5px;font-weight:600;white-space:nowrap;
+  font:inherit;font-size:9px;font-weight:600;line-height:1.3;white-space:nowrap;
 }
-.warehouse-receive-screen .warehouse-unified-status .warehouse-inline-item-skip-trigger:hover{
+.warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-item-skip-trigger svg{
+  display:block;flex:0 0 11px;width:11px;height:11px;
+}
+.warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-item-skip-trigger:hover{
   background:#fff0dc;border-color:#cdaa7f;
 }
-.warehouse-receive-screen .warehouse-unified-status .warehouse-inline-item-skip-trigger:focus-visible{
+.warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-item-skip-trigger:focus-visible{
   outline:2px solid #438b82;outline-offset:2px;
 }
 .warehouse-inline-item-skip .warehouse-inline-skip-reason{
@@ -782,6 +785,12 @@
     max-width:100%;padding:2px 3px;font-size:9px;
   }
   .warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-sku-trigger small{
+    display:none;
+  }
+  .warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-sku-pair .warehouse-inline-item-skip-trigger{
+    width:19px;height:19px;min-width:19px;min-height:19px;padding:0;
+  }
+  .warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-item-skip-trigger span{
     display:none;
   }
 }
