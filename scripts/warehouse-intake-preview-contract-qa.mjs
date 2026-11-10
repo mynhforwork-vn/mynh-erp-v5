@@ -13,6 +13,7 @@ const actions=read('lib/actions/warehouse-item-decisions.ts')
 const bulkActions=read('lib/actions/warehouse-bulk-receive.ts')
 const bulkBar=read('components/warehouse-bulk-receive-bar.tsx')
 const skuHistory=read('lib/warehouse-sku-suggestions.ts')
+const inlinePicker=read('components/warehouse-inline-sku-history-picker.tsx')
 const config=read('wrangler.jsonc')
 const checks=[
   ['only Warehouse receive page uses the changed scoped stylesheet',
@@ -341,6 +342,27 @@ const checks=[
     panel.includes('Đã từng ghép với nhiều SKU') &&
     !panel.includes('onClick={applySuggestion}') &&
     panelCss.includes('.warehouse-detail-v2-suggestion-entry')],
+  ['inline waiting-SKU suggestions require verified historical matches and explicit save',
+    table.includes("from '@/components/warehouse-inline-sku-history-picker'") &&
+    table.includes('warehouse-inline-sku-trigger') &&
+    table.includes('warehouse-inline-sku-status-trigger') &&
+    table.includes('openSkuHistory(event,row,item)') &&
+    table.includes('!isDone(row)&&!item.product_variant_id&&historical.length>0') &&
+    table.includes('warehouse-inline-sku-history-picker')===false &&
+    table.includes('<WarehouseInlineSkuHistoryPicker') &&
+    inlinePicker.includes("history.filter(item=>variants.some(variant=>variant.id===item.variant_id))") &&
+    inlinePicker.includes('Đã tìm thấy {available.length} SKU từng ghép') &&
+    inlinePicker.includes('matchText(option.match_kind)') &&
+    inlinePicker.includes('option.history_count') &&
+    inlinePicker.includes("const [decision,setDecision]=useState<Decision|null>(null)") &&
+    inlinePicker.includes("decision==='SKIP'?skipReason.trim():null") &&
+    inlinePicker.includes('await saveWarehouseItemDecision({') &&
+    inlinePicker.includes('previewOnly&&!busy')===false &&
+    inlinePicker.includes('const canSave=!previewOnly') &&
+    !inlinePicker.includes('finalizeWarehouseItemDecisions') &&
+    !inlinePicker.includes('receiveOrdersIntoWarehouse') &&
+    css.includes('.warehouse-inline-sku-history{') &&
+    css.includes('position:fixed;z-index:3200')],
   ['V2 slidebar height internal scroll and fixed footer',
     panelCss.includes('.warehouse-detail-v2-scroll') &&
     panelCss.includes('flex:1 1 auto!important') &&
