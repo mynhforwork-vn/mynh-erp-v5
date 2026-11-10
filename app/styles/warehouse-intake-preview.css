@@ -733,6 +733,22 @@
   font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;
 }
+/* COD note belongs to the unparsed order, directly under received time.
+   It shares the exact start edge with the order code, not a new table column. */
+.warehouse-receive-screen .warehouse-unified-table .warehouse-unified-pending-cod{
+  display:block;box-sizing:border-box;max-width:100%;min-width:0;
+  margin-top:2px;padding:0;color:#607b8b;font-size:9.8px;line-height:1.4;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.warehouse-receive-screen .warehouse-unified-table .warehouse-unified-pending-cod strong{
+  color:#3f6175;font-weight:650;
+}
+@container warehouse-lane (max-width:550px){
+  .warehouse-receive-screen .warehouse-unified-table .warehouse-unified-pending-cod{
+    font-size:9px;
+  }
+}
 .warehouse-receive-screen .warehouse-unified-sku-identity{
   display:flex;align-items:baseline;gap:5px;width:100%;min-width:0;
   white-space:nowrap;overflow:hidden;
