@@ -7,6 +7,7 @@ import { resolveOrderValue } from '@/lib/order-prepaid'
 import { WarehouseBulkReceiveBar,type BulkOrderPreview } from '@/components/warehouse-bulk-receive-bar'
 import { WarehouseInlineSkuHistoryPicker } from '@/components/warehouse-inline-sku-history-picker'
 import { bulkReceiveWarehouseOrders,type WarehouseBulkResult } from '@/lib/actions/warehouse-bulk-receive'
+import { saveWarehouseItemDecision } from '@/lib/actions/warehouse-item-decisions'
 import { WarehouseIntakeDetailPreview } from '@/components/warehouse-intake-detail-preview'
 import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
 import type {HistoricalSuggestion} from '@/lib/warehouse-sku-suggestions'
@@ -250,6 +251,8 @@ export function WarehouseIntakeWorkspace({
   }|null>(null)
   const router=useRouter()
   const quickInFlight=useRef(false)
+  const quickSkuInFlight=useRef(false)
+  const [quickMappingId,setQuickMappingId]=useState<string|null>(null)
   const [quickReceivingId,setQuickReceivingId]=useState<string|null>(null)
   const [quickNotice,setQuickNotice]=useState<{kind:'success'|'error';message:string}|null>(null)
   useEffect(()=>{
@@ -284,6 +287,42 @@ export function WarehouseIntakeWorkspace({
     }finally{
       quickInFlight.current=false
       setQuickReceivingId(null)
+    }
+  }
+  // Display the best ranked historic mapping as an UNSAVED draft, and write
+  // only after the operator explicitly clicks its per-item confirmation.
+  async function confirmSuggestedSku(row:Row,item:Item,suggestion:HistoricalSuggestion){
+    if(previewOnly||isDone(row)||item.product_variant_id||quickSkuInFlight.current)return
+    const variant=variants.find(value=>value.id===suggestion.variant_id)
+    const rawPrice=variant?.sale_price
+    const price=rawPrice===null||rawPrice===undefined||String(rawPrice).trim()===''
+      ?NaN:Number(rawPrice)
+    const multiplier=Number(suggestion.multiplier)
+    if(!variant||!Number.isFinite(price)||price<0||price>999999999||
+      !Number.isInteger(multiplier)||multiplier<1||multiplier>100000){
+      setQuickNotice({kind:'error',message:'Gợi ý thiếu giá bán hoặc hệ số hợp lệ. Hãy mở Chờ ghép để kiểm tra.'})
+      return
+    }
+    quickSkuInFlight.current=true
+    setQuickMappingId(item.id)
+    setQuickNotice(null)
+    try{
+      await saveWarehouseItemDecision({
+        orderItemId:item.id,variantId:variant.id,
+        newSku:null,newName:null,newVariant:null,
+        salePrice:price,multiplier,decision:'IN',skipReason:null
+      })
+      const sku=variant.products?.sku??'SKU đã chọn'
+      setQuickNotice({kind:'success',message:
+        'Đã lưu ghép nháp '+sku+' · '+(row.shopee_order_id??row.id.slice(0,8))+
+        '. Chưa ghi tăng tồn kho.'})
+      router.refresh()
+    }catch(error){
+      setQuickNotice({kind:'error',message:'Không thể lưu ghép SKU · '+
+        (error instanceof Error?error.message:'Vui lòng thử lại.')})
+    }finally{
+      quickSkuInFlight.current=false
+      setQuickMappingId(null)
     }
   }
   function openSkuHistory(event:React.MouseEvent<HTMLButtonElement>,row:Row,item:Item){
@@ -492,6 +531,14 @@ export function WarehouseIntakeWorkspace({
                   const historical=(suggestions[item.id]??[])
                     .filter(option=>variants.some(variant=>variant.id===option.variant_id))
                   const canSuggest=!isDone(row)&&!item.product_variant_id
+                  const proposed=historical[0]
+                  const variant=proposed?variants.find(value=>value.id===proposed.variant_id):null
+                  const price=variant?.sale_price
+                  const validPrice=price!==null&&price!==undefined&&String(price).trim()!==''&&
+                    Number.isFinite(Number(price))&&Number(price)>=0&&Number(price)<=999999999
+                  const validFactor=!!proposed&&Number.isInteger(Number(proposed.multiplier))&&
+                    Number(proposed.multiplier)>0&&Number(proposed.multiplier)<=100000
+                  const canConfirm=canSuggest&&!!variant&&validPrice&&validFactor
                   return <div key={item.id} className="warehouse-unified-product-line"
                     title={[item.product_variants?.products?.sku??'Chưa ghép SKU',item.product_variants?.products?.name].filter(Boolean).join(' · ')}>
                     <span className="warehouse-unified-sku-identity">
@@ -500,8 +547,31 @@ export function WarehouseIntakeWorkspace({
                         aria-label={'Chờ ghép SKU · '+historical.length+' gợi ý cho '+item.product_name}
                         aria-haspopup="dialog" aria-expanded={quickSkuTarget?.orderItemId===item.id}
                         onClick={event=>openSkuHistory(event,row,item)}>
-                        Chờ ghép {historical.length>0&&<small>{historical.length} gợi ý</small>}
+                        {proposed&&variant
+                          ?<>Nháp: {variant.products?.sku??'SKU đã ghép trước'}
+                            {historical.length>1&&<small>+{historical.length-1}</small>}</>
+                          :'Chờ ghép'}
                       </button>:<b>{item.product_variants?.products?.sku??'Chưa ghép'}</b>}
+                      {canSuggest&&proposed&&variant&&
+                        <button type="button" className="warehouse-inline-sku-confirm"
+                          title={canConfirm
+                            ?'Lưu ghép nháp '+(variant.products?.sku??'SKU')+' · Dự kiến nhập kho, chưa ghi tồn'
+                            :'Gợi ý thiếu giá hoặc hệ số hợp lệ. Hãy mở để kiểm tra'}
+                          aria-label={'Xác nhận ghép nháp SKU '+(variant.products?.sku??'SKU')+' cho '+item.product_name}
+                          disabled={previewOnly||quickMappingId!==null||!canConfirm}
+                          aria-busy={quickMappingId===item.id}
+                          onClick={event=>{
+                            event.stopPropagation()
+                            void confirmSuggestedSku(row,item,proposed)
+                          }}>
+                          {quickMappingId===item.id
+                            ?<span className="warehouse-quick-spinner" aria-hidden="true"/>
+                            :<svg viewBox="0 0 16 16" width="14" height="14" fill="none"
+                              stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
+                              strokeLinejoin="round" aria-hidden="true">
+                              <path d="m3 8 3.2 3.2L13 4.5"/>
+                            </svg>}
+                        </button>}
                       {item.product_variants?.products?.name&&
                         <span className="warehouse-unified-sku-title">{item.product_variants.products.name}</span>}
                     </span>
@@ -534,8 +604,8 @@ export function WarehouseIntakeWorkspace({
               return <td key={col} {...attributes} className="warehouse-unified-status">
                 {row.order_items.map(item=>{
                   const saved=itemDecisions[item.id]
-                  const status=saved?.decision==='SKIP'?'Bỏ qua kho':
-                    saved?.decision==='IN'?'Nhập kho':
+                  const status=saved?.decision==='SKIP'?(isDone(row)?'Bỏ qua kho':'Dự kiến bỏ qua'):
+                    saved?.decision==='IN'?(isDone(row)?'Nhập kho':'Dự kiến nhập'):
                     isDone(row)?phaseLabel(row):
                     item.product_variant_id?'Dự kiến nhập':'Chưa ghép'
                   return <div key={item.id} className="warehouse-unified-product-line"
