@@ -708,19 +708,25 @@
   flex:0 1 auto;font-size:8.5px;font-weight:500;
   color:#527d91;white-space:nowrap;min-width:0;
 }
-/* History-derived SKU draft is visible before any write; a single compact
-   confirmation control saves only the SKU decision, not inventory balance. */
-.warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-sku-trigger{
-  flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;
+/* One narrow inline rail keeps the suggested SKU and its confirm icon
+   centered on the same baseline, including when the table is compressed. */
+.warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-sku-pair{
+  display:inline-flex;flex:0 1 auto;align-items:center;gap:3px;
+  box-sizing:border-box;min-width:0;max-width:100%;vertical-align:middle;
+  white-space:nowrap;overflow:hidden;
+}
+.warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-sku-pair .warehouse-inline-sku-trigger{
+  flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  line-height:1.35;padding:1px 3px;
 }
 .warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-sku-confirm{
   display:inline-grid;place-items:center;box-sizing:border-box;
-  flex:0 0 23px;width:23px;height:23px;min-width:23px;
-  padding:0;margin:0;border:1px solid #a7d1bb;border-radius:5px;
-  background:#eaf7ef;color:#256b4b;cursor:pointer;
+  flex:0 0 18px;width:18px;height:18px;min-width:18px;min-height:18px;
+  padding:0;margin:0;border:1px solid #bfdbcd;border-radius:4px;
+  background:#f5fbf7;color:#28694d;cursor:pointer;
 }
 .warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-sku-confirm:hover:not(:disabled){
-  background:#d5f0e2;border-color:#76b999;
+  background:#e4f3ea;border-color:#86bda0;
 }
 .warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-sku-confirm:disabled{
   opacity:.45;cursor:not-allowed;
