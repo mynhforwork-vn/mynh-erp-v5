@@ -321,6 +321,35 @@ try {
       assert.ok(afterClose.productWidth>list.tableGeometry[0].productWidth+60,
         'product column must expand to use newly available table width '+width+' '+JSON.stringify(afterClose))
     }
+    // Selection/indentation QA on the same Desktop, Tablet and Mobile matrix:
+    // native checkbox semantics, a visible custom mark, and one aligned order/date axis.
+    const selectionGeometry=await page.locator('.warehouse-unified-table').first().evaluate(table=>{
+      const first=table.querySelector('tbody tr td[data-col="order"]')
+      const code=first?.querySelector('.warehouse-unified-order .table-link')
+      const date=first?.querySelector('.warehouse-unified-received-at')
+      const rowSlot=first?.querySelector('.warehouse-bulk-select-control,.warehouse-bulk-select-spacer')
+      const headSlot=table.querySelector('thead .warehouse-bulk-select-control')
+      return {
+        dateLeft:date?.getBoundingClientRect().left,
+        codeLeft:code?.getBoundingClientRect().left,
+        rowSlotLeft:rowSlot?.getBoundingClientRect().left,
+        headSlotLeft:headSlot?.getBoundingClientRect().left,
+        hitWidth:rowSlot?.getBoundingClientRect().width,
+      }
+    })
+    assert.ok(Math.abs(selectionGeometry.codeLeft-selectionGeometry.dateLeft)<=1.5,
+      'order/date must share a left edge '+width+' '+JSON.stringify(selectionGeometry))
+    assert.ok(Math.abs(selectionGeometry.rowSlotLeft-selectionGeometry.headSlotLeft)<=6,
+      'header/body checkbox gutters must align '+width+' '+JSON.stringify(selectionGeometry))
+    assert.ok(selectionGeometry.hitWidth>=21,
+      'bulk checkbox touch target became too small '+width+' '+JSON.stringify(selectionGeometry))
+    const bulkTick=page.locator('.warehouse-unified-group').first().locator('tbody .warehouse-bulk-select-checkbox').first()
+    await bulkTick.check()
+    assert.equal(await bulkTick.isChecked(),true,'select row works '+width)
+    const tickMark=await bulkTick.evaluate(input=>getComputedStyle(input.nextElementSibling).backgroundColor)
+    assert.equal(tickMark,'rgb(67, 139, 130)','selected checkbox has transport-alert green '+width)
+    await bulkTick.uncheck()
+    assert.equal(await bulkTick.isChecked(),false,'unselect row works '+width)
     if(width===1280){
       const bg=page.locator('.warehouse-unified-group').first()
       const hn=page.locator('.warehouse-unified-group').last()
