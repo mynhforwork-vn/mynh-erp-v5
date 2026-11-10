@@ -180,8 +180,12 @@ BEGIN
     FROM public.inventory_balances q WHERE q.product_variant_id=p_source;
   SELECT count(*) INTO v_open_orders FROM public.order_items oi
     JOIN public.orders o ON o.id=oi.order_id
-    WHERE oi.product_variant_id=p_source AND o.receive_status='RECEIVED'
-      AND o.warehouse_status='READY_TO_TRANSFER' AND o.archived_at IS NULL;
+    WHERE oi.product_variant_id=p_source
+      AND o.archived_at IS NULL
+      -- Orders mapped to this SKU but not finally warehoused may still post
+      -- stock later. Never retire their SKU prematurely.
+      AND o.warehouse_status::text NOT IN
+        ('WAREHOUSE_RECEIVED','WAREHOUSE_MIXED','WAREHOUSE_SKIPPED','TRANSFERRED');
   SELECT count(*) INTO v_drafts FROM public.warehouse_item_decisions
     WHERE product_variant_id=p_source AND processing_state='DRAFT';
   SELECT count(*) INTO v_transfers FROM public.transfer_items ti
