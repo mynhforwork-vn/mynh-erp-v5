@@ -143,14 +143,14 @@ function bulkPreview(row:Row,decisions:Record<string,ItemDecision>):BulkOrderPre
     const quantity=Number(item.quantity)
     if(!Number.isInteger(quantity)||quantity<1)return false
     if(!hasDraft)return !!item.product_variant_id&&
-      Number.isInteger(Number(item.inventory_multiplier))&&Number(item.inventory_multiplier)>0
+      Number.isInteger(Number(item.inventory_multiplier??1))&&Number(item.inventory_multiplier??1)>0
     if(!record||record.processing_state!=='DRAFT')return false
     const skipped=record.decision==='SKIP'&&!!String(record.skip_reason??'').trim()
     const noSkuSkip=skipped&&!item.product_variant_id&&record.product_variant_id===null&&
       Number(record.multiplier)===1&&Number(record.sale_price)===0
     if(noSkuSkip)return true
     return !!item.product_variant_id&&record.product_variant_id===item.product_variant_id&&
-      Number(record.multiplier)===Number(item.inventory_multiplier)&&
+      Number(record.multiplier)===Number(item.inventory_multiplier??1)&&
       Number.isInteger(Number(record.multiplier))&&Number(record.multiplier)>0&&
       Number.isFinite(Number(record.sale_price))&&Number(record.sale_price)>=0&&
       (record.decision==='IN'||skipped)&&
