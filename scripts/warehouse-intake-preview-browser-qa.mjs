@@ -1064,7 +1064,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   const page=await browser.newPage({viewport:{width,height}})
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="history">'),{waitUntil:'load'})
   const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
-  const draft=bg.locator('.warehouse-inline-sku-trigger').filter({hasText:'TEST-01'})
+  const draft=bg.locator('.warehouse-inline-sku-trigger:not(.warehouse-inline-sku-edit-trigger)').filter({hasText:'TEST-01'})
   assert.equal(await draft.count(),1,'one ranked old SKU is prefilled as a draft '+width)
   assert.equal(await bg.locator('.warehouse-inline-sku-confirm').count(),1,
     'only the mapped-history draft gets one-click confirmation '+width)
@@ -1122,7 +1122,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
 {
   const page=await browser.newPage({viewport:{width:1280,height:800}})
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="history">'),{waitUntil:'load'})
-  await page.locator('.warehouse-inline-sku-trigger').filter({hasText:'TEST-01'}).click()
+  await page.locator('.warehouse-inline-sku-trigger:not(.warehouse-inline-sku-edit-trigger)').filter({hasText:'TEST-01'}).click()
   const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
   await picker.getByRole('button',{name:/ALT-02/}).click()
   await picker.getByRole('button',{name:'Lưu ghép SKU'}).click()
@@ -1162,7 +1162,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
 {
   const page=await browser.newPage({viewport:{width:1280,height:800}})
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="history">'),{waitUntil:'load'})
-  await page.locator('.warehouse-inline-sku-trigger').filter({hasText:'TEST-01'}).click()
+  await page.locator('.warehouse-inline-sku-trigger:not(.warehouse-inline-sku-edit-trigger)').filter({hasText:'TEST-01'}).click()
   const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
   await picker.getByRole('button',{name:'Bỏ qua kho',exact:true}).click()
   assert.equal(await picker.getByRole('button',{name:'Lưu ghép SKU'}).isDisabled(),true,
