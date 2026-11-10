@@ -346,8 +346,12 @@ try {
     const bulkTick=page.locator('.warehouse-unified-group').first().locator('tbody .warehouse-bulk-select-checkbox').first()
     await bulkTick.check()
     assert.equal(await bulkTick.isChecked(),true,'select row works '+width)
-    const tickMark=await bulkTick.evaluate(input=>getComputedStyle(input.nextElementSibling).backgroundColor)
-    assert.equal(tickMark,'rgb(67, 139, 130)','selected checkbox has transport-alert green '+width)
+    // The selection mark animates its background over 120ms: wait for its
+    // final visual state instead of sampling the first animation frame.
+    await page.waitForFunction(()=>{
+      const mark=document.querySelector('.warehouse-unified-group tbody input.warehouse-bulk-select-checkbox:checked + .warehouse-bulk-select-mark')
+      return !!mark&&getComputedStyle(mark).backgroundColor==='rgb(67, 139, 130)'
+    },null,{timeout:2000})
     await bulkTick.uncheck()
     assert.equal(await bulkTick.isChecked(),false,'unselect row works '+width)
     if(width===1280){
