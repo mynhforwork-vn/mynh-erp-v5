@@ -1,0 +1,101 @@
+name: PR90 Approved Warehouse Production One-Shot
+
+# Owner approved PR90 merge, SQL 0076, release, then Preview cleanup.
+# Only this workflow's one-time addition on top of reviewed merge cda30b67
+# may trigger this release. Subsequent pushes never redeploy through this file.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/pr90-warehouse-production-one-shot.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: "${{ startsWith(github.event.head_commit.message, 'release(warehouse): PR90 one-time approved production') }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PRODUCTION_URL: https://mynh-erp-v5.mynh-forwork.workers.dev
+      PRODUCTION_ALIAS: https://erp.mynh-forwork.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify exact approved commit, scope and credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD^)" = 'cda30b678004fce64e6f37565fb413c9df418f22'
+          test "$(git diff --name-only HEAD^ HEAD)" = '.github/workflows/pr90-warehouse-production-one-shot.yml'
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -f supabase/migrations/0076_skip_unmapped_warehouse_item.sql
+          test -f lib/actions/warehouse-item-decisions.ts
+          grep -q 'ALTER COLUMN product_variant_id DROP NOT NULL' supabase/migrations/0076_skip_unmapped_warehouse_item.sql
+          grep -q 'skip_warehouse_item_without_sku' supabase/migrations/0076_skip_unmapped_warehouse_item.sql
+          grep -q '"ERP_WAREHOUSE_V2_LIVE": "true"' wrangler.jsonc
+          grep -q '"ERP_WAREHOUSE_V2_LIVE": "false"' wrangler.jsonc
+          echo "Reviewed base cda30b67 and migration 0076 verified separately in Production Supabase"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Warehouse contracts and cross-module regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/warehouse-intake-preview-contract-qa.mjs
+          node scripts/warehouse-sku-suggestion-qa.mjs
+          node scripts/warehouse-bulk-action-qa.mjs
+          node --experimental-strip-types scripts/returned-shipment-cancellation-qa.mjs
+          node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+          node scripts/remediation-static-qa.mjs
+          npm run typecheck
+
+      - name: Build and deploy only MYNH ERP V5 Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx opennextjs-cloudflare build
+          npx opennextjs-cloudflare deploy
+
+      - name: Production and alias smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          for base in "$PRODUCTION_URL" "$PRODUCTION_ALIAS"; do
+            curl --fail --silent --show-error --retry 5 --retry-delay 3 --max-time 30 "$base/api/health" > health.json
+            grep -q '"ok":true' health.json
+            code="$(curl -sS -o login.html -w '%{http_code}' --max-time 30 "$base/login")"
+            test "$code" = 200
+            grep -q 'MYNH ERP' login.html
+          done
+          unauth="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$PRODUCTION_URL/api/alerts/in-app")"
+          test "$unauth" = 401
+
+      - name: Release summary
+        shell: bash
+        run: |
+          {
+            echo '## PR90 Warehouse Production'
+            echo "- Deployed main: $GITHUB_SHA"
+            echo '- Reviewed feature merge: cda30b678004fce64e6f37565fb413c9df418f22'
+            echo '- Supabase migration 0076: independently applied and validated before Worker deployment'
+            echo '- Only MYNH ERP V5 Worker touched; tracking, GHN, notify and Cron unchanged'
+            echo '- Warehouse/cross-module regression, typecheck, OpenNext build, worker and alias smoke: PASS'
+            echo '- Previews to be removed separately after release evidence is verified'
+          } >> "$GITHUB_STEP_SUMMARY"
