@@ -380,6 +380,13 @@ const checks=[
     table.includes("from '@/components/warehouse-inline-skip-item'") &&
     table.includes('warehouse-inline-item-skip-trigger') &&
     table.includes('openSkipItem(event,row,item)') &&
+    table.includes('className="warehouse-inline-sku-pair"') &&
+    table.indexOf('className="warehouse-inline-item-skip-trigger"')>
+      table.indexOf('className="warehouse-inline-sku-trigger"') &&
+    table.indexOf('className="warehouse-inline-item-skip-trigger"')<
+      table.indexOf("if(col==='product')") &&
+    table.includes('className="warehouse-unified-status"') &&
+    !table.includes('className="status-pill warehouse-inline-item-skip-trigger"') &&
     table.includes('itemDecisions[item.id]') &&
     table.includes('record.decision') &&
     table.includes('record.product_variant_id===null') &&
@@ -408,7 +415,9 @@ const checks=[
     skipMigration.includes('CREATE OR REPLACE FUNCTION private.finalize_warehouse_item_decisions_impl') &&
     !skipPicker.includes('bulkReceiveWarehouseOrders(') &&
     !skipPicker.includes('saveWarehouseItemDecision(') &&
-    css.includes('.warehouse-inline-item-skip-trigger') &&
+    css.includes('.warehouse-unified-skus .warehouse-inline-sku-pair .warehouse-inline-item-skip-trigger') &&
+    css.includes('.warehouse-inline-item-skip-trigger span') &&
+    !css.includes('.warehouse-unified-status .warehouse-inline-item-skip-trigger') &&
     css.includes('.warehouse-inline-skip-reason')],
   ['V2 slidebar height internal scroll and fixed footer',
     panelCss.includes('.warehouse-detail-v2-scroll') &&
