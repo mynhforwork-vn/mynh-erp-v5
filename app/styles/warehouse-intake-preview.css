@@ -752,6 +752,31 @@
 .warehouse-receive-screen .warehouse-inline-sku-status-trigger:hover{
   border-color:#bd9257;background:#fff2db;
 }
+/* Per-product skip is an independent action in the status column, not a
+   substitute SKU. Its confirmation asks for a reason and creates no stock. */
+.warehouse-receive-screen .warehouse-unified-status .warehouse-inline-item-skip-trigger{
+  display:inline-flex;align-items:center;justify-content:center;
+  box-sizing:border-box;max-width:100%;min-height:22px;
+  padding:2px 6px;border:1px solid #dcc9ae;border-radius:5px;
+  background:#fff8ef;color:#805e38;cursor:pointer;
+  font-size:9.5px;font-weight:600;white-space:nowrap;
+}
+.warehouse-receive-screen .warehouse-unified-status .warehouse-inline-item-skip-trigger:hover{
+  background:#fff0dc;border-color:#cdaa7f;
+}
+.warehouse-receive-screen .warehouse-unified-status .warehouse-inline-item-skip-trigger:focus-visible{
+  outline:2px solid #438b82;outline-offset:2px;
+}
+.warehouse-inline-item-skip .warehouse-inline-skip-reason{
+  display:flex;flex-direction:column;gap:5px;margin:8px 0;
+  color:#4c6a7a;font-size:10.5px;
+}
+.warehouse-inline-item-skip .warehouse-inline-skip-reason textarea{
+  box-sizing:border-box;width:100%;min-height:75px;resize:vertical;
+  border:1px solid #cbdde5;border-radius:5px;padding:7px 8px;
+  background:#fff;color:#2c4a5a;font:inherit;line-height:1.4;
+}
+
 @container warehouse-lane (max-width:550px){
   .warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-sku-trigger{
     max-width:100%;padding:2px 3px;font-size:9px;
