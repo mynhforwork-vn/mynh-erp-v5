@@ -1013,3 +1013,27 @@
     padding-left:0;font-size:9px;
   }
 }
+
+/* Very short mobile-landscape screens cannot show a two-row KPI strip AND
+   a usable table inside a fixed-height clipped page. Allow the ERP main
+   viewport to scroll vertically to the order codes, leaving detail panels
+   fixed as the existing mobile slidebar contract requires. */
+@media(orientation:landscape) and (max-height:430px) and (max-width:900px){
+  .shell.brand-shell-v1>.main:has(>.warehouse-receive-screen){
+    overflow-y:auto!important;overflow-x:hidden!important;
+    overscroll-behavior-y:contain;
+  }
+  .brand-shell-v1>.main>.warehouse-receive-screen{
+    height:auto!important;min-height:100%!important;max-height:none!important;
+    overflow:visible!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout,
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout.with-panel{
+    flex:0 0 auto!important;height:auto!important;min-height:250px!important;
+    grid-template-rows:auto!important;overflow:visible!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout>.warehouse-receive-table-lane{
+    height:auto!important;min-height:240px!important;
+    overflow-y:visible!important;
+  }
+}
