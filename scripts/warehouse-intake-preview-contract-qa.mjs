@@ -80,12 +80,15 @@ const checks=[
     table.includes('data-warehouse-actionable={waiting.length}') &&
     page.includes("showProcessedOnly={currentStatus==='done'}") &&
     table.includes('Các kho đã hết đơn cần xử lý.')],
-  ['warehouse height follows row count instead of fixed 50/50 split',
-    table.includes("'--warehouse-row-weight':Math.min(group.rows.length,30)") &&
-    css.includes('flex:var(--warehouse-row-weight,1) 1 0!important') &&
-    css.includes('min-height:145px!important') &&
+  ['two warehouses size by intrinsic table content; only warehouse fills the lane',
+    !table.includes('--warehouse-row-weight') &&
+    css.includes('flex:0 1 auto!important;min-height:145px!important;height:auto!important') &&
+    css.includes('.warehouse-unified-group.open:only-of-type') &&
+    css.includes('flex:1 1 auto!important') &&
+    css.includes('min-height:150px!important') &&
     css.includes('overflow-y:auto!important') &&
     css.includes('max-height:none!important') &&
+    !css.includes('flex:var(--warehouse-row-weight,1) 1 0!important') &&
     !css.includes('max-height:clamp(150px,43dvh,410px)!important')],
   ['one product per line and full detail in tooltip',
     table.includes('warehouse-unified-product-line') &&
