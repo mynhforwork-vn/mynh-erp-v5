@@ -280,10 +280,20 @@ try {
     assert.ok(list.productLines.every(x=>x.nameOverflow==='ellipsis'),'long name must use ellipsis '+width)
     assert.ok(list.actualShell,'Fixture does not reproduce actual ERP .shell.brand-shell-v1 wrapper '+width)
     assert.ok(list.heights.mainPaddingBottom<=9,'ERP main still reserves unused bottom padding '+width+' '+JSON.stringify(list.heights))
-    assert.ok(Math.abs(list.heights.screenBottom-list.heights.mainBottom)<=3,
-      'page does not reach main content bottom '+width+' '+JSON.stringify(list.heights))
-    assert.ok(Math.abs(list.heights.workspaceBottom-list.heights.mainBottom)<=3,
-      'receiving workspace fails to fill remaining page height '+width+' '+JSON.stringify(list.heights))
+    const shortLandscape=width>height&&width<=900&&height<=430
+    if(shortLandscape){
+      const mainScroll=await page.locator('.brand-shell-v1>.main').evaluate(node=>({
+        total:node.scrollHeight,visible:node.clientHeight,
+        overflow:getComputedStyle(node).overflowY,
+      }))
+      assert.ok(mainScroll.total>mainScroll.visible+60&&mainScroll.overflow==='auto',
+        'short mobile landscape needs vertical access to the order codes '+width+' '+JSON.stringify(mainScroll))
+    }else{
+      assert.ok(Math.abs(list.heights.screenBottom-list.heights.mainBottom)<=3,
+        'page does not reach main content bottom '+width+' '+JSON.stringify(list.heights))
+      assert.ok(Math.abs(list.heights.workspaceBottom-list.heights.mainBottom)<=3,
+        'receiving workspace fails to fill remaining page height '+width+' '+JSON.stringify(list.heights))
+    }
     assert.ok(Math.abs(list.heights.laneBottom-list.heights.workspaceBottom)<=3,
       'table lane is shorter than the slidebar workspace '+width+' '+JSON.stringify(list.heights))
     if(width>900){
@@ -343,7 +353,7 @@ try {
       lastGroupBottom:el.querySelector('.warehouse-unified-group:last-of-type')?.getBoundingClientRect().bottom,
       laneBottom:el.querySelector('.warehouse-receive-table-lane')?.getBoundingClientRect().bottom,
     }))
-    assert.ok(Math.abs(afterCloseVertical.workspaceBottom-list.heights.workspaceBottom)<=3,
+    if(!shortLandscape)assert.ok(Math.abs(afterCloseVertical.workspaceBottom-list.heights.workspaceBottom)<=3,
       'closing slidebar changes overall workspace height '+width+' '+JSON.stringify(afterCloseVertical))
     // Closing the slidebar can reduce line wrapping. Both tables may then
     // fit naturally instead of being stretched to the bottom of the lane.
