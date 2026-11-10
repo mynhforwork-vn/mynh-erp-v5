@@ -258,6 +258,7 @@ export function WarehouseIntakeWorkspace({
     quickInFlight.current=true
     setQuickReceivingId(row.id)
     setQuickNotice(null)
+    setBulkFeedback(null)
     const orderLabel=row.shopee_order_id??row.id.slice(0,8)
     try{
       const result=await bulkReceiveWarehouseOrders({
