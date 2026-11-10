@@ -3,6 +3,7 @@
 import { useEffect,useMemo,useRef,useState,type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatDateTime,formatMoney } from '@/lib/format'
+import { resolveOrderValue } from '@/lib/order-prepaid'
 import { WarehouseBulkReceiveBar,type BulkOrderPreview } from '@/components/warehouse-bulk-receive-bar'
 import { WarehouseInlineSkuHistoryPicker } from '@/components/warehouse-inline-sku-history-picker'
 import { bulkReceiveWarehouseOrders,type WarehouseBulkResult } from '@/lib/actions/warehouse-bulk-receive'
@@ -288,9 +289,6 @@ export function WarehouseIntakeWorkspace({
   function openSkuHistory(event:React.MouseEvent<HTMLButtonElement>,row:Row,item:Item){
     event.stopPropagation()
     if(isDone(row)||item.product_variant_id)return
-    const matches=(suggestions[item.id]??[])
-      .filter(suggestion=>variants.some(variant=>variant.id===suggestion.variant_id))
-    if(!matches.length)return
     const rect=event.currentTarget.getBoundingClientRect()
     setQuickSkuTarget({
       orderItemId:item.id,orderLabel:row.shopee_order_id??row.id.slice(0,8),
@@ -472,9 +470,15 @@ export function WarehouseIntakeWorkspace({
                       {receivedAt(row)?formatDateTime(receivedAt(row)):'Chưa có ngày nhận'}
                     </time>
                     {!isDone(row)&&!isComplete(row)&&
-                      <span className="warehouse-unified-pending-cod" title="COD của đơn chưa bóc tách">
-                        COD: <strong>{row.cod!==null&&row.cod!==undefined&&String(row.cod).trim()!==''&&
-                          Number.isFinite(Number(row.cod))?formatMoney(row.cod):'Chưa có'}</strong>
+                      <span className="warehouse-unified-pending-value" title="Giá trị đơn hàng theo thông tin thanh toán">
+                        Giá trị đơn: <strong>{(()=>{
+                          const value=resolveOrderValue({
+                            paymentStatus:row.payment_status,
+                            prepaidAmount:row.prepaid_amount,
+                            cod:row.cod,
+                          })
+                          return value===null?'Chưa đủ dữ liệu':formatMoney(value)
+                        })()}</strong>
                       </span>}
                   </div>
                 </div>
@@ -487,16 +491,16 @@ export function WarehouseIntakeWorkspace({
                 {row.order_items.map(item=>{
                   const historical=(suggestions[item.id]??[])
                     .filter(option=>variants.some(variant=>variant.id===option.variant_id))
-                  const canSuggest=!isDone(row)&&!item.product_variant_id&&historical.length>0
+                  const canSuggest=!isDone(row)&&!item.product_variant_id
                   return <div key={item.id} className="warehouse-unified-product-line"
                     title={[item.product_variants?.products?.sku??'Chưa ghép SKU',item.product_variants?.products?.name].filter(Boolean).join(' · ')}>
                     <span className="warehouse-unified-sku-identity">
                       {canSuggest?<button type="button" className="warehouse-inline-sku-trigger"
-                        title={'Có '+historical.length+' gợi ý SKU từ lịch sử đã lưu'}
+                        title={historical.length?'Ghép SKU nhanh · '+historical.length+' gợi ý từ lịch sử':'Ghép SKU nhanh · Tìm hoặc tạo SKU mới'}
                         aria-label={'Chờ ghép SKU · '+historical.length+' gợi ý cho '+item.product_name}
                         aria-haspopup="dialog" aria-expanded={quickSkuTarget?.orderItemId===item.id}
                         onClick={event=>openSkuHistory(event,row,item)}>
-                        Chờ ghép <small>{historical.length} gợi ý</small>
+                        Chờ ghép {historical.length>0&&<small>{historical.length} gợi ý</small>}
                       </button>:<b>{item.product_variants?.products?.sku??'Chưa ghép'}</b>}
                       {item.product_variants?.products?.name&&
                         <span className="warehouse-unified-sku-title">{item.product_variants.products.name}</span>}
@@ -536,8 +540,7 @@ export function WarehouseIntakeWorkspace({
                     item.product_variant_id?'Dự kiến nhập':'Chưa ghép'
                   return <div key={item.id} className="warehouse-unified-product-line"
                     title={saved?status+' · Đã lưu quyết định'+(saved.skip_reason?' · '+saved.skip_reason:''):status}>
-                    {!isDone(row)&&!item.product_variant_id&&
-                      (suggestions[item.id]??[]).some(option=>variants.some(variant=>variant.id===option.variant_id))
+                    {!isDone(row)&&!item.product_variant_id
                       ?<button type="button" className="status-pill orange warehouse-inline-sku-status-trigger"
                         aria-label={'Chờ ghép SKU từ lịch sử cho '+item.product_name}
                         aria-haspopup="dialog" aria-expanded={quickSkuTarget?.orderItemId===item.id}
