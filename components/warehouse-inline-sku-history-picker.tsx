@@ -93,7 +93,7 @@ export function WarehouseInlineSkuHistoryPicker({
   // Sort and navigate by normalized SKU code; Vietnamese accents do not
   // affect alphabetic lookup. Search and filters never mutate saved mappings.
   const normalizeCatalog=(value:string)=>value.normalize('NFD')
-    .replace(/[\\u0300-\\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D')
+    .replace(/\p{M}/gu,'').replace(/đ/g,'d').replace(/Đ/g,'D')
     .toLocaleUpperCase('vi').trim()
   const letterOf=(variant:Variant)=>{
     const key=normalizeCatalog(variant.products?.sku||variant.products?.name||'')
