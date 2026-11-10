@@ -107,7 +107,8 @@ export function WarehouseInlineSkuHistoryPicker({
     setVariantId(variant.id)
     setSalePrice(variant.sale_price===null||variant.sale_price===undefined?'':String(variant.sale_price))
     setMultiplier(String(option.multiplier))
-    setDecision(null)
+    // Another verified historical mapping is also only an unsaved IN draft.
+    setDecision('IN')
     setSkipReason('')
     setError('')
   }
