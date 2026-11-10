@@ -91,6 +91,8 @@ type ItemDecision={
   skip_reason?:string|null;processing_state:'DRAFT'|'FINALIZED';updated_at?:string
 }
 type Tab='products'|'info'|'history'
+const normalizeSku=(value:string)=>value.normalize('NFD').replace(/\p{M}/gu,'')
+  .replace(/đ/g,'d').replace(/Đ/g,'D').toLocaleUpperCase('vi').trim()
 
 function batchOf(order:Order){
   const detail=Array.isArray(order.receive_batch_details)?order.receive_batch_details[0]:order.receive_batch_details
@@ -147,6 +149,9 @@ export function WarehouseIntakeDetailPreview({
   onClose:()=>void
 }){
   const [tab,setTab]=useState<Tab>('products')
+  const [skuLetter,setSkuLetter]=useState('Tất cả')
+  const [skuVariant,setSkuVariant]=useState('Tất cả')
+  const [productLetter,setProductLetter]=useState('Tất cả')
   const [focusedId,setFocusedId]=useState<string>(
     order.order_items.find(item=>!item.product_variant_id)?.id??order.order_items[0]?.id??''
   )
@@ -188,10 +193,14 @@ export function WarehouseIntakeDetailPreview({
       id:v.products!.id!,sku:String(v.products?.sku??''),name:String(v.products?.name??'')
     }])).values()]
   const variantProduct=availableProducts.find(p=>p.id===draft?.productId)
-  const skuLookup=String(draft?.productQuery??'').trim().toLocaleLowerCase('vi')
+  const skuLookup=normalizeSku(String(draft?.productQuery??''))
+  const productLetters=[...new Set(availableProducts.map(p=>
+    normalizeSku(p.sku).charAt(0)||'#'))].sort((a,b)=>a.localeCompare(b,'en'))
   const matchingProducts=availableProducts.filter(p=>
-    [p.sku,p.name].join(' ').toLocaleLowerCase('vi').includes(skuLookup))
-    .slice(0,skuLookup?80:40)
+    (productLetter==='Tất cả'||(normalizeSku(p.sku).charAt(0)||'#')===productLetter)&&
+    normalizeSku([p.sku,p.name].join(' ')).includes(skuLookup))
+    .sort((a,b)=>normalizeSku(a.sku).localeCompare(normalizeSku(b.sku),'en'))
+    .slice(0,80)
   const duplicatedClassification=!!variantProduct&&variants.some(v=>
     v.products?.id===variantProduct.id&&
     v.variant_name.trim().toLocaleLowerCase('vi')===
@@ -201,14 +210,21 @@ export function WarehouseIntakeDetailPreview({
   const totalChoices=Object.keys(choices).length
   const activeShipment=order.shipments?.find(s=>s.is_active)??order.shipments?.[0]??null
   const warehouse=batchOf(order)?.warehouses
+  const variantLetters=[...new Set(variants.map(v=>
+    normalizeSku(v.products?.sku||v.products?.name||'').charAt(0)||'#'))]
+    .sort((a,b)=>a.localeCompare(b,'en'))
+  const variantClassifications=[...new Set(variants.map(v=>v.variant_name))]
+    .sort((a,b)=>a.localeCompare(b,'vi'))
   const matchVariants=useMemo(()=>{
-    const query=(draft?.query??'').trim().toLocaleLowerCase('vi')
-    if(!query)return variants.slice(0,30)
-    return variants.filter(variant=>
-      [variant.products?.sku,variant.products?.name,variant.variant_name]
-        .filter(Boolean).join(' ').toLocaleLowerCase('vi').includes(query)
-    ).slice(0,80)
-  },[draft?.query,variants])
+    const query=normalizeSku(draft?.query??'')
+    return variants.filter(v=>
+      (skuLetter==='Tất cả'||(normalizeSku(v.products?.sku||v.products?.name||'').charAt(0)||'#')===skuLetter)&&
+      (skuVariant==='Tất cả'||v.variant_name===skuVariant)&&
+      normalizeSku([v.products?.sku,v.products?.name,v.variant_name].filter(Boolean).join(' ')).includes(query))
+      .sort((a,b)=>normalizeSku(a.products?.sku||a.products?.name||'')
+        .localeCompare(normalizeSku(b.products?.sku||b.products?.name||''),'en')||
+        a.variant_name.localeCompare(b.variant_name,'vi')).slice(0,80)
+  },[draft?.query,variants,skuLetter,skuVariant])
   const logs=auditLogs.filter(log=>String(log.entity_id??'')===order.id)
 
   useEffect(()=>{
@@ -437,20 +453,38 @@ export function WarehouseIntakeDetailPreview({
                 placeholder="Tìm trong danh mục SKU" disabled={processed||isReadOnly||busy}
                 value={draft.query} onChange={e=>change({query:e.target.value})}/>
             </label>
-            <label className="warehouse-detail-v2-field"><span>Chọn SKU bán trong danh mục</span>
-              <select aria-label="Chọn SKU bán" disabled={processed||isReadOnly||busy} value={draft.variantId}
-                onChange={e=>chooseVariant(e.target.value)}>
-                <option value="">— Chọn SKU bán —</option>
+            <div className="warehouse-detail-v2-browser" aria-label="Chọn SKU bán theo ABC">
+              <div className="warehouse-detail-v2-abc" role="group" aria-label="Lọc chữ cái SKU bán">
+                {['Tất cả',...variantLetters].map(letter=><button type="button" key={letter}
+                  aria-pressed={skuLetter===letter} className={skuLetter===letter?'active':''}
+                  disabled={processed||isReadOnly||busy} onClick={()=>setSkuLetter(letter)}>{letter}</button>)}
+              </div>
+              <label className="warehouse-detail-v2-field"><span>Phân loại SKU</span>
+                <select aria-label="Lọc phân loại SKU bán" value={skuVariant} disabled={processed||isReadOnly||busy}
+                  onChange={e=>setSkuVariant(e.target.value)}>
+                  <option value="Tất cả">Tất cả phân loại</option>
+                  {variantClassifications.map(name=><option value={name} key={name}>{name}</option>)}
+                </select>
+              </label>
+              <small>{matchVariants.length} kết quả theo ABC · Chỉ lưu khi xác nhận</small>
+              <div className="warehouse-detail-v2-sku-results" role="group" aria-label="Danh sách SKU bán">
                 {selectedVariant&&!matchVariants.some(v=>v.id===selectedVariant.id)&&
-                  <option value={selectedVariant.id}>
-                    {selectedVariant.products?.sku||'Chưa có mã'} · {selectedVariant.products?.name||''} · {selectedVariant.variant_name}
-                  </option>}
-                {matchVariants.map(v=><option value={v.id} key={v.id}>
-                  {v.products?.sku||'Chưa có mã'} · {v.products?.name||''} · {v.variant_name}
-                </option>)}
-              </select>
-              <small>{draft.query?'Tối đa 80 kết quả phù hợp':'Nhập từ khóa để tìm trong danh mục'} · Chưa xác nhận SKU</small>
-            </label>
+                  <button type="button" className="active" aria-pressed="true"
+                    disabled={processed||isReadOnly||busy} onClick={()=>chooseVariant(selectedVariant.id)}>
+                    <b>{selectedVariant.products?.sku||'Chưa có mã'}</b>
+                    <span>{selectedVariant.products?.name||'Chưa có tên'}</span>
+                    <small>{selectedVariant.variant_name} · Đang chọn</small>
+                  </button>}
+                {matchVariants.map(v=><button key={v.id} type="button"
+                  className={draft.variantId===v.id?'active':''} aria-pressed={draft.variantId===v.id}
+                  disabled={processed||isReadOnly||busy} onClick={()=>chooseVariant(v.id)}>
+                  <b>{v.products?.sku||'Chưa có mã'}</b>
+                  <span>{v.products?.name||'Chưa có tên'}</span>
+                  <small>{v.variant_name}{v.sale_price!=null?' · '+formatMoney(v.sale_price):''}</small>
+                </button>)}
+                {matchVariants.length===0&&<small>Không có SKU phù hợp</small>}
+              </div>
+            </div>
           </div>:draft.mode==='variant'?<div className="warehouse-detail-v2-fields warehouse-detail-v2-pair">
             <p className="warehouse-detail-v2-source">Thêm phân loại vào SKU cũ với giá bán riêng; giữ nguyên sản phẩm và các phân loại đã có.</p>
             <label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>Tìm SKU đã có</span>
@@ -459,16 +493,27 @@ export function WarehouseIntakeDetailPreview({
                 onChange={e=>change({productQuery:e.target.value})}
                 placeholder="Mã SKU hoặc tên sản phẩm"/>
             </label>
-            <label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>SKU sản phẩm hiện có</span>
-              <select aria-label="Chọn SKU gốc để thêm phân loại" disabled={processed||isReadOnly||busy}
-                value={draft.productId} onChange={e=>change({productId:e.target.value})}>
-                <option value="">— Chọn SKU đã có —</option>
+            <div className="warehouse-detail-v2-browser warehouse-detail-v2-full" aria-label="SKU gốc để thêm phân loại">
+              <div className="warehouse-detail-v2-abc" role="group" aria-label="Lọc chữ cái SKU gốc">
+                {['Tất cả',...productLetters].map(letter=><button type="button" key={letter}
+                  aria-pressed={productLetter===letter} className={productLetter===letter?'active':''}
+                  disabled={processed||isReadOnly||busy} onClick={()=>setProductLetter(letter)}>{letter}</button>)}
+              </div>
+              <small>{matchingProducts.length} SKU phù hợp · Chọn SKU gốc để thêm phân loại</small>
+              <div className="warehouse-detail-v2-sku-results" role="group" aria-label="Danh sách SKU gốc">
                 {variantProduct&&!matchingProducts.some(p=>p.id===variantProduct.id)&&
-                  <option value={variantProduct.id}>{variantProduct.sku} · {variantProduct.name}</option>}
-                {matchingProducts.map(p=><option key={p.id} value={p.id}>{p.sku} · {p.name}</option>)}
-              </select>
-              <small>{draft.productQuery?'Tối đa 80 SKU khớp':'Nhập để tìm trong danh mục SKU'}</small>
-            </label>
+                  <button type="button" className="active" aria-pressed="true"
+                    disabled={processed||isReadOnly||busy} onClick={()=>change({productId:variantProduct.id})}>
+                    <b>{variantProduct.sku}</b><span>{variantProduct.name}</span><small>Đang chọn</small>
+                  </button>}
+                {matchingProducts.map(p=><button key={p.id} type="button"
+                  className={draft.productId===p.id?'active':''} aria-pressed={draft.productId===p.id}
+                  disabled={processed||isReadOnly||busy} onClick={()=>change({productId:p.id})}>
+                  <b>{p.sku}</b><span>{p.name}</span><small>SKU sản phẩm</small>
+                </button>)}
+                {matchingProducts.length===0&&<small>Không tìm thấy SKU sản phẩm</small>}
+              </div>
+            </div>
             <label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>Phân loại mới</span>
               <input aria-label="Nhập phân loại mới của SKU cũ" disabled={processed||isReadOnly||busy}
                 maxLength={255} value={draft.newVariant} onChange={e=>change({newVariant:e.target.value})}/>
