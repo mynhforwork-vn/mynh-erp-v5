@@ -80,13 +80,17 @@ END $$;
 SET request.jwt.claims='{"sub":"60000000-0000-4000-8000-000000000001","app_metadata":{"role":"admin"}}';
 
 -- The unprocessed order must block merging, no writes when preview is blocked.
+-- Seed fixture as database owner; only application RPCs run as authenticated.
+RESET ROLE;
 INSERT INTO public.orders(id,receive_status,warehouse_status) VALUES
  ('d0000000-0000-4000-8000-000000000001','RECEIVED','READY_TO_TRANSFER');
 INSERT INTO public.order_items(id,order_id,product_name,quantity,product_variant_id) VALUES
  ('e0000000-0000-4000-8000-000000000001',
   'd0000000-0000-4000-8000-000000000001',
   'Chưa nhập kho',1,'b0000000-0000-4000-8000-000000000001');
-DO $$
+SET ROLE authenticated;
+SET request.jwt.claims='{"sub":"60000000-0000-4000-8000-000000000001","app_metadata":{"role":"admin"}}';
+DO $
 BEGIN
  IF (public.preview_sku_merge(
     'b0000000-0000-4000-8000-000000000001',
@@ -94,6 +98,7 @@ BEGIN
    RAISE EXCEPTION 'FAIL: open order did not block merge';
  END IF;
 END $$;
+RESET ROLE;
 DELETE FROM public.order_items WHERE id='e0000000-0000-4000-8000-000000000001';
 DELETE FROM public.orders WHERE id='d0000000-0000-4000-8000-000000000001';
 
@@ -101,7 +106,9 @@ DELETE FROM public.orders WHERE id='d0000000-0000-4000-8000-000000000001';
 INSERT INTO public.sale_items(id,product_variant_id) VALUES
  ('e0000000-0000-4000-8000-000000000002',
   'b0000000-0000-4000-8000-000000000001');
-DO $$
+SET ROLE authenticated;
+SET request.jwt.claims='{"sub":"60000000-0000-4000-8000-000000000001","app_metadata":{"role":"admin"}}';
+DO $
 BEGIN
  IF (public.preview_sku_merge(
     'b0000000-0000-4000-8000-000000000001',
@@ -109,7 +116,10 @@ BEGIN
    RAISE EXCEPTION 'FAIL: sale history did not block merge';
  END IF;
 END $$;
+RESET ROLE;
 DELETE FROM public.sale_items WHERE id='e0000000-0000-4000-8000-000000000002';
+SET ROLE authenticated;
+SET request.jwt.claims='{"sub":"60000000-0000-4000-8000-000000000001","app_metadata":{"role":"admin"}}';
 
 -- Wrong confirmed source code and stale preview must be rejected.
 DO $$
