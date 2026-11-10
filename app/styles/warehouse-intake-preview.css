@@ -60,17 +60,26 @@
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group{
   overflow:visible!important;
 }
-/* Intrinsic-content group sizing: when two warehouses have only a few
-   orders, leave unused workspace outside their tables rather than stretching
-   each table to occupy the entire lane. Dense groups proportionally shrink
-   and scroll their own data; their headers remain visible. */
+/* Row count controls warehouse group sizing, never a fixed 50/50 layout:
+   zero orders -> no group; one/two -> just the visible rows;
+   three-plus -> proportionate share of spare height, independently scrollable.
+   Empty space stays below compact groups rather than inside their tables. */
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open{
   box-sizing:border-box!important;display:flex!important;flex-direction:column!important;
-  flex:0 1 auto!important;min-height:145px!important;height:auto!important;
+  flex:0 1 auto!important;min-height:0!important;height:auto!important;
   max-height:none!important;overflow:hidden!important;
 }
-/* Preserve the existing full-height single-warehouse workflow. */
-.brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open:only-of-type{
+.brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-one,
+.brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-two{
+  flex:0 0 auto!important;min-height:0!important;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-many{
+  flex:var(--warehouse-dense-weight,3) 1 auto!important;
+  min-height:175px!important;
+}
+/* A single busy warehouse may use all available height. A single 1/2-order
+   warehouse remains compact even when the other warehouse has no orders. */
+.brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-many:only-of-type{
   flex:1 1 auto!important;
 }
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.collapsed{
@@ -432,14 +441,15 @@
   .brand-shell-v1 .warehouse-receive-screen .warehouse-intake-preview-layout>.warehouse-receive-table-lane{
     overflow-y:auto!important;
   }
-  .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open{
-    /* Small groups hug their content; larger groups yield scrolling space as
-       the available mobile viewport shrinks. The outer lane remains scrollable. */
-    flex:0 1 auto!important;
-    min-height:150px!important;
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-one,
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-two{
+    flex:0 0 auto!important;min-height:0!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-many{
+    flex:var(--warehouse-dense-weight,3) 1 auto!important;min-height:175px!important;
     max-height:none!important;
   }
-  .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open:only-of-type{
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-many:only-of-type{
     flex:1 1 auto!important;
   }
   /* A selected batch adds a toolbar after the table. Do not let it squeeze the
