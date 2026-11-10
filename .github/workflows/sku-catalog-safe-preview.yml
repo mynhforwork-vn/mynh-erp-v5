@@ -64,6 +64,15 @@ jobs:
             -f supabase/migrations/0078_sku_catalog_safe_merge.sql \
             -f scripts/sku-catalog-db-qa.sql 2>&1 | tee sku-catalog-db-qa.log
           grep -q 'PASS: SKU edit, independent classification' sku-catalog-db-qa.log
+      - name: Install fixture browser QA dependencies
+        run: npm install --no-save playwright esbuild --no-audit --no-fund
+      - name: Responsive browser regression: SKU picker and detail slidebar
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          CHROME_BIN="$CHROME_PATH" node scripts/warehouse-intake-preview-browser-qa.mjs
       - name: Build OpenNext
         run: npx opennextjs-cloudflare build
       - uses: actions/upload-artifact@v4
