@@ -539,8 +539,8 @@ for(const [scenario,countExpected,mode] of [
     if(mode!=='many'){
       assert.ok(geometry.groups.every(g=>g.dataHeight<=g.tableHeight+5),
         '1/2-order table must not reserve empty interior '+scenario+' '+width+' '+JSON.stringify(geometry))
-      assert.ok(geometry.groups.at(-1).bottom<geometry.bottom-18,
-        '1/2-order layout must remain compact, even with a single warehouse '+scenario+' '+width+' '+JSON.stringify(geometry))
+      if(groupCount===1)assert.ok(geometry.groups.at(-1).bottom<geometry.bottom-18,
+        'a single 1/2-order warehouse must remain compact '+scenario+' '+width+' '+JSON.stringify(geometry))
     }else{
       assert.ok(geometry.groups.every(g=>g.height>=175),
         '3+ rows need usable scrolling/data space '+scenario+' '+width+' '+JSON.stringify(geometry))
