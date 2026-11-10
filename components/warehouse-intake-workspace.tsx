@@ -673,7 +673,7 @@ export function WarehouseIntakeWorkspace({
                               <path d="m3 8 3.2 3.2L13 4.5"/>
                             </svg>}
                         </button>}
-                      <button type="button" className="warehouse-inline-item-skip-trigger"
+                      {canSuggest&&<button type="button" className="warehouse-inline-item-skip-trigger"
                         title={'Bỏ qua kho sản phẩm '+item.product_name+' · Không cần ghép SKU'}
                         aria-label={'Bỏ qua kho sản phẩm '+item.product_name}
                         aria-haspopup="dialog" aria-expanded={quickSkipTarget?.orderItemId===item.id}
@@ -684,7 +684,7 @@ export function WarehouseIntakeWorkspace({
                           <circle cx="8" cy="8" r="5.5"/>
                           <path d="M4.2 11.8 11.8 4.2"/>
                         </svg>
-                      </button></span>}
+                      </button>}</span>}
                       {!canOpenSku&&<b title={isDone(row)?'Đơn đã chốt xử lý kho, không thể sửa trực tiếp':''}>
                         {saved?.decision==='SKIP'&&!item.product_variant_id?'Bỏ qua kho':
                           item.product_variants?.products?.sku??'Chưa ghép'}</b>}
