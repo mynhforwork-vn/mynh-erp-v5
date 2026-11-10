@@ -242,32 +242,58 @@
   text-overflow:ellipsis;text-align:left;border:0;background:none;padding:0;
   font-weight:650;font-size:11px;line-height:1.4;cursor:pointer;color:#21668f;
 }
-/* A per-order shortcut lives beneath the order/date, never in a seventh
-   column. It opens the same single-order review popup and never writes itself. */
+/* A compact icon sits beside the order code; it never opens a popup or
+   creates a seventh table column. Keep the date aligned beneath the code. */
+.warehouse-receive-screen .warehouse-unified-order-inline{
+  display:flex;align-items:center;gap:3px;width:100%;min-width:0;
+}
+.warehouse-receive-screen .warehouse-unified-order-inline .table-link{
+  flex:1 1 auto;min-width:0;max-width:none;
+}
 .warehouse-receive-screen .warehouse-unified-order-details .warehouse-order-quick-receive{
-  box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
-  flex:0 0 auto;gap:5px;max-width:100%;width:max-content;min-width:0;
-  min-height:23px;margin:5px 0 0;padding:2px 7px;
-  background:#edf7f3;border:1px solid #c7dfd7;border-radius:5px;
-  color:#286d58;font-size:10px;font-weight:650;line-height:1.2;
-  white-space:nowrap;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;
+  box-sizing:border-box;flex:0 0 24px;width:24px;height:24px;min-width:24px;
+  margin:0;padding:0;border:1px solid transparent;border-radius:5px;
+  background:transparent;color:#357d68;cursor:pointer;
 }
-.warehouse-receive-screen .warehouse-order-quick-receive svg{flex:0 0 13px}
-.warehouse-receive-screen .warehouse-order-quick-receive .warehouse-order-quick-label{
-  display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;
-}
-.warehouse-receive-screen .warehouse-order-quick-receive:hover{
-  background:#dff2ea;border-color:#9bc7b7;color:#205c4c;
+.warehouse-receive-screen .warehouse-order-quick-receive svg{flex:0 0 15px}
+.warehouse-receive-screen .warehouse-order-quick-receive:hover:not(:disabled){
+  border-color:#c7dfd7;background:#eaf5f0;color:#24654f;
 }
 .warehouse-receive-screen .warehouse-order-quick-receive:focus-visible{
   outline:2px solid #438b82;outline-offset:2px;
 }
-@container warehouse-lane (max-width:550px){
-  .warehouse-receive-screen .warehouse-unified-order-details .warehouse-order-quick-receive{
-    width:24px;min-width:24px;height:24px;padding:2px 4px;margin-top:5px;
-  }
-  .warehouse-receive-screen .warehouse-order-quick-receive .warehouse-order-quick-label{
-    display:none;
+.warehouse-receive-screen .warehouse-order-quick-receive:disabled{
+  cursor:not-allowed;opacity:.5;
+}
+.warehouse-receive-screen .warehouse-quick-spinner{
+  width:13px;height:13px;border:2px solid #b7d8cb;
+  border-top-color:#357d68;border-radius:50%;
+  animation:warehouse-quick-spin .7s linear infinite;
+}
+@keyframes warehouse-quick-spin{to{transform:rotate(360deg)}}
+/* Transient feedback does not shift the table/KPI workspace. */
+.warehouse-receive-screen .warehouse-quick-notice{
+  position:fixed;z-index:2600;top:16px;right:18px;
+  box-sizing:border-box;max-width:min(440px,calc(100vw - 24px));
+  display:flex;align-items:flex-start;gap:10px;
+  padding:10px 12px;border:1px solid #cfe5da;border-radius:7px;
+  background:#f4fbf7;color:#255f4e;
+  font-size:12px;line-height:1.45;box-shadow:0 8px 26px #173f2f1a;
+}
+.warehouse-receive-screen .warehouse-quick-notice.error{
+  border-color:#f0d8d4;background:#fff8f6;color:#9b4036;
+}
+.warehouse-receive-screen .warehouse-quick-notice>span{
+  flex:1 1 auto;min-width:0;overflow-wrap:anywhere;
+}
+.warehouse-receive-screen .warehouse-quick-notice>button{
+  flex:0 0 auto;min-width:20px;min-height:20px;padding:0;border:0;
+  background:transparent;color:inherit;font-size:18px;cursor:pointer;
+}
+@media(max-width:600px){
+  .warehouse-receive-screen .warehouse-quick-notice{
+    top:10px;right:12px;left:12px;max-width:none;
   }
 }
 .warehouse-receive-screen .warehouse-unified-table .warehouse-unified-date{
