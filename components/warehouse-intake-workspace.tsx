@@ -369,7 +369,7 @@ export function WarehouseIntakeWorkspace({
               const attributes={'data-col':col,'data-label':TABLE_LABELS[col]}
               if(col==='order')return <td key={col} {...attributes}>
                 <div className="warehouse-unified-order">
-                  {!!bulkPreview(row,itemDecisions)&&<input type="checkbox"
+                  {!!bulkPreview(row,itemDecisions)&&<input type="checkbox" className="warehouse-bulk-select-checkbox"
                     checked={selectedGroup===group.id&&selectedSet.has(row.id)}
                     onChange={()=>toggleReady(group.id,row.id)}
                     onClick={event=>event.stopPropagation()}
@@ -479,9 +479,12 @@ export function WarehouseIntakeWorkspace({
                     <colgroup>{tableColumns.visible.map((col,index)=><col key={col}
                       style={{width:columnWidths[index]+'%'}}/>)}</colgroup>
                     <thead><tr>{tableColumns.visible.map(col=><th key={col}>
-                      <SortableHeader column={col} label={TABLE_LABELS[col]} sort={tableSort} onSort={tableSort.toggle}/>
-                      {col==='order'&&readyIds.length>0&&<input type="checkbox" checked={allReadySelected}
-                        onChange={()=>toggleAllReady(group.id,readyIds)} aria-label={'Chọn tối đa 25 đơn chờ nhập '+group.code}/>}
+                      {col==='order'?<div className="warehouse-unified-order-head">
+                        {readyIds.length>0&&<input type="checkbox" className="warehouse-bulk-select-checkbox"
+                          checked={allReadySelected} onChange={()=>toggleAllReady(group.id,readyIds)}
+                          aria-label={'Chọn tối đa 25 đơn chờ nhập '+group.code}/>}
+                        <SortableHeader column={col} label={TABLE_LABELS[col]} sort={tableSort} onSort={tableSort.toggle}/>
+                      </div>:<SortableHeader column={col} label={TABLE_LABELS[col]} sort={tableSort} onSort={tableSort.toggle}/>}
                     </th>)}</tr></thead>
                     <tbody>{sorted.length
                       ? sorted.map(row=><tr key={row.id} className={activeId===row.id?'active-row':''}
