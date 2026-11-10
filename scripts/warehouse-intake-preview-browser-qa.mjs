@@ -276,8 +276,12 @@ try {
     if(width>900){
       assert.ok(Math.abs(list.heights.panelBottom-list.heights.mainBottom)<=3,
         'desktop slidebar stops before the end of the available page '+width+' '+JSON.stringify(list.heights))
-      assert.ok(list.heights.groupBottoms.at(-1)>=list.heights.laneBottom-3,
-        'last warehouse group leaves blank area below the table '+width+' '+JSON.stringify(list.heights))
+      // Empty workspace BELOW compact cards is intentional. Never let
+      // empty space accumulate INSIDE an open table when content fits.
+      if(list.heights.groupBottoms.at(-1)<list.heights.laneBottom-3){
+        assert.ok(list.heights.dataHeights.every((h,i)=>h<=list.heights.scrollHeights[i]+4),
+          'compact warehouses must not stretch table beyond actual rows '+width+' '+JSON.stringify(list.heights))
+      }
       assert.ok(list.heights.groupHeights.every(h=>h>100),
         'warehouse groups became unusably short '+width+' '+JSON.stringify(list.heights))
     }else{
@@ -328,8 +332,13 @@ try {
     }))
     assert.ok(Math.abs(afterCloseVertical.workspaceBottom-list.heights.workspaceBottom)<=3,
       'closing slidebar changes overall workspace height '+width+' '+JSON.stringify(afterCloseVertical))
-    if(width>900)assert.ok(afterCloseVertical.lastGroupBottom>=afterCloseVertical.laneBottom-3,
-      'closing slidebar leaves blank area below the table '+width+' '+JSON.stringify(afterCloseVertical))
+    // Closing the slidebar can reduce line wrapping. Both tables may then
+    // fit naturally instead of being stretched to the bottom of the lane.
+    if(width>900&&afterCloseVertical.lastGroupBottom<afterCloseVertical.laneBottom-3){
+      const compact=await page.locator('.warehouse-unified-table-wrap').evaluateAll(nodes=>
+        nodes.every(wrap=>wrap.clientHeight<=wrap.scrollHeight+4))
+      assert.ok(compact,'closing slidebar must not create blank table interiors '+width)
+    }
     assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,'close slidebar '+width)
     const closedLaneWidth=await page.locator('.warehouse-receive-table-lane').evaluate(e=>e.clientWidth)
     if(width>900)assert.ok(closedLaneWidth>list.laneWidth+130,
