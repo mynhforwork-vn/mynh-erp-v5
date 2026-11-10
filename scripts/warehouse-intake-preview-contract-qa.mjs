@@ -236,6 +236,17 @@ const checks=[
     css.includes('.warehouse-unified-status .warehouse-unified-product-line') &&
     css.includes('display:block;padding-left:0;margin-top:3px;') &&
     !css.includes('display:block;padding-left:18px;margin-top:3px;')],
+  ['per-order quick receive uses the existing reviewed and guarded bulk flow',
+    table.includes('warehouse-order-quick-receive') &&
+    table.includes("aria-label={'Nhập nhanh đơn '+") &&
+    table.includes('!showProcessedOnly&&!!bulkPreview(row,itemDecisions)') &&
+    table.includes('setSelected([row.id])') &&
+    table.includes('setBulkReviewGroup(group.id)') &&
+    table.includes('setBulkFeedback(null)') &&
+    table.includes('<WarehouseBulkReceiveBar') &&
+    !table.includes('bulkReceiveWarehouseOrders({') &&
+    css.includes('.warehouse-unified-order-details .warehouse-order-quick-receive') &&
+    css.includes('@container warehouse-lane (max-width:550px)')],
   ['bulk confirmation requires one click, without an agreement checkbox',
     !bulkBar.includes('confirmText') &&
     !bulkBar.includes('warehouse-bulk-agreement') &&
