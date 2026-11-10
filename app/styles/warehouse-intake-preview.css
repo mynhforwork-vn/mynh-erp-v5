@@ -383,6 +383,12 @@
     min-height:150px!important;
     max-height:none!important;
   }
+  /* A selected batch adds a toolbar after the table. Do not let it squeeze the
+     data under the sticky column header on a short mobile viewport. The lane
+     scrolls instead of shrinking the active warehouse to an unusable height. */
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.with-bulk-selection{
+    min-height:260px!important;
+  }
   .warehouse-receive-screen .wh-native-status-kpis{
     display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
     gap:6px!important;overflow:visible!important;
