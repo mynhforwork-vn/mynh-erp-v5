@@ -236,17 +236,24 @@ const checks=[
     css.includes('.warehouse-unified-status .warehouse-unified-product-line') &&
     css.includes('display:block;padding-left:0;margin-top:3px;') &&
     !css.includes('display:block;padding-left:18px;margin-top:3px;')],
-  ['per-order quick receive uses the existing reviewed and guarded bulk flow',
+  ['per-order icon submits only eligible orders directly via guarded Server Action',
     table.includes('warehouse-order-quick-receive') &&
     table.includes("aria-label={'Nhập nhanh đơn '+") &&
     table.includes('!showProcessedOnly&&!!bulkPreview(row,itemDecisions)') &&
-    table.includes('setSelected([row.id])') &&
-    table.includes('setBulkReviewGroup(group.id)') &&
-    table.includes('setBulkFeedback(null)') &&
+    table.includes('disabled={previewOnly||quickReceivingId!==null}') &&
+    table.includes('quickInFlight.current=true') &&
+    table.includes('if(previewOnly||quickInFlight.current||!bulkPreview(row,itemDecisions))return') &&
+    table.includes('warehouseId,orderIds:[row.id],note:') &&
+    table.includes('void handleQuickReceive(row,group.id)') &&
+    table.includes('setQuickReceivingId(row.id)') &&
+    table.includes('setQuickNotice({kind:') &&
+    table.includes('router.refresh()') &&
+    table.includes('setTimeout(()=>setQuickNotice(null),5000)') &&
     table.includes('<WarehouseBulkReceiveBar') &&
-    !table.includes('bulkReceiveWarehouseOrders({') &&
+    !table.includes('warehouse-order-quick-label') &&
+    css.includes('.warehouse-unified-order-inline') &&
     css.includes('.warehouse-unified-order-details .warehouse-order-quick-receive') &&
-    css.includes('@container warehouse-lane (max-width:550px)')],
+    css.includes('.warehouse-quick-notice')],
   ['bulk confirmation requires one click, without an agreement checkbox',
     !bulkBar.includes('confirmText') &&
     !bulkBar.includes('warehouse-bulk-agreement') &&
