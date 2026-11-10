@@ -28,7 +28,7 @@ const source=[
   "  order_items:[{id:'20000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:long,sku:'SRC-'+i,variant:'Phân loại mẫu 500ml',quantity:2,original_price:50000,final_price:35000,inventory_multiplier:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}:null},",
   "  {id:'30000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:'Sữa tắm hương hoa nhài',sku:'SRC-OTHER',variant:'Dạng chai',quantity:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',products:{sku:'TEST-01',name:'Đã map'}}:null}]",
   '}))',
-  "function Fixture(){const [status,setStatus]=React.useState('all');const live=document.documentElement.dataset.live==='true';const scenario=document.documentElement.dataset.scenario||'';const sourceRows=scenario==='hn-done'?rows.map((r,i)=>i>=4?{...r,warehouse_status:'WAREHOUSE_RECEIVED'}:r):scenario==='all-done'?rows.map(r=>({...r,warehouse_status:'WAREHOUSE_RECEIVED'})):scenario==='uneven'?rows.map((r,i)=>i>=1&&i<=3?{...r,receive_batch_details:[{receive_batches:{...r.receive_batch_details[0].receive_batches,warehouse_id:'HN',warehouses:{code:'HN',name:'Kho nhận',address:'164 Hồng Mai'}}}]}:r):scenario==='bulk'?rows.map((r,i)=>i===0?{...r,order_items:r.order_items.map(item=>({...item,product_variant_id:'V-SKU',product_variants:{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}}))}:r):scenario==='skip-mixed'?rows.map((r,i)=>i===0?{...r,order_items:r.order_items.map((item,j)=>j===0?{...item,product_variant_id:'V-SKU',product_variants:{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}}:item)}:r):scenario==='sparse'?rows.filter((r,i)=>i===0||i===4):rows; const filtered=status==='done'?sourceRows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):sourceRows; const itemDecisions=Object.fromEntries([...rows[4].order_items.map((item,i)=>[item.id,{order_item_id:item.id,order_id:rows[4].id,product_variant_id:'V-SKU',decision:i===0?'IN':'SKIP',sale_price:90000,multiplier:1,skip_reason:i===0?null:'Không nhập mẫu',processing_state:'DRAFT'}]),...(scenario==='skip-mixed'?sourceRows[0].order_items.map((item,i)=>[item.id,{order_item_id:item.id,order_id:sourceRows[0].id,product_variant_id:i===0?'V-SKU':null,decision:i===0?'IN':'SKIP',sale_price:i===0?90000:0,multiplier:1,skip_reason:i===0?null:'Không quản lý tồn sản phẩm tặng',processing_state:'DRAFT'}]):[])]); const historySuggestions=scenario==='history'?{[sourceRows[0].order_items[0].id]:[ {variant_id:'V-SKU',sku:'TEST-01',product_name:'Đã map',variant_name:'Mẫu',multiplier:2,history_count:3,match_kind:'exact'}, {variant_id:'V-ALT',sku:'ALT-02',product_name:'SKU bán khác',variant_name:'Chai',multiplier:1,history_count:1,match_kind:'sku_variant'} ]}:{}; return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}},{id:'V-ALT',variant_name:'Chai',sale_price:65000,products:{sku:'ALT-02',name:'SKU bán khác'}}]}  suggestions={historySuggestions} itemDecisions={itemDecisions} auditLogs={[]} previewOnly={!live} simulate={!live} showProcessedOnly={status==='done'}/></>}",
+  "function Fixture(){const [status,setStatus]=React.useState('all');const live=document.documentElement.dataset.live==='true';const scenario=document.documentElement.dataset.scenario||'';const sourceRows=scenario==='hn-done'?rows.map((r,i)=>i>=4?{...r,warehouse_status:'WAREHOUSE_RECEIVED'}:r):scenario==='all-done'?rows.map(r=>({...r,warehouse_status:'WAREHOUSE_RECEIVED'})):scenario==='uneven'?rows.map((r,i)=>i>=1&&i<=3?{...r,receive_batch_details:[{receive_batches:{...r.receive_batch_details[0].receive_batches,warehouse_id:'HN',warehouses:{code:'HN',name:'Kho nhận',address:'164 Hồng Mai'}}}]}:r):scenario==='bulk'?rows.map((r,i)=>i===0?{...r,order_items:r.order_items.map(item=>({...item,product_variant_id:'V-SKU',product_variants:{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}}))}:r):scenario==='skip-mixed'?rows.map((r,i)=>i===0?{...r,order_items:r.order_items.map((item,j)=>j===0?{...item,product_variant_id:'V-SKU',product_variants:{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}}:item)}:r):scenario==='sparse'?rows.filter((r,i)=>i===0||i===4):scenario==='two-each'?rows.filter((r,i)=>[0,1,4,5].includes(i)):scenario==='three-each'?rows.filter((r,i)=>[0,1,2,4,5,6].includes(i)):scenario==='single-one'?rows.filter((r,i)=>i===0):scenario==='single-two'?rows.filter((r,i)=>i<=1):rows; const filtered=status==='done'?sourceRows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):sourceRows; const itemDecisions=Object.fromEntries([...rows[4].order_items.map((item,i)=>[item.id,{order_item_id:item.id,order_id:rows[4].id,product_variant_id:'V-SKU',decision:i===0?'IN':'SKIP',sale_price:90000,multiplier:1,skip_reason:i===0?null:'Không nhập mẫu',processing_state:'DRAFT'}]),...(scenario==='skip-mixed'?sourceRows[0].order_items.map((item,i)=>[item.id,{order_item_id:item.id,order_id:sourceRows[0].id,product_variant_id:i===0?'V-SKU':null,decision:i===0?'IN':'SKIP',sale_price:i===0?90000:0,multiplier:1,skip_reason:i===0?null:'Không quản lý tồn sản phẩm tặng',processing_state:'DRAFT'}]):[])]); const historySuggestions=scenario==='history'?{[sourceRows[0].order_items[0].id]:[ {variant_id:'V-SKU',sku:'TEST-01',product_name:'Đã map',variant_name:'Mẫu',multiplier:2,history_count:3,match_kind:'exact'}, {variant_id:'V-ALT',sku:'ALT-02',product_name:'SKU bán khác',variant_name:'Chai',multiplier:1,history_count:1,match_kind:'sku_variant'} ]}:{}; return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}},{id:'V-ALT',variant_name:'Chai',sale_price:65000,products:{sku:'ALT-02',name:'SKU bán khác'}}]}  suggestions={historySuggestions} itemDecisions={itemDecisions} auditLogs={[]} previewOnly={!live} simulate={!live} showProcessedOnly={status==='done'}/></>}",
   "createRoot(document.getElementById('root')).render(<Fixture/>)",
 ].join('\n')
 writeFileSync(entryPath,source)
@@ -498,6 +498,60 @@ for(const [width,height] of [[390,844],[1280,800],[1440,900]]){
   await page.close()
 }
 console.log('PASS sparse dual warehouses · natural-height cards at mobile, tablet and desktop')
+
+// Boundary cases: 0, 1, 2 and >=3 real orders. Only 3+ may flex
+// into spare lane height; a single warehouse with 1 or 2 stays compact.
+for(const [scenario,countExpected,mode] of [
+  ['single-one',1,'one'],['single-two',2,'two'],
+  ['two-each',2,'two'],['three-each',3,'many']
+]){
+  for(const [width,height] of [[390,844],[768,1024],[1280,800]]){
+    const page=await browser.newPage({viewport:{width,height}})
+    await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="'+scenario+'">'),{waitUntil:'load'})
+    await page.locator('.warehouse-unified-table').first().waitFor()
+    const geometry=await page.locator('.warehouse-receive-table-lane').evaluate(lane=>{
+      const l=lane.getBoundingClientRect()
+      return {
+        bottom:l.bottom,
+        widthOverflow:lane.scrollWidth-lane.clientWidth,
+        groups:[...lane.querySelectorAll('.warehouse-unified-group')].map(g=>{
+          const box=g.getBoundingClientRect()
+          const data=g.querySelector('.warehouse-unified-table-wrap')
+          const table=g.querySelector('table')
+          return {
+            mode:g.getAttribute('data-warehouse-row-mode'),
+            count:Number(g.getAttribute('data-warehouse-rows')),
+            className:g.className,
+            height:box.height,bottom:box.bottom,
+            dataHeight:data?.getBoundingClientRect().height??0,
+            tableHeight:table?.getBoundingClientRect().height??0,
+            overflowX:(data?.scrollWidth??0)-(data?.clientWidth??0),
+          }
+        }),
+      }
+    })
+    const groupCount=scenario.startsWith('single')?1:2
+    assert.equal(geometry.groups.length,groupCount,'right number of warehouse groups '+scenario+' '+width)
+    assert.ok(geometry.groups.every(g=>g.count===countExpected&&g.mode===mode),
+      'warehouse card declares correct row-count mode '+scenario+' '+width+' '+JSON.stringify(geometry))
+    assert.ok(geometry.groups.every(g=>g.overflowX<=3)&&geometry.widthOverflow<=3,
+      'new row-count modes must not overflow horizontally '+scenario+' '+width)
+    if(mode!=='many'){
+      assert.ok(geometry.groups.every(g=>g.dataHeight<=g.tableHeight+5),
+        '1/2-order table must not reserve empty interior '+scenario+' '+width+' '+JSON.stringify(geometry))
+      assert.ok(geometry.groups.at(-1).bottom<geometry.bottom-18,
+        '1/2-order layout must remain compact, even with a single warehouse '+scenario+' '+width+' '+JSON.stringify(geometry))
+    }else{
+      assert.ok(geometry.groups.every(g=>g.height>=175),
+        '3+ rows need usable scrolling/data space '+scenario+' '+width+' '+JSON.stringify(geometry))
+    }
+    assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+      'row-count modes must not auto-open slidebar '+scenario+' '+width)
+    await page.screenshot({path:path.join(output,scenario+'-'+width+'-'+height+'.png')})
+    await page.close()
+  }
+}
+console.log('PASS 0/1/2/3+ warehouse modes · compact sparse cards · dense usable space · no auto-slidebar')
 
 // Adaptive warehouse groups: visibility and vertical allocation come from
 // ACTIONABLE warehouse rows, not a permanently rendered BG/HN 50/50 layout.
