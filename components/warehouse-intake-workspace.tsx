@@ -387,6 +387,24 @@ export function WarehouseIntakeWorkspace({
                     <time className="warehouse-unified-received-at" title="Ngày nhận thực tế">
                       {receivedAt(row)?formatDateTime(receivedAt(row)):'Chưa có ngày nhận'}
                     </time>
+                    {!showProcessedOnly&&!!bulkPreview(row,itemDecisions)&&
+                      <button type="button" className="warehouse-order-quick-receive"
+                        title={'Xem trước và xác nhận nhập kho đơn '+(row.shopee_order_id??row.id)}
+                        aria-label={'Nhập nhanh đơn '+(row.shopee_order_id??row.id)}
+                        onClick={event=>{
+                          event.stopPropagation()
+                          setSelectedGroup(group.id)
+                          setSelected([row.id])
+                          setBulkReviewGroup(group.id)
+                          setBulkFeedback(null)
+                        }}>
+                        <svg viewBox="0 0 16 16" width="13" height="13" fill="none"
+                          stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
+                          strokeLinejoin="round" aria-hidden="true">
+                          <path d="M8 2v8m-3-3 3 3 3-3M2.5 11.5v2h11v-2"/>
+                        </svg>
+                        <span className="warehouse-order-quick-label">Nhập nhanh</span>
+                      </button>}
                   </div>
                 </div>
               </td>
