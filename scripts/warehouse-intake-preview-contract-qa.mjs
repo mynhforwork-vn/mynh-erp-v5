@@ -236,6 +236,14 @@ const checks=[
     css.includes('.warehouse-unified-status .warehouse-unified-product-line') &&
     css.includes('display:block;padding-left:0;margin-top:3px;') &&
     !css.includes('display:block;padding-left:18px;margin-top:3px;')],
+  ['bulk confirmation requires one click, without an agreement checkbox',
+    !bulkBar.includes('confirmText') &&
+    !bulkBar.includes('warehouse-bulk-agreement') &&
+    !bulkBar.includes('Tôi đã đối chiếu đơn') &&
+    !bulkBar.includes('type="checkbox"') &&
+    bulkBar.includes('if(previewOnly||busy||orders.length===0||orders.length>25)return') &&
+    bulkBar.includes('disabled={previewOnly||busy||orders.length===0||orders.length>25}') &&
+    bulkBar.includes("warehouseId,orderIds:orders.map(x=>x.id),note")],
   ['bulk UI supports 25 order selection, explicit review, and partial failure',
     table.includes('function bulkPreview(row:Row,decisions:Record<string,ItemDecision>)') &&
     table.includes('const capped=readyIds.slice(0,25)') &&
