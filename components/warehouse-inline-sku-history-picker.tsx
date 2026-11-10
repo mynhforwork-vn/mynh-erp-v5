@@ -128,6 +128,10 @@ export function WarehouseInlineSkuHistoryPicker({
   }
 
   useEffect(()=>{
+    // Clicking a mapped SKU in a lower warehouse may auto-scroll the table
+    // just before the portal mounts. Ignore that activation scroll, but
+    // continue to dismiss the picker on subsequent intentional scrolling.
+    const openedAt=Date.now()
     const pointer=(event:PointerEvent)=>{
       if(busyRef.current||panelRef.current?.contains(event.target as Node))return
       onClose()
@@ -140,7 +144,8 @@ export function WarehouseInlineSkuHistoryPicker({
       }
     }
     const closeOnScroll=(event:Event)=>{
-      if(busyRef.current||panelRef.current?.contains(event.target as Node))return
+      if(busyRef.current||panelRef.current?.contains(event.target as Node)||
+        Date.now()-openedAt<300)return
       onClose()
     }
     document.addEventListener('pointerdown',pointer,true)
