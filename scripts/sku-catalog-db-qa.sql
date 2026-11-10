@@ -111,7 +111,7 @@ INSERT INTO public.order_items(id,order_id,product_name,quantity,product_variant
   'Đã ghép trước nhận hàng',1,'b0000000-0000-4000-8000-000000000001');
 SET ROLE authenticated;
 SET request.jwt.claims='{"sub":"60000000-0000-4000-8000-000000000001","app_metadata":{"role":"admin"}}';
-DO $
+DO $$
 BEGIN
  IF (public.preview_sku_merge(
    'b0000000-0000-4000-8000-000000000001',
