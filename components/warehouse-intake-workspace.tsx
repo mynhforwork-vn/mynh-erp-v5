@@ -442,7 +442,7 @@ export function WarehouseIntakeWorkspace({
                 })}
               </td>
             }
-            return <section className={'card tracking-hub-card tracking-hub-card-v2 warehouse-receive-card warehouse-unified-group '+(open?'open':'collapsed')}
+            return <section className={'card tracking-hub-card tracking-hub-card-v2 warehouse-receive-card warehouse-unified-group '+(open?'open':'collapsed')+(groupSelected>0?' with-bulk-selection':'')}
               key={group.id} data-warehouse-code={group.code}
               data-warehouse-rows={group.rows.length}
               data-warehouse-actionable={waiting.length}
