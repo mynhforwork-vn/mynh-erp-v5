@@ -1,0 +1,302 @@
+'use client'
+
+import {useEffect,useRef,useState,type CSSProperties} from 'react'
+import {createPortal} from 'react-dom'
+import {useRouter} from 'next/navigation'
+import {formatMoney} from '@/lib/format'
+import {saveWarehouseItemDecision} from '@/lib/actions/warehouse-item-decisions'
+import type {HistoricalSuggestion} from '@/lib/warehouse-sku-suggestions'
+
+type Variant={
+  id:string
+  variant_name:string
+  sale_price?:number|string|null
+  products?:{sku?:string|null,name?:string|null}|null
+}
+type Target={
+  orderItemId:string
+  orderLabel:string
+  productName:string
+  sourceVariant:string|null
+  quantity:number
+  left:number
+  top:number
+  bottom:number
+}
+type Decision='IN'|'SKIP'
+type Mode='existing'|'new'
+
+function matchText(match:HistoricalSuggestion['match_kind']){
+  if(match==='exact')return 'Khớp mã, tên và phân loại'
+  if(match==='sku_variant')return 'Khớp SKU mua và phân loại'
+  return 'Khớp tên và phân loại'
+}
+
+export function WarehouseInlineSkuHistoryPicker({
+  target,history,variants,previewOnly,onClose,onSaved
+}:{
+  target:Target
+  history:HistoricalSuggestion[]
+  variants:Variant[]
+  previewOnly:boolean
+  onClose:()=>void
+  onSaved:(label:string)=>void
+}){
+  const router=useRouter()
+  const panelRef=useRef<HTMLElement>(null)
+  const busyRef=useRef(false)
+  // Prefill the highest-ranked saved-history match IN MEMORY only. This is
+  // not a persisted decision or an inventory transaction until confirmed.
+  const preferred=history.find(option=>variants.some(variant=>variant.id===option.variant_id))
+  const preferredVariant=variants.find(variant=>variant.id===preferred?.variant_id)
+  const [mounted,setMounted]=useState(false)
+  const [mode,setMode]=useState<Mode>('existing')
+  const [variantId,setVariantId]=useState(preferredVariant?.id??'')
+  const [catalogQuery,setCatalogQuery]=useState('')
+  const [newSku,setNewSku]=useState('')
+  const [newName,setNewName]=useState(target.productName)
+  const [newVariant,setNewVariant]=useState(target.sourceVariant||'Mặc định')
+  const [salePrice,setSalePrice]=useState(
+    preferredVariant?.sale_price===null||preferredVariant?.sale_price===undefined
+      ?'':String(preferredVariant.sale_price))
+  const [multiplier,setMultiplier]=useState(String(preferred?.multiplier??1))
+  const [decision,setDecision]=useState<Decision|null>(preferredVariant?'IN':null)
+  const [skipReason,setSkipReason]=useState('')
+  const [busy,setBusy]=useState(false)
+  const [error,setError]=useState('')
+  useEffect(()=>setMounted(true),[])
+
+  // Suggestions are exclusively the persisted matching history supplied by
+  // the existing engine. Unknown/deleted catalog variants are never offered.
+  const available=history.filter(item=>variants.some(variant=>variant.id===item.variant_id))
+  const selected=variants.find(variant=>variant.id===variantId)
+  const catalog=variants.filter(variant=>
+    [variant.products?.sku,variant.products?.name,variant.variant_name]
+      .filter(Boolean).join(' ').toLocaleLowerCase('vi')
+      .includes(catalogQuery.trim().toLocaleLowerCase('vi'))).slice(0,catalogQuery.trim()?80:30)
+  const newCode=newSku.trim().toUpperCase()
+  const duplicatedSku=!!newCode&&variants.some(variant=>
+    String(variant.products?.sku??'').trim().toUpperCase()===newCode)
+  const validNew=!!newCode&&newCode.length<=100&&newName.trim().length>0&&
+    newName.trim().length<=255&&newVariant.trim().length>0&&newVariant.trim().length<=255&&!duplicatedSku
+  function chooseCatalog(id:string){
+    const variant=variants.find(item=>item.id===id)
+    setVariantId(id)
+    setSalePrice(variant?.sale_price===null||variant?.sale_price===undefined?'':String(variant.sale_price))
+    setMultiplier('1')
+    setDecision(null)
+    setSkipReason('')
+    setError('')
+  }
+  function changeMode(next:Mode){
+    setMode(next)
+    setDecision(null)
+    setSkipReason('')
+    if(next==='new'){
+      // Never carry a historical sale price into a newly created SKU.
+      setSalePrice('')
+      setMultiplier('1')
+    }else if(selected){
+      setSalePrice(selected.sale_price===null||selected.sale_price===undefined?'':String(selected.sale_price))
+    }
+    setError('')
+  }
+  function choose(option:HistoricalSuggestion){
+    const variant=variants.find(item=>item.id===option.variant_id)
+    if(!variant)return
+    setVariantId(variant.id)
+    setSalePrice(variant.sale_price===null||variant.sale_price===undefined?'':String(variant.sale_price))
+    setMultiplier(String(option.multiplier))
+    // Another verified historical mapping is also only an unsaved IN draft.
+    setDecision('IN')
+    setSkipReason('')
+    setError('')
+  }
+
+  useEffect(()=>{
+    const pointer=(event:PointerEvent)=>{
+      if(busyRef.current||panelRef.current?.contains(event.target as Node))return
+      onClose()
+    }
+    const escape=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'&&!busyRef.current){
+        event.preventDefault()
+        event.stopPropagation()
+        onClose()
+      }
+    }
+    const closeOnScroll=(event:Event)=>{
+      if(busyRef.current||panelRef.current?.contains(event.target as Node))return
+      onClose()
+    }
+    document.addEventListener('pointerdown',pointer,true)
+    document.addEventListener('keydown',escape,true)
+    document.addEventListener('scroll',closeOnScroll,true)
+    window.addEventListener('resize',onClose)
+    return ()=>{
+      document.removeEventListener('pointerdown',pointer,true)
+      document.removeEventListener('keydown',escape,true)
+      document.removeEventListener('scroll',closeOnScroll,true)
+      window.removeEventListener('resize',onClose)
+    }
+  },[onClose])
+
+  const price=Number(salePrice)
+  const factor=Number(multiplier)
+  const validPrice=salePrice.trim()!==''&&Number.isFinite(price)&&price>=0&&price<=999999999
+  const validFactor=Number.isInteger(factor)&&factor>=1&&factor<=100000
+  const validTarget=mode==='new'?validNew:!!selected
+  const canSave=!previewOnly&&!busy&&validTarget&&validPrice&&validFactor&&
+    !!decision&&(decision!=='SKIP'||skipReason.trim().length>0&&skipReason.trim().length<=500)
+  async function save(){
+    if(!canSave||!decision||busyRef.current)return
+    busyRef.current=true
+    setBusy(true)
+    setError('')
+    try{
+      await saveWarehouseItemDecision({
+        orderItemId:target.orderItemId,
+        variantId:mode==='existing'?selected?.id??null:null,
+        newSku:mode==='new'?newCode:null,
+        newName:mode==='new'?newName.trim():null,
+        newVariant:mode==='new'?newVariant.trim():null,
+        salePrice:price,multiplier:factor,decision,
+        skipReason:decision==='SKIP'?skipReason.trim():null,
+      })
+      onSaved(target.orderLabel)
+      onClose()
+      router.refresh()
+    }catch(e){
+      setError(e instanceof Error?e.message:'Không thể lưu ghép SKU. Vui lòng thử lại.')
+    }finally{
+      busyRef.current=false
+      setBusy(false)
+    }
+  }
+
+  if(!mounted)return null
+  const narrow=window.innerWidth<=600
+  const width=Math.min(380,window.innerWidth-20)
+  const left=Math.max(10,Math.min(target.left,window.innerWidth-width-10))
+  // Reserve the entire possible picker height before placing it. A short
+  // initial suggestion list grows when the user selects one; its footer must
+  // remain clickable even when the source row is near the viewport bottom.
+  const maxPanelHeight=Math.min(540,Math.floor(window.innerHeight*.8))
+  const top=Math.max(8,Math.min(target.bottom+5,window.innerHeight-maxPanelHeight-8))
+  const position:CSSProperties=narrow
+    ?{left:10,right:10,bottom:10,maxHeight:'min(75dvh,540px)'}
+    :{left,top,maxWidth:width,maxHeight:'min(80dvh,540px)'}
+
+  return createPortal(
+    <section ref={panelRef} role="dialog" aria-label="Ghép SKU nhanh"
+      data-warehouse-inline-sku-history={target.orderItemId}
+      className="warehouse-inline-sku-history" style={position}
+      onClick={event=>event.stopPropagation()}>
+      <div className="warehouse-inline-sku-history-head">
+        <div>
+          <strong>Ghép SKU nhanh</strong>
+          <small>{target.orderLabel} · {target.productName}</small>
+          {target.sourceVariant&&<small>Phân loại mua: {target.sourceVariant}</small>}
+        </div>
+        <button type="button" aria-label="Đóng gợi ý ghép SKU" onClick={onClose} disabled={busy}>×</button>
+      </div>
+      <div className="warehouse-inline-sku-history-content">
+        <div className="warehouse-inline-sku-history-modes" role="group" aria-label="Cách ghép SKU">
+          <button type="button" className={mode==='existing'?'active':''} aria-pressed={mode==='existing'}
+            disabled={busy} onClick={()=>changeMode('existing')}>Chọn SKU có sẵn</button>
+          <button type="button" className={mode==='new'?'active':''} aria-pressed={mode==='new'}
+            disabled={busy} onClick={()=>changeMode('new')}>Tạo SKU mới</button>
+        </div>
+        {mode==='existing'&&<>
+          {preferredVariant&&variantId===preferredVariant.id&&
+            <p className="warehouse-inline-sku-draft-note">Đã chọn sẵn SKU gợi ý từ lịch sử. Bấm Lưu ghép SKU để xác nhận; chưa nhập kho.</p>}
+          {available.length>0&&<>
+            <p>{available.length} gợi ý từ những đơn tương tự đã ghép trước đây. Hãy đối chiếu, không tự động chọn.</p>
+            <div className="warehouse-inline-sku-history-options">
+              {available.map(option=><button type="button" key={option.variant_id}
+                className={variantId===option.variant_id?'active':''}
+                aria-pressed={variantId===option.variant_id}
+                disabled={busy} onClick={()=>choose(option)}>
+                <b>{option.sku||'SKU chưa có mã'} · {option.product_name||'Chưa có tên'}</b>
+                <small>{option.variant_name||'Mặc định'} · Quy đổi ×{option.multiplier}</small>
+                <small>{option.history_count} đơn cũ · {matchText(option.match_kind)}</small>
+              </button>)}
+            </div>
+          </>}
+          {available.length===0&&<p>Chưa có lịch sử ghép tương tự. Có thể tìm SKU trong danh mục hoặc tạo SKU mới.</p>}
+          <label className="warehouse-inline-sku-history-catalog">Tìm SKU bán trong danh mục
+            <input type="search" aria-label="Tìm SKU bán ghép nhanh" value={catalogQuery}
+              disabled={busy} placeholder="Mã SKU, tên sản phẩm hoặc phân loại"
+              onChange={e=>setCatalogQuery(e.target.value)}/>
+          </label>
+          <label className="warehouse-inline-sku-history-catalog">Chọn SKU bán có sẵn
+            <select aria-label="Chọn SKU bán ghép nhanh" value={variantId} disabled={busy}
+              onChange={e=>chooseCatalog(e.target.value)}>
+              <option value="">— Chọn SKU bán —</option>
+              {selected&&!catalog.some(v=>v.id===selected.id)&&<option value={selected.id}>
+                {selected.products?.sku||'Chưa có mã'} · {selected.products?.name||''} · {selected.variant_name}
+              </option>}
+              {catalog.map(variant=><option value={variant.id} key={variant.id}>
+                {variant.products?.sku||'Chưa có mã'} · {variant.products?.name||''} · {variant.variant_name}
+              </option>)}
+            </select>
+          </label>
+        </>}
+        {mode==='new'&&<div className="warehouse-inline-sku-history-new">
+          <p>Tạo SKU bán mới từ sản phẩm mua này. Nhập mã SKU mới; kiểm tra lại tên và phân loại trước khi lưu.</p>
+          <label>Mã SKU bán mới
+            <input type="text" aria-label="Mã SKU bán mới ghép nhanh" maxLength={100}
+              placeholder="Nhập mã SKU mới" value={newSku} disabled={busy}
+              onChange={e=>setNewSku(e.target.value)}/>
+          </label>
+          <label>Tên sản phẩm
+            <input type="text" aria-label="Tên SKU mới ghép nhanh" maxLength={255}
+              value={newName} disabled={busy} onChange={e=>setNewName(e.target.value)}/>
+          </label>
+          <label>Phân loại
+            <input type="text" aria-label="Phân loại SKU mới ghép nhanh" maxLength={255}
+              value={newVariant} disabled={busy} onChange={e=>setNewVariant(e.target.value)}/>
+          </label>
+          {duplicatedSku&&<small className="warehouse-inline-sku-history-error">Mã SKU đã có trong danh mục. Hãy chọn SKU có sẵn.</small>}
+        </div>}
+        {(mode==='new'||selected)&&<div className="warehouse-inline-sku-history-edit">
+          <strong>Đối chiếu trước khi lưu</strong>
+          <div className="warehouse-inline-sku-history-numbers">
+            <label>Giá bán
+              <input type="number" inputMode="decimal" min="0" max="999999999" step="1"
+                value={salePrice} onChange={e=>setSalePrice(e.target.value)}
+                aria-label="Giá bán ghép nhanh" disabled={busy} placeholder="Nhập giá bán"/>
+            </label>
+            <label>Hệ số quy đổi
+              <input type="number" inputMode="numeric" min="1" max="100000" step="1"
+                value={multiplier} onChange={e=>setMultiplier(e.target.value)}
+                aria-label="Hệ số ghép nhanh" disabled={busy}/>
+            </label>
+          </div>
+          <small>Số lượng dự kiến: {validFactor?target.quantity*factor:'—'} · Giá bán: {validPrice?formatMoney(price):'Chưa có'}</small>
+          <div className="warehouse-inline-sku-history-decisions" aria-label="Quyết định kho">
+            <span>Quyết định kho</span>
+            <div>
+              <button type="button" aria-pressed={decision==='IN'} className={decision==='IN'?'active':''}
+                disabled={busy} onClick={()=>{setDecision('IN');setSkipReason('')}}>Nhập kho</button>
+              <button type="button" aria-pressed={decision==='SKIP'} className={decision==='SKIP'?'active':''}
+                disabled={busy} onClick={()=>setDecision('SKIP')}>Bỏ qua kho</button>
+            </div>
+          </div>
+          {decision==='SKIP'&&<label>Lý do bỏ qua kho
+            <input type="text" maxLength={500} value={skipReason}
+              onChange={e=>setSkipReason(e.target.value)}
+              aria-label="Lý do bỏ qua ghép nhanh" disabled={busy} placeholder="Nhập lý do"/>
+          </label>}
+          <small>Chỉ lưu ghép SKU và quyết định; chưa ghi tăng tồn kho.</small>
+        </div>}
+        {previewOnly&&<p className="warehouse-inline-sku-history-readonly">Preview chỉ xem và thử ghép SKU, không ghi dữ liệu kho.</p>}
+        {error&&<p role="alert" className="warehouse-inline-sku-history-error">{error}</p>}
+      </div>
+      <footer className="warehouse-inline-sku-history-footer">
+        <button type="button" className="button small" disabled={busy} onClick={onClose}>Đóng</button>
+        <button type="button" className="button primary small"
+          disabled={!canSave} onClick={()=>void save()}>{busy?'Đang lưu…':'Lưu ghép SKU'}</button>
+      </footer>
+    </section>,document.body)
+}

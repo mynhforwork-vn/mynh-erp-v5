@@ -3,16 +3,10 @@ import { requireUser } from '@/lib/supabase/auth'
 import { WarehouseIntakeWorkspace } from '@/components/warehouse-intake-workspace'
 import { WarehouseReceivingSettings } from '@/components/warehouse-receiving-settings'
 import { PurchaseDateFilter } from '@/components/purchase-date-filter'
+import {indexHistoricalSkuMappings,suggestSkusFromHistory,type HistoricSkuMapping,type HistoricalSuggestion}
+  from '@/lib/warehouse-sku-suggestions'
 import '@/app/styles/warehouse-intake-preview.css'
 import '@/app/styles/warehouse-intake-detail-preview.css'
-
-function suggestionKey(item: { sku?: string | null; product_name?: string | null; variant?: string | null }) {
-  return [
-    String(item.sku ?? '').trim().toUpperCase(),
-    String(item.product_name ?? '').trim().toLocaleLowerCase('vi'),
-    String(item.variant ?? '').trim().toLocaleLowerCase('vi'),
-  ].join('|')
-}
 
 function batchOf(row: any) {
   const detail = Array.isArray(row.receive_batch_details)
@@ -134,7 +128,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       .select('default_receiving_warehouse_id').eq('id', 'main').single(),
     // Same read-only suggestion source already used by the Production receiving screen.
     supabase.from('order_items')
-      .select('sku,product_name,variant,product_variant_id,inventory_multiplier,created_at,product_variants(id,variant_name,sale_price,products(id,sku,name))')
+      .select('id,order_id,sku,product_name,variant,product_variant_id,inventory_multiplier,created_at,product_variants(id,variant_name,sale_price,products(id,sku,name))')
       .not('product_variant_id', 'is', null)
       .order('created_at', { ascending: false }).limit(3000),
   ])
@@ -178,34 +172,31 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     return !!day && (!sinceDay || day >= sinceDay) && (!untilDay || day <= untilDay)
   })
 
-  const mappingByKey = new Map<string, any>()
-  for (const item of (recentMappings ?? []) as any[]) {
-    const key = suggestionKey(item)
-    if (!mappingByKey.has(key) && item.product_variant_id && item.product_variants) {
-      mappingByKey.set(key, item)
-    }
+  // Historical suggestions are only produced from persisted, previously
+  // mapped lines of OTHER orders. Multiple mappings remain separate options.
+  // No suggestion is applied automatically and Preview never writes mappings.
+  // The nested PostgREST relation may be represented as an array in generated
+  // types; normalize both relational shapes before calculating history.
+  const history:HistoricSkuMapping[]=((recentMappings??[]) as unknown as any[]).map(item=>{
+    const variant=Array.isArray(item.product_variants)?item.product_variants[0]:item.product_variants
+    const product=Array.isArray(variant?.products)?variant.products[0]:variant?.products
+    return {...item,product_variants:variant?{...variant,products:product??null}:null}
+  })
+  const historicIndex=indexHistoricalSkuMappings(history)
+  // Preserve SKUs found in earlier mappings even if not within the newest
+  // 1,500 edited variants. Existing catalog entry is still checked on click.
+  const knownVariants=new Map<string,any>()
+  for(const variant of (variants??[]) as any[])knownVariants.set(variant.id,variant)
+  for(const source of history){
+    const variant=source.product_variants
+    if(variant?.id&&!knownVariants.has(variant.id))knownVariants.set(variant.id,variant)
   }
-  // Preserve historically matched SKUs even when they fall outside the
-  // latest 1,500 edited variants (read-only, deduplicated by variant ID).
-  const knownVariants = new Map<string, any>()
-  for (const variant of (variants ?? []) as any[]) knownVariants.set(variant.id, variant)
-  for (const item of (recentMappings ?? []) as any[]) {
-    const variant = item.product_variants
-    if (variant?.id && !knownVariants.has(variant.id)) knownVariants.set(variant.id, variant)
-  }
-  const allVariants = [...knownVariants.values()]
-  const suggestions: Record<string, { variant_id: string; sku: string | null; product_name: string | null; variant_name: string | null; multiplier: number }> = {}
-  for (const order of rows) for (const item of order.order_items ?? []) {
-    if (item.product_variant_id) continue
-    const previous = mappingByKey.get(suggestionKey(item))
-    if (!previous?.product_variant_id || !previous?.product_variants) continue
-    suggestions[item.id] = {
-      variant_id: previous.product_variant_id,
-      sku: previous.product_variants.products?.sku ?? null,
-      product_name: previous.product_variants.products?.name ?? null,
-      variant_name: previous.product_variants.variant_name ?? null,
-      multiplier: Number(previous.inventory_multiplier ?? 1),
-    }
+  const allVariants=[...knownVariants.values()]
+  const suggestions:Record<string,HistoricalSuggestion[]>={}
+  for(const order of rows)for(const item of order.order_items??[]){
+    if(item.product_variant_id)continue
+    const candidates=suggestSkusFromHistory({...item,order_id:order.id},historicIndex,3)
+    if(candidates.length)suggestions[item.id]=candidates
   }
 
   const assignedCount = rows.filter(row => {
@@ -214,14 +205,6 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
   }).length
   const unresolvedCount = rows.length - assignedCount
   const pending = rows.filter(row => row.warehouse_status === 'READY_TO_TRANSFER')
-  const incomplete = pending.filter(row =>
-    !(row.order_items ?? []).length ||
-    (row.order_items ?? []).some((item: any) => !item.product_variant_id))
-  const ready = pending.filter(row =>
-    (row.order_items ?? []).length > 0 &&
-    (row.order_items ?? []).every((item: any) => Boolean(item.product_variant_id)))
-  const missingItems = incomplete.reduce((sum, row) =>
-    sum + (row.order_items ?? []).filter((item: any) => !item.product_variant_id).length, 0)
   const done = rows.filter(row =>
     ['WAREHOUSE_RECEIVED', 'WAREHOUSE_SKIPPED', 'WAREHOUSE_MIXED'].includes(String(row.warehouse_status)))
   // Preserve legacy deep-links from Kho overview; expose only three workflow states.
@@ -229,18 +212,21 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     state === 'pending' || state === 'incomplete' || state === 'missing' ? 'pending' :
     state === 'done' ? 'done' : 'all'
 
-  const displayedRows = currentStatus === 'pending' ? incomplete : currentStatus === 'ready' ? ready : currentStatus === 'done' ? done : rows
+  // Fetch decisions before filtering: a line explicitly skipped without SKU
+  // must count toward "ready" and must not disappear from its own tab.
+  const decisionSourceRows = currentStatus==='done' ? done :
+    currentStatus==='all' ? rows : pending
 
   // Read persistent decisions only in live mode (Preview targets the same
   // Supabase project but must remain read-only before the migration).
-  // Query only the orders displayed, in bounded chunks for PostgREST limits.
+  // Query only relevant orders in bounded chunks for PostgREST limits.
   const decisionList:any[]=[]
   let decisionError:{message:string}|null=null
   if(isLive){
     // Supabase/PostgREST may cap individual responses below requested limits;
     // paginate every order chunk so no persisted item decision is silently lost.
-    for(let offset=0;offset<displayedRows.length&&!decisionError;offset+=100){
-      const ids=displayedRows.slice(offset,offset+100).map(o=>o.id)
+    for(let offset=0;offset<decisionSourceRows.length&&!decisionError;offset+=100){
+      const ids=decisionSourceRows.slice(offset,offset+100).map(o=>o.id)
       for(let itemOffset=0;itemOffset<50000;itemOffset+=500){
         const {data,error:loadError}=await supabase.from('warehouse_item_decisions')
           .select('order_item_id,order_id,product_variant_id,decision,sale_price,multiplier,skip_reason,processing_state,updated_at')
@@ -257,6 +243,39 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     }
   }
   const itemDecisions=Object.fromEntries(decisionList.map(x=>[x.order_item_id,x]))
+  const isReady=(row:any)=>{
+    const items=row.order_items??[]
+    if(!items.length)return false
+    const records=items.map((item:any)=>itemDecisions[item.id])
+    const hasDraft=records.some(Boolean)
+    return items.every((item:any,index:number)=>{
+      const quantity=Number(item.quantity)
+      if(!Number.isInteger(quantity)||quantity<1)return false
+      if(!hasDraft)return !!item.product_variant_id&&
+        Number.isInteger(Number(item.inventory_multiplier??1))&&Number(item.inventory_multiplier??1)>0
+      const d=records[index]
+      if(!d||d.processing_state!=='DRAFT')return false
+      const skipped=d.decision==='SKIP'&&!!String(d.skip_reason??'').trim()
+      if(skipped&&!item.product_variant_id&&d.product_variant_id===null&&
+        Number(d.sale_price)===0&&Number(d.multiplier)===1)return true
+      const factor=Number(d.multiplier)
+      return !!item.product_variant_id&&d.product_variant_id===item.product_variant_id&&
+        Number.isInteger(factor)&&factor>0&&factor===Number(item.inventory_multiplier??1)&&
+        Number.isFinite(Number(d.sale_price))&&Number(d.sale_price)>=0&&
+        (d.decision==='IN'||skipped)&&quantity*factor<=2147483647
+    })
+  }
+  const ready=pending.filter(isReady)
+  const incomplete=pending.filter(row=>!isReady(row))
+  const missingItems=incomplete.reduce((sum,row)=>
+    sum+(row.order_items??[]).filter((item:any)=>{
+      const d=itemDecisions[item.id]
+      return !item.product_variant_id&&!(d?.decision==='SKIP'&&
+        d?.processing_state==='DRAFT'&&d?.product_variant_id===null&&
+        !!String(d.skip_reason??'').trim())
+    }).length,0)
+  const displayedRows=currentStatus==='pending'?incomplete:
+    currentStatus==='ready'?ready:currentStatus==='done'?done:rows
   const statusHref = (status: 'all' | 'pending' | 'ready' | 'done') => {
     const query = new URLSearchParams({ state: status })
     if (receivedPeriod !== 'all') query.set('received_range', receivedPeriod)
@@ -325,6 +344,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       itemDecisions={itemDecisions}
       simulate={!isLive}
       previewOnly={!canWrite}
+      showProcessedOnly={currentStatus==='done'}
     />
   </div>
 }

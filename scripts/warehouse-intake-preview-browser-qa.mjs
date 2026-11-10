@@ -21,14 +21,14 @@ const source=[
   "  id:'10000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),",
   "  shopee_order_id:'261106SPXITEM'+String(i+1).padStart(3,'0'),",
   "  warehouse_status:i===2?'WAREHOUSE_RECEIVED':i===3?'WAREHOUSE_SKIPPED':'READY_TO_TRANSFER',",
-  "  cod:50000*(i+1),order_date:'2026-11-01T12:00:00+07:00',created_at:'2026-11-01T12:02:00+07:00',",
+  "  cod:document.documentElement.dataset.scenario==='missing-cod'&&i===0?null:50000*(i+1),order_date:'2026-11-01T12:00:00+07:00',created_at:'2026-11-01T12:02:00+07:00',",
   "  shipping_service:'STANDARD',receive_status:'RECEIVED',order_status:'DELIVERED',",
   "  payment_status:i===0?'PARTIAL':'UNPAID',prepaid_amount:i===0?25000:null,prepaid_source_type:i===0?'DEBIT_CARD':null,prepaid_source_label:i===0?'Ngân hàng thử nghiệm':null,",
   "  receive_batch_details:[{receive_batches:{warehouse_id:i<4?'BG':'HN',received_at:'2026-11-06T08:00:00+07:00',warehouses:{code:i<4?'BG':'HN',name:'Kho nhận',address:i<4?'320 Nguyễn Công Hãng':'164 Hồng Mai'}}}],",
   "  order_items:[{id:'20000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:long,sku:'SRC-'+i,variant:'Phân loại mẫu 500ml',quantity:2,original_price:50000,final_price:35000,inventory_multiplier:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}:null},",
   "  {id:'30000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),product_name:'Sữa tắm hương hoa nhài',sku:'SRC-OTHER',variant:'Dạng chai',quantity:1,product_variant_id:(i===1||i===2||i===3||i===4)?'V-SKU':null,product_variants:(i===1||i===2||i===3||i===4)?{id:'V-SKU',variant_name:'Mẫu',products:{sku:'TEST-01',name:'Đã map'}}:null}]",
   '}))',
-  "function Fixture(){const [status,setStatus]=React.useState('all');const live=document.documentElement.dataset.live==='true'; const filtered=status==='done'?rows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):rows; return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}]} suggestions={{}} auditLogs={[]} previewOnly={!live} simulate={!live}/></>}",
+  "function Fixture(){const [status,setStatus]=React.useState('all');const live=document.documentElement.dataset.live==='true';const scenario=document.documentElement.dataset.scenario||'';const sourceRows=scenario==='hn-done'?rows.map((r,i)=>i>=4?{...r,warehouse_status:'WAREHOUSE_RECEIVED'}:r):scenario==='all-done'?rows.map(r=>({...r,warehouse_status:'WAREHOUSE_RECEIVED'})):scenario==='uneven'?rows.map((r,i)=>i>=1&&i<=3?{...r,receive_batch_details:[{receive_batches:{...r.receive_batch_details[0].receive_batches,warehouse_id:'HN',warehouses:{code:'HN',name:'Kho nhận',address:'164 Hồng Mai'}}}]}:r):scenario==='dense-uneven'?rows.map((r,i)=>i===3?{...r,receive_batch_details:[{receive_batches:{...r.receive_batch_details[0].receive_batches,warehouse_id:'HN',warehouses:{code:'HN',name:'Kho nhận',address:'164 Hồng Mai'}}}]}:r):scenario==='bulk'?rows.map((r,i)=>i===0?{...r,order_items:r.order_items.map(item=>({...item,product_variant_id:'V-SKU',product_variants:{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}}))}:r):scenario==='skip-mixed'?rows.map((r,i)=>i===0?{...r,order_items:r.order_items.map((item,j)=>j===0?{...item,product_variant_id:'V-SKU',product_variants:{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}}}:item)}:r):scenario==='sparse'?rows.filter((r,i)=>i===0||i===4):scenario==='two-each'?rows.filter((r,i)=>[0,1,4,5].includes(i)):scenario==='three-each'?rows.filter((r,i)=>[0,1,2,4,5,6].includes(i)):scenario==='single-one'?rows.filter((r,i)=>i===0):scenario==='single-two'?rows.filter((r,i)=>i<=1):rows; const filtered=status==='done'?sourceRows.filter(r=>r.warehouse_status!=='READY_TO_TRANSFER'):sourceRows; const itemDecisions=Object.fromEntries([...rows[4].order_items.map((item,i)=>[item.id,{order_item_id:item.id,order_id:rows[4].id,product_variant_id:'V-SKU',decision:i===0?'IN':'SKIP',sale_price:90000,multiplier:1,skip_reason:i===0?null:'Không nhập mẫu',processing_state:'DRAFT'}]),...(scenario==='skip-mixed'?sourceRows[0].order_items.map((item,i)=>[item.id,{order_item_id:item.id,order_id:sourceRows[0].id,product_variant_id:i===0?'V-SKU':null,decision:i===0?'IN':'SKIP',sale_price:i===0?90000:0,multiplier:1,skip_reason:i===0?null:'Không quản lý tồn sản phẩm tặng',processing_state:'DRAFT'}]):[])]); const historySuggestions=scenario==='history'?{[sourceRows[0].order_items[0].id]:[ {variant_id:'V-SKU',sku:'TEST-01',product_name:'Đã map',variant_name:'Mẫu',multiplier:2,history_count:3,match_kind:'exact'}, {variant_id:'V-ALT',sku:'ALT-02',product_name:'SKU bán khác',variant_name:'Chai',multiplier:1,history_count:1,match_kind:'sku_variant'} ]}:{}; return <><header className='page-head tracking-page-head-v2'><div><span className='module-eyebrow'>VẬN HÀNH KHO</span><h1>Nhập kho</h1><p>Theo Kho nhận · Bóc tách SKU · Nhập kho</p></div></header><div className='warehouse-receive-date-toolbar fixture-date'>Tất cả · Hôm nay · Tuần này · 7 ngày · 30 ngày · Tháng này · Năm nay</div><section className='tracking-command-center-v2 warehouse-command-center'><div className='tracking-status-strip-v2 wh-native-status-kpis'>{['Tất cả','Chờ bóc tách','Chờ nhập kho','Đã xử lý'].map((v,i)=><div key={v} className='tracking-status-metric'><span>{v}</span><b>{[8,5,1,2][i]}</b><small>Kho nhận · Bóc tách SKU</small></div>)}</div></section><div className='fixture-command'><button className='fixture-all' onClick={()=>setStatus('all')}>Tất cả</button><button className='fixture-done' onClick={()=>setStatus('done')}>Đã xử lý</button></div><WarehouseIntakeWorkspace rows={filtered} variants={[{id:'V-SKU',variant_name:'Mẫu',sale_price:90000,products:{sku:'TEST-01',name:'Đã map'}},{id:'V-ALT',variant_name:'Chai',sale_price:65000,products:{sku:'ALT-02',name:'SKU bán khác'}}]}  suggestions={historySuggestions} itemDecisions={itemDecisions} auditLogs={[]} previewOnly={!live} simulate={!live} showProcessedOnly={status==='done'}/></>}",
   "createRoot(document.getElementById('root')).render(<Fixture/>)",
 ].join('\n')
 writeFileSync(entryPath,source)
@@ -40,12 +40,15 @@ await build({
   plugins:[{name:'mock-warehouse-actions',setup(es){
     es.onResolve({filter:/[\\/]lib[\\/]actions[\\/]warehouse$/},()=>({path:'warehouse-actions',namespace:'warehouse-qa'}))
     es.onResolve({filter:/[\\/]lib[\\/]actions[\\/]warehouse-item-decisions$/},()=>({path:'item-actions',namespace:'warehouse-qa'}))
+    es.onResolve({filter:/[\\/]lib[\\/]actions[\\/]warehouse-bulk-receive$/},()=>({path:'bulk-actions',namespace:'warehouse-qa'}))
     es.onResolve({filter:/^next\/navigation$/},()=>({path:'next-navigation',namespace:'warehouse-qa'}))
     es.onLoad({filter:/.*/,namespace:'warehouse-qa'},args=>({
       contents:args.path==='next-navigation'
         ? 'export function useRouter(){return {refresh(){window.__refreshCalls=(window.__refreshCalls||0)+1}}}'
         : args.path==='item-actions'
-        ? 'export async function saveWarehouseItemDecision(input){window.__warehouseCalls=(window.__warehouseCalls||[]);window.__warehouseCalls.push({name:"save",input});return {product_variant_id:input.variantId||"V-SKU",decision:input.decision,quantity:2,order_item_id:input.orderItemId}} export async function finalizeWarehouseItemDecisions(id){window.__warehouseCalls.push({name:"finalize",id});return {warehouse_status:"WAREHOUSE_MIXED",in_items:1,skip_items:1,transaction_count:1}}'
+        ? 'export async function saveWarehouseItemDecision(input){window.__warehouseCalls=(window.__warehouseCalls||[]);window.__warehouseCalls.push({name:"save",input});return {product_variant_id:input.variantId||"V-SKU",decision:input.decision,quantity:2,order_item_id:input.orderItemId}} export async function skipWarehouseItemWithoutSku(input){window.__warehouseCalls=(window.__warehouseCalls||[]);window.__warehouseCalls.push({name:"skip",input});if(window.__skipFail)throw new Error("Đơn không còn ở trạng thái chờ xử lý kho");return {order_item_id:input.orderItemId,decision:"SKIP",product_variant_id:null,quantity:0,skip_reason:input.reason}} export async function finalizeWarehouseItemDecisions(id){window.__warehouseCalls.push({name:"finalize",id});return {warehouse_status:"WAREHOUSE_MIXED",in_items:1,skip_items:1,transaction_count:1}}'
+        : args.path==='bulk-actions'
+        ? 'export async function bulkReceiveWarehouseOrders(input){window.__bulkCalls=window.__bulkCalls||[];window.__bulkCalls.push(input);if(window.__bulkDelay)await new Promise(resolve=>setTimeout(resolve,180));if(window.__bulkFail)return {succeeded:[],failed:input.orderIds.map(id=>({orderId:id,message:"Đơn không còn ở trạng thái chờ nhập kho"})),legacyOrders:0,itemDecisionOrders:0,stockItemLines:0,skippedItemLines:0};if(window.__bulkPartial){return {succeeded:input.orderIds.slice(0,1),failed:input.orderIds.slice(1).map(id=>({orderId:id,message:"Cần kiểm tra lại trạng thái"})),legacyOrders:1,itemDecisionOrders:0,stockItemLines:2,skippedItemLines:0}}return {succeeded:input.orderIds,failed:[],legacyOrders:input.orderIds.length,itemDecisionOrders:0,stockItemLines:2,skippedItemLines:0}}'
         : 'export async function mapWarehouseOrderItem(){throw new Error("blocked")} export async function receiveOrdersIntoWarehouse(){throw new Error("blocked")} export async function skipWarehouseOrder(){throw new Error("blocked")}',
       loader:'js'
     }))
@@ -78,12 +81,30 @@ try {
     await page.locator('.warehouse-unified-table tbody tr').first().waitFor({timeout:20000})
     const cards=page.locator('.warehouse-unified-group')
     assert.equal(await cards.count(),2,'two real receiving warehouses '+width)
+    assert.equal(await page.locator('.warehouse-unified-table .warehouse-order-quick-receive').count(),2,
+      'only 2 eligible rows expose quick receipt at '+width)
+    assert.equal(await page.locator('.warehouse-unified-table tbody tr').filter({
+      has:page.locator('.warehouse-order-quick-receive')
+    }).count(),2,'quick action only belongs to eligible order cells at '+width)
+    assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+      'detail panel must stay closed on initial load '+width)
+    await page.locator('.warehouse-unified-table tbody tr').first().locator('td[data-col="product"]').click()
+    assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+      'clicking a product/table cell must not open the detail panel '+width)
+    await page.locator('.fixture-done').click()
+    assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+      'changing to completed filter must not auto-open details '+width)
+    await page.locator('.fixture-all').click()
+    assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+      'returning to all orders must not auto-open details '+width)
+    await page.locator('.warehouse-unified-table tbody tr').first().locator('button.table-link').click()
+    await page.locator('aside.warehouse-intake-panel').waitFor()
     const list=await page.evaluate(()=>{
       const tables=[...document.querySelectorAll('.warehouse-unified-table')]
       const wraps=[...document.querySelectorAll('.warehouse-unified-table-wrap')]
       const panel=document.querySelector('aside.warehouse-intake-panel')
       const lane=document.querySelector('.warehouse-receive-table-lane')
-      const productLines=[...document.querySelectorAll('.warehouse-unified-product-line')]
+      const productLines=[...document.querySelectorAll('.warehouse-unified-products .warehouse-unified-product-line')]
       const main=document.querySelector('.brand-shell-v1>.main')
       const screen=document.querySelector('.warehouse-receive-screen')
       const workspace=document.querySelector('.warehouse-intake-preview-layout')
@@ -129,7 +150,7 @@ try {
             tbodyDisplay:getComputedStyle(t.tBodies[0]).display,
             rowDisplay:getComputedStyle(t.tBodies[0].rows[0]).display,
             cellWidths:[...(header?.cells??[])].map(td=>td.getBoundingClientRect().width),
-            productWidth:header?.cells[3]?.getBoundingClientRect().width??0,
+            productWidth:header?.cells[2]?.getBoundingClientRect().width??0,
           }
         }),
         columnMenus:document.querySelectorAll('.warehouse-unified-group-column-control .managed-column-button').length,
@@ -199,10 +220,48 @@ try {
         labels:[...document.querySelectorAll('.warehouse-unified-table .status-pill')].map(e=>e.textContent?.trim()),
       }
     })
-    assert.ok(list.headers.every(count=>count===7),'seven columns preserved '+width+' '+JSON.stringify(list))
+    assert.ok(list.headers.every(count=>count===6),'six merged columns preserved '+width+' '+JSON.stringify(list))
     assert.equal(list.rows.reduce((a,b)=>a+b,0),8,'all includes processed and skipped '+width)
     assert.equal(list.products.reduce((a,b)=>a+b,0),16,'all products visible '+width)
     assert.ok(list.labels.includes('Đã bỏ qua kho')&&list.labels.includes('Đã nhập kho'),'processed statuses rendered '+width)
+    const merged=await page.locator('.warehouse-unified-table').first().evaluate(table=>({
+      headers:[...table.tHead.rows[0].cells].map(cell=>cell.textContent?.trim()??''),
+      received:table.querySelector('tbody tr:first-child td[data-col="order"] .warehouse-unified-received-at')?.textContent?.trim(),
+      skuCell:table.querySelector('tbody tr:nth-child(2) td[data-col="sku"]')?.innerText,
+      skuSale:table.querySelector('tbody tr:nth-child(2) td[data-col="sku"] .warehouse-unified-sku-title')?.textContent,
+      pendingValue:table.querySelector('tbody tr:first-child td[data-col="order"] .warehouse-unified-pending-value')?.textContent?.trim(),
+      mappedHasValue:!!table.querySelector('tbody tr:nth-child(2) td[data-col="order"] .warehouse-unified-pending-value'),
+      processedHasValue:!!table.querySelector('tbody tr:nth-child(3) td[data-col="order"] .warehouse-unified-pending-value'),
+      valueAxis:(()=>{
+        const order=table.querySelector('tbody tr:first-child td[data-col="order"]')
+        return {
+          received:order?.querySelector('.warehouse-unified-received-at')?.getBoundingClientRect().left,
+          value:order?.querySelector('.warehouse-unified-pending-value')?.getBoundingClientRect().left,
+          code:order?.querySelector('.table-link')?.getBoundingClientRect().left,
+        }
+      })(),
+    }))
+    assert.ok(merged.headers[0].includes('Ngày nhận')&&merged.headers.length===6,
+      'date must share the order column, no separate date column '+width)
+    assert.match(merged.received??'',/06\/11\/2026/,
+      'received date should appear below each order code '+width)
+    assert.ok((merged.skuCell??'').includes('TEST-01')&&(merged.skuSale??'').includes('Đã map'),
+      'mapped sale product name must be displayed after SKU '+width)
+    assert.match(merged.pendingValue??'',/Giá trị đơn:\s*75[.,]000\s*đ/,
+      'partially prepaid order shows full value: 25.000 prepaid + 50.000 COD '+width)
+    assert.equal(merged.mappedHasValue,false,
+      'mapped order must not show unparsed order-value note '+width)
+    assert.equal(merged.processedHasValue,false,
+      'processed order must not show unparsed order-value note '+width)
+    assert.ok(Math.abs((merged.valueAxis.code??0)-(merged.valueAxis.value??0))<=1.5&&
+      Math.abs((merged.valueAxis.received??0)-(merged.valueAxis.value??0))<=1.5,
+      'order value, time and code align in the same column '+width+' '+JSON.stringify(merged.valueAxis))
+    const originalPrice=await page.locator('.warehouse-unified-table').first()
+      .locator('tbody tr:first-child td[data-col="purchase"]').innerText()
+    assert.match(originalPrice,/50[.,]000/,
+      'Giá gốc must show original price 50.000, not 35.000 after discount '+width)
+    assert.ok((merged.headers??[]).some(header=>header.includes('Giá gốc')),
+      'main table must label original purchase price Giá gốc '+width)
     assert.ok(list.readOnlySubmit,'write controls must be disabled in preview '+width)
     assert.deepEqual(list.panelTabLabels,['Sản phẩm','Thông tin đơn','Lịch sử'],
       'V2 slidebar must have three functional tabs '+width)
@@ -221,17 +280,31 @@ try {
     assert.ok(list.productLines.every(x=>x.nameOverflow==='ellipsis'),'long name must use ellipsis '+width)
     assert.ok(list.actualShell,'Fixture does not reproduce actual ERP .shell.brand-shell-v1 wrapper '+width)
     assert.ok(list.heights.mainPaddingBottom<=9,'ERP main still reserves unused bottom padding '+width+' '+JSON.stringify(list.heights))
-    assert.ok(Math.abs(list.heights.screenBottom-list.heights.mainBottom)<=3,
-      'page does not reach main content bottom '+width+' '+JSON.stringify(list.heights))
-    assert.ok(Math.abs(list.heights.workspaceBottom-list.heights.mainBottom)<=3,
-      'receiving workspace fails to fill remaining page height '+width+' '+JSON.stringify(list.heights))
+    const shortLandscape=width>height&&width<=900&&height<=430
+    if(shortLandscape){
+      const mainScroll=await page.locator('.brand-shell-v1>.main').evaluate(node=>({
+        total:node.scrollHeight,visible:node.clientHeight,
+        overflow:getComputedStyle(node).overflowY,
+      }))
+      assert.ok(mainScroll.total>mainScroll.visible+60&&mainScroll.overflow==='auto',
+        'short mobile landscape needs vertical access to the order codes '+width+' '+JSON.stringify(mainScroll))
+    }else{
+      assert.ok(Math.abs(list.heights.screenBottom-list.heights.mainBottom)<=3,
+        'page does not reach main content bottom '+width+' '+JSON.stringify(list.heights))
+      assert.ok(Math.abs(list.heights.workspaceBottom-list.heights.mainBottom)<=3,
+        'receiving workspace fails to fill remaining page height '+width+' '+JSON.stringify(list.heights))
+    }
     assert.ok(Math.abs(list.heights.laneBottom-list.heights.workspaceBottom)<=3,
       'table lane is shorter than the slidebar workspace '+width+' '+JSON.stringify(list.heights))
     if(width>900){
       assert.ok(Math.abs(list.heights.panelBottom-list.heights.mainBottom)<=3,
         'desktop slidebar stops before the end of the available page '+width+' '+JSON.stringify(list.heights))
-      assert.ok(list.heights.groupBottoms.at(-1)>=list.heights.laneBottom-3,
-        'last warehouse group leaves blank area below the table '+width+' '+JSON.stringify(list.heights))
+      // Empty workspace BELOW compact cards is intentional. Never let
+      // empty space accumulate INSIDE an open table when content fits.
+      if(list.heights.groupBottoms.at(-1)<list.heights.laneBottom-3){
+        assert.ok(list.heights.dataHeights.every((h,i)=>h<=list.heights.scrollHeights[i]+4),
+          'compact warehouses must not stretch table beyond actual rows '+width+' '+JSON.stringify(list.heights))
+      }
       assert.ok(list.heights.groupHeights.every(h=>h>100),
         'warehouse groups became unusably short '+width+' '+JSON.stringify(list.heights))
     }else{
@@ -247,8 +320,8 @@ try {
     assert.ok(list.tableGeometry.every(x=>x.headerDisplay==='table-header-group'&&
       x.tbodyDisplay==='table-row-group'&&x.rowDisplay==='table-row'),
       'header, body and rows must retain their table structure '+width+' '+JSON.stringify(list.tableGeometry))
-    assert.ok(list.tableGeometry.every(x=>x.cellWidths.length===7&&x.cellWidths.every(w=>w>0)),
-      'all seven columns must occupy measurable table width '+width+' '+JSON.stringify(list.tableGeometry))
+    assert.ok(list.tableGeometry.every(x=>x.cellWidths.length===6&&x.cellWidths.every(w=>w>0)),
+      'all six columns must occupy measurable table width '+width+' '+JSON.stringify(list.tableGeometry))
     assert.ok(list.tableGeometry.every(x=>Math.abs(x.tableLeft-x.firstLeft)<=3 && Math.abs(x.tableRight-x.lastRight)<=3),
       'Auto Fit leaves unused blank space at table edges '+width+' '+JSON.stringify(list.tableGeometry))
     assert.ok(list.finalColumns.every(x=>x.fullyVisible && x.headerWidth>3 &&
@@ -280,10 +353,15 @@ try {
       lastGroupBottom:el.querySelector('.warehouse-unified-group:last-of-type')?.getBoundingClientRect().bottom,
       laneBottom:el.querySelector('.warehouse-receive-table-lane')?.getBoundingClientRect().bottom,
     }))
-    assert.ok(Math.abs(afterCloseVertical.workspaceBottom-list.heights.workspaceBottom)<=3,
+    if(!shortLandscape)assert.ok(Math.abs(afterCloseVertical.workspaceBottom-list.heights.workspaceBottom)<=3,
       'closing slidebar changes overall workspace height '+width+' '+JSON.stringify(afterCloseVertical))
-    if(width>900)assert.ok(afterCloseVertical.lastGroupBottom>=afterCloseVertical.laneBottom-3,
-      'closing slidebar leaves blank area below the table '+width+' '+JSON.stringify(afterCloseVertical))
+    // Closing the slidebar can reduce line wrapping. Both tables may then
+    // fit naturally instead of being stretched to the bottom of the lane.
+    if(width>900&&afterCloseVertical.lastGroupBottom<afterCloseVertical.laneBottom-3){
+      const compact=await page.locator('.warehouse-unified-table-wrap').evaluateAll(nodes=>
+        nodes.every(wrap=>wrap.clientHeight<=wrap.scrollHeight+4))
+      assert.ok(compact,'closing slidebar must not create blank table interiors '+width)
+    }
     assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,'close slidebar '+width)
     const closedLaneWidth=await page.locator('.warehouse-receive-table-lane').evaluate(e=>e.clientWidth)
     if(width>900)assert.ok(closedLaneWidth>list.laneWidth+130,
@@ -291,7 +369,7 @@ try {
     const afterClose=await page.locator('.warehouse-unified-table-wrap').first().evaluate(e=>{
       const table=e.querySelector('table')
       return {client:e.clientWidth,scroll:e.scrollWidth,table:table?.getBoundingClientRect().width,
-        productWidth:table?.tHead?.rows[0]?.cells[3]?.getBoundingClientRect().width}
+        productWidth:table?.tHead?.rows[0]?.cells[2]?.getBoundingClientRect().width}
     })
     assert.ok(afterClose.scroll<=afterClose.client+3,'closed panel table still overflows '+width+' '+JSON.stringify(afterClose))
     assert.ok(Math.abs(afterClose.table-afterClose.client)<=3,
@@ -300,16 +378,49 @@ try {
       assert.ok(afterClose.productWidth>list.tableGeometry[0].productWidth+60,
         'product column must expand to use newly available table width '+width+' '+JSON.stringify(afterClose))
     }
+    // Selection/indentation QA on the same Desktop, Tablet and Mobile matrix:
+    // native checkbox semantics, a visible custom mark, and one aligned order/date axis.
+    const selectionGeometry=await page.locator('.warehouse-unified-table').first().evaluate(table=>{
+      const first=table.querySelector('tbody tr td[data-col="order"]')
+      const code=first?.querySelector('.warehouse-unified-order .table-link')
+      const date=first?.querySelector('.warehouse-unified-received-at')
+      const rowSlot=first?.querySelector('.warehouse-bulk-select-control,.warehouse-bulk-select-spacer')
+      const headSlot=table.querySelector('thead .warehouse-bulk-select-control')
+      return {
+        dateLeft:date?.getBoundingClientRect().left,
+        codeLeft:code?.getBoundingClientRect().left,
+        rowSlotLeft:rowSlot?.getBoundingClientRect().left,
+        headSlotLeft:headSlot?.getBoundingClientRect().left,
+        hitWidth:rowSlot?.getBoundingClientRect().width,
+      }
+    })
+    assert.ok(Math.abs(selectionGeometry.codeLeft-selectionGeometry.dateLeft)<=1.5,
+      'order/date must share a left edge '+width+' '+JSON.stringify(selectionGeometry))
+    assert.ok(Math.abs(selectionGeometry.rowSlotLeft-selectionGeometry.headSlotLeft)<=6,
+      'header/body checkbox gutters must align '+width+' '+JSON.stringify(selectionGeometry))
+    assert.ok(selectionGeometry.hitWidth>=21,
+      'bulk checkbox touch target became too small '+width+' '+JSON.stringify(selectionGeometry))
+    const bulkTick=page.locator('.warehouse-unified-group').first().locator('tbody .warehouse-bulk-select-checkbox').first()
+    await bulkTick.check()
+    assert.equal(await bulkTick.isChecked(),true,'select row works '+width)
+    // The selection mark animates its background over 120ms: wait for its
+    // final visual state instead of sampling the first animation frame.
+    await page.waitForFunction(()=>{
+      const mark=document.querySelector('.warehouse-unified-group tbody input.warehouse-bulk-select-checkbox:checked + .warehouse-bulk-select-mark')
+      return !!mark&&getComputedStyle(mark).backgroundColor==='rgb(67, 139, 130)'
+    },null,{timeout:2000})
+    await bulkTick.uncheck()
+    assert.equal(await bulkTick.isChecked(),false,'unselect row works '+width)
     if(width===1280){
       const bg=page.locator('.warehouse-unified-group').first()
       const hn=page.locator('.warehouse-unified-group').last()
       await bg.locator('.managed-column-button').click()
       assert.equal(await bg.locator('.managed-column-menu').count(),1,'BG menu opens')
       assert.equal(await hn.locator('.managed-column-menu').count(),0,'HN menu must stay closed')
-      await bg.locator('.managed-column-row').filter({hasText:'COD'}).locator('input').uncheck()
-      assert.equal(await bg.locator('thead th').count(),6,'BG custom visibility takes effect')
-      assert.equal(await hn.locator('thead th').count(),7,'HN columns remain independent')
-      await bg.locator('.managed-column-row').filter({hasText:'COD'}).locator('input').check()
+      await bg.locator('.managed-column-row').filter({hasText:'Giá bán'}).locator('input').uncheck()
+      assert.equal(await bg.locator('thead th').count(),5,'BG custom visibility takes effect')
+      assert.equal(await hn.locator('thead th').count(),6,'HN columns remain independent')
+      await bg.locator('.managed-column-row').filter({hasText:'Giá bán'}).locator('input').check()
       await bg.locator('.managed-column-button').click()
     }
     await page.locator('.warehouse-unified-order button.table-link').first().click()
@@ -321,7 +432,7 @@ try {
       await panel.getByLabel('Hệ số quy đổi',{exact:true}).fill('2')
       assert.match(await panel.locator('.warehouse-detail-v2-conversion').innerText(),/4/)
       await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).click()
-      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã ghép SKU/)
+      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU\/kho/)
       await panel.locator('.warehouse-detail-v2-product').nth(1).click()
       await panel.getByLabel('Chọn SKU bán',{exact:true}).selectOption('V-SKU')
       await panel.getByRole('button',{name:'Bỏ qua kho',exact:true}).click()
@@ -331,7 +442,7 @@ try {
       assert.equal(await panel.locator('.warehouse-detail-v2-summary strong').count(),2,'mixed decisions are present')
       assert.match(await panel.locator('.warehouse-detail-v2-summary').innerText(),/Nhập kho/)
       assert.match(await panel.locator('.warehouse-detail-v2-summary').innerText(),/Bỏ qua kho/)
-      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã ghép SKU/)
+      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU\/kho/)
       await page.screenshot({path:path.join(output,'warehouse-v2-mixed-decisions.png')})
       await panel.getByRole('tab',{name:'Thông tin đơn'}).click()
       const info=panel.locator('.warehouse-detail-v2-order-info')
@@ -343,7 +454,7 @@ try {
       assert.match(await info.innerText(),/Thẻ ghi nợ/)
       assert.match(await info.innerText(),/Kho nhận thực tế/)
       await info.locator('.warehouse-detail-v2-product-link').first().click()
-      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã ghép SKU/)
+      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU\/kho/)
       await panel.getByRole('tab',{name:'Lịch sử'}).click()
       assert.match(await panel.locator('.warehouse-detail-v2-content').innerText(),/Chưa có lịch sử/)
       await panel.getByRole('tab',{name:'Sản phẩm'}).click()
@@ -353,15 +464,676 @@ try {
     const processed=await page.locator('.warehouse-unified-table tbody tr').count()
     assert.equal(processed,2,'processed KPI must show stored and skipped '+width)
     assert.deepEqual(errors,[],'no runtime errors '+width+': '+errors.join('; '))
-    console.log('PASS '+width+'x'+height+' · full page height · full slidebar height · internal table scrolling · 7 columns')
+    console.log('PASS '+width+'x'+height+' · full page height · full slidebar height · internal table scrolling · 6 columns')
     await page.close()
   }
+
+// Sparse warehouses should take only their actual row height. The extra
+// workspace belongs below both cards, never inside a mostly-empty table.
+for(const [width,height] of [[390,844],[1280,800],[1440,900]]){
+  const page=await browser.newPage({viewport:{width,height}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="sparse">'),{waitUntil:'load'})
+  await page.locator('.warehouse-unified-group').first().waitFor()
+  const sizes=await page.locator('.warehouse-receive-table-lane').evaluate(lane=>{
+    const groups=[...lane.querySelectorAll('.warehouse-unified-group')]
+    const laneRect=lane.getBoundingClientRect()
+    return {
+      laneHeight:laneRect.height,laneBottom:laneRect.bottom,
+      lastBottom:groups.at(-1)?.getBoundingClientRect().bottom,
+      overflowX:lane.scrollWidth-lane.clientWidth,
+      groups:groups.map(group=>{
+        const wrap=group.querySelector('.warehouse-unified-table-wrap')
+        const table=wrap?.querySelector('table')
+        return {
+          rows:group.querySelectorAll('tbody tr').length,
+          height:group.getBoundingClientRect().height,
+          contentHeight:table?.getBoundingClientRect().height,
+          wrapHeight:wrap?.getBoundingClientRect().height,
+          headHeight:group.querySelector('.warehouse-unified-group-head')?.getBoundingClientRect().height,
+          scroll:wrap?.scrollHeight-wrap?.clientHeight,
+        }
+      })
+    }
+  })
+  assert.deepEqual(sizes.groups.map(g=>g.rows),[1,1],
+    'sparse fixture must have one order in each warehouse '+width)
+  assert.ok(sizes.groups.every(g=>g.height<Math.max(265,sizes.laneHeight*.62)),
+    'one-row warehouse must not become a giant empty half-page '+width+' '+JSON.stringify(sizes))
+  assert.ok(sizes.groups.every(g=>g.wrapHeight<=g.contentHeight+5),
+    'table must not stretch beyond its real rows '+width+' '+JSON.stringify(sizes))
+  assert.ok(sizes.lastBottom<sizes.laneBottom-24,
+    'sparse dual warehouses must not be forced to fill available height '+width+' '+JSON.stringify(sizes))
+  assert.ok(sizes.overflowX<=3,'sparse layout cannot overflow horizontally '+width)
+  await page.screenshot({path:path.join(output,width+'-'+height+'-sparse.png')})
+  await page.close()
+}
+console.log('PASS sparse dual warehouses · natural-height cards at mobile, tablet and desktop')
+
+// Boundary cases: 0, 1, 2 and >=3 real orders. Only 3+ may flex
+// into spare lane height; one/two orders must be fully visible, not scroll.
+for(const [scenario,countExpected,mode] of [
+  ['single-one',1,'one'],['single-two',2,'two'],
+  ['two-each',2,'two'],['three-each',3,'many']
+]){
+  for(const [width,height] of [[390,844],[768,1024],[1280,800]]){
+    const page=await browser.newPage({viewport:{width,height}})
+    await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="'+scenario+'">'),{waitUntil:'load'})
+    await page.locator('.warehouse-unified-table').first().waitFor()
+    const geometry=await page.locator('.warehouse-receive-table-lane').evaluate(lane=>{
+      const l=lane.getBoundingClientRect()
+      return {
+        bottom:l.bottom,
+        widthOverflow:lane.scrollWidth-lane.clientWidth,
+        groups:[...lane.querySelectorAll('.warehouse-unified-group')].map(g=>{
+          const box=g.getBoundingClientRect()
+          const data=g.querySelector('.warehouse-unified-table-wrap')
+          const table=g.querySelector('table')
+          return {
+            mode:g.getAttribute('data-warehouse-row-mode'),
+            count:Number(g.getAttribute('data-warehouse-rows')),
+            className:g.className,
+            height:box.height,bottom:box.bottom,
+            dataHeight:data?.getBoundingClientRect().height??0,
+            tableHeight:table?.getBoundingClientRect().height??0,
+            compactRowsHeight:(table?.tHead?.getBoundingClientRect().height??0)+
+              [...(table?.tBodies[0]?.rows??[])].slice(0,Math.min(Number(g.dataset.warehouseRows),2))
+                .reduce((sum,row)=>sum+row.getBoundingClientRect().height,0)+1,
+            contentScroll:data?.scrollHeight??0,
+            viewScroll:data?.clientHeight??0,
+            overflowX:(data?.scrollWidth??0)-(data?.clientWidth??0),
+          }
+        }),
+      }
+    })
+    const groupCount=scenario.startsWith('single')?1:2
+    assert.equal(geometry.groups.length,groupCount,'right number of warehouse groups '+scenario+' '+width)
+    assert.ok(geometry.groups.every(g=>g.count===countExpected&&g.mode===mode),
+      'warehouse card declares correct row-count mode '+scenario+' '+width+' '+JSON.stringify(geometry))
+    assert.ok(geometry.groups.every(g=>g.overflowX<=3)&&geometry.widthOverflow<=3,
+      'new row-count modes must not overflow horizontally '+scenario+' '+width)
+    if(mode!=='many'){
+      assert.ok(geometry.groups.every(g=>Math.abs(g.dataHeight-g.compactRowsHeight)<=3),
+        '1/2 orders must show all their rows with no forced empty height '+scenario+' '+width+' '+JSON.stringify(geometry))
+      assert.ok(geometry.groups.every(g=>g.contentScroll<=g.viewScroll+4),
+        'one/two orders must be fully visible, not hidden behind vertical scrolling '+scenario+' '+width+' '+JSON.stringify(geometry))
+      if(groupCount===1)assert.ok(geometry.groups.at(-1).bottom<geometry.bottom-18,
+        'a single 1/2-order warehouse must remain compact '+scenario+' '+width+' '+JSON.stringify(geometry))
+    }else{
+      assert.ok(geometry.groups.every(g=>g.height>=175),
+        '3+ rows need usable scrolling/data space '+scenario+' '+width+' '+JSON.stringify(geometry))
+      assert.ok(await page.locator('.warehouse-receive-table-lane.warehouse-equal-halves').count()===1,
+        'both warehouses with >2 orders must split equally '+scenario+' '+width)
+      assert.ok(Math.abs(geometry.groups[0].height-geometry.groups[1].height)<=4,
+        'two dense warehouse panels must be equal-height '+scenario+' '+width+' '+JSON.stringify(geometry))
+    }
+    assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+      'row-count modes must not auto-open slidebar '+scenario+' '+width)
+    await page.screenshot({path:path.join(output,scenario+'-'+width+'-'+height+'.png')})
+    await page.close()
+  }
+}
+// Unequal dense order counts must STILL render equal-height BG/HN panels.
+for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800],[1440,900]]){
+  const page=await browser.newPage({viewport:{width,height}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="dense-uneven">'),{waitUntil:'load'})
+  const lane=page.locator('.warehouse-receive-table-lane.warehouse-equal-halves')
+  await lane.waitFor()
+  const boxes=await lane.locator('.warehouse-unified-group').evaluateAll(groups=>
+    groups.map(group=>({
+      rows:Number(group.dataset.warehouseRows),
+      height:group.getBoundingClientRect().height,
+      scroll:group.querySelector('.warehouse-unified-table-wrap')?.scrollHeight??0,
+      visible:group.querySelector('.warehouse-unified-table-wrap')?.clientHeight??0,
+    })))
+  assert.deepEqual(boxes.map(x=>x.rows),[3,5],'fixture has 3 BG and 5 HN orders '+width)
+  assert.ok(Math.abs(boxes[0].height-boxes[1].height)<=4,
+    '3 vs 5 orders must share equal vertical halves '+width+' '+JSON.stringify(boxes))
+  assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+    'equal panels must not auto-open order slidebar '+width)
+  await page.screenshot({path:path.join(output,'dense-uneven-'+width+'-'+height+'.png')})
+  await page.close()
+}
+console.log('PASS warehouse 0/1/2/3+ layout · all 1–2 rows visible · equal dense BG/HN 50/50 · no auto-slidebar')
+
+// Adaptive warehouse groups: visibility and vertical allocation come from
+// ACTIONABLE warehouse rows, not a permanently rendered BG/HN 50/50 layout.
+{
+  const page=await browser.newPage({viewport:{width:1440,height:900}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="hn-done">'),{waitUntil:'load'})
+  await page.locator('.warehouse-unified-group').first().waitFor()
+  assert.deepEqual(await page.locator('.warehouse-unified-group').evaluateAll(nodes=>nodes.map(n=>n.dataset.warehouseCode)),['BG'],
+    'warehouse with no active orders must disappear in All')
+  assert.equal(await page.locator('.warehouse-unified-table tbody tr').count(),4,
+    'the remaining BG group still shows its own rows')
+  assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+    'a single busy warehouse must not auto-open its order panel')
+  await page.locator('.warehouse-unified-table tbody tr').first().locator('button.table-link').click()
+  await page.locator('aside.warehouse-intake-panel').waitFor()
+  const single=await page.evaluate(()=>{
+    const lane=document.querySelector('.warehouse-receive-table-lane').getBoundingClientRect()
+    const group=document.querySelector('.warehouse-unified-group').getBoundingClientRect()
+    const panel=document.querySelector('.warehouse-intake-panel')?.getBoundingClientRect()
+    return {laneBottom:lane.bottom,groupBottom:group.bottom,panelBottom:panel?.bottom}
+  })
+  assert.ok(Math.abs(single.laneBottom-single.groupBottom)<=3,
+    'one remaining warehouse must fill full vertical lane '+JSON.stringify(single))
+  assert.ok(Math.abs(single.panelBottom-single.laneBottom)<=3,
+    'slidebar and the remaining group must end at the same bottom '+JSON.stringify(single))
+  await page.locator('.fixture-done').click()
+  await page.locator('.warehouse-unified-table tbody tr').nth(5).waitFor()
+  assert.deepEqual(await page.locator('.warehouse-unified-group').evaluateAll(nodes=>nodes.map(n=>n.dataset.warehouseCode)),['BG','HN'],
+    'completed KPI must still show warehouses with only completed orders')
+  assert.equal(await page.locator('.warehouse-unified-table tbody tr').count(),6,
+    'completed KPI must retain all six processed orders')
+  await page.locator('.fixture-all').click()
+  assert.deepEqual(await page.locator('.warehouse-unified-group').evaluateAll(nodes=>nodes.map(n=>n.dataset.warehouseCode)),['BG'],
+    'returning to All must hide empty-action warehouse again')
+  await page.screenshot({path:path.join(output,'warehouse-dynamic-single-active.png')})
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1440,height:900}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="all-done">'),{waitUntil:'load'})
+  await page.getByText('Các kho đã hết đơn cần xử lý.',{exact:false}).waitFor()
+  assert.equal(await page.locator('.warehouse-unified-group').count(),0,
+    'no zero-work warehouse card when all orders are completed')
+  assert.equal(await page.locator('.warehouse-intake-panel').count(),0,
+    'no stale slidebar for hidden warehouse')
+  await page.locator('.fixture-done').click()
+  await page.locator('.warehouse-unified-table tbody tr').nth(7).waitFor()
+  assert.equal(await page.locator('.warehouse-unified-group').count(),2,
+    'completed KPI still allows inspecting both warehouse histories')
+  assert.equal(await page.locator('.warehouse-unified-table tbody tr').count(),8,
+    'completed KPI must preserve all eight historical orders')
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1440,height:900}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="uneven">'),{waitUntil:'load'})
+  const sizes=await page.locator('.warehouse-unified-group').evaluateAll(nodes=>nodes.map(n=>({
+    code:n.dataset.warehouseCode,rows:Number(n.dataset.warehouseRows),
+    height:n.getBoundingClientRect().height
+  })))
+  assert.deepEqual(sizes.map(x=>x.rows),[1,7],'expected one BG row and seven HN rows')
+  assert.ok(sizes[1].height>sizes[0].height+90,
+    'large warehouse must use more vertical space than small warehouse '+JSON.stringify(sizes))
+  const geom=await page.locator('.warehouse-receive-table-lane').evaluate(node=>({
+    scrollX:node.scrollWidth-node.clientWidth,
+    bottom:node.getBoundingClientRect().bottom,
+    lastGroupBottom:node.querySelector('.warehouse-unified-group:last-of-type').getBoundingClientRect().bottom
+  }))
+  assert.ok(geom.scrollX<=3,'uneven warehouse groups must not overflow horizontally')
+  assert.ok(geom.lastGroupBottom>=geom.bottom-3,'uneven groups must occupy available page height')
+  await page.screenshot({path:path.join(output,'warehouse-dynamic-uneven-heights.png')})
+  await page.close()
+}
+console.log('PASS adaptive groups · hide empty-action warehouse · completed history · 1/7 proportional heights')
+
+// Quick receive is icon-only and writes at most one eligible order directly,
+// with no review popup. Preview remains read-only even when the icon is visible.
+for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
+  const page=await browser.newPage({viewport:{width,height}})
+  await page.setContent(html,{waitUntil:'load'})
+  const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
+  assert.equal(await bg.locator('.warehouse-order-quick-receive').count(),1,
+    'BG exposes one eligible quick icon '+width)
+  assert.equal(await bg.locator('tbody tr').first().locator('.warehouse-order-quick-receive').count(),0,
+    'unmapped order must never show quick receipt '+width)
+  const quick=bg.getByRole('button',{name:/Nhập nhanh đơn/})
+  assert.equal(await quick.isDisabled(),true,'Preview must block all quick stock writes '+width)
+  assert.equal(await quick.locator('svg').count(),1,'quick receipt displays only an icon '+width)
+  assert.equal((await quick.innerText()).trim(),'','quick receipt must not show text '+width)
+  assert.equal(await page.locator('[data-warehouse-bulk-popup]').count(),0,
+    'quick icon must not open review popup '+width)
+  assert.deepEqual(await page.evaluate(()=>window.__bulkCalls||[]),[],
+    'read-only Preview must not submit stock action '+width)
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="bulk">'),{waitUntil:'load'})
+  const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
+  const quick=bg.getByRole('button',{name:/Nhập nhanh đơn 261106SPXITEM001/})
+  assert.equal(await quick.isEnabled(),true,'eligible icon must be clickable in live mock')
+  await page.evaluate(()=>{window.__bulkDelay=true})
+  await quick.click()
+  await page.waitForFunction(()=>document.querySelector('.warehouse-order-quick-receive[aria-busy="true"]')!==null)
+  assert.equal(await quick.isDisabled(),true,'second click blocked while request pending')
+  await quick.evaluate(button=>button.click())
+  await page.getByRole('status').filter({hasText:'Đã nhập kho đơn 261106SPXITEM001'}).waitFor()
+  const calls=await page.evaluate(()=>window.__bulkCalls||[])
+  assert.equal(calls.length,1,'double click must create just one Server Action request')
+  assert.deepEqual(calls[0].orderIds,['10000000-0000-0000-0000-000000000001'],
+    'quick receipt must send exactly the clicked order')
+  assert.equal(await page.locator('[data-warehouse-bulk-popup]').count(),0,
+    'direct quick receipt must never open a review popup')
+  assert.equal(await bg.locator('.warehouse-bulk-toolbar').count(),0,
+    'direct receipt must not create a bulk selection toolbar')
+  assert.ok(await page.evaluate(()=>(window.__refreshCalls||0)>0),
+    'successful quick receipt refreshes authoritative order data')
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="bulk">'),{waitUntil:'load'})
+  await page.evaluate(()=>{window.__bulkFail=true})
+  const quick=page.getByRole('button',{name:/Nhập nhanh đơn 261106SPXITEM001/})
+  await quick.click()
+  await page.getByRole('alert').filter({hasText:'Đơn không còn ở trạng thái chờ nhập kho'}).waitFor()
+  assert.equal(await quick.isEnabled(),true,'failed quick receipt must allow deliberate retry')
+  assert.equal(await page.locator('[data-warehouse-bulk-popup]').count(),0,
+    'backend validation failure must not create a popup')
+  assert.equal(await page.evaluate(()=>(window.__refreshCalls||0)),0,
+    'failed quick receipt must not report a successful refresh')
+  await page.evaluate(()=>{window.__bulkFail=false})
+  await quick.click()
+  await page.getByRole('status').filter({hasText:'Đã nhập kho đơn 261106SPXITEM001'}).waitFor()
+  const calls=await page.evaluate(()=>window.__bulkCalls||[])
+  assert.equal(calls.length,2,'retry must call Server Action once after initial failed attempt')
+  await page.close()
+}
+console.log('PASS quick receive icon · preview read-only · direct one-order action · no modal · guarded repeat · failure/retry')
+
+// Missing required payment data is not silently converted to 0 đ.
+{
+  const page=await browser.newPage({viewport:{width:390,height:844}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="missing-cod">'),{waitUntil:'load'})
+  const first=page.locator('.warehouse-unified-group[data-warehouse-code="BG"] tbody tr').first()
+  await first.waitFor()
+  const value=await first.locator('.warehouse-unified-pending-value').innerText()
+  assert.equal(value.replace(/\s+/g,' ').trim(),'Giá trị đơn: Chưa đủ dữ liệu',
+    'missing COD in partially prepaid order must show unknown total, not zero')
+  await page.close()
+}
+console.log('PASS canonical order value · 14 viewports · partially paid total · unknown data preserved')
+
+// Item SKIP requires no SKU, does not create a fake variant or stock entry.
+for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
+  const page=await browser.newPage({viewport:{width,height}})
+  await page.setContent(html,{waitUntil:'load'})
+  const first=page.locator('.warehouse-unified-group[data-warehouse-code="BG"] tbody tr').first()
+  const skuCell=first.locator('td[data-col="sku"]')
+  const statusCell=first.locator('td[data-col="status"]')
+  assert.equal(await skuCell.locator('.warehouse-inline-item-skip-trigger').count(),2,
+    'per-product skip buttons sit beside SKU matching in SKU column '+width)
+  assert.equal(await statusCell.locator('button').count(),0,
+    'status column contains no skip action '+width)
+  const pair=skuCell.locator('.warehouse-inline-sku-pair').first()
+  const match=pair.locator('.warehouse-inline-sku-trigger')
+  const skip=pair.getByRole('button',{name:/Bỏ qua kho sản phẩm/})
+  assert.equal((await skip.innerText()).trim(),'',
+    'skip action is icon-only without visible text '+width)
+  assert.equal(await skip.locator('svg').count(),1,
+    'skip icon is still visible and accessible '+width)
+  const [matchBox,skipBox,skuBox]=await Promise.all([match.boundingBox(),skip.boundingBox(),skuCell.boundingBox()])
+  assert.ok(skipBox&&Math.abs(skipBox.width-18)<=1&&Math.abs(skipBox.height-18)<=1,
+    'skip icon has the same compact 18px control at all widths '+width)
+  assert.ok(matchBox&&skipBox&&skuBox&&
+    skipBox.x>=matchBox.x+matchBox.width-1&&
+    Math.abs(skipBox.y+skipBox.height/2-(matchBox.y+matchBox.height/2))<=4&&
+    skipBox.x+skipBox.width<=skuBox.x+skuBox.width+2,
+    'skip aligns beside Chờ ghép without spilling into next column '+width+' '+JSON.stringify({matchBox,skipBox,skuBox}))
+  await skip.click()
+  const dialog=page.getByRole('dialog',{name:'Bỏ qua kho sản phẩm'})
+  await dialog.waitFor()
+  assert.equal(await dialog.getByRole('button',{name:'Xác nhận bỏ qua'}).isDisabled(),true,
+    'Preview item skip remains read-only '+width)
+  await dialog.getByLabel('Lý do bỏ qua sản phẩm').fill('Quà tặng không quản lý tồn')
+  assert.equal(await dialog.getByRole('button',{name:'Xác nhận bỏ qua'}).isDisabled(),true,
+    'read-only Preview does not write even with a valid reason '+width)
+  assert.equal(await skuCell.locator('.warehouse-inline-item-skip-trigger').count(),2,
+    'each unmapped product has a SKU-adjacent skip action '+width)
+  assert.deepEqual(await page.evaluate(()=>window.__warehouseCalls??[]),[],
+    'opening the skip dialog must never trigger an action '+width)
+  await page.keyboard.press('Escape')
+  assert.equal(await dialog.count(),0,'Esc closes the skip dialog '+width)
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true">'),{waitUntil:'load'})
+  const first=page.locator('.warehouse-unified-group[data-warehouse-code="BG"] tbody tr').first()
+  await first.getByRole('button',{name:/Bỏ qua kho sản phẩm/}).first().click()
+  const dialog=page.getByRole('dialog',{name:'Bỏ qua kho sản phẩm'})
+  assert.equal(await dialog.getByRole('button',{name:'Xác nhận bỏ qua'}).isDisabled(),true,
+    'reason is required before per-item skip')
+  await dialog.getByLabel('Lý do bỏ qua sản phẩm').fill('Sản phẩm biếu tặng không nhập tồn')
+  await dialog.getByRole('button',{name:'Xác nhận bỏ qua'}).click()
+  await page.getByRole('status').filter({hasText:'Đã lưu bỏ qua kho'}).waitFor()
+  const calls=await page.evaluate(()=>({actions:window.__warehouseCalls??[],stock:window.__bulkCalls??[]}))
+  assert.equal(calls.actions.length,1,'exactly one item skip action')
+  assert.equal(calls.actions[0].name,'skip')
+  assert.equal(calls.actions[0].input.orderItemId,'20000000-0000-0000-0000-000000000001')
+  assert.equal(calls.actions[0].input.reason,'Sản phẩm biếu tặng không nhập tồn')
+  assert.equal(calls.actions[0].input.variantId,undefined,'skip must not require mapped variant')
+  assert.equal(calls.actions[0].input.newSku,undefined,'skip must not fabricate a SKU')
+  assert.equal(calls.stock.length,0,'item skip saves no stock')
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="skip-mixed">'),{waitUntil:'load'})
+  const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
+  const first=bg.locator('tbody tr').first()
+  assert.equal(await first.locator('td[data-col="sku"]').innerText().then(x=>x.includes('Bỏ qua kho')),true,
+    'saved no-SKU skip displays its actual decision')
+  assert.equal(await first.getByRole('button',{name:/Bỏ qua kho sản phẩm/}).count(),0,
+    'saved skipped product must not show another skip control')
+  const selector=first.getByRole('checkbox')
+  assert.equal(await selector.count(),1,'mixed order with no-SKU SKIP is ready to process')
+  await selector.check()
+  const toolbar=bg.locator('.warehouse-bulk-toolbar')
+  assert.match(await toolbar.innerText(),/1 đơn được chọn/)
+  await toolbar.getByRole('button',{name:/Xem trước nhập hàng loạt/}).click()
+  const popup=page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]')
+  await popup.waitFor()
+  assert.match(await popup.innerText(),/Bỏ qua kho/,'one item is skipped')
+  assert.match(await popup.innerText(),/2 → 2/,'only mapped purchase line creates stock units')
+  assert.equal(await popup.getByRole('button',{name:/Xác nhận nhập/}).isDisabled(),true,
+    'read-only Preview never writes a mixed order')
+  await page.close()
+}
+console.log('PASS item-level no-SKU SKIP · 4 viewports · reason required · mixed order preview · zero fake stock')
+
+// Bulk receipt QA: non-destructive Preview confirmation and saved V2 mixed
+// decisions, then a live-mode mock with partial success and retry visibility.
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html,{waitUntil:'load'})
+  const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
+  const hn=page.locator('.warehouse-unified-group[data-warehouse-code="HN"]')
+  assert.equal(await bg.locator('.warehouse-bulk-shortcut').count(),1,
+    'BG bulk receipt shortcut must be discoverable')
+  assert.equal(await hn.locator('.warehouse-bulk-shortcut').count(),1,
+    'V2 saved decisions must be eligible for batch processing')
+  await hn.locator('.warehouse-bulk-shortcut').click()
+  const review=page.locator('[role="dialog"][data-warehouse-bulk-popup="HN"]')
+  await review.waitFor()
+  assert.match(await review.innerText(),/Kiểm tra trước khi ghi tồn/)
+  assert.match(await review.innerText(),/1\s*dòng bỏ qua/)
+  assert.match(await review.innerText(),/Bỏ qua kho/)
+  assert.match(await review.innerText(),/SKU bán ghép/)
+  assert.match(await review.innerText(),/Giá gốc\/SP/)
+  assert.match(await review.innerText(),/Giá bán\/SP/)
+  assert.match(await review.innerText(),/35\\.000|35,000|35000|Chưa có/)
+  assert.equal(await review.getByRole('checkbox').count(),0,
+    'Preview popup must not require an extra checked-agreement step')
+  assert.equal(await review.getByRole('button',{name:/Xác nhận nhập/}).isDisabled(),true,
+    'Preview must never allow the stock submission')
+  await page.screenshot({path:path.join(output,'warehouse-bulk-preview-v2-skip.png')})
+  await review.getByRole('button',{name:'Hủy'}).click()
+  assert.equal(await page.locator('[role="dialog"][data-warehouse-bulk-popup="HN"]').count(),0,'cancel bulk popup')
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="bulk">'),{waitUntil:'load'})
+  const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
+  await bg.locator('.warehouse-bulk-shortcut').click()
+  const review=page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]')
+  await review.waitFor()
+  assert.match(await bg.locator('.warehouse-bulk-toolbar').innerText(),/2 đơn được chọn/)
+  assert.equal(await review.locator('.warehouse-bulk-review-table').count(),1,
+    'one flat table only; no accordion per order')
+  assert.equal(await review.locator('.warehouse-bulk-review-table thead th').count(),7,
+    'bulk preview retains 7 comparison columns')
+  assert.equal(await review.locator('.warehouse-bulk-review-table tbody tr').count(),4,
+    'all product lines shown without opening an order')
+  const orderCells=await review.locator('.warehouse-bulk-order-cell').evaluateAll(cells=>
+    cells.map(cell=>({rowspan:cell.rowSpan,text:cell.querySelector('button')?.textContent?.trim()})))
+  assert.equal(orderCells.length,2,'order code appears exactly once per order')
+  assert.deepEqual(orderCells.map(cell=>cell.rowspan),[2,2],
+    'each code must span its own two product lines')
+  assert.equal(new Set(orderCells.map(cell=>cell.text)).size,2,
+    'different orders must keep separate codes even with identical products')
+  assert.deepEqual(await review.locator('tbody tr').evaluateAll(rows=>
+    rows.map(row=>row.dataset.reviewOrder).reduce((acc,id)=>{
+      acc[id]=(acc[id]??0)+1;return acc
+    },{})),Object.fromEntries(await review.locator('.warehouse-bulk-order-cell').evaluateAll(cells=>
+      cells.map(cell=>[cell.parentElement?.dataset.reviewOrder,2]))),
+    'each product row must remain linked to its original order')
+  assert.match(await review.innerText(),/2 đơn nhập toàn bộ/)
+  assert.equal(await review.getByRole('checkbox').count(),0,
+    'Live popup must not show the redundant agreement checkbox')
+  assert.equal(await review.getByRole('button',{name:'Xác nhận nhập 2 đơn'}).isEnabled(),true,
+    'Live confirmation should be ready after reviewing eligible orders, without extra checkbox')
+  await page.evaluate(()=>{window.__bulkPartial=true})
+  await review.getByRole('button',{name:'Xác nhận nhập 2 đơn'}).click()
+  await page.getByText('1 đơn đã xử lý thành công',{exact:false}).waitFor()
+  const calls=await page.evaluate(()=>({calls:window.__bulkCalls||[],refresh:window.__refreshCalls||0}))
+  assert.equal(calls.calls.length,1,'only one batched Server Action call')
+  assert.equal(calls.calls[0].orderIds.length,2,'two selected orders passed to one action')
+  assert.ok(calls.refresh>0,'successful batch requests refresh stored order state')
+  assert.match(await bg.locator('.warehouse-bulk-toolbar').innerText(),/1 đơn được chọn/,
+    'only failed orders remain selected after partial batch receipt')
+  assert.match(await page.locator('.warehouse-bulk-feedback').innerText(),/1 đơn chưa xử lý/)
+  await page.screenshot({path:path.join(output,'warehouse-bulk-partial-result.png')})
+  await page.close()
+}
+// The bulk preview must remain operable as part of the native table workspace
+// on narrow portrait/landscape devices, not just a Desktop-only action.
+for(const [width,height] of [[360,800],[568,320]]){
+  const page=await browser.newPage({viewport:{width,height}})
+  // Two visually similar BG orders while remaining strictly Preview read-only.
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="bulk">'),{waitUntil:'load'})
+  // The detail slidebar must remain closed until a code is clicked;
+  // bulk selection does not require opening or dismissing it.
+  assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+    'bulk preview on mobile must start with no unsolicited slidebar '+width)
+  const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
+  await bg.locator('.warehouse-bulk-shortcut').click()
+  const review=page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]')
+  await review.waitFor()
+  const horizontal=await page.evaluate(()=>({
+    document:document.documentElement.scrollWidth-window.innerWidth,
+    lane:document.querySelector('.warehouse-receive-table-lane').scrollWidth-
+      document.querySelector('.warehouse-receive-table-lane').clientWidth,
+  }))
+  assert.ok(horizontal.document<=3 && horizontal.lane<=3,
+    'bulk review causes horizontal overflow at '+width+'x'+height+': '+JSON.stringify(horizontal))
+  assert.ok(await review.getByRole('button',{name:/Xác nhận nhập/}).isDisabled(),
+    'Preview must block bulk writes even on mobile '+width)
+  assert.equal(await review.locator('.warehouse-bulk-review-table').count(),1,
+    'mobile popup must remain one table '+width)
+  assert.equal(await review.locator('.warehouse-bulk-order-cell').count(),2,
+    'mobile order code appears once per order '+width)
+  const mobileTable=await review.locator('.warehouse-bulk-review').evaluate(node=>({
+    scrollX:node.scrollWidth-node.clientWidth,
+    viewportX:document.documentElement.scrollWidth-window.innerWidth,
+    tableDisplay:getComputedStyle(node.querySelector('table')).display,
+    tbodyDisplay:getComputedStyle(node.querySelector('tbody')).display,
+  }))
+  assert.equal(mobileTable.tableDisplay,'table','mobile must preserve single actual table '+width)
+  assert.equal(mobileTable.tbodyDisplay,'table-row-group','mobile must preserve native tbody '+width)
+  assert.ok(mobileTable.scrollX>150,'mobile popup must allow horizontal swipe inside table '+width)
+  assert.ok(mobileTable.viewportX<=3,'mobile popup must not overflow whole document '+width)
+  await page.screenshot({path:path.join(output,'warehouse-bulk-'+width+'-'+height+'.png')})
+  await review.getByRole('button',{name:'Hủy'}).click({timeout:10000})
+  assert.equal(await page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]').count(),0,
+    'bulk popup must be dismissible on mobile '+width)
+  await page.close()
+}
+console.log('PASS bulk mobile review · 360x800 and 568x320 · no horizontal overflow')
+
+console.log('PASS bulk warehouse Preview safety · V2 SKIP summary · partial success retained')
+
+// Inline SKU draft: the best stored historic match is proposed in the table;
+// operators explicitly confirm it with ONE button. No suggestion means an
+// actionable create/search UI but no fabricated draft.
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html,{waitUntil:'load'})
+  assert.ok(await page.locator('.warehouse-inline-sku-trigger').count()>0,
+    'SKU without matching history can still open a create/search picker')
+  assert.equal(await page.locator('.warehouse-inline-sku-confirm').count(),0,
+    'no historical evidence means no one-click draft confirmation')
+  await page.locator('.warehouse-inline-sku-trigger').first().click()
+  const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
+  await picker.waitFor()
+  assert.match(await picker.innerText(),/Chưa có lịch sử ghép tương tự/)
+  assert.ok(await picker.getByRole('button',{name:'Tạo SKU mới'}).isVisible())
+  await page.keyboard.press('Escape')
+  await page.close()
+}
+for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
+  const page=await browser.newPage({viewport:{width,height}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="history">'),{waitUntil:'load'})
+  const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
+  const draft=bg.locator('.warehouse-inline-sku-trigger').filter({hasText:'TEST-01'})
+  assert.equal(await draft.count(),1,'one ranked old SKU is prefilled as a draft '+width)
+  assert.equal(await bg.locator('.warehouse-inline-sku-confirm').count(),1,
+    'only the mapped-history draft gets one-click confirmation '+width)
+  assert.equal(await bg.locator('td[data-col="sku"] .warehouse-inline-sku-pair').first()
+    .locator('.warehouse-inline-item-skip-trigger').count(),1,
+    'historically suggested SKU offers skip beside its confirm icon '+width)
+  const quick=bg.getByRole('button',{name:/Xác nhận ghép SKU TEST-01/})
+  assert.equal(await quick.isDisabled(),true,'read-only Preview blocks one-click save '+width)
+  assert.deepEqual(await page.evaluate(()=>window.__warehouseCalls??[]),[],
+    'history draft must never auto-save '+width)
+  await draft.click()
+  const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
+  await picker.waitFor()
+  assert.equal(await picker.locator('.warehouse-inline-sku-history-options>button').count(),2,
+    'alternative old SKU pairings remain available '+width)
+  assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'90000',
+    'best-ranked old SKU is prefilled from catalog '+width)
+  assert.equal(await picker.getByLabel('Hệ số ghép nhanh').inputValue(),'2',
+    'conversion from historical mapping is prefilled '+width)
+  assert.equal(await picker.getByRole('button',{name:'Nhập kho',exact:true}).getAttribute('aria-pressed'),'true',
+    'IN is an unsaved default decision, never a stock import '+width)
+  const bounds=await picker.boundingBox()
+  assert.ok(bounds&&bounds.x>=0&&bounds.y>=0&&bounds.x+bounds.width<=width+1&&
+    bounds.y+bounds.height<=height+1,
+    'picker remains inside viewport '+width+'x'+height+' '+JSON.stringify(bounds))
+  assert.equal(await picker.getByRole('button',{name:'Lưu ghép SKU'}).isDisabled(),true,
+    'Preview never performs a database write '+width)
+  await picker.getByRole('button',{name:/ALT-02/}).click()
+  assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'65000',
+    'operator can explicitly switch to another old matching SKU '+width)
+  const saveRect=await picker.getByRole('button',{name:'Lưu ghép SKU'}).boundingBox()
+  assert.ok(saveRect&&saveRect.y>=0&&saveRect.y+saveRect.height<=height+1,
+    'footer remains in viewport when expanded '+width)
+  await page.keyboard.press('Escape')
+  assert.equal(await picker.count(),0,'Escape closes SKU picker '+width)
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="history">'),{waitUntil:'load'})
+  const quick=page.getByRole('button',{name:/Xác nhận ghép SKU TEST-01/})
+  await quick.click()
+  await page.getByRole('status').filter({hasText:'Đã lưu ghép SKU TEST-01'}).waitFor()
+  const calls=await page.evaluate(()=>({save:window.__warehouseCalls??[],stock:window.__bulkCalls??[],refresh:window.__refreshCalls??0}))
+  assert.equal(calls.save.length,1,'one-click match invokes the save action just once')
+  assert.equal(calls.save[0].name,'save')
+  assert.equal(calls.save[0].input.variantId,'V-SKU','top-ranked SKU is the saved draft')
+  assert.equal(calls.save[0].input.salePrice,90000,'catalog sale price is not guessed')
+  assert.equal(calls.save[0].input.multiplier,2,'historical conversion is retained')
+  assert.equal(calls.save[0].input.decision,'IN','saved decision is proposed IN only, no stock movement')
+  assert.equal(calls.stock.length,0,'SKU confirmation must never create inventory')
+  assert.ok(calls.refresh>0,'successful SKU save refreshes the table')
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="history">'),{waitUntil:'load'})
+  await page.locator('.warehouse-inline-sku-trigger').filter({hasText:'TEST-01'}).click()
+  const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
+  await picker.getByRole('button',{name:/ALT-02/}).click()
+  await picker.getByRole('button',{name:'Lưu ghép SKU'}).click()
+  await page.getByRole('status').filter({hasText:'Đã lưu ghép SKU cho đơn'}).waitFor()
+  const calls=await page.evaluate(()=>window.__warehouseCalls??[])
+  assert.equal(calls.length,1)
+  assert.equal(calls[0].input.variantId,'V-ALT','alternate old mapping may be manually selected')
+  assert.equal(calls[0].input.decision,'IN','explicit click confirms the current draft')
+  assert.equal(await page.evaluate(()=>(window.__bulkCalls??[]).length),0)
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true">'),{waitUntil:'load'})
+  await page.locator('.warehouse-inline-sku-trigger').first().click()
+  const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
+  await picker.getByRole('button',{name:'Tạo SKU mới'}).click()
+  await picker.getByLabel('Mã SKU bán mới ghép nhanh').fill('NEW-SKU-QA-01')
+  assert.equal(await picker.getByLabel('Tên SKU mới ghép nhanh').inputValue().then(x=>x.length>0),true)
+  assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'',
+    'new SKU price must be provided explicitly, not guessed from history')
+  await picker.getByLabel('Giá bán ghép nhanh').fill('75000')
+  await picker.getByRole('button',{name:'Nhập kho',exact:true}).click()
+  await picker.getByRole('button',{name:'Lưu ghép SKU'}).click()
+  await page.getByRole('status').filter({hasText:'Đã lưu ghép SKU cho đơn'}).waitFor()
+  const calls=await page.evaluate(()=>window.__warehouseCalls??[])
+  assert.equal(calls.length,1,'new SKU saves through same existing Server Action')
+  assert.equal(calls[0].input.variantId,null)
+  assert.equal(calls[0].input.newSku,'NEW-SKU-QA-01')
+  assert.equal(calls[0].input.newName?.length>0,true)
+  assert.equal(calls[0].input.salePrice,75000)
+  assert.equal(calls[0].input.decision,'IN')
+  assert.equal(await page.evaluate(()=>(window.__bulkCalls??[]).length),0,
+    'new SKU creation must not change inventory balances')
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="history">'),{waitUntil:'load'})
+  await page.locator('.warehouse-inline-sku-trigger').filter({hasText:'TEST-01'}).click()
+  const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
+  await picker.getByRole('button',{name:'Bỏ qua kho',exact:true}).click()
+  assert.equal(await picker.getByRole('button',{name:'Lưu ghép SKU'}).isDisabled(),true,
+    'SKIP still requires a reason')
+  await picker.getByLabel('Lý do bỏ qua ghép nhanh').fill('Không nhập sản phẩm mẫu')
+  await picker.getByRole('button',{name:'Lưu ghép SKU'}).click()
+  await page.getByRole('status').filter({hasText:'Đã lưu ghép SKU cho đơn'}).waitFor()
+  const calls=await page.evaluate(()=>window.__warehouseCalls??[])
+  assert.equal(calls[0].input.decision,'SKIP')
+  assert.equal(calls[0].input.skipReason,'Không nhập sản phẩm mẫu')
+  assert.equal(await page.evaluate(()=>(window.__bulkCalls??[]).length),0)
+  await page.close()
+}
+console.log('PASS inline SKU draft · one-click confirmation · new SKU · alternatives · Preview read-only · no stock writes')
+
+// Prior SKU history: two conflicting saved mappings are shown separately.
+// Choosing one changes ONLY the client draft; save/persistence stays explicit.
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="history">'),{waitUntil:'load'})
+  assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+    'history suggestions must not auto-open details')
+  await page.locator('.warehouse-unified-table tbody tr').first().locator('button.table-link').click()
+  const panel=page.locator('.warehouse-intake-panel')
+  const history=panel.locator('.warehouse-detail-v2-suggestion')
+  await history.waitFor()
+  assert.equal(await history.locator('.warehouse-detail-v2-suggestion-entry').count(),2,
+    'multiple historically mapped SKU variants must be offered separately')
+  assert.match(await history.innerText(),/3 đơn trước đã ghép/)
+  assert.match(await history.innerText(),/1 đơn trước đã ghép/)
+  assert.match(await history.innerText(),/nhiều SKU/)
+  assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU\/kho/)
+  await history.getByRole('button',{name:'Chọn gợi ý ALT-02'}).click()
+  assert.equal(await panel.getByLabel('Chọn SKU bán',{exact:true}).inputValue(),'V-ALT',
+    'explicit history suggestion should select its exact variant ID')
+  assert.equal(await panel.getByLabel('Hệ số quy đổi').inputValue(),'1',
+    'suggestion should carry prior saved conversion multiplier')
+  assert.equal(await panel.getByLabel('Giá bán (sửa được)').inputValue(),'65000',
+    'catalog sale price is prefilled for manual edit, not persisted automatically')
+  assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU\/kho/,
+    'clicking historical SKU suggestion must NOT claim a saved mapping')
+  assert.deepEqual(await page.evaluate(()=>window.__warehouseCalls??[]),[],
+    'suggestions may not call server actions or write stock')
+  await page.screenshot({path:path.join(output,'warehouse-sku-history-choices.png')})
+  await page.close()
+}
+console.log('PASS history suggestions · multiple candidates · manual select · no auto-write')
 
 // A second independent browser scenario exercises the live Server Action
 // bridge with stubbed RPCs. It never contacts Supabase.
 {
   const page=await browser.newPage({viewport:{width:1280,height:800}})
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true">'),{waitUntil:'load'})
+  assert.equal(await page.locator('aside.warehouse-detail-v2').count(),0,
+    'live details must also remain closed before order-code click')
+  await page.locator('.warehouse-unified-table tbody tr').first().locator('button.table-link').click()
   const panel=page.locator('aside.warehouse-detail-v2')
   await panel.locator('.warehouse-detail-v2-product').first().waitFor()
   assert.equal(await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).count(),0,

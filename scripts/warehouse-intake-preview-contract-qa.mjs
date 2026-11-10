@@ -9,7 +9,13 @@ const css=read('app/styles/warehouse-intake-preview.css')
 const panel=read('components/warehouse-intake-detail-preview.tsx')
 const panelCss=read('app/styles/warehouse-intake-detail-preview.css')
 const migration=read('supabase/migrations/0075_item_level_warehouse_decisions.sql')
+const skipMigration=read('supabase/migrations/0076_skip_unmapped_warehouse_item.sql')
 const actions=read('lib/actions/warehouse-item-decisions.ts')
+const bulkActions=read('lib/actions/warehouse-bulk-receive.ts')
+const bulkBar=read('components/warehouse-bulk-receive-bar.tsx')
+const skuHistory=read('lib/warehouse-sku-suggestions.ts')
+const inlinePicker=read('components/warehouse-inline-sku-history-picker.tsx')
+const skipPicker=read('components/warehouse-inline-skip-item.tsx')
 const config=read('wrangler.jsonc')
 const checks=[
   ['only Warehouse receive page uses the changed scoped stylesheet',
@@ -41,21 +47,21 @@ const checks=[
   ['status and date preserved across navigation',
     page.includes("if (receivedPeriod !== 'all') query.set('received_range'")&&
     page.includes('preserveParams={{state:currentStatus}}')],
-  ['one 7-column table per confirmed warehouse with actual product details',
-    table.includes("type TableCol='order'|'received'|'warehouse'|'product'|'progress'|'cod'|'status'")&&
+  ['one 6-column table per confirmed warehouse with date under order',
+    table.includes("type TableCol='order'|'sku'|'product'|'purchase'|'sale'|'status'")&&
     table.includes('warehouse-unified-table')&&
     table.includes('row.order_items.map(item=><div')&&
     !table.includes('warehouse-split-table')&&
     !table.includes('warehouse-ready-table')],
   ['independent column menu per receiving warehouse and sortable columns',
-    table.includes("mynh-warehouse-intake-bg-columns-v1") &&
-    table.includes("mynh-warehouse-intake-hn-columns-v1") &&
+    table.includes("mynh-warehouse-intake-bg-columns-v3") &&
+    table.includes("mynh-warehouse-intake-hn-columns-v3") &&
     table.includes("group.code==='BG'?bgColumns:group.code==='HN'?hnColumns:otherColumns") &&
     table.includes('<ManagedColumnsMenu labels={TABLE_LABELS}')&&
     table.includes('<SortableHeader') &&
     table.includes('warehouse-unified-group-column-control') &&
     !table.includes('warehouse-unified-toolbar')],
-  ['real-width Auto Fit preserves seven actual table columns without blank width',
+  ['real-width Auto Fit preserves six actual table columns without blank width',
     table.includes('new ResizeObserver(measure)') &&
     table.includes('autoFitColumnWidths(tableColumns.visible,laneWidth)') &&
     table.includes('style={{width:columnWidths[index]+\'%\'}}') &&
@@ -67,6 +73,44 @@ const checks=[
     css.includes('display:table-header-group!important') &&
     !css.includes('.warehouse-unified-table tbody tr{\n    display:grid!important') &&
     !css.includes('min-width:870px!important')],
+  ['hide warehouses without actionable orders outside completed KPI',
+    table.includes('.filter(group=>showProcessedOnly||group.rows.some(row=>!isDone(row)))') &&
+    table.includes('showProcessedOnly=false') &&
+    table.includes('const visibleRows=useMemo(()=>groups.flatMap(group=>group.rows)') &&
+    table.includes('data-warehouse-actionable={waiting.length}') &&
+    page.includes("showProcessedOnly={currentStatus==='done'}") &&
+    table.includes('Các kho đã hết đơn cần xử lý.')],
+  ['warehouse 0 hidden, 1–2 show all existing rows, both 3+ equal halves',
+    table.includes("group.rows.length===1?'one':group.rows.length===2?'two':'many'") &&
+    table.includes('data-warehouse-row-mode={groupRowMode}') &&
+    table.includes("warehouse-rows-'+groupRowMode") &&
+    table.includes('.filter(group=>showProcessedOnly||group.rows.some(row=>!isDone(row)))') &&
+    table.includes("groups.length===2&&groups.every(group=>group.rows.length>2&&openGroups.includes(group.id))") &&
+    table.includes("' warehouse-equal-halves'") &&
+    table.includes("wrap.style.setProperty('--warehouse-compact-order-height',value)") &&
+    table.includes("head.getBoundingClientRect().height+") &&
+    table.includes("actual.reduce((sum,row)=>sum+row.getBoundingClientRect().height,0)+1") &&
+    table.includes("const count=group.dataset.warehouseRowMode==='two'?2:1") &&
+    table.includes("const rows=()=>Array.from(body.rows).slice(0,count)") &&
+    table.includes("observer?.observe(head)") &&
+    table.includes("mutation?.observe(body,{childList:true})") &&
+    css.includes('.warehouse-unified-group.open.warehouse-rows-one') &&
+    css.includes('.warehouse-unified-group.open.warehouse-rows-two') &&
+    css.includes('height:var(--warehouse-compact-order-height,120px)!important') &&
+    css.includes('flex:0 0 auto!important;min-height:0!important') &&
+    css.includes('.warehouse-receive-table-lane.warehouse-equal-halves>.warehouse-unified-group.open.warehouse-rows-many') &&
+    css.includes('flex:1 1 0!important;min-height:175px!important') &&
+    css.includes('.warehouse-unified-group.open.warehouse-rows-many:only-of-type') &&
+    css.includes('overflow-y:auto!important') &&
+    !css.includes('--warehouse-dense-weight') &&
+    !css.includes('flex:var(--warehouse-row-weight,1) 1 0!important')],
+  ['order slidebar opens only on explicit order-code click',
+    table.includes('const [activeId,setActiveId]=useState<string|null>(null)') &&
+    table.includes("onClick={event=>{event.stopPropagation();setActiveId(row.id)}}") &&
+    table.includes("onOpenOrder={id=>{setBulkReviewGroup(null);setActiveId(id)}}") &&
+    !table.includes("onClick={()=>{setActiveId(row.id)}}") &&
+    !table.includes("firstIncomplete?.id??null") &&
+    table.includes("onClose={()=>setActiveId(null)")],
   ['one product per line and full detail in tooltip',
     table.includes('warehouse-unified-product-line') &&
     table.includes("['SL '+item.quantity]") === false &&
@@ -74,7 +118,7 @@ const checks=[
     css.includes('white-space:nowrap') &&
     css.includes('text-overflow:ellipsis')],
   ['receive warehouse is actual batch; BG and HN stay distinct',
-    table.includes('batchOf(row)?.warehouses?.code')&&
+    table.includes('const warehouse=batch?.warehouses')&&
     table.includes('BG - 320 Nguyễn Công Hãng')&&
     table.includes('HN - 164 Hồng Mai')&&
     table.includes('const batch=batchOf(row)')&&
@@ -158,7 +202,8 @@ const checks=[
     panel.includes('order.order_vouchers')],
   ['Preview safety keeps all persisted stock and SKU operations blocked',
     page.includes('previewOnly') &&
-    table.includes('previewOnly?undefined:receiveOrdersIntoWarehouse') &&
+    table.includes('previewOnly={previewOnly}') &&
+    bulkBar.includes('if(previewOnly||busy') &&
     !panel.includes('mapWarehouseOrderItem') &&
     !panel.includes('skipWarehouseOrder') &&
     !panel.includes('receiveOrdersIntoWarehouse') &&
@@ -189,7 +234,218 @@ const checks=[
     panel.includes('router.refresh()') &&
     panel.includes('Xác nhận ghi tồn kho') &&
     panel.includes('Ghi nhận lựa chọn thử') &&
-    table.includes('!row.order_items.some(item=>!!itemDecisions[item.id])')],
+    table.includes('bulkPreview(row,itemDecisions)') &&
+    bulkActions.includes("supabase.rpc('finalize_warehouse_item_decisions'")],
+  ['bulk receipt preflights selected legacy and V2 orders and permissions',
+    bulkActions.includes("ERP_WAREHOUSE_V2_LIVE!=='true'") &&
+    bulkActions.includes("!['admin','operator'].includes") &&
+    bulkActions.includes("p_order_ids:legacy") &&
+    bulkActions.includes("p_order_id:row.id") &&
+    bulkActions.includes("warehouse_item_decisions") &&
+    bulkActions.includes("receive_batch_details") &&
+    bulkActions.includes('WAREHOUSE_BULK_LIMIT=25') &&
+    bulkActions.includes("row.warehouse_status!=='READY_TO_TRANSFER'") &&
+    bulkActions.includes('result.failed.push(') &&
+    bulkActions.includes('result.succeeded.push(')],
+  ['bulk selection rail and six-column content align across eligible/ineligible rows',
+    table.includes('warehouse-bulk-select-control') &&
+    table.includes('warehouse-bulk-select-spacer') &&
+    table.includes('warehouse-unified-order-details') &&
+    table.includes('partiallyReadySelected') &&
+    table.includes('data-partial={partiallyReadySelected?') &&
+    table.includes('<th key={col} data-col={col}>') &&
+    css.includes('.warehouse-bulk-select-checkbox:checked+.warehouse-bulk-select-mark') &&
+    css.includes('.warehouse-bulk-select-checkbox:focus-visible+.warehouse-bulk-select-mark') &&
+    css.includes('th[data-col="purchase"] .managed-sort-head span') &&
+    css.includes('th[data-col="sale"] .managed-sort-head span') &&
+    css.includes('th[data-col="status"] .managed-sort-head span') &&
+    css.includes('.warehouse-unified-prices .warehouse-unified-product-line') &&
+    css.includes('.warehouse-unified-status .warehouse-unified-product-line') &&
+    css.includes('display:block;padding-left:0;margin-top:3px;') &&
+    !css.includes('display:block;padding-left:18px;margin-top:3px;')],
+  ['per-order icon submits only eligible orders directly via guarded Server Action',
+    table.includes('warehouse-order-quick-receive') &&
+    table.includes("aria-label={'Nhập nhanh đơn '+") &&
+    table.includes('!showProcessedOnly&&!!bulkPreview(row,itemDecisions)') &&
+    table.includes('disabled={previewOnly||quickReceivingId!==null}') &&
+    table.includes('quickInFlight.current=true') &&
+    table.includes('if(previewOnly||quickInFlight.current||!bulkPreview(row,itemDecisions))return') &&
+    table.includes('warehouseId,orderIds:[row.id],note:') &&
+    table.includes('void handleQuickReceive(row,group.id)') &&
+    table.includes('setQuickReceivingId(row.id)') &&
+    table.includes('setQuickNotice({kind:') &&
+    table.includes('router.refresh()') &&
+    table.includes('setTimeout(()=>setQuickNotice(null),5000)') &&
+    table.includes('<WarehouseBulkReceiveBar') &&
+    !table.includes('warehouse-order-quick-label') &&
+    css.includes('.warehouse-unified-order-inline') &&
+    css.includes('.warehouse-unified-order-details .warehouse-order-quick-receive') &&
+    css.includes('.warehouse-quick-notice')],
+  ['bulk confirmation requires one click, without an agreement checkbox',
+    !bulkBar.includes('confirmText') &&
+    !bulkBar.includes('warehouse-bulk-agreement') &&
+    !bulkBar.includes('Tôi đã đối chiếu đơn') &&
+    !bulkBar.includes('type="checkbox"') &&
+    bulkBar.includes('if(previewOnly||busy||orders.length===0||orders.length>25)return') &&
+    bulkBar.includes('disabled={previewOnly||busy||orders.length===0||orders.length>25}') &&
+    bulkBar.includes("warehouseId,orderIds:orders.map(x=>x.id),note")],
+  ['bulk UI supports 25 order selection, explicit review, and partial failure',
+    table.includes('function bulkPreview(row:Row,decisions:Record<string,ItemDecision>)') &&
+    table.includes('const capped=readyIds.slice(0,25)') &&
+    table.includes('className="button small warehouse-bulk-shortcut"') &&
+    table.includes('<WarehouseBulkReceiveBar') &&
+    table.includes('setSelected(current=>current.filter(id=>failedIds.has(id)))') &&
+    bulkBar.includes('Xem trước nhập hàng loạt') &&
+    bulkBar.includes('Xác nhận nhập ') &&
+    bulkBar.includes('warehouseId,orderIds:orders.map(x=>x.id),note') &&
+    bulkBar.includes('if(previewOnly||busy||orders.length===0') &&
+    css.includes('.warehouse-bulk-review') &&
+    !table.includes('action={previewOnly?undefined:receiveOrdersIntoWarehouse}')],
+  ['bulk receipt preview is a receiving-style modal with true item-level audit fields',
+    bulkBar.includes('createPortal(') &&
+    bulkBar.includes('receive-confirm-backdrop warehouse-bulk-backdrop') &&
+    bulkBar.includes('receive-confirm-modal warehouse-bulk-modal') &&
+    bulkBar.includes('role="dialog" aria-modal="true"') &&
+    bulkBar.includes('warehouse-bulk-review-table') &&
+    bulkBar.includes('price(item.originalPrice)') &&
+    bulkBar.includes('price(item.salePrice)') &&
+    bulkBar.includes('item.sku') &&
+    bulkBar.includes("item.decision==='IN'?'Nhập kho':'Bỏ qua kho'") &&
+    bulkBar.includes("onOpenOrder(order.id)") &&
+    css.includes('.warehouse-bulk-backdrop .warehouse-bulk-review-table') &&
+    css.includes('@media(max-width:720px)')],
+  ['bulk preview is ONE table with exactly one order code per order via row span',
+    bulkBar.includes('orders.flatMap((order,orderIndex)=>order.items.map((item,itemIndex)=>') &&
+    bulkBar.includes('itemIndex===0&&<td rowSpan={order.items.length}') &&
+    bulkBar.includes('data-review-order={order.id}') &&
+    bulkBar.includes('data-order-first={itemIndex===0?') &&
+    bulkBar.includes("item.decision==='IN'?'Nhập kho':'Bỏ qua kho'") &&
+    bulkBar.includes('onOpenOrder(order.id)') &&
+    !bulkBar.includes('expandedOrders') &&
+    !bulkBar.includes('warehouse-bulk-order-toggle') &&
+    !bulkBar.includes('Thu gọn tất cả') &&
+    css.includes('warehouse-bulk-order-cell') &&
+    !css.includes('warehouse-bulk-order-group')],
+  ['receiving table combines received date with order and SKU with sale name',
+    table.includes("const TABLE_COLUMNS:TableCol[]=['order','sku','product','purchase','sale','status']") &&
+    table.includes('warehouse-unified-received-at') &&
+    table.includes('formatDateTime(receivedAt(row))') &&
+    table.includes('warehouse-unified-sku-identity') &&
+    table.includes('warehouse-unified-sku-title') &&
+    table.includes('item.product_variants.products.name') &&
+    table.includes("if(col==='order')return new Date(receivedAt(row)??0).getTime()") &&
+    table.includes("mynh-warehouse-intake-hn-columns-v3") &&
+    css.includes('.warehouse-unified-sku-title') &&
+    css.includes('.warehouse-unified-received-at')],
+  ['unparsed order shows canonical full order value, never COD-only or guessed sum',
+    table.includes("import { resolveOrderValue } from '@/lib/order-prepaid'") &&
+    table.includes('!isDone(row)&&!isComplete(row,itemDecisions)&&') &&
+    table.includes('warehouse-unified-pending-value') &&
+    table.includes('Giá trị đơn: <strong>') &&
+    table.includes('paymentStatus:row.payment_status') &&
+    table.includes('prepaidAmount:row.prepaid_amount') &&
+    table.includes('cod:row.cod') &&
+    table.includes("value===null?'Chưa đủ dữ liệu':formatMoney(value)") &&
+    css.includes('.warehouse-unified-table .warehouse-unified-pending-value') &&
+    !table.includes('warehouse-unified-pending-cod') &&
+    !table.includes('COD: <strong>')],
+  ['Giá gốc uses stored original price (not after-discount) in table and popup',
+    table.includes("purchase:'Giá gốc'") &&
+    table.includes("if(col==='purchase')return Number(row.order_items[0]?.original_price??0)") &&
+    table.includes('linePrice(item.original_price)') &&
+    bulkBar.includes('<th>Giá gốc/SP</th>') &&
+    bulkBar.includes('price(item.originalPrice)') &&
+    bulkBar.includes('price(item.discountedPrice)') &&
+    !bulkBar.includes('purchasePrice') &&
+    !bulkBar.includes('Giá nhập/SP')],
+  ['suggestions derive from persisted prior-order SKU history, not guessed text',
+    page.includes('indexHistoricalSkuMappings(history)') &&
+    page.includes('suggestSkusFromHistory({...item,order_id:order.id},historicIndex,3)') &&
+    page.includes("'id,order_id,sku,product_name,variant,product_variant_id,inventory_multiplier,created_at") &&
+    skuHistory.includes('row.order_id===target.order_id') &&
+    skuHistory.includes("if(sku&&previousSku&&sku!==previousSku)continue") &&
+    skuHistory.includes('history_count:entry.orderIds.size') &&
+    skuHistory.includes('previous.multipliers.set') &&
+    panel.includes('suggestionOptions.map((option,index)=>') &&
+    panel.includes('onClick={()=>applySuggestion(option)}') &&
+    panel.includes('GỢI Ý SKU TỪ LỊCH SỬ ĐÃ LƯU') &&
+    panel.includes('Đã từng ghép với nhiều SKU') &&
+    !panel.includes('onClick={applySuggestion}') &&
+    panelCss.includes('.warehouse-detail-v2-suggestion-entry')],
+  ['inline SKU draft from history can confirm once or create a new SKU without slidebar',
+    table.includes("from '@/components/warehouse-inline-sku-history-picker'") &&
+    table.includes('warehouse-inline-sku-trigger') &&
+    table.includes('warehouse-inline-sku-pair') &&
+    table.includes('warehouse-inline-sku-confirm') &&
+    table.includes('const proposed=historical[0]') &&
+    table.includes('void confirmSuggestedSku(row,item,proposed)') &&
+    table.includes('await saveWarehouseItemDecision({') &&
+    table.includes("decision:'IN',skipReason:null") &&
+    table.includes('quickSkuInFlight.current=true') &&
+    table.includes('if(previewOnly||isDone(row)||item.product_variant_id||quickSkuInFlight.current)return') &&
+    table.includes('Chưa ghi tăng tồn kho.') &&
+    table.includes('<WarehouseInlineSkuHistoryPicker') &&
+    inlinePicker.includes("history.filter(item=>variants.some(variant=>variant.id===item.variant_id))") &&
+    inlinePicker.includes('const preferred=history.find(') &&
+    inlinePicker.includes("useState<Decision|null>(preferredVariant?'IN':null)") &&
+    inlinePicker.includes('Tạo SKU mới') &&
+    inlinePicker.includes('Mã SKU bán mới ghép nhanh') &&
+    inlinePicker.includes("mode==='new'?newCode:null") &&
+    inlinePicker.includes("mode==='new'?validNew:!!selected") &&
+    inlinePicker.includes("decision==='SKIP'?skipReason.trim():null") &&
+    inlinePicker.includes('await saveWarehouseItemDecision({') &&
+    inlinePicker.includes('const canSave=!previewOnly') &&
+    !inlinePicker.includes('finalizeWarehouseItemDecisions') &&
+    !inlinePicker.includes('receiveOrdersIntoWarehouse') &&
+    css.includes('.warehouse-inline-sku-confirm') &&
+    css.includes('.warehouse-inline-sku-history-modes') &&
+    css.includes('position:fixed;z-index:3200')],
+  ['unmapped product can be explicitly skipped without fake sale SKU or stock movement',
+    table.includes("from '@/components/warehouse-inline-skip-item'") &&
+    table.includes('warehouse-inline-item-skip-trigger') &&
+    table.includes('openSkipItem(event,row,item)') &&
+    table.includes('className="warehouse-inline-sku-pair"') &&
+    table.indexOf('className="warehouse-inline-item-skip-trigger"')>
+      table.indexOf('className="warehouse-inline-sku-trigger"') &&
+    table.indexOf('className="warehouse-inline-item-skip-trigger"')<
+      table.indexOf("if(col==='product')return <td",table.indexOf('className="warehouse-inline-item-skip-trigger"')) &&
+    table.includes('className="warehouse-unified-status"') &&
+    !table.includes('className="status-pill warehouse-inline-item-skip-trigger"') &&
+    table.includes('itemDecisions[item.id]') &&
+    table.includes('record.decision') &&
+    table.includes('record.product_variant_id===null') &&
+    table.includes('<WarehouseInlineSkipItem') &&
+    table.includes("return !!bulkPreview(row,decisions)") &&
+    table.includes("!canSuggest&&<b>{itemDecisions[item.id]?.decision==='SKIP'") &&
+    skipPicker.includes('skipWarehouseItemWithoutSku({orderItemId:target.orderItemId,reason:reason.trim()})') &&
+    skipPicker.includes("reason.trim().length>0&&reason.trim().length<=500") &&
+    skipPicker.includes('if(!canSave||inFlight.current)return') &&
+    skipPicker.includes('Không cần ghép hoặc tạo SKU bán') &&
+    skipPicker.includes('data-warehouse-inline-skip') &&
+    actions.includes("supabase.rpc('skip_warehouse_item_without_sku'") &&
+    actions.includes('const supabase=await authorize()') &&
+    bulkActions.includes('skipWithoutSku=skipped&&!item.product_variant_id') &&
+    page.includes('const decisionSourceRows') &&
+    page.includes('const ready=pending.filter(isReady)') &&
+    skipMigration.includes('ALTER COLUMN product_variant_id DROP NOT NULL') &&
+    skipMigration.includes("product_variant_id IS NOT NULL OR") &&
+    skipMigration.includes("decision='SKIP' AND multiplier=1 AND sale_price=0") &&
+    skipMigration.includes('CREATE OR REPLACE FUNCTION private.skip_warehouse_item_unmapped_impl') &&
+    skipMigration.includes('PERFORM private.assert_operator()') &&
+    skipMigration.includes('WHERE id=v_order_id FOR UPDATE') &&
+    skipMigration.includes('v_item.product_variant_id IS NOT NULL') &&
+    skipMigration.includes("WHERE it.reference_type='PURCHASE_RECEIPT'") &&
+    skipMigration.includes("WHERE d.order_id=p_order_id AND d.decision='IN'") &&
+    skipMigration.includes('CREATE OR REPLACE FUNCTION private.finalize_warehouse_item_decisions_impl') &&
+    !skipPicker.includes('bulkReceiveWarehouseOrders(') &&
+    !skipPicker.includes('saveWarehouseItemDecision(') &&
+    css.includes('.warehouse-unified-skus .warehouse-inline-sku-pair .warehouse-inline-item-skip-trigger') &&
+    css.includes('flex:0 0 18px;width:18px;height:18px') &&
+    table.includes("aria-label={'Bỏ qua kho sản phẩm '+item.product_name}") &&
+    !table.includes('<span>Bỏ qua kho</span>') &&
+    !css.includes('.warehouse-inline-item-skip-trigger span') &&
+    !css.includes('.warehouse-unified-status .warehouse-inline-item-skip-trigger') &&
+    css.includes('.warehouse-inline-skip-reason')],
   ['V2 slidebar height internal scroll and fixed footer',
     panelCss.includes('.warehouse-detail-v2-scroll') &&
     panelCss.includes('flex:1 1 auto!important') &&
