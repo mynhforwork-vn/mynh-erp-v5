@@ -60,16 +60,18 @@
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group{
   overflow:visible!important;
 }
-/* Warehouse group heights respond to real displayed row counts. 1 vs 9 rows
-   should not receive a fixed 50/50 split. When only one active warehouse
-   remains it naturally fills the available height. */
-/* Actual receiving groups share the full remaining vertical lane, with
-   independent DATA scrolling and the column header visible. Previously the
-   shared enterprise stylesheet forced flex:0 0 auto / height:auto. */
+/* Intrinsic-content group sizing: when two warehouses have only a few
+   orders, leave unused workspace outside their tables rather than stretching
+   each table to occupy the entire lane. Dense groups proportionally shrink
+   and scroll their own data; their headers remain visible. */
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open{
   box-sizing:border-box!important;display:flex!important;flex-direction:column!important;
-  flex:var(--warehouse-row-weight,1) 1 0!important;min-height:145px!important;height:auto!important;
+  flex:0 1 auto!important;min-height:145px!important;height:auto!important;
   max-height:none!important;overflow:hidden!important;
+}
+/* Preserve the existing full-height single-warehouse workflow. */
+.brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open:only-of-type{
+  flex:1 1 auto!important;
 }
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.collapsed{
   flex:0 0 auto!important;min-height:0!important;
@@ -431,11 +433,14 @@
     overflow-y:auto!important;
   }
   .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open{
-    /* One warehouse fills the lane; multiple follow their row-count weights.
-       The lane itself scrolls when minimum usable card heights exceed space. */
-    flex:var(--warehouse-row-weight,1) 1 0!important;
+    /* Small groups hug their content; larger groups yield scrolling space as
+       the available mobile viewport shrinks. The outer lane remains scrollable. */
+    flex:0 1 auto!important;
     min-height:150px!important;
     max-height:none!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open:only-of-type{
+    flex:1 1 auto!important;
   }
   /* A selected batch adds a toolbar after the table. Do not let it squeeze the
      data under the sticky column header on a short mobile viewport. The lane
