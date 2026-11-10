@@ -102,6 +102,27 @@ RESET ROLE;
 DELETE FROM public.order_items WHERE id='e0000000-0000-4000-8000-000000000001';
 DELETE FROM public.orders WHERE id='d0000000-0000-4000-8000-000000000001';
 
+-- Even a pre-receipt mapped order can later become a warehouse receipt.
+INSERT INTO public.orders(id,receive_status,warehouse_status) VALUES
+ ('d0000000-0000-4000-8000-000000000003','NOT_READY','NOT_READY');
+INSERT INTO public.order_items(id,order_id,product_name,quantity,product_variant_id) VALUES
+ ('e0000000-0000-4000-8000-000000000003',
+  'd0000000-0000-4000-8000-000000000003',
+  'Đã ghép trước nhận hàng',1,'b0000000-0000-4000-8000-000000000001');
+SET ROLE authenticated;
+SET request.jwt.claims='{"sub":"60000000-0000-4000-8000-000000000001","app_metadata":{"role":"admin"}}';
+DO $
+BEGIN
+ IF (public.preview_sku_merge(
+   'b0000000-0000-4000-8000-000000000001',
+   'b0000000-0000-4000-8000-000000000002')->>'can_merge')::boolean THEN
+   RAISE EXCEPTION 'FAIL: mapped order before receiving did not block merge';
+ END IF;
+END $;
+RESET ROLE;
+DELETE FROM public.order_items WHERE id='e0000000-0000-4000-8000-000000000003';
+DELETE FROM public.orders WHERE id='d0000000-0000-4000-8000-000000000003';
+
 -- Completed historical sale may be returned later: block source merge.
 INSERT INTO public.sale_items(id,product_variant_id) VALUES
  ('e0000000-0000-4000-8000-000000000002',
