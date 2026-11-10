@@ -1060,3 +1060,25 @@
     overflow-y:visible!important;
   }
 }
+
+
+/* Alphabetical SKU catalog inside the existing warehouse picker. */
+.warehouse-sku-browser{display:flex;flex-direction:column;gap:8px;min-width:0}
+.warehouse-sku-alphabet{display:flex;flex-wrap:wrap;gap:4px}
+.warehouse-sku-alphabet button{min-width:25px;min-height:25px;padding:3px 6px;
+  background:#f4f8fa;color:#466171;border:1px solid #dbe5ea;
+  border-radius:5px;font-size:10px;cursor:pointer}
+.warehouse-sku-alphabet button.active{background:#e4f2ed;color:#21674e;border-color:#8cc2ac;font-weight:700}
+.warehouse-sku-browser-count{font-size:10px;color:#667f8b}
+.warehouse-sku-browser-results{display:flex;flex-direction:column;gap:4px;max-height:185px;
+  overflow-y:auto;overscroll-behavior:contain}
+.warehouse-sku-browser-results button{display:grid;grid-template-columns:minmax(70px,auto) minmax(0,1fr);
+  column-gap:8px;row-gap:2px;text-align:left;align-items:center;padding:7px 8px;
+  background:#fff;border:1px solid #e1e9ed;border-radius:5px;color:#314e5f;cursor:pointer}
+.warehouse-sku-browser-results button.active{border-color:#69b29a;background:#eff8f4}
+.warehouse-sku-browser-results button b{font-size:11px;overflow-wrap:anywhere}
+.warehouse-sku-browser-results button span{font-size:10.5px;min-width:0;overflow-wrap:anywhere}
+.warehouse-sku-browser-results button small{grid-column:1/-1;color:#6a8491;font-size:10px}
+.warehouse-sku-browser-results p{margin:6px 0;color:#637f8c}
+.warehouse-sku-browser-results button:focus-visible,.warehouse-sku-alphabet button:focus-visible{
+  outline:2px solid #438b82;outline-offset:1px}
