@@ -80,19 +80,27 @@ const checks=[
     table.includes('data-warehouse-actionable={waiting.length}') &&
     page.includes("showProcessedOnly={currentStatus==='done'}") &&
     table.includes('Các kho đã hết đơn cần xử lý.')],
-  ['warehouse 0/1/2/3+ row states preserve compact groups and dense scrolling',
+  ['warehouse 0 hidden, 1–2 exactly one row, both 3+ equal halves',
     table.includes("group.rows.length===1?'one':group.rows.length===2?'two':'many'") &&
     table.includes('data-warehouse-row-mode={groupRowMode}') &&
     table.includes("warehouse-rows-'+groupRowMode") &&
-    table.includes("Math.min(group.rows.length,30)") &&
     table.includes('.filter(group=>showProcessedOnly||group.rows.some(row=>!isDone(row)))') &&
+    table.includes("groups.length===2&&groups.every(group=>group.rows.length>2&&openGroups.includes(group.id))") &&
+    table.includes("' warehouse-equal-halves'") &&
+    table.includes("wrap.style.setProperty('--warehouse-one-order-height',value)") &&
+    table.includes("head.getBoundingClientRect().height+") &&
+    table.includes("visibleRow.getBoundingClientRect().height+1") &&
+    table.includes("observer?.observe(head)") &&
+    table.includes("mutation?.observe(body,{childList:true})") &&
     css.includes('.warehouse-unified-group.open.warehouse-rows-one') &&
     css.includes('.warehouse-unified-group.open.warehouse-rows-two') &&
+    css.includes('height:var(--warehouse-one-order-height,120px)!important') &&
     css.includes('flex:0 0 auto!important;min-height:0!important') &&
-    css.includes('.warehouse-unified-group.open.warehouse-rows-many') &&
-    css.includes('flex:var(--warehouse-dense-weight,3) 1 auto!important') &&
+    css.includes('.warehouse-receive-table-lane.warehouse-equal-halves>.warehouse-unified-group.open.warehouse-rows-many') &&
+    css.includes('flex:1 1 0!important;min-height:175px!important') &&
     css.includes('.warehouse-unified-group.open.warehouse-rows-many:only-of-type') &&
     css.includes('overflow-y:auto!important') &&
+    !css.includes('--warehouse-dense-weight') &&
     !css.includes('flex:var(--warehouse-row-weight,1) 1 0!important')],
   ['order slidebar opens only on explicit order-code click',
     table.includes('const [activeId,setActiveId]=useState<string|null>(null)') &&
