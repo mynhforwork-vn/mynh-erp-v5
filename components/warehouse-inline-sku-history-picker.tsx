@@ -209,7 +209,7 @@ export function WarehouseInlineSkuHistoryPicker({
         </div>
         {mode==='existing'&&<>
           {preferredVariant&&variantId===preferredVariant.id&&
-            <p className="warehouse-inline-sku-draft-note">Đã điền nháp SKU từng ghép nhiều nhất. Bấm Lưu ghép SKU để xác nhận; chưa nhập kho.</p>}
+            <p className="warehouse-inline-sku-draft-note">Đã chọn sẵn SKU gợi ý từ lịch sử. Bấm Lưu ghép SKU để xác nhận; chưa nhập kho.</p>}
           {available.length>0&&<>
             <p>{available.length} gợi ý từ những đơn tương tự đã ghép trước đây. Hãy đối chiếu, không tự động chọn.</p>
             <div className="warehouse-inline-sku-history-options">
