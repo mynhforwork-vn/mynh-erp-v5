@@ -6,6 +6,7 @@ import { formatDateTime,formatMoney } from '@/lib/format'
 import { resolveOrderValue } from '@/lib/order-prepaid'
 import { WarehouseBulkReceiveBar,type BulkOrderPreview } from '@/components/warehouse-bulk-receive-bar'
 import { WarehouseInlineSkuHistoryPicker } from '@/components/warehouse-inline-sku-history-picker'
+import { WarehouseInlineSkipItem } from '@/components/warehouse-inline-skip-item'
 import { bulkReceiveWarehouseOrders,type WarehouseBulkResult } from '@/lib/actions/warehouse-bulk-receive'
 import { saveWarehouseItemDecision } from '@/lib/actions/warehouse-item-decisions'
 import { WarehouseIntakeDetailPreview } from '@/components/warehouse-intake-detail-preview'
@@ -71,7 +72,7 @@ type AuditLog={
 type ItemDecision={
   order_item_id:string
   order_id:string
-  product_variant_id:string
+  product_variant_id:string|null
   decision:'IN'|'SKIP'
   sale_price:number|string
   multiplier:number
@@ -122,14 +123,14 @@ function receivedAt(row:Row){
 function isDone(row:Row){
   return ['WAREHOUSE_RECEIVED','WAREHOUSE_SKIPPED','WAREHOUSE_MIXED'].includes(String(row.warehouse_status??''))
 }
-function phaseLabel(row:Row){
+function phaseLabel(row:Row,decisions:Record<string,ItemDecision>={}){
   if(row.warehouse_status==='WAREHOUSE_SKIPPED')return 'Đã bỏ qua kho'
   if(row.warehouse_status==='WAREHOUSE_RECEIVED')return 'Đã nhập kho'
   if(isDone(row))return 'Đã xử lý'
-  return isComplete(row)?'Chờ nhập kho':'Chờ bóc tách'
+  return isComplete(row,decisions)?'Chờ nhập kho':'Chờ bóc tách'
 }
-function isComplete(row:Row){
-  return row.order_items.length>0&&row.order_items.every(item=>Boolean(item.product_variant_id))
+function isComplete(row:Row,decisions:Record<string,ItemDecision>={}){
+  return !!bulkPreview(row,decisions)
 }
 
 // Bulk actions must validate the same stored item-level decisions that the V2
@@ -228,7 +229,7 @@ export function WarehouseIntakeWorkspace({
   },[rows,showProcessedOnly])
 
   const visibleRows=useMemo(()=>groups.flatMap(group=>group.rows),[groups])
-  const firstIncomplete=visibleRows.find(row=>!isDone(row)&&!isComplete(row))
+  const firstIncomplete=visibleRows.find(row=>!isDone(row)&&!isComplete(row,itemDecisions))
     ??visibleRows.find(row=>!isDone(row))
     ??visibleRows[0]??null
   const [activeId,setActiveId]=useState<string|null>(firstIncomplete?.id??null)
@@ -248,6 +249,10 @@ export function WarehouseIntakeWorkspace({
   const [quickSkuTarget,setQuickSkuTarget]=useState<{
     orderItemId:string;orderLabel:string;productName:string;
     sourceVariant:string|null;quantity:number;left:number;top:number;bottom:number
+  }|null>(null)
+  const [quickSkipTarget,setQuickSkipTarget]=useState<{
+    orderItemId:string;orderLabel:string;productName:string;
+    left:number;top:number;bottom:number
   }|null>(null)
   const router=useRouter()
   const quickInFlight=useRef(false)
@@ -327,12 +332,25 @@ export function WarehouseIntakeWorkspace({
   }
   function openSkuHistory(event:React.MouseEvent<HTMLButtonElement>,row:Row,item:Item){
     event.stopPropagation()
-    if(isDone(row)||item.product_variant_id)return
+    if(isDone(row)||item.product_variant_id||itemDecisions[item.id])return
+    setQuickSkipTarget(null)
     const rect=event.currentTarget.getBoundingClientRect()
     setQuickSkuTarget({
       orderItemId:item.id,orderLabel:row.shopee_order_id??row.id.slice(0,8),
       productName:item.product_name,sourceVariant:item.variant??null,
       quantity:Number(item.quantity),left:rect.left,top:rect.top,bottom:rect.bottom
+    })
+  }
+  function openSkipItem(event:React.MouseEvent<HTMLButtonElement>,row:Row,item:Item){
+    event.stopPropagation()
+    if(isDone(row)||item.product_variant_id||itemDecisions[item.id])return
+    setQuickSkuTarget(null)
+    const rect=event.currentTarget.getBoundingClientRect()
+    setQuickSkipTarget({
+      orderItemId:item.id,
+      orderLabel:row.shopee_order_id??row.id.slice(0,8),
+      productName:item.product_name,
+      left:rect.left,top:rect.top,bottom:rect.bottom,
     })
   }
   function handleBulkResult(result:WarehouseBulkResult){
@@ -433,7 +451,7 @@ export function WarehouseIntakeWorkspace({
         : groups.map(group=>{
             const open=openGroups.includes(group.id)
             const waiting=group.rows.filter(row=>!isDone(row))
-            const splitRows=waiting.filter(row=>!isComplete(row))
+            const splitRows=waiting.filter(row=>!isComplete(row,itemDecisions))
             // Include both orders with complete V2 decisions and legacy
             // fully mapped orders. Exclude partial or stale decisions.
             const readyRows=waiting.filter(row=>!!bulkPreview(row,itemDecisions))
@@ -447,7 +465,7 @@ export function WarehouseIntakeWorkspace({
                 if(col==='product')return row.order_items[0]?.product_name??''
                 if(col==='purchase')return Number(row.order_items[0]?.original_price??0)
                 if(col==='sale')return Number(itemDecisions[row.order_items[0]?.id]?.sale_price??row.order_items[0]?.product_variants?.sale_price??0)
-                return phaseLabel(row)
+                return phaseLabel(row,itemDecisions)
               }
               const x=key(left,tableSort.key),y=key(right,tableSort.key)
               const cmp=typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y),'vi')
@@ -530,7 +548,7 @@ export function WarehouseIntakeWorkspace({
                 {row.order_items.map(item=>{
                   const historical=(suggestions[item.id]??[])
                     .filter(option=>variants.some(variant=>variant.id===option.variant_id))
-                  const canSuggest=!isDone(row)&&!item.product_variant_id
+                  const canSuggest=!isDone(row)&&!item.product_variant_id&&!itemDecisions[item.id]
                   const proposed=historical[0]
                   const variant=proposed?variants.find(value=>value.id===proposed.variant_id):null
                   const price=variant?.sale_price
@@ -572,7 +590,8 @@ export function WarehouseIntakeWorkspace({
                               <path d="m3 8 3.2 3.2L13 4.5"/>
                             </svg>}
                         </button>}</span>}
-                      {!canSuggest&&<b>{item.product_variants?.products?.sku??'Chưa ghép'}</b>}
+                      {!canSuggest&&<b>{itemDecisions[item.id]?.decision==='SKIP'&&
+                        !item.product_variant_id?'Bỏ qua kho':item.product_variants?.products?.sku??'Chưa ghép'}</b>}
                       {item.product_variants?.products?.name&&
                         <span className="warehouse-unified-sku-title">{item.product_variants.products.name}</span>}
                     </span>
@@ -607,15 +626,16 @@ export function WarehouseIntakeWorkspace({
                   const saved=itemDecisions[item.id]
                   const status=saved?.decision==='SKIP'?(isDone(row)?'Bỏ qua kho':'Dự kiến bỏ qua'):
                     saved?.decision==='IN'?(isDone(row)?'Nhập kho':'Dự kiến nhập'):
-                    isDone(row)?phaseLabel(row):
+                    isDone(row)?phaseLabel(row,itemDecisions):
                     item.product_variant_id?'Dự kiến nhập':'Chưa ghép'
                   return <div key={item.id} className="warehouse-unified-product-line"
                     title={saved?status+' · Đã lưu quyết định'+(saved.skip_reason?' · '+saved.skip_reason:''):status}>
-                    {!isDone(row)&&!item.product_variant_id
-                      ?<button type="button" className="status-pill orange warehouse-inline-sku-status-trigger"
-                        aria-label={'Chờ ghép SKU từ lịch sử cho '+item.product_name}
-                        aria-haspopup="dialog" aria-expanded={quickSkuTarget?.orderItemId===item.id}
-                        onClick={event=>openSkuHistory(event,row,item)}>Chờ ghép</button>
+                    {!isDone(row)&&!item.product_variant_id&&!saved
+                      ?<button type="button" className="status-pill warehouse-inline-item-skip-trigger"
+                        title={'Bỏ qua kho sản phẩm '+item.product_name+' · Không cần ghép SKU'}
+                        aria-label={'Bỏ qua kho sản phẩm '+item.product_name}
+                        aria-haspopup="dialog" aria-expanded={quickSkipTarget?.orderItemId===item.id}
+                        onClick={event=>openSkipItem(event,row,item)}>Bỏ qua kho</button>
                       :<span className={'status-pill '+(saved?.decision==='IN'||isDone(row)?'green':
                         saved?.decision==='SKIP'?'status-muted':'orange')}>{status}</span>}
                   </div>
@@ -705,6 +725,12 @@ export function WarehouseIntakeWorkspace({
             </section>
           })}
     </section>
+    {quickSkipTarget&&<WarehouseInlineSkipItem
+      key={quickSkipTarget.orderItemId}
+      target={quickSkipTarget} previewOnly={previewOnly}
+      onClose={()=>setQuickSkipTarget(null)}
+      onSaved={message=>setQuickNotice({kind:'success',message})}
+    />}
     {quickSkuTarget&&<WarehouseInlineSkuHistoryPicker
       key={quickSkuTarget.orderItemId}
       target={quickSkuTarget}
