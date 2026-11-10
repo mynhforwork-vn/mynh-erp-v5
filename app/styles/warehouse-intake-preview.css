@@ -695,6 +695,146 @@
 .warehouse-receive-screen .warehouse-unified-status .warehouse-unified-product-line+.warehouse-unified-product-line{
   border-top:1px solid #f0f3f6;margin-top:4px;padding-top:4px;
 }
+/* The existing "Chờ ghép" text becomes the trigger only if verified,
+   persisted history includes an available catalog variant. */
+.warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-sku-trigger{
+  display:inline-flex;align-items:center;flex-wrap:nowrap;
+  gap:4px;max-width:100%;min-width:0;margin:0;padding:2px 4px;
+  background:#edf6fa;border:1px solid #c6dfe9;border-radius:4px;
+  color:#246a90;cursor:pointer;text-align:left;
+  font:inherit;font-size:10px;font-weight:650;white-space:nowrap;
+}
+.warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-sku-trigger small{
+  flex:0 1 auto;font-size:8.5px;font-weight:500;
+  color:#527d91;white-space:nowrap;min-width:0;
+}
+.warehouse-receive-screen .warehouse-inline-sku-trigger:hover{
+  background:#e0f0f8;border-color:#a4cfdf;
+}
+.warehouse-receive-screen .warehouse-inline-sku-trigger:focus-visible,
+.warehouse-receive-screen .warehouse-inline-sku-status-trigger:focus-visible{
+  outline:2px solid #438b82;outline-offset:2px;
+}
+.warehouse-receive-screen .warehouse-unified-table .warehouse-inline-sku-status-trigger{
+  display:inline-flex;align-items:center;justify-content:center;
+  border:1px dashed #d2ae7a;cursor:pointer;
+}
+.warehouse-receive-screen .warehouse-inline-sku-status-trigger:hover{
+  border-color:#bd9257;background:#fff2db;
+}
+@container warehouse-lane (max-width:550px){
+  .warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-sku-trigger{
+    max-width:100%;padding:2px 3px;font-size:9px;
+  }
+  .warehouse-receive-screen .warehouse-unified-skus .warehouse-inline-sku-trigger small{
+    display:none;
+  }
+}
+/* Inline history picker is portaled to the document body so it cannot be
+   cropped by the fixed-height table scroller or an open detail slidebar. */
+.warehouse-inline-sku-history{
+  position:fixed;z-index:3200;box-sizing:border-box;width:380px;
+  display:flex;flex-direction:column;min-width:0;
+  border:1px solid #cbdfe6;border-radius:9px;background:#fff;
+  color:#344f60;font-size:11px;line-height:1.45;
+  box-shadow:0 14px 38px #1236472b;overflow:hidden;
+}
+.warehouse-inline-sku-history-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:9px;
+  padding:11px 12px 9px;border-bottom:1px solid #e4edf0;background:#f8fbfc;
+}
+.warehouse-inline-sku-history-head>div{
+  display:flex;flex-direction:column;gap:2px;min-width:0;
+}
+.warehouse-inline-sku-history-head strong{
+  font-size:12px;font-weight:700;color:#285167;
+}
+.warehouse-inline-sku-history-head small{
+  display:block;color:#637c8a;overflow-wrap:anywhere;font-size:10px;
+}
+.warehouse-inline-sku-history-head>button{
+  flex:0 0 24px;display:grid;place-items:center;width:24px;height:24px;
+  background:transparent;border:0;border-radius:4px;cursor:pointer;
+  color:#6c8190;font-size:20px;
+}
+.warehouse-inline-sku-history-head>button:hover{background:#eaf1f4}
+.warehouse-inline-sku-history-content{
+  min-height:0;flex:1 1 auto;overflow:auto;padding:10px 12px;
+  scrollbar-width:thin;
+}
+.warehouse-inline-sku-history-content>p{
+  margin:0 0 9px;color:#607b8a;font-size:10px;
+}
+.warehouse-inline-sku-history-options{
+  display:flex;flex-direction:column;gap:5px;
+}
+.warehouse-inline-sku-history-options>button{
+  display:flex;flex-direction:column;align-items:flex-start;
+  gap:2px;box-sizing:border-box;width:100%;padding:8px 9px;
+  border:1px solid #dae7ed;border-radius:6px;
+  background:#fff;color:#355368;cursor:pointer;text-align:left;
+}
+.warehouse-inline-sku-history-options>button.active{
+  border-color:#78b8a8;background:#f0f9f5;
+}
+.warehouse-inline-sku-history-options>button:hover:not(:disabled){
+  border-color:#9ec9d6;background:#f5fafc;
+}
+.warehouse-inline-sku-history-options b{
+  max-width:100%;font-weight:650;font-size:11px;overflow-wrap:anywhere;
+}
+.warehouse-inline-sku-history-options small{
+  color:#6c8494;font-size:9.5px;
+}
+.warehouse-inline-sku-history-edit{
+  margin-top:10px;padding-top:10px;border-top:1px solid #e4ecf1;
+  display:flex;flex-direction:column;gap:7px;
+}
+.warehouse-inline-sku-history-edit>strong{font-size:11px;color:#35596a}
+.warehouse-inline-sku-history-edit>small{font-size:9.5px;color:#697e8b}
+.warehouse-inline-sku-history-numbers{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+}
+.warehouse-inline-sku-history-edit label{
+  display:flex;flex-direction:column;gap:4px;min-width:0;
+  font-size:10px;color:#496c7c;
+}
+.warehouse-inline-sku-history-edit input{
+  box-sizing:border-box;width:100%;min-height:30px;
+  padding:5px 7px;border:1px solid #cbdde5;border-radius:5px;
+  background:#fff;color:#2c4a5a;font-size:11px;
+}
+.warehouse-inline-sku-history-decisions{
+  display:flex;flex-direction:column;gap:5px;color:#496c7c;
+}
+.warehouse-inline-sku-history-decisions>div{display:flex;gap:6px}
+.warehouse-inline-sku-history-decisions button{
+  flex:1 1 0;min-height:29px;border-radius:5px;
+  border:1px solid #cedde4;background:#f8fbfc;
+  font-size:10px;color:#466477;cursor:pointer;
+}
+.warehouse-inline-sku-history-decisions button.active{
+  background:#eaf5ec;border-color:#87bca1;color:#28644e;
+}
+.warehouse-inline-sku-history-decisions button.active:last-child{
+  background:#fff5e9;border-color:#d9ae7e;color:#91602f;
+}
+.warehouse-inline-sku-history-readonly{
+  margin:9px 0 0!important;padding:7px;border-radius:5px;
+  background:#f4f7fa;color:#728392!important;
+}
+.warehouse-inline-sku-history-error{color:#a34139!important}
+.warehouse-inline-sku-history-footer{
+  flex:0 0 auto;display:flex;justify-content:flex-end;gap:7px;
+  padding:9px 12px;border-top:1px solid #e2ebef;background:#f9fbfc;
+}
+.warehouse-inline-sku-history-footer button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:600px){
+  .warehouse-inline-sku-history{
+    width:calc(100vw - 20px)!important;
+    border-radius:9px;box-shadow:0 8px 26px #12364733;
+  }
+}
 .warehouse-receive-screen .warehouse-unified-skus{color:#306c91}
 .warehouse-receive-screen .warehouse-unified-prices .warehouse-unified-product-name{font-variant-numeric:tabular-nums}
 .warehouse-receive-screen .warehouse-unified-status .status-pill{
