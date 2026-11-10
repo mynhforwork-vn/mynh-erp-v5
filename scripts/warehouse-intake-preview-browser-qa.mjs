@@ -21,7 +21,7 @@ const source=[
   "  id:'10000000-0000-0000-0000-'+String(i+1).padStart(12,'0'),",
   "  shopee_order_id:'261106SPXITEM'+String(i+1).padStart(3,'0'),",
   "  warehouse_status:i===2?'WAREHOUSE_RECEIVED':i===3?'WAREHOUSE_SKIPPED':'READY_TO_TRANSFER',",
-  "  cod:50000*(i+1),order_date:'2026-11-01T12:00:00+07:00',created_at:'2026-11-01T12:02:00+07:00',",
+  "  cod:document.documentElement.dataset.scenario==='missing-cod'&&i===0?null:50000*(i+1),order_date:'2026-11-01T12:00:00+07:00',created_at:'2026-11-01T12:02:00+07:00',",
   "  shipping_service:'STANDARD',receive_status:'RECEIVED',order_status:'DELIVERED',",
   "  payment_status:i===0?'PARTIAL':'UNPAID',prepaid_amount:i===0?25000:null,prepaid_source_type:i===0?'DEBIT_CARD':null,prepaid_source_label:i===0?'Ngân hàng thử nghiệm':null,",
   "  receive_batch_details:[{receive_batches:{warehouse_id:i<4?'BG':'HN',received_at:'2026-11-06T08:00:00+07:00',warehouses:{code:i<4?'BG':'HN',name:'Kho nhận',address:i<4?'320 Nguyễn Công Hãng':'164 Hồng Mai'}}}],",
@@ -216,6 +216,17 @@ try {
       received:table.querySelector('tbody tr:first-child td[data-col="order"] .warehouse-unified-received-at')?.textContent?.trim(),
       skuCell:table.querySelector('tbody tr:nth-child(2) td[data-col="sku"]')?.innerText,
       skuSale:table.querySelector('tbody tr:nth-child(2) td[data-col="sku"] .warehouse-unified-sku-title')?.textContent,
+      pendingCod:table.querySelector('tbody tr:first-child td[data-col="order"] .warehouse-unified-pending-cod')?.textContent?.trim(),
+      mappedHasCod:!!table.querySelector('tbody tr:nth-child(2) td[data-col="order"] .warehouse-unified-pending-cod'),
+      processedHasCod:!!table.querySelector('tbody tr:nth-child(3) td[data-col="order"] .warehouse-unified-pending-cod'),
+      codAxis:(()=>{
+        const order=table.querySelector('tbody tr:first-child td[data-col="order"]')
+        return {
+          received:order?.querySelector('.warehouse-unified-received-at')?.getBoundingClientRect().left,
+          cod:order?.querySelector('.warehouse-unified-pending-cod')?.getBoundingClientRect().left,
+          code:order?.querySelector('.table-link')?.getBoundingClientRect().left,
+        }
+      })(),
     }))
     assert.ok(merged.headers[0].includes('Ngày nhận')&&merged.headers.length===6,
       'date must share the order column, no separate date column '+width)
@@ -223,6 +234,15 @@ try {
       'received date should appear below each order code '+width)
     assert.ok((merged.skuCell??'').includes('TEST-01')&&(merged.skuSale??'').includes('Đã map'),
       'mapped sale product name must be displayed after SKU '+width)
+    assert.match(merged.pendingCod??'',/COD:\\s*50[.,]000\\s*đ/,
+      'unparsed order COD is shown below received time with stored amount '+width)
+    assert.equal(merged.mappedHasCod,false,
+      'mapped order must not show unparsed COD note '+width)
+    assert.equal(merged.processedHasCod,false,
+      'processed order must not show unparsed COD note '+width)
+    assert.ok(Math.abs((merged.codAxis.code??0)-(merged.codAxis.cod??0))<=1.5&&
+      Math.abs((merged.codAxis.received??0)-(merged.codAxis.cod??0))<=1.5,
+      'COD, received time and order code align in the same column '+width+' '+JSON.stringify(merged.codAxis))
     const originalPrice=await page.locator('.warehouse-unified-table').first()
       .locator('tbody tr:first-child td[data-col="purchase"]').innerText()
     assert.match(originalPrice,/50[.,]000/,
@@ -551,6 +571,19 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await page.close()
 }
 console.log('PASS quick receive icon · preview read-only · direct one-order action · no modal · guarded repeat · failure/retry')
+
+// Missing COD is not silently converted to 0 đ; the order remains unparsed.
+{
+  const page=await browser.newPage({viewport:{width:390,height:844}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="missing-cod">'),{waitUntil:'load'})
+  const first=page.locator('.warehouse-unified-group[data-warehouse-code="BG"] tbody tr').first()
+  await first.waitFor()
+  const cod=await first.locator('.warehouse-unified-pending-cod').innerText()
+  assert.equal(cod.replace(/\\s+/g,' ').trim(),'COD: Chưa có',
+    'missing COD must be explicit, not guessed as zero')
+  await page.close()
+}
+console.log('PASS unparsed COD note · aligned in 14 viewports · no note after parsing · missing value preserved')
 
 // Bulk receipt QA: non-destructive Preview confirmation and saved V2 mixed
 // decisions, then a live-mode mock with partial success and retry visibility.
