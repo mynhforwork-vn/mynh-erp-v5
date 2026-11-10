@@ -740,6 +740,9 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await picker.getByRole('button',{name:/ALT-02/}).click()
   assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'65000',
     'sale price comes from existing variant, not guessed history '+width)
+  const saveButtonRect=await picker.getByRole('button',{name:'Lưu ghép SKU'}).boundingBox()
+  assert.ok(saveButtonRect&&saveButtonRect.y>=0&&saveButtonRect.y+saveButtonRect.height<=height+1,
+    'expanded picker footer must stay fully within viewport '+width+' '+JSON.stringify(saveButtonRect))
   assert.equal(await picker.getByLabel('Hệ số ghép nhanh').inputValue(),'1',
     'multiplier comes from old stored mapping '+width)
   assert.equal(await picker.getByRole('button',{name:'Lưu ghép SKU'}).isDisabled(),true,
