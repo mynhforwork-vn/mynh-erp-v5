@@ -378,6 +378,52 @@ export function WarehouseIntakeWorkspace({
   const otherSort=useManagedSort<TableCol>('mynh-warehouse-intake-other-sort-v3','order','desc')
   const laneRef=useRef<HTMLElement|null>(null)
   const [laneWidth,setLaneWidth]=useState(1100)
+  // One or two orders: show exactly one order's row height, including the
+  // sticky column header. A second order remains available by vertical scroll.
+  // Measure real rows instead of guessing their height across breakpoints.
+  useEffect(()=>{
+    const lane=laneRef.current
+    if(!lane)return
+    const cleanups:(()=>void)[]=[]
+    const compactGroups=lane.querySelectorAll<HTMLElement>(
+      '.warehouse-unified-group.open.warehouse-rows-one, .warehouse-unified-group.open.warehouse-rows-two')
+    compactGroups.forEach(group=>{
+      const wrap=group.querySelector<HTMLElement>('.warehouse-unified-table-wrap')
+      const table=wrap?.querySelector('table')
+      const head=table?.tHead
+      const body=table?.tBodies[0]
+      if(!wrap||!head||!body)return
+      let firstRow=body.rows[0]??null
+      const sync=()=>{
+        const visibleRow=body.rows[0]
+        if(!visibleRow)return
+        const height=Math.ceil(head.getBoundingClientRect().height+
+          visibleRow.getBoundingClientRect().height+1)
+        if(height>0&&height<2000){
+          const value=height+'px'
+          if(wrap.style.getPropertyValue('--warehouse-one-order-height')!==value){
+            wrap.style.setProperty('--warehouse-one-order-height',value)
+          }
+        }
+      }
+      const observer=typeof ResizeObserver==='undefined'?null:new ResizeObserver(sync)
+      observer?.observe(head)
+      if(firstRow)observer?.observe(firstRow)
+      const mutation=typeof MutationObserver==='undefined'?null:new MutationObserver(()=>{
+        const next=body.rows[0]??null
+        if(firstRow!==next){
+          if(firstRow)observer?.unobserve(firstRow)
+          firstRow=next
+          if(firstRow)observer?.observe(firstRow)
+        }
+        sync()
+      })
+      mutation?.observe(body,{childList:true})
+      sync()
+      cleanups.push(()=>{observer?.disconnect();mutation?.disconnect()})
+    })
+    return ()=>cleanups.forEach(cleanup=>cleanup())
+  },[groups,openGroups,laneWidth,activeId])
   useEffect(()=>{
     const node=laneRef.current
     if(!node)return
@@ -429,7 +475,9 @@ export function WarehouseIntakeWorkspace({
   }
 
   return <div className={'whx-intake-layout warehouse-intake-layout warehouse-intake-preview-layout '+(active?'with-panel':'')}>
-    <section ref={laneRef} className="whx-intake-main tracking-hub-stack tracking-hub-stack-v2 warehouse-receive-groups warehouse-receive-table-lane">
+    <section ref={laneRef} className={'whx-intake-main tracking-hub-stack tracking-hub-stack-v2 warehouse-receive-groups warehouse-receive-table-lane'+
+      (groups.length===2&&groups.every(group=>group.rows.length>2&&openGroups.includes(group.id))
+        ?' warehouse-equal-halves':'')}>
       {quickNotice&&<div className={'warehouse-quick-notice '+quickNotice.kind}
         role={quickNotice.kind==='error'?'alert':'status'}>
         <span>{quickNotice.message}</span>
@@ -487,8 +535,8 @@ export function WarehouseIntakeWorkspace({
                 .map(row=>bulkPreview(row,itemDecisions))
                 .filter((item):item is BulkOrderPreview=>!!item)
             const groupSelected=selectedOrders.length
-            // Layout class comes from orders actually displayed in this warehouse.
-            // 0 orders: no card; 1/2: compact content; 3+: elastic, scrollable.
+            // 0: hidden, 1–2: height of one order with scrolling, 3+: elastic.
+            // Two dense warehouses share equal halves of the available lane.
             const groupRowMode=group.rows.length===1?'one':group.rows.length===2?'two':'many'
             const columnWidths=autoFitColumnWidths(tableColumns.visible,laneWidth)
             const cell=(row:Row,col:TableCol)=>{
@@ -658,8 +706,7 @@ export function WarehouseIntakeWorkspace({
               key={group.id} data-warehouse-code={group.code}
               data-warehouse-rows={group.rows.length}
               data-warehouse-row-mode={groupRowMode}
-              data-warehouse-actionable={waiting.length}
-              style={{'--warehouse-dense-weight':Math.min(group.rows.length,30)} as React.CSSProperties}>
+              data-warehouse-actionable={waiting.length}>
               <div className="tracking-hub-head-v2 warehouse-unified-group-head">
                 <button type="button" className="tracking-hub-toggle" aria-label={(open?'Thu gọn ':'Mở ')+group.code}
                   aria-expanded={open} onClick={()=>toggleGroup(group.id)}><span>{open?'⌄':'›'}</span></button>
