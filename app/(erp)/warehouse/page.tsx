@@ -99,6 +99,7 @@ export default async function WarehousePage(){
           warehouses={(warehouses??[]) as any[]}
           defaultReceivingWarehouseId={(settings as any)?.default_receiving_warehouse_id??null}
         />
+        <Link className="button" href="/warehouse/skus">Danh mục SKU</Link>
         <Link className="button" href="/warehouse/history">Lịch sử kho</Link>
         <Link className="button primary" href="/warehouse/receive">Bóc tách nhập kho</Link>
       </div>
