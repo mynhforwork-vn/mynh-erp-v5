@@ -1042,6 +1042,90 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
 }
 console.log('PASS saved SKU remap · 4 responsive viewports · DRAFT edits · finalized lock · no stock · refreshed mapping')
 
+// One parent SKU may have multiple distinct sellable variants, each with
+// independently entered pricing. Existing variants keep their catalog prices.
+for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
+  const page=await browser.newPage({viewport:{width,height}})
+  await page.setContent(html,{waitUntil:'load'})
+  await page.locator('.warehouse-inline-sku-trigger:not(.warehouse-inline-sku-edit-trigger)').first().click()
+  const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
+  await picker.getByRole('button',{name:'Thêm phân loại'}).click()
+  assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'',
+    'new classification cannot inherit a different classification price '+width)
+  await picker.getByLabel('SKU gốc để thêm phân loại').selectOption('30000000-0000-4000-8000-000000000001')
+  await picker.getByLabel('Tên phân loại mới của SKU cũ').fill('Mẫu')
+  assert.match(await picker.getByRole('alert').innerText(),/Phân loại này đã tồn tại/,
+    'duplicate classification warned at source '+width)
+  assert.equal(await picker.getByRole('button',{name:'Lưu ghép SKU'}).isDisabled(),true,
+    'cannot create existing classification twice '+width)
+  await picker.getByLabel('Tên phân loại mới của SKU cũ').fill('Màu đỏ')
+  await picker.getByLabel('Giá bán ghép nhanh').fill('145000')
+  await picker.getByRole('button',{name:'Nhập kho',exact:true}).click()
+  assert.equal(await picker.getByRole('button',{name:'Lưu ghép SKU'}).isDisabled(),true,
+    'read-only Preview must not create even a valid classification '+width)
+  const rect=await picker.boundingBox()
+  assert.ok(rect&&rect.x>=0&&rect.y>=0&&rect.x+rect.width<=width+1&&
+    rect.y+rect.height<=height+1,'variant picker fits viewport '+width)
+  assert.deepEqual(await page.evaluate(()=>window.__warehouseCalls??[]),[],
+    'Preview classification is non-mutating '+width)
+  await page.keyboard.press('Escape')
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true">'),{waitUntil:'load'})
+  await page.locator('.warehouse-inline-sku-trigger:not(.warehouse-inline-sku-edit-trigger)').first().click()
+  const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
+  await picker.getByRole('button',{name:'Thêm phân loại'}).click()
+  await picker.getByLabel('SKU gốc để thêm phân loại').selectOption('30000000-0000-4000-8000-000000000001')
+  await picker.getByLabel('Tên phân loại mới của SKU cũ').fill('Màu xanh')
+  await picker.getByLabel('Giá bán ghép nhanh').fill('159000')
+  await picker.getByRole('button',{name:'Nhập kho',exact:true}).click()
+  await picker.getByRole('button',{name:'Lưu ghép SKU'}).click()
+  await page.getByRole('status').filter({hasText:'Đã lưu ghép SKU cho đơn'}).waitFor()
+  const state=await page.evaluate(()=>({
+    calls:window.__warehouseCalls??[],refresh:window.__refreshCalls??0,
+    stock:window.__bulkCalls??[]
+  }))
+  assert.equal(state.calls.length,1)
+  assert.equal(state.calls[0].name,'add_variant','new variant uses its atomic RPC')
+  assert.equal(state.calls[0].input.productId,'30000000-0000-4000-8000-000000000001',
+    'parent SKU is existing, not recreated')
+  assert.equal(state.calls[0].input.variantName,'Màu xanh')
+  assert.equal(state.calls[0].input.salePrice,159000,'new sale price independent of existing variant')
+  assert.equal(state.calls[0].input.decision,'IN')
+  assert.deepEqual(state.stock,[],'adding classification never writes inventory')
+  assert.ok(state.refresh>0,'new classification mapping revalidates database view')
+  assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+    'adding classification inline must not open detail slidebar')
+  await page.close()
+}
+{
+  // The order-code slidebar also supports creating a new classification,
+  // but never by clicking a product cell.
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true">'),{waitUntil:'load'})
+  await page.locator('tbody tr').first().locator('button.table-link').click()
+  const detail=page.locator('aside.warehouse-intake-panel')
+  await detail.waitFor()
+  await detail.getByRole('button',{name:'Thêm phân loại'}).click()
+  await detail.getByLabel('Chọn SKU gốc để thêm phân loại').selectOption('30000000-0000-4000-8000-000000000001')
+  await detail.getByLabel('Nhập phân loại mới của SKU cũ').fill('Size XL')
+  const fields=detail.locator('.warehouse-detail-v2-numeric input')
+  await fields.first().fill('179000')
+  await detail.getByRole('button',{name:'Lưu bóc tách và quyết định'}).click()
+  await detail.getByRole('status').filter({hasText:'Đã lưu SKU'}).waitFor()
+  const calls=await page.evaluate(()=>window.__warehouseCalls??[])
+  assert.equal(calls.length,1)
+  assert.equal(calls[0].name,'add_variant','detail editor must call the same safe RPC')
+  assert.equal(calls[0].input.variantName,'Size XL')
+  assert.equal(calls[0].input.salePrice,179000)
+  assert.equal(await page.evaluate(()=>(window.__bulkCalls??[]).length),0)
+  await page.close()
+}
+console.log('PASS one SKU · new priced classification · duplicate guard · 4 responsive sizes · inline and detail · no stock')
+
+
 // Inline SKU draft: the best stored historic match is proposed in the table;
 // operators explicitly confirm it with ONE button. No suggestion means an
 // actionable create/search UI but no fabricated draft.
