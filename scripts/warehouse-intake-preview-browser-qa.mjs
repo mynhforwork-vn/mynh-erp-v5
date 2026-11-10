@@ -86,6 +86,19 @@ try {
     assert.equal(await page.locator('.warehouse-unified-table tbody tr').filter({
       has:page.locator('.warehouse-order-quick-receive')
     }).count(),2,'quick action only belongs to eligible order cells at '+width)
+    assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+      'detail panel must stay closed on initial load '+width)
+    await page.locator('.warehouse-unified-table tbody tr').first().locator('td[data-col="product"]').click()
+    assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+      'clicking a product/table cell must not open the detail panel '+width)
+    await page.locator('.fixture-done').click()
+    assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+      'changing to completed filter must not auto-open details '+width)
+    await page.locator('.fixture-all').click()
+    assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+      'returning to all orders must not auto-open details '+width)
+    await page.locator('.warehouse-unified-table tbody tr').first().locator('button.table-link').click()
+    await page.locator('aside.warehouse-intake-panel').waitFor()
     const list=await page.evaluate(()=>{
       const tables=[...document.querySelectorAll('.warehouse-unified-table')]
       const wraps=[...document.querySelectorAll('.warehouse-unified-table-wrap')]
@@ -451,7 +464,6 @@ for(const [width,height] of [[390,844],[1280,800],[1440,900]]){
   const page=await browser.newPage({viewport:{width,height}})
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="sparse">'),{waitUntil:'load'})
   await page.locator('.warehouse-unified-group').first().waitFor()
-  if(width<=900)await page.locator('aside.warehouse-intake-panel .close').click()
   const sizes=await page.locator('.warehouse-receive-table-lane').evaluate(lane=>{
     const groups=[...lane.querySelectorAll('.warehouse-unified-group')]
     const laneRect=lane.getBoundingClientRect()
@@ -497,6 +509,10 @@ console.log('PASS sparse dual warehouses · natural-height cards at mobile, tabl
     'warehouse with no active orders must disappear in All')
   assert.equal(await page.locator('.warehouse-unified-table tbody tr').count(),4,
     'the remaining BG group still shows its own rows')
+  assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+    'a single busy warehouse must not auto-open its order panel')
+  await page.locator('.warehouse-unified-table tbody tr').first().locator('button.table-link').click()
+  await page.locator('aside.warehouse-intake-panel').waitFor()
   const single=await page.evaluate(()=>{
     const lane=document.querySelector('.warehouse-receive-table-lane').getBoundingClientRect()
     const group=document.querySelector('.warehouse-unified-group').getBoundingClientRect()
@@ -562,7 +578,6 @@ console.log('PASS adaptive groups · hide empty-action warehouse · completed hi
 for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   const page=await browser.newPage({viewport:{width,height}})
   await page.setContent(html,{waitUntil:'load'})
-  if(width<=900)await page.locator('aside.warehouse-intake-panel .close').click()
   const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
   assert.equal(await bg.locator('.warehouse-order-quick-receive').count(),1,
     'BG exposes one eligible quick icon '+width)
@@ -640,7 +655,6 @@ console.log('PASS canonical order value · 14 viewports · partially paid total 
 for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   const page=await browser.newPage({viewport:{width,height}})
   await page.setContent(html,{waitUntil:'load'})
-  if(width<=900)await page.locator('aside.warehouse-intake-panel .close').click()
   const first=page.locator('.warehouse-unified-group[data-warehouse-code="BG"] tbody tr').first()
   const skuCell=first.locator('td[data-col="sku"]')
   const statusCell=first.locator('td[data-col="status"]')
@@ -867,7 +881,6 @@ console.log('PASS bulk warehouse Preview safety · V2 SKIP summary · partial su
 for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   const page=await browser.newPage({viewport:{width,height}})
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="history">'),{waitUntil:'load'})
-  if(width<=900)await page.locator('aside.warehouse-intake-panel .close').click()
   const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
   const draft=bg.locator('.warehouse-inline-sku-trigger').filter({hasText:'TEST-01'})
   assert.equal(await draft.count(),1,'one ranked old SKU is prefilled as a draft '+width)
@@ -988,6 +1001,9 @@ console.log('PASS inline SKU draft · one-click confirmation · new SKU · alter
 {
   const page=await browser.newPage({viewport:{width:1280,height:800}})
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="history">'),{waitUntil:'load'})
+  assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+    'history suggestions must not auto-open details')
+  await page.locator('.warehouse-unified-table tbody tr').first().locator('button.table-link').click()
   const panel=page.locator('.warehouse-intake-panel')
   const history=panel.locator('.warehouse-detail-v2-suggestion')
   await history.waitFor()
@@ -1018,6 +1034,9 @@ console.log('PASS history suggestions · multiple candidates · manual select ·
 {
   const page=await browser.newPage({viewport:{width:1280,height:800}})
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true">'),{waitUntil:'load'})
+  assert.equal(await page.locator('aside.warehouse-detail-v2').count(),0,
+    'live details must also remain closed before order-code click')
+  await page.locator('.warehouse-unified-table tbody tr').first().locator('button.table-link').click()
   const panel=page.locator('aside.warehouse-detail-v2')
   await panel.locator('.warehouse-detail-v2-product').first().waitFor()
   assert.equal(await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).count(),0,
