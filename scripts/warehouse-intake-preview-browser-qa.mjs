@@ -591,7 +591,21 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await page.setContent(html,{waitUntil:'load'})
   if(width<=900)await page.locator('aside.warehouse-intake-panel .close').click()
   const first=page.locator('.warehouse-unified-group[data-warehouse-code="BG"] tbody tr').first()
-  const skip=first.getByRole('button',{name:/Bỏ qua kho sản phẩm/}).first()
+  const skuCell=first.locator('td[data-col="sku"]')
+  const statusCell=first.locator('td[data-col="status"]')
+  assert.equal(await skuCell.locator('.warehouse-inline-item-skip-trigger').count(),2,
+    'per-product skip buttons sit beside SKU matching in SKU column '+width)
+  assert.equal(await statusCell.locator('button').count(),0,
+    'status column contains no skip action '+width)
+  const pair=skuCell.locator('.warehouse-inline-sku-pair').first()
+  const match=pair.locator('.warehouse-inline-sku-trigger')
+  const skip=pair.getByRole('button',{name:/Bỏ qua kho sản phẩm/})
+  const [matchBox,skipBox,skuBox]=await Promise.all([match.boundingBox(),skip.boundingBox(),skuCell.boundingBox()])
+  assert.ok(matchBox&&skipBox&&skuBox&&
+    skipBox.x>=matchBox.x+matchBox.width-1&&
+    Math.abs(skipBox.y+skipBox.height/2-(matchBox.y+matchBox.height/2))<=4&&
+    skipBox.x+skipBox.width<=skuBox.x+skuBox.width+2,
+    'skip aligns beside Chờ ghép without spilling into next column '+width+' '+JSON.stringify({matchBox,skipBox,skuBox}))
   await skip.click()
   const dialog=page.getByRole('dialog',{name:'Bỏ qua kho sản phẩm'})
   await dialog.waitFor()
@@ -600,8 +614,8 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await dialog.getByLabel('Lý do bỏ qua sản phẩm').fill('Quà tặng không quản lý tồn')
   assert.equal(await dialog.getByRole('button',{name:'Xác nhận bỏ qua'}).isDisabled(),true,
     'read-only Preview does not write even with a valid reason '+width)
-  assert.equal(await first.locator('.warehouse-inline-item-skip-trigger').count(),2,
-    'each unmapped product has its own independent skip action '+width)
+  assert.equal(await skuCell.locator('.warehouse-inline-item-skip-trigger').count(),2,
+    'each unmapped product has a SKU-adjacent skip action '+width)
   assert.deepEqual(await page.evaluate(()=>window.__warehouseCalls??[]),[],
     'opening the skip dialog must never trigger an action '+width)
   await page.keyboard.press('Escape')
@@ -802,6 +816,9 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   assert.equal(await draft.count(),1,'one ranked old SKU is prefilled as a draft '+width)
   assert.equal(await bg.locator('.warehouse-inline-sku-confirm').count(),1,
     'only the mapped-history draft gets one-click confirmation '+width)
+  assert.equal(await bg.locator('td[data-col="sku"] .warehouse-inline-sku-pair').first()
+    .locator('.warehouse-inline-item-skip-trigger').count(),1,
+    'historically suggested SKU offers skip beside its confirm icon '+width)
   const quick=bg.getByRole('button',{name:/Xác nhận ghép SKU TEST-01/})
   assert.equal(await quick.isDisabled(),true,'read-only Preview blocks one-click save '+width)
   assert.deepEqual(await page.evaluate(()=>window.__warehouseCalls??[]),[],
