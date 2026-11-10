@@ -643,7 +643,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await selector.check()
   const toolbar=bg.locator('.warehouse-bulk-toolbar')
   assert.match(await toolbar.innerText(),/1 đơn được chọn/)
-  await toolbar.getByRole('button',{name:/Xem trước nhập kho/}).click()
+  await toolbar.getByRole('button',{name:/Xem trước nhập hàng loạt/}).click()
   const popup=page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]')
   await popup.waitFor()
   assert.match(await popup.innerText(),/Bỏ qua kho/,'one item is skipped')
