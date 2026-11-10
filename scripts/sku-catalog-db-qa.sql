@@ -118,7 +118,7 @@ BEGIN
    'b0000000-0000-4000-8000-000000000002')->>'can_merge')::boolean THEN
    RAISE EXCEPTION 'FAIL: mapped order before receiving did not block merge';
  END IF;
-END $;
+END $$;
 RESET ROLE;
 DELETE FROM public.order_items WHERE id='e0000000-0000-4000-8000-000000000003';
 DELETE FROM public.orders WHERE id='d0000000-0000-4000-8000-000000000003';
