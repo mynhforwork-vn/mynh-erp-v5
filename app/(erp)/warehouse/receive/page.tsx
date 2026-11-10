@@ -252,7 +252,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       const quantity=Number(item.quantity)
       if(!Number.isInteger(quantity)||quantity<1)return false
       if(!hasDraft)return !!item.product_variant_id&&
-        Number.isInteger(Number(item.inventory_multiplier))&&Number(item.inventory_multiplier)>0
+        Number.isInteger(Number(item.inventory_multiplier??1))&&Number(item.inventory_multiplier??1)>0
       const d=records[index]
       if(!d||d.processing_state!=='DRAFT')return false
       const skipped=d.decision==='SKIP'&&!!String(d.skip_reason??'').trim()
@@ -260,7 +260,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
         Number(d.sale_price)===0&&Number(d.multiplier)===1)return true
       const factor=Number(d.multiplier)
       return !!item.product_variant_id&&d.product_variant_id===item.product_variant_id&&
-        Number.isInteger(factor)&&factor>0&&factor===Number(item.inventory_multiplier)&&
+        Number.isInteger(factor)&&factor>0&&factor===Number(item.inventory_multiplier??1)&&
         Number.isFinite(Number(d.sale_price))&&Number(d.sale_price)>=0&&
         (d.decision==='IN'||skipped)&&quantity*factor<=2147483647
     })
