@@ -234,10 +234,8 @@ export function WarehouseIntakeWorkspace({
   },[rows,showProcessedOnly])
 
   const visibleRows=useMemo(()=>groups.flatMap(group=>group.rows),[groups])
-  const firstIncomplete=visibleRows.find(row=>!isDone(row)&&!isComplete(row,itemDecisions))
-    ??visibleRows.find(row=>!isDone(row))
-    ??visibleRows[0]??null
-  const [activeId,setActiveId]=useState<string|null>(firstIncomplete?.id??null)
+  // Detail slidebar is opt-in: only an explicit order-code click opens it.
+  const [activeId,setActiveId]=useState<string|null>(null)
   const [openGroups,setOpenGroups]=useState<string[]>(()=>groups.map(group=>group.id))
   const knownGroupIds=useRef<Set<string>>(new Set(groups.map(group=>group.id)))
   useEffect(()=>{
@@ -715,8 +713,7 @@ export function WarehouseIntakeWorkspace({
                       </div>:<SortableHeader column={col} label={TABLE_LABELS[col]} sort={tableSort} onSort={tableSort.toggle}/>}
                     </th>)}</tr></thead>
                     <tbody>{sorted.length
-                      ? sorted.map(row=><tr key={row.id} className={activeId===row.id?'active-row':''}
-                          onClick={()=>{setActiveId(row.id)}}>
+                      ? sorted.map(row=><tr key={row.id} className={activeId===row.id?'active-row':''}>
                           {tableColumns.visible.map(col=>cell(row,col))}
                         </tr>)
                       : <tr><td colSpan={tableColumns.visible.length} className="empty compact">Không có đơn phù hợp.</td></tr>}
