@@ -220,6 +220,22 @@ const checks=[
     bulkActions.includes("row.warehouse_status!=='READY_TO_TRANSFER'") &&
     bulkActions.includes('result.failed.push(') &&
     bulkActions.includes('result.succeeded.push(')],
+  ['bulk selection rail and six-column content align across eligible/ineligible rows',
+    table.includes('warehouse-bulk-select-control') &&
+    table.includes('warehouse-bulk-select-spacer') &&
+    table.includes('warehouse-unified-order-details') &&
+    table.includes('partiallyReadySelected') &&
+    table.includes('data-partial={partiallyReadySelected?') &&
+    table.includes('<th key={col} data-col={col}>') &&
+    css.includes('.warehouse-bulk-select-checkbox:checked+.warehouse-bulk-select-mark') &&
+    css.includes('.warehouse-bulk-select-checkbox:focus-visible+.warehouse-bulk-select-mark') &&
+    css.includes('th[data-col="purchase"] .managed-sort-head span') &&
+    css.includes('th[data-col="sale"] .managed-sort-head span') &&
+    css.includes('th[data-col="status"] .managed-sort-head span') &&
+    css.includes('.warehouse-unified-prices .warehouse-unified-product-line') &&
+    css.includes('.warehouse-unified-status .warehouse-unified-product-line') &&
+    css.includes('display:block;padding-left:0;margin-top:3px;') &&
+    !css.includes('display:block;padding-left:18px;margin-top:3px;')],
   ['bulk UI supports 25 order selection, explicit review, and partial failure',
     table.includes('function bulkPreview(row:Row,decisions:Record<string,ItemDecision>)') &&
     table.includes('const capped=readyIds.slice(0,25)') &&
