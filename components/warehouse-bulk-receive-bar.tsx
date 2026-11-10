@@ -58,9 +58,8 @@ export function WarehouseBulkReceiveBar({
   const [busy,setBusy]=useState(false)
   const [note,setNote]=useState('')
   const [error,setError]=useState('')
-  const [confirmText,setConfirmText]=useState(false)
   useEffect(()=>{
-    if(!reviewOpen){setError('');setConfirmText(false)}
+    if(!reviewOpen)setError('')
   },[reviewOpen])
   useEffect(()=>{
     if(!reviewOpen)return
@@ -80,14 +79,13 @@ export function WarehouseBulkReceiveBar({
   const v2=orders.filter(o=>o.mode==='V2').length
   const legacy=orders.length-v2
   async function confirm(){
-    if(previewOnly||busy||orders.length===0||orders.length>25||!confirmText)return
+    if(previewOnly||busy||orders.length===0||orders.length>25)return
     setBusy(true)
     setError('')
     try{
       const result=await bulkReceiveWarehouseOrders({
         warehouseId,orderIds:orders.map(x=>x.id),note
       })
-      setConfirmText(false)
       onResult(result)
       if(result.succeeded.length)router.refresh()
     }catch(e){
@@ -173,15 +171,12 @@ export function WarehouseBulkReceiveBar({
             <label className="warehouse-bulk-note"><span>Ghi chú nhập kho (không bắt buộc)</span>
               <input value={note} maxLength={500} disabled={busy} onChange={e=>setNote(e.target.value)}
                 placeholder="Ghi chú cho lượt nhập"/></label>
-            <label className="warehouse-bulk-agreement"><input type="checkbox" checked={confirmText}
-              disabled={busy||previewOnly} onChange={e=>setConfirmText(e.target.checked)}/>
-              <span>Tôi đã đối chiếu đơn, SKU, giá nhập, giá bán và quyết định Nhập/Bỏ qua.</span></label>
             {previewOnly&&<p className="warehouse-bulk-preview-note">Preview chỉ xem, không ghi tồn kho.</p>}
             {error&&<p role="alert" className="warehouse-bulk-error">{error}</p>}
           </div>
           <footer className="receive-confirm-actions warehouse-bulk-modal-footer">
             <button className="button" type="button" disabled={busy} onClick={onCancel}>Hủy</button>
-            <button className="button primary" type="button" disabled={previewOnly||busy||!confirmText}
+            <button className="button primary" type="button" disabled={previewOnly||busy||orders.length===0||orders.length>25}
               onClick={confirm}>{busy?'Đang xử lý…':'Xác nhận nhập '+orders.length+' đơn'}</button>
           </footer>
         </section>
