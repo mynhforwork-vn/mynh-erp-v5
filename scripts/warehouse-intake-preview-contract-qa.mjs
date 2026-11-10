@@ -80,21 +80,23 @@ const checks=[
     table.includes('data-warehouse-actionable={waiting.length}') &&
     page.includes("showProcessedOnly={currentStatus==='done'}") &&
     table.includes('Các kho đã hết đơn cần xử lý.')],
-  ['warehouse 0 hidden, 1–2 exactly one row, both 3+ equal halves',
+  ['warehouse 0 hidden, 1–2 show all existing rows, both 3+ equal halves',
     table.includes("group.rows.length===1?'one':group.rows.length===2?'two':'many'") &&
     table.includes('data-warehouse-row-mode={groupRowMode}') &&
     table.includes("warehouse-rows-'+groupRowMode") &&
     table.includes('.filter(group=>showProcessedOnly||group.rows.some(row=>!isDone(row)))') &&
     table.includes("groups.length===2&&groups.every(group=>group.rows.length>2&&openGroups.includes(group.id))") &&
     table.includes("' warehouse-equal-halves'") &&
-    table.includes("wrap.style.setProperty('--warehouse-one-order-height',value)") &&
+    table.includes("wrap.style.setProperty('--warehouse-compact-order-height',value)") &&
     table.includes("head.getBoundingClientRect().height+") &&
-    table.includes("visibleRow.getBoundingClientRect().height+1") &&
+    table.includes("actual.reduce((sum,row)=>sum+row.getBoundingClientRect().height,0)+1") &&
+    table.includes("const count=group.dataset.warehouseRowMode==='two'?2:1") &&
+    table.includes("const rows=()=>Array.from(body.rows).slice(0,count)") &&
     table.includes("observer?.observe(head)") &&
     table.includes("mutation?.observe(body,{childList:true})") &&
     css.includes('.warehouse-unified-group.open.warehouse-rows-one') &&
     css.includes('.warehouse-unified-group.open.warehouse-rows-two') &&
-    css.includes('height:var(--warehouse-one-order-height,120px)!important') &&
+    css.includes('height:var(--warehouse-compact-order-height,120px)!important') &&
     css.includes('flex:0 0 auto!important;min-height:0!important') &&
     css.includes('.warehouse-receive-table-lane.warehouse-equal-halves>.warehouse-unified-group.open.warehouse-rows-many') &&
     css.includes('flex:1 1 0!important;min-height:175px!important') &&
