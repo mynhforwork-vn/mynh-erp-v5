@@ -378,9 +378,9 @@ export function WarehouseIntakeWorkspace({
   const otherSort=useManagedSort<TableCol>('mynh-warehouse-intake-other-sort-v3','order','desc')
   const laneRef=useRef<HTMLElement|null>(null)
   const [laneWidth,setLaneWidth]=useState(1100)
-  // One or two orders: show exactly one order's row height, including the
-  // sticky column header. A second order remains available by vertical scroll.
-  // Measure real rows instead of guessing their height across breakpoints.
+  // Compact group height is exactly its displayed order count (1 or 2),
+  // including the sticky column header. Measure actual row heights because
+  // product quantities and breakpoint widths affect content.
   useEffect(()=>{
     const lane=laneRef.current
     if(!lane)return
@@ -393,29 +393,29 @@ export function WarehouseIntakeWorkspace({
       const head=table?.tHead
       const body=table?.tBodies[0]
       if(!wrap||!head||!body)return
-      let firstRow=body.rows[0]??null
+      const count=group.dataset.warehouseRowMode==='two'?2:1
+      const rows=()=>Array.from(body.rows).slice(0,count)
+      let tracked=rows()
       const sync=()=>{
-        const visibleRow=body.rows[0]
-        if(!visibleRow)return
+        const actual=rows()
+        if(actual.length!==count)return
         const height=Math.ceil(head.getBoundingClientRect().height+
-          visibleRow.getBoundingClientRect().height+1)
+          actual.reduce((sum,row)=>sum+row.getBoundingClientRect().height,0)+1)
         if(height>0&&height<2000){
           const value=height+'px'
-          if(wrap.style.getPropertyValue('--warehouse-one-order-height')!==value){
-            wrap.style.setProperty('--warehouse-one-order-height',value)
+          if(wrap.style.getPropertyValue('--warehouse-compact-order-height')!==value){
+            wrap.style.setProperty('--warehouse-compact-order-height',value)
           }
         }
       }
       const observer=typeof ResizeObserver==='undefined'?null:new ResizeObserver(sync)
       observer?.observe(head)
-      if(firstRow)observer?.observe(firstRow)
+      tracked.forEach(row=>observer?.observe(row))
       const mutation=typeof MutationObserver==='undefined'?null:new MutationObserver(()=>{
-        const next=body.rows[0]??null
-        if(firstRow!==next){
-          if(firstRow)observer?.unobserve(firstRow)
-          firstRow=next
-          if(firstRow)observer?.observe(firstRow)
-        }
+        const next=rows()
+        tracked.filter(row=>!next.includes(row)).forEach(row=>observer?.unobserve(row))
+        next.filter(row=>!tracked.includes(row)).forEach(row=>observer?.observe(row))
+        tracked=next
         sync()
       })
       mutation?.observe(body,{childList:true})
@@ -535,7 +535,7 @@ export function WarehouseIntakeWorkspace({
                 .map(row=>bulkPreview(row,itemDecisions))
                 .filter((item):item is BulkOrderPreview=>!!item)
             const groupSelected=selectedOrders.length
-            // 0: hidden, 1–2: height of one order with scrolling, 3+: elastic.
+            // 0: hidden, 1–2: exact height of all listed orders, 3+: elastic.
             // Two dense warehouses share equal halves of the available lane.
             const groupRowMode=group.rows.length===1?'one':group.rows.length===2?'two':'many'
             const columnWidths=autoFitColumnWidths(tableColumns.visible,laneWidth)
