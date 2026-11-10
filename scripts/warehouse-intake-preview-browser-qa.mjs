@@ -48,7 +48,7 @@ await build({
         : args.path==='item-actions'
         ? 'export async function saveWarehouseItemDecision(input){window.__warehouseCalls=(window.__warehouseCalls||[]);window.__warehouseCalls.push({name:"save",input});return {product_variant_id:input.variantId||"V-SKU",decision:input.decision,quantity:2,order_item_id:input.orderItemId}} export async function finalizeWarehouseItemDecisions(id){window.__warehouseCalls.push({name:"finalize",id});return {warehouse_status:"WAREHOUSE_MIXED",in_items:1,skip_items:1,transaction_count:1}}'
         : args.path==='bulk-actions'
-        ? 'export async function bulkReceiveWarehouseOrders(input){window.__bulkCalls=window.__bulkCalls||[];window.__bulkCalls.push(input);if(window.__bulkPartial){return {succeeded:input.orderIds.slice(0,1),failed:input.orderIds.slice(1).map(id=>({orderId:id,message:"Cần kiểm tra lại trạng thái"})),legacyOrders:1,itemDecisionOrders:0,stockItemLines:2,skippedItemLines:0}}return {succeeded:input.orderIds,failed:[],legacyOrders:input.orderIds.length,itemDecisionOrders:0,stockItemLines:2,skippedItemLines:0}}'
+        ? 'export async function bulkReceiveWarehouseOrders(input){window.__bulkCalls=window.__bulkCalls||[];window.__bulkCalls.push(input);if(window.__bulkDelay)await new Promise(resolve=>setTimeout(resolve,180));if(window.__bulkFail)return {succeeded:[],failed:input.orderIds.map(id=>({orderId:id,message:"Đơn không còn ở trạng thái chờ nhập kho"})),legacyOrders:0,itemDecisionOrders:0,stockItemLines:0,skippedItemLines:0};if(window.__bulkPartial){return {succeeded:input.orderIds.slice(0,1),failed:input.orderIds.slice(1).map(id=>({orderId:id,message:"Cần kiểm tra lại trạng thái"})),legacyOrders:1,itemDecisionOrders:0,stockItemLines:2,skippedItemLines:0}}return {succeeded:input.orderIds,failed:[],legacyOrders:input.orderIds.length,itemDecisionOrders:0,stockItemLines:2,skippedItemLines:0}}'
         : 'export async function mapWarehouseOrderItem(){throw new Error("blocked")} export async function receiveOrdersIntoWarehouse(){throw new Error("blocked")} export async function skipWarehouseOrder(){throw new Error("blocked")}',
       loader:'js'
     }))
@@ -486,33 +486,25 @@ try {
 }
 console.log('PASS adaptive groups · hide empty-action warehouse · completed history · 1/7 proportional heights')
 
-// Per-order quick receipt: eligible only, one order, same guarded popup.
-// Never perform a stock write in Preview and never process another selected order.
+// Quick receive is icon-only and writes at most one eligible order directly,
+// with no review popup. Preview remains read-only even when the icon is visible.
 for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   const page=await browser.newPage({viewport:{width,height}})
   await page.setContent(html,{waitUntil:'load'})
-  // The detail slidebar overlays narrow devices; close it without changing order state.
   if(width<=900)await page.locator('aside.warehouse-intake-panel .close').click()
   const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
   assert.equal(await bg.locator('.warehouse-order-quick-receive').count(),1,
-    'BG has one eligible quick order '+width)
+    'BG exposes one eligible quick icon '+width)
   assert.equal(await bg.locator('tbody tr').first().locator('.warehouse-order-quick-receive').count(),0,
-    'unmapped order cannot quick receive '+width)
+    'unmapped order must never show quick receipt '+width)
   const quick=bg.getByRole('button',{name:/Nhập nhanh đơn/})
-  await quick.click()
-  const review=page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]')
-  await review.waitFor()
-  assert.equal(await review.locator('.warehouse-bulk-order-cell').count(),1,
-    'quick preview has exactly one order '+width)
-  assert.equal(await review.locator('.warehouse-bulk-order-cell').first().innerText().then(x=>x.includes('261106SPXITEM002')),true,
-    'quick preview references the clicked order only '+width)
-  assert.match(await bg.locator('.warehouse-bulk-toolbar').innerText(),/1 đơn được chọn/,
-    'quick action selects exactly one order '+width)
-  assert.equal(await review.getByRole('button',{name:'Xác nhận nhập 1 đơn'}).isDisabled(),true,
-    'read-only Preview must block quick stock receipt '+width)
-  await review.getByRole('button',{name:'Hủy'}).click()
-  assert.equal(await bg.locator('.warehouse-bulk-toolbar').count(),0,
-    'cancel quick preview must clear temporary selection '+width)
+  assert.equal(await quick.isDisabled(),true,'Preview must block all quick stock writes '+width)
+  assert.equal(await quick.locator('svg').count(),1,'quick receipt displays only an icon '+width)
+  assert.equal((await quick.innerText()).trim(),'','quick receipt must not show text '+width)
+  assert.equal(await page.locator('[data-warehouse-bulk-popup]').count(),0,
+    'quick icon must not open review popup '+width)
+  assert.deepEqual(await page.evaluate(()=>window.__bulkCalls||[]),[],
+    'read-only Preview must not submit stock action '+width)
   await page.close()
 }
 {
@@ -520,26 +512,45 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="bulk">'),{waitUntil:'load'})
   const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
   const quick=bg.getByRole('button',{name:/Nhập nhanh đơn 261106SPXITEM001/})
+  assert.equal(await quick.isEnabled(),true,'eligible icon must be clickable in live mock')
+  await page.evaluate(()=>{window.__bulkDelay=true})
   await quick.click()
-  const review=page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]')
-  await review.waitFor()
-  assert.equal(await review.locator('.warehouse-bulk-order-cell').count(),1,
-    'one order only in live mock quick review')
-  assert.equal(await review.getByRole('button',{name:'Xác nhận nhập 1 đơn'}).isEnabled(),true,
-    'eligible one-order receipt is ready to confirm')
-  assert.deepEqual(await page.evaluate(()=>window.__bulkCalls||[]),[],
-    'quick action must not submit any stock movement before confirmation')
-  await review.getByRole('button',{name:'Xác nhận nhập 1 đơn'}).click()
-  await page.getByText('1 đơn đã xử lý thành công',{exact:false}).waitFor()
+  await page.waitForFunction(()=>document.querySelector('.warehouse-order-quick-receive[aria-busy="true"]')!==null)
+  assert.equal(await quick.isDisabled(),true,'second click blocked while request pending')
+  await quick.evaluate(button=>button.click())
+  await page.getByRole('status').filter({hasText:'Đã nhập kho đơn 261106SPXITEM001'}).waitFor()
   const calls=await page.evaluate(()=>window.__bulkCalls||[])
-  assert.equal(calls.length,1,'single order must use exactly one Server Action')
+  assert.equal(calls.length,1,'double click must create just one Server Action request')
   assert.deepEqual(calls[0].orderIds,['10000000-0000-0000-0000-000000000001'],
-    'quick receipt cannot include other orders from the same warehouse')
+    'quick receipt must send exactly the clicked order')
+  assert.equal(await page.locator('[data-warehouse-bulk-popup]').count(),0,
+    'direct quick receipt must never open a review popup')
   assert.equal(await bg.locator('.warehouse-bulk-toolbar').count(),0,
-    'successful quick receipt clears temporary selection')
+    'direct receipt must not create a bulk selection toolbar')
+  assert.ok(await page.evaluate(()=>(window.__refreshCalls||0)>0),
+    'successful quick receipt refreshes authoritative order data')
   await page.close()
 }
-console.log('PASS quick receive per order · eligible only · 4 viewports · read-only and live mock')
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="bulk">'),{waitUntil:'load'})
+  await page.evaluate(()=>{window.__bulkFail=true})
+  const quick=page.getByRole('button',{name:/Nhập nhanh đơn 261106SPXITEM001/})
+  await quick.click()
+  await page.getByRole('alert').filter({hasText:'Đơn không còn ở trạng thái chờ nhập kho'}).waitFor()
+  assert.equal(await quick.isEnabled(),true,'failed quick receipt must allow deliberate retry')
+  assert.equal(await page.locator('[data-warehouse-bulk-popup]').count(),0,
+    'backend validation failure must not create a popup')
+  assert.equal(await page.evaluate(()=>(window.__refreshCalls||0)),0,
+    'failed quick receipt must not report a successful refresh')
+  await page.evaluate(()=>{window.__bulkFail=false})
+  await quick.click()
+  await page.getByRole('status').filter({hasText:'Đã nhập kho đơn 261106SPXITEM001'}).waitFor()
+  const calls=await page.evaluate(()=>window.__bulkCalls||[])
+  assert.equal(calls.length,2,'retry must call Server Action once after initial failed attempt')
+  await page.close()
+}
+console.log('PASS quick receive icon · preview read-only · direct one-order action · no modal · guarded repeat · failure/retry')
 
 // Bulk receipt QA: non-destructive Preview confirmation and saved V2 mixed
 // decisions, then a live-mode mock with partial success and retry visibility.
