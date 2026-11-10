@@ -92,6 +92,13 @@ export function WarehouseInlineSkuHistoryPicker({
     setMode(next)
     setDecision(null)
     setSkipReason('')
+    if(next==='new'){
+      // Never carry a historical sale price into a newly created SKU.
+      setSalePrice('')
+      setMultiplier('1')
+    }else if(selected){
+      setSalePrice(selected.sale_price===null||selected.sale_price===undefined?'':String(selected.sale_price))
+    }
     setError('')
   }
   function choose(option:HistoricalSuggestion){
