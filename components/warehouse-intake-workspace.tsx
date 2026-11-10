@@ -606,7 +606,6 @@ export function WarehouseIntakeWorkspace({
                           <circle cx="8" cy="8" r="5.5"/>
                           <path d="M4.2 11.8 11.8 4.2"/>
                         </svg>
-                        <span>Bỏ qua kho</span>
                       </button></span>}
                       {!canSuggest&&<b>{itemDecisions[item.id]?.decision==='SKIP'&&
                         !item.product_variant_id?'Bỏ qua kho':item.product_variants?.products?.sku??'Chưa ghép'}</b>}
