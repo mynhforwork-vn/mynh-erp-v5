@@ -314,7 +314,7 @@ export function WarehouseIntakeWorkspace({
       })
       const sku=variant.products?.sku??'SKU đã chọn'
       setQuickNotice({kind:'success',message:
-        'Đã lưu ghép nháp '+sku+' · '+(row.shopee_order_id??row.id.slice(0,8))+
+        'Đã lưu ghép SKU '+sku+' · '+(row.shopee_order_id??row.id.slice(0,8))+
         '. Chưa ghi tăng tồn kho.'})
       router.refresh()
     }catch(error){
@@ -542,22 +542,22 @@ export function WarehouseIntakeWorkspace({
                   return <div key={item.id} className="warehouse-unified-product-line"
                     title={[item.product_variants?.products?.sku??'Chưa ghép SKU',item.product_variants?.products?.name].filter(Boolean).join(' · ')}>
                     <span className="warehouse-unified-sku-identity">
-                      {canSuggest?<button type="button" className="warehouse-inline-sku-trigger"
+                      {canSuggest&&<span className="warehouse-inline-sku-pair"><button type="button" className="warehouse-inline-sku-trigger"
                         title={historical.length?'Ghép SKU nhanh · '+historical.length+' gợi ý từ lịch sử':'Ghép SKU nhanh · Tìm hoặc tạo SKU mới'}
                         aria-label={'Chờ ghép SKU · '+historical.length+' gợi ý cho '+item.product_name}
                         aria-haspopup="dialog" aria-expanded={quickSkuTarget?.orderItemId===item.id}
                         onClick={event=>openSkuHistory(event,row,item)}>
                         {proposed&&variant
-                          ?<>Nháp: {variant.products?.sku??'SKU đã ghép trước'}
+                          ?<>{variant.products?.sku??'SKU gợi ý'}
                             {historical.length>1&&<small>+{historical.length-1}</small>}</>
                           :'Chờ ghép'}
-                      </button>:<b>{item.product_variants?.products?.sku??'Chưa ghép'}</b>}
+                      </button>}
                       {canSuggest&&proposed&&variant&&
                         <button type="button" className="warehouse-inline-sku-confirm"
                           title={canConfirm
-                            ?'Lưu ghép nháp '+(variant.products?.sku??'SKU')+' · Dự kiến nhập kho, chưa ghi tồn'
+                            ?'Lưu ghép SKU '+(variant.products?.sku??'SKU')+' từ lịch sử · Chưa ghi tồn kho'
                             :'Gợi ý thiếu giá hoặc hệ số hợp lệ. Hãy mở để kiểm tra'}
-                          aria-label={'Xác nhận ghép nháp SKU '+(variant.products?.sku??'SKU')+' cho '+item.product_name}
+                          aria-label={'Xác nhận ghép SKU '+(variant.products?.sku??'SKU')+' cho '+item.product_name}
                           disabled={previewOnly||quickMappingId!==null||!canConfirm}
                           aria-busy={quickMappingId===item.id}
                           onClick={event=>{
@@ -566,12 +566,13 @@ export function WarehouseIntakeWorkspace({
                           }}>
                           {quickMappingId===item.id
                             ?<span className="warehouse-quick-spinner" aria-hidden="true"/>
-                            :<svg viewBox="0 0 16 16" width="14" height="14" fill="none"
-                              stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"
+                            :<svg viewBox="0 0 16 16" width="11" height="11" fill="none"
+                              stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"
                               strokeLinejoin="round" aria-hidden="true">
                               <path d="m3 8 3.2 3.2L13 4.5"/>
                             </svg>}
-                        </button>}
+                        </button>}</span>}
+                      {!canSuggest&&<b>{item.product_variants?.products?.sku??'Chưa ghép'}</b>}
                       {item.product_variants?.products?.name&&
                         <span className="warehouse-unified-sku-title">{item.product_variants.products.name}</span>}
                     </span>
