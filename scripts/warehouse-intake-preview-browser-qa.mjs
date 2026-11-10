@@ -510,7 +510,7 @@ for(const [width,height] of [[390,844],[1280,800],[1440,900]]){
 console.log('PASS sparse dual warehouses · natural-height cards at mobile, tablet and desktop')
 
 // Boundary cases: 0, 1, 2 and >=3 real orders. Only 3+ may flex
-// into spare lane height; a single warehouse with 1 or 2 stays compact.
+// into spare lane height; one/two orders must be fully visible, not scroll.
 for(const [scenario,countExpected,mode] of [
   ['single-one',1,'one'],['single-two',2,'two'],
   ['two-each',2,'two'],['three-each',3,'many']
@@ -535,8 +535,9 @@ for(const [scenario,countExpected,mode] of [
             height:box.height,bottom:box.bottom,
             dataHeight:data?.getBoundingClientRect().height??0,
             tableHeight:table?.getBoundingClientRect().height??0,
-            firstOrderHeight:(table?.tHead?.getBoundingClientRect().height??0)+
-              (table?.tBodies[0]?.rows[0]?.getBoundingClientRect().height??0)+1,
+            compactRowsHeight:(table?.tHead?.getBoundingClientRect().height??0)+
+              [...(table?.tBodies[0]?.rows??[])].slice(0,Math.min(Number(g.dataset.warehouseRows),2))
+                .reduce((sum,row)=>sum+row.getBoundingClientRect().height,0)+1,
             contentScroll:data?.scrollHeight??0,
             viewScroll:data?.clientHeight??0,
             overflowX:(data?.scrollWidth??0)-(data?.clientWidth??0),
@@ -551,10 +552,10 @@ for(const [scenario,countExpected,mode] of [
     assert.ok(geometry.groups.every(g=>g.overflowX<=3)&&geometry.widthOverflow<=3,
       'new row-count modes must not overflow horizontally '+scenario+' '+width)
     if(mode!=='many'){
-      assert.ok(geometry.groups.every(g=>Math.abs(g.dataHeight-g.firstOrderHeight)<=3),
-        '1/2 orders must occupy precisely one visible order row '+scenario+' '+width+' '+JSON.stringify(geometry))
-      if(mode==='two')assert.ok(geometry.groups.every(g=>g.contentScroll>g.viewScroll+4),
-        'second order must remain accessible through internal vertical scroll '+scenario+' '+width+' '+JSON.stringify(geometry))
+      assert.ok(geometry.groups.every(g=>Math.abs(g.dataHeight-g.compactRowsHeight)<=3),
+        '1/2 orders must show all their rows with no forced empty height '+scenario+' '+width+' '+JSON.stringify(geometry))
+      assert.ok(geometry.groups.every(g=>g.contentScroll<=g.viewScroll+4),
+        'one/two orders must be fully visible, not hidden behind vertical scrolling '+scenario+' '+width+' '+JSON.stringify(geometry))
       if(groupCount===1)assert.ok(geometry.groups.at(-1).bottom<geometry.bottom-18,
         'a single 1/2-order warehouse must remain compact '+scenario+' '+width+' '+JSON.stringify(geometry))
     }else{
@@ -592,7 +593,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800],[1440,900
   await page.screenshot({path:path.join(output,'dense-uneven-'+width+'-'+height+'.png')})
   await page.close()
 }
-console.log('PASS warehouse 0/1/2/3+ layout · one-row 1–2 card · equal dense BG/HN 50/50 · no auto-slidebar')
+console.log('PASS warehouse 0/1/2/3+ layout · all 1–2 rows visible · equal dense BG/HN 50/50 · no auto-slidebar')
 
 // Adaptive warehouse groups: visibility and vertical allocation come from
 // ACTIONABLE warehouse rows, not a permanently rendered BG/HN 50/50 layout.
