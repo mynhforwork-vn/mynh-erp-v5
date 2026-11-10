@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect,useMemo,useRef,useState,type CSSProperties } from 'react'
+import { useEffect,useMemo,useRef,useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatDateTime,formatMoney } from '@/lib/format'
 import { resolveOrderValue } from '@/lib/order-prepaid'
@@ -656,8 +656,7 @@ export function WarehouseIntakeWorkspace({
             return <section className={'card tracking-hub-card tracking-hub-card-v2 warehouse-receive-card warehouse-unified-group '+(open?'open':'collapsed')+(groupSelected>0?' with-bulk-selection':'')}
               key={group.id} data-warehouse-code={group.code}
               data-warehouse-rows={group.rows.length}
-              data-warehouse-actionable={waiting.length}
-              style={{'--warehouse-row-weight':Math.min(group.rows.length,30)} as CSSProperties}>
+              data-warehouse-actionable={waiting.length}>
               <div className="tracking-hub-head-v2 warehouse-unified-group-head">
                 <button type="button" className="tracking-hub-toggle" aria-label={(open?'Thu gọn ':'Mở ')+group.code}
                   aria-expanded={open} onClick={()=>toggleGroup(group.id)}><span>{open?'⌄':'›'}</span></button>
