@@ -428,13 +428,13 @@ try {
     if(width===1280){
       const panel=page.locator('aside.warehouse-detail-v2')
       assert.equal(await panel.locator('.warehouse-detail-v2-product').count(),2,'two items in V2')
-      await panel.getByLabel('Chọn SKU bán',{exact:true}).selectOption('V-SKU')
+      await panel.locator('.warehouse-detail-v2-sku-results button').filter({hasText:'TEST-01'}).first().click()
       await panel.getByLabel('Hệ số quy đổi',{exact:true}).fill('2')
       assert.match(await panel.locator('.warehouse-detail-v2-conversion').innerText(),/4/)
       await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).click()
       assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU\/kho/)
       await panel.locator('.warehouse-detail-v2-product').nth(1).click()
-      await panel.getByLabel('Chọn SKU bán',{exact:true}).selectOption('V-SKU')
+      await panel.locator('.warehouse-detail-v2-sku-results button').filter({hasText:'TEST-01'}).first().click()
       await panel.getByRole('button',{name:'Bỏ qua kho',exact:true}).click()
       await panel.getByLabel('Lý do bỏ qua kho (bắt buộc)').fill('Sản phẩm không cần nhập kho')
       await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).click()
@@ -972,7 +972,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await edit.click()
   const dialog=page.getByRole('dialog',{name:'Sửa ghép SKU'})
   await dialog.waitFor()
-  assert.equal(await dialog.getByLabel('Chọn SKU bán ghép nhanh').inputValue(),'V-SKU',
+  assert.match(await dialog.locator('.warehouse-sku-browser-results button.active').first().innerText(),/TEST-01/,
     'saved variant takes precedence over history '+width)
   assert.equal(await dialog.getByLabel('Giá bán ghép nhanh').inputValue(),'90000',
     'saved sale price is prefilled '+width)
@@ -980,7 +980,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
     'saved inventory multiplier is prefilled '+width)
   assert.equal(await dialog.getByRole('button',{name:'Nhập kho',exact:true}).getAttribute('aria-pressed'),'true',
     'saved IN decision remains prefilled '+width)
-  await dialog.getByLabel('Chọn SKU bán ghép nhanh').selectOption('V-ALT')
+  await dialog.locator('.warehouse-sku-browser-results button').filter({hasText:'ALT-02'}).first().click()
   assert.equal(await dialog.getByLabel('Giá bán ghép nhanh').inputValue(),'65000',
     'manually changing SKU picks its catalog price without a write '+width)
   assert.equal(await dialog.getByRole('button',{name:'Nhập kho',exact:true}).getAttribute('aria-pressed'),'true',
@@ -1003,7 +1003,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   const edit=hn.getByRole('button',{name:/Sửa ghép SKU TEST-01/}).first()
   await edit.click()
   const dialog=page.getByRole('dialog',{name:'Sửa ghép SKU'})
-  await dialog.getByLabel('Chọn SKU bán ghép nhanh').selectOption('V-ALT')
+  await dialog.locator('.warehouse-sku-browser-results button').filter({hasText:'ALT-02'}).first().click()
   await dialog.getByLabel('Hệ số ghép nhanh').fill('3')
   await dialog.getByRole('button',{name:'Lưu thay đổi'}).click()
   await page.getByRole('status').filter({hasText:'Đã cập nhật ghép SKU'}).waitFor()
@@ -1035,7 +1035,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await corrected.waitFor()
   await corrected.click()
   const dialog=page.getByRole('dialog',{name:'Sửa ghép SKU'})
-  assert.equal(await dialog.getByLabel('Chọn SKU bán ghép nhanh').inputValue(),'V-ALT')
+  assert.match(await dialog.locator('.warehouse-sku-browser-results button.active').first().innerText(),/ALT-02/)
   assert.equal(await dialog.getByLabel('Giá bán ghép nhanh').inputValue(),'65000')
   assert.equal(await dialog.getByLabel('Hệ số ghép nhanh').inputValue(),'3')
   await page.close()
@@ -1052,7 +1052,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await picker.getByRole('button',{name:'Thêm phân loại'}).click()
   assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'',
     'new classification cannot inherit a different classification price '+width)
-  await picker.getByLabel('SKU gốc để thêm phân loại').selectOption('30000000-0000-4000-8000-000000000001')
+  await picker.locator('.warehouse-sku-browser-results button').filter({hasText:'TEST-01'}).first().click()
   await picker.getByLabel('Tên phân loại mới của SKU cũ').fill('Mẫu')
   assert.match(await picker.getByRole('alert').innerText(),/Phân loại này đã tồn tại/,
     'duplicate classification warned at source '+width)
@@ -1077,7 +1077,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await page.locator('.warehouse-inline-sku-trigger:not(.warehouse-inline-sku-edit-trigger)').first().click()
   const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
   await picker.getByRole('button',{name:'Thêm phân loại'}).click()
-  await picker.getByLabel('SKU gốc để thêm phân loại').selectOption('30000000-0000-4000-8000-000000000001')
+  await picker.locator('.warehouse-sku-browser-results button').filter({hasText:'TEST-01'}).first().click()
   await picker.getByLabel('Tên phân loại mới của SKU cũ').fill('Màu xanh')
   await picker.getByLabel('Giá bán ghép nhanh').fill('159000')
   await picker.getByRole('button',{name:'Nhập kho',exact:true}).click()
@@ -1109,7 +1109,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   const detail=page.locator('aside.warehouse-intake-panel')
   await detail.waitFor()
   await detail.getByRole('button',{name:'Thêm phân loại'}).click()
-  await detail.getByLabel('Chọn SKU gốc để thêm phân loại').selectOption('30000000-0000-4000-8000-000000000001')
+  await detail.locator('.warehouse-detail-v2-sku-results button').filter({hasText:'TEST-01'}).first().click()
   await detail.getByLabel('Nhập phân loại mới của SKU cũ').fill('Size XL')
   const fields=detail.locator('.warehouse-detail-v2-numeric input')
   await fields.first().fill('179000')
@@ -1280,7 +1280,7 @@ console.log('PASS inline SKU draft · one-click confirmation · new SKU · alter
   assert.match(await history.innerText(),/nhiều SKU/)
   assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU\/kho/)
   await history.getByRole('button',{name:'Chọn gợi ý ALT-02'}).click()
-  assert.equal(await panel.getByLabel('Chọn SKU bán',{exact:true}).inputValue(),'V-ALT',
+  assert.match(await panel.locator('.warehouse-detail-v2-sku-results button.active').first().innerText(),/ALT-02/,
     'explicit history suggestion should select its exact variant ID')
   assert.equal(await panel.getByLabel('Hệ số quy đổi').inputValue(),'1',
     'suggestion should carry prior saved conversion multiplier')
@@ -1307,11 +1307,11 @@ console.log('PASS history suggestions · multiple candidates · manual select ·
   await panel.locator('.warehouse-detail-v2-product').first().waitFor()
   assert.equal(await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).count(),0,
     'live mode must not expose simulator save button')
-  await panel.getByLabel('Chọn SKU bán',{exact:true}).selectOption('V-SKU')
+  await panel.locator('.warehouse-detail-v2-sku-results button').filter({hasText:'TEST-01'}).first().click()
   await panel.getByRole('button',{name:'Lưu bóc tách và quyết định'}).click()
   await panel.getByText('Đã lưu SKU, giá và quyết định kho.',{exact:false}).waitFor()
   await panel.locator('.warehouse-detail-v2-product').nth(1).click()
-  await panel.getByLabel('Chọn SKU bán',{exact:true}).selectOption('V-SKU')
+  await panel.locator('.warehouse-detail-v2-sku-results button').filter({hasText:'TEST-01'}).first().click()
   await panel.getByRole('button',{name:'Bỏ qua kho',exact:true}).click()
   await panel.getByLabel('Lý do bỏ qua kho (bắt buộc)').fill('Không nhập kho')
   await panel.getByRole('button',{name:'Lưu bóc tách và quyết định'}).click()
