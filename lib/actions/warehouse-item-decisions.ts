@@ -96,7 +96,7 @@ export async function addWarehouseVariantAndMap(input:{
     throw new Error('Phân loại SKU phải có từ 1 đến 255 ký tự')
   }
   if(!Number.isFinite(input.salePrice)||input.salePrice<0||input.salePrice>999999999||
-    Math.round(input.salePrice*100)!==input.salePrice*100){
+    Math.abs(input.salePrice*100-Math.round(input.salePrice*100))>0.000001){
     throw new Error('Giá bán không hợp lệ (tối đa 2 chữ số thập phân)')
   }
   if(!Number.isInteger(input.multiplier)||input.multiplier<1||input.multiplier>100000){
