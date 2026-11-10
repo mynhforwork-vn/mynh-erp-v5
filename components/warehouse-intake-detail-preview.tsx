@@ -77,6 +77,7 @@ type Draft={
   salePrice:string
   newSku:string
   productId:string
+  productQuery:string
   newName:string
   newVariant:string
   multiplier:string
@@ -117,7 +118,7 @@ function initialDraft(item:Item,saved?:ItemDecision):Draft{
     mode:'existing',variantId:saved?.product_variant_id??item.product_variant_id??'',query:'',
     salePrice:saved?String(saved.sale_price):item.product_variants?.sale_price===null||item.product_variants?.sale_price===undefined
       ?'':String(item.product_variants.sale_price),
-    newSku:'',productId:item.product_variants?.products?.id??'',
+    newSku:'',productId:item.product_variants?.products?.id??'',productQuery:'',
     newName:item.product_name,newVariant:item.variant??'Mặc định',
     multiplier:String(saved?.multiplier??item.inventory_multiplier??1),
     decision:saved?.decision??'IN',reason:saved?.skip_reason??'',
@@ -187,6 +188,10 @@ export function WarehouseIntakeDetailPreview({
       id:v.products!.id!,sku:String(v.products?.sku??''),name:String(v.products?.name??'')
     }])).values()]
   const variantProduct=availableProducts.find(p=>p.id===draft?.productId)
+  const skuLookup=String(draft?.productQuery??'').trim().toLocaleLowerCase('vi')
+  const matchingProducts=availableProducts.filter(p=>
+    [p.sku,p.name].join(' ').toLocaleLowerCase('vi').includes(skuLookup))
+    .slice(0,skuLookup?80:40)
   const duplicatedClassification=!!variantProduct&&variants.some(v=>
     v.products?.id===variantProduct.id&&
     v.variant_name.trim().toLocaleLowerCase('vi')===
@@ -448,12 +453,21 @@ export function WarehouseIntakeDetailPreview({
             </label>
           </div>:draft.mode==='variant'?<div className="warehouse-detail-v2-fields warehouse-detail-v2-pair">
             <p className="warehouse-detail-v2-source">Thêm phân loại vào SKU cũ với giá bán riêng; giữ nguyên sản phẩm và các phân loại đã có.</p>
+            <label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>Tìm SKU đã có</span>
+              <input type="search" aria-label="Tìm SKU gốc để thêm phân loại"
+                disabled={processed||isReadOnly||busy} value={draft.productQuery}
+                onChange={e=>change({productQuery:e.target.value})}
+                placeholder="Mã SKU hoặc tên sản phẩm"/>
+            </label>
             <label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>SKU sản phẩm hiện có</span>
               <select aria-label="Chọn SKU gốc để thêm phân loại" disabled={processed||isReadOnly||busy}
                 value={draft.productId} onChange={e=>change({productId:e.target.value})}>
                 <option value="">— Chọn SKU đã có —</option>
-                {availableProducts.map(p=><option key={p.id} value={p.id}>{p.sku} · {p.name}</option>)}
+                {variantProduct&&!matchingProducts.some(p=>p.id===variantProduct.id)&&
+                  <option value={variantProduct.id}>{variantProduct.sku} · {variantProduct.name}</option>}
+                {matchingProducts.map(p=><option key={p.id} value={p.id}>{p.sku} · {p.name}</option>)}
               </select>
+              <small>{draft.productQuery?'Tối đa 80 SKU khớp':'Nhập để tìm trong danh mục SKU'}</small>
             </label>
             <label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>Phân loại mới</span>
               <input aria-label="Nhập phân loại mới của SKU cũ" disabled={processed||isReadOnly||busy}
