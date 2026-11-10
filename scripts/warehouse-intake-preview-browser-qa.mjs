@@ -234,7 +234,7 @@ try {
       'received date should appear below each order code '+width)
     assert.ok((merged.skuCell??'').includes('TEST-01')&&(merged.skuSale??'').includes('Đã map'),
       'mapped sale product name must be displayed after SKU '+width)
-    assert.match(merged.pendingCod??'',/COD:\\s*50[.,]000\\s*đ/,
+    assert.match(merged.pendingCod??'',/COD:\s*50[.,]000\s*đ/,
       'unparsed order COD is shown below received time with stored amount '+width)
     assert.equal(merged.mappedHasCod,false,
       'mapped order must not show unparsed COD note '+width)
@@ -579,7 +579,7 @@ console.log('PASS quick receive icon · preview read-only · direct one-order ac
   const first=page.locator('.warehouse-unified-group[data-warehouse-code="BG"] tbody tr').first()
   await first.waitFor()
   const cod=await first.locator('.warehouse-unified-pending-cod').innerText()
-  assert.equal(cod.replace(/\\s+/g,' ').trim(),'COD: Chưa có',
+  assert.equal(cod.replace(/\s+/g,' ').trim(),'COD: Chưa có',
     'missing COD must be explicit, not guessed as zero')
   await page.close()
 }
