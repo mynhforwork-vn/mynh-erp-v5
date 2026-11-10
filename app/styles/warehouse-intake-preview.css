@@ -471,13 +471,6 @@
   border-radius:5px;border:1px solid #cddce7;background:#fff;
   padding:6px 9px;font-size:10px;font-weight:400;color:#35546b;
 }
-.warehouse-receive-screen .warehouse-bulk-agreement{
-  display:flex;gap:8px;align-items:flex-start;
-  font-size:9.5px;line-height:1.5;color:#516f80;
-}
-.warehouse-receive-screen .warehouse-bulk-agreement input{
-  width:14px;height:14px;flex:0 0 14px;margin:0;accent-color:#3378aa;
-}
 .warehouse-receive-screen .warehouse-bulk-review-actions{
   display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap;
 }
@@ -625,13 +618,6 @@
 .warehouse-bulk-backdrop .warehouse-bulk-note input{
   min-height:34px;max-width:100%;padding:7px 9px;border:1px solid #cad9e5;
   border-radius:5px;font-size:11px;background:white;color:#314f68;
-}
-.warehouse-bulk-backdrop .warehouse-bulk-agreement{
-  display:flex;gap:9px;align-items:flex-start;color:#526c80;
-  font-size:10.5px;line-height:1.5;
-}
-.warehouse-bulk-backdrop .warehouse-bulk-agreement input{
-  width:14px;height:14px;flex:0 0 14px;accent-color:#3679a9;margin-top:2px;
 }
 .warehouse-bulk-backdrop .warehouse-bulk-preview-note{
   color:#728a9a;font-size:10px;margin:0;
