@@ -298,7 +298,7 @@ export function WarehouseInlineSkuHistoryPicker({
                 value={multiplier} onChange={e=>setMultiplier(e.target.value)}
                 aria-label="Hệ số ghép nhanh" disabled={busy}/>
             </label>
-          </div>
+          </div>}
           {!unmappedSkip&&<small>Số lượng dự kiến: {validFactor?target.quantity*factor:'—'} · Giá bán: {validPrice?formatMoney(price):'Chưa có'}</small>}
           <div className="warehouse-inline-sku-history-decisions" aria-label="Quyết định kho">
             <span>Quyết định kho</span>
