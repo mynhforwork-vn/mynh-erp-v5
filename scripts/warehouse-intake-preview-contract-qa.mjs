@@ -311,14 +311,18 @@ const checks=[
     table.includes("mynh-warehouse-intake-hn-columns-v3") &&
     css.includes('.warehouse-unified-sku-title') &&
     css.includes('.warehouse-unified-received-at')],
-  ['COD note appears under receiving time for unparsed orders only, without guessed values',
+  ['unparsed order shows canonical full order value, never COD-only or guessed sum',
+    table.includes("import { resolveOrderValue } from '@/lib/order-prepaid'") &&
     table.includes('!isDone(row)&&!isComplete(row)&&') &&
-    table.includes('warehouse-unified-pending-cod') &&
-    table.includes('title="COD của đơn chưa bóc tách"') &&
-    table.includes("Number.isFinite(Number(row.cod))?formatMoney(row.cod):'Chưa có'") &&
-    css.includes('.warehouse-unified-table .warehouse-unified-pending-cod') &&
-    css.includes('margin-top:2px;padding:0') &&
-    css.includes('text-overflow:ellipsis')],
+    table.includes('warehouse-unified-pending-value') &&
+    table.includes('Giá trị đơn: <strong>') &&
+    table.includes('paymentStatus:row.payment_status') &&
+    table.includes('prepaidAmount:row.prepaid_amount') &&
+    table.includes('cod:row.cod') &&
+    table.includes("value===null?'Chưa đủ dữ liệu':formatMoney(value)") &&
+    css.includes('.warehouse-unified-table .warehouse-unified-pending-value') &&
+    !table.includes('warehouse-unified-pending-cod') &&
+    !table.includes('COD: <strong>')],
   ['Giá gốc uses stored original price (not after-discount) in table and popup',
     table.includes("purchase:'Giá gốc'") &&
     table.includes("if(col==='purchase')return Number(row.order_items[0]?.original_price??0)") &&
@@ -342,24 +346,33 @@ const checks=[
     panel.includes('Đã từng ghép với nhiều SKU') &&
     !panel.includes('onClick={applySuggestion}') &&
     panelCss.includes('.warehouse-detail-v2-suggestion-entry')],
-  ['inline waiting-SKU suggestions require verified historical matches and explicit save',
+  ['inline SKU draft from history can confirm once or create a new SKU without slidebar',
     table.includes("from '@/components/warehouse-inline-sku-history-picker'") &&
     table.includes('warehouse-inline-sku-trigger') &&
     table.includes('warehouse-inline-sku-status-trigger') &&
-    table.includes('openSkuHistory(event,row,item)') &&
-    table.includes('!isDone(row)&&!item.product_variant_id&&historical.length>0') &&
+    table.includes('warehouse-inline-sku-confirm') &&
+    table.includes('const proposed=historical[0]') &&
+    table.includes('void confirmSuggestedSku(row,item,proposed)') &&
+    table.includes('await saveWarehouseItemDecision({') &&
+    table.includes("decision:'IN',skipReason:null") &&
+    table.includes('quickSkuInFlight.current=true') &&
+    table.includes('if(previewOnly||isDone(row)||item.product_variant_id||quickSkuInFlight.current)return') &&
+    table.includes('Chưa ghi tăng tồn kho.') &&
     table.includes('<WarehouseInlineSkuHistoryPicker') &&
     inlinePicker.includes("history.filter(item=>variants.some(variant=>variant.id===item.variant_id))") &&
-    inlinePicker.includes('Đã tìm thấy {available.length} SKU từng ghép') &&
-    inlinePicker.includes('matchText(option.match_kind)') &&
-    inlinePicker.includes('option.history_count') &&
-    inlinePicker.includes("const [decision,setDecision]=useState<Decision|null>(null)") &&
+    inlinePicker.includes('const preferred=history.find(') &&
+    inlinePicker.includes("useState<Decision|null>(preferredVariant?'IN':null)") &&
+    inlinePicker.includes('Tạo SKU mới') &&
+    inlinePicker.includes('Mã SKU bán mới ghép nhanh') &&
+    inlinePicker.includes("mode==='new'?newCode:null") &&
+    inlinePicker.includes("mode==='new'?validNew:!!selected") &&
     inlinePicker.includes("decision==='SKIP'?skipReason.trim():null") &&
     inlinePicker.includes('await saveWarehouseItemDecision({') &&
     inlinePicker.includes('const canSave=!previewOnly') &&
     !inlinePicker.includes('finalizeWarehouseItemDecisions') &&
     !inlinePicker.includes('receiveOrdersIntoWarehouse') &&
-    css.includes('.warehouse-inline-sku-history{') &&
+    css.includes('.warehouse-inline-sku-confirm') &&
+    css.includes('.warehouse-inline-sku-history-modes') &&
     css.includes('position:fixed;z-index:3200')],
   ['V2 slidebar height internal scroll and fixed footer',
     panelCss.includes('.warehouse-detail-v2-scroll') &&
