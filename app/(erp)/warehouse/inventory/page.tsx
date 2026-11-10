@@ -44,9 +44,9 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
       .eq('is_active',true)
       .order('code')
       .limit(100),
-    supabase.from('product_variants')
-      .select('id,sale_price')
-      .limit(2000),
+    (process.env.ERP_SKU_CATALOG_LIVE==='true'?
+      supabase.from('product_variants').select('id,sale_price').eq('is_active',true).limit(5000):
+      supabase.from('product_variants').select('id,sale_price').limit(5000)),
     supabase.from('transfer_batches')
       .select('id,status,created_at,from_warehouse:warehouses!transfer_batches_from_warehouse_id_fkey(code),to_warehouse:warehouses!transfer_batches_to_warehouse_id_fkey(code),to_warehouse_id,transfer_items(quantity,product_variant_id,product_variants(variant_name,products(sku,name)))')
       .order('created_at',{ascending:false})
@@ -134,7 +134,8 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
     sale_price:priceMap.get(String(row.product_variant_id))??0,
   }))
 
-  const toolBalances=all.map(row=>({
+  const activeVariantIds=new Set((variants??[]).map((row:any)=>String(row.id)))
+  const toolBalances=all.filter(row=>activeVariantIds.has(String(row.product_variant_id))).map(row=>({
     warehouse_id:String(row.warehouse_id),
     warehouse_code:String(row.warehouse_code??'—'),
     product_variant_id:String(row.product_variant_id),
@@ -152,6 +153,7 @@ export default async function WarehouseInventoryPage({searchParams}:{searchParam
         <p>Tồn thực tế theo SKU bán tại Kho nhận; bán hàng, kiểm kê và điều chỉnh đều ghi lịch sử.</p>
       </div>
       <div className="head-actions">
+        <Link className="button" href="/warehouse/skus">Danh mục SKU</Link>
         {canOperate&&<WarehouseReceivingSettings
           warehouses={(warehouses??[]) as any[]}
           defaultReceivingWarehouseId={(settings as any)?.default_receiving_warehouse_id??null}
