@@ -242,6 +242,34 @@
   text-overflow:ellipsis;text-align:left;border:0;background:none;padding:0;
   font-weight:650;font-size:11px;line-height:1.4;cursor:pointer;color:#21668f;
 }
+/* A per-order shortcut lives beneath the order/date, never in a seventh
+   column. It opens the same single-order review popup and never writes itself. */
+.warehouse-receive-screen .warehouse-unified-order-details .warehouse-order-quick-receive{
+  box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
+  flex:0 0 auto;gap:5px;max-width:100%;width:max-content;min-width:0;
+  min-height:23px;margin:5px 0 0;padding:2px 7px;
+  background:#edf7f3;border:1px solid #c7dfd7;border-radius:5px;
+  color:#286d58;font-size:10px;font-weight:650;line-height:1.2;
+  white-space:nowrap;cursor:pointer;
+}
+.warehouse-receive-screen .warehouse-order-quick-receive svg{flex:0 0 13px}
+.warehouse-receive-screen .warehouse-order-quick-receive .warehouse-order-quick-label{
+  display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;
+}
+.warehouse-receive-screen .warehouse-order-quick-receive:hover{
+  background:#dff2ea;border-color:#9bc7b7;color:#205c4c;
+}
+.warehouse-receive-screen .warehouse-order-quick-receive:focus-visible{
+  outline:2px solid #438b82;outline-offset:2px;
+}
+@container warehouse-lane (max-width:550px){
+  .warehouse-receive-screen .warehouse-unified-order-details .warehouse-order-quick-receive{
+    width:24px;min-width:24px;height:24px;padding:2px 4px;margin-top:5px;
+  }
+  .warehouse-receive-screen .warehouse-order-quick-receive .warehouse-order-quick-label{
+    display:none;
+  }
+}
 .warehouse-receive-screen .warehouse-unified-table .warehouse-unified-date{
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;
 }
