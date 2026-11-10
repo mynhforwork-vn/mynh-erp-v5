@@ -884,9 +884,10 @@ for(const [width,height] of [[360,800],[568,320]]){
   const page=await browser.newPage({viewport:{width,height}})
   // Two visually similar BG orders while remaining strictly Preview read-only.
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="bulk">'),{waitUntil:'load'})
-  // The established mobile detail slidebar intentionally overlays the table.
-  // Close it through its native control before opening table actions.
-  await page.locator('aside.warehouse-intake-panel .close').click()
+  // The detail slidebar must remain closed until a code is clicked;
+  // bulk selection does not require opening or dismissing it.
+  assert.equal(await page.locator('aside.warehouse-intake-panel').count(),0,
+    'bulk preview on mobile must start with no unsolicited slidebar '+width)
   const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
   await bg.locator('.warehouse-bulk-shortcut').click()
   const review=page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]')
