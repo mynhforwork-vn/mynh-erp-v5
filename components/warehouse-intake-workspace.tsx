@@ -594,7 +594,20 @@ export function WarehouseIntakeWorkspace({
                               strokeLinejoin="round" aria-hidden="true">
                               <path d="m3 8 3.2 3.2L13 4.5"/>
                             </svg>}
-                        </button>}</span>}
+                        </button>}
+                      <button type="button" className="warehouse-inline-item-skip-trigger"
+                        title={'Bỏ qua kho sản phẩm '+item.product_name+' · Không cần ghép SKU'}
+                        aria-label={'Bỏ qua kho sản phẩm '+item.product_name}
+                        aria-haspopup="dialog" aria-expanded={quickSkipTarget?.orderItemId===item.id}
+                        onClick={event=>openSkipItem(event,row,item)}>
+                        <svg viewBox="0 0 16 16" width="12" height="12" fill="none"
+                          stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"
+                          strokeLinejoin="round" aria-hidden="true">
+                          <circle cx="8" cy="8" r="5.5"/>
+                          <path d="M4.2 11.8 11.8 4.2"/>
+                        </svg>
+                        <span>Bỏ qua kho</span>
+                      </button></span>}
                       {!canSuggest&&<b>{itemDecisions[item.id]?.decision==='SKIP'&&
                         !item.product_variant_id?'Bỏ qua kho':item.product_variants?.products?.sku??'Chưa ghép'}</b>}
                       {item.product_variants?.products?.name&&
@@ -635,14 +648,8 @@ export function WarehouseIntakeWorkspace({
                     item.product_variant_id?'Dự kiến nhập':'Chưa ghép'
                   return <div key={item.id} className="warehouse-unified-product-line"
                     title={saved?status+' · Đã lưu quyết định'+(saved.skip_reason?' · '+saved.skip_reason:''):status}>
-                    {!isDone(row)&&!item.product_variant_id&&!saved
-                      ?<button type="button" className="status-pill warehouse-inline-item-skip-trigger"
-                        title={'Bỏ qua kho sản phẩm '+item.product_name+' · Không cần ghép SKU'}
-                        aria-label={'Bỏ qua kho sản phẩm '+item.product_name}
-                        aria-haspopup="dialog" aria-expanded={quickSkipTarget?.orderItemId===item.id}
-                        onClick={event=>openSkipItem(event,row,item)}>Bỏ qua kho</button>
-                      :<span className={'status-pill '+(saved?.decision==='IN'||isDone(row)?'green':
-                        saved?.decision==='SKIP'?'status-muted':'orange')}>{status}</span>}
+                    <span className={'status-pill '+(saved?.decision==='IN'||isDone(row)?'green':
+                      saved?.decision==='SKIP'?'status-muted':'orange')}>{status}</span>
                   </div>
                 })}
               </td>
