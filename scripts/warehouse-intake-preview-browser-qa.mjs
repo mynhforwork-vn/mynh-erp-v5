@@ -400,7 +400,7 @@ try {
       await panel.getByLabel('Hệ số quy đổi',{exact:true}).fill('2')
       assert.match(await panel.locator('.warehouse-detail-v2-conversion').innerText(),/4/)
       await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).click()
-      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU/kho/)
+      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU\/kho/)
       await panel.locator('.warehouse-detail-v2-product').nth(1).click()
       await panel.getByLabel('Chọn SKU bán',{exact:true}).selectOption('V-SKU')
       await panel.getByRole('button',{name:'Bỏ qua kho',exact:true}).click()
@@ -410,7 +410,7 @@ try {
       assert.equal(await panel.locator('.warehouse-detail-v2-summary strong').count(),2,'mixed decisions are present')
       assert.match(await panel.locator('.warehouse-detail-v2-summary').innerText(),/Nhập kho/)
       assert.match(await panel.locator('.warehouse-detail-v2-summary').innerText(),/Bỏ qua kho/)
-      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU/kho/)
+      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU\/kho/)
       await page.screenshot({path:path.join(output,'warehouse-v2-mixed-decisions.png')})
       await panel.getByRole('tab',{name:'Thông tin đơn'}).click()
       const info=panel.locator('.warehouse-detail-v2-order-info')
@@ -422,7 +422,7 @@ try {
       assert.match(await info.innerText(),/Thẻ ghi nợ/)
       assert.match(await info.innerText(),/Kho nhận thực tế/)
       await info.locator('.warehouse-detail-v2-product-link').first().click()
-      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU/kho/)
+      assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU\/kho/)
       await panel.getByRole('tab',{name:'Lịch sử'}).click()
       assert.match(await panel.locator('.warehouse-detail-v2-content').innerText(),/Chưa có lịch sử/)
       await panel.getByRole('tab',{name:'Sản phẩm'}).click()
@@ -922,7 +922,7 @@ console.log('PASS inline SKU draft · one-click confirmation · new SKU · alter
   assert.match(await history.innerText(),/3 đơn trước đã ghép/)
   assert.match(await history.innerText(),/1 đơn trước đã ghép/)
   assert.match(await history.innerText(),/nhiều SKU/)
-  assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU/kho/)
+  assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU\/kho/)
   await history.getByRole('button',{name:'Chọn gợi ý ALT-02'}).click()
   assert.equal(await panel.getByLabel('Chọn SKU bán',{exact:true}).inputValue(),'V-ALT',
     'explicit history suggestion should select its exact variant ID')
@@ -930,7 +930,7 @@ console.log('PASS inline SKU draft · one-click confirmation · new SKU · alter
     'suggestion should carry prior saved conversion multiplier')
   assert.equal(await panel.getByLabel('Giá bán (sửa được)').inputValue(),'65000',
     'catalog sale price is prefilled for manual edit, not persisted automatically')
-  assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU/kho/,
+  assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU\/kho/,
     'clicking historical SKU suggestion must NOT claim a saved mapping')
   assert.deepEqual(await page.evaluate(()=>window.__warehouseCalls??[]),[],
     'suggestions may not call server actions or write stock')
