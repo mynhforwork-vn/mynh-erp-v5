@@ -136,36 +136,41 @@ function isComplete(row:Row,decisions:Record<string,ItemDecision>={}){
 // Bulk actions must validate the same stored item-level decisions that the V2
 // RPC requires. An order with any draft must NEVER use legacy bulk receipt.
 function bulkPreview(row:Row,decisions:Record<string,ItemDecision>):BulkOrderPreview|null{
-  if(row.warehouse_status!=='READY_TO_TRANSFER'||!row.order_items.length||
-    row.order_items.some(item=>!item.product_variant_id||
-      !Number.isInteger(Number(item.quantity))||Number(item.quantity)<1||
-      !Number.isInteger(Number(item.inventory_multiplier??1))||Number(item.inventory_multiplier??1)<1)){
-    return null
-  }
+  if(row.warehouse_status!=='READY_TO_TRANSFER'||!row.order_items.length)return null
   const saved=row.order_items.map(item=>decisions[item.id])
   const hasDraft=saved.some(Boolean)
-  if(hasDraft&&saved.some((record,index)=>{
-    const item=row.order_items[index]
-    return !record||record.processing_state!=='DRAFT'||
-      record.product_variant_id!==item.product_variant_id||
-      Number(record.multiplier)!==Number(item.inventory_multiplier??1)||
-      !Number.isFinite(Number(record.sale_price))||Number(record.sale_price)<0||
-      !['IN','SKIP'].includes(record.decision)||
-      (record.decision==='SKIP'&&!String(record.skip_reason??'').trim())
-  }))return null
+  const isLineReady=(item:Item,record:ItemDecision|undefined)=>{
+    const quantity=Number(item.quantity)
+    if(!Number.isInteger(quantity)||quantity<1)return false
+    if(!hasDraft)return !!item.product_variant_id&&
+      Number.isInteger(Number(item.inventory_multiplier))&&Number(item.inventory_multiplier)>0
+    if(!record||record.processing_state!=='DRAFT')return false
+    const skipped=record.decision==='SKIP'&&!!String(record.skip_reason??'').trim()
+    const noSkuSkip=skipped&&!item.product_variant_id&&record.product_variant_id===null&&
+      Number(record.multiplier)===1&&Number(record.sale_price)===0
+    if(noSkuSkip)return true
+    return !!item.product_variant_id&&record.product_variant_id===item.product_variant_id&&
+      Number(record.multiplier)===Number(item.inventory_multiplier)&&
+      Number.isInteger(Number(record.multiplier))&&Number(record.multiplier)>0&&
+      Number.isFinite(Number(record.sale_price))&&Number(record.sale_price)>=0&&
+      (record.decision==='IN'||skipped)&&
+      quantity*Number(record.multiplier)<=2147483647
+  }
+  if(row.order_items.some((item,index)=>!isLineReady(item,saved[index])))return null
   let stockUnits=0,skippedLines=0
   const items=row.order_items.map((item,index)=>{
     const decision=saved[index]
     const skip=hasDraft&&decision?.decision==='SKIP'
     if(skip)skippedLines++
-    const converted=Number(item.quantity)*Number(item.inventory_multiplier??1)
+    const multiplier=skip&&!item.product_variant_id?1:Number(item.inventory_multiplier??1)
+    const converted=Number(item.quantity)*multiplier
     if(!skip)stockUnits+=converted
     const variant=item.product_variants
     const salePrice=decision?.sale_price??variant?.sale_price??null
     return {
       id:item.id,name:item.product_name,variant:item.variant??null,
       sku:variant?.products?.sku??null,skuName:variant?.products?.name??null,
-      quantity:Number(item.quantity),multiplier:Number(item.inventory_multiplier??1),
+      quantity:Number(item.quantity),multiplier,
       stockUnits:skip?0:converted,
       originalPrice:item.original_price??null,discountedPrice:item.final_price??null,
       salePrice,salePriceSource:(decision?'SAVED':variant?.sale_price!==null&&variant?.sale_price!==undefined?'CATALOG':'MISSING') as 'SAVED'|'CATALOG'|'MISSING',
