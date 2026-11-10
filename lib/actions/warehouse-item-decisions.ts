@@ -75,6 +75,33 @@ export async function saveWarehouseItemDecision(input:SaveInput){
     quantity:number;skip_reason:string|null;status:string
   }
 }
+// Explicit skip for a purchase item without any mapped sale SKU.
+ // The DB RPC requires a reason, validates the confirmed receiving order and
+ // creates an audit-backed DRAFT only; it cannot create inventory transactions.
+export async function skipWarehouseItemWithoutSku(input:{
+  orderItemId:string;reason:string
+}){
+  const supabase=await authorize()
+  if(!input||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.orderItemId)){
+    throw new Error('Thiếu sản phẩm cần bỏ qua kho')
+  }
+  const reason=String(input.reason??'').trim()
+  if(!reason||reason.length>500){
+    throw new Error('Cần nhập lý do bỏ qua kho (tối đa 500 ký tự)')
+  }
+  const {data,error}=await supabase.rpc('skip_warehouse_item_without_sku',{
+    p_order_item_id:input.orderItemId,
+    p_skip_reason:reason,
+  })
+  if(error){
+    const safe=/^(Đơn |Sản phẩm |SKU |Mã SKU |Giá bán |Cần |Chưa |Không |Thông tin |Số lượng |Thiếu |Hệ số )/u.test(error.message)
+    throw new Error(safe?error.message:'Không thể bỏ qua sản phẩm. Hãy kiểm tra dữ liệu và thử lại.')
+  }
+  revalidateWarehouse()
+  return data as {order_item_id:string;order_id:string;product_variant_id:null;
+    decision:'SKIP';sale_price:0;multiplier:1;quantity:0;skip_reason:string;status:'DRAFT'}
+}
+
 export async function finalizeWarehouseItemDecisions(orderId:string,note:string=''){
   const supabase=await authorize()
   if(!orderId||note.length>500)throw new Error('Đơn hàng hoặc ghi chú không hợp lệ')
