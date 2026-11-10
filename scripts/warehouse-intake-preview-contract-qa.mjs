@@ -9,11 +9,13 @@ const css=read('app/styles/warehouse-intake-preview.css')
 const panel=read('components/warehouse-intake-detail-preview.tsx')
 const panelCss=read('app/styles/warehouse-intake-detail-preview.css')
 const migration=read('supabase/migrations/0075_item_level_warehouse_decisions.sql')
+const skipMigration=read('supabase/migrations/0076_skip_unmapped_warehouse_item.sql')
 const actions=read('lib/actions/warehouse-item-decisions.ts')
 const bulkActions=read('lib/actions/warehouse-bulk-receive.ts')
 const bulkBar=read('components/warehouse-bulk-receive-bar.tsx')
 const skuHistory=read('lib/warehouse-sku-suggestions.ts')
 const inlinePicker=read('components/warehouse-inline-sku-history-picker.tsx')
+const skipPicker=read('components/warehouse-inline-skip-item.tsx')
 const config=read('wrangler.jsonc')
 const checks=[
   ['only Warehouse receive page uses the changed scoped stylesheet',
@@ -313,7 +315,7 @@ const checks=[
     css.includes('.warehouse-unified-received-at')],
   ['unparsed order shows canonical full order value, never COD-only or guessed sum',
     table.includes("import { resolveOrderValue } from '@/lib/order-prepaid'") &&
-    table.includes('!isDone(row)&&!isComplete(row)&&') &&
+    table.includes('!isDone(row)&&!isComplete(row,itemDecisions)&&') &&
     table.includes('warehouse-unified-pending-value') &&
     table.includes('Giá trị đơn: <strong>') &&
     table.includes('paymentStatus:row.payment_status') &&
@@ -349,7 +351,7 @@ const checks=[
   ['inline SKU draft from history can confirm once or create a new SKU without slidebar',
     table.includes("from '@/components/warehouse-inline-sku-history-picker'") &&
     table.includes('warehouse-inline-sku-trigger') &&
-    table.includes('warehouse-inline-sku-status-trigger') &&
+    table.includes('warehouse-inline-sku-pair') &&
     table.includes('warehouse-inline-sku-confirm') &&
     table.includes('const proposed=historical[0]') &&
     table.includes('void confirmSuggestedSku(row,item,proposed)') &&
@@ -374,6 +376,40 @@ const checks=[
     css.includes('.warehouse-inline-sku-confirm') &&
     css.includes('.warehouse-inline-sku-history-modes') &&
     css.includes('position:fixed;z-index:3200')],
+  ['unmapped product can be explicitly skipped without fake sale SKU or stock movement',
+    table.includes("from '@/components/warehouse-inline-skip-item'") &&
+    table.includes('warehouse-inline-item-skip-trigger') &&
+    table.includes('openSkipItem(event,row,item)') &&
+    table.includes('itemDecisions[item.id]') &&
+    table.includes('record.decision') &&
+    table.includes('record.product_variant_id===null') &&
+    table.includes('<WarehouseInlineSkipItem') &&
+    table.includes("return !!bulkPreview(row,decisions)") &&
+    table.includes("!canSuggest&&<b>{itemDecisions[item.id]?.decision==='SKIP'") &&
+    skipPicker.includes('skipWarehouseItemWithoutSku({orderItemId:target.orderItemId,reason:reason.trim()})') &&
+    skipPicker.includes("reason.trim().length>0&&reason.trim().length<=500") &&
+    skipPicker.includes('if(!canSave||inFlight.current)return') &&
+    skipPicker.includes('Không cần ghép hoặc tạo SKU bán') &&
+    skipPicker.includes('data-warehouse-inline-skip') &&
+    actions.includes("supabase.rpc('skip_warehouse_item_without_sku'") &&
+    actions.includes('const supabase=await authorize()') &&
+    bulkActions.includes('skipWithoutSku=skipped&&!item.product_variant_id') &&
+    page.includes('const decisionSourceRows') &&
+    page.includes('const ready=pending.filter(isReady)') &&
+    skipMigration.includes('ALTER COLUMN product_variant_id DROP NOT NULL') &&
+    skipMigration.includes("product_variant_id IS NOT NULL OR") &&
+    skipMigration.includes("decision='SKIP' AND multiplier=1 AND sale_price=0") &&
+    skipMigration.includes('CREATE OR REPLACE FUNCTION private.skip_warehouse_item_unmapped_impl') &&
+    skipMigration.includes('PERFORM private.assert_operator()') &&
+    skipMigration.includes('WHERE id=v_order_id FOR UPDATE') &&
+    skipMigration.includes('v_item.product_variant_id IS NOT NULL') &&
+    skipMigration.includes("WHERE it.reference_type='PURCHASE_RECEIPT'") &&
+    skipMigration.includes("WHERE d.order_id=p_order_id AND d.decision='IN'") &&
+    skipMigration.includes('CREATE OR REPLACE FUNCTION private.finalize_warehouse_item_decisions_impl') &&
+    !skipPicker.includes('bulkReceiveWarehouseOrders(') &&
+    !skipPicker.includes('saveWarehouseItemDecision(') &&
+    css.includes('.warehouse-inline-item-skip-trigger') &&
+    css.includes('.warehouse-inline-skip-reason')],
   ['V2 slidebar height internal scroll and fixed footer',
     panelCss.includes('.warehouse-detail-v2-scroll') &&
     panelCss.includes('flex:1 1 auto!important') &&
