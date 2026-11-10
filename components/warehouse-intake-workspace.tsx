@@ -13,11 +13,12 @@ import { WarehouseIntakeDetailPreview } from '@/components/warehouse-intake-deta
 import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
 import type {HistoricalSuggestion} from '@/lib/warehouse-sku-suggestions'
 
+type SkuProduct={id:string;sku:string;name:string}
 type Variant={
   id:string
   variant_name:string
   sale_price?:number|string|null
-  products?:{sku?:string|null,name?:string|null}|null
+  products?:{id?:string|null,sku?:string|null,name?:string|null}|null
 }
 type Item={
   id:string
@@ -188,6 +189,7 @@ function bulkPreview(row:Row,decisions:Record<string,ItemDecision>):BulkOrderPre
 export function WarehouseIntakeWorkspace({
   rows,
   variants,
+  skuProducts=[],
   auditLogs,
   suggestions,
   itemDecisions={},
@@ -197,6 +199,7 @@ export function WarehouseIntakeWorkspace({
 }:{
   rows:Row[]
   variants:Variant[]
+  skuProducts?:SkuProduct[]
   auditLogs:AuditLog[]
   suggestions:Record<string,Suggestion[]>
   itemDecisions?:Record<string,ItemDecision>
@@ -204,6 +207,11 @@ export function WarehouseIntakeWorkspace({
   previewOnly?:boolean
   showProcessedOnly?:boolean
 }){
+  const catalogProducts=useMemo(()=>skuProducts.length?skuProducts:
+    [...new Map(variants.filter(v=>v.products?.id).map(v=>[v.products!.id!,{
+      id:v.products!.id!,sku:String(v.products?.sku??''),name:String(v.products?.name??'')
+    }])).values()], [skuProducts,variants])
+
   const groups=useMemo(()=>{
     const map=new Map<string,{
       id:string
@@ -824,14 +832,14 @@ export function WarehouseIntakeWorkspace({
       key={quickSkuTarget.orderItemId}
       target={quickSkuTarget}
       history={suggestions[quickSkuTarget.orderItemId]??[]}
-      variants={variants} previewOnly={previewOnly}
+      variants={variants} skuProducts={catalogProducts} previewOnly={previewOnly}
       onClose={()=>setQuickSkuTarget(null)}
       onSaved={label=>setQuickNotice({kind:'success',message:
         (quickSkuTarget.isEditing?'Đã cập nhật ghép SKU cho đơn ':'Đã lưu ghép SKU cho đơn ')+
         label+' · Chưa nhập kho.'})}
     />}
     {active&&<WarehouseIntakeDetailPreview key={active.id}
-      order={active} variants={variants} auditLogs={auditLogs}
+      order={active} variants={variants} skuProducts={catalogProducts} auditLogs={auditLogs}
       suggestions={suggestions} itemDecisions={itemDecisions}
       previewOnly={previewOnly} simulate={simulate}
       onClose={()=>setActiveId(null)}/>}
