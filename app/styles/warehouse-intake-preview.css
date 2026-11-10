@@ -163,8 +163,23 @@
   flex:0 0 auto;font-size:9px;
 }
 .warehouse-receive-screen .warehouse-unified-table th:first-child{display:table-cell}
-.warehouse-receive-screen .warehouse-unified-table th:first-child input{
-  width:13px;height:13px;margin-left:4px;vertical-align:middle;accent-color:#3977a3;
+/* Align bulk selection controls with the compact transport-alert checkbox.
+   Keep sort and select separate rather than crowding a checkmark after the label. */
+.warehouse-receive-screen .warehouse-unified-order-head{
+  display:flex;align-items:center;gap:6px;min-width:0;width:100%;
+}
+.warehouse-receive-screen .warehouse-unified-order-head .managed-sort-head{
+  flex:1 1 auto;width:auto!important;min-width:0!important;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table input.warehouse-bulk-select-checkbox{
+  appearance:auto;-webkit-appearance:checkbox;
+  box-sizing:border-box;flex:0 0 14px;width:14px!important;height:14px!important;
+  min-width:14px;min-height:14px;max-width:14px;max-height:14px;
+  accent-color:#438b82;cursor:pointer;margin:0;
+  padding:0;vertical-align:middle;border-radius:3px;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table input.warehouse-bulk-select-checkbox:focus-visible{
+  outline:2px solid #438b82;outline-offset:2px;
 }
 .brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table td{
   padding:9px 7px!important;font-size:11px;line-height:1.5;
@@ -178,8 +193,8 @@
 .warehouse-receive-screen .warehouse-unified-table .warehouse-unified-order{
   display:flex;align-items:flex-start;gap:5px;min-width:0;max-width:100%;
 }
-.warehouse-receive-screen .warehouse-unified-order input{
-  flex:0 0 13px;width:13px;height:13px;accent-color:#3977a3;margin:3px 0 0;
+.warehouse-receive-screen .warehouse-unified-order input.warehouse-bulk-select-checkbox{
+  margin-top:2px;
 }
 .warehouse-receive-screen .warehouse-unified-order .table-link{
   display:block;min-width:0;width:100%;white-space:nowrap;overflow:hidden;
@@ -261,8 +276,9 @@
     padding:2px 4px!important;font-size:9px!important;
   }
   .warehouse-receive-screen .warehouse-unified-order{gap:2px!important}
-  .warehouse-receive-screen .warehouse-unified-order input{
-    width:11px!important;height:11px!important;flex-basis:11px!important;
+  .warehouse-receive-screen .warehouse-unified-order-head{gap:3px}
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table input.warehouse-bulk-select-checkbox{
+    flex:0 0 14px!important;width:14px!important;height:14px!important;
   }
 }
 @container warehouse-lane (max-width:475px){
