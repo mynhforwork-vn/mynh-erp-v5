@@ -80,16 +80,27 @@ const checks=[
     table.includes('data-warehouse-actionable={waiting.length}') &&
     page.includes("showProcessedOnly={currentStatus==='done'}") &&
     table.includes('Các kho đã hết đơn cần xử lý.')],
-  ['two warehouses size by intrinsic table content; only warehouse fills the lane',
-    !table.includes('--warehouse-row-weight') &&
-    css.includes('flex:0 1 auto!important;min-height:145px!important;height:auto!important') &&
-    css.includes('.warehouse-unified-group.open:only-of-type') &&
-    css.includes('flex:1 1 auto!important') &&
-    css.includes('min-height:150px!important') &&
+  ['warehouse 0/1/2/3+ row states preserve compact groups and dense scrolling',
+    table.includes("group.rows.length===1?'one':group.rows.length===2?'two':'many'") &&
+    table.includes('data-warehouse-row-mode={groupRowMode}') &&
+    table.includes('warehouse-rows-\'+groupRowMode') &&
+    table.includes("Math.min(group.rows.length,30)") &&
+    table.includes('.filter(group=>showProcessedOnly||group.rows.some(row=>!isDone(row)))') &&
+    css.includes('.warehouse-unified-group.open.warehouse-rows-one') &&
+    css.includes('.warehouse-unified-group.open.warehouse-rows-two') &&
+    css.includes('flex:0 0 auto!important;min-height:0!important') &&
+    css.includes('.warehouse-unified-group.open.warehouse-rows-many') &&
+    css.includes('flex:var(--warehouse-dense-weight,3) 1 auto!important') &&
+    css.includes('.warehouse-unified-group.open.warehouse-rows-many:only-of-type') &&
     css.includes('overflow-y:auto!important') &&
-    css.includes('max-height:none!important') &&
-    !css.includes('flex:var(--warehouse-row-weight,1) 1 0!important') &&
-    !css.includes('max-height:clamp(150px,43dvh,410px)!important')],
+    !css.includes('flex:var(--warehouse-row-weight,1) 1 0!important')],
+  ['order slidebar opens only on explicit order-code click',
+    table.includes('const [activeId,setActiveId]=useState<string|null>(null)') &&
+    table.includes("onClick={event=>{event.stopPropagation();setActiveId(row.id)}}") &&
+    table.includes("onOpenOrder={id=>{setBulkReviewGroup(null);setActiveId(id)}}") &&
+    !table.includes("onClick={()=>{setActiveId(row.id)}}") &&
+    !table.includes("firstIncomplete?.id??null") &&
+    table.includes("onClose={()=>setActiveId(null)")],
   ['one product per line and full detail in tooltip',
     table.includes('warehouse-unified-product-line') &&
     table.includes("['SL '+item.quantity]") === false &&
