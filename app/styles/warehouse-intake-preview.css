@@ -60,10 +60,9 @@
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group{
   overflow:visible!important;
 }
-/* Row count controls warehouse group sizing, never a fixed 50/50 layout:
-   zero orders -> no group; one/two -> just the visible rows;
-   three-plus -> proportionate share of spare height, independently scrollable.
-   Empty space stays below compact groups rather than inside their tables. */
+/* 0: not rendered. 1–2: exactly one order row visible; scroll for row 2.
+   3+: elastic. When both BG/HN are dense, split the lane 50/50, regardless
+   of uneven order counts. If only one is dense, keep the 1–2 row rule. */
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open{
   box-sizing:border-box!important;display:flex!important;flex-direction:column!important;
   flex:0 1 auto!important;min-height:0!important;height:auto!important;
@@ -73,12 +72,19 @@
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-two{
   flex:0 0 auto!important;min-height:0!important;
 }
-.brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-many{
-  flex:var(--warehouse-dense-weight,3) 1 auto!important;
-  min-height:175px!important;
+.brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-one>.warehouse-unified-table-wrap,
+.brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-two>.warehouse-unified-table-wrap{
+  flex:0 0 var(--warehouse-one-order-height,120px)!important;
+  height:var(--warehouse-one-order-height,120px)!important;
+  max-height:var(--warehouse-one-order-height,120px)!important;
+  overflow-y:auto!important;
 }
-/* A single busy warehouse may use all available height. A single 1/2-order
-   warehouse remains compact even when the other warehouse has no orders. */
+.brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-many{
+  flex:1 1 auto!important;min-height:175px!important;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane.warehouse-equal-halves>.warehouse-unified-group.open.warehouse-rows-many{
+  flex:1 1 0!important;min-height:175px!important;
+}
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-many:only-of-type{
   flex:1 1 auto!important;
 }
@@ -446,8 +452,10 @@
     flex:0 0 auto!important;min-height:0!important;
   }
   .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-many{
-    flex:var(--warehouse-dense-weight,3) 1 auto!important;min-height:175px!important;
-    max-height:none!important;
+    flex:1 1 auto!important;min-height:175px!important;max-height:none!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane.warehouse-equal-halves>.warehouse-unified-group.open.warehouse-rows-many{
+    flex:1 1 0!important;min-height:175px!important;
   }
   .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-many:only-of-type{
     flex:1 1 auto!important;
@@ -457,6 +465,10 @@
      scrolls instead of shrinking the active warehouse to an unusable height. */
   .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.with-bulk-selection{
     min-height:260px!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-one.with-bulk-selection,
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-two.with-bulk-selection{
+    min-height:0!important;
   }
   .warehouse-receive-screen .wh-native-status-kpis{
     display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
