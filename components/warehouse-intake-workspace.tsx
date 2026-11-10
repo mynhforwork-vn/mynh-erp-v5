@@ -453,6 +453,11 @@ export function WarehouseIntakeWorkspace({
                     <time className="warehouse-unified-received-at" title="Ngày nhận thực tế">
                       {receivedAt(row)?formatDateTime(receivedAt(row)):'Chưa có ngày nhận'}
                     </time>
+                    {!isDone(row)&&!isComplete(row)&&
+                      <span className="warehouse-unified-pending-cod" title="COD của đơn chưa bóc tách">
+                        COD: <strong>{row.cod!==null&&row.cod!==undefined&&String(row.cod).trim()!==''&&
+                          Number.isFinite(Number(row.cod))?formatMoney(row.cod):'Chưa có'}</strong>
+                      </span>}
                   </div>
                 </div>
               </td>
