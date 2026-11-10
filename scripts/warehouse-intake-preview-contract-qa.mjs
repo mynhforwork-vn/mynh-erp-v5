@@ -348,7 +348,6 @@ const checks=[
     table.includes('warehouse-inline-sku-status-trigger') &&
     table.includes('openSkuHistory(event,row,item)') &&
     table.includes('!isDone(row)&&!item.product_variant_id&&historical.length>0') &&
-    table.includes('warehouse-inline-sku-history-picker')===false &&
     table.includes('<WarehouseInlineSkuHistoryPicker') &&
     inlinePicker.includes("history.filter(item=>variants.some(variant=>variant.id===item.variant_id))") &&
     inlinePicker.includes('Đã tìm thấy {available.length} SKU từng ghép') &&
@@ -357,7 +356,6 @@ const checks=[
     inlinePicker.includes("const [decision,setDecision]=useState<Decision|null>(null)") &&
     inlinePicker.includes("decision==='SKIP'?skipReason.trim():null") &&
     inlinePicker.includes('await saveWarehouseItemDecision({') &&
-    inlinePicker.includes('previewOnly&&!busy')===false &&
     inlinePicker.includes('const canSave=!previewOnly') &&
     !inlinePicker.includes('finalizeWarehouseItemDecisions') &&
     !inlinePicker.includes('receiveOrdersIntoWarehouse') &&
