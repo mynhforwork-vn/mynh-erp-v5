@@ -310,6 +310,14 @@ const checks=[
     table.includes("mynh-warehouse-intake-hn-columns-v3") &&
     css.includes('.warehouse-unified-sku-title') &&
     css.includes('.warehouse-unified-received-at')],
+  ['COD note appears under receiving time for unparsed orders only, without guessed values',
+    table.includes('!isDone(row)&&!isComplete(row)&&') &&
+    table.includes('warehouse-unified-pending-cod') &&
+    table.includes('title="COD của đơn chưa bóc tách"') &&
+    table.includes("Number.isFinite(Number(row.cod))?formatMoney(row.cod):'Chưa có'") &&
+    css.includes('.warehouse-unified-table .warehouse-unified-pending-cod') &&
+    css.includes('margin-top:2px;padding:0') &&
+    css.includes('text-overflow:ellipsis')],
   ['Giá gốc uses stored original price (not after-discount) in table and popup',
     table.includes("purchase:'Giá gốc'") &&
     table.includes("if(col==='purchase')return Number(row.order_items[0]?.original_price??0)") &&
