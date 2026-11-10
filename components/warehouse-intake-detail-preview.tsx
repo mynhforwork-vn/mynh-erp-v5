@@ -2,17 +2,18 @@
 
 import {useEffect,useMemo,useState} from 'react'
 import {useRouter} from 'next/navigation'
-import {saveWarehouseItemDecision,finalizeWarehouseItemDecisions} from '@/lib/actions/warehouse-item-decisions'
+import {saveWarehouseItemDecision,addWarehouseVariantAndMap,finalizeWarehouseItemDecisions} from '@/lib/actions/warehouse-item-decisions'
 import {formatDateTime,formatMoney,formatPhone,statusLabel} from '@/lib/format'
 import {prepaidSourceLabel,resolveOrderValue} from '@/lib/order-prepaid'
 import {VoucherTags} from '@/components/voucher-tags'
 import type {HistoricalSuggestion} from '@/lib/warehouse-sku-suggestions'
 
+type SkuProduct={id:string;sku:string;name:string}
 type Variant={
   id:string
   variant_name:string
   sale_price?:number|string|null
-  products?:{sku?:string|null,name?:string|null}|null
+  products?:{id?:string|null,sku?:string|null,name?:string|null}|null
 }
 type Item={
   id:string
@@ -67,7 +68,7 @@ type Audit={
   new_value?:Record<string,unknown>|null
 }
 type Suggestion=HistoricalSuggestion
-type Mode='existing'|'new'
+type Mode='existing'|'variant'|'new'
 type Decision='IN'|'SKIP'
 type Draft={
   mode:Mode
@@ -75,6 +76,7 @@ type Draft={
   query:string
   salePrice:string
   newSku:string
+  productId:string
   newName:string
   newVariant:string
   multiplier:string
@@ -115,7 +117,8 @@ function initialDraft(item:Item,saved?:ItemDecision):Draft{
     mode:'existing',variantId:saved?.product_variant_id??item.product_variant_id??'',query:'',
     salePrice:saved?String(saved.sale_price):item.product_variants?.sale_price===null||item.product_variants?.sale_price===undefined
       ?'':String(item.product_variants.sale_price),
-    newSku:'',newName:item.product_name,newVariant:item.variant??'Mặc định',
+    newSku:'',productId:item.product_variants?.products?.id??'',
+    newName:item.product_name,newVariant:item.variant??'Mặc định',
     multiplier:String(saved?.multiplier??item.inventory_multiplier??1),
     decision:saved?.decision??'IN',reason:saved?.skip_reason??'',
   }
