@@ -205,14 +205,6 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
   }).length
   const unresolvedCount = rows.length - assignedCount
   const pending = rows.filter(row => row.warehouse_status === 'READY_TO_TRANSFER')
-  const incomplete = pending.filter(row =>
-    !(row.order_items ?? []).length ||
-    (row.order_items ?? []).some((item: any) => !item.product_variant_id))
-  const ready = pending.filter(row =>
-    (row.order_items ?? []).length > 0 &&
-    (row.order_items ?? []).every((item: any) => Boolean(item.product_variant_id)))
-  const missingItems = incomplete.reduce((sum, row) =>
-    sum + (row.order_items ?? []).filter((item: any) => !item.product_variant_id).length, 0)
   const done = rows.filter(row =>
     ['WAREHOUSE_RECEIVED', 'WAREHOUSE_SKIPPED', 'WAREHOUSE_MIXED'].includes(String(row.warehouse_status)))
   // Preserve legacy deep-links from Kho overview; expose only three workflow states.
@@ -220,18 +212,21 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     state === 'pending' || state === 'incomplete' || state === 'missing' ? 'pending' :
     state === 'done' ? 'done' : 'all'
 
-  const displayedRows = currentStatus === 'pending' ? incomplete : currentStatus === 'ready' ? ready : currentStatus === 'done' ? done : rows
+  // Fetch decisions before filtering: a line explicitly skipped without SKU
+  // must count toward "ready" and must not disappear from its own tab.
+  const decisionSourceRows = currentStatus==='done' ? done :
+    currentStatus==='all' ? rows : pending
 
   // Read persistent decisions only in live mode (Preview targets the same
   // Supabase project but must remain read-only before the migration).
-  // Query only the orders displayed, in bounded chunks for PostgREST limits.
+  // Query only relevant orders in bounded chunks for PostgREST limits.
   const decisionList:any[]=[]
   let decisionError:{message:string}|null=null
   if(isLive){
     // Supabase/PostgREST may cap individual responses below requested limits;
     // paginate every order chunk so no persisted item decision is silently lost.
-    for(let offset=0;offset<displayedRows.length&&!decisionError;offset+=100){
-      const ids=displayedRows.slice(offset,offset+100).map(o=>o.id)
+    for(let offset=0;offset<decisionSourceRows.length&&!decisionError;offset+=100){
+      const ids=decisionSourceRows.slice(offset,offset+100).map(o=>o.id)
       for(let itemOffset=0;itemOffset<50000;itemOffset+=500){
         const {data,error:loadError}=await supabase.from('warehouse_item_decisions')
           .select('order_item_id,order_id,product_variant_id,decision,sale_price,multiplier,skip_reason,processing_state,updated_at')
@@ -248,6 +243,39 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     }
   }
   const itemDecisions=Object.fromEntries(decisionList.map(x=>[x.order_item_id,x]))
+  const isReady=(row:any)=>{
+    const items=row.order_items??[]
+    if(!items.length)return false
+    const records=items.map((item:any)=>itemDecisions[item.id])
+    const hasDraft=records.some(Boolean)
+    return items.every((item:any,index:number)=>{
+      const quantity=Number(item.quantity)
+      if(!Number.isInteger(quantity)||quantity<1)return false
+      if(!hasDraft)return !!item.product_variant_id&&
+        Number.isInteger(Number(item.inventory_multiplier))&&Number(item.inventory_multiplier)>0
+      const d=records[index]
+      if(!d||d.processing_state!=='DRAFT')return false
+      const skipped=d.decision==='SKIP'&&!!String(d.skip_reason??'').trim()
+      if(skipped&&!item.product_variant_id&&d.product_variant_id===null&&
+        Number(d.sale_price)===0&&Number(d.multiplier)===1)return true
+      const factor=Number(d.multiplier)
+      return !!item.product_variant_id&&d.product_variant_id===item.product_variant_id&&
+        Number.isInteger(factor)&&factor>0&&factor===Number(item.inventory_multiplier)&&
+        Number.isFinite(Number(d.sale_price))&&Number(d.sale_price)>=0&&
+        (d.decision==='IN'||skipped)&&quantity*factor<=2147483647
+    })
+  }
+  const ready=pending.filter(isReady)
+  const incomplete=pending.filter(row=>!isReady(row))
+  const missingItems=incomplete.reduce((sum,row)=>
+    sum+(row.order_items??[]).filter((item:any)=>{
+      const d=itemDecisions[item.id]
+      return !item.product_variant_id&&!(d?.decision==='SKIP'&&
+        d?.processing_state==='DRAFT'&&d?.product_variant_id===null&&
+        !!String(d.skip_reason??'').trim())
+    }).length,0)
+  const displayedRows=currentStatus==='pending'?incomplete:
+    currentStatus==='ready'?ready:currentStatus==='done'?done:rows
   const statusHref = (status: 'all' | 'pending' | 'ready' | 'done') => {
     const query = new URLSearchParams({ state: status })
     if (receivedPeriod !== 'all') query.set('received_range', receivedPeriod)
