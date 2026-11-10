@@ -45,16 +45,22 @@ export function WarehouseInlineSkuHistoryPicker({
   const router=useRouter()
   const panelRef=useRef<HTMLElement>(null)
   const busyRef=useRef(false)
+  // Prefill the highest-ranked saved-history match IN MEMORY only. This is
+  // not a persisted decision or an inventory transaction until confirmed.
+  const preferred=history.find(option=>variants.some(variant=>variant.id===option.variant_id))
+  const preferredVariant=variants.find(variant=>variant.id===preferred?.variant_id)
   const [mounted,setMounted]=useState(false)
   const [mode,setMode]=useState<Mode>('existing')
-  const [variantId,setVariantId]=useState('')
+  const [variantId,setVariantId]=useState(preferredVariant?.id??'')
   const [catalogQuery,setCatalogQuery]=useState('')
   const [newSku,setNewSku]=useState('')
   const [newName,setNewName]=useState(target.productName)
   const [newVariant,setNewVariant]=useState(target.sourceVariant||'Mặc định')
-  const [salePrice,setSalePrice]=useState('')
-  const [multiplier,setMultiplier]=useState('1')
-  const [decision,setDecision]=useState<Decision|null>(null)
+  const [salePrice,setSalePrice]=useState(
+    preferredVariant?.sale_price===null||preferredVariant?.sale_price===undefined
+      ?'':String(preferredVariant.sale_price))
+  const [multiplier,setMultiplier]=useState(String(preferred?.multiplier??1))
+  const [decision,setDecision]=useState<Decision|null>(preferredVariant?'IN':null)
   const [skipReason,setSkipReason]=useState('')
   const [busy,setBusy]=useState(false)
   const [error,setError]=useState('')
@@ -194,6 +200,8 @@ export function WarehouseInlineSkuHistoryPicker({
             disabled={busy} onClick={()=>changeMode('new')}>Tạo SKU mới</button>
         </div>
         {mode==='existing'&&<>
+          {preferredVariant&&variantId===preferredVariant.id&&
+            <p className="warehouse-inline-sku-draft-note">Đã điền nháp SKU từng ghép nhiều nhất. Bấm Lưu ghép SKU để xác nhận; chưa nhập kho.</p>}
           {available.length>0&&<>
             <p>{available.length} gợi ý từ những đơn tương tự đã ghép trước đây. Hãy đối chiếu, không tự động chọn.</p>
             <div className="warehouse-inline-sku-history-options">
