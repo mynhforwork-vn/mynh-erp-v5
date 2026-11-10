@@ -416,7 +416,10 @@ const checks=[
     !skipPicker.includes('bulkReceiveWarehouseOrders(') &&
     !skipPicker.includes('saveWarehouseItemDecision(') &&
     css.includes('.warehouse-unified-skus .warehouse-inline-sku-pair .warehouse-inline-item-skip-trigger') &&
-    css.includes('.warehouse-inline-item-skip-trigger span') &&
+    css.includes('flex:0 0 18px;width:18px;height:18px') &&
+    table.includes("aria-label={'Bỏ qua kho sản phẩm '+item.product_name}") &&
+    !table.includes('<span>Bỏ qua kho</span>') &&
+    !css.includes('.warehouse-inline-item-skip-trigger span') &&
     !css.includes('.warehouse-unified-status .warehouse-inline-item-skip-trigger') &&
     css.includes('.warehouse-inline-skip-reason')],
   ['V2 slidebar height internal scroll and fixed footer',
