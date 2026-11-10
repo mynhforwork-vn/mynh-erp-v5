@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect,useMemo,useRef,useState,type CSSProperties } from 'react'
+import { useRouter } from 'next/navigation'
 import { formatDateTime,formatMoney } from '@/lib/format'
 import { WarehouseBulkReceiveBar,type BulkOrderPreview } from '@/components/warehouse-bulk-receive-bar'
-import type { WarehouseBulkResult } from '@/lib/actions/warehouse-bulk-receive'
+import { bulkReceiveWarehouseOrders,type WarehouseBulkResult } from '@/lib/actions/warehouse-bulk-receive'
 import { WarehouseIntakeDetailPreview } from '@/components/warehouse-intake-detail-preview'
 import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
 import type {HistoricalSuggestion} from '@/lib/warehouse-sku-suggestions'
@@ -241,6 +242,43 @@ export function WarehouseIntakeWorkspace({
   const [selected,setSelected]=useState<string[]>([])
   const [bulkReviewGroup,setBulkReviewGroup]=useState<string|null>(null)
   const [bulkFeedback,setBulkFeedback]=useState<WarehouseBulkResult|null>(null)
+  const router=useRouter()
+  const quickInFlight=useRef(false)
+  const [quickReceivingId,setQuickReceivingId]=useState<string|null>(null)
+  const [quickNotice,setQuickNotice]=useState<{kind:'success'|'error';message:string}|null>(null)
+  useEffect(()=>{
+    if(!quickNotice)return
+    const timeout=setTimeout(()=>setQuickNotice(null),5000)
+    return ()=>clearTimeout(timeout)
+  },[quickNotice])
+  // No client-side shortcut to inventory mutations: a single order goes through
+  // the same authenticated, idempotent server validation as batch receipt.
+  async function handleQuickReceive(row:Row,warehouseId:string){
+    if(previewOnly||quickInFlight.current||!bulkPreview(row,itemDecisions))return
+    quickInFlight.current=true
+    setQuickReceivingId(row.id)
+    setQuickNotice(null)
+    const orderLabel=row.shopee_order_id??row.id.slice(0,8)
+    try{
+      const result=await bulkReceiveWarehouseOrders({
+        warehouseId,orderIds:[row.id],note:''
+      })
+      if(result.succeeded.includes(row.id)){
+        setQuickNotice({kind:'success',message:'Đã nhập kho đơn '+orderLabel})
+        router.refresh()
+      }else{
+        setQuickNotice({kind:'error',message:
+          'Chưa nhập được đơn '+orderLabel+' · '+
+          (result.failed.find(item=>item.orderId===row.id)?.message??'Vui lòng kiểm tra lại trạng thái đơn.')})
+      }
+    }catch(error){
+      setQuickNotice({kind:'error',message:'Không thể nhập đơn '+orderLabel+' · '+
+        (error instanceof Error?error.message:'Vui lòng thử lại.')})
+    }finally{
+      quickInFlight.current=false
+      setQuickReceivingId(null)
+    }
+  }
   function handleBulkResult(result:WarehouseBulkResult){
     setBulkFeedback(result)
     const failedIds=new Set(result.failed.map(item=>item.orderId))
@@ -315,6 +353,12 @@ export function WarehouseIntakeWorkspace({
 
   return <div className={'whx-intake-layout warehouse-intake-layout warehouse-intake-preview-layout '+(active?'with-panel':'')}>
     <section ref={laneRef} className="whx-intake-main tracking-hub-stack tracking-hub-stack-v2 warehouse-receive-groups warehouse-receive-table-lane">
+      {quickNotice&&<div className={'warehouse-quick-notice '+quickNotice.kind}
+        role={quickNotice.kind==='error'?'alert':'status'}>
+        <span>{quickNotice.message}</span>
+        <button type="button" aria-label="Đóng thông báo nhập nhanh"
+          onClick={()=>setQuickNotice(null)}>×</button>
+      </div>}
       {bulkFeedback&&<div className="warehouse-bulk-feedback" role="status">
         <div>
           <b>{bulkFeedback.succeeded.length} đơn đã xử lý thành công · {bulkFeedback.failed.length} đơn chưa xử lý</b>
@@ -381,30 +425,33 @@ export function WarehouseIntakeWorkspace({
                     </label>
                     :<span className="warehouse-bulk-select-spacer" aria-hidden="true"/>)}
                   <div className="warehouse-unified-order-details">
-                    <button type="button" className="table-link" onClick={event=>{event.stopPropagation();setActiveId(row.id)}}>
-                      {row.shopee_order_id??row.id.slice(0,8)}
-                    </button>
+                    <div className="warehouse-unified-order-inline">
+                      <button type="button" className="table-link"
+                        onClick={event=>{event.stopPropagation();setActiveId(row.id)}}>
+                        {row.shopee_order_id??row.id.slice(0,8)}
+                      </button>
+                      {!showProcessedOnly&&!!bulkPreview(row,itemDecisions)&&
+                        <button type="button" className="warehouse-order-quick-receive"
+                          title={previewOnly?'Preview chỉ xem, không ghi tồn kho':'Nhập nhanh đơn '+(row.shopee_order_id??row.id)}
+                          aria-label={'Nhập nhanh đơn '+(row.shopee_order_id??row.id)}
+                          aria-busy={quickReceivingId===row.id}
+                          disabled={previewOnly||quickReceivingId!==null}
+                          onClick={event=>{
+                            event.stopPropagation()
+                            void handleQuickReceive(row,group.id)
+                          }}>
+                          {quickReceivingId===row.id
+                            ?<span className="warehouse-quick-spinner" aria-hidden="true"/>
+                            :<svg viewBox="0 0 16 16" width="15" height="15" fill="none"
+                              stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
+                              strokeLinejoin="round" aria-hidden="true">
+                              <path d="M8 2v8m-3-3 3 3 3-3M2.5 11.5v2h11v-2"/>
+                            </svg>}
+                        </button>}
+                    </div>
                     <time className="warehouse-unified-received-at" title="Ngày nhận thực tế">
                       {receivedAt(row)?formatDateTime(receivedAt(row)):'Chưa có ngày nhận'}
                     </time>
-                    {!showProcessedOnly&&!!bulkPreview(row,itemDecisions)&&
-                      <button type="button" className="warehouse-order-quick-receive"
-                        title={'Xem trước và xác nhận nhập kho đơn '+(row.shopee_order_id??row.id)}
-                        aria-label={'Nhập nhanh đơn '+(row.shopee_order_id??row.id)}
-                        onClick={event=>{
-                          event.stopPropagation()
-                          setSelectedGroup(group.id)
-                          setSelected([row.id])
-                          setBulkReviewGroup(group.id)
-                          setBulkFeedback(null)
-                        }}>
-                        <svg viewBox="0 0 16 16" width="13" height="13" fill="none"
-                          stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
-                          strokeLinejoin="round" aria-hidden="true">
-                          <path d="M8 2v8m-3-3 3 3 3-3M2.5 11.5v2h11v-2"/>
-                        </svg>
-                        <span className="warehouse-order-quick-label">Nhập nhanh</span>
-                      </button>}
                   </div>
                 </div>
               </td>
