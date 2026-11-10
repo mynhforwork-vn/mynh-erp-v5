@@ -83,7 +83,7 @@ const checks=[
   ['warehouse 0/1/2/3+ row states preserve compact groups and dense scrolling',
     table.includes("group.rows.length===1?'one':group.rows.length===2?'two':'many'") &&
     table.includes('data-warehouse-row-mode={groupRowMode}') &&
-    table.includes('warehouse-rows-\'+groupRowMode') &&
+    table.includes("warehouse-rows-'+groupRowMode") &&
     table.includes("Math.min(group.rows.length,30)") &&
     table.includes('.filter(group=>showProcessedOnly||group.rows.some(row=>!isDone(row)))') &&
     css.includes('.warehouse-unified-group.open.warehouse-rows-one') &&
