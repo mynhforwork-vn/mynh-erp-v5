@@ -802,7 +802,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   assert.equal(await draft.count(),1,'one ranked old SKU is prefilled as a draft '+width)
   assert.equal(await bg.locator('.warehouse-inline-sku-confirm').count(),1,
     'only the mapped-history draft gets one-click confirmation '+width)
-  const quick=bg.getByRole('button',{name:/Xác nhận ghép nháp SKU TEST-01/})
+  const quick=bg.getByRole('button',{name:/Xác nhận ghép SKU TEST-01/})
   assert.equal(await quick.isDisabled(),true,'read-only Preview blocks one-click save '+width)
   assert.deepEqual(await page.evaluate(()=>window.__warehouseCalls??[]),[],
     'history draft must never auto-save '+width)
@@ -836,9 +836,9 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
 {
   const page=await browser.newPage({viewport:{width:1280,height:800}})
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="history">'),{waitUntil:'load'})
-  const quick=page.getByRole('button',{name:/Xác nhận ghép nháp SKU TEST-01/})
+  const quick=page.getByRole('button',{name:/Xác nhận ghép SKU TEST-01/})
   await quick.click()
-  await page.getByRole('status').filter({hasText:'Đã lưu ghép nháp TEST-01'}).waitFor()
+  await page.getByRole('status').filter({hasText:'Đã lưu ghép SKU TEST-01'}).waitFor()
   const calls=await page.evaluate(()=>({save:window.__warehouseCalls??[],stock:window.__bulkCalls??[],refresh:window.__refreshCalls??0}))
   assert.equal(calls.save.length,1,'one-click match invokes the save action just once')
   assert.equal(calls.save[0].name,'save')
