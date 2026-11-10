@@ -245,3 +245,29 @@
   .warehouse-detail-v2-pair{gap:6px}
   .warehouse-detail-v2-footer-actions{gap:4px}
 }
+
+
+/* One alphabetic SKU browser contract in both detail and inline selectors. */
+.warehouse-detail-v2-browser{display:flex;flex-direction:column;gap:6px;min-width:0}
+.warehouse-detail-v2-abc{display:flex;flex-wrap:wrap;gap:4px}
+.warehouse-detail-v2-abc button{border:1px solid #d9e5ed;border-radius:4px;
+  min-width:25px;min-height:24px;padding:3px 5px;background:#f7fafc;
+  color:#517085;font-size:9.5px;cursor:pointer}
+.warehouse-detail-v2-abc button.active{background:#e8f4ef;color:#24644c;
+  border-color:#97c4ad;font-weight:700}
+.warehouse-detail-v2-abc button:disabled{opacity:.6;cursor:not-allowed}
+.warehouse-detail-v2-browser>small{color:#6b8694;font-size:9px}
+.warehouse-detail-v2-sku-results{display:flex;flex-direction:column;
+  min-width:0;max-height:170px;overflow-y:auto;overscroll-behavior:contain;gap:4px}
+.warehouse-detail-v2-sku-results button{display:grid;
+  grid-template-columns:minmax(65px,auto) minmax(0,1fr);align-items:center;
+  gap:2px 7px;text-align:left;min-width:0;padding:7px 8px;
+  border:1px solid #e1e8ec;border-radius:5px;background:#fff;
+  color:#37586c;cursor:pointer}
+.warehouse-detail-v2-sku-results button.active{border-color:#81bbaa;background:#eef7f2}
+.warehouse-detail-v2-sku-results b{font-size:10px;overflow-wrap:anywhere}
+.warehouse-detail-v2-sku-results span{font-size:9.7px;min-width:0;overflow-wrap:anywhere}
+.warehouse-detail-v2-sku-results small{grid-column:1/-1;font-size:9px;color:#6e8998}
+.warehouse-detail-v2-sku-results button:disabled{opacity:.65;cursor:not-allowed}
+.warehouse-detail-v2-sku-results button:focus-visible,.warehouse-detail-v2-abc button:focus-visible{
+  outline:2px solid #438b82;outline-offset:1px}
