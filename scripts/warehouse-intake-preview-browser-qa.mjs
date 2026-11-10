@@ -216,14 +216,14 @@ try {
       received:table.querySelector('tbody tr:first-child td[data-col="order"] .warehouse-unified-received-at')?.textContent?.trim(),
       skuCell:table.querySelector('tbody tr:nth-child(2) td[data-col="sku"]')?.innerText,
       skuSale:table.querySelector('tbody tr:nth-child(2) td[data-col="sku"] .warehouse-unified-sku-title')?.textContent,
-      pendingCod:table.querySelector('tbody tr:first-child td[data-col="order"] .warehouse-unified-pending-cod')?.textContent?.trim(),
-      mappedHasCod:!!table.querySelector('tbody tr:nth-child(2) td[data-col="order"] .warehouse-unified-pending-cod'),
-      processedHasCod:!!table.querySelector('tbody tr:nth-child(3) td[data-col="order"] .warehouse-unified-pending-cod'),
-      codAxis:(()=>{
+      pendingValue:table.querySelector('tbody tr:first-child td[data-col="order"] .warehouse-unified-pending-value')?.textContent?.trim(),
+      mappedHasValue:!!table.querySelector('tbody tr:nth-child(2) td[data-col="order"] .warehouse-unified-pending-value'),
+      processedHasValue:!!table.querySelector('tbody tr:nth-child(3) td[data-col="order"] .warehouse-unified-pending-value'),
+      valueAxis:(()=>{
         const order=table.querySelector('tbody tr:first-child td[data-col="order"]')
         return {
           received:order?.querySelector('.warehouse-unified-received-at')?.getBoundingClientRect().left,
-          cod:order?.querySelector('.warehouse-unified-pending-cod')?.getBoundingClientRect().left,
+          value:order?.querySelector('.warehouse-unified-pending-value')?.getBoundingClientRect().left,
           code:order?.querySelector('.table-link')?.getBoundingClientRect().left,
         }
       })(),
@@ -234,15 +234,15 @@ try {
       'received date should appear below each order code '+width)
     assert.ok((merged.skuCell??'').includes('TEST-01')&&(merged.skuSale??'').includes('Đã map'),
       'mapped sale product name must be displayed after SKU '+width)
-    assert.match(merged.pendingCod??'',/COD:\s*50[.,]000\s*đ/,
-      'unparsed order COD is shown below received time with stored amount '+width)
-    assert.equal(merged.mappedHasCod,false,
-      'mapped order must not show unparsed COD note '+width)
-    assert.equal(merged.processedHasCod,false,
-      'processed order must not show unparsed COD note '+width)
-    assert.ok(Math.abs((merged.codAxis.code??0)-(merged.codAxis.cod??0))<=1.5&&
-      Math.abs((merged.codAxis.received??0)-(merged.codAxis.cod??0))<=1.5,
-      'COD, received time and order code align in the same column '+width+' '+JSON.stringify(merged.codAxis))
+    assert.match(merged.pendingValue??'',/Giá trị đơn:\s*75[.,]000\s*đ/,
+      'partially prepaid order shows full value: 25.000 prepaid + 50.000 COD '+width)
+    assert.equal(merged.mappedHasValue,false,
+      'mapped order must not show unparsed order-value note '+width)
+    assert.equal(merged.processedHasValue,false,
+      'processed order must not show unparsed order-value note '+width)
+    assert.ok(Math.abs((merged.valueAxis.code??0)-(merged.valueAxis.value??0))<=1.5&&
+      Math.abs((merged.valueAxis.received??0)-(merged.valueAxis.value??0))<=1.5,
+      'order value, time and code align in the same column '+width+' '+JSON.stringify(merged.valueAxis))
     const originalPrice=await page.locator('.warehouse-unified-table').first()
       .locator('tbody tr:first-child td[data-col="purchase"]').innerText()
     assert.match(originalPrice,/50[.,]000/,
@@ -572,18 +572,18 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
 }
 console.log('PASS quick receive icon · preview read-only · direct one-order action · no modal · guarded repeat · failure/retry')
 
-// Missing COD is not silently converted to 0 đ; the order remains unparsed.
+// Missing required payment data is not silently converted to 0 đ.
 {
   const page=await browser.newPage({viewport:{width:390,height:844}})
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="missing-cod">'),{waitUntil:'load'})
   const first=page.locator('.warehouse-unified-group[data-warehouse-code="BG"] tbody tr').first()
   await first.waitFor()
-  const cod=await first.locator('.warehouse-unified-pending-cod').innerText()
-  assert.equal(cod.replace(/\s+/g,' ').trim(),'COD: Chưa có',
-    'missing COD must be explicit, not guessed as zero')
+  const value=await first.locator('.warehouse-unified-pending-value').innerText()
+  assert.equal(value.replace(/\s+/g,' ').trim(),'Giá trị đơn: Chưa đủ dữ liệu',
+    'missing COD in partially prepaid order must show unknown total, not zero')
   await page.close()
 }
-console.log('PASS unparsed COD note · aligned in 14 viewports · no note after parsing · missing value preserved')
+console.log('PASS canonical order value · 14 viewports · partially paid total · unknown data preserved')
 
 // Bulk receipt QA: non-destructive Preview confirmation and saved V2 mixed
 // decisions, then a live-mode mock with partial success and retry visibility.
@@ -706,103 +706,139 @@ console.log('PASS bulk mobile review · 360x800 and 568x320 · no horizontal ove
 
 console.log('PASS bulk warehouse Preview safety · V2 SKIP summary · partial success retained')
 
-// Inline SKU matching: suggestions only from matching saved prior orders, no
-// auto-pairing and no stock writes. The history dialog is anchored to table text.
+// Inline SKU draft: the best stored historic match is proposed in the table;
+// operators explicitly confirm it with ONE button. No suggestion means an
+// actionable create/search UI but no fabricated draft.
 {
   const page=await browser.newPage({viewport:{width:1280,height:800}})
   await page.setContent(html,{waitUntil:'load'})
-  assert.equal(await page.locator('.warehouse-inline-sku-trigger').count(),0,
-    'no persisted similar history must leave unpaired SKU text as plain text')
-  assert.equal(await page.locator('.warehouse-inline-sku-status-trigger').count(),0,
-    'no artificial history suggestions in status column')
+  assert.ok(await page.locator('.warehouse-inline-sku-trigger').count()>0,
+    'SKU without matching history can still open a create/search picker')
+  assert.equal(await page.locator('.warehouse-inline-sku-confirm').count(),0,
+    'no historical evidence means no one-click draft confirmation')
+  await page.locator('.warehouse-inline-sku-trigger').first().click()
+  const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
+  await picker.waitFor()
+  assert.match(await picker.innerText(),/Chưa có lịch sử ghép tương tự/)
+  assert.ok(await picker.getByRole('button',{name:'Tạo SKU mới'}).isVisible())
+  await page.keyboard.press('Escape')
   await page.close()
 }
 for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   const page=await browser.newPage({viewport:{width,height}})
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-scenario="history">'),{waitUntil:'load'})
   if(width<=900)await page.locator('aside.warehouse-intake-panel .close').click()
-  const trigger=page.locator('.warehouse-unified-group[data-warehouse-code="BG"] .warehouse-inline-sku-trigger')
-  assert.equal(await trigger.count(),1,
-    'only matching historical purchase item is actionable '+width)
-  await trigger.click()
-  const picker=page.getByRole('dialog',{name:'Gợi ý ghép SKU từ lịch sử'})
+  const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
+  const draft=bg.locator('.warehouse-inline-sku-trigger').filter({hasText:'Nháp: TEST-01'})
+  assert.equal(await draft.count(),1,'one ranked old SKU is prefilled as a draft '+width)
+  assert.equal(await bg.locator('.warehouse-inline-sku-confirm').count(),1,
+    'only the mapped-history draft gets one-click confirmation '+width)
+  const quick=bg.getByRole('button',{name:/Xác nhận ghép nháp SKU TEST-01/})
+  assert.equal(await quick.isDisabled(),true,'read-only Preview blocks one-click save '+width)
+  assert.deepEqual(await page.evaluate(()=>window.__warehouseCalls??[]),[],
+    'history draft must never auto-save '+width)
+  await draft.click()
+  const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
   await picker.waitFor()
   assert.equal(await picker.locator('.warehouse-inline-sku-history-options>button').count(),2,
-    'two distinct old mappings must remain separate '+width)
-  assert.match(await picker.innerText(),/3 đơn cũ/)
-  assert.match(await picker.innerText(),/1 đơn cũ/)
+    'alternative old SKU pairings remain available '+width)
+  assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'90000',
+    'best-ranked old SKU is prefilled from catalog '+width)
+  assert.equal(await picker.getByLabel('Hệ số ghép nhanh').inputValue(),'2',
+    'conversion from historical mapping is prefilled '+width)
+  assert.equal(await picker.getByRole('button',{name:'Nhập kho',exact:true}).getAttribute('aria-pressed'),'true',
+    'IN is an unsaved default decision, never a stock import '+width)
   const bounds=await picker.boundingBox()
   assert.ok(bounds&&bounds.x>=0&&bounds.y>=0&&bounds.x+bounds.width<=width+1&&
     bounds.y+bounds.height<=height+1,
-    'inline picker must fit viewport '+width+'x'+height+' '+JSON.stringify(bounds))
-  assert.deepEqual(await page.evaluate(()=>window.__warehouseCalls??[]),[],
-    'opening suggestions cannot save or mutate inventory '+width)
+    'picker remains inside viewport '+width+'x'+height+' '+JSON.stringify(bounds))
+  assert.equal(await picker.getByRole('button',{name:'Lưu ghép SKU'}).isDisabled(),true,
+    'Preview never performs a database write '+width)
   await picker.getByRole('button',{name:/ALT-02/}).click()
   assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'65000',
-    'sale price comes from existing variant, not guessed history '+width)
-  const saveButtonRect=await picker.getByRole('button',{name:'Lưu ghép SKU'}).boundingBox()
-  assert.ok(saveButtonRect&&saveButtonRect.y>=0&&saveButtonRect.y+saveButtonRect.height<=height+1,
-    'expanded picker footer must stay fully within viewport '+width+' '+JSON.stringify(saveButtonRect))
-  assert.equal(await picker.getByLabel('Hệ số ghép nhanh').inputValue(),'1',
-    'multiplier comes from old stored mapping '+width)
-  assert.equal(await picker.getByRole('button',{name:'Lưu ghép SKU'}).isDisabled(),true,
-    'requires explicit stock decision and cannot save Preview '+width)
-  await picker.getByRole('button',{name:'Nhập kho',exact:true}).click()
-  assert.equal(await picker.getByRole('button',{name:'Lưu ghép SKU'}).isDisabled(),true,
-    'read-only Preview cannot write after selecting a suggestion '+width)
-  assert.deepEqual(await page.evaluate(()=>window.__warehouseCalls??[]),[],
-    'choosing a suggestion must stay client-only in Preview '+width)
+    'operator can explicitly switch to another old matching SKU '+width)
+  const saveRect=await picker.getByRole('button',{name:'Lưu ghép SKU'}).boundingBox()
+  assert.ok(saveRect&&saveRect.y>=0&&saveRect.y+saveRect.height<=height+1,
+    'footer remains in viewport when expanded '+width)
   await page.keyboard.press('Escape')
-  assert.equal(await page.getByRole('dialog',{name:'Gợi ý ghép SKU từ lịch sử'}).count(),0,
-    'Escape closes only the inline picker '+width)
+  assert.equal(await picker.count(),0,'Escape closes SKU picker '+width)
   await page.close()
 }
 {
   const page=await browser.newPage({viewport:{width:1280,height:800}})
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="history">'),{waitUntil:'load'})
-  const status=page.getByRole('button',{name:/Chờ ghép SKU từ lịch sử cho/}).first()
-  await status.click()
-  const picker=page.getByRole('dialog',{name:'Gợi ý ghép SKU từ lịch sử'})
-  await picker.waitFor()
+  const quick=page.getByRole('button',{name:/Xác nhận ghép nháp SKU TEST-01/})
+  await quick.click()
+  await page.getByRole('status').filter({hasText:'Đã lưu ghép nháp TEST-01'}).waitFor()
+  const calls=await page.evaluate(()=>({save:window.__warehouseCalls??[],stock:window.__bulkCalls??[],refresh:window.__refreshCalls??0}))
+  assert.equal(calls.save.length,1,'one-click match invokes the save action just once')
+  assert.equal(calls.save[0].name,'save')
+  assert.equal(calls.save[0].input.variantId,'V-SKU','top-ranked SKU is the saved draft')
+  assert.equal(calls.save[0].input.salePrice,90000,'catalog sale price is not guessed')
+  assert.equal(calls.save[0].input.multiplier,2,'historical conversion is retained')
+  assert.equal(calls.save[0].input.decision,'IN','saved decision is proposed IN only, no stock movement')
+  assert.equal(calls.stock.length,0,'SKU confirmation must never create inventory')
+  assert.ok(calls.refresh>0,'successful SKU save refreshes the table')
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="history">'),{waitUntil:'load'})
+  await page.locator('.warehouse-inline-sku-trigger').filter({hasText:'Nháp: TEST-01'}).click()
+  const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
   await picker.getByRole('button',{name:/ALT-02/}).click()
-  assert.equal(await picker.getByRole('button',{name:'Lưu ghép SKU'}).isDisabled(),true,
-    'history variant selection alone is never an implicit warehouse decision')
-  await picker.getByRole('button',{name:'Nhập kho',exact:true}).click()
-  await picker.getByRole('button',{name:'Lưu ghép SKU'}).click()
-  await page.getByRole('status').filter({hasText:'Đã lưu ghép SKU cho đơn'}).waitFor()
-  const calls=await page.evaluate(()=>({warehouse:window.__warehouseCalls??[],
-    bulk:window.__bulkCalls??[],refresh:window.__refreshCalls??0}))
-  assert.equal(calls.warehouse.length,1,'one explicit save per quick SKU mapping')
-  assert.equal(calls.warehouse[0].name,'save','must call existing save-only RPC bridge')
-  assert.equal(calls.warehouse[0].input.variantId,'V-ALT','must save exact selected variant')
-  assert.equal(calls.warehouse[0].input.salePrice,65000,'must save catalog price as reviewed')
-  assert.equal(calls.warehouse[0].input.multiplier,1,'must retain reviewed historical conversion')
-  assert.equal(calls.warehouse[0].input.decision,'IN','explicitly selected decision is stored')
-  assert.equal(calls.bulk.length,0,'SKU mapping must never import stock')
-  assert.ok(calls.refresh>=1,'saved SKU refreshes authoritative server data')
-  assert.equal(await picker.count(),0,'picker closes after successful save')
-  await page.close()
-}
-{
-  const page=await browser.newPage({viewport:{width:1280,height:800}})
-  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="history">'),{waitUntil:'load'})
-  await page.locator('.warehouse-inline-sku-trigger').first().click()
-  const picker=page.getByRole('dialog',{name:'Gợi ý ghép SKU từ lịch sử'})
-  await picker.getByRole('button',{name:/TEST-01/}).click()
-  await picker.getByRole('button',{name:'Bỏ qua kho',exact:true}).click()
-  assert.equal(await picker.getByRole('button',{name:'Lưu ghép SKU'}).isDisabled(),true,
-    'SKIP requires a reason even when old SKU history matches')
-  await picker.getByLabel('Lý do bỏ qua ghép nhanh').fill('Không nhập sản phẩm mẫu')
   await picker.getByRole('button',{name:'Lưu ghép SKU'}).click()
   await page.getByRole('status').filter({hasText:'Đã lưu ghép SKU cho đơn'}).waitFor()
   const calls=await page.evaluate(()=>window.__warehouseCalls??[])
   assert.equal(calls.length,1)
+  assert.equal(calls[0].input.variantId,'V-ALT','alternate old mapping may be manually selected')
+  assert.equal(calls[0].input.decision,'IN','explicit click confirms the current draft')
+  assert.equal(await page.evaluate(()=>(window.__bulkCalls??[]).length),0)
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true">'),{waitUntil:'load'})
+  await page.locator('.warehouse-inline-sku-trigger').first().click()
+  const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
+  await picker.getByRole('button',{name:'Tạo SKU mới'}).click()
+  await picker.getByLabel('Mã SKU bán mới ghép nhanh').fill('NEW-SKU-QA-01')
+  assert.equal(await picker.getByLabel('Tên SKU mới ghép nhanh').inputValue().then(x=>x.length>0),true)
+  assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'',
+    'new SKU price must be provided explicitly, not guessed from history')
+  await picker.getByLabel('Giá bán ghép nhanh').fill('75000')
+  await picker.getByRole('button',{name:'Nhập kho',exact:true}).click()
+  await picker.getByRole('button',{name:'Lưu ghép SKU'}).click()
+  await page.getByRole('status').filter({hasText:'Đã lưu ghép SKU cho đơn'}).waitFor()
+  const calls=await page.evaluate(()=>window.__warehouseCalls??[])
+  assert.equal(calls.length,1,'new SKU saves through same existing Server Action')
+  assert.equal(calls[0].input.variantId,null)
+  assert.equal(calls[0].input.newSku,'NEW-SKU-QA-01')
+  assert.equal(calls[0].input.newName?.length>0,true)
+  assert.equal(calls[0].input.salePrice,75000)
+  assert.equal(calls[0].input.decision,'IN')
+  assert.equal(await page.evaluate(()=>(window.__bulkCalls??[]).length),0,
+    'new SKU creation must not change inventory balances')
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="history">'),{waitUntil:'load'})
+  await page.locator('.warehouse-inline-sku-trigger').filter({hasText:'Nháp: TEST-01'}).click()
+  const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
+  await picker.getByRole('button',{name:'Bỏ qua kho',exact:true}).click()
+  assert.equal(await picker.getByRole('button',{name:'Lưu ghép SKU'}).isDisabled(),true,
+    'SKIP still requires a reason')
+  await picker.getByLabel('Lý do bỏ qua ghép nhanh').fill('Không nhập sản phẩm mẫu')
+  await picker.getByRole('button',{name:'Lưu ghép SKU'}).click()
+  await page.getByRole('status').filter({hasText:'Đã lưu ghép SKU cho đơn'}).waitFor()
+  const calls=await page.evaluate(()=>window.__warehouseCalls??[])
   assert.equal(calls[0].input.decision,'SKIP')
   assert.equal(calls[0].input.skipReason,'Không nhập sản phẩm mẫu')
   assert.equal(await page.evaluate(()=>(window.__bulkCalls??[]).length),0)
   await page.close()
 }
-console.log('PASS inline SKU suggestions · real history only · no auto-write · 4 viewports · IN/SKIP saved via mock')
+console.log('PASS inline SKU draft · one-click confirmation · new SKU · alternatives · Preview read-only · no stock writes')
 
 // Prior SKU history: two conflicting saved mappings are shown separately.
 // Choosing one changes ONLY the client draft; save/persistence stays explicit.
