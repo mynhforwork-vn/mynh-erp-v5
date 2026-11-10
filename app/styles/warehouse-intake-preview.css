@@ -60,7 +60,7 @@
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group{
   overflow:visible!important;
 }
-/* 0: not rendered. 1–2: exactly one order row visible; scroll for row 2.
+/* 0: not rendered. 1–2: exact content height of all 1 or 2 rows.
    3+: elastic. When both BG/HN are dense, split the lane 50/50, regardless
    of uneven order counts. If only one is dense, keep the 1–2 row rule. */
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open{
@@ -74,9 +74,9 @@
 }
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-one>.warehouse-unified-table-wrap,
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-two>.warehouse-unified-table-wrap{
-  flex:0 0 var(--warehouse-one-order-height,120px)!important;
-  height:var(--warehouse-one-order-height,120px)!important;
-  max-height:var(--warehouse-one-order-height,120px)!important;
+  flex:0 0 var(--warehouse-compact-order-height,120px)!important;
+  height:var(--warehouse-compact-order-height,120px)!important;
+  max-height:var(--warehouse-compact-order-height,120px)!important;
   overflow-y:auto!important;
 }
 .brand-shell-v1 .warehouse-receive-screen .warehouse-receive-table-lane>.warehouse-unified-group.open.warehouse-rows-many{
