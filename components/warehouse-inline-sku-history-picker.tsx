@@ -4,14 +4,15 @@ import {useEffect,useRef,useState,type CSSProperties} from 'react'
 import {createPortal} from 'react-dom'
 import {useRouter} from 'next/navigation'
 import {formatMoney} from '@/lib/format'
-import {saveWarehouseItemDecision,skipWarehouseItemWithoutSku} from '@/lib/actions/warehouse-item-decisions'
+import {saveWarehouseItemDecision,skipWarehouseItemWithoutSku,addWarehouseVariantAndMap} from '@/lib/actions/warehouse-item-decisions'
 import type {HistoricalSuggestion} from '@/lib/warehouse-sku-suggestions'
 
+type SkuProduct={id:string;sku:string;name:string}
 type Variant={
   id:string
   variant_name:string
   sale_price?:number|string|null
-  products?:{sku?:string|null,name?:string|null}|null
+  products?:{id?:string|null,sku?:string|null,name?:string|null}|null
 }
 type Target={
   orderItemId:string
@@ -30,7 +31,7 @@ type Target={
   isEditing:boolean
 }
 type Decision='IN'|'SKIP'
-type Mode='existing'|'new'
+type Mode='existing'|'variant'|'new'
 
 function matchText(match:HistoricalSuggestion['match_kind']){
   if(match==='exact')return 'Khớp mã, tên và phân loại'
@@ -39,11 +40,12 @@ function matchText(match:HistoricalSuggestion['match_kind']){
 }
 
 export function WarehouseInlineSkuHistoryPicker({
-  target,history,variants,previewOnly,onClose,onSaved
+  target,history,variants,skuProducts=[],previewOnly,onClose,onSaved
 }:{
   target:Target
   history:HistoricalSuggestion[]
   variants:Variant[]
+  skuProducts?:SkuProduct[]
   previewOnly:boolean
   onClose:()=>void
   onSaved:(label:string)=>void
@@ -67,6 +69,8 @@ export function WarehouseInlineSkuHistoryPicker({
   const [newSku,setNewSku]=useState('')
   const [newName,setNewName]=useState(target.productName)
   const [newVariant,setNewVariant]=useState(target.sourceVariant||'Mặc định')
+  const [existingProductId,setExistingProductId]=useState(initialVariant?.products?.id??'')
+  const [productQuery,setProductQuery]=useState('')
   const [salePrice,setSalePrice]=useState(target.isEditing
     ?target.initialSalePrice??''
     :initialVariant?.sale_price===null||initialVariant?.sale_price===undefined
@@ -93,6 +97,16 @@ export function WarehouseInlineSkuHistoryPicker({
     String(variant.products?.sku??'').trim().toUpperCase()===newCode)
   const validNew=!!newCode&&newCode.length<=100&&newName.trim().length>0&&
     newName.trim().length<=255&&newVariant.trim().length>0&&newVariant.trim().length<=255&&!duplicatedSku
+  const existingProduct=skuProducts.find(product=>product.id===existingProductId)
+  const productsMatched=skuProducts.filter(product=>
+    [product.sku,product.name].join(' ').toLocaleLowerCase('vi')
+      .includes(productQuery.trim().toLocaleLowerCase('vi'))).slice(0,productQuery.trim()?80:40)
+  const duplicateVariant=!!existingProduct&&variants.some(variant=>
+    variant.products?.id===existingProduct.id&&
+    variant.variant_name.trim().toLocaleLowerCase('vi')===
+      newVariant.trim().toLocaleLowerCase('vi'))
+  const validVariant=!!existingProduct&&newVariant.trim().length>0&&
+    newVariant.trim().length<=255&&!duplicateVariant
   function chooseCatalog(id:string){
     const variant=variants.find(item=>item.id===id)
     setVariantId(id)
@@ -106,10 +120,13 @@ export function WarehouseInlineSkuHistoryPicker({
     setMode(next)
     setDecision(target.isEditing?decision:null)
     setSkipReason(target.isEditing?skipReason:'')
-    if(next==='new'){
-      // Never carry a historical sale price into a newly created SKU.
+    if(next==='new'||next==='variant'){
+      // New classifications must enter their own price, not reuse old price.
       setSalePrice('')
       setMultiplier('1')
+      if(next==='variant'&&!existingProductId&&selected?.products?.id){
+        setExistingProductId(selected.products.id)
+      }
     }else if(selected){
       setSalePrice(selected.sale_price===null||selected.sale_price===undefined?'':String(selected.sale_price))
     }
@@ -166,7 +183,7 @@ export function WarehouseInlineSkuHistoryPicker({
   const validFactor=Number.isInteger(factor)&&factor>=1&&factor<=100000
   const unmappedSkip=target.isEditing&&target.initialVariantId===null&&
     mode==='existing'&&!selected&&decision==='SKIP'
-  const validTarget=mode==='new'?validNew:!!selected||unmappedSkip
+  const validTarget=mode==='new'?validNew:mode==='variant'?validVariant:!!selected||unmappedSkip
   const canSave=!previewOnly&&!busy&&validTarget&&
     (unmappedSkip||validPrice&&validFactor)&&
     !!decision&&(decision!=='SKIP'||skipReason.trim().length>0&&skipReason.trim().length<=500)
@@ -176,7 +193,13 @@ export function WarehouseInlineSkuHistoryPicker({
     setBusy(true)
     setError('')
     try{
-      if(unmappedSkip){
+      if(mode==='variant'){
+        await addWarehouseVariantAndMap({
+          orderItemId:target.orderItemId,productId:existingProductId,
+          variantName:newVariant.trim(),salePrice:price,multiplier:factor,decision,
+          skipReason:decision==='SKIP'?skipReason.trim():null
+        })
+      }else if(unmappedSkip){
         await skipWarehouseItemWithoutSku({
           orderItemId:target.orderItemId,reason:skipReason.trim()
         })
@@ -232,6 +255,8 @@ export function WarehouseInlineSkuHistoryPicker({
         <div className="warehouse-inline-sku-history-modes" role="group" aria-label="Cách ghép SKU">
           <button type="button" className={mode==='existing'?'active':''} aria-pressed={mode==='existing'}
             disabled={busy} onClick={()=>changeMode('existing')}>Chọn SKU có sẵn</button>
+          <button type="button" className={mode==='variant'?'active':''} aria-pressed={mode==='variant'}
+            disabled={busy} onClick={()=>changeMode('variant')}>Thêm phân loại</button>
           <button type="button" className={mode==='new'?'active':''} aria-pressed={mode==='new'}
             disabled={busy} onClick={()=>changeMode('new')}>Tạo SKU mới</button>
         </div>
@@ -273,6 +298,36 @@ export function WarehouseInlineSkuHistoryPicker({
             </select>
           </label>
         </>}
+        {mode==='variant'&&<div className="warehouse-inline-sku-history-new">
+          <p>Thêm phân loại bán mới cho SKU đã có. Giá bán áp dụng riêng cho phân loại mới; sản phẩm và các phân loại cũ được giữ nguyên.</p>
+          <label>Tìm SKU sản phẩm hiện có
+            <input type="search" aria-label="Tìm SKU để thêm phân loại"
+              disabled={busy} value={productQuery} placeholder="Mã hoặc tên SKU"
+              onChange={event=>setProductQuery(event.target.value)}/>
+          </label>
+          <label>Chọn SKU sản phẩm
+            <select aria-label="SKU gốc để thêm phân loại" disabled={busy}
+              value={existingProductId} onChange={event=>{
+                setExistingProductId(event.target.value)
+                setError('')
+              }}>
+              <option value="">— Chọn SKU đã có —</option>
+              {existingProduct&&!productsMatched.some(p=>p.id===existingProduct.id)&&
+                <option value={existingProduct.id}>{existingProduct.sku} · {existingProduct.name}</option>}
+              {productsMatched.map(product=><option key={product.id} value={product.id}>
+                {product.sku} · {product.name}
+              </option>)}
+            </select>
+          </label>
+          <label>Phân loại bán mới
+            <input type="text" maxLength={255} disabled={busy}
+              aria-label="Tên phân loại mới của SKU cũ" value={newVariant}
+              onChange={event=>setNewVariant(event.target.value)}/>
+          </label>
+          {duplicateVariant&&<small role="alert" className="warehouse-inline-sku-history-error">
+            Phân loại này đã tồn tại trong SKU. Hãy chọn phân loại có sẵn.
+          </small>}
+        </div>}
         {mode==='new'&&<div className="warehouse-inline-sku-history-new">
           <p>Tạo SKU bán mới từ sản phẩm mua này. Nhập mã SKU mới; kiểm tra lại tên và phân loại trước khi lưu.</p>
           <label>Mã SKU bán mới
@@ -290,7 +345,7 @@ export function WarehouseInlineSkuHistoryPicker({
           </label>
           {duplicatedSku&&<small className="warehouse-inline-sku-history-error">Mã SKU đã có trong danh mục. Hãy chọn SKU có sẵn.</small>}
         </div>}
-        {(mode==='new'||selected||unmappedSkip)&&<div className="warehouse-inline-sku-history-edit">
+        {(mode==='new'||mode==='variant'||selected||unmappedSkip)&&<div className="warehouse-inline-sku-history-edit">
           <strong>Đối chiếu trước khi lưu</strong>
           {!unmappedSkip&&<div className="warehouse-inline-sku-history-numbers">
             <label>Giá bán
