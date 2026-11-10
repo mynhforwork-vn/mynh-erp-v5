@@ -10,6 +10,7 @@ const panel=read('components/warehouse-intake-detail-preview.tsx')
 const panelCss=read('app/styles/warehouse-intake-detail-preview.css')
 const migration=read('supabase/migrations/0075_item_level_warehouse_decisions.sql')
 const skipMigration=read('supabase/migrations/0076_skip_unmapped_warehouse_item.sql')
+const variantMigration=read('supabase/migrations/0077_warehouse_add_variant_to_existing_sku.sql')
 const actions=read('lib/actions/warehouse-item-decisions.ts')
 const bulkActions=read('lib/actions/warehouse-bulk-receive.ts')
 const bulkBar=read('components/warehouse-bulk-receive-bar.tsx')
@@ -400,6 +401,29 @@ const checks=[
     css.includes('.warehouse-inline-sku-confirm') &&
     css.includes('.warehouse-inline-sku-history-modes') &&
     css.includes('position:fixed;z-index:3200')],
+  ['existing SKU may add a separately priced sale classification atomically',
+    page.includes("async function loadSkuProducts()") &&
+    page.includes("loadSkuProducts(),") &&
+    page.includes("skuProducts={skuProducts??[]}") &&
+    table.includes("skuProducts={catalogProducts}") &&
+    inlinePicker.includes("type Mode='existing'|'variant'|'new'") &&
+    inlinePicker.includes("Thêm phân loại") &&
+    inlinePicker.includes("SKU gốc để thêm phân loại") &&
+    inlinePicker.includes("Tên phân loại mới của SKU cũ") &&
+    inlinePicker.includes("const validVariant=!!existingProduct") &&
+    inlinePicker.includes("await addWarehouseVariantAndMap({") &&
+    inlinePicker.includes("newVariant.trim()") &&
+    panel.includes("draft.mode==='variant'") &&
+    panel.includes("addWarehouseVariantAndMap({") &&
+    actions.includes("supabase.rpc('add_warehouse_variant_and_map'") &&
+    variantMigration.includes('PERFORM private.assert_operator()') &&
+    variantMigration.includes('WHERE id=v_order_id FOR UPDATE') &&
+    variantMigration.includes('WHERE p.id=p_product_id FOR UPDATE') &&
+    variantMigration.includes('lower(btrim(pv.variant_name))=lower(v_name)') &&
+    variantMigration.includes('RETURN private.save_warehouse_item_decision_impl(') &&
+    variantMigration.includes('GRANT EXECUTE ON FUNCTION public.add_warehouse_variant_and_map(') &&
+    !variantMigration.includes('UPDATE public.products SET') &&
+    !variantMigration.includes('UPDATE public.product_variants SET')],
   ['saved draft SKU remapping is editable while finalized stock remains locked',
     table.includes("const canRevise=!isDone(row)&&saved?.processing_state!=='FINALIZED'") &&
     table.includes("const canOpenSku=canSuggest||canRevise") &&
