@@ -387,11 +387,11 @@ const checks=[
     table.includes('<WarehouseInlineSkuHistoryPicker') &&
     inlinePicker.includes("history.filter(item=>variants.some(variant=>variant.id===item.variant_id))") &&
     inlinePicker.includes('const preferred=history.find(') &&
-    inlinePicker.includes("useState<Decision|null>(preferredVariant?'IN':null)") &&
+    inlinePicker.includes("target.isEditing?target.initialDecision:preferredVariant?'IN':null") &&
     inlinePicker.includes('Tạo SKU mới') &&
     inlinePicker.includes('Mã SKU bán mới ghép nhanh') &&
     inlinePicker.includes("mode==='new'?newCode:null") &&
-    inlinePicker.includes("mode==='new'?validNew:!!selected") &&
+    inlinePicker.includes("mode==='new'?validNew:!!selected||unmappedSkip") &&
     inlinePicker.includes("decision==='SKIP'?skipReason.trim():null") &&
     inlinePicker.includes('await saveWarehouseItemDecision({') &&
     inlinePicker.includes('const canSave=!previewOnly') &&
@@ -400,6 +400,28 @@ const checks=[
     css.includes('.warehouse-inline-sku-confirm') &&
     css.includes('.warehouse-inline-sku-history-modes') &&
     css.includes('position:fixed;z-index:3200')],
+  ['saved draft SKU remapping is editable while finalized stock remains locked',
+    table.includes("const canRevise=!isDone(row)&&saved?.processing_state!=='FINALIZED'") &&
+    table.includes("const canOpenSku=canSuggest||canRevise") &&
+    table.includes("saved?.processing_state==='FINALIZED'||quickSkuInFlight.current") &&
+    table.includes("const mappedVariant=item.product_variant_id??saved?.product_variant_id??null") &&
+    table.includes("initialSalePrice:sourcePrice===null||sourcePrice===undefined?'':String(sourcePrice)") &&
+    table.includes("initialMultiplier:Number(saved?.multiplier??item.inventory_multiplier??1)") &&
+    table.includes("initialDecision:saved?.decision??(mappedVariant?'IN':null)") &&
+    table.includes('warehouse-inline-sku-edit-trigger') &&
+    table.includes("title={isDone(row)?'Đơn đã chốt xử lý kho, không thể sửa trực tiếp':''}") &&
+    inlinePicker.includes("const initialVariant=target.isEditing") &&
+    inlinePicker.includes("target.isEditing?target.initialDecision:preferredVariant?'IN':null") &&
+    inlinePicker.includes("target.isEditing?'Sửa ghép SKU':'Ghép SKU nhanh'") &&
+    inlinePicker.includes("target.isEditing?'Lưu thay đổi':'Lưu ghép SKU'") &&
+    inlinePicker.includes('await saveWarehouseItemDecision({') &&
+    inlinePicker.includes('await skipWarehouseItemWithoutSku({') &&
+    inlinePicker.includes('router.refresh()') &&
+    migration.includes("d.processing_state='FINALIZED'") &&
+    migration.includes("WHERE warehouse_item_decisions.processing_state='DRAFT'") &&
+    css.includes('.warehouse-inline-sku-edit-trigger') &&
+    !inlinePicker.includes('finalizeWarehouseItemDecisions(') &&
+    !table.includes('onClick={()=>setActiveId(row.id)}')],
   ['unmapped product can be explicitly skipped without fake sale SKU or stock movement',
     table.includes("from '@/components/warehouse-inline-skip-item'") &&
     table.includes('warehouse-inline-item-skip-trigger') &&
