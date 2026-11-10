@@ -9,6 +9,9 @@ on:
       - 'components/warehouse-intake-detail-preview.tsx'
       - 'app/styles/warehouse-intake-preview.css'
       - 'scripts/warehouse-sku-remap-db-qa.sql'
+      - 'scripts/warehouse-existing-sku-variant-db-qa.sql'
+      - 'supabase/migrations/0077_warehouse_add_variant_to_existing_sku.sql'
+      - 'app/(erp)/warehouse/receive/page.tsx'
       - 'scripts/warehouse-intake-preview-browser-qa.mjs'
       - 'scripts/warehouse-intake-preview-contract-qa.mjs'
       - 'lib/actions/warehouse-item-decisions.ts'
@@ -76,8 +79,11 @@ jobs:
             -f scripts/warehouse-item-level-db-fixture.sql \
             -f supabase/migrations/0075_item_level_warehouse_decisions.sql \
             -f supabase/migrations/0076_skip_unmapped_warehouse_item.sql \
-            -f scripts/warehouse-sku-remap-db-qa.sql 2>&1 | tee warehouse-remap-db-qa.log
+            -f supabase/migrations/0077_warehouse_add_variant_to_existing_sku.sql \
+            -f scripts/warehouse-sku-remap-db-qa.sql \
+            -f scripts/warehouse-existing-sku-variant-db-qa.sql 2>&1 | tee warehouse-remap-db-qa.log
           grep -q 'PASS: draft SKU remapping, persistence, audit, SKIP correction, permission, finalized lock, no duplicate inventory' warehouse-remap-db-qa.log
+          grep -q 'PASS: one SKU two classifications two prices, duplicate guard, role, audit, atomic mapping and final stock' warehouse-remap-db-qa.log
       - name: Install fixture QA browser dependencies
         run: npm install --no-save playwright esbuild --no-audit --no-fund
       - name: Find Chrome
@@ -141,7 +147,7 @@ jobs:
             echo "- Branch: $GITHUB_REF_NAME"
             echo "- HEAD: $GITHUB_SHA"
             echo "- Read-only Preview: $PREVIEW_URL"
-            echo '- New SKU correction: UI + browser QA + isolated Postgres, existing DRAFT RPC, no migration'
+            echo '- SKU correction + additional SKU classification/price: UI + isolated Postgres, migration 0077 TEST-ONLY'
             echo '- Production and live Supabase data not modified'
             echo '- Not merged or deployed to Production'
           } >> "$GITHUB_STEP_SUMMARY"
