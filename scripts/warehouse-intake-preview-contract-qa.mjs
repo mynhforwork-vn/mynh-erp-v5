@@ -384,7 +384,7 @@ const checks=[
     table.indexOf('className="warehouse-inline-item-skip-trigger"')>
       table.indexOf('className="warehouse-inline-sku-trigger"') &&
     table.indexOf('className="warehouse-inline-item-skip-trigger"')<
-      table.indexOf("if(col==='product')") &&
+      table.indexOf("if(col==='product')return <td",table.indexOf('className="warehouse-inline-item-skip-trigger"')) &&
     table.includes('className="warehouse-unified-status"') &&
     !table.includes('className="status-pill warehouse-inline-item-skip-trigger"') &&
     table.includes('itemDecisions[item.id]') &&
