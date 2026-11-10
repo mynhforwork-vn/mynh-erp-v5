@@ -73,6 +73,7 @@ export function WarehouseInlineSkuHistoryPicker({
   const [newVariant,setNewVariant]=useState(target.sourceVariant||'Mặc định')
   const [existingProductId,setExistingProductId]=useState(initialVariant?.products?.id??'')
   const [productQuery,setProductQuery]=useState('')
+  const [productLetter,setProductLetter]=useState('Tất cả')
   const [salePrice,setSalePrice]=useState(target.isEditing
     ?target.initialSalePrice??''
     :initialVariant?.sale_price===null||initialVariant?.sale_price===undefined
@@ -118,9 +119,13 @@ export function WarehouseInlineSkuHistoryPicker({
   const validNew=!!newCode&&newCode.length<=100&&newName.trim().length>0&&
     newName.trim().length<=255&&newVariant.trim().length>0&&newVariant.trim().length<=255&&!duplicatedSku
   const existingProduct=skuProducts.find(product=>product.id===existingProductId)
+  const productLetters=[...new Set(skuProducts.map(p=>normalizeCatalog(p.sku).charAt(0)||'#'))]
+    .sort((left,right)=>left.localeCompare(right,'en'))
   const productsMatched=skuProducts.filter(product=>
-    [product.sku,product.name].join(' ').toLocaleLowerCase('vi')
-      .includes(productQuery.trim().toLocaleLowerCase('vi'))).slice(0,productQuery.trim()?80:40)
+    (productLetter==='Tất cả'||(normalizeCatalog(product.sku).charAt(0)||'#')===productLetter)&&
+    normalizeCatalog([product.sku,product.name].join(' ')).includes(normalizeCatalog(productQuery)))
+    .sort((left,right)=>normalizeCatalog(left.sku).localeCompare(normalizeCatalog(right.sku),'en'))
+  const visibleProducts=productsMatched.slice(0,80)
   const duplicateVariant=!!existingProduct&&variants.some(variant=>
     variant.products?.id===existingProduct.id&&
     variant.variant_name.trim().toLocaleLowerCase('vi')===
@@ -144,6 +149,7 @@ export function WarehouseInlineSkuHistoryPicker({
       // New classifications must enter their own price, not reuse old price.
       setSalePrice('')
       setMultiplier('1')
+      if(next==='variant')setNewVariant('')
       if(next==='variant'&&!existingProductId&&selected?.products?.id){
         setExistingProductId(selected.products.id)
       }
@@ -339,25 +345,34 @@ export function WarehouseInlineSkuHistoryPicker({
         </>}
         {mode==='variant'&&<div className="warehouse-inline-sku-history-new">
           <p>Thêm phân loại bán mới cho SKU đã có. Giá bán áp dụng riêng cho phân loại mới; sản phẩm và các phân loại cũ được giữ nguyên.</p>
-          <label>Tìm SKU sản phẩm hiện có
-            <input type="search" aria-label="Tìm SKU để thêm phân loại"
-              disabled={busy} value={productQuery} placeholder="Mã hoặc tên SKU"
-              onChange={event=>setProductQuery(event.target.value)}/>
-          </label>
-          <label>Chọn SKU sản phẩm
-            <select aria-label="SKU gốc để thêm phân loại" disabled={busy}
-              value={existingProductId} onChange={event=>{
-                setExistingProductId(event.target.value)
-                setError('')
-              }}>
-              <option value="">— Chọn SKU đã có —</option>
+          <div className="warehouse-sku-browser">
+            <label>Tìm SKU sản phẩm hiện có
+              <input type="search" aria-label="Tìm SKU để thêm phân loại"
+                disabled={busy} value={productQuery} placeholder="Mã hoặc tên SKU"
+                onChange={event=>setProductQuery(event.target.value)}/>
+            </label>
+            <div className="warehouse-sku-alphabet" role="group" aria-label="Lọc SKU gốc theo ABC">
+              {['Tất cả',...productLetters].map(letter=><button type="button" key={letter}
+                className={productLetter===letter?'active':''} aria-pressed={productLetter===letter}
+                disabled={busy} onClick={()=>setProductLetter(letter)}>{letter}</button>)}
+            </div>
+            <div className="warehouse-sku-browser-count">{productsMatched.length} SKU sản phẩm phù hợp</div>
+            <div className="warehouse-sku-browser-results" role="group" aria-label="Chọn SKU gốc để thêm phân loại">
               {existingProduct&&!productsMatched.some(p=>p.id===existingProduct.id)&&
-                <option value={existingProduct.id}>{existingProduct.sku} · {existingProduct.name}</option>}
-              {productsMatched.map(product=><option key={product.id} value={product.id}>
-                {product.sku} · {product.name}
-              </option>)}
-            </select>
-          </label>
+                <button type="button" className="active" disabled={busy} aria-pressed="true"
+                  onClick={()=>setExistingProductId(existingProduct.id)}>
+                  <b>{existingProduct.sku}</b><span>{existingProduct.name}</span><small>Đang chọn</small>
+                </button>}
+              {visibleProducts.map(product=><button type="button" key={product.id}
+                disabled={busy} aria-pressed={existingProductId===product.id}
+                className={existingProductId===product.id?'active':''}
+                onClick={()=>{setExistingProductId(product.id);setError('')}}>
+                <b>{product.sku}</b><span>{product.name}</span>
+                <small>{variants.filter(v=>v.products?.id===product.id).length} phân loại hiện có</small>
+              </button>)}
+              {productsMatched.length===0&&<p>Không tìm thấy SKU phù hợp</p>}
+            </div>
+          </div>
           <label>Phân loại bán mới
             <input type="text" maxLength={255} disabled={busy}
               aria-label="Tên phân loại mới của SKU cũ" value={newVariant}
