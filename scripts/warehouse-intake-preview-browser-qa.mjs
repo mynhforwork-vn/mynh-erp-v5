@@ -81,6 +81,11 @@ try {
     await page.locator('.warehouse-unified-table tbody tr').first().waitFor({timeout:20000})
     const cards=page.locator('.warehouse-unified-group')
     assert.equal(await cards.count(),2,'two real receiving warehouses '+width)
+    assert.equal(await page.locator('.warehouse-unified-table .warehouse-order-quick-receive').count(),2,
+      'only 2 eligible rows expose quick receipt at '+width)
+    assert.equal(await page.locator('.warehouse-unified-table tbody tr').filter({
+      has:page.locator('.warehouse-order-quick-receive')
+    }).count(),2,'quick action only belongs to eligible order cells at '+width)
     const list=await page.evaluate(()=>{
       const tables=[...document.querySelectorAll('.warehouse-unified-table')]
       const wraps=[...document.querySelectorAll('.warehouse-unified-table-wrap')]
@@ -480,6 +485,61 @@ try {
   await page.close()
 }
 console.log('PASS adaptive groups · hide empty-action warehouse · completed history · 1/7 proportional heights')
+
+// Per-order quick receipt: eligible only, one order, same guarded popup.
+// Never perform a stock write in Preview and never process another selected order.
+for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
+  const page=await browser.newPage({viewport:{width,height}})
+  await page.setContent(html,{waitUntil:'load'})
+  // The detail slidebar overlays narrow devices; close it without changing order state.
+  if(width<=900)await page.locator('aside.warehouse-intake-panel .close').click()
+  const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
+  assert.equal(await bg.locator('.warehouse-order-quick-receive').count(),1,
+    'BG has one eligible quick order '+width)
+  assert.equal(await bg.locator('tbody tr').first().locator('.warehouse-order-quick-receive').count(),0,
+    'unmapped order cannot quick receive '+width)
+  const quick=bg.getByRole('button',{name:/Nhập nhanh đơn/})
+  await quick.click()
+  const review=page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]')
+  await review.waitFor()
+  assert.equal(await review.locator('.warehouse-bulk-order-cell').count(),1,
+    'quick preview has exactly one order '+width)
+  assert.equal(await review.locator('.warehouse-bulk-order-cell').first().innerText().then(x=>x.includes('261106SPXITEM002')),true,
+    'quick preview references the clicked order only '+width)
+  assert.match(await bg.locator('.warehouse-bulk-toolbar').innerText(),/1 đơn được chọn/,
+    'quick action selects exactly one order '+width)
+  assert.equal(await review.getByRole('button',{name:'Xác nhận nhập 1 đơn'}).isDisabled(),true,
+    'read-only Preview must block quick stock receipt '+width)
+  await review.getByRole('button',{name:'Hủy'}).click()
+  assert.equal(await bg.locator('.warehouse-bulk-toolbar').count(),0,
+    'cancel quick preview must clear temporary selection '+width)
+  await page.close()
+}
+{
+  const page=await browser.newPage({viewport:{width:1280,height:800}})
+  await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="bulk">'),{waitUntil:'load'})
+  const bg=page.locator('.warehouse-unified-group[data-warehouse-code="BG"]')
+  const quick=bg.getByRole('button',{name:/Nhập nhanh đơn 261106SPXITEM001/})
+  await quick.click()
+  const review=page.locator('[role="dialog"][data-warehouse-bulk-popup="BG"]')
+  await review.waitFor()
+  assert.equal(await review.locator('.warehouse-bulk-order-cell').count(),1,
+    'one order only in live mock quick review')
+  assert.equal(await review.getByRole('button',{name:'Xác nhận nhập 1 đơn'}).isEnabled(),true,
+    'eligible one-order receipt is ready to confirm')
+  assert.deepEqual(await page.evaluate(()=>window.__bulkCalls||[]),[],
+    'quick action must not submit any stock movement before confirmation')
+  await review.getByRole('button',{name:'Xác nhận nhập 1 đơn'}).click()
+  await page.getByText('1 đơn đã xử lý thành công',{exact:false}).waitFor()
+  const calls=await page.evaluate(()=>window.__bulkCalls||[])
+  assert.equal(calls.length,1,'single order must use exactly one Server Action')
+  assert.deepEqual(calls[0].orderIds,['10000000-0000-0000-0000-000000000001'],
+    'quick receipt cannot include other orders from the same warehouse')
+  assert.equal(await bg.locator('.warehouse-bulk-toolbar').count(),0,
+    'successful quick receipt clears temporary selection')
+  await page.close()
+}
+console.log('PASS quick receive per order · eligible only · 4 viewports · read-only and live mock')
 
 // Bulk receipt QA: non-destructive Preview confirmation and saved V2 mixed
 // decisions, then a live-mode mock with partial success and retry visibility.
