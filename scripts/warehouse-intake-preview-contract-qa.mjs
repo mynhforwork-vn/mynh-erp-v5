@@ -428,7 +428,7 @@ const checks=[
     table.includes('openSkipItem(event,row,item)') &&
     table.includes('className="warehouse-inline-sku-pair"') &&
     table.indexOf('className="warehouse-inline-item-skip-trigger"')>
-      table.indexOf('className="warehouse-inline-sku-trigger"') &&
+      table.indexOf("className={'warehouse-inline-sku-trigger'") &&
     table.indexOf('className="warehouse-inline-item-skip-trigger"')<
       table.indexOf("if(col==='product')return <td",table.indexOf('className="warehouse-inline-item-skip-trigger"')) &&
     table.includes('className="warehouse-unified-status"') &&
@@ -438,7 +438,8 @@ const checks=[
     table.includes('record.product_variant_id===null') &&
     table.includes('<WarehouseInlineSkipItem') &&
     table.includes("return !!bulkPreview(row,decisions)") &&
-    table.includes("!canSuggest&&<b>{itemDecisions[item.id]?.decision==='SKIP'") &&
+    table.includes("!canOpenSku&&<b title={isDone(row)?") &&
+    table.includes("saved?.decision==='SKIP'&&!item.product_variant_id") &&
     skipPicker.includes('skipWarehouseItemWithoutSku({orderItemId:target.orderItemId,reason:reason.trim()})') &&
     skipPicker.includes("reason.trim().length>0&&reason.trim().length<=500") &&
     skipPicker.includes('if(!canSave||inFlight.current)return') &&
