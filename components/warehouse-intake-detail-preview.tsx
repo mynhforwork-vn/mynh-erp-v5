@@ -83,7 +83,7 @@ type Draft={
 }
 type Choice={action:Decision,sku:string,price:string,multiplier:number,quantity:number,reason?:string}
 type ItemDecision={
-  order_item_id:string;order_id:string;product_variant_id:string
+  order_item_id:string;order_id:string;product_variant_id:string|null
   decision:'IN'|'SKIP';sale_price:number|string;multiplier:number
   skip_reason?:string|null;processing_state:'DRAFT'|'FINALIZED';updated_at?:string
 }
@@ -155,7 +155,8 @@ export function WarehouseIntakeDetailPreview({
       const variant=variants.find(v=>v.id===record.product_variant_id)
       saved[item.id]={
         action:record.decision,
-        sku:variant?.products?.sku??item.product_variants?.products?.sku??'Đã ghép SKU',
+        sku:record.decision==='SKIP'&&!record.product_variant_id?'Bỏ qua kho (không ghép SKU)':
+          variant?.products?.sku??item.product_variants?.products?.sku??'Đã ghép SKU',
         price:String(record.sale_price),multiplier:Number(record.multiplier),
         quantity:Number(item.quantity)*Number(record.multiplier),
         reason:record.skip_reason??undefined
@@ -339,7 +340,7 @@ export function WarehouseIntakeDetailPreview({
     <div className="panel-scroll whx-panel-scroll warehouse-detail-v2-scroll">
       {tab==='products'&&<div className="warehouse-detail-v2-content">
         <div className="warehouse-detail-v2-progress">
-          <b>{countSaved}/{order.order_items.length} đã ghép SKU</b>
+          <b>{countSaved}/{order.order_items.length} đã có quyết định SKU/kho</b>
           <span>{totalChoices} lựa chọn thử</span>
         </div>
         <div className="warehouse-detail-v2-products">
