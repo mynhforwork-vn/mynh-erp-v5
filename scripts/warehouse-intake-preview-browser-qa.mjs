@@ -600,7 +600,13 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   const pair=skuCell.locator('.warehouse-inline-sku-pair').first()
   const match=pair.locator('.warehouse-inline-sku-trigger')
   const skip=pair.getByRole('button',{name:/Bỏ qua kho sản phẩm/})
+  assert.equal((await skip.innerText()).trim(),'',
+    'skip action is icon-only without visible text '+width)
+  assert.equal(await skip.locator('svg').count(),1,
+    'skip icon is still visible and accessible '+width)
   const [matchBox,skipBox,skuBox]=await Promise.all([match.boundingBox(),skip.boundingBox(),skuCell.boundingBox()])
+  assert.ok(skipBox&&Math.abs(skipBox.width-18)<=1&&Math.abs(skipBox.height-18)<=1,
+    'skip icon has the same compact 18px control at all widths '+width)
   assert.ok(matchBox&&skipBox&&skuBox&&
     skipBox.x>=matchBox.x+matchBox.width-1&&
     Math.abs(skipBox.y+skipBox.height/2-(matchBox.y+matchBox.height/2))<=4&&
