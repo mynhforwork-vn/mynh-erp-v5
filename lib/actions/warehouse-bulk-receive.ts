@@ -80,7 +80,7 @@ export async function bulkReceiveWarehouseOrders(input:BulkInput):Promise<Wareho
     receipts.set(entry.order_id,list)
   }
   const decisions=new Map<string,Array<{
-    order_item_id:string;product_variant_id:string;multiplier:number;
+    order_item_id:string;product_variant_id:string|null;multiplier:number;
     sale_price:number;decision:string;skip_reason:string|null;processing_state:string
   }>>()
   for(const decision of decisionsRes.data??[]){
@@ -106,22 +106,27 @@ export async function bulkReceiveWarehouseOrders(input:BulkInput):Promise<Wareho
       reason='Đơn không còn ở trạng thái chờ nhập kho'
     }else if(warehouseRefs.length!==1||warehouseRefs[0]!==input.warehouseId){
       reason='Đơn không thuộc đúng một phiếu nhận của kho đã chọn'
-    }else if(!items.length||items.some(item=>!item.product_variant_id||
-      !Number.isInteger(Number(item.inventory_multiplier))||Number(item.inventory_multiplier)<1||
+    }else if(!items.length||items.some(item=>
       !Number.isInteger(Number(item.quantity))||Number(item.quantity)<1)){
-      reason='Cần ghép SKU và hệ số quy đổi đầy đủ'
+      reason='Số lượng sản phẩm không hợp lệ'
     }else if(decisionsFor.length){
       const map=new Map(decisionsFor.map(d=>[d.order_item_id,d]))
       if(map.size!==items.length||items.some(item=>{
         const d=map.get(item.id)
-        return !d||d.processing_state!=='DRAFT'||
-          d.product_variant_id!==item.product_variant_id||
-          Number(d.multiplier)!==Number(item.inventory_multiplier)||
+        if(!d||d.processing_state!=='DRAFT')return true
+        const skipped=d.decision==='SKIP'&&!!String(d.skip_reason??'').trim()
+        const skipWithoutSku=skipped&&!item.product_variant_id&&d.product_variant_id===null&&
+          Number(d.sale_price)===0&&Number(d.multiplier)===1
+        if(skipWithoutSku)return false
+        const factor=Number(d.multiplier)
+        return !item.product_variant_id||d.product_variant_id!==item.product_variant_id||
+          !Number.isInteger(factor)||factor<1||factor!==Number(item.inventory_multiplier)||
           !Number.isFinite(Number(d.sale_price))||Number(d.sale_price)<0||
           !['IN','SKIP'].includes(d.decision)||
-          (d.decision==='SKIP'&&!String(d.skip_reason??'').trim())
+          (d.decision==='SKIP'&&!skipped)||
+          Number(item.quantity)*factor>2147483647
       })){
-        reason='Cần lưu quyết định Nhập kho/Bỏ qua cho tất cả sản phẩm'
+        reason='Cần xác nhận SKU cho dòng nhập hoặc lý do cho dòng bỏ qua kho'
       }else{
         itemLevel.push({
           id,
@@ -129,6 +134,9 @@ export async function bulkReceiveWarehouseOrders(input:BulkInput):Promise<Wareho
           skipLines:decisionsFor.filter(d=>d.decision==='SKIP').length,
         })
       }
+    }else if(items.some(item=>!item.product_variant_id||
+      !Number.isInteger(Number(item.inventory_multiplier))||Number(item.inventory_multiplier)<1)){
+      reason='Cần ghép SKU và hệ số quy đổi đầy đủ'
     }else legacy.push(id)
     if(reason)result.failed.push({orderId:id,message:reason})
   }
