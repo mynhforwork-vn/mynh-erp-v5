@@ -131,8 +131,11 @@ export function WarehouseInlineSkuHistoryPicker({
   const narrow=window.innerWidth<=600
   const width=Math.min(380,window.innerWidth-20)
   const left=Math.max(10,Math.min(target.left,window.innerWidth-width-10))
-  const roomBelow=window.innerHeight-target.bottom
-  const top=roomBelow>=350?target.bottom+5:Math.max(8,target.top-400)
+  // Reserve the entire possible picker height before placing it. A short
+  // initial suggestion list grows when the user selects one; its footer must
+  // remain clickable even when the source row is near the viewport bottom.
+  const maxPanelHeight=Math.min(540,Math.floor(window.innerHeight*.8))
+  const top=Math.max(8,Math.min(target.bottom+5,window.innerHeight-maxPanelHeight-8))
   const position:CSSProperties=narrow
     ?{left:10,right:10,bottom:10,maxHeight:'min(75dvh,540px)'}
     :{left,top,maxWidth:width,maxHeight:'min(80dvh,540px)'}
