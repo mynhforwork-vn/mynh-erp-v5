@@ -531,7 +531,7 @@ export function WarehouseIntakeWorkspace({
                     <time className="warehouse-unified-received-at" title="Ngày nhận thực tế">
                       {receivedAt(row)?formatDateTime(receivedAt(row)):'Chưa có ngày nhận'}
                     </time>
-                    {!isDone(row)&&!isComplete(row)&&
+                    {!isDone(row)&&!isComplete(row,itemDecisions)&&
                       <span className="warehouse-unified-pending-value" title="Giá trị đơn hàng theo thông tin thanh toán">
                         Giá trị đơn: <strong>{(()=>{
                           const value=resolveOrderValue({
