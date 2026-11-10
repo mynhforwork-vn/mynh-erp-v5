@@ -133,10 +133,11 @@ function stateLabel(order:Order){
 }
 
 export function WarehouseIntakeDetailPreview({
-  order,variants,auditLogs,suggestions,itemDecisions={},previewOnly=true,simulate=true,onClose
+  order,variants,skuProducts=[],auditLogs,suggestions,itemDecisions={},previewOnly=true,simulate=true,onClose
 }:{
   order:Order
   variants:Variant[]
+  skuProducts?:SkuProduct[]
   auditLogs:Audit[]
   suggestions:Record<string,Suggestion[]>
   itemDecisions?:Record<string,ItemDecision>
@@ -181,6 +182,15 @@ export function WarehouseIntakeDetailPreview({
   const selectedVariant=draft
     ?variants.find(variant=>variant.id===draft.variantId)??(selected?.product_variants?.id===draft.variantId?selected.product_variants:null)
     :null
+  const availableProducts=skuProducts.length?skuProducts:
+    [...new Map(variants.filter(v=>v.products?.id).map(v=>[v.products!.id!,{
+      id:v.products!.id!,sku:String(v.products?.sku??''),name:String(v.products?.name??'')
+    }])).values()]
+  const variantProduct=availableProducts.find(p=>p.id===draft?.productId)
+  const duplicatedClassification=!!variantProduct&&variants.some(v=>
+    v.products?.id===variantProduct.id&&
+    v.variant_name.trim().toLocaleLowerCase('vi')===
+      String(draft?.newVariant??'').trim().toLocaleLowerCase('vi'))
   const suggestionOptions=selected?(suggestions[selected.id]??[]):[]
   const countSaved=order.order_items.filter(item=>!!item.product_variant_id||(!simulate&&!!choices[item.id])).length
   const totalChoices=Object.keys(choices).length
@@ -238,6 +248,12 @@ export function WarehouseIntakeDetailPreview({
     if(draft.mode==='existing'&&!selectedVariant){
       setNotice('Vui lòng chọn SKU bán có sẵn trước khi ghi nhận.');return
     }
+    if(draft.mode==='variant'&&(!variantProduct||!draft.newVariant.trim()||draft.newVariant.trim().length>255)){
+      setNotice('Chọn SKU đã có và nhập phân loại bán mới.');return
+    }
+    if(draft.mode==='variant'&&duplicatedClassification){
+      setNotice('Phân loại này đã tồn tại trong SKU. Hãy chọn phân loại có sẵn.');return
+    }
     if(draft.mode==='new'&&(!draft.newSku.trim()||!draft.newName.trim()||!draft.newVariant.trim())){
       setNotice('Nhập đủ mã SKU, tên sản phẩm và phân loại để tạo SKU mới.');return
     }
@@ -255,7 +271,8 @@ export function WarehouseIntakeDetailPreview({
     if(draft.decision==='SKIP'&&!draft.reason.trim()){
       setNotice('Cần nhập lý do cho sản phẩm Bỏ qua kho.');return
     }
-    const sku=draft.mode==='existing'?(selectedVariant?.products?.sku??'Chưa có mã SKU'):draft.newSku.trim().toUpperCase()
+    const sku=draft.mode==='existing'?(selectedVariant?.products?.sku??'Chưa có mã SKU'):
+      draft.mode==='variant'?(variantProduct?.sku??'Chưa có mã SKU'):draft.newSku.trim().toUpperCase()
     const nextChoice:Choice={
       action:draft.decision,sku,price:draft.salePrice,multiplier,
       quantity:Number(selected.quantity)*multiplier,
@@ -268,15 +285,21 @@ export function WarehouseIntakeDetailPreview({
     }
     setBusy(true)
     try{
-      const result=await saveWarehouseItemDecision({
-        orderItemId:selected.id,
-        variantId:draft.mode==='existing'?selectedVariant?.id??null:null,
-        newSku:draft.mode==='new'?draft.newSku.trim():null,
-        newName:draft.mode==='new'?draft.newName.trim():null,
-        newVariant:draft.mode==='new'?draft.newVariant.trim():null,
-        salePrice:price,multiplier,decision:draft.decision,
-        skipReason:draft.decision==='SKIP'?draft.reason.trim():null
-      })
+      const result=draft.mode==='variant'
+        ?await addWarehouseVariantAndMap({
+          orderItemId:selected.id,productId:variantProduct!.id,
+          variantName:draft.newVariant.trim(),salePrice:price,multiplier,
+          decision:draft.decision,skipReason:draft.decision==='SKIP'?draft.reason.trim():null
+        })
+        :await saveWarehouseItemDecision({
+          orderItemId:selected.id,
+          variantId:draft.mode==='existing'?selectedVariant?.id??null:null,
+          newSku:draft.mode==='new'?draft.newSku.trim():null,
+          newName:draft.mode==='new'?draft.newName.trim():null,
+          newVariant:draft.mode==='new'?draft.newVariant.trim():null,
+          salePrice:price,multiplier,decision:draft.decision,
+          skipReason:draft.decision==='SKIP'?draft.reason.trim():null
+        })
       setChoices(current=>({...current,[selected.id]:nextChoice}))
       setDrafts(current=>({...current,
         [selected.id]:{...draft,mode:'existing',variantId:result.product_variant_id}
@@ -375,8 +398,11 @@ export function WarehouseIntakeDetailPreview({
           <div className="warehouse-detail-v2-switch">
             <button type="button" disabled={processed||isReadOnly||busy} className={draft.mode==='existing'?'active':''}
               onClick={()=>change({mode:'existing'})}>Chọn SKU có sẵn</button>
+            <button type="button" disabled={processed||isReadOnly||busy} className={draft.mode==='variant'?'active':''}
+              onClick={()=>change({mode:'variant',productId:draft.productId||selectedVariant?.products?.id||'',
+                variantId:'',salePrice:'',multiplier:'1'})}>Thêm phân loại</button>
             <button type="button" disabled={processed||isReadOnly||busy} className={draft.mode==='new'?'active':''}
-              onClick={()=>change({mode:'new',variantId:''})}>Tạo SKU mới</button>
+              onClick={()=>change({mode:'new',variantId:'',salePrice:'',multiplier:'1'})}>Tạo SKU mới</button>
           </div>
           {draft.mode==='existing'?<div className="warehouse-detail-v2-fields">
             {suggestionOptions.length>0&&<div className="warehouse-detail-v2-suggestion" aria-label="Gợi ý SKU từ lịch sử ghép">
@@ -419,6 +445,20 @@ export function WarehouseIntakeDetailPreview({
                 </option>)}
               </select>
               <small>{draft.query?'Tối đa 80 kết quả phù hợp':'Nhập từ khóa để tìm trong danh mục'} · Chưa xác nhận SKU</small>
+            </label>
+          </div>:draft.mode==='variant'?<div className="warehouse-detail-v2-fields warehouse-detail-v2-pair">
+            <p className="warehouse-detail-v2-source">Thêm phân loại vào SKU cũ với giá bán riêng; giữ nguyên sản phẩm và các phân loại đã có.</p>
+            <label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>SKU sản phẩm hiện có</span>
+              <select aria-label="Chọn SKU gốc để thêm phân loại" disabled={processed||isReadOnly||busy}
+                value={draft.productId} onChange={e=>change({productId:e.target.value})}>
+                <option value="">— Chọn SKU đã có —</option>
+                {availableProducts.map(p=><option key={p.id} value={p.id}>{p.sku} · {p.name}</option>)}
+              </select>
+            </label>
+            <label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>Phân loại mới</span>
+              <input aria-label="Nhập phân loại mới của SKU cũ" disabled={processed||isReadOnly||busy}
+                maxLength={255} value={draft.newVariant} onChange={e=>change({newVariant:e.target.value})}/>
+              {duplicatedClassification&&<small role="alert">Phân loại đã tồn tại, hãy chọn phân loại có sẵn.</small>}
             </label>
           </div>:<div className="warehouse-detail-v2-fields warehouse-detail-v2-pair">
             <label className="warehouse-detail-v2-field"><span>Mã SKU bán mới</span>
