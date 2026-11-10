@@ -765,6 +765,34 @@
 .warehouse-inline-sku-history-content>p{
   margin:0 0 9px;color:#607b8a;font-size:10px;
 }
+/* Keep new/existing SKU workflows together: no slidebar required. */
+.warehouse-inline-sku-history-modes{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;
+  margin-bottom:10px;
+}
+.warehouse-inline-sku-history-modes button{
+  padding:7px 5px;min-height:30px;border:1px solid #d5e2e9;border-radius:5px;
+  background:#f8fafc;color:#536e7c;font-size:10.5px;font-weight:600;cursor:pointer;
+}
+.warehouse-inline-sku-history-modes button.active{
+  border-color:#a4cdbf;background:#edf8f2;color:#2b7458;
+}
+.warehouse-inline-sku-history-catalog,
+.warehouse-inline-sku-history-new>label{
+  display:flex;flex-direction:column;gap:4px;margin-top:8px;
+  font-size:10px;color:#496c7c;min-width:0;
+}
+.warehouse-inline-sku-history-catalog input,
+.warehouse-inline-sku-history-catalog select,
+.warehouse-inline-sku-history-new input{
+  box-sizing:border-box;min-height:31px;width:100%;
+  padding:5px 7px;border:1px solid #cbdde5;border-radius:5px;
+  background:#fff;color:#2c4a5a;font-size:11px;min-width:0;
+}
+.warehouse-inline-sku-history-new p{margin:0;color:#607b8a;font-size:10px}
+.warehouse-inline-sku-history-new .warehouse-inline-sku-history-error{
+  display:block;margin-top:6px;font-size:10px;
+}
 .warehouse-inline-sku-history-options{
   display:flex;flex-direction:column;gap:5px;
 }
@@ -873,19 +901,19 @@
   font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;
 }
-/* COD note belongs to the unparsed order, directly under received time.
+/* Order value belongs to the unparsed order, directly under received time.
    It shares the exact start edge with the order code, not a new table column. */
-.warehouse-receive-screen .warehouse-unified-table .warehouse-unified-pending-cod{
+.warehouse-receive-screen .warehouse-unified-table .warehouse-unified-pending-value{
   display:block;box-sizing:border-box;max-width:100%;min-width:0;
   margin-top:2px;padding:0;color:#607b8b;font-size:9.8px;line-height:1.4;
   font-variant-numeric:tabular-nums;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;
 }
-.warehouse-receive-screen .warehouse-unified-table .warehouse-unified-pending-cod strong{
+.warehouse-receive-screen .warehouse-unified-table .warehouse-unified-pending-value strong{
   color:#3f6175;font-weight:650;
 }
 @container warehouse-lane (max-width:550px){
-  .warehouse-receive-screen .warehouse-unified-table .warehouse-unified-pending-cod{
+  .warehouse-receive-screen .warehouse-unified-table .warehouse-unified-pending-value{
     font-size:9px;
   }
 }
