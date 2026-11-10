@@ -357,6 +357,8 @@ export function WarehouseIntakeWorkspace({
             const readyIds=readyRows.map(row=>row.id)
             const cappedIds=readyIds.slice(0,25)
             const allReadySelected=cappedIds.length>0&&selectedGroup===group.id&&cappedIds.every(id=>selectedSet.has(id))
+            const partiallyReadySelected=selectedGroup===group.id
+              &&cappedIds.some(id=>selectedSet.has(id))&&!allReadySelected
             const selectedOrders=(selectedGroup===group.id
               ? selected.filter(id=>readyIds.includes(id))
               : []).map(id=>readyRows.find(row=>row.id===id))
@@ -369,18 +371,24 @@ export function WarehouseIntakeWorkspace({
               const attributes={'data-col':col,'data-label':TABLE_LABELS[col]}
               if(col==='order')return <td key={col} {...attributes}>
                 <div className="warehouse-unified-order">
-                  {!!bulkPreview(row,itemDecisions)&&<input type="checkbox" className="warehouse-bulk-select-checkbox"
-                    checked={selectedGroup===group.id&&selectedSet.has(row.id)}
-                    onChange={()=>toggleReady(group.id,row.id)}
-                    onClick={event=>event.stopPropagation()}
-                    aria-label={'Chọn '+(row.shopee_order_id??row.id)}/>}
-                  <button type="button" className="table-link" onClick={event=>{event.stopPropagation();setActiveId(row.id)}}>
-                    {row.shopee_order_id??row.id.slice(0,8)}
-                  </button>
+                  {readyIds.length>0&&(!!bulkPreview(row,itemDecisions)
+                    ?<label className="warehouse-bulk-select-control" onClick={event=>event.stopPropagation()}>
+                      <input type="checkbox" className="warehouse-bulk-select-checkbox"
+                        checked={selectedGroup===group.id&&selectedSet.has(row.id)}
+                        onChange={()=>toggleReady(group.id,row.id)}
+                        aria-label={'Chọn '+(row.shopee_order_id??row.id)}/>
+                      <span className="warehouse-bulk-select-mark" aria-hidden="true"/>
+                    </label>
+                    :<span className="warehouse-bulk-select-spacer" aria-hidden="true"/>)}
+                  <div className="warehouse-unified-order-details">
+                    <button type="button" className="table-link" onClick={event=>{event.stopPropagation();setActiveId(row.id)}}>
+                      {row.shopee_order_id??row.id.slice(0,8)}
+                    </button>
+                    <time className="warehouse-unified-received-at" title="Ngày nhận thực tế">
+                      {receivedAt(row)?formatDateTime(receivedAt(row)):'Chưa có ngày nhận'}
+                    </time>
+                  </div>
                 </div>
-                <time className="warehouse-unified-received-at" title="Ngày nhận thực tế">
-                  {receivedAt(row)?formatDateTime(receivedAt(row)):'Chưa có ngày nhận'}
-                </time>
               </td>
               const linePrice=(value:number|string|null|undefined)=>{
                 if(value===null||value===undefined||value===''||!Number.isFinite(Number(value)))return 'Chưa có'
@@ -478,11 +486,16 @@ export function WarehouseIntakeWorkspace({
                     aria-label={'Danh sách Nhập kho '+group.code}>
                     <colgroup>{tableColumns.visible.map((col,index)=><col key={col}
                       style={{width:columnWidths[index]+'%'}}/>)}</colgroup>
-                    <thead><tr>{tableColumns.visible.map(col=><th key={col}>
+                    <thead><tr>{tableColumns.visible.map(col=><th key={col} data-col={col}>
                       {col==='order'?<div className="warehouse-unified-order-head">
-                        {readyIds.length>0&&<input type="checkbox" className="warehouse-bulk-select-checkbox"
-                          checked={allReadySelected} onChange={()=>toggleAllReady(group.id,readyIds)}
-                          aria-label={'Chọn tối đa 25 đơn chờ nhập '+group.code}/>}
+                        {readyIds.length>0&&<label className="warehouse-bulk-select-control">
+                          <input type="checkbox" className="warehouse-bulk-select-checkbox"
+                            checked={allReadySelected} data-partial={partiallyReadySelected?'true':undefined}
+                            aria-checked={partiallyReadySelected?'mixed':allReadySelected}
+                            onChange={()=>toggleAllReady(group.id,readyIds)}
+                            aria-label={'Chọn tối đa 25 đơn chờ nhập '+group.code}/>
+                          <span className="warehouse-bulk-select-mark" aria-hidden="true"/>
+                        </label>}
                         <SortableHeader column={col} label={TABLE_LABELS[col]} sort={tableSort} onSort={tableSort.toggle}/>
                       </div>:<SortableHeader column={col} label={TABLE_LABELS[col]} sort={tableSort} onSort={tableSort.toggle}/>}
                     </th>)}</tr></thead>
