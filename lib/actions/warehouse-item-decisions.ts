@@ -75,6 +75,61 @@ export async function saveWarehouseItemDecision(input:SaveInput){
     quantity:number;skip_reason:string|null;status:string
   }
 }
+// Create a NEW classification under an existing SKU (different sale price).
+// This is a single audited DRAFT transaction; it never adjusts inventory.
+export async function addWarehouseVariantAndMap(input:{
+  orderItemId:string
+  productId:string
+  variantName:string
+  salePrice:number
+  multiplier:number
+  decision:'IN'|'SKIP'
+  skipReason:string|null
+}){
+  const supabase=await authorize()
+  const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if(!input||!uuid.test(input.orderItemId)||!uuid.test(input.productId)){
+    throw new Error('Thiếu sản phẩm mua hoặc SKU bán có sẵn')
+  }
+  const variantName=String(input.variantName??'').trim()
+  if(!variantName||variantName.length>255){
+    throw new Error('Phân loại SKU phải có từ 1 đến 255 ký tự')
+  }
+  if(!Number.isFinite(input.salePrice)||input.salePrice<0||input.salePrice>999999999||
+    Math.round(input.salePrice*100)!==input.salePrice*100){
+    throw new Error('Giá bán không hợp lệ (tối đa 2 chữ số thập phân)')
+  }
+  if(!Number.isInteger(input.multiplier)||input.multiplier<1||input.multiplier>100000){
+    throw new Error('Hệ số quy đổi phải là số nguyên dương hợp lệ')
+  }
+  if(!['IN','SKIP'].includes(input.decision)){
+    throw new Error('Vui lòng chọn quyết định kho')
+  }
+  const reason=input.decision==='SKIP'?String(input.skipReason??'').trim():''
+  if(input.decision==='SKIP'&&(!reason||reason.length>500)){
+    throw new Error('Cần nhập lý do bỏ qua kho (tối đa 500 ký tự)')
+  }
+  const {data,error}=await supabase.rpc('add_warehouse_variant_and_map',{
+    p_order_item_id:input.orderItemId,
+    p_product_id:input.productId,
+    p_variant_name:variantName,
+    p_sale_price:input.salePrice,
+    p_multiplier:input.multiplier,
+    p_decision:input.decision,
+    p_skip_reason:reason||null,
+  })
+  if(error){
+    const safe=/^(Đơn |Sản phẩm |SKU |Mã SKU |Giá bán |Cần |Chưa |Không |Thông tin |Số lượng |Thiếu |Hệ số |Phân loại )/u.test(error.message)
+    throw new Error(safe?error.message:'Không thể thêm phân loại SKU. Hãy kiểm tra dữ liệu và thử lại.')
+  }
+  revalidateWarehouse()
+  return data as {
+    order_item_id:string;order_id:string;product_variant_id:string
+    sale_price:number;decision:'IN'|'SKIP';multiplier:number
+    quantity:number;skip_reason:string|null;status:'DRAFT'
+  }
+}
+
 // Explicit skip for a purchase item without any mapped sale SKU.
  // The DB RPC requires a reason, validates the confirmed receiving order and
  // creates an audit-backed DRAFT only; it cannot create inventory transactions.
