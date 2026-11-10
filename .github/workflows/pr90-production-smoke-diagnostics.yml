@@ -1,0 +1,52 @@
+name: PR90 Production Endpoint Diagnostic
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/pr90-production-smoke-diagnostics.yml'
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Diagnose deployed ERP endpoint routing without writing production data
+        shell: bash
+        run: |
+          set -uo pipefail
+          fail=0
+          for base in https://mynh-erp-v5.mynh-forwork.workers.dev https://erp.mynh-forwork.workers.dev; do
+            for path in /api/health /login /api/alerts/in-app; do
+              case "$path" in
+                /api/health) expected="200" ;;
+                /login) expected="200" ;;
+                /api/alerts/in-app) expected="401" ;;
+              esac
+              code="000"
+              for attempt in 1 2 3 4 5; do
+                code="$(curl -sS -L --max-time 20 -o response.txt -w '%{http_code}' "$base$path" 2>/dev/null || true)"
+                echo "$base$path attempt=$attempt status=$code expected=$expected"
+                if [ "$code" = "$expected" ]; then break; fi
+                sleep 4
+              done
+              if [ "$code" != "$expected" ]; then
+                echo "::error::Unexpected HTTP $code for $base$path (expected $expected)"
+                head -c 320 response.txt 2>/dev/null | tr '\n' ' ' || true
+                echo
+                fail=1
+              fi
+              if [ "$path" = "/api/health" ] && [ "$code" = "200" ]; then
+                grep -q '"ok":true' response.txt || fail=1
+              fi
+              if [ "$path" = "/login" ] && [ "$code" = "200" ]; then
+                grep -q 'MYNH ERP' response.txt || fail=1
+              fi
+            done
+          done
+          if [ "$fail" = 0 ]; then
+            echo 'PASS production and alias health/login/authorization route smoke'
+          else
+            echo 'FAIL production endpoint smoke; keep all Preview environments'
+            exit 1
+          fi
