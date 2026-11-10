@@ -502,6 +502,8 @@ console.log('PASS adaptive groups · hide empty-action warehouse · completed hi
   assert.match(await review.innerText(),/Giá gốc\/SP/)
   assert.match(await review.innerText(),/Giá bán\/SP/)
   assert.match(await review.innerText(),/35\\.000|35,000|35000|Chưa có/)
+  assert.equal(await review.getByRole('checkbox').count(),0,
+    'Preview popup must not require an extra checked-agreement step')
   assert.equal(await review.getByRole('button',{name:/Xác nhận nhập/}).isDisabled(),true,
     'Preview must never allow the stock submission')
   await page.screenshot({path:path.join(output,'warehouse-bulk-preview-v2-skip.png')})
@@ -537,7 +539,10 @@ console.log('PASS adaptive groups · hide empty-action warehouse · completed hi
       cells.map(cell=>[cell.parentElement?.dataset.reviewOrder,2]))),
     'each product row must remain linked to its original order')
   assert.match(await review.innerText(),/2 đơn nhập toàn bộ/)
-  await review.getByRole('checkbox',{name:/Tôi đã đối chiếu/}).check()
+  assert.equal(await review.getByRole('checkbox').count(),0,
+    'Live popup must not show the redundant agreement checkbox')
+  assert.equal(await review.getByRole('button',{name:'Xác nhận nhập 2 đơn'}).isEnabled(),true,
+    'Live confirmation should be ready after reviewing eligible orders, without extra checkbox')
   await page.evaluate(()=>{window.__bulkPartial=true})
   await review.getByRole('button',{name:'Xác nhận nhập 2 đơn'}).click()
   await page.getByText('1 đơn đã xử lý thành công',{exact:false}).waitFor()
