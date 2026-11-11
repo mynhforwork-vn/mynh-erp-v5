@@ -1116,3 +1116,17 @@
 .warehouse-inline-sku-history .warehouse-sku-sku-results{max-height:140px}
 .warehouse-inline-sku-history .warehouse-sku-classification-results button{
   grid-template-columns:minmax(55px,auto) minmax(0,1fr)}
+
+
+/* Two top-level flows: existing SKU (including new variant) / new SKU. */
+.warehouse-inline-sku-history-modes{grid-template-columns:repeat(2,minmax(0,1fr))}
+.warehouse-sku-add-classification{width:100%;min-height:29px;border:1px dashed #9bc9b5;
+  background:#f4faf7;border-radius:5px;color:#25694f;font-size:10.5px;
+  font-weight:650;text-align:left;padding:6px 9px;cursor:pointer}
+.warehouse-sku-add-classification:hover:not(:disabled){background:#e6f6ed}
+.warehouse-sku-add-classification:focus-visible{outline:2px solid #438b82;outline-offset:1px}
+.warehouse-sku-classification-actions{display:flex;gap:8px;align-items:center;
+  justify-content:space-between;flex-wrap:wrap;min-width:0}
+.warehouse-sku-classification-actions button{background:transparent;border:0;
+  padding:4px 0;font-size:10px;color:#28716b;cursor:pointer;font-weight:650}
+.warehouse-sku-classification-actions button:focus-visible{outline:2px solid #438b82}
