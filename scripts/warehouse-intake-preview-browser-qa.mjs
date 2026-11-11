@@ -80,7 +80,7 @@ async function pickDetailClassification(panel,sku){
   await panel.locator('.warehouse-detail-v2-classification-results button').filter({hasText:sku}).first().click()
 }
 async function pickInlineClassification(picker,sku,fromHistory=false){
-  const change=picker.getByRole('button',{name:'Đổi SKU sản phẩm'})
+  const change=picker.locator('.warehouse-sku-product-selected > button')
   if(await change.count())await change.click()
   await picker.locator('.warehouse-sku-classification-results').waitFor({state:'hidden',timeout:8000})
   const browserState=await picker.evaluate(el=>({
