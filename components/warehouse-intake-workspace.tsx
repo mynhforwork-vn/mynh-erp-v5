@@ -196,6 +196,7 @@ export function WarehouseIntakeWorkspace({
   simulate=true,
   previewOnly=false,
   showProcessedOnly=false,
+  canCorrectFinalizedSku=false,
 }:{
   rows:Row[]
   variants:Variant[]
@@ -206,6 +207,7 @@ export function WarehouseIntakeWorkspace({
   simulate?:boolean
   previewOnly?:boolean
   showProcessedOnly?:boolean
+  canCorrectFinalizedSku?:boolean
 }){
   const catalogProducts=useMemo(()=>skuProducts.length?skuProducts:
     [...new Map(variants.filter(v=>v.products?.id).map(v=>[v.products!.id!,{
@@ -842,6 +844,7 @@ export function WarehouseIntakeWorkspace({
       order={active} variants={variants} skuProducts={catalogProducts} auditLogs={auditLogs}
       suggestions={suggestions} itemDecisions={itemDecisions}
       previewOnly={previewOnly} simulate={simulate}
+      canCorrectFinalizedSku={canCorrectFinalizedSku}
       onClose={()=>setActiveId(null)}/>}
 
   </div>
