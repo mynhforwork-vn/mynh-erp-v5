@@ -83,6 +83,13 @@ async function pickInlineClassification(picker,sku,fromHistory=false){
   const change=picker.getByRole('button',{name:'Đổi SKU sản phẩm'})
   if(await change.count())await change.click()
   await picker.locator('.warehouse-sku-classification-results').waitFor({state:'hidden',timeout:8000})
+  const browserState=await picker.evaluate(el=>({
+    text:el.innerText.slice(0,850),
+    skuList:el.querySelectorAll('.warehouse-sku-sku-results').length,
+    classes:[...el.querySelectorAll('[class*="warehouse-sku"]')].map(x=>x.className).slice(0,20)
+  })).catch(error=>({error:String(error)}))
+  assert.equal(browserState.skuList,1,
+    'after changing SKU, product search step must appear before classification: '+JSON.stringify(browserState))
   await picker.locator('.warehouse-sku-sku-results').waitFor({state:'visible',timeout:8000})
   assert.equal(await picker.count(),1,'changing SKU must keep the picker open')
   const candidates=await picker.locator('.warehouse-sku-sku-results button').allTextContents()
