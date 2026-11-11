@@ -90,8 +90,8 @@ try{
    'sale-linked SKU blocks correction')
  await blocked.close()
  const demo=await browser.newPage({viewport:{width:390,height:844}})
- await demo.addInitScript(()=>{window.__previewOnly=true})
- await demo.setContent(html,{waitUntil:'load'})
+ await demo.setContent(html.replace('<script>'+script+'</script>',
+  '<script>window.__previewOnly=true;</script><script>'+script+'</script>'),{waitUntil:'load'})
  await demo.getByRole('button',{name:'Điều chỉnh SKU đã nhập kho'}).click()
  await demo.getByText('Chế độ xem trước: chỉ thử chọn SKU và phân loại').waitFor()
  await demo.getByRole('group',{name:'Chọn SKU sản phẩm'}).getByRole('button',{name:/ABC-01/}).click()
