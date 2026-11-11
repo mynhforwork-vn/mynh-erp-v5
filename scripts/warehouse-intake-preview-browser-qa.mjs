@@ -82,7 +82,8 @@ async function pickDetailClassification(panel,sku){
 async function pickInlineClassification(picker,sku,fromHistory=false){
   const change=picker.getByRole('button',{name:'Đổi SKU sản phẩm'})
   if(await change.count())await change.click()
-  assert.equal(await picker.count(),1,'changing SKU must not close the picker')
+  const closeReason=await picker.page().evaluate(()=>window.__skuDebugClose||'none')
+  assert.equal(await picker.count(),1,'changing SKU must not close the picker; close reason='+closeReason)
   assert.equal(await picker.locator('.warehouse-sku-classification-results').count(),0,
     'old classification cannot remain visible while changing parent SKU')
   const candidates=await picker.locator('.warehouse-sku-sku-results button').allTextContents()
