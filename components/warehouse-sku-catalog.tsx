@@ -95,8 +95,11 @@ export function WarehouseSkuCatalog({
   }
   const validPrice=price.trim()!==''&&Number.isFinite(Number(price))&&
     Number(price)>=0&&Number(price)<=999999999
+  const duplicateVariant=mode==='add'&&!!selected&&!!variant.trim()&&
+    rows.some(row=>row.productId===selected.productId&&
+      normalize(row.variantName)===normalize(variant))
   async function save(){
-    if(!selected||busy||!canEdit||!validPrice)return
+    if(!selected||busy||!canEdit||!validPrice||duplicateVariant)return
     setBusy(true);setError('')
     try{
       if(mode==='add'){
@@ -204,13 +207,13 @@ export function WarehouseSkuCatalog({
             onClick={()=>setSelectedId(null)}>×</button>
         </header>
         <div className="sku-catalog-drawer-body">
-          <div className="sku-catalog-stock">
+          {mode!=='add'&&<div className="sku-catalog-stock">
             <b>Tồn kho theo kho nhận</b>
             {selected.balances.length===0?<span>Chưa có giao dịch kho</span>:
             selected.balances.map(b=><div key={b.warehouseId}>
               <span>{b.warehouse}</span><strong>{b.quantity.toLocaleString('vi-VN')}</strong>
             </div>)}
-          </div>
+          </div>}
           {selected.isActive?<>
             <div className="sku-catalog-tabs" role="group" aria-label="Thao tác SKU">
               <button type="button" aria-pressed={mode==='edit'} className={mode==='edit'?'active':''}
@@ -234,18 +237,29 @@ export function WarehouseSkuCatalog({
                 disabled={!canEdit||busy||!validPrice||!sku.trim()||!name.trim()||!variant.trim()}>
                 {busy?'Đang lưu…':'Lưu chỉnh sửa'}</button>
             </div>}
-            {mode==='add'&&<div className="sku-catalog-form">
-              <p className="sku-catalog-hint">Thêm phân loại mới cho <b>{selected.sku}</b>; mỗi phân loại có giá bán riêng.</p>
-              <label>Phân loại mới <input value={variant} maxLength={255}
-                placeholder="Ví dụ: Đỏ / Size M" disabled={!canEdit||busy}
-                onChange={e=>setVariant(e.target.value)}/></label>
-              <label>Giá bán <input type="number" inputMode="decimal" min={0} max={999999999}
-                step="0.01" value={price} disabled={!canEdit||busy}
-                onChange={e=>setPrice(e.target.value)}/></label>
-              <button type="button" className="button primary" onClick={()=>void save()}
-                disabled={!canEdit||busy||!validPrice||!variant.trim()}>
-                {busy?'Đang thêm…':'Thêm phân loại'}</button>
-              <p className="sku-catalog-hint">Thao tác này không nhập kho và không tạo giao dịch tồn.</p>
+            {mode==='add'&&<div className="sku-catalog-form sku-catalog-add-compact">
+              <div className="sku-catalog-add-fields">
+                <label>Phân loại mới
+                  <input value={variant} maxLength={255} autoComplete="off"
+                    placeholder="Đỏ / Size M" disabled={!canEdit||busy}
+                    onChange={e=>setVariant(e.target.value)}/>
+                </label>
+                <label>Giá bán
+                  <input type="number" inputMode="decimal" min={0} max={999999999}
+                    step="0.01" value={price} disabled={!canEdit||busy}
+                    onChange={e=>setPrice(e.target.value)}/>
+                </label>
+              </div>
+              {duplicateVariant&&<small role="alert" className="sku-catalog-error">
+                Phân loại đã tồn tại trong SKU này.
+              </small>}
+              <div className="sku-catalog-add-footer">
+                <small>Giá riêng · Không nhập kho tự động</small>
+                <button type="button" className="button primary" onClick={()=>void save()}
+                  disabled={!canEdit||busy||!validPrice||!variant.trim()||duplicateVariant}>
+                  {busy?'Đang thêm…':'Thêm phân loại'}
+                </button>
+              </div>
             </div>}
             {mode==='merge'&&canMerge&&<div className="sku-catalog-form">
               <p className="sku-catalog-hint">
