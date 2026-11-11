@@ -1087,6 +1087,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await page.setContent(html,{waitUntil:'load'})
   await page.locator('.warehouse-inline-sku-trigger:not(.warehouse-inline-sku-edit-trigger)').first().click()
   const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
+  await picker.waitFor()
   assert.equal(await picker.locator('.warehouse-inline-sku-history-modes button').count(),2,
     'add classification is inside existing SKU, not a third top-level mode '+width)
   if(await picker.locator('.warehouse-sku-product-selected').count())
@@ -1125,6 +1126,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true">'),{waitUntil:'load'})
   await page.locator('.warehouse-inline-sku-trigger:not(.warehouse-inline-sku-edit-trigger)').first().click()
   const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
+  await picker.waitFor()
   if(await picker.locator('.warehouse-sku-product-selected').count())
     await picker.locator('.warehouse-sku-product-selected button').click()
   await picker.locator('.warehouse-sku-sku-results button').filter({hasText:'TEST-01'}).first().click()
