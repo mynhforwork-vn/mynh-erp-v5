@@ -1176,7 +1176,8 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
     'picker remains inside viewport '+width+'x'+height+' '+JSON.stringify(bounds))
   assert.equal(await picker.getByRole('button',{name:'Lưu ghép SKU'}).isDisabled(),true,
     'Preview never performs a database write '+width)
-  await picker.getByRole('button',{name:/ALT-02/}).click()
+  await picker.locator('.warehouse-inline-sku-history-options>button')
+    .filter({hasText:'ALT-02'}).click()
   assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'65000',
     'operator can explicitly switch to another old matching SKU '+width)
   const saveRect=await picker.getByRole('button',{name:'Lưu ghép SKU'}).boundingBox()
