@@ -71,6 +71,26 @@ const harnessCss=[
   '@media(max-width:900px){.shell.brand-shell-v1>.main{margin-left:0!important;width:100%!important}}',
 ].join('\n')
 const html='<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+css+'\n'+harnessCss+'</style></head><body><div class="shell brand-shell-v1"><main class="main"><div id="root" class="tracking-screen tracking-screen-v2 whx-page warehouse-receive-screen"></div></main></div><script>'+readFileSync(outfile,'utf8')+'</script></body></html>'
+async function pickDetailClassification(panel,sku){
+  const change=panel.getByRole('button',{name:'Đổi SKU sản phẩm'})
+  if(await change.count())await change.click()
+  await panel.locator('.warehouse-detail-v2-product-results button').filter({hasText:sku}).first().click()
+  assert.equal(await panel.locator('.warehouse-detail-v2-classification-results').count(),1,
+    'classification step appears only after product SKU')
+  await panel.locator('.warehouse-detail-v2-classification-results button').filter({hasText:sku}).first().click()
+}
+async function pickInlineClassification(picker,sku,fromHistory=false){
+  const change=picker.getByRole('button',{name:'Đổi SKU sản phẩm'})
+  if(await change.count())await change.click()
+  await picker.locator('.warehouse-sku-sku-results button').filter({hasText:sku}).first().click()
+  assert.equal(await picker.locator('.warehouse-sku-classification-results').count(),1,
+    'classification step appears only after product SKU')
+  if(fromHistory&&await picker.locator('.warehouse-inline-sku-history-options>button').count())
+    await picker.locator('.warehouse-inline-sku-history-options>button').first().click()
+  else
+    await picker.locator('.warehouse-sku-classification-results button').filter({hasText:sku}).first().click()
+}
+
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BIN, args:['--no-sandbox']})
 try {
   for(const [width,height] of [[320,568],[360,800],[390,844],[414,896],[568,320],[768,1024],[820,1180],[1024,768],[1180,820],[1280,800],[1366,768],[1440,900],[1536,864],[1920,1080]]){
@@ -428,13 +448,13 @@ try {
     if(width===1280){
       const panel=page.locator('aside.warehouse-detail-v2')
       assert.equal(await panel.locator('.warehouse-detail-v2-product').count(),2,'two items in V2')
-      await panel.locator('.warehouse-detail-v2-sku-results button').filter({hasText:'TEST-01'}).first().click()
+      await pickDetailClassification(panel,'TEST-01')
       await panel.getByLabel('Hệ số quy đổi',{exact:true}).fill('2')
       assert.match(await panel.locator('.warehouse-detail-v2-conversion').innerText(),/4/)
       await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).click()
       assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU\/kho/)
       await panel.locator('.warehouse-detail-v2-product').nth(1).click()
-      await panel.locator('.warehouse-detail-v2-sku-results button').filter({hasText:'TEST-01'}).first().click()
+      await pickDetailClassification(panel,'TEST-01')
       await panel.getByRole('button',{name:'Bỏ qua kho',exact:true}).click()
       await panel.getByLabel('Lý do bỏ qua kho (bắt buộc)').fill('Sản phẩm không cần nhập kho')
       await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).click()
@@ -980,7 +1000,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
     'saved inventory multiplier is prefilled '+width)
   assert.equal(await dialog.getByRole('button',{name:'Nhập kho',exact:true}).getAttribute('aria-pressed'),'true',
     'saved IN decision remains prefilled '+width)
-  await dialog.locator('.warehouse-sku-browser-results button').filter({hasText:'ALT-02'}).first().click()
+  await pickInlineClassification(dialog,'ALT-02')
   assert.equal(await dialog.getByLabel('Giá bán ghép nhanh').inputValue(),'65000',
     'manually changing SKU picks its catalog price without a write '+width)
   assert.equal(await dialog.getByRole('button',{name:'Nhập kho',exact:true}).getAttribute('aria-pressed'),'true',
@@ -1003,7 +1023,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   const edit=hn.getByRole('button',{name:/Sửa ghép SKU TEST-01/}).first()
   await edit.click()
   const dialog=page.getByRole('dialog',{name:'Sửa ghép SKU'})
-  await dialog.locator('.warehouse-sku-browser-results button').filter({hasText:'ALT-02'}).first().click()
+  await pickInlineClassification(dialog,'ALT-02')
   await dialog.getByLabel('Hệ số ghép nhanh').fill('3')
   await dialog.getByRole('button',{name:'Lưu thay đổi'}).click()
   await page.getByRole('status').filter({hasText:'Đã cập nhật ghép SKU'}).waitFor()
@@ -1180,8 +1200,8 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await draft.click()
   const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
   await picker.waitFor()
-  assert.equal(await picker.locator('.warehouse-inline-sku-history-options>button').count(),2,
-    'alternative old SKU pairings remain available '+width)
+  assert.equal(await picker.locator('.warehouse-inline-sku-history-options>button').count(),1,
+    'only classifications belonging to chosen SKU are shown '+width)
   assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'90000',
     'best-ranked old SKU is prefilled from catalog '+width)
   assert.equal(await picker.getByLabel('Hệ số ghép nhanh').inputValue(),'2',
@@ -1194,8 +1214,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
     'picker remains inside viewport '+width+'x'+height+' '+JSON.stringify(bounds))
   assert.equal(await picker.getByRole('button',{name:'Lưu ghép SKU'}).isDisabled(),true,
     'Preview never performs a database write '+width)
-  await picker.locator('.warehouse-inline-sku-history-options>button')
-    .filter({hasText:'ALT-02'}).click()
+  await pickInlineClassification(picker,'ALT-02',true)
   assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'65000',
     'operator can explicitly switch to another old matching SKU '+width)
   const saveRect=await picker.getByRole('button',{name:'Lưu ghép SKU'}).boundingBox()
@@ -1227,8 +1246,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true" data-scenario="history">'),{waitUntil:'load'})
   await page.locator('.warehouse-inline-sku-trigger:not(.warehouse-inline-sku-edit-trigger)').filter({hasText:'TEST-01'}).click()
   const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
-  await picker.locator('.warehouse-inline-sku-history-options>button')
-    .filter({hasText:'ALT-02'}).click()
+  await pickInlineClassification(picker,'ALT-02',true)
   await picker.getByRole('button',{name:'Lưu ghép SKU'}).click()
   await page.getByRole('status').filter({hasText:'Đã lưu ghép SKU cho đơn'}).waitFor()
   const calls=await page.evaluate(()=>window.__warehouseCalls??[])
@@ -1327,11 +1345,11 @@ console.log('PASS history suggestions · multiple candidates · manual select ·
   await panel.locator('.warehouse-detail-v2-product').first().waitFor()
   assert.equal(await panel.getByRole('button',{name:'Ghi nhận lựa chọn thử'}).count(),0,
     'live mode must not expose simulator save button')
-  await panel.locator('.warehouse-detail-v2-sku-results button').filter({hasText:'TEST-01'}).first().click()
+  await pickDetailClassification(panel,'TEST-01')
   await panel.getByRole('button',{name:'Lưu bóc tách và quyết định'}).click()
   await panel.getByText('Đã lưu SKU, giá và quyết định kho.',{exact:false}).waitFor()
   await panel.locator('.warehouse-detail-v2-product').nth(1).click()
-  await panel.locator('.warehouse-detail-v2-sku-results button').filter({hasText:'TEST-01'}).first().click()
+  await pickDetailClassification(panel,'TEST-01')
   await panel.getByRole('button',{name:'Bỏ qua kho',exact:true}).click()
   await panel.getByLabel('Lý do bỏ qua kho (bắt buộc)').fill('Không nhập kho')
   await panel.getByRole('button',{name:'Lưu bóc tách và quyết định'}).click()
