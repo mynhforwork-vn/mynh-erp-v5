@@ -104,3 +104,13 @@
 .sku-catalog-add-footer small{min-width:0;flex:1;color:#647f90;font-size:10px;line-height:1.3}
 .sku-catalog-add-footer .button{flex:0 0 auto;white-space:nowrap}
 @media(max-width:380px){.sku-catalog-add-fields{grid-template-columns:1fr}}
+
+
+.sku-catalog-add-parent{display:flex;align-items:center;justify-content:space-between;
+  gap:8px;min-width:0;border-bottom:1px solid #e5ecf0;padding-bottom:7px}
+.sku-catalog-add-parent>span{display:flex;align-items:baseline;gap:7px;min-width:0}
+.sku-catalog-add-parent b{font-size:12px;color:#29566a;white-space:nowrap}
+.sku-catalog-add-parent small{font-size:11px;color:#698391;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sku-catalog-add-parent>button{border:0;background:none;color:#317c79;font-weight:650;
+  font-size:11px;padding:4px;white-space:nowrap;cursor:pointer}
+.sku-catalog-add-step{font-size:11px;font-weight:650;color:#426a7a}
