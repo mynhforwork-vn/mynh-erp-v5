@@ -1089,10 +1089,10 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
   assert.equal(await picker.locator('.warehouse-inline-sku-history-modes button').count(),2,
     'add classification is inside existing SKU, not a third top-level mode '+width)
-  assert.equal(await picker.getByRole('button',{name:'+ Thêm phân loại mới'}).count(),0,
-    'must choose parent SKU before offering a new classification '+width)
   if(await picker.locator('.warehouse-sku-product-selected').count())
     await picker.locator('.warehouse-sku-product-selected button').click()
+  assert.equal(await picker.getByRole('button',{name:'+ Thêm phân loại mới'}).count(),0,
+    'must choose parent SKU before offering a new classification '+width)
   await picker.locator('.warehouse-sku-sku-results button').filter({hasText:'TEST-01'}).first().click()
   assert.equal(await picker.locator('.warehouse-sku-classification-results').count(),1,
     'existing classifications are shown for the selected parent '+width)
