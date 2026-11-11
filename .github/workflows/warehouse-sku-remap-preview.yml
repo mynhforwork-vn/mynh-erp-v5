@@ -1,0 +1,153 @@
+name: Warehouse SKU Remap Correction — Safe Preview & Isolated DB QA
+on:
+  push:
+    branches: [fix/warehouse-sku-remap-20261110]
+    paths:
+      - '.github/workflows/warehouse-sku-remap-preview.yml'
+      - 'components/warehouse-intake-workspace.tsx'
+      - 'components/warehouse-inline-sku-history-picker.tsx'
+      - 'components/warehouse-intake-detail-preview.tsx'
+      - 'app/styles/warehouse-intake-preview.css'
+      - 'scripts/warehouse-sku-remap-db-qa.sql'
+      - 'scripts/warehouse-existing-sku-variant-db-qa.sql'
+      - 'supabase/migrations/0077_warehouse_add_variant_to_existing_sku.sql'
+      - 'app/(erp)/warehouse/receive/page.tsx'
+      - 'scripts/warehouse-intake-preview-browser-qa.mjs'
+      - 'scripts/warehouse-intake-preview-contract-qa.mjs'
+      - 'lib/actions/warehouse-item-decisions.ts'
+permissions:
+  contents: read
+concurrency:
+  group: warehouse-sku-remap-preview
+  cancel-in-progress: true
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PGPASSWORD: postgres
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm Preview-only target
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/fix/warehouse-sku-remap-20261110
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          grep -q '"ERP_WAREHOUSE_V2_LIVE": "false"' wrangler.jsonc
+          echo 'No production Worker/Supabase writes from this workflow'
+      - name: Install application dependencies
+        run: npm install --no-audit --no-fund
+      - name: Warehouse contracts, regressions and TypeScript
+        run: |
+          set -euo pipefail
+          node scripts/warehouse-intake-preview-contract-qa.mjs
+          node scripts/warehouse-sku-suggestion-qa.mjs
+          node scripts/warehouse-bulk-action-qa.mjs
+          node scripts/remediation-static-qa.mjs
+          node --experimental-strip-types scripts/returned-shipment-cancellation-qa.mjs
+          node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+          npm run typecheck
+      - name: Isolated PostgreSQL SKU remap and finalized stock QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+          psql -X --host=127.0.0.1 --port=5432 --username=postgres --dbname=postgres \
+            -v ON_ERROR_STOP=1 \
+            -f scripts/warehouse-item-level-db-fixture.sql \
+            -f supabase/migrations/0075_item_level_warehouse_decisions.sql \
+            -f supabase/migrations/0076_skip_unmapped_warehouse_item.sql \
+            -f supabase/migrations/0077_warehouse_add_variant_to_existing_sku.sql \
+            -f scripts/warehouse-sku-remap-db-qa.sql \
+            -f scripts/warehouse-existing-sku-variant-db-qa.sql 2>&1 | tee warehouse-remap-db-qa.log
+          grep -q 'PASS: draft SKU remapping, persistence, audit, SKIP correction, permission, finalized lock, no duplicate inventory' warehouse-remap-db-qa.log
+          grep -q 'PASS: one SKU two classifications two prices, duplicate guard, role, audit, atomic mapping and final stock' warehouse-remap-db-qa.log
+      - name: Install fixture QA browser dependencies
+        run: npm install --no-save playwright esbuild --no-audit --no-fund
+      - name: Find Chrome
+        shell: bash
+        run: |
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+      - name: Responsive browser QA including saved SKU remapping
+        run: node scripts/warehouse-intake-preview-browser-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: warehouse-sku-remap-qa-${{ github.sha }}
+          path: |
+            qa-warehouse-3items/
+            warehouse-remap-db-qa.log
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Build OpenNext for read-only Preview
+        run: npx opennextjs-cloudflare build
+      - name: Deploy only isolated Warehouse SKU correction Preview
+        id: preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler preview --name warehouse-sku-remap-20261110 --worker-name mynh-erp-v5 --message "QA SKU correction only; Production unchanged" --json > warehouse-remap-preview-result.json
+          node - <<'NODE'
+          const fs=require('fs')
+          const str=fs.readFileSync('warehouse-remap-preview-result.json','utf8')
+          const data=JSON.parse(str.slice(str.indexOf('{'),str.lastIndexOf('}')+1))
+          const urls=[]
+          function visit(x){
+            if(typeof x==='string'&&x.startsWith('https://'))urls.push(x)
+            else if(Array.isArray(x))x.forEach(visit)
+            else if(x&&typeof x==='object')Object.values(x).forEach(visit)
+          }
+          visit(data)
+          const url=urls.find(x=>x.includes('warehouse-sku-remap-20261110')&&x.includes('workers.dev'))
+          if(!url)throw new Error('Expected dedicated SKU correction Preview URL missing')
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'url='+url+'\n')
+          console.log('Preview URL: '+url)
+          NODE
+      - name: Read-only Preview smoke
+        shell: bash
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 "$PREVIEW_URL/api/health" > health.json
+          grep -q '"ok":true' health.json
+          code="$(curl -L -sS -o login.html -w '%{http_code}' "$PREVIEW_URL/login")"
+          test "$code" = 200
+          grep -q 'MYNH ERP' login.html
+      - name: Release gate summary
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+        run: |
+          {
+            echo '## Warehouse SKU Remap – Preview'
+            echo "- Branch: $GITHUB_REF_NAME"
+            echo "- HEAD: $GITHUB_SHA"
+            echo "- Read-only Preview: $PREVIEW_URL"
+            echo '- SKU correction + additional SKU classification/price: UI + isolated Postgres, migration 0077 TEST-ONLY'
+            echo '- Production and live Supabase data not modified'
+            echo '- Not merged or deployed to Production'
+          } >> "$GITHUB_STEP_SUMMARY"

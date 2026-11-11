@@ -13,11 +13,12 @@ import { WarehouseIntakeDetailPreview } from '@/components/warehouse-intake-deta
 import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
 import type {HistoricalSuggestion} from '@/lib/warehouse-sku-suggestions'
 
+type SkuProduct={id:string;sku:string;name:string}
 type Variant={
   id:string
   variant_name:string
   sale_price?:number|string|null
-  products?:{sku?:string|null,name?:string|null}|null
+  products?:{id?:string|null,sku?:string|null,name?:string|null}|null
 }
 type Item={
   id:string
@@ -188,6 +189,7 @@ function bulkPreview(row:Row,decisions:Record<string,ItemDecision>):BulkOrderPre
 export function WarehouseIntakeWorkspace({
   rows,
   variants,
+  skuProducts=[],
   auditLogs,
   suggestions,
   itemDecisions={},
@@ -197,6 +199,7 @@ export function WarehouseIntakeWorkspace({
 }:{
   rows:Row[]
   variants:Variant[]
+  skuProducts?:SkuProduct[]
   auditLogs:AuditLog[]
   suggestions:Record<string,Suggestion[]>
   itemDecisions?:Record<string,ItemDecision>
@@ -204,6 +207,11 @@ export function WarehouseIntakeWorkspace({
   previewOnly?:boolean
   showProcessedOnly?:boolean
 }){
+  const catalogProducts=useMemo(()=>skuProducts.length?skuProducts:
+    [...new Map(variants.filter(v=>v.products?.id).map(v=>[v.products!.id!,{
+      id:v.products!.id!,sku:String(v.products?.sku??''),name:String(v.products?.name??'')
+    }])).values()], [skuProducts,variants])
+
   const groups=useMemo(()=>{
     const map=new Map<string,{
       id:string
@@ -252,6 +260,9 @@ export function WarehouseIntakeWorkspace({
   const [quickSkuTarget,setQuickSkuTarget]=useState<{
     orderItemId:string;orderLabel:string;productName:string;
     sourceVariant:string|null;quantity:number;left:number;top:number;bottom:number
+    initialVariantId:string|null;initialSalePrice:string|null
+    initialMultiplier:number;initialDecision:'IN'|'SKIP'|null
+    initialSkipReason:string|null;isEditing:boolean
   }|null>(null)
   const [quickSkipTarget,setQuickSkipTarget]=useState<{
     orderItemId:string;orderLabel:string;productName:string;
@@ -335,13 +346,24 @@ export function WarehouseIntakeWorkspace({
   }
   function openSkuHistory(event:React.MouseEvent<HTMLButtonElement>,row:Row,item:Item){
     event.stopPropagation()
-    if(isDone(row)||item.product_variant_id||itemDecisions[item.id])return
+    const saved=itemDecisions[item.id]
+    // A mapped SKU is editable until final stock receipt. The existing
+    // server RPC updates only DRAFT decisions and rejects posted stock.
+    if(isDone(row)||saved?.processing_state==='FINALIZED'||quickSkuInFlight.current)return
     setQuickSkipTarget(null)
     const rect=event.currentTarget.getBoundingClientRect()
+    const mappedVariant=item.product_variant_id??saved?.product_variant_id??null
+    const sourcePrice=saved?.sale_price??item.product_variants?.sale_price
     setQuickSkuTarget({
       orderItemId:item.id,orderLabel:row.shopee_order_id??row.id.slice(0,8),
       productName:item.product_name,sourceVariant:item.variant??null,
-      quantity:Number(item.quantity),left:rect.left,top:rect.top,bottom:rect.bottom
+      quantity:Number(item.quantity),left:rect.left,top:rect.top,bottom:rect.bottom,
+      initialVariantId:mappedVariant,
+      initialSalePrice:sourcePrice===null||sourcePrice===undefined?'':String(sourcePrice),
+      initialMultiplier:Number(saved?.multiplier??item.inventory_multiplier??1),
+      initialDecision:saved?.decision??(mappedVariant?'IN':null),
+      initialSkipReason:saved?.skip_reason??null,
+      isEditing:Boolean(mappedVariant||saved)
     })
   }
   function openSkipItem(event:React.MouseEvent<HTMLButtonElement>,row:Row,item:Item){
@@ -602,7 +624,11 @@ export function WarehouseIntakeWorkspace({
                 {row.order_items.map(item=>{
                   const historical=(suggestions[item.id]??[])
                     .filter(option=>variants.some(variant=>variant.id===option.variant_id))
-                  const canSuggest=!isDone(row)&&!item.product_variant_id&&!itemDecisions[item.id]
+                  const saved=itemDecisions[item.id]
+                  const canSuggest=!isDone(row)&&!item.product_variant_id&&!saved
+                  const canRevise=!isDone(row)&&saved?.processing_state!=='FINALIZED'&&
+                    Boolean(item.product_variant_id||saved)
+                  const canOpenSku=canSuggest||canRevise
                   const proposed=historical[0]
                   const variant=proposed?variants.find(value=>value.id===proposed.variant_id):null
                   const price=variant?.sale_price
@@ -614,15 +640,26 @@ export function WarehouseIntakeWorkspace({
                   return <div key={item.id} className="warehouse-unified-product-line"
                     title={[item.product_variants?.products?.sku??'Chưa ghép SKU',item.product_variants?.products?.name].filter(Boolean).join(' · ')}>
                     <span className="warehouse-unified-sku-identity">
-                      {canSuggest&&<span className="warehouse-inline-sku-pair"><button type="button" className="warehouse-inline-sku-trigger"
-                        title={historical.length?'Ghép SKU nhanh · '+historical.length+' gợi ý từ lịch sử':'Ghép SKU nhanh · Tìm hoặc tạo SKU mới'}
-                        aria-label={'Chờ ghép SKU · '+historical.length+' gợi ý cho '+item.product_name}
+                      {canOpenSku&&<span className="warehouse-inline-sku-pair"><button type="button"
+                        className={'warehouse-inline-sku-trigger'+(canRevise?' warehouse-inline-sku-edit-trigger':'')}
+                        title={canRevise?'Sửa ghép SKU đã lưu · Chưa chốt nhập kho':
+                          historical.length?'Ghép SKU nhanh · '+historical.length+' gợi ý từ lịch sử':
+                            'Ghép SKU nhanh · Tìm hoặc tạo SKU mới'}
+                        aria-label={canRevise?'Sửa ghép SKU '+(item.product_variants?.products?.sku??'đã lưu')+' cho '+item.product_name:
+                          'Chờ ghép SKU · '+historical.length+' gợi ý cho '+item.product_name}
                         aria-haspopup="dialog" aria-expanded={quickSkuTarget?.orderItemId===item.id}
                         onClick={event=>openSkuHistory(event,row,item)}>
-                        {proposed&&variant
-                          ?<>{variant.products?.sku??'SKU gợi ý'}
-                            {historical.length>1&&<small>+{historical.length-1}</small>}</>
-                          :'Chờ ghép'}
+                        {canRevise
+                          ?<>{item.product_variants?.products?.sku??'Bỏ qua kho'}
+                            <svg viewBox="0 0 16 16" width="11" height="11" fill="none"
+                              stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
+                              strokeLinejoin="round" aria-hidden="true">
+                              <path d="M9.6 3.2l3.2 3.2M3 13l3.5-.8 6.6-6.6a1.8 1.8 0 0 0-2.6-2.6L4 9.6 3 13z"/>
+                            </svg></>
+                          :proposed&&variant
+                            ?<>{variant.products?.sku??'SKU gợi ý'}
+                              {historical.length>1&&<small>+{historical.length-1}</small>}</>
+                            :'Chờ ghép'}
                       </button>
                       {canSuggest&&proposed&&variant&&
                         <button type="button" className="warehouse-inline-sku-confirm"
@@ -644,7 +681,7 @@ export function WarehouseIntakeWorkspace({
                               <path d="m3 8 3.2 3.2L13 4.5"/>
                             </svg>}
                         </button>}
-                      <button type="button" className="warehouse-inline-item-skip-trigger"
+                      {canSuggest&&<button type="button" className="warehouse-inline-item-skip-trigger"
                         title={'Bỏ qua kho sản phẩm '+item.product_name+' · Không cần ghép SKU'}
                         aria-label={'Bỏ qua kho sản phẩm '+item.product_name}
                         aria-haspopup="dialog" aria-expanded={quickSkipTarget?.orderItemId===item.id}
@@ -655,9 +692,10 @@ export function WarehouseIntakeWorkspace({
                           <circle cx="8" cy="8" r="5.5"/>
                           <path d="M4.2 11.8 11.8 4.2"/>
                         </svg>
-                      </button></span>}
-                      {!canSuggest&&<b>{itemDecisions[item.id]?.decision==='SKIP'&&
-                        !item.product_variant_id?'Bỏ qua kho':item.product_variants?.products?.sku??'Chưa ghép'}</b>}
+                      </button>}</span>}
+                      {!canOpenSku&&<b title={isDone(row)?'Đơn đã chốt xử lý kho, không thể sửa trực tiếp':''}>
+                        {saved?.decision==='SKIP'&&!item.product_variant_id?'Bỏ qua kho':
+                          item.product_variants?.products?.sku??'Chưa ghép'}</b>}
                       {item.product_variants?.products?.name&&
                         <span className="warehouse-unified-sku-title">{item.product_variants.products.name}</span>}
                     </span>
@@ -794,12 +832,14 @@ export function WarehouseIntakeWorkspace({
       key={quickSkuTarget.orderItemId}
       target={quickSkuTarget}
       history={suggestions[quickSkuTarget.orderItemId]??[]}
-      variants={variants} previewOnly={previewOnly}
+      variants={variants} skuProducts={catalogProducts} previewOnly={previewOnly}
       onClose={()=>setQuickSkuTarget(null)}
-      onSaved={label=>setQuickNotice({kind:'success',message:'Đã lưu ghép SKU cho đơn '+label+' · Chưa nhập kho.'})}
+      onSaved={label=>setQuickNotice({kind:'success',message:
+        (quickSkuTarget.isEditing?'Đã cập nhật ghép SKU cho đơn ':'Đã lưu ghép SKU cho đơn ')+
+        label+' · Chưa nhập kho.'})}
     />}
     {active&&<WarehouseIntakeDetailPreview key={active.id}
-      order={active} variants={variants} auditLogs={auditLogs}
+      order={active} variants={variants} skuProducts={catalogProducts} auditLogs={auditLogs}
       suggestions={suggestions} itemDecisions={itemDecisions}
       previewOnly={previewOnly} simulate={simulate}
       onClose={()=>setActiveId(null)}/>}

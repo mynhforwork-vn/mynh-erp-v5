@@ -100,9 +100,27 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     return {data:collected,error:{message:'Danh sách nhận hàng vượt giới hạn 50.000 đơn. Cần phân trang phía máy chủ.'}}
   }
 
+  // SKU products are independent from their variants. A legacy SKU can
+  // receive a new classification even if it has no recent variant mapping.
+  async function loadSkuProducts(){
+    const collected:Array<{id:string,sku:string,name:string}>=[]
+    for(let page=0;page<100;page++){
+      const offset=page*500
+      const {data,error}=await supabase.from('products')
+        .select('id,sku,name').order('sku',{ascending:true})
+        .order('id',{ascending:true}).range(offset,offset+499)
+      if(error)return {data:collected,error}
+      const batch=data??[]
+      collected.push(...batch)
+      if(batch.length<500)return {data:collected,error:null}
+    }
+    return {data:collected,error:{message:'Danh mục SKU quá lớn; vui lòng thu hẹp phạm vi tải.'}}
+  }
+
   const [
     { data: orders, error: ordersError },
     { data: variants, error: variantsError },
+    { data: skuProducts, error: skuProductsError },
     { data: auditLogs, error: auditError },
     { data: receiptLinks, error: receiptLinksError },
     { data: receiptBatches, error: receiptBatchesError },
@@ -114,6 +132,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     supabase.from('product_variants')
       .select('id,variant_name,sale_price,products(id,sku,name)')
       .order('updated_at', { ascending: false }).limit(1500),
+    loadSkuProducts(),
     supabase.from('audit_logs')
       .select('id,entity_id,action,created_at,old_value,new_value')
       .eq('module', 'WAREHOUSE').eq('entity_type', 'ORDER')
@@ -132,7 +151,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       .not('product_variant_id', 'is', null)
       .order('created_at', { ascending: false }).limit(3000),
   ])
-  const error = ordersError ?? variantsError ?? auditError ??
+  const error = ordersError ?? variantsError ?? skuProductsError ?? auditError ??
     receiptLinksError ?? receiptBatchesError ?? receivingWarehousesError ?? settingsError ?? mappingError
 
   // Read-only reconciliation from the confirmed receiving records. Do not
@@ -338,7 +357,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
 
     <WarehouseIntakeWorkspace
       rows={displayedRows}
-      variants={allVariants}
+      variants={allVariants} skuProducts={skuProducts??[]}
       auditLogs={(auditLogs ?? []) as any[]}
       suggestions={suggestions}
       itemDecisions={itemDecisions}

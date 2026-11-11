@@ -10,6 +10,7 @@ const panel=read('components/warehouse-intake-detail-preview.tsx')
 const panelCss=read('app/styles/warehouse-intake-detail-preview.css')
 const migration=read('supabase/migrations/0075_item_level_warehouse_decisions.sql')
 const skipMigration=read('supabase/migrations/0076_skip_unmapped_warehouse_item.sql')
+const variantMigration=read('supabase/migrations/0077_warehouse_add_variant_to_existing_sku.sql')
 const actions=read('lib/actions/warehouse-item-decisions.ts')
 const bulkActions=read('lib/actions/warehouse-bulk-receive.ts')
 const bulkBar=read('components/warehouse-bulk-receive-bar.tsx')
@@ -387,11 +388,11 @@ const checks=[
     table.includes('<WarehouseInlineSkuHistoryPicker') &&
     inlinePicker.includes("history.filter(item=>variants.some(variant=>variant.id===item.variant_id))") &&
     inlinePicker.includes('const preferred=history.find(') &&
-    inlinePicker.includes("useState<Decision|null>(preferredVariant?'IN':null)") &&
+    inlinePicker.includes("target.isEditing?target.initialDecision:preferredVariant?'IN':null") &&
     inlinePicker.includes('Tạo SKU mới') &&
     inlinePicker.includes('Mã SKU bán mới ghép nhanh') &&
     inlinePicker.includes("mode==='new'?newCode:null") &&
-    inlinePicker.includes("mode==='new'?validNew:!!selected") &&
+    inlinePicker.includes("mode==='new'?validNew:mode==='variant'?validVariant:!!selected||unmappedSkip") &&
     inlinePicker.includes("decision==='SKIP'?skipReason.trim():null") &&
     inlinePicker.includes('await saveWarehouseItemDecision({') &&
     inlinePicker.includes('const canSave=!previewOnly') &&
@@ -400,13 +401,58 @@ const checks=[
     css.includes('.warehouse-inline-sku-confirm') &&
     css.includes('.warehouse-inline-sku-history-modes') &&
     css.includes('position:fixed;z-index:3200')],
+  ['existing SKU may add a separately priced sale classification atomically',
+    page.includes("async function loadSkuProducts()") &&
+    page.includes("loadSkuProducts(),") &&
+    page.includes("skuProducts={skuProducts??[]}") &&
+    table.includes("skuProducts={catalogProducts}") &&
+    inlinePicker.includes("type Mode='existing'|'variant'|'new'") &&
+    inlinePicker.includes("Thêm phân loại") &&
+    inlinePicker.includes("SKU gốc để thêm phân loại") &&
+    inlinePicker.includes("Tên phân loại mới của SKU cũ") &&
+    inlinePicker.includes("const validVariant=!!existingProduct") &&
+    inlinePicker.includes("await addWarehouseVariantAndMap({") &&
+    inlinePicker.includes("newVariant.trim()") &&
+    panel.includes("draft.mode==='variant'") &&
+    panel.includes("addWarehouseVariantAndMap({") &&
+    actions.includes("supabase.rpc('add_warehouse_variant_and_map'") &&
+    variantMigration.includes('PERFORM private.assert_operator()') &&
+    variantMigration.includes('WHERE id=v_order_id FOR UPDATE') &&
+    variantMigration.includes('WHERE p.id=p_product_id FOR UPDATE') &&
+    variantMigration.includes('lower(btrim(pv.variant_name))=lower(v_name)') &&
+    variantMigration.includes('RETURN private.save_warehouse_item_decision_impl(') &&
+    variantMigration.includes('GRANT EXECUTE ON FUNCTION public.add_warehouse_variant_and_map(') &&
+    !variantMigration.includes('UPDATE public.products SET') &&
+    !variantMigration.includes('UPDATE public.product_variants SET')],
+  ['saved draft SKU remapping is editable while finalized stock remains locked',
+    table.includes("const canRevise=!isDone(row)&&saved?.processing_state!=='FINALIZED'") &&
+    table.includes("const canOpenSku=canSuggest||canRevise") &&
+    table.includes("saved?.processing_state==='FINALIZED'||quickSkuInFlight.current") &&
+    table.includes("const mappedVariant=item.product_variant_id??saved?.product_variant_id??null") &&
+    table.includes("initialSalePrice:sourcePrice===null||sourcePrice===undefined?'':String(sourcePrice)") &&
+    table.includes("initialMultiplier:Number(saved?.multiplier??item.inventory_multiplier??1)") &&
+    table.includes("initialDecision:saved?.decision??(mappedVariant?'IN':null)") &&
+    table.includes('warehouse-inline-sku-edit-trigger') &&
+    table.includes("title={isDone(row)?'Đơn đã chốt xử lý kho, không thể sửa trực tiếp':''}") &&
+    inlinePicker.includes("const initialVariant=target.isEditing") &&
+    inlinePicker.includes("target.isEditing?target.initialDecision:preferredVariant?'IN':null") &&
+    inlinePicker.includes("target.isEditing?'Sửa ghép SKU':'Ghép SKU nhanh'") &&
+    inlinePicker.includes("target.isEditing?'Lưu thay đổi':'Lưu ghép SKU'") &&
+    inlinePicker.includes('await saveWarehouseItemDecision({') &&
+    inlinePicker.includes('await skipWarehouseItemWithoutSku({') &&
+    inlinePicker.includes('router.refresh()') &&
+    migration.includes("d.processing_state='FINALIZED'") &&
+    migration.includes("WHERE warehouse_item_decisions.processing_state='DRAFT'") &&
+    css.includes('.warehouse-inline-sku-edit-trigger') &&
+    !inlinePicker.includes('finalizeWarehouseItemDecisions(') &&
+    !table.includes('onClick={()=>setActiveId(row.id)}')],
   ['unmapped product can be explicitly skipped without fake sale SKU or stock movement',
     table.includes("from '@/components/warehouse-inline-skip-item'") &&
     table.includes('warehouse-inline-item-skip-trigger') &&
     table.includes('openSkipItem(event,row,item)') &&
     table.includes('className="warehouse-inline-sku-pair"') &&
     table.indexOf('className="warehouse-inline-item-skip-trigger"')>
-      table.indexOf('className="warehouse-inline-sku-trigger"') &&
+      table.indexOf("className={'warehouse-inline-sku-trigger'") &&
     table.indexOf('className="warehouse-inline-item-skip-trigger"')<
       table.indexOf("if(col==='product')return <td",table.indexOf('className="warehouse-inline-item-skip-trigger"')) &&
     table.includes('className="warehouse-unified-status"') &&
@@ -416,7 +462,8 @@ const checks=[
     table.includes('record.product_variant_id===null') &&
     table.includes('<WarehouseInlineSkipItem') &&
     table.includes("return !!bulkPreview(row,decisions)") &&
-    table.includes("!canSuggest&&<b>{itemDecisions[item.id]?.decision==='SKIP'") &&
+    table.includes("!canOpenSku&&<b title={isDone(row)?") &&
+    table.includes("saved?.decision==='SKIP'&&!item.product_variant_id") &&
     skipPicker.includes('skipWarehouseItemWithoutSku({orderItemId:target.orderItemId,reason:reason.trim()})') &&
     skipPicker.includes("reason.trim().length>0&&reason.trim().length<=500") &&
     skipPicker.includes('if(!canSave||inFlight.current)return') &&
