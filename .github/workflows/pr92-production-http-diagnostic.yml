@@ -1,0 +1,40 @@
+name: PR92 Production HTTP Read Only Diagnosis
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/pr92-production-http-diagnostic.yml'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Inspect live main and alias routes without modifying data
+        shell: bash
+        run: |
+          set -uo pipefail
+          for base in https://mynh-erp-v5.mynh-forwork.workers.dev https://erp.mynh-forwork.workers.dev; do
+            for endpoint in /api/health /login /api/alerts/in-app /warehouse/skus; do
+              code="000"
+              for attempt in 1 2 3; do
+                code="$(curl -sSL -o /tmp/response -w '%{http_code}' --connect-timeout 8 --max-time 25 "$base$endpoint" || true)"
+                if test "$code" != "000"; then break; fi
+                sleep 2
+              done
+              printf 'HOST=%s PATH=%s HTTP=%s\n' "$base" "$endpoint" "$code"
+              if test "$endpoint" = /api/health; then
+                if test "$code" = 200 && grep -q '"ok":true' /tmp/response; then
+                  echo 'health_json_ok=true'
+                else
+                  echo 'health_json_ok=false'
+                  head -c 150 /tmp/response | tr '\n' ' ' || true
+                  echo
+                fi
+              fi
+              if test "$endpoint" = /login; then
+                if grep -q 'MYNH ERP' /tmp/response; then echo 'login_brand_ok=true'; else echo 'login_brand_ok=false'; fi
+              fi
+            done
+          done
