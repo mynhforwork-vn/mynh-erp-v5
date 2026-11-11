@@ -65,6 +65,14 @@ jobs:
           node scripts/warehouse-intake-preview-contract-qa.mjs
           node scripts/sku-catalog-contract-qa.mjs
           node scripts/warehouse-bulk-action-qa.mjs
+      - name: Browser UI QA - 6 breakpoints, preview and blocked historical sale
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright esbuild --no-audit --no-fund
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          CHROME_BIN="$CHROME_PATH" node scripts/warehouse-post-receipt-browser-qa.mjs
       - name: Build only, no deploy
         run: npx opennextjs-cloudflare build
       - uses: actions/upload-artifact@v4
