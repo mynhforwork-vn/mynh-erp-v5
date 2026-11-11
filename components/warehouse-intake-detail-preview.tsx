@@ -150,7 +150,7 @@ export function WarehouseIntakeDetailPreview({
 }){
   const [tab,setTab]=useState<Tab>('products')
   const [skuLetter,setSkuLetter]=useState('Tất cả')
-  const [skuVariant,setSkuVariant]=useState('Tất cả')
+  const [skuBrowseOpen,setSkuBrowseOpen]=useState(false)
   const [productLetter,setProductLetter]=useState('Tất cả')
   const [productBrowserOpen,setProductBrowserOpen]=useState(false)
   const [focusedId,setFocusedId]=useState<string>(
@@ -211,21 +211,17 @@ export function WarehouseIntakeDetailPreview({
   const totalChoices=Object.keys(choices).length
   const activeShipment=order.shipments?.find(s=>s.is_active)??order.shipments?.[0]??null
   const warehouse=batchOf(order)?.warehouses
-  const variantLetters=[...new Set(variants.map(v=>
-    normalizeSku(v.products?.sku||v.products?.name||'').charAt(0)||'#'))]
-    .sort((a,b)=>a.localeCompare(b,'en'))
-  const variantClassifications=[...new Set(variants.map(v=>v.variant_name))]
-    .sort((a,b)=>a.localeCompare(b,'vi'))
-  const matchVariants=useMemo(()=>{
-    const query=normalizeSku(draft?.query??'')
-    return variants.filter(v=>
-      (skuLetter==='Tất cả'||(normalizeSku(v.products?.sku||v.products?.name||'').charAt(0)||'#')===skuLetter)&&
-      (skuVariant==='Tất cả'||v.variant_name===skuVariant)&&
-      normalizeSku([v.products?.sku,v.products?.name,v.variant_name].filter(Boolean).join(' ')).includes(query))
-      .sort((a,b)=>normalizeSku(a.products?.sku||a.products?.name||'')
-        .localeCompare(normalizeSku(b.products?.sku||b.products?.name||''),'en')||
-        a.variant_name.localeCompare(b.variant_name,'vi')).slice(0,80)
-  },[draft?.query,variants,skuLetter,skuVariant])
+  const selectedSkuId=draft?.productId||selectedVariant?.products?.id||''
+  const selectedSkuProduct=availableProducts.find(p=>p.id===selectedSkuId)
+  const skuProductLetters=[...new Set(availableProducts.map(p=>
+    normalizeSku(p.sku).charAt(0)||'#'))].sort((a,b)=>a.localeCompare(b,'en'))
+  const matchingSkuProducts=availableProducts.filter(p=>
+    (skuLetter==='Tất cả'||(normalizeSku(p.sku).charAt(0)||'#')===skuLetter)&&
+    normalizeSku([p.sku,p.name].join(' ')).includes(normalizeSku(draft?.query??'')))
+    .sort((a,b)=>normalizeSku(a.sku).localeCompare(normalizeSku(b.sku),'en'))
+    .slice(0,80)
+  const matchVariants=variants.filter(v=>v.products?.id===selectedSkuId)
+    .sort((a,b)=>a.variant_name.localeCompare(b.variant_name,'vi'))
   const logs=auditLogs.filter(log=>String(log.entity_id??'')===order.id)
 
   useEffect(()=>{
@@ -241,6 +237,7 @@ export function WarehouseIntakeDetailPreview({
 
   function focus(item:Item){
     setProductBrowserOpen(false)
+    setSkuBrowseOpen(false)
     setFocusedId(item.id)
     setNotice('')
     setShowSummary(false)
@@ -254,14 +251,15 @@ export function WarehouseIntakeDetailPreview({
   }
   function chooseVariant(id:string){
     const variant=variants.find(v=>v.id===id)
-    change({variantId:id,salePrice:variant?.sale_price===null||variant?.sale_price===undefined
+    change({variantId:id,productId:variant?.products?.id??'',salePrice:variant?.sale_price===null||variant?.sale_price===undefined
       ?'':String(variant.sale_price)})
   }
   function applySuggestion(suggestion:Suggestion){
     const variant=variants.find(v=>v.id===suggestion.variant_id)
     if(!variant){setNotice('SKU gợi ý không còn trong danh mục. Hãy chọn SKU khác.');return}
     const multiplier=Number(suggestion.multiplier)
-    change({mode:'existing',variantId:variant.id,
+    setSkuBrowseOpen(false)
+    change({mode:'existing',productId:variant.products?.id??'',variantId:variant.id,
       salePrice:variant.sale_price===null||variant.sale_price===undefined?'':String(variant.sale_price),
       multiplier:Number.isInteger(multiplier)&&multiplier>0?String(multiplier):'1'})
     setNotice('Đã chọn gợi ý để đối chiếu. Chưa lưu SKU hoặc nhập kho.')
@@ -451,42 +449,51 @@ export function WarehouseIntakeDetailPreview({
                 </div>)}
               </div>
             </div>}
-            <label className="warehouse-detail-v2-field"><span>Tìm SKU theo mã, tên hoặc phân loại</span>
-              <input type="search" aria-label="Tìm SKU theo mã, tên hoặc phân loại"
-                placeholder="Tìm trong danh mục SKU" disabled={processed||isReadOnly||busy}
-                value={draft.query} onChange={e=>change({query:e.target.value})}/>
-            </label>
             <div className="warehouse-detail-v2-browser" aria-label="Chọn SKU bán theo ABC">
-              <div className="warehouse-detail-v2-abc" role="group" aria-label="Lọc chữ cái SKU bán">
-                {['Tất cả',...variantLetters].map(letter=><button type="button" key={letter}
-                  aria-pressed={skuLetter===letter} className={skuLetter===letter?'active':''}
-                  disabled={processed||isReadOnly||busy} onClick={()=>setSkuLetter(letter)}>{letter}</button>)}
-              </div>
-              <label className="warehouse-detail-v2-field"><span>Phân loại SKU</span>
-                <select aria-label="Lọc phân loại SKU bán" value={skuVariant} disabled={processed||isReadOnly||busy}
-                  onChange={e=>setSkuVariant(e.target.value)}>
-                  <option value="Tất cả">Tất cả phân loại</option>
-                  {variantClassifications.map(name=><option value={name} key={name}>{name}</option>)}
-                </select>
-              </label>
-              <small>{matchVariants.length} kết quả theo ABC · Chỉ lưu khi xác nhận</small>
-              <div className="warehouse-detail-v2-sku-results" role="group" aria-label="Danh sách SKU bán">
-                {selectedVariant&&!matchVariants.some(v=>v.id===selectedVariant.id)&&
-                  <button type="button" className="active" aria-pressed="true"
-                    disabled={processed||isReadOnly||busy} onClick={()=>chooseVariant(selectedVariant.id)}>
-                    <b>{selectedVariant.products?.sku||'Chưa có mã'}</b>
-                    <span>{selectedVariant.products?.name||'Chưa có tên'}</span>
-                    <small>{selectedVariant.variant_name} · Đang chọn</small>
-                  </button>}
-                {matchVariants.map(v=><button key={v.id} type="button"
-                  className={draft.variantId===v.id?'active':''} aria-pressed={draft.variantId===v.id}
-                  disabled={processed||isReadOnly||busy} onClick={()=>chooseVariant(v.id)}>
-                  <b>{v.products?.sku||'Chưa có mã'}</b>
-                  <span>{v.products?.name||'Chưa có tên'}</span>
-                  <small>{v.variant_name}{v.sale_price!=null?' · '+formatMoney(v.sale_price):''}</small>
-                </button>)}
-                {matchVariants.length===0&&<small>Không có SKU phù hợp</small>}
-              </div>
+              <div className="warehouse-sku-step-caption">Bước 1 · Chọn SKU sản phẩm</div>
+              {selectedSkuProduct&&!skuBrowseOpen?
+                <div className="warehouse-detail-v2-product-selected" aria-label="SKU sản phẩm đã chọn">
+                  <span className="warehouse-detail-v2-product-summary">
+                    <b>{selectedSkuProduct.sku}</b><small>{selectedSkuProduct.name}</small>
+                  </span>
+                  <button type="button" disabled={processed||isReadOnly||busy}
+                    aria-label="Đổi SKU sản phẩm" onClick={()=>setSkuBrowseOpen(true)}>Đổi SKU</button>
+                </div>:
+                <>
+                  <label className="warehouse-detail-v2-field"><span>Tìm SKU theo mã hoặc tên</span>
+                    <input type="search" aria-label="Tìm SKU theo mã hoặc tên"
+                      placeholder="Tìm SKU sản phẩm…" disabled={processed||isReadOnly||busy}
+                      value={draft.query} onChange={e=>change({query:e.target.value})}/>
+                  </label>
+                  <div className="warehouse-detail-v2-abc" role="group" aria-label="Lọc chữ cái SKU bán">
+                    {['Tất cả',...skuProductLetters].map(letter=><button type="button" key={letter}
+                      aria-pressed={skuLetter===letter} className={skuLetter===letter?'active':''}
+                      disabled={processed||isReadOnly||busy} onClick={()=>setSkuLetter(letter)}>{letter}</button>)}
+                  </div>
+                  <div className="warehouse-detail-v2-sku-results warehouse-detail-v2-product-results"
+                    role="group" aria-label="Danh sách SKU sản phẩm">
+                    {matchingSkuProducts.map(p=><button type="button" key={p.id}
+                      aria-pressed={selectedSkuId===p.id} className={selectedSkuId===p.id?'active':''}
+                      disabled={processed||isReadOnly||busy}
+                      onClick={()=>{change({productId:p.id,variantId:'',salePrice:'',query:'',multiplier:'1'});setSkuBrowseOpen(false)}}>
+                      <b>{p.sku}</b><span>{p.name}</span>
+                    </button>)}
+                    {matchingSkuProducts.length===0&&<small>Không tìm thấy SKU sản phẩm.</small>}
+                  </div>
+                </>}
+              {selectedSkuProduct&&<>
+                <div className="warehouse-sku-step-caption">Bước 2 · Chọn phân loại của {selectedSkuProduct.sku}</div>
+                <div className="warehouse-detail-v2-sku-results warehouse-detail-v2-classification-results"
+                  role="group" aria-label="Phân loại của SKU đã chọn">
+                  {matchVariants.map(v=><button key={v.id} type="button"
+                    className={draft.variantId===v.id?'active':''} aria-pressed={draft.variantId===v.id}
+                    disabled={processed||isReadOnly||busy} onClick={()=>chooseVariant(v.id)}>
+                    <b>{v.products?.sku||selectedSkuProduct.sku}</b><span>{v.variant_name}</span>
+                    <small>{v.sale_price!=null?formatMoney(v.sale_price):'Chưa có giá bán'}</small>
+                  </button>)}
+                  {matchVariants.length===0&&<small>SKU này chưa có phân loại. Chuyển sang Thêm phân loại để tạo.</small>}
+                </div>
+              </>}
             </div>
           </div>:draft.mode==='variant'?<div className="warehouse-detail-v2-fields warehouse-detail-v2-pair">
             <div className="warehouse-sku-step-caption warehouse-detail-v2-full">Bước 1 · Chọn SKU sản phẩm</div>
