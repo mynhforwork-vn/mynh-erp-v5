@@ -17,6 +17,7 @@
       "ERP_WAREHOUSE_V2_LIVE": "false",
       "ERP_SKU_CATALOG_LIVE": "false",
       "ERP_POST_RECEIPT_SKU_LIVE": "false",
+      "ERP_POST_RECEIPT_SKU_PREVIEW_UI": "true",
       "NEXT_PUBLIC_SUPABASE_URL": "https://nvgxwqapfaslavhtpauh.supabase.co",
       "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_HNOcPFxwK51DKxAmy5fQhw_89dNfMOS"
     }
