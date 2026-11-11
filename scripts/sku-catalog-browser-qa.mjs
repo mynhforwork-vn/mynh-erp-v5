@@ -73,6 +73,15 @@ try{
  await page.setContent(html(true),{waitUntil:'load'})
  await page.getByRole('button',{name:'Xem và quản lý SKU ABC-01 phân loại Đỏ'}).click()
  await page.getByRole('button',{name:'Thêm phân loại'}).first().click()
+ assert.equal(await page.locator('.sku-catalog-stock').count(),0,
+   'stock panel is hidden in add-classification mode')
+ const aligned=await page.locator('.sku-catalog-add-fields>label').evaluateAll(els=>
+   els.map(el=>({y:el.getBoundingClientRect().y,x:el.getBoundingClientRect().x})))
+ assert.equal(aligned.length,2,'compact form keeps two inputs')
+ assert.ok(Math.abs(aligned[0].y-aligned[1].y)<2,'form fields share one row on Desktop')
+ await page.getByLabel('Phân loại mới').fill('Đỏ')
+ assert.equal(await page.getByRole('button',{name:'Thêm phân loại'}).last().isDisabled(),true,
+   'existing product classification cannot be duplicated')
  await page.getByLabel('Phân loại mới').fill('Size XL')
  await page.getByLabel('Giá bán').fill('155000')
  await page.getByRole('button',{name:'Thêm phân loại'}).last().click()
