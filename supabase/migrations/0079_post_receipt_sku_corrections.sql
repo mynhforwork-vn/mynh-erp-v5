@@ -142,11 +142,17 @@ BEGIN
     OR v_old_qty > 2147483647 THEN
     RAISE EXCEPTION 'Số lượng quy đổi ngoài giới hạn tồn kho';
   END IF;
+  IF v_decision.decision='IN'
+    AND v_decision.product_variant_id=p_target_variant_id
+    AND v_decision.multiplier=p_multiplier THEN
+    RAISE EXCEPTION 'SKU và hệ số quy đổi không thay đổi; không cần điều chỉnh';
+  END IF;
   v_can_correct:=v_receipt_exists AND v_sales=0 AND v_transfers=0
     AND v_balance>=v_old_qty;
   v_payload:=jsonb_build_object(
     'order_id',v_order.id,'order_item_id',v_item.id,
     'order_status',v_order.warehouse_status,'warehouse_id',v_warehouse_id,
+    'warehouse_code',(SELECT w.code FROM public.warehouses w WHERE w.id=v_warehouse_id),
     'old_decision',v_decision.decision,
     'old_variant_id',v_decision.product_variant_id,
     'old_multiplier',v_decision.multiplier,
