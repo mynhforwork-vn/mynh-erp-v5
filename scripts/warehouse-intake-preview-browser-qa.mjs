@@ -1198,7 +1198,9 @@ console.log('PASS one SKU · new priced classification · duplicate guard · 4 r
   await page.locator('.warehouse-inline-sku-trigger').first().click()
   const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
   await picker.waitFor()
-  assert.match(await picker.innerText(),/Chưa có lịch sử ghép tương tự/)
+  assert.match(await picker.innerText(),/Bước 1 · Chọn SKU sản phẩm/)
+  assert.equal(await picker.locator('.warehouse-sku-classification-results').count(),0,
+    'without parent SKU the classification step stays hidden')
   assert.ok(await picker.getByRole('button',{name:'Tạo SKU mới'}).isVisible())
   await page.keyboard.press('Escape')
   await page.close()
