@@ -50,7 +50,10 @@ BEGIN
     THEN RETURN NEW; END IF;
   IF NOT EXISTS (
     SELECT 1 FROM public.product_variants pv
-    WHERE pv.id=NEW.product_variant_id AND pv.is_active
+    -- KEY SHARE conflicts with the merge's FOR UPDATE. A concurrent insert
+    -- must re-read the active flag after the merge commits, never attach a
+    -- new document/stock transaction to a retired variant.
+    WHERE pv.id=NEW.product_variant_id AND pv.is_active FOR KEY SHARE
   ) THEN
     RAISE EXCEPTION 'SKU đã gộp hoặc không còn hoạt động. Hãy chọn SKU đang sử dụng';
   END IF;
@@ -152,7 +155,7 @@ $fn$;
 -- Snapshot for the confirmation screen and stale-preview protection.
 CREATE OR REPLACE FUNCTION private.sku_merge_snapshot(
   p_source uuid,p_target uuid
-) RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path TO ''
+) RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path TO ''
 AS $fn$
 DECLARE v_source record;v_target record;v_warehouses jsonb;v_payload jsonb;
   v_open_orders bigint;v_drafts bigint;v_transfers bigint;v_sales bigint;
@@ -223,6 +226,8 @@ BEGIN
       WHERE id IN (p_source,p_target) ORDER BY id LOOP
     PERFORM 1 FROM public.product_variants WHERE id=v_variant FOR UPDATE;
   END LOOP;
+  -- VOLATILE snapshot is evaluated after locks using fresh READ COMMITTED
+  -- visibility, rather than the caller statement's stale STABLE snapshot.
   v_data:=private.sku_merge_snapshot(p_source,p_target);
   v_source_sku:=v_data->'source'->>'sku';
   IF coalesce(p_fingerprint,'')<>v_data->>'fingerprint' THEN
