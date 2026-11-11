@@ -238,6 +238,13 @@ export function WarehouseSkuCatalog({
                 {busy?'Đang lưu…':'Lưu chỉnh sửa'}</button>
             </div>}
             {mode==='add'&&<div className="sku-catalog-form sku-catalog-add-compact">
+              <div className="sku-catalog-add-step">Bước 1 · SKU sản phẩm đã chọn</div>
+              <div className="sku-catalog-add-parent" aria-label="SKU sản phẩm đã chọn">
+                <span><b>{selected.sku}</b><small>{selected.productName}</small></span>
+                <button type="button" disabled={busy} onClick={()=>setSelectedId(null)}
+                  aria-label="Đổi SKU trước khi thêm phân loại">Đổi SKU</button>
+              </div>
+              <div className="sku-catalog-add-step">Bước 2 · Thêm phân loại của {selected.sku}</div>
               <div className="sku-catalog-add-fields">
                 <label>Phân loại mới
                   <input value={variant} maxLength={255} autoComplete="off"
