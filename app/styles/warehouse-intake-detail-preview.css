@@ -296,3 +296,16 @@
 .warehouse-detail-v2-classification-results button{
   grid-template-columns:minmax(60px,auto) minmax(0,1fr)}
 .warehouse-detail-v2-browser .warehouse-sku-step-caption:first-child{margin-top:0}
+
+
+/* Add variants in the selected SKU's step 2; no third top-level tab. */
+.warehouse-detail-v2-add-classification{width:100%;min-height:29px;
+  padding:6px 9px;text-align:left;border:1px dashed #99c6b5;border-radius:5px;
+  background:#f3faf6;color:#286b52;font-size:10.5px;font-weight:650;cursor:pointer}
+.warehouse-detail-v2-add-classification:hover:not(:disabled){background:#e9f7ef}
+.warehouse-detail-v2-add-classification:focus-visible{outline:2px solid #438b82;outline-offset:1px}
+.warehouse-detail-v2-classification-actions{display:flex;align-items:center;
+  justify-content:space-between;gap:8px;flex-wrap:wrap}
+.warehouse-detail-v2-classification-actions button{border:0;background:transparent;
+  padding:4px;color:#2d7470;font-size:10px;font-weight:650;cursor:pointer}
+.warehouse-detail-v2-classification-actions button:focus-visible{outline:2px solid #438b82}
