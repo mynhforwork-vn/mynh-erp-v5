@@ -74,6 +74,11 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Đơn nhập kho lịch sử chưa có quyết định từng sản phẩm; cần đối soát riêng';
   END IF;
+  IF (SELECT count(*) FROM public.order_items WHERE order_id=v_order.id)<>
+     (SELECT count(*) FROM public.warehouse_item_decisions
+      WHERE order_id=v_order.id AND processing_state='FINALIZED') THEN
+    RAISE EXCEPTION 'Đơn còn dòng không có quyết định kho đã chốt; cần đối soát riêng';
+  END IF;
   SELECT count(*),min(rb.warehouse_id::text)::uuid
     INTO v_receipt_count,v_warehouse_id
     FROM public.receive_batch_details d
@@ -88,7 +93,8 @@ BEGIN
     JOIN public.products p ON p.id=pv.product_id
     WHERE pv.id=p_target_variant_id;
   IF NOT FOUND OR NOT v_target.is_active OR v_target.sale_price IS NULL
-    OR v_target.sale_price<0 THEN
+    OR v_target.sale_price<0 OR v_target.sale_price>999999999
+    OR v_target.sale_price<>round(v_target.sale_price,2) THEN
     RAISE EXCEPTION 'SKU đích không hoạt động hoặc chưa có giá bán hợp lệ';
   END IF;
   IF v_decision.decision='IN' THEN
