@@ -6,6 +6,7 @@ import {saveWarehouseItemDecision,addWarehouseVariantAndMap,finalizeWarehouseIte
 import {formatDateTime,formatMoney,formatPhone,statusLabel} from '@/lib/format'
 import {prepaidSourceLabel,resolveOrderValue} from '@/lib/order-prepaid'
 import {VoucherTags} from '@/components/voucher-tags'
+import {WarehouseReceivedSkuCorrection} from '@/components/warehouse-received-sku-correction'
 import type {HistoricalSuggestion} from '@/lib/warehouse-sku-suggestions'
 
 type SkuProduct={id:string;sku:string;name:string}
@@ -112,6 +113,7 @@ function actionLabel(action:string){
   if(action==='SAVE_ITEM_DECISION')return 'Lưu SKU và quyết định sản phẩm'
   if(action==='FINALIZE_ITEM_DECISION')return 'Chốt xử lý sản phẩm'
   if(action==='FINALIZE_ORDER_WAREHOUSE')return 'Hoàn tất xử lý kho'
+  if(action==='CORRECT_RECEIVED_SKU')return 'Điều chỉnh SKU sau nhập kho'
   return 'Thao tác kho'
 }
 function initialDraft(item:Item,saved?:ItemDecision):Draft{
@@ -135,7 +137,7 @@ function stateLabel(order:Order){
 }
 
 export function WarehouseIntakeDetailPreview({
-  order,variants,skuProducts=[],auditLogs,suggestions,itemDecisions={},previewOnly=true,simulate=true,onClose
+  order,variants,skuProducts=[],auditLogs,suggestions,itemDecisions={},previewOnly=true,simulate=true,canCorrectFinalizedSku=false,onClose
 }:{
   order:Order
   variants:Variant[]
@@ -145,6 +147,7 @@ export function WarehouseIntakeDetailPreview({
   itemDecisions?:Record<string,ItemDecision>
   previewOnly?:boolean
   simulate?:boolean
+  canCorrectFinalizedSku?:boolean
   onClose:()=>void
 }){
   const [tab,setTab]=useState<Tab>('products')
@@ -211,7 +214,8 @@ export function WarehouseIntakeDetailPreview({
     .slice(0,80)
   const matchVariants=variants.filter(v=>v.products?.id===selectedSkuId)
     .sort((a,b)=>a.variant_name.localeCompare(b.variant_name,'vi'))
-  const logs=auditLogs.filter(log=>String(log.entity_id??'')===order.id)
+  const logs=auditLogs.filter(log=>String(log.entity_id??'')===order.id||
+    order.order_items.some(item=>item.id===String(log.entity_id??'')))
 
   useEffect(()=>{
     if(!toast)return
@@ -401,8 +405,29 @@ export function WarehouseIntakeDetailPreview({
           </div>
           <p className="warehouse-detail-v2-source">{selected.product_name} · {selected.variant||'Mặc định'}</p>
           {processed&&<div className="warehouse-detail-v2-processed" role="status">
-            Đơn đã xử lý kho. Thông tin hiển thị chỉ đọc; không thể tạo lựa chọn mới.
+            Đơn đã xử lý kho. Thông tin gốc chỉ đọc; muốn đổi SKU phải có phiếu điều chỉnh tồn.
           </div>}
+          {processed&&canCorrectFinalizedSku&&!previewOnly&&
+            itemDecisions[selected.id]?.processing_state==='FINALIZED'&&
+            <WarehouseReceivedSkuCorrection key={selected.id}
+              orderItemId={selected.id}
+              previousVariantId={itemDecisions[selected.id].decision==='IN'
+                ?itemDecisions[selected.id].product_variant_id:null}
+              previousMultiplier={Number(itemDecisions[selected.id].multiplier??1)}
+              products={skuProducts} variants={variants}
+              onSuccess={result=>{
+                const target=variants.find(v=>v.id===result.targetVariantId)
+                setChoices(current=>({...current,[selected.id]:{
+                  action:'IN',sku:target?.products?.sku??'SKU đã sửa',
+                  price:String(target?.sale_price??0),multiplier:result.multiplier,
+                  quantity:Number(selected.quantity)*result.multiplier
+                }}))
+                setLiveStatus(result.warehouse_status)
+                setToast('Đã điều chỉnh SKU và tồn kho, có nhật ký đối soát.')
+                router.refresh()
+              }}/>}
+          {processed&&!canCorrectFinalizedSku&&!previewOnly&&
+            <p className="warehouse-detail-v2-source">Điều chỉnh SKU sau nhập kho chưa được mở trên môi trường này.</p>
           <div className="warehouse-detail-v2-section-title">Ghép SKU bán và quyết định giá</div>
           <div className="warehouse-detail-v2-switch">
             <button type="button" disabled={processed||isReadOnly||busy}
@@ -616,6 +641,10 @@ export function WarehouseIntakeDetailPreview({
             </small>}
           {log.action==='FINALIZE_ORDER_WAREHOUSE'&&log.new_value&&
             <small>Nhập {String(log.new_value.in_items??0)} sản phẩm · Bỏ qua {String(log.new_value.skip_items??0)} sản phẩm</small>}
+          {log.action==='CORRECT_RECEIVED_SKU'&&log.new_value&&
+            <small>Đổi SKU sang {String(log.new_value.target_variant_id??'')}
+              {' · '}SL {String(log.new_value.quantity_removed??0)} → {String(log.new_value.quantity_added??0)}
+              {' · '}Lý do: {String(log.new_value.reason??'')}</small>}
         </div>):<div className="empty compact">Chưa có lịch sử bóc tách của đơn.</div>}
       </div>}
     </div>
