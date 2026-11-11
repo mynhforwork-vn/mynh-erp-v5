@@ -1,0 +1,50 @@
+name: Warehouse Semantic Badges - isolated branch QA
+on:
+  push:
+    branches: [fix/warehouse-semantic-status-20261111]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: warehouse-semantic-status-20261111
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Dependency installation
+        run: npm install --no-audit --no-fund
+      - name: Static warehouse and TypeScript regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/warehouse-intake-preview-contract-qa.mjs
+          node scripts/warehouse-sku-suggestion-qa.mjs
+          node scripts/warehouse-bulk-action-qa.mjs
+          npm run typecheck
+      - name: Browser test dependencies
+        run: npm install --no-save playwright esbuild --no-audit --no-fund
+      - name: Responsive browser QA - semantic status tones
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          CHROME_BIN="$CHROME_PATH" node scripts/warehouse-intake-preview-browser-qa.mjs
+      - name: Build OpenNext without deployment
+        run: npx opennextjs-cloudflare build
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo '## Warehouse status badge QA'
+            echo "- Source branch: $GITHUB_REF_NAME"
+            echo "- HEAD: $GITHUB_SHA"
+            echo '- No migration, Production deployment or live writes'
+            echo '- Semantic status badges and mobile/tablet/desktop fixture test PASS'
+          } >> "$GITHUB_STEP_SUMMARY"
