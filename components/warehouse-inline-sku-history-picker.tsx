@@ -74,6 +74,7 @@ export function WarehouseInlineSkuHistoryPicker({
   const [existingProductId,setExistingProductId]=useState(initialVariant?.products?.id??'')
   const [productQuery,setProductQuery]=useState('')
   const [productLetter,setProductLetter]=useState('Tất cả')
+  const [productBrowserOpen,setProductBrowserOpen]=useState(false)
   const [salePrice,setSalePrice]=useState(target.isEditing
     ?target.initialSalePrice??''
     :initialVariant?.sale_price===null||initialVariant?.sale_price===undefined
@@ -343,40 +344,47 @@ export function WarehouseInlineSkuHistoryPicker({
             </div>
           </div>
         </>}
-        {mode==='variant'&&<div className="warehouse-inline-sku-history-new">
-          <p>Thêm phân loại bán mới cho SKU đã có. Giá bán áp dụng riêng cho phân loại mới; sản phẩm và các phân loại cũ được giữ nguyên.</p>
-          <div className="warehouse-sku-browser">
-            <label>Tìm SKU sản phẩm hiện có
-              <input type="search" aria-label="Tìm SKU để thêm phân loại"
-                disabled={busy} value={productQuery} placeholder="Mã hoặc tên SKU"
-                onChange={event=>setProductQuery(event.target.value)}/>
-            </label>
-            <div className="warehouse-sku-alphabet" role="group" aria-label="Lọc SKU gốc theo ABC">
-              {['Tất cả',...productLetters].map(letter=><button type="button" key={letter}
-                className={productLetter===letter?'active':''} aria-pressed={productLetter===letter}
-                disabled={busy} onClick={()=>setProductLetter(letter)}>{letter}</button>)}
-            </div>
-            <div className="warehouse-sku-browser-count">{productsMatched.length} SKU sản phẩm phù hợp</div>
-            <div className="warehouse-sku-browser-results" role="group" aria-label="Chọn SKU gốc để thêm phân loại">
-              {existingProduct&&!productsMatched.some(p=>p.id===existingProduct.id)&&
-                <button type="button" className="active" disabled={busy} aria-pressed="true"
-                  onClick={()=>setExistingProductId(existingProduct.id)}>
-                  <b>{existingProduct.sku}</b><span>{existingProduct.name}</span><small>Đang chọn</small>
-                </button>}
-              {visibleProducts.map(product=><button type="button" key={product.id}
-                disabled={busy} aria-pressed={existingProductId===product.id}
-                className={existingProductId===product.id?'active':''}
-                onClick={()=>{setExistingProductId(product.id);setError('')}}>
-                <b>{product.sku}</b><span>{product.name}</span>
-                <small>{variants.filter(v=>v.products?.id===product.id).length} phân loại hiện có</small>
-              </button>)}
-              {productsMatched.length===0&&<p>Không tìm thấy SKU phù hợp</p>}
-            </div>
-          </div>
+        {mode==='variant'&&<div className="warehouse-inline-sku-history-new warehouse-inline-sku-variant-compact">
+          {existingProduct&&!productBrowserOpen?
+            <div className="warehouse-sku-product-selected" aria-label="SKU gốc đã chọn">
+              <span className="warehouse-sku-product-summary">
+                <b>{existingProduct.sku}</b>
+                <small title={existingProduct.name}>{existingProduct.name}</small>
+              </span>
+              <button type="button" aria-label="Đổi SKU gốc" disabled={busy}
+                onClick={()=>setProductBrowserOpen(true)}>Đổi SKU</button>
+            </div>:
+            <div className="warehouse-sku-browser warehouse-sku-browser-compact">
+              <label>Tìm SKU sản phẩm hiện có
+                <input type="search" aria-label="Tìm SKU để thêm phân loại"
+                  disabled={busy} value={productQuery} placeholder="Tìm mã hoặc tên SKU…"
+                  onChange={event=>setProductQuery(event.target.value)}/>
+              </label>
+              <div className="warehouse-sku-alphabet" role="group" aria-label="Lọc SKU gốc theo ABC">
+                {['Tất cả',...productLetters].map(letter=><button type="button" key={letter}
+                  className={productLetter===letter?'active':''} aria-pressed={productLetter===letter}
+                  disabled={busy} onClick={()=>setProductLetter(letter)}>{letter}</button>)}
+              </div>
+              <div className="warehouse-sku-browser-results" role="group" aria-label="Chọn SKU gốc để thêm phân loại">
+                {existingProduct&&!productsMatched.some(p=>p.id===existingProduct.id)&&
+                  <button type="button" className="active" disabled={busy} aria-pressed="true"
+                    onClick={()=>setProductBrowserOpen(false)}>
+                    <b>{existingProduct.sku}</b><span>{existingProduct.name}</span>
+                  </button>}
+                {visibleProducts.map(product=><button type="button" key={product.id}
+                  disabled={busy} aria-pressed={existingProductId===product.id}
+                  className={existingProductId===product.id?'active':''}
+                  onClick={()=>{setExistingProductId(product.id);setProductBrowserOpen(false);setError('')}}>
+                  <b>{product.sku}</b><span>{product.name}</span>
+                </button>)}
+                {productsMatched.length===0&&<p>Không tìm thấy SKU phù hợp</p>}
+              </div>
+              {productsMatched.length>80&&<small>{productsMatched.length} SKU · Hiển thị 80 kết quả đầu</small>}
+            </div>}
           <label>Phân loại bán mới
             <input type="text" maxLength={255} disabled={busy}
-              aria-label="Tên phân loại mới của SKU cũ" value={newVariant}
-              onChange={event=>setNewVariant(event.target.value)}/>
+              aria-label="Tên phân loại mới của SKU cũ" placeholder="Ví dụ: Đỏ / Size M"
+              value={newVariant} onChange={event=>setNewVariant(event.target.value)}/>
           </label>
           {duplicateVariant&&<small role="alert" className="warehouse-inline-sku-history-error">
             Phân loại này đã tồn tại trong SKU. Hãy chọn phân loại có sẵn.
