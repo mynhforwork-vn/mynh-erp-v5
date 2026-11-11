@@ -197,16 +197,10 @@ export function WarehouseInlineSkuHistoryPicker({
     // Clicking a mapped SKU in a lower warehouse may auto-scroll the table
     // just before the portal mounts. Ignore that activation scroll, but
     // continue to dismiss the picker on subsequent intentional scrolling.
-    const openedAt=Date.now()
-    let lastInsideInteraction=0
+    const viewportWidth=window.innerWidth
+    const viewportHeight=window.innerHeight
     const pointer=(event:PointerEvent)=>{
-      if(panelRef.current?.contains(event.target as Node)){
-        // Expanding the SKU list can scroll the page on very small screens.
-        // Do not dismiss a picker because its own button caused that scroll.
-        lastInsideInteraction=Date.now()
-        return
-      }
-      if(busyRef.current)return
+      if(busyRef.current||panelRef.current?.contains(event.target as Node))return
       onClose()
     }
     const escape=(event:KeyboardEvent)=>{
@@ -216,20 +210,20 @@ export function WarehouseInlineSkuHistoryPicker({
         onClose()
       }
     }
-    const closeOnScroll=(event:Event)=>{
-      if(busyRef.current||panelRef.current?.contains(event.target as Node)||
-        Date.now()-openedAt<300||Date.now()-lastInsideInteraction<650)return
-      onClose()
+    // Changing the SKU expands its alphabetical list. Browser auto-scroll
+    // during that expansion must not close the picker mid-selection.
+    // Outside click/Esc still dismiss it; real viewport resizes do too.
+    const resize=()=>{
+      if(Math.abs(window.innerWidth-viewportWidth)>4||
+         Math.abs(window.innerHeight-viewportHeight)>4)onClose()
     }
     document.addEventListener('pointerdown',pointer,true)
     document.addEventListener('keydown',escape,true)
-    document.addEventListener('scroll',closeOnScroll,true)
-    window.addEventListener('resize',onClose)
+    window.addEventListener('resize',resize)
     return ()=>{
       document.removeEventListener('pointerdown',pointer,true)
       document.removeEventListener('keydown',escape,true)
-      document.removeEventListener('scroll',closeOnScroll,true)
-      window.removeEventListener('resize',onClose)
+      window.removeEventListener('resize',resize)
     }
   },[onClose])
 
