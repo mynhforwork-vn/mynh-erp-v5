@@ -14,7 +14,7 @@ writeFileSync(entry,[
  "import {WarehouseReceivedSkuCorrection} from "+JSON.stringify(component),
  "const products=[{id:'p-1',sku:'ABC-01',name:'Sữa tắm'},{id:'p-2',sku:'BCD-02',name:'Kem dưỡng'}]",
  "const variants=[{id:'v-1',variant_name:'Đỏ',sale_price:90000,products:{id:'p-1',sku:'ABC-01',name:'Sữa tắm'}},{id:'v-2',variant_name:'Xanh',sale_price:110000,products:{id:'p-2',sku:'BCD-02',name:'Kem dưỡng'}}]",
- "createRoot(document.getElementById('root')).render(<WarehouseReceivedSkuCorrection orderItemId='item-1' previousVariantId='v-2' previousMultiplier={1} products={products} variants={variants} onSuccess={result=>{window.__success=result}}/>)"
+ "createRoot(document.getElementById('root')).render(<WarehouseReceivedSkuCorrection orderItemId='item-1' previousVariantId='v-2' previousMultiplier={1} products={products} variants={variants} previewOnly={Boolean(window.__previewOnly)} onSuccess={result=>{window.__success=result}}/>)"
 ].join('\n'))
 await build({entryPoints:[entry],outfile,absWorkingDir:root,bundle:true,
  platform:'browser',format:'iife',jsx:'automatic',
@@ -89,5 +89,17 @@ try{
  assert.equal(await blocked.getByRole('button',{name:'Xác nhận điều chỉnh SKU'}).isDisabled(),true,
    'sale-linked SKU blocks correction')
  await blocked.close()
- console.log('PASS: received SKU correction 6 breakpoints, SKU first, classification scope, preview, reason, blocked sales, mock confirmation')
+ const demo=await browser.newPage({viewport:{width:390,height:844}})
+ await demo.addInitScript(()=>{window.__previewOnly=true})
+ await demo.setContent(html,{waitUntil:'load'})
+ await demo.getByRole('button',{name:'Điều chỉnh SKU đã nhập kho'}).click()
+ await demo.getByText('Chế độ xem trước: chỉ thử chọn SKU và phân loại').waitFor()
+ await demo.getByRole('group',{name:'Chọn SKU sản phẩm'}).getByRole('button',{name:/ABC-01/}).click()
+ await demo.getByRole('group',{name:'Chọn phân loại SKU'}).getByRole('button',{name:/Đỏ/}).click()
+ assert.equal(await demo.getByRole('button',{name:'Xem trước điều chỉnh'}).isDisabled(),true,
+  'preview must not call production preview/confirmation RPC')
+ assert.equal((await demo.evaluate(()=>window.__calls||[])).length,0,
+  'preview must not write or read live stock')
+ await demo.close()
+ console.log('PASS: received SKU correction 6 breakpoints, SKU first, classification scope, preview-only lock, reason, blocked sales, mock confirmation')
 }finally{await browser.close()}
