@@ -1107,3 +1107,12 @@
 .warehouse-sku-browser-compact .warehouse-sku-browser-results button span{
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .warehouse-sku-browser-compact>small{font-size:9px;color:#667f8b}
+
+
+/* Selection hierarchy: parent SKU -> classification; show one stage at a time. */
+.warehouse-sku-step-caption{font-size:10px;line-height:1.4;font-weight:700;color:#3b687b}
+.warehouse-sku-step-hint{display:block;font-size:10px;line-height:1.5;color:#758a96}
+.warehouse-inline-sku-history .warehouse-sku-classification-results{max-height:124px}
+.warehouse-inline-sku-history .warehouse-sku-sku-results{max-height:140px}
+.warehouse-inline-sku-history .warehouse-sku-classification-results button{
+  grid-template-columns:minmax(55px,auto) minmax(0,1fr)}
