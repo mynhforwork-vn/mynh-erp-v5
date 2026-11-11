@@ -287,3 +287,12 @@
 .warehouse-detail-v2-browser-compact .warehouse-detail-v2-sku-results button{padding:6px 7px}
 .warehouse-detail-v2-browser-compact .warehouse-detail-v2-sku-results button small{display:none}
 .warehouse-detail-v2-browser-compact .warehouse-detail-v2-abc button{min-height:22px;min-width:22px;padding:2px 4px}
+
+
+/* Hierarchical SKU selection in the order slidebar. */
+.warehouse-detail-v2-browser .warehouse-sku-step-caption{margin-top:3px}
+.warehouse-detail-v2-product-results{max-height:155px}
+.warehouse-detail-v2-classification-results{max-height:125px}
+.warehouse-detail-v2-classification-results button{
+  grid-template-columns:minmax(60px,auto) minmax(0,1fr)}
+.warehouse-detail-v2-browser .warehouse-sku-step-caption:first-child{margin-top:0}
