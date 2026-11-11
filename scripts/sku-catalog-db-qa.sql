@@ -220,5 +220,13 @@ BEGIN
  EXCEPTION WHEN OTHERS THEN
   IF SQLERRM='FAIL: retired SKU was accepted again' THEN RAISE; END IF;
  END;
+ IF (SELECT p.provolatile FROM pg_proc p
+    JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname='private' AND p.proname='sku_merge_snapshot')<>'v' THEN
+   RAISE EXCEPTION 'FAIL: merge snapshot must read after row lock with volatile snapshot';
+ END IF;
+ IF (SELECT count(*) FROM pg_trigger WHERE tgname='guard_active_sku' AND NOT tgisinternal)<>6 THEN
+   RAISE EXCEPTION 'FAIL: SKU retirement guard must cover all six dependent tables';
+ END IF;
  RAISE NOTICE 'PASS: SKU edit, independent classification, ABC catalog contract, role checks, guarded merge, balanced two-warehouse inventory, audit, retry prevention';
 END $$;
