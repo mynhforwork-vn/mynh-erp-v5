@@ -16,10 +16,10 @@ const normalize=(s:string)=>s.normalize('NFD').replace(/\p{M}/gu,'')
   .replace(/đ/g,'d').replace(/Đ/g,'D').toLocaleUpperCase('vi').trim()
 
 export function WarehouseReceivedSkuCorrection({
-  orderItemId,previousVariantId,previousMultiplier,products,variants,onSuccess
+  orderItemId,previousVariantId,previousMultiplier,products,variants,previewOnly=false,onSuccess
 }:{
   orderItemId:string;previousVariantId:string|null;previousMultiplier:number
-  products:Product[];variants:Variant[]
+  products:Product[];variants:Variant[];previewOnly?:boolean
   onSuccess:(result:{id:string,warehouse_status:string,old_quantity:number,new_quantity:number,targetVariantId:string,multiplier:number})=>void
 }){
   const [open,setOpen]=useState(false)
@@ -47,6 +47,7 @@ export function WarehouseReceivedSkuCorrection({
   const hasActualChange=variantId!==previousVariantId||factor!==previousMultiplier
   function resetReview(){setPreview(null);setError('')}
   async function inspect(){
+    if(previewOnly){setError('Bản xem trước chỉ kiểm tra giao diện, không truy vấn hoặc ghi tồn kho.');return}
     if(!variantId||!validFactor||!hasActualChange||busy)return
     setBusy(true);resetReview()
     try{
@@ -55,6 +56,7 @@ export function WarehouseReceivedSkuCorrection({
     finally{setBusy(false)}
   }
   async function confirm(){
+    if(previewOnly)return
     if(!preview?.can_correct||!variantId||!validFactor||busy||reason.trim().length<8)return
     setBusy(true);setError('')
     try{
@@ -77,6 +79,7 @@ export function WarehouseReceivedSkuCorrection({
     {open&&<div role="region" aria-label="Điều chỉnh SKU của sản phẩm đã nhập kho"
       className="warehouse-received-sku-body">
       <p>Điều chỉnh có kiểm soát. Hệ thống giữ nguyên phiếu nhập gốc, chỉ ghi chênh lệch tồn và lịch sử sửa.</p>
+      {previewOnly&&<p role="status">Chế độ xem trước: chỉ thử chọn SKU và phân loại, không cho ghi tồn kho.</p>}
       <b className="warehouse-received-sku-step">1. Chọn SKU sản phẩm</b>
       {product?<div className="warehouse-received-sku-selected">
         <span><b>{product.sku}</b> · {product.name}</span>
@@ -123,7 +126,7 @@ export function WarehouseReceivedSkuCorrection({
             placeholder="Nêu nguyên nhân ghép sai SKU"
             onChange={e=>setReason(e.target.value)}/>
         </label>
-        <button type="button" className="button small" disabled={busy||!validFactor||!hasActualChange}
+        <button type="button" className="button small" disabled={previewOnly||busy||!validFactor||!hasActualChange}
           onClick={()=>void inspect()}>{busy?'Đang kiểm tra…':'Xem trước điều chỉnh'}</button>
       </div>}
       {preview&&<div className="warehouse-received-sku-review" role="status">
@@ -138,7 +141,7 @@ export function WarehouseReceivedSkuCorrection({
           :null}
         {!preview.can_correct&&<strong>Không đủ điều kiện đối soát; không được ghi tồn.</strong>}
         <button type="button" className="button primary small"
-          disabled={busy||!preview.can_correct||reason.trim().length<8}
+          disabled={previewOnly||busy||!preview.can_correct||reason.trim().length<8}
           onClick={()=>void confirm()}>
           {busy?'Đang lưu…':'Xác nhận điều chỉnh SKU'}
         </button>
