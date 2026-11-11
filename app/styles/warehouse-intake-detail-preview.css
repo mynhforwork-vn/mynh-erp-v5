@@ -71,7 +71,10 @@
   flex:0 0 auto;max-width:38%;color:#a46d29;font-size:9.2px;
   line-height:1.3;text-align:right;white-space:normal;
 }
-.warehouse-detail-v2-product-state.chosen{color:#267452;font-weight:680}
+.warehouse-detail-v2-product-state.state-in{color:#267452;font-weight:680}
+.warehouse-detail-v2-product-state.state-skip{color:#67717d;font-weight:680}
+.warehouse-detail-v2-product-state.state-mapped{color:#346f98;font-weight:650}
+.warehouse-detail-v2-product-state.state-unmapped{color:#956528;font-weight:650}
 .warehouse-detail-v2-editor{border-top:1px solid #e7edf2;display:flex;flex-direction:column;gap:9px;min-width:0;padding-top:5px}
 .warehouse-detail-v2-section-title{
   min-height:20px;display:flex;align-items:center;font-size:11px;
@@ -309,7 +312,6 @@
 .warehouse-detail-v2-classification-actions button{border:0;background:transparent;
   padding:4px;color:#2d7470;font-size:10px;font-weight:650;cursor:pointer}
 .warehouse-detail-v2-classification-actions button:focus-visible{outline:2px solid #438b82}
-
 
 /* Post-receipt adjustment stays inside the order detail slidebar (not a popup). */
 .warehouse-received-sku-correction{display:flex;flex-direction:column;gap:7px;min-width:0}
