@@ -92,3 +92,15 @@
   .sku-catalog-drawer{min-height:calc(100dvh - 200px);max-height:calc(100dvh - 200px)}
   .sku-catalog-notice{right:10px;left:10px;top:8px;justify-content:space-between}
 }
+
+
+/* Compact classification form only: stock and explanatory cards stay hidden
+   while adding a new variant, with two fields aligned in one row. */
+.sku-catalog-add-compact{gap:7px}
+.sku-catalog-add-fields{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(108px,1fr);gap:8px;min-width:0}
+.sku-catalog-add-fields>label{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:11px;font-weight:600;color:#4e6b7d}
+.sku-catalog-add-fields input{width:100%;min-width:0}
+.sku-catalog-add-footer{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-top:1px}
+.sku-catalog-add-footer small{min-width:0;flex:1;color:#647f90;font-size:10px;line-height:1.3}
+.sku-catalog-add-footer .button{flex:0 0 auto;white-space:nowrap}
+@media(max-width:380px){.sku-catalog-add-fields{grid-template-columns:1fr}}
