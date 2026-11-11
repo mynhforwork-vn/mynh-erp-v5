@@ -321,7 +321,7 @@ export function WarehouseInlineSkuHistoryPicker({
                   <b>{catalogSelectedProduct.sku}</b><small>{catalogSelectedProduct.name}</small>
                 </span>
                 <button type="button" disabled={busy} aria-label="Đổi SKU sản phẩm"
-                  onClick={()=>setCatalogProductBrowserOpen(true)}>Đổi SKU</button>
+                  onClick={()=>{setCatalogProductBrowserOpen(true);setVariantId('');setSalePrice('')}}>Đổi SKU</button>
               </div>:
               <>
                 <label className="warehouse-inline-sku-history-catalog">Tìm SKU sản phẩm
@@ -346,7 +346,7 @@ export function WarehouseInlineSkuHistoryPicker({
                   {catalogMatchedProducts.length===0&&<p>Không tìm thấy SKU sản phẩm.</p>}
                 </div>
               </>}
-            {catalogSelectedProduct&&<>
+            {catalogSelectedProduct&&!catalogProductBrowserOpen&&<>
               <div className="warehouse-sku-step-caption">Bước 2 · Chọn phân loại của {catalogSelectedProduct.sku}</div>
               {catalogHistory.length>0&&<div className="warehouse-inline-sku-history-options">
                 {catalogHistory.map(option=><button type="button" key={option.variant_id}
