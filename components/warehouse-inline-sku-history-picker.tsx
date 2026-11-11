@@ -148,13 +148,18 @@ export function WarehouseInlineSkuHistoryPicker({
     setMode(next)
     setDecision(target.isEditing?decision:null)
     setSkipReason(target.isEditing?skipReason:'')
-    setNewVariant('')
     if(next==='new'){
+      // Preserve the prior new-SKU default from the purchase item's
+      // classification; new sale price still requires explicit entry.
+      setNewVariant(target.sourceVariant||'Mặc định')
       setSalePrice('')
       setMultiplier('1')
     }else if(selected){
+      setNewVariant('')
       setCatalogProductId(selected.products?.id??'')
       setSalePrice(selected.sale_price===null||selected.sale_price===undefined?'':String(selected.sale_price))
+    }else{
+      setNewVariant('')
     }
     setError('')
   }
