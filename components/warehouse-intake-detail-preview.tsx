@@ -427,7 +427,7 @@ export function WarehouseIntakeDetailPreview({
                 router.refresh()
               }}/>}
           {processed&&!canCorrectFinalizedSku&&!previewOnly&&
-            <p className="warehouse-detail-v2-source">Điều chỉnh SKU sau nhập kho chưa được mở trên môi trường này.</p>
+            <p className="warehouse-detail-v2-source">Điều chỉnh SKU sau nhập kho chưa được mở trên môi trường này.</p>}
           <div className="warehouse-detail-v2-section-title">Ghép SKU bán và quyết định giá</div>
           <div className="warehouse-detail-v2-switch">
             <button type="button" disabled={processed||isReadOnly||busy}
