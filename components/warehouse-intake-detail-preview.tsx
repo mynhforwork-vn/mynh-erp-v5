@@ -417,12 +417,13 @@ export function WarehouseIntakeDetailPreview({
           </div>}
           <div className="warehouse-detail-v2-section-title">Ghép SKU bán và quyết định giá</div>
           <div className="warehouse-detail-v2-switch">
-            <button type="button" disabled={processed||isReadOnly||busy} className={draft.mode==='existing'?'active':''}
-              onClick={()=>change({mode:'existing'})}>Chọn SKU có sẵn</button>
-            <button type="button" disabled={processed||isReadOnly||busy} className={draft.mode==='variant'?'active':''}
-              onClick={()=>{setProductBrowserOpen(true);setProductLetter('Tất cả')
-                change({mode:'variant',productId:'',productQuery:'',newVariant:'',
-                  variantId:'',salePrice:'',multiplier:'1'})}}>Thêm phân loại</button>
+            <button type="button" disabled={processed||isReadOnly||busy}
+              className={draft.mode!=='new'?'active':''}
+              onClick={()=>{
+                setSkuBrowseOpen(false)
+                change({mode:'existing',newVariant:'',variantId:draft.mode==='variant'?'':draft.variantId,
+                  salePrice:draft.mode==='variant'?'':draft.salePrice})
+              }}>Chọn SKU có sẵn</button>
             <button type="button" disabled={processed||isReadOnly||busy} className={draft.mode==='new'?'active':''}
               onClick={()=>change({mode:'new',variantId:'',salePrice:'',multiplier:'1'})}>Tạo SKU mới</button>
           </div>
@@ -476,57 +477,42 @@ export function WarehouseIntakeDetailPreview({
                         {history?' · '+history.history_count+' đơn trước đã ghép · Quy đổi ×'+history.multiplier:''}</small>
                     </button>
                   })}
-                  {matchVariants.length===0&&<small>SKU này chưa có phân loại. Chuyển sang Thêm phân loại để tạo.</small>}
+                  {matchVariants.length===0&&<small>SKU này chưa có phân loại.</small>}
                 </div>
+                <button type="button" className="warehouse-detail-v2-add-classification"
+                  disabled={processed||isReadOnly||busy}
+                  onClick={()=>{
+                    setProductBrowserOpen(false)
+                    change({mode:'variant',productId:selectedSkuId,
+                      variantId:'',newVariant:'',salePrice:'',multiplier:'1'})
+                  }}>+ Thêm phân loại mới</button>
               </>}
             </div>
-          </div>:draft.mode==='variant'?<div className="warehouse-detail-v2-fields warehouse-detail-v2-pair">
-            <div className="warehouse-sku-step-caption warehouse-detail-v2-full">Bước 1 · Chọn SKU sản phẩm</div>
-            {variantProduct&&!productBrowserOpen?
-              <div className="warehouse-detail-v2-product-selected warehouse-detail-v2-full" aria-label="SKU gốc đã chọn">
-                <span className="warehouse-detail-v2-product-summary">
-                  <b>{variantProduct.sku}</b><small title={variantProduct.name}>{variantProduct.name}</small>
-                </span>
-                <button type="button" disabled={processed||isReadOnly||busy}
-                  aria-label="Đổi SKU gốc" onClick={()=>{change({productId:'',newVariant:'',salePrice:''});setProductBrowserOpen(true)}}>Đổi SKU</button>
-              </div>:
-              <div className="warehouse-detail-v2-browser warehouse-detail-v2-browser-compact warehouse-detail-v2-full"
-                aria-label="SKU gốc để thêm phân loại">
-                <label className="warehouse-detail-v2-field"><span>Tìm SKU đã có</span>
-                  <input type="search" aria-label="Tìm SKU gốc để thêm phân loại"
-                    disabled={processed||isReadOnly||busy} value={draft.productQuery}
-                    onChange={e=>change({productQuery:e.target.value})}
-                    placeholder="Tìm mã hoặc tên SKU…"/>
-                </label>
-                <div className="warehouse-detail-v2-abc" role="group" aria-label="Lọc chữ cái SKU gốc">
-                  {['Tất cả',...productLetters].map(letter=><button type="button" key={letter}
-                    aria-pressed={productLetter===letter} className={productLetter===letter?'active':''}
-                    disabled={processed||isReadOnly||busy} onClick={()=>setProductLetter(letter)}>{letter}</button>)}
-                </div>
-                <div className="warehouse-detail-v2-sku-results" role="group" aria-label="Danh sách SKU gốc">
-                  {variantProduct&&!matchingProducts.some(p=>p.id===variantProduct.id)&&
-                    <button type="button" className="active" aria-pressed="true"
-                      disabled={processed||isReadOnly||busy} onClick={()=>setProductBrowserOpen(false)}>
-                      <b>{variantProduct.sku}</b><span>{variantProduct.name}</span>
-                    </button>}
-                  {matchingProducts.map(p=><button key={p.id} type="button"
-                    className={draft.productId===p.id?'active':''} aria-pressed={draft.productId===p.id}
-                    disabled={processed||isReadOnly||busy}
-                    onClick={()=>{change({productId:p.id,newVariant:'',salePrice:''});setProductBrowserOpen(false)}}>
-                    <b>{p.sku}</b><span>{p.name}</span>
-                  </button>)}
-                  {matchingProducts.length===0&&<small>Không tìm thấy SKU sản phẩm</small>}
-                </div>
-              </div>}
-            {variantProduct&&<div className="warehouse-sku-step-caption warehouse-detail-v2-full">Bước 2 · Thêm phân loại cho {variantProduct.sku}</div>}
-            {variantProduct&&<label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>Phân loại mới</span>
+          </div>:draft.mode==='variant'&&variantProduct?<div className="warehouse-detail-v2-fields warehouse-detail-v2-pair">
+            <div className="warehouse-sku-step-caption warehouse-detail-v2-full">Bước 1 · SKU sản phẩm đã chọn</div>
+            <div className="warehouse-detail-v2-product-selected warehouse-detail-v2-full" aria-label="SKU sản phẩm đã chọn">
+              <span className="warehouse-detail-v2-product-summary">
+                <b>{variantProduct.sku}</b><small title={variantProduct.name}>{variantProduct.name}</small>
+              </span>
+              <button type="button" disabled={processed||isReadOnly||busy}
+                aria-label="Đổi SKU sản phẩm" onClick={()=>{
+                  setSkuBrowseOpen(true)
+                  change({mode:'existing',productId:'',variantId:'',newVariant:'',salePrice:'',multiplier:'1'})
+                }}>Đổi SKU</button>
+            </div>
+            <div className="warehouse-detail-v2-classification-actions warehouse-detail-v2-full">
+              <span className="warehouse-sku-step-caption">Bước 2 · Thêm phân loại mới</span>
+              <button type="button" disabled={processed||isReadOnly||busy}
+                onClick={()=>change({mode:'existing',variantId:'',newVariant:'',salePrice:''})}>
+                Chọn phân loại có sẵn
+              </button>
+            </div>
+            <label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>Phân loại mới</span>
               <input aria-label="Nhập phân loại mới của SKU cũ" disabled={processed||isReadOnly||busy}
-                maxLength={255} value={draft.newVariant} onChange={e=>change({newVariant:e.target.value})}/>
+                maxLength={255} value={draft.newVariant} placeholder="Ví dụ: Đỏ / Size M"
+                onChange={e=>change({newVariant:e.target.value})}/>
               {duplicatedClassification&&<small role="alert">Phân loại đã tồn tại, hãy chọn phân loại có sẵn.</small>}
-            </label>}
-            {!variantProduct&&<small className="warehouse-sku-step-hint warehouse-detail-v2-full">
-              Chọn SKU phía trên để hiện bước phân loại và giá bán.
-            </small>}
+            </label>
           </div>:<div className="warehouse-detail-v2-fields warehouse-detail-v2-pair">
             <label className="warehouse-detail-v2-field"><span>Mã SKU bán mới</span>
               <input disabled={processed||isReadOnly||busy} value={draft.newSku} onChange={e=>change({newSku:e.target.value})} placeholder="Ví dụ: SKU-001"/>
