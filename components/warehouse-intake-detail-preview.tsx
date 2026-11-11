@@ -152,6 +152,7 @@ export function WarehouseIntakeDetailPreview({
   const [skuLetter,setSkuLetter]=useState('Tất cả')
   const [skuVariant,setSkuVariant]=useState('Tất cả')
   const [productLetter,setProductLetter]=useState('Tất cả')
+  const [productBrowserOpen,setProductBrowserOpen]=useState(false)
   const [focusedId,setFocusedId]=useState<string>(
     order.order_items.find(item=>!item.product_variant_id)?.id??order.order_items[0]?.id??''
   )
@@ -239,6 +240,7 @@ export function WarehouseIntakeDetailPreview({
   },[onClose])
 
   function focus(item:Item){
+    setProductBrowserOpen(false)
     setFocusedId(item.id)
     setNotice('')
     setShowSummary(false)
@@ -486,34 +488,42 @@ export function WarehouseIntakeDetailPreview({
               </div>
             </div>
           </div>:draft.mode==='variant'?<div className="warehouse-detail-v2-fields warehouse-detail-v2-pair">
-            <p className="warehouse-detail-v2-source">Thêm phân loại vào SKU cũ với giá bán riêng; giữ nguyên sản phẩm và các phân loại đã có.</p>
-            <label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>Tìm SKU đã có</span>
-              <input type="search" aria-label="Tìm SKU gốc để thêm phân loại"
-                disabled={processed||isReadOnly||busy} value={draft.productQuery}
-                onChange={e=>change({productQuery:e.target.value})}
-                placeholder="Mã SKU hoặc tên sản phẩm"/>
-            </label>
-            <div className="warehouse-detail-v2-browser warehouse-detail-v2-full" aria-label="SKU gốc để thêm phân loại">
-              <div className="warehouse-detail-v2-abc" role="group" aria-label="Lọc chữ cái SKU gốc">
-                {['Tất cả',...productLetters].map(letter=><button type="button" key={letter}
-                  aria-pressed={productLetter===letter} className={productLetter===letter?'active':''}
-                  disabled={processed||isReadOnly||busy} onClick={()=>setProductLetter(letter)}>{letter}</button>)}
-              </div>
-              <small>{matchingProducts.length} SKU phù hợp · Chọn SKU gốc để thêm phân loại</small>
-              <div className="warehouse-detail-v2-sku-results" role="group" aria-label="Danh sách SKU gốc">
-                {variantProduct&&!matchingProducts.some(p=>p.id===variantProduct.id)&&
-                  <button type="button" className="active" aria-pressed="true"
-                    disabled={processed||isReadOnly||busy} onClick={()=>change({productId:variantProduct.id})}>
-                    <b>{variantProduct.sku}</b><span>{variantProduct.name}</span><small>Đang chọn</small>
-                  </button>}
-                {matchingProducts.map(p=><button key={p.id} type="button"
-                  className={draft.productId===p.id?'active':''} aria-pressed={draft.productId===p.id}
-                  disabled={processed||isReadOnly||busy} onClick={()=>change({productId:p.id})}>
-                  <b>{p.sku}</b><span>{p.name}</span><small>SKU sản phẩm</small>
-                </button>)}
-                {matchingProducts.length===0&&<small>Không tìm thấy SKU sản phẩm</small>}
-              </div>
-            </div>
+            {variantProduct&&!productBrowserOpen?
+              <div className="warehouse-detail-v2-product-selected warehouse-detail-v2-full" aria-label="SKU gốc đã chọn">
+                <span className="warehouse-detail-v2-product-summary">
+                  <b>{variantProduct.sku}</b><small title={variantProduct.name}>{variantProduct.name}</small>
+                </span>
+                <button type="button" disabled={processed||isReadOnly||busy}
+                  aria-label="Đổi SKU gốc" onClick={()=>setProductBrowserOpen(true)}>Đổi SKU</button>
+              </div>:
+              <div className="warehouse-detail-v2-browser warehouse-detail-v2-browser-compact warehouse-detail-v2-full"
+                aria-label="SKU gốc để thêm phân loại">
+                <label className="warehouse-detail-v2-field"><span>Tìm SKU đã có</span>
+                  <input type="search" aria-label="Tìm SKU gốc để thêm phân loại"
+                    disabled={processed||isReadOnly||busy} value={draft.productQuery}
+                    onChange={e=>change({productQuery:e.target.value})}
+                    placeholder="Tìm mã hoặc tên SKU…"/>
+                </label>
+                <div className="warehouse-detail-v2-abc" role="group" aria-label="Lọc chữ cái SKU gốc">
+                  {['Tất cả',...productLetters].map(letter=><button type="button" key={letter}
+                    aria-pressed={productLetter===letter} className={productLetter===letter?'active':''}
+                    disabled={processed||isReadOnly||busy} onClick={()=>setProductLetter(letter)}>{letter}</button>)}
+                </div>
+                <div className="warehouse-detail-v2-sku-results" role="group" aria-label="Danh sách SKU gốc">
+                  {variantProduct&&!matchingProducts.some(p=>p.id===variantProduct.id)&&
+                    <button type="button" className="active" aria-pressed="true"
+                      disabled={processed||isReadOnly||busy} onClick={()=>setProductBrowserOpen(false)}>
+                      <b>{variantProduct.sku}</b><span>{variantProduct.name}</span>
+                    </button>}
+                  {matchingProducts.map(p=><button key={p.id} type="button"
+                    className={draft.productId===p.id?'active':''} aria-pressed={draft.productId===p.id}
+                    disabled={processed||isReadOnly||busy}
+                    onClick={()=>{change({productId:p.id});setProductBrowserOpen(false)}}>
+                    <b>{p.sku}</b><span>{p.name}</span>
+                  </button>)}
+                  {matchingProducts.length===0&&<small>Không tìm thấy SKU sản phẩm</small>}
+                </div>
+              </div>}
             <label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>Phân loại mới</span>
               <input aria-label="Nhập phân loại mới của SKU cũ" disabled={processed||isReadOnly||busy}
                 maxLength={255} value={draft.newVariant} onChange={e=>change({newVariant:e.target.value})}/>
