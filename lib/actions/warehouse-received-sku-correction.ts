@@ -32,7 +32,7 @@ function raise(error:{message:string}|null){
   throw new Error('Không thể điều chỉnh SKU; cần kiểm tra dữ liệu và thử lại')
 }
 export type ReceivedSkuCorrectionPreview={
-  order_id:string,order_item_id:string,warehouse_id:string,
+  order_id:string,order_item_id:string,warehouse_id:string,warehouse_code:string,
   old_decision:'IN'|'SKIP',old_variant_id:string|null,
   old_multiplier:number,old_sale_price:number,old_quantity:number,
   source_balance:number,new_variant_id:string,new_sku:string,
