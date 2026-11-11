@@ -70,8 +70,9 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
   // enable writes, after the additive DB migration and release gates are met.
   const isLive=process.env.ERP_WAREHOUSE_V2_LIVE==='true'
   const canWrite=isLive&&['admin','operator'].includes(String(user.app_metadata?.role??'viewer'))
-  const canCorrectFinalizedSku=isLive&&process.env.ERP_POST_RECEIPT_SKU_LIVE==='true'&&
-    String(user.app_metadata?.role??'viewer')==='admin'
+  const canCorrectFinalizedSku=String(user.app_metadata?.role??'viewer')==='admin'&&
+    ((isLive&&process.env.ERP_POST_RECEIPT_SKU_LIVE==='true')||
+      (!isLive&&process.env.ERP_POST_RECEIPT_SKU_PREVIEW_UI==='true'))
   // Count every non-archived received order, including processed and skipped ones.
   // Paginate deterministically because Supabase/PostgREST caps each response.
   async function loadReceivedOrders(){
