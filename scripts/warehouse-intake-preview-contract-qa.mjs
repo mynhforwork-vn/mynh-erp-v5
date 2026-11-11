@@ -408,9 +408,14 @@ const checks=[
     page.includes("skuProducts={skuProducts??[]}") &&
     table.includes("skuProducts={catalogProducts}") &&
     inlinePicker.includes("type Mode='existing'|'variant'|'new'") &&
-    inlinePicker.includes("Thêm phân loại") &&
-    inlinePicker.includes("SKU gốc để thêm phân loại") &&
+    inlinePicker.includes("mode!=='new'?'active':''") &&
+    inlinePicker.includes('>+ Thêm phân loại mới</button>') &&
+    inlinePicker.includes('aria-label="Phân loại của SKU đã chọn"') &&
+    inlinePicker.includes("const existingProduct=catalogSelectedProduct") &&
     inlinePicker.includes("Tên phân loại mới của SKU cũ") &&
+    !inlinePicker.includes("onClick={()=>changeMode('variant')}") &&
+    panel.includes("mode:'variant',productId:selectedSkuId") &&
+    panel.includes('>+ Thêm phân loại mới</button>') &&
     inlinePicker.includes("const validVariant=!!existingProduct") &&
     inlinePicker.includes("await addWarehouseVariantAndMap({") &&
     inlinePicker.includes("newVariant.trim()") &&
