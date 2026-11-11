@@ -205,6 +205,8 @@ try {
         groupRights:[...document.querySelectorAll('.warehouse-unified-group')].map(e=>e.getBoundingClientRect().right),
         pills:[...document.querySelectorAll('.warehouse-unified-table td[data-col="status"] .status-pill')].map(el=>({
           label:el.textContent?.trim(),
+          tone:el.getAttribute('data-warehouse-status'),
+          background:getComputedStyle(el).backgroundColor,
           width:el.clientWidth,
           actual:el.scrollWidth,
           right:el.getBoundingClientRect().right
@@ -262,6 +264,11 @@ try {
     assert.equal(list.rows.reduce((a,b)=>a+b,0),8,'all includes processed and skipped '+width)
     assert.equal(list.products.reduce((a,b)=>a+b,0),16,'all products visible '+width)
     assert.ok(list.labels.includes('Đã bỏ qua kho')&&list.labels.includes('Đã nhập kho'),'processed statuses rendered '+width)
+    const receiptPill=list.pills.find(p=>p.label==='Đã nhập kho'&&p.tone==='received')
+    const skipPill=list.pills.find(p=>p.label==='Đã bỏ qua kho'&&p.tone==='skipped')
+    assert.ok(receiptPill&&skipPill,'separate received/skip badges '+width)
+    assert.notEqual(receiptPill.background,skipPill.background,
+      'received and skipped badge colors must differ '+width)
     const merged=await page.locator('.warehouse-unified-table').first().evaluate(table=>({
       headers:[...table.tHead.rows[0].cells].map(cell=>cell.textContent?.trim()??''),
       received:table.querySelector('tbody tr:first-child td[data-col="order"] .warehouse-unified-received-at')?.textContent?.trim(),
