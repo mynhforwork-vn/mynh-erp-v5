@@ -1,0 +1,150 @@
+name: SKU Catalog - isolated DB and read-only Preview
+on:
+  push:
+    branches: [feat/warehouse-sku-abc-catalog-20261111]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sku-catalog-preview-20261111
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PGPASSWORD: postgres
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify nonproduction branch and Preview write protection
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/feat/warehouse-sku-abc-catalog-20261111
+          grep -q '"ERP_WAREHOUSE_V2_LIVE": "false"' wrangler.jsonc
+          ! grep -q '"ERP_SKU_CATALOG_LIVE": "true"' wrangler.jsonc
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Static, warehouse regressions and TypeScript
+        run: |
+          set -euo pipefail
+          node scripts/sku-catalog-contract-qa.mjs
+          node scripts/warehouse-intake-preview-contract-qa.mjs
+          node scripts/warehouse-sku-suggestion-qa.mjs
+          node scripts/warehouse-bulk-action-qa.mjs
+          npm run typecheck
+      - name: Isolated PostgreSQL SKU merge QA
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+          psql -X -h 127.0.0.1 -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f scripts/warehouse-item-level-db-fixture.sql \
+            -f supabase/migrations/0075_item_level_warehouse_decisions.sql \
+            -f supabase/migrations/0076_skip_unmapped_warehouse_item.sql \
+            -f supabase/migrations/0077_warehouse_add_variant_to_existing_sku.sql \
+            -f scripts/sku-catalog-db-fixture.sql \
+            -f supabase/migrations/0078_sku_catalog_safe_merge.sql \
+            -f scripts/sku-catalog-db-qa.sql 2>&1 | tee sku-catalog-db-qa.log
+          grep -q 'PASS: SKU edit, independent classification' sku-catalog-db-qa.log
+      - name: Install fixture browser QA dependencies
+        run: npm install --no-save playwright esbuild --no-audit --no-fund
+      - name: 'Responsive browser regression: SKU picker and detail slidebar'
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          CHROME_BIN="$CHROME_PATH" node scripts/warehouse-intake-preview-browser-qa.mjs
+          CHROME_BIN="$CHROME_PATH" node scripts/sku-catalog-browser-qa.mjs
+      - name: Build OpenNext
+        run: npx opennextjs-cloudflare build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sku-catalog-qa
+          path: sku-catalog-db-qa.log
+          if-no-files-found: ignore
+          retention-days: 7
+  preview:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm preview secret and safe switches
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          grep -q '"ERP_WAREHOUSE_V2_LIVE": "false"' wrangler.jsonc
+          ! grep -q '"ERP_SKU_CATALOG_LIVE": "true"' wrangler.jsonc
+      - name: Build
+        run: |
+          npm install --no-audit --no-fund
+          npx opennextjs-cloudflare build
+      - name: Deploy isolated read-only Preview, never Production
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler preview --name warehouse-sku-catalog-20261111 --worker-name mynh-erp-v5 \
+            --message "QA SKU catalog; SQL 0078 disposable database only" \
+            --json > sku-catalog-preview.json
+          node - <<'NODE'
+          const fs=require('fs')
+          const raw=fs.readFileSync('sku-catalog-preview.json','utf8')
+          const data=JSON.parse(raw.slice(raw.indexOf('{'),raw.lastIndexOf('}')+1))
+          const urls=[]
+          const visit=x=>{
+            if(typeof x==='string'&&x.startsWith('https://'))urls.push(x)
+            else if(Array.isArray(x))x.forEach(visit)
+            else if(x&&typeof x==='object')Object.values(x).forEach(visit)
+          }
+          visit(data)
+          const url=urls.find(x=>x.includes('warehouse-sku-catalog-20261111')&&x.includes('workers.dev'))
+          if(!url)throw Error('Read-only Preview URL missing')
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'url='+url+'\n')
+          console.log('SKU Preview: '+url)
+          NODE
+      - name: Read-only Preview smoke
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 4 --retry-delay 3 "$URL/api/health" > health.json
+          grep -q '"ok":true' health.json
+          code="$(curl -sSL -o login.html -w '%{http_code}' "$URL/login")"
+          test "$code" = 200
+          grep -q 'MYNH ERP' login.html
+      - name: Summary
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          echo "## SKU Catalog Preview" >> "$GITHUB_STEP_SUMMARY"
+          echo "- URL: $URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- No Production deployment or Production migration" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Not full authenticated browser E2E QA" >> "$GITHUB_STEP_SUMMARY"

@@ -129,9 +129,13 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     { data: recentMappings, error: mappingError },
   ] = await Promise.all([
     loadReceivedOrders(),
-    supabase.from('product_variants')
-      .select('id,variant_name,sale_price,products(id,sku,name)')
-      .order('updated_at', { ascending: false }).limit(1500),
+    (process.env.ERP_SKU_CATALOG_LIVE==='true'?
+      supabase.from('product_variants')
+        .select('id,variant_name,sale_price,products(id,sku,name)')
+        .eq('is_active',true).order('updated_at',{ascending:false}).limit(5000):
+      supabase.from('product_variants')
+        .select('id,variant_name,sale_price,products(id,sku,name)')
+        .order('updated_at',{ascending:false}).limit(5000)),
     loadSkuProducts(),
     supabase.from('audit_logs')
       .select('id,entity_id,action,created_at,old_value,new_value')
@@ -208,7 +212,8 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
   for(const variant of (variants??[]) as any[])knownVariants.set(variant.id,variant)
   for(const source of history){
     const variant=source.product_variants
-    if(variant?.id&&!knownVariants.has(variant.id))knownVariants.set(variant.id,variant)
+    if(variant?.id&&!knownVariants.has(variant.id)&&
+      process.env.ERP_SKU_CATALOG_LIVE!=='true')knownVariants.set(variant.id,variant)
   }
   const allVariants=[...knownVariants.values()]
   const suggestions:Record<string,HistoricalSuggestion[]>={}

@@ -39,9 +39,10 @@ export default async function POSPage(){
   let variants:any[]=[]
   let productMeta:any[]=[]
   if(variantIds.length){
-    const {data,error}=await supabase.from('product_variants')
-      .select('id,sale_price,barcode')
-      .in('id',variantIds)
+    const baseQuery=supabase.from('product_variants')
+      .select('id,sale_price,barcode').in('id',variantIds)
+    const {data,error}=await (process.env.ERP_SKU_CATALOG_LIVE==='true'?
+      baseQuery.eq('is_active',true):baseQuery)
     if(error)throw new Error(error.message)
     variants=data??[]
   }
@@ -57,7 +58,8 @@ export default async function POSPage(){
   const productMap=new Map(productMeta.map((row:any)=>[String(row.id),row]))
   const categoryMap=new Map((categoriesResult.data??[]).map((row:any)=>[String(row.id),row]))
 
-  const products=(balances??[]).map((row:any)=>{
+  const products=(balances??[]).filter((row:any)=>
+    variantMap.has(String(row.product_variant_id))).map((row:any)=>{
     const variant=variantMap.get(String(row.product_variant_id)) as any
     const product=productMap.get(String(row.product_id)) as any
     const category=product?.sales_category_id?categoryMap.get(String(product.sales_category_id)):null

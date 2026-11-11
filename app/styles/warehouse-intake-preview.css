@@ -862,7 +862,7 @@
 }
 /* Keep new/existing SKU workflows together: no slidebar required. */
 .warehouse-inline-sku-history-modes{
-  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;
   margin-bottom:10px;
 }
 .warehouse-inline-sku-history-modes button{
@@ -1060,3 +1060,72 @@
     overflow-y:visible!important;
   }
 }
+
+
+/* Alphabetical SKU catalog inside the existing warehouse picker. */
+.warehouse-sku-browser{display:flex;flex-direction:column;gap:8px;min-width:0}
+.warehouse-sku-alphabet{display:flex;flex-wrap:wrap;gap:4px}
+.warehouse-sku-alphabet button{min-width:25px;min-height:25px;padding:3px 6px;
+  background:#f4f8fa;color:#466171;border:1px solid #dbe5ea;
+  border-radius:5px;font-size:10px;cursor:pointer}
+.warehouse-sku-alphabet button.active{background:#e4f2ed;color:#21674e;border-color:#8cc2ac;font-weight:700}
+.warehouse-sku-browser-count{font-size:10px;color:#667f8b}
+.warehouse-sku-browser-results{display:flex;flex-direction:column;gap:4px;max-height:185px;
+  overflow-y:auto;overscroll-behavior:contain}
+.warehouse-sku-browser-results button{display:grid;grid-template-columns:minmax(70px,auto) minmax(0,1fr);
+  column-gap:8px;row-gap:2px;text-align:left;align-items:center;padding:7px 8px;
+  background:#fff;border:1px solid #e1e9ed;border-radius:5px;color:#314e5f;cursor:pointer}
+.warehouse-sku-browser-results button.active{border-color:#69b29a;background:#eff8f4}
+.warehouse-sku-browser-results button b{font-size:11px;overflow-wrap:anywhere}
+.warehouse-sku-browser-results button span{font-size:10.5px;min-width:0;overflow-wrap:anywhere}
+.warehouse-sku-browser-results button small{grid-column:1/-1;color:#6a8491;font-size:10px}
+.warehouse-sku-browser-results p{margin:6px 0;color:#637f8c}
+.warehouse-sku-browser-results button:focus-visible,.warehouse-sku-alphabet button:focus-visible{
+  outline:2px solid #438b82;outline-offset:1px}
+
+
+/* Adding a classification: keep selected product to one row and show ABC
+   catalog only while choosing/changing a product. */
+.warehouse-inline-sku-variant-compact{display:flex;flex-direction:column;gap:7px;min-width:0}
+.warehouse-inline-sku-variant-compact>label{margin-top:0}
+.warehouse-sku-product-selected{display:flex;align-items:center;justify-content:space-between;
+  min-width:0;gap:8px;padding:7px 8px;border:1px solid #dce7e8;background:#f7faf9;border-radius:5px}
+.warehouse-sku-product-summary{display:flex;min-width:0;flex:1;align-items:baseline;gap:6px}
+.warehouse-sku-product-summary b{flex:0 0 auto;font-size:11px;color:#2e5967}
+.warehouse-sku-product-summary small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#667f8b;font-size:10px}
+.warehouse-sku-product-selected>button{flex:0 0 auto;background:none;border:0;
+  color:#247b72;font-size:10px;font-weight:700;cursor:pointer;padding:5px}
+.warehouse-sku-browser-compact{gap:5px}
+.warehouse-sku-browser-compact>label{display:flex;flex-direction:column;gap:4px;
+  font-size:10px;color:#496c7c}
+.warehouse-sku-browser-compact .warehouse-sku-alphabet{gap:3px}
+.warehouse-sku-browser-compact .warehouse-sku-alphabet button{min-height:23px;min-width:23px;font-size:9px;padding:2px 4px}
+.warehouse-sku-browser-compact .warehouse-sku-browser-results{max-height:116px;gap:2px}
+.warehouse-sku-browser-compact .warehouse-sku-browser-results button{
+  padding:6px 7px;grid-template-columns:minmax(65px,auto) minmax(0,1fr)}
+.warehouse-sku-browser-compact .warehouse-sku-browser-results button b{font-size:10.5px}
+.warehouse-sku-browser-compact .warehouse-sku-browser-results button span{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.warehouse-sku-browser-compact>small{font-size:9px;color:#667f8b}
+
+
+/* Selection hierarchy: parent SKU -> classification; show one stage at a time. */
+.warehouse-sku-step-caption{font-size:10px;line-height:1.4;font-weight:700;color:#3b687b}
+.warehouse-sku-step-hint{display:block;font-size:10px;line-height:1.5;color:#758a96}
+.warehouse-inline-sku-history .warehouse-sku-classification-results{max-height:124px}
+.warehouse-inline-sku-history .warehouse-sku-sku-results{max-height:140px}
+.warehouse-inline-sku-history .warehouse-sku-classification-results button{
+  grid-template-columns:minmax(55px,auto) minmax(0,1fr)}
+
+
+/* In the existing SKU flow, adding a classification is a second-step action. */
+.warehouse-sku-add-classification{width:100%;min-height:29px;border:1px dashed #9bc9b5;
+  background:#f4faf7;border-radius:5px;color:#25694f;font-size:10.5px;
+  font-weight:650;text-align:left;padding:6px 9px;cursor:pointer}
+.warehouse-sku-add-classification:hover:not(:disabled){background:#e6f6ed}
+.warehouse-sku-add-classification:focus-visible{outline:2px solid #438b82;outline-offset:1px}
+.warehouse-sku-classification-actions{display:flex;gap:8px;align-items:center;
+  justify-content:space-between;flex-wrap:wrap;min-width:0}
+.warehouse-sku-classification-actions button{background:transparent;border:0;
+  padding:4px 0;font-size:10px;color:#28716b;cursor:pointer;font-weight:650}
+.warehouse-sku-classification-actions button:focus-visible{outline:2px solid #438b82}

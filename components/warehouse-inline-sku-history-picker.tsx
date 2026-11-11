@@ -66,11 +66,12 @@ export function WarehouseInlineSkuHistoryPicker({
   const [mode,setMode]=useState<Mode>('existing')
   const [variantId,setVariantId]=useState(initialVariant?.id??'')
   const [catalogQuery,setCatalogQuery]=useState('')
+  const [catalogLetter,setCatalogLetter]=useState('Tất cả')
+  const [catalogProductId,setCatalogProductId]=useState(initialVariant?.products?.id??'')
+  const [catalogProductBrowserOpen,setCatalogProductBrowserOpen]=useState(false)
   const [newSku,setNewSku]=useState('')
   const [newName,setNewName]=useState(target.productName)
   const [newVariant,setNewVariant]=useState(target.sourceVariant||'Mặc định')
-  const [existingProductId,setExistingProductId]=useState(initialVariant?.products?.id??'')
-  const [productQuery,setProductQuery]=useState('')
   const [salePrice,setSalePrice]=useState(target.isEditing
     ?target.initialSalePrice??''
     :initialVariant?.sale_price===null||initialVariant?.sale_price===undefined
@@ -88,19 +89,32 @@ export function WarehouseInlineSkuHistoryPicker({
   // the existing engine. Unknown/deleted catalog variants are never offered.
   const available=history.filter(item=>variants.some(variant=>variant.id===item.variant_id))
   const selected=variants.find(variant=>variant.id===variantId)
-  const catalog=variants.filter(variant=>
-    [variant.products?.sku,variant.products?.name,variant.variant_name]
-      .filter(Boolean).join(' ').toLocaleLowerCase('vi')
-      .includes(catalogQuery.trim().toLocaleLowerCase('vi'))).slice(0,catalogQuery.trim()?80:30)
+  // Sort and navigate by normalized SKU code; Vietnamese accents do not
+  // affect alphabetic lookup. Search and filters never mutate saved mappings.
+  const normalizeCatalog=(value:string)=>value.normalize('NFD')
+    .replace(/\p{M}/gu,'').replace(/đ/g,'d').replace(/Đ/g,'D')
+    .toLocaleUpperCase('vi').trim()
+  // Parent product SKU is chosen before its sellable classification.
+  const catalogProducts=skuProducts.length?skuProducts:
+    [...new Map(variants.filter(v=>v.products?.id).map(v=>[v.products!.id!,{
+      id:v.products!.id!,sku:String(v.products?.sku??''),name:String(v.products?.name??'')
+    }])).values()]
+  const alphabet=[...new Set(catalogProducts.map(p=>normalizeCatalog(p.sku).charAt(0)||'#'))]
+    .sort((a,b)=>a.localeCompare(b,'en'))
+  const catalogMatchedProducts=catalogProducts.filter(product=>
+    (catalogLetter==='Tất cả'||(normalizeCatalog(product.sku).charAt(0)||'#')===catalogLetter)&&
+    normalizeCatalog([product.sku,product.name].join(' ')).includes(normalizeCatalog(catalogQuery)))
+    .sort((a,b)=>normalizeCatalog(a.sku).localeCompare(normalizeCatalog(b.sku),'en'))
+  const catalogSelectedProduct=catalogProducts.find(product=>product.id===catalogProductId)
+  const catalogVariants=variants.filter(v=>v.products?.id===catalogProductId)
+    .sort((a,b)=>a.variant_name.localeCompare(b.variant_name,'vi'))
+  const catalogHistory=available.filter(option=>catalogVariants.some(v=>v.id===option.variant_id))
   const newCode=newSku.trim().toUpperCase()
   const duplicatedSku=!!newCode&&variants.some(variant=>
     String(variant.products?.sku??'').trim().toUpperCase()===newCode)
   const validNew=!!newCode&&newCode.length<=100&&newName.trim().length>0&&
     newName.trim().length<=255&&newVariant.trim().length>0&&newVariant.trim().length<=255&&!duplicatedSku
-  const existingProduct=skuProducts.find(product=>product.id===existingProductId)
-  const productsMatched=skuProducts.filter(product=>
-    [product.sku,product.name].join(' ').toLocaleLowerCase('vi')
-      .includes(productQuery.trim().toLocaleLowerCase('vi'))).slice(0,productQuery.trim()?80:40)
+  const existingProduct=catalogSelectedProduct
   const duplicateVariant=!!existingProduct&&variants.some(variant=>
     variant.products?.id===existingProduct.id&&
     variant.variant_name.trim().toLocaleLowerCase('vi')===
@@ -110,32 +124,69 @@ export function WarehouseInlineSkuHistoryPicker({
   function chooseCatalog(id:string){
     const variant=variants.find(item=>item.id===id)
     setVariantId(id)
+    setCatalogProductId(variant?.products?.id??'')
     setSalePrice(variant?.sale_price===null||variant?.sale_price===undefined?'':String(variant.sale_price))
     setMultiplier('1')
     setDecision(target.isEditing?decision:null)
     setSkipReason(target.isEditing?skipReason:'')
     setError('')
   }
-  function changeMode(next:Mode){
+  function chooseCatalogProduct(id:string){
+    if(id!==catalogProductId){
+      // Invalidate the previous classification and price when parent SKU changes.
+      setVariantId('')
+      setSalePrice('')
+      setMultiplier('1')
+      setDecision(target.isEditing?decision:null)
+      setSkipReason('')
+    }
+    setCatalogProductId(id)
+    setCatalogProductBrowserOpen(false)
+    setError('')
+  }
+  function changeMode(next:'existing'|'new'){
     setMode(next)
     setDecision(target.isEditing?decision:null)
     setSkipReason(target.isEditing?skipReason:'')
-    if(next==='new'||next==='variant'){
-      // New classifications must enter their own price, not reuse old price.
+    if(next==='new'){
+      // Preserve the prior new-SKU default from the purchase item's
+      // classification; new sale price still requires explicit entry.
+      setNewVariant(target.sourceVariant||'Mặc định')
       setSalePrice('')
       setMultiplier('1')
-      if(next==='variant'&&!existingProductId&&selected?.products?.id){
-        setExistingProductId(selected.products.id)
-      }
     }else if(selected){
+      setNewVariant('')
+      setCatalogProductId(selected.products?.id??'')
       setSalePrice(selected.sale_price===null||selected.sale_price===undefined?'':String(selected.sale_price))
+    }else{
+      setNewVariant('')
     }
+    setError('')
+  }
+  function beginNewClassification(){
+    if(!catalogSelectedProduct||busy)return
+    // The parent SKU is always chosen in the existing SKU flow first.
+    setMode('variant')
+    setVariantId('')
+    setNewVariant('')
+    setSalePrice('')
+    setMultiplier('1')
+    setDecision(target.isEditing?decision:null)
+    setSkipReason('')
+    setError('')
+  }
+  function cancelNewClassification(){
+    setMode('existing')
+    setNewVariant('')
+    setSalePrice('')
     setError('')
   }
   function choose(option:HistoricalSuggestion){
     const variant=variants.find(item=>item.id===option.variant_id)
     if(!variant)return
     setVariantId(variant.id)
+    setCatalogProductId(variant.products?.id??'')
+    setCatalogProductBrowserOpen(false)
     setSalePrice(variant.sale_price===null||variant.sale_price===undefined?'':String(variant.sale_price))
     setMultiplier(String(option.multiplier))
     // Another verified historical mapping is also only an unsaved IN draft.
@@ -148,7 +199,8 @@ export function WarehouseInlineSkuHistoryPicker({
     // Clicking a mapped SKU in a lower warehouse may auto-scroll the table
     // just before the portal mounts. Ignore that activation scroll, but
     // continue to dismiss the picker on subsequent intentional scrolling.
-    const openedAt=Date.now()
+    const viewportWidth=window.innerWidth
+    const viewportHeight=window.innerHeight
     const pointer=(event:PointerEvent)=>{
       if(busyRef.current||panelRef.current?.contains(event.target as Node))return
       onClose()
@@ -160,20 +212,20 @@ export function WarehouseInlineSkuHistoryPicker({
         onClose()
       }
     }
-    const closeOnScroll=(event:Event)=>{
-      if(busyRef.current||panelRef.current?.contains(event.target as Node)||
-        Date.now()-openedAt<300)return
-      onClose()
+    // Changing the SKU expands its alphabetical list. Browser auto-scroll
+    // during that expansion must not close the picker mid-selection.
+    // Outside click/Esc still dismiss it; real viewport resizes do too.
+    const resize=()=>{
+      if(Math.abs(window.innerWidth-viewportWidth)>4||
+         Math.abs(window.innerHeight-viewportHeight)>4)onClose()
     }
     document.addEventListener('pointerdown',pointer,true)
     document.addEventListener('keydown',escape,true)
-    document.addEventListener('scroll',closeOnScroll,true)
-    window.addEventListener('resize',onClose)
+    window.addEventListener('resize',resize)
     return ()=>{
       document.removeEventListener('pointerdown',pointer,true)
       document.removeEventListener('keydown',escape,true)
-      document.removeEventListener('scroll',closeOnScroll,true)
-      window.removeEventListener('resize',onClose)
+      window.removeEventListener('resize',resize)
     }
   },[onClose])
 
@@ -195,7 +247,7 @@ export function WarehouseInlineSkuHistoryPicker({
     try{
       if(mode==='variant'){
         await addWarehouseVariantAndMap({
-          orderItemId:target.orderItemId,productId:existingProductId,
+          orderItemId:target.orderItemId,productId:catalogProductId,
           variantName:newVariant.trim(),salePrice:price,multiplier:factor,decision,
           skipReason:decision==='SKIP'?skipReason.trim():null
         })
@@ -253,76 +305,112 @@ export function WarehouseInlineSkuHistoryPicker({
       </div>
       <div className="warehouse-inline-sku-history-content">
         <div className="warehouse-inline-sku-history-modes" role="group" aria-label="Cách ghép SKU">
-          <button type="button" className={mode==='existing'?'active':''} aria-pressed={mode==='existing'}
+          <button type="button" className={mode!=='new'?'active':''} aria-pressed={mode!=='new'}
             disabled={busy} onClick={()=>changeMode('existing')}>Chọn SKU có sẵn</button>
-          <button type="button" className={mode==='variant'?'active':''} aria-pressed={mode==='variant'}
-            disabled={busy} onClick={()=>changeMode('variant')}>Thêm phân loại</button>
           <button type="button" className={mode==='new'?'active':''} aria-pressed={mode==='new'}
             disabled={busy} onClick={()=>changeMode('new')}>Tạo SKU mới</button>
         </div>
         {mode==='existing'&&<>
-          {!target.isEditing&&preferredVariant&&variantId===preferredVariant.id&&
-            <p className="warehouse-inline-sku-draft-note">Đã chọn sẵn SKU gợi ý từ lịch sử. Bấm Lưu ghép SKU để xác nhận; chưa nhập kho.</p>}
           {target.isEditing&&<p className="warehouse-inline-sku-draft-note">
-            Đang sửa quyết định đã lưu. Chỉ cập nhật ghép SKU và thông tin sản phẩm; chưa ghi tăng tồn kho.
+            Đang sửa quyết định đã lưu; chưa thay đổi tồn kho.
           </p>}
-          {available.length>0&&<>
-            <p>{available.length} gợi ý từ những đơn tương tự đã ghép trước đây. Hãy đối chiếu, không tự động chọn.</p>
-            <div className="warehouse-inline-sku-history-options">
-              {available.map(option=><button type="button" key={option.variant_id}
-                className={variantId===option.variant_id?'active':''}
-                aria-pressed={variantId===option.variant_id}
-                disabled={busy} onClick={()=>choose(option)}>
-                <b>{option.sku||'SKU chưa có mã'} · {option.product_name||'Chưa có tên'}</b>
-                <small>{option.variant_name||'Mặc định'} · Quy đổi ×{option.multiplier}</small>
-                <small>{option.history_count} đơn cũ · {matchText(option.match_kind)}</small>
-              </button>)}
-            </div>
-          </>}
-          {available.length===0&&<p>Chưa có lịch sử ghép tương tự. Có thể tìm SKU trong danh mục hoặc tạo SKU mới.</p>}
-          <label className="warehouse-inline-sku-history-catalog">Tìm SKU bán trong danh mục
-            <input type="search" aria-label="Tìm SKU bán ghép nhanh" value={catalogQuery}
-              disabled={busy} placeholder="Mã SKU, tên sản phẩm hoặc phân loại"
-              onChange={e=>setCatalogQuery(e.target.value)}/>
-          </label>
-          <label className="warehouse-inline-sku-history-catalog">Chọn SKU bán có sẵn
-            <select aria-label="Chọn SKU bán ghép nhanh" value={variantId} disabled={busy}
-              onChange={e=>chooseCatalog(e.target.value)}>
-              <option value="">— Chọn SKU bán —</option>
-              {selected&&!catalog.some(v=>v.id===selected.id)&&<option value={selected.id}>
-                {selected.products?.sku||'Chưa có mã'} · {selected.products?.name||''} · {selected.variant_name}
-              </option>}
-              {catalog.map(variant=><option value={variant.id} key={variant.id}>
-                {variant.products?.sku||'Chưa có mã'} · {variant.products?.name||''} · {variant.variant_name}
-              </option>)}
-            </select>
-          </label>
+          <div className="warehouse-sku-browser warehouse-sku-browser-compact">
+            <div className="warehouse-sku-step-caption">Bước 1 · Chọn SKU sản phẩm</div>
+            {catalogSelectedProduct&&!catalogProductBrowserOpen?
+              <div className="warehouse-sku-product-selected" aria-label="SKU sản phẩm đã chọn">
+                <span className="warehouse-sku-product-summary">
+                  <b>{catalogSelectedProduct.sku}</b><small>{catalogSelectedProduct.name}</small>
+                </span>
+                <button type="button" disabled={busy} aria-label="Đổi SKU sản phẩm"
+                  onClick={()=>{
+                    // Explicitly clear parent and child selection together.
+                    // The classification list must disappear until Step 1
+                    // chooses a new product, including in saved-remap mode.
+                    setCatalogProductId('')
+                    setCatalogProductBrowserOpen(true)
+                    setVariantId('')
+                    setSalePrice('')
+                    setMultiplier('1')
+                    setError('')
+                  }}>Đổi SKU</button>
+              </div>:
+              <>
+                <label className="warehouse-inline-sku-history-catalog">Tìm SKU sản phẩm
+                  <input type="search" aria-label="Tìm SKU bán ghép nhanh"
+                    placeholder="Tìm mã hoặc tên SKU…" value={catalogQuery}
+                    disabled={busy} onChange={e=>setCatalogQuery(e.target.value)}/>
+                </label>
+                <div className="warehouse-sku-alphabet" role="group" aria-label="Lọc SKU theo chữ cái">
+                  {['Tất cả',...alphabet].map(letter=><button type="button" key={letter}
+                    disabled={busy} aria-pressed={catalogLetter===letter}
+                    className={catalogLetter===letter?'active':''}
+                    onClick={()=>setCatalogLetter(letter)}>{letter}</button>)}
+                </div>
+                <div className="warehouse-sku-sku-results warehouse-sku-browser-results"
+                  role="group" aria-label="Danh sách SKU sản phẩm">
+                  {catalogMatchedProducts.slice(0,80).map(product=><button type="button"
+                    key={product.id} disabled={busy} aria-pressed={catalogProductId===product.id}
+                    className={catalogProductId===product.id?'active':''}
+                    onClick={()=>chooseCatalogProduct(product.id)}>
+                    <b>{product.sku}</b><span>{product.name}</span>
+                  </button>)}
+                  {catalogMatchedProducts.length===0&&<p>Không tìm thấy SKU sản phẩm.</p>}
+                </div>
+              </>}
+            {catalogSelectedProduct&&!catalogProductBrowserOpen&&<>
+              <div className="warehouse-sku-step-caption">Bước 2 · Chọn phân loại của {catalogSelectedProduct.sku}</div>
+              {catalogHistory.length>0&&<div className="warehouse-inline-sku-history-options">
+                {catalogHistory.map(option=><button type="button" key={option.variant_id}
+                  className={variantId===option.variant_id?'active':''}
+                  aria-pressed={variantId===option.variant_id}
+                  disabled={busy} onClick={()=>choose(option)}>
+                  <b>{option.variant_name||'Mặc định'} · Đã ghép {option.history_count} đơn</b>
+                  <small>Gợi ý lịch sử · Quy đổi ×{option.multiplier}</small>
+                </button>)}
+              </div>}
+              <div className="warehouse-sku-browser-results warehouse-sku-classification-results"
+                role="group" aria-label="Phân loại của SKU đã chọn">
+                {catalogVariants.map(variant=><button type="button" key={variant.id}
+                  className={variantId===variant.id?'active':''}
+                  aria-pressed={variantId===variant.id} disabled={busy}
+                  onClick={()=>chooseCatalog(variant.id)}>
+                  <b>{variant.products?.sku||catalogSelectedProduct.sku}</b>
+                  <span>{variant.variant_name}</span>
+                  <small>{variant.sale_price!=null?formatMoney(Number(variant.sale_price)):'Chưa có giá bán'}</small>
+                </button>)}
+                {catalogVariants.length===0&&<p>SKU chưa có phân loại bán.</p>}
+              </div>
+              <button type="button" className="warehouse-sku-add-classification"
+                disabled={busy} onClick={beginNewClassification}>+ Thêm phân loại mới</button>
+            </>}
+          </div>
         </>}
-        {mode==='variant'&&<div className="warehouse-inline-sku-history-new">
-          <p>Thêm phân loại bán mới cho SKU đã có. Giá bán áp dụng riêng cho phân loại mới; sản phẩm và các phân loại cũ được giữ nguyên.</p>
-          <label>Tìm SKU sản phẩm hiện có
-            <input type="search" aria-label="Tìm SKU để thêm phân loại"
-              disabled={busy} value={productQuery} placeholder="Mã hoặc tên SKU"
-              onChange={event=>setProductQuery(event.target.value)}/>
-          </label>
-          <label>Chọn SKU sản phẩm
-            <select aria-label="SKU gốc để thêm phân loại" disabled={busy}
-              value={existingProductId} onChange={event=>{
-                setExistingProductId(event.target.value)
-                setError('')
-              }}>
-              <option value="">— Chọn SKU đã có —</option>
-              {existingProduct&&!productsMatched.some(p=>p.id===existingProduct.id)&&
-                <option value={existingProduct.id}>{existingProduct.sku} · {existingProduct.name}</option>}
-              {productsMatched.map(product=><option key={product.id} value={product.id}>
-                {product.sku} · {product.name}
-              </option>)}
-            </select>
-          </label>
+        {mode==='variant'&&existingProduct&&<div className="warehouse-inline-sku-history-new warehouse-inline-sku-variant-compact">
+          <div className="warehouse-sku-step-caption">Bước 1 · SKU sản phẩm đã chọn</div>
+          <div className="warehouse-sku-product-selected" aria-label="SKU sản phẩm đã chọn">
+            <span className="warehouse-sku-product-summary">
+              <b>{existingProduct.sku}</b>
+              <small title={existingProduct.name}>{existingProduct.name}</small>
+            </span>
+            <button type="button" disabled={busy} aria-label="Đổi SKU sản phẩm"
+              onClick={()=>{
+                cancelNewClassification()
+                setCatalogProductId('')
+                setCatalogProductBrowserOpen(true)
+                setVariantId('')
+                setMultiplier('1')
+              }}>Đổi SKU</button>
+          </div>
+          <div className="warehouse-sku-classification-actions">
+            <span className="warehouse-sku-step-caption">Bước 2 · Phân loại mới</span>
+            <button type="button" disabled={busy} onClick={cancelNewClassification}>
+              Chọn phân loại có sẵn
+            </button>
+          </div>
           <label>Phân loại bán mới
-            <input type="text" maxLength={255} disabled={busy}
-              aria-label="Tên phân loại mới của SKU cũ" value={newVariant}
-              onChange={event=>setNewVariant(event.target.value)}/>
+            <input type="text" maxLength={255} disabled={busy} autoComplete="off"
+              aria-label="Tên phân loại mới của SKU cũ" placeholder="Ví dụ: Đỏ / Size M"
+              value={newVariant} onChange={event=>setNewVariant(event.target.value)}/>
           </label>
           {duplicateVariant&&<small role="alert" className="warehouse-inline-sku-history-error">
             Phân loại này đã tồn tại trong SKU. Hãy chọn phân loại có sẵn.
@@ -345,7 +433,7 @@ export function WarehouseInlineSkuHistoryPicker({
           </label>
           {duplicatedSku&&<small className="warehouse-inline-sku-history-error">Mã SKU đã có trong danh mục. Hãy chọn SKU có sẵn.</small>}
         </div>}
-        {(mode==='new'||mode==='variant'||selected||unmappedSkip)&&<div className="warehouse-inline-sku-history-edit">
+        {(mode==='new'||(mode==='variant'&&!!existingProduct)||(mode==='existing'&&!!selected)||unmappedSkip)&&<div className="warehouse-inline-sku-history-edit">
           <strong>Đối chiếu trước khi lưu</strong>
           {!unmappedSkip&&<div className="warehouse-inline-sku-history-numbers">
             <label>Giá bán

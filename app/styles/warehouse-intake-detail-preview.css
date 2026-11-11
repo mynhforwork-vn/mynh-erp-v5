@@ -245,3 +245,67 @@
   .warehouse-detail-v2-pair{gap:6px}
   .warehouse-detail-v2-footer-actions{gap:4px}
 }
+
+
+/* One alphabetic SKU browser contract in both detail and inline selectors. */
+.warehouse-detail-v2-browser{display:flex;flex-direction:column;gap:6px;min-width:0}
+.warehouse-detail-v2-abc{display:flex;flex-wrap:wrap;gap:4px}
+.warehouse-detail-v2-abc button{border:1px solid #d9e5ed;border-radius:4px;
+  min-width:25px;min-height:24px;padding:3px 5px;background:#f7fafc;
+  color:#517085;font-size:9.5px;cursor:pointer}
+.warehouse-detail-v2-abc button.active{background:#e8f4ef;color:#24644c;
+  border-color:#97c4ad;font-weight:700}
+.warehouse-detail-v2-abc button:disabled{opacity:.6;cursor:not-allowed}
+.warehouse-detail-v2-browser>small{color:#6b8694;font-size:9px}
+.warehouse-detail-v2-sku-results{display:flex;flex-direction:column;
+  min-width:0;max-height:170px;overflow-y:auto;overscroll-behavior:contain;gap:4px}
+.warehouse-detail-v2-sku-results button{display:grid;
+  grid-template-columns:minmax(65px,auto) minmax(0,1fr);align-items:center;
+  gap:2px 7px;text-align:left;min-width:0;padding:7px 8px;
+  border:1px solid #e1e8ec;border-radius:5px;background:#fff;
+  color:#37586c;cursor:pointer}
+.warehouse-detail-v2-sku-results button.active{border-color:#81bbaa;background:#eef7f2}
+.warehouse-detail-v2-sku-results b{font-size:10px;overflow-wrap:anywhere}
+.warehouse-detail-v2-sku-results span{font-size:9.7px;min-width:0;overflow-wrap:anywhere}
+.warehouse-detail-v2-sku-results small{grid-column:1/-1;font-size:9px;color:#6e8998}
+.warehouse-detail-v2-sku-results button:disabled{opacity:.65;cursor:not-allowed}
+.warehouse-detail-v2-sku-results button:focus-visible,.warehouse-detail-v2-abc button:focus-visible{
+  outline:2px solid #438b82;outline-offset:1px}
+
+
+/* In "Thêm phân loại", show the chosen SKU as one compact line.
+   The alphabetical list expands on demand, inside the existing slidebar. */
+.warehouse-detail-v2-product-selected{display:flex;align-items:center;justify-content:space-between;
+  gap:7px;min-width:0;padding:7px 8px;border:1px solid #dbe6eb;background:#f7faf9;border-radius:5px}
+.warehouse-detail-v2-product-summary{display:flex;align-items:baseline;gap:6px;min-width:0;flex:1}
+.warehouse-detail-v2-product-summary b{flex:0 0 auto;font-size:10.5px;color:#305769}
+.warehouse-detail-v2-product-summary small{font-size:9px;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;color:#687d8c}
+.warehouse-detail-v2-product-selected>button{flex:0 0 auto;border:0;background:none;
+  color:#286f75;cursor:pointer;padding:4px;font-size:9.5px;font-weight:700}
+.warehouse-detail-v2-browser-compact .warehouse-detail-v2-sku-results{max-height:112px;gap:3px}
+.warehouse-detail-v2-browser-compact .warehouse-detail-v2-sku-results button{padding:6px 7px}
+.warehouse-detail-v2-browser-compact .warehouse-detail-v2-sku-results button small{display:none}
+.warehouse-detail-v2-browser-compact .warehouse-detail-v2-abc button{min-height:22px;min-width:22px;padding:2px 4px}
+
+
+/* Hierarchical SKU selection in the order slidebar. */
+.warehouse-detail-v2-browser .warehouse-sku-step-caption{margin-top:3px}
+.warehouse-detail-v2-product-results{max-height:155px}
+.warehouse-detail-v2-classification-results{max-height:125px}
+.warehouse-detail-v2-classification-results button{
+  grid-template-columns:minmax(60px,auto) minmax(0,1fr)}
+.warehouse-detail-v2-browser .warehouse-sku-step-caption:first-child{margin-top:0}
+
+
+/* Add variants in the selected SKU's step 2; no third top-level tab. */
+.warehouse-detail-v2-add-classification{width:100%;min-height:29px;
+  padding:6px 9px;text-align:left;border:1px dashed #99c6b5;border-radius:5px;
+  background:#f3faf6;color:#286b52;font-size:10.5px;font-weight:650;cursor:pointer}
+.warehouse-detail-v2-add-classification:hover:not(:disabled){background:#e9f7ef}
+.warehouse-detail-v2-add-classification:focus-visible{outline:2px solid #438b82;outline-offset:1px}
+.warehouse-detail-v2-classification-actions{display:flex;align-items:center;
+  justify-content:space-between;gap:8px;flex-wrap:wrap}
+.warehouse-detail-v2-classification-actions button{border:0;background:transparent;
+  padding:4px;color:#2d7470;font-size:10px;font-weight:650;cursor:pointer}
+.warehouse-detail-v2-classification-actions button:focus-visible{outline:2px solid #438b82}

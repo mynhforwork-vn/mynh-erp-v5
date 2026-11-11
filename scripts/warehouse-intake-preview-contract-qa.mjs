@@ -367,12 +367,13 @@ const checks=[
     skuHistory.includes("if(sku&&previousSku&&sku!==previousSku)continue") &&
     skuHistory.includes('history_count:entry.orderIds.size') &&
     skuHistory.includes('previous.multipliers.set') &&
-    panel.includes('suggestionOptions.map((option,index)=>') &&
-    panel.includes('onClick={()=>applySuggestion(option)}') &&
-    panel.includes('GỢI Ý SKU TỪ LỊCH SỬ ĐÃ LƯU') &&
-    panel.includes('Đã từng ghép với nhiều SKU') &&
-    !panel.includes('onClick={applySuggestion}') &&
-    panelCss.includes('.warehouse-detail-v2-suggestion-entry')],
+    panel.includes('const history=suggestionOptions.find(option=>option.variant_id===v.id)') &&
+    panel.includes('onClick={()=>history?applySuggestion(history):chooseVariant(v.id)}') &&
+    panel.includes('const matchVariants=variants.filter(v=>v.products?.id===selectedSkuId)') &&
+    panel.includes('Bước 1 · Chọn SKU sản phẩm') &&
+    panel.includes('Bước 2 · Chọn phân loại của') &&
+    !panel.includes('suggestionOptions.map((option,index)=>') &&
+    panelCss.includes('.warehouse-detail-v2-classification-results')],
   ['inline SKU draft from history can confirm once or create a new SKU without slidebar',
     table.includes("from '@/components/warehouse-inline-sku-history-picker'") &&
     table.includes('warehouse-inline-sku-trigger') &&
@@ -407,9 +408,14 @@ const checks=[
     page.includes("skuProducts={skuProducts??[]}") &&
     table.includes("skuProducts={catalogProducts}") &&
     inlinePicker.includes("type Mode='existing'|'variant'|'new'") &&
-    inlinePicker.includes("Thêm phân loại") &&
-    inlinePicker.includes("SKU gốc để thêm phân loại") &&
+    inlinePicker.includes("mode!=='new'?'active':''") &&
+    inlinePicker.includes('>+ Thêm phân loại mới</button>') &&
+    inlinePicker.includes('aria-label="Phân loại của SKU đã chọn"') &&
+    inlinePicker.includes("const existingProduct=catalogSelectedProduct") &&
     inlinePicker.includes("Tên phân loại mới của SKU cũ") &&
+    !inlinePicker.includes("onClick={()=>changeMode('variant')}") &&
+    panel.includes("mode:'variant',productId:selectedSkuId") &&
+    panel.includes('>+ Thêm phân loại mới</button>') &&
     inlinePicker.includes("const validVariant=!!existingProduct") &&
     inlinePicker.includes("await addWarehouseVariantAndMap({") &&
     inlinePicker.includes("newVariant.trim()") &&

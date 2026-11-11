@@ -77,7 +77,6 @@ type Draft={
   salePrice:string
   newSku:string
   productId:string
-  productQuery:string
   newName:string
   newVariant:string
   multiplier:string
@@ -91,6 +90,8 @@ type ItemDecision={
   skip_reason?:string|null;processing_state:'DRAFT'|'FINALIZED';updated_at?:string
 }
 type Tab='products'|'info'|'history'
+const normalizeSku=(value:string)=>value.normalize('NFD').replace(/\p{M}/gu,'')
+  .replace(/đ/g,'d').replace(/Đ/g,'D').toLocaleUpperCase('vi').trim()
 
 function batchOf(order:Order){
   const detail=Array.isArray(order.receive_batch_details)?order.receive_batch_details[0]:order.receive_batch_details
@@ -118,7 +119,7 @@ function initialDraft(item:Item,saved?:ItemDecision):Draft{
     mode:'existing',variantId:saved?.product_variant_id??item.product_variant_id??'',query:'',
     salePrice:saved?String(saved.sale_price):item.product_variants?.sale_price===null||item.product_variants?.sale_price===undefined
       ?'':String(item.product_variants.sale_price),
-    newSku:'',productId:item.product_variants?.products?.id??'',productQuery:'',
+    newSku:'',productId:item.product_variants?.products?.id??'',
     newName:item.product_name,newVariant:item.variant??'Mặc định',
     multiplier:String(saved?.multiplier??item.inventory_multiplier??1),
     decision:saved?.decision??'IN',reason:saved?.skip_reason??'',
@@ -147,6 +148,8 @@ export function WarehouseIntakeDetailPreview({
   onClose:()=>void
 }){
   const [tab,setTab]=useState<Tab>('products')
+  const [skuLetter,setSkuLetter]=useState('Tất cả')
+  const [skuBrowseOpen,setSkuBrowseOpen]=useState(false)
   const [focusedId,setFocusedId]=useState<string>(
     order.order_items.find(item=>!item.product_variant_id)?.id??order.order_items[0]?.id??''
   )
@@ -188,10 +191,6 @@ export function WarehouseIntakeDetailPreview({
       id:v.products!.id!,sku:String(v.products?.sku??''),name:String(v.products?.name??'')
     }])).values()]
   const variantProduct=availableProducts.find(p=>p.id===draft?.productId)
-  const skuLookup=String(draft?.productQuery??'').trim().toLocaleLowerCase('vi')
-  const matchingProducts=availableProducts.filter(p=>
-    [p.sku,p.name].join(' ').toLocaleLowerCase('vi').includes(skuLookup))
-    .slice(0,skuLookup?80:40)
   const duplicatedClassification=!!variantProduct&&variants.some(v=>
     v.products?.id===variantProduct.id&&
     v.variant_name.trim().toLocaleLowerCase('vi')===
@@ -201,14 +200,17 @@ export function WarehouseIntakeDetailPreview({
   const totalChoices=Object.keys(choices).length
   const activeShipment=order.shipments?.find(s=>s.is_active)??order.shipments?.[0]??null
   const warehouse=batchOf(order)?.warehouses
-  const matchVariants=useMemo(()=>{
-    const query=(draft?.query??'').trim().toLocaleLowerCase('vi')
-    if(!query)return variants.slice(0,30)
-    return variants.filter(variant=>
-      [variant.products?.sku,variant.products?.name,variant.variant_name]
-        .filter(Boolean).join(' ').toLocaleLowerCase('vi').includes(query)
-    ).slice(0,80)
-  },[draft?.query,variants])
+  const selectedSkuId=selectedVariant?.products?.id||draft?.productId||''
+  const selectedSkuProduct=availableProducts.find(p=>p.id===selectedSkuId)
+  const skuProductLetters=[...new Set(availableProducts.map(p=>
+    normalizeSku(p.sku).charAt(0)||'#'))].sort((a,b)=>a.localeCompare(b,'en'))
+  const matchingSkuProducts=availableProducts.filter(p=>
+    (skuLetter==='Tất cả'||(normalizeSku(p.sku).charAt(0)||'#')===skuLetter)&&
+    normalizeSku([p.sku,p.name].join(' ')).includes(normalizeSku(draft?.query??'')))
+    .sort((a,b)=>normalizeSku(a.sku).localeCompare(normalizeSku(b.sku),'en'))
+    .slice(0,80)
+  const matchVariants=variants.filter(v=>v.products?.id===selectedSkuId)
+    .sort((a,b)=>a.variant_name.localeCompare(b.variant_name,'vi'))
   const logs=auditLogs.filter(log=>String(log.entity_id??'')===order.id)
 
   useEffect(()=>{
@@ -223,6 +225,7 @@ export function WarehouseIntakeDetailPreview({
   },[onClose])
 
   function focus(item:Item){
+    setSkuBrowseOpen(false)
     setFocusedId(item.id)
     setNotice('')
     setShowSummary(false)
@@ -236,14 +239,15 @@ export function WarehouseIntakeDetailPreview({
   }
   function chooseVariant(id:string){
     const variant=variants.find(v=>v.id===id)
-    change({variantId:id,salePrice:variant?.sale_price===null||variant?.sale_price===undefined
+    change({variantId:id,productId:variant?.products?.id??'',salePrice:variant?.sale_price===null||variant?.sale_price===undefined
       ?'':String(variant.sale_price)})
   }
   function applySuggestion(suggestion:Suggestion){
     const variant=variants.find(v=>v.id===suggestion.variant_id)
     if(!variant){setNotice('SKU gợi ý không còn trong danh mục. Hãy chọn SKU khác.');return}
     const multiplier=Number(suggestion.multiplier)
-    change({mode:'existing',variantId:variant.id,
+    setSkuBrowseOpen(false)
+    change({mode:'existing',productId:variant.products?.id??'',variantId:variant.id,
       salePrice:variant.sale_price===null||variant.sale_price===undefined?'':String(variant.sale_price),
       multiplier:Number.isInteger(multiplier)&&multiplier>0?String(multiplier):'1'})
     setNotice('Đã chọn gợi ý để đối chiếu. Chưa lưu SKU hoặc nhập kho.')
@@ -401,77 +405,99 @@ export function WarehouseIntakeDetailPreview({
           </div>}
           <div className="warehouse-detail-v2-section-title">Ghép SKU bán và quyết định giá</div>
           <div className="warehouse-detail-v2-switch">
-            <button type="button" disabled={processed||isReadOnly||busy} className={draft.mode==='existing'?'active':''}
-              onClick={()=>change({mode:'existing'})}>Chọn SKU có sẵn</button>
-            <button type="button" disabled={processed||isReadOnly||busy} className={draft.mode==='variant'?'active':''}
-              onClick={()=>change({mode:'variant',productId:draft.productId||selectedVariant?.products?.id||'',
-                variantId:'',salePrice:'',multiplier:'1'})}>Thêm phân loại</button>
+            <button type="button" disabled={processed||isReadOnly||busy}
+              className={draft.mode!=='new'?'active':''}
+              onClick={()=>{
+                setSkuBrowseOpen(false)
+                change({mode:'existing',newVariant:'',variantId:draft.mode==='variant'?'':draft.variantId,
+                  salePrice:draft.mode==='variant'?'':draft.salePrice})
+              }}>Chọn SKU có sẵn</button>
             <button type="button" disabled={processed||isReadOnly||busy} className={draft.mode==='new'?'active':''}
               onClick={()=>change({mode:'new',variantId:'',salePrice:'',multiplier:'1'})}>Tạo SKU mới</button>
           </div>
           {draft.mode==='existing'?<div className="warehouse-detail-v2-fields">
-            {suggestionOptions.length>0&&<div className="warehouse-detail-v2-suggestion" aria-label="Gợi ý SKU từ lịch sử ghép">
-              <span>GỢI Ý SKU TỪ LỊCH SỬ ĐÃ LƯU</span>
-              <small>{suggestionOptions.length>1
-                ?'Đã từng ghép với nhiều SKU. Hãy đối chiếu trước khi chọn.'
-                :'Gợi ý tham khảo, chưa tự động ghép SKU hoặc thay đổi tồn kho.'}</small>
-              <div className="warehouse-detail-v2-suggestion-list">
-                {suggestionOptions.map((option,index)=><div className="warehouse-detail-v2-suggestion-entry" key={option.variant_id}>
-                  <div className="warehouse-detail-v2-suggestion-detail">
-                    <b>{index+1}. {option.sku||'SKU bán'} · {option.product_name||''}</b>
-                    <small>{option.variant_name||'Mặc định'} · quy đổi ×{option.multiplier}</small>
-                    <small>{option.history_count} đơn trước đã ghép · {option.match_kind==='exact'
-                      ?'Khớp mã, tên và phân loại'
-                      :option.match_kind==='sku_variant'?'Khớp mã SKU mua và phân loại'
-                      :'Khớp tên và phân loại'}</small>
+            <div className="warehouse-detail-v2-browser" aria-label="Chọn SKU bán theo ABC">
+              <div className="warehouse-sku-step-caption">Bước 1 · Chọn SKU sản phẩm</div>
+              {selectedSkuProduct&&!skuBrowseOpen?
+                <div className="warehouse-detail-v2-product-selected" aria-label="SKU sản phẩm đã chọn">
+                  <span className="warehouse-detail-v2-product-summary">
+                    <b>{selectedSkuProduct.sku}</b><small>{selectedSkuProduct.name}</small>
+                  </span>
+                  <button type="button" disabled={processed||isReadOnly||busy}
+                    aria-label="Đổi SKU sản phẩm" onClick={()=>{setSkuBrowseOpen(true);change({variantId:'',salePrice:''})}}>Đổi SKU</button>
+                </div>:
+                <>
+                  <label className="warehouse-detail-v2-field"><span>Tìm SKU theo mã hoặc tên</span>
+                    <input type="search" aria-label="Tìm SKU theo mã hoặc tên"
+                      placeholder="Tìm SKU sản phẩm…" disabled={processed||isReadOnly||busy}
+                      value={draft.query} onChange={e=>change({query:e.target.value})}/>
+                  </label>
+                  <div className="warehouse-detail-v2-abc" role="group" aria-label="Lọc chữ cái SKU bán">
+                    {['Tất cả',...skuProductLetters].map(letter=><button type="button" key={letter}
+                      aria-pressed={skuLetter===letter} className={skuLetter===letter?'active':''}
+                      disabled={processed||isReadOnly||busy} onClick={()=>setSkuLetter(letter)}>{letter}</button>)}
                   </div>
-                  <button type="button" onClick={()=>applySuggestion(option)}
-                    disabled={processed||isReadOnly||busy} aria-label={'Chọn gợi ý '+(option.sku??option.product_name??option.variant_id)}>
-                    Chọn
-                  </button>
-                </div>)}
-              </div>
-            </div>}
-            <label className="warehouse-detail-v2-field"><span>Tìm SKU theo mã, tên hoặc phân loại</span>
-              <input type="search" aria-label="Tìm SKU theo mã, tên hoặc phân loại"
-                placeholder="Tìm trong danh mục SKU" disabled={processed||isReadOnly||busy}
-                value={draft.query} onChange={e=>change({query:e.target.value})}/>
-            </label>
-            <label className="warehouse-detail-v2-field"><span>Chọn SKU bán trong danh mục</span>
-              <select aria-label="Chọn SKU bán" disabled={processed||isReadOnly||busy} value={draft.variantId}
-                onChange={e=>chooseVariant(e.target.value)}>
-                <option value="">— Chọn SKU bán —</option>
-                {selectedVariant&&!matchVariants.some(v=>v.id===selectedVariant.id)&&
-                  <option value={selectedVariant.id}>
-                    {selectedVariant.products?.sku||'Chưa có mã'} · {selectedVariant.products?.name||''} · {selectedVariant.variant_name}
-                  </option>}
-                {matchVariants.map(v=><option value={v.id} key={v.id}>
-                  {v.products?.sku||'Chưa có mã'} · {v.products?.name||''} · {v.variant_name}
-                </option>)}
-              </select>
-              <small>{draft.query?'Tối đa 80 kết quả phù hợp':'Nhập từ khóa để tìm trong danh mục'} · Chưa xác nhận SKU</small>
-            </label>
-          </div>:draft.mode==='variant'?<div className="warehouse-detail-v2-fields warehouse-detail-v2-pair">
-            <p className="warehouse-detail-v2-source">Thêm phân loại vào SKU cũ với giá bán riêng; giữ nguyên sản phẩm và các phân loại đã có.</p>
-            <label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>Tìm SKU đã có</span>
-              <input type="search" aria-label="Tìm SKU gốc để thêm phân loại"
-                disabled={processed||isReadOnly||busy} value={draft.productQuery}
-                onChange={e=>change({productQuery:e.target.value})}
-                placeholder="Mã SKU hoặc tên sản phẩm"/>
-            </label>
-            <label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>SKU sản phẩm hiện có</span>
-              <select aria-label="Chọn SKU gốc để thêm phân loại" disabled={processed||isReadOnly||busy}
-                value={draft.productId} onChange={e=>change({productId:e.target.value})}>
-                <option value="">— Chọn SKU đã có —</option>
-                {variantProduct&&!matchingProducts.some(p=>p.id===variantProduct.id)&&
-                  <option value={variantProduct.id}>{variantProduct.sku} · {variantProduct.name}</option>}
-                {matchingProducts.map(p=><option key={p.id} value={p.id}>{p.sku} · {p.name}</option>)}
-              </select>
-              <small>{draft.productQuery?'Tối đa 80 SKU khớp':'Nhập để tìm trong danh mục SKU'}</small>
-            </label>
+                  <div className="warehouse-detail-v2-sku-results warehouse-detail-v2-product-results"
+                    role="group" aria-label="Danh sách SKU sản phẩm">
+                    {matchingSkuProducts.map(p=><button type="button" key={p.id}
+                      aria-pressed={selectedSkuId===p.id} className={selectedSkuId===p.id?'active':''}
+                      disabled={processed||isReadOnly||busy}
+                      onClick={()=>{change({productId:p.id,variantId:'',salePrice:'',query:'',multiplier:'1'});setSkuBrowseOpen(false)}}>
+                      <b>{p.sku}</b><span>{p.name}</span>
+                      {suggestionOptions.some(o=>variants.some(v=>v.id===o.variant_id&&v.products?.id===p.id))&&
+                        <small>Đã có gợi ý ghép từ lịch sử</small>}
+                    </button>)}
+                    {matchingSkuProducts.length===0&&<small>Không tìm thấy SKU sản phẩm.</small>}
+                  </div>
+                </>}
+              {selectedSkuProduct&&!skuBrowseOpen&&<>
+                <div className="warehouse-sku-step-caption">Bước 2 · Chọn phân loại của {selectedSkuProduct.sku}</div>
+                <div className="warehouse-detail-v2-sku-results warehouse-detail-v2-classification-results"
+                  role="group" aria-label="Phân loại của SKU đã chọn">
+                  {matchVariants.map(v=>{
+                    const history=suggestionOptions.find(option=>option.variant_id===v.id)
+                    return <button key={v.id} type="button"
+                      className={draft.variantId===v.id?'active':''} aria-pressed={draft.variantId===v.id}
+                      disabled={processed||isReadOnly||busy}
+                      onClick={()=>history?applySuggestion(history):chooseVariant(v.id)}>
+                      <b>{v.products?.sku||selectedSkuProduct.sku}</b><span>{v.variant_name}</span>
+                      <small>{v.sale_price!=null?formatMoney(v.sale_price):'Chưa có giá bán'}
+                        {history?' · '+history.history_count+' đơn trước đã ghép · Quy đổi ×'+history.multiplier:''}</small>
+                    </button>
+                  })}
+                  {matchVariants.length===0&&<small>SKU này chưa có phân loại.</small>}
+                </div>
+                <button type="button" className="warehouse-detail-v2-add-classification"
+                  disabled={processed||isReadOnly||busy}
+                  onClick={()=>{
+                    change({mode:'variant',productId:selectedSkuId,
+                      variantId:'',newVariant:'',salePrice:'',multiplier:'1'})
+                  }}>+ Thêm phân loại mới</button>
+              </>}
+            </div>
+          </div>:draft.mode==='variant'&&variantProduct?<div className="warehouse-detail-v2-fields warehouse-detail-v2-pair">
+            <div className="warehouse-sku-step-caption warehouse-detail-v2-full">Bước 1 · SKU sản phẩm đã chọn</div>
+            <div className="warehouse-detail-v2-product-selected warehouse-detail-v2-full" aria-label="SKU sản phẩm đã chọn">
+              <span className="warehouse-detail-v2-product-summary">
+                <b>{variantProduct.sku}</b><small title={variantProduct.name}>{variantProduct.name}</small>
+              </span>
+              <button type="button" disabled={processed||isReadOnly||busy}
+                aria-label="Đổi SKU sản phẩm" onClick={()=>{
+                  setSkuBrowseOpen(true)
+                  change({mode:'existing',productId:'',variantId:'',newVariant:'',salePrice:'',multiplier:'1'})
+                }}>Đổi SKU</button>
+            </div>
+            <div className="warehouse-detail-v2-classification-actions warehouse-detail-v2-full">
+              <span className="warehouse-sku-step-caption">Bước 2 · Thêm phân loại mới</span>
+              <button type="button" disabled={processed||isReadOnly||busy}
+                onClick={()=>change({mode:'existing',variantId:'',newVariant:'',salePrice:''})}>
+                Chọn phân loại có sẵn
+              </button>
+            </div>
             <label className="warehouse-detail-v2-field warehouse-detail-v2-full"><span>Phân loại mới</span>
               <input aria-label="Nhập phân loại mới của SKU cũ" disabled={processed||isReadOnly||busy}
-                maxLength={255} value={draft.newVariant} onChange={e=>change({newVariant:e.target.value})}/>
+                maxLength={255} value={draft.newVariant} placeholder="Ví dụ: Đỏ / Size M"
+                onChange={e=>change({newVariant:e.target.value})}/>
               {duplicatedClassification&&<small role="alert">Phân loại đã tồn tại, hãy chọn phân loại có sẵn.</small>}
             </label>
           </div>:<div className="warehouse-detail-v2-fields warehouse-detail-v2-pair">
@@ -485,7 +511,7 @@ export function WarehouseIntakeDetailPreview({
               <input disabled={processed||isReadOnly||busy} value={draft.newVariant} onChange={e=>change({newVariant:e.target.value})}/>
             </label>
           </div>}
-          <div className="warehouse-detail-v2-pair warehouse-detail-v2-numeric">
+          {(draft.mode==='new'||draft.mode==='variant'&&!!variantProduct||draft.mode==='existing'&&!!selectedVariant)&&<div className="warehouse-detail-v2-pair warehouse-detail-v2-numeric">
             <label className="warehouse-detail-v2-field"><span>Giá bán (sửa được)</span>
               <input type="number" disabled={processed||isReadOnly||busy} min="0" step="1" value={draft.salePrice}
                 onChange={e=>change({salePrice:e.target.value})}/>
@@ -494,27 +520,27 @@ export function WarehouseIntakeDetailPreview({
               <input type="number" disabled={processed||isReadOnly||busy} min="1" step="1" value={draft.multiplier}
                 onChange={e=>change({multiplier:e.target.value})}/>
             </label>
-          </div>
-          <div className="warehouse-detail-v2-conversion">Số lượng nhập dự kiến:
+          </div>}
+          {(draft.mode==='new'||draft.mode==='variant'&&!!variantProduct||draft.mode==='existing'&&!!selectedVariant)&&<div className="warehouse-detail-v2-conversion">Số lượng nhập dự kiến:
             <b>{Number.isInteger(Number(draft.multiplier))&&Number(draft.multiplier)>0
               ?Number(selected.quantity)*Number(draft.multiplier):'—'}</b>
-          </div>
-          <div className="warehouse-detail-v2-section-title">Quyết định kho theo sản phẩm</div>
-          <div className="warehouse-detail-v2-switch warehouse-detail-v2-decisions">
+          </div>}
+          {(draft.mode==='new'||draft.mode==='variant'&&!!variantProduct||draft.mode==='existing'&&!!selectedVariant)&&<div className="warehouse-detail-v2-section-title">Quyết định kho theo sản phẩm</div>}
+          {(draft.mode==='new'||draft.mode==='variant'&&!!variantProduct||draft.mode==='existing'&&!!selectedVariant)&&<div className="warehouse-detail-v2-switch warehouse-detail-v2-decisions">
             <button type="button" disabled={processed||isReadOnly||busy} className={draft.decision==='IN'?'active':''}
               onClick={()=>change({decision:'IN',reason:''})}>Nhập kho</button>
             <button type="button" disabled={processed||isReadOnly||busy} className={draft.decision==='SKIP'?'active':''}
               onClick={()=>change({decision:'SKIP'})}>Bỏ qua kho</button>
-          </div>
+          </div>}
           {draft.decision==='SKIP'&&<label className="warehouse-detail-v2-field"><span>Lý do bỏ qua kho (bắt buộc)</span>
             <textarea rows={2} disabled={processed||isReadOnly||busy} value={draft.reason}
               onChange={e=>change({reason:e.target.value})} placeholder="Nhập lý do bỏ qua"/>
           </label>}
           {notice&&<div className="warehouse-detail-v2-notice" role="status">{notice}</div>}
-          <button type="button" className="button primary warehouse-detail-v2-record"
+          {(draft.mode==='new'||draft.mode==='variant'&&!!variantProduct||draft.mode==='existing'&&!!selectedVariant)&&<button type="button" className="button primary warehouse-detail-v2-record"
             onClick={recordChoice} disabled={processed||isReadOnly||busy}>
             {busy?'Đang xử lý…':simulate?'Ghi nhận lựa chọn thử':'Lưu bóc tách và quyết định'}
-          </button>
+          </button>}
           <p className="warehouse-detail-v2-disclaimer">
             {simulate?'Chỉ mô phỏng · không tạo SKU hoặc ghi tồn kho vào Supabase'
               :isReadOnly?'Bạn không có quyền chỉnh sửa kho'
