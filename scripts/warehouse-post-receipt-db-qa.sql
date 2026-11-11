@@ -171,4 +171,7 @@ BEGIN
   RAISE EXCEPTION 'FAIL source with sale history was not blocked';
  END IF;
 END $$;
-RAISE NOTICE 'PASS: finalized SKU correction, source stock, two-warehouse immutable receipt, SKIP-to-IN, stale preview, admin, audit, and sale history safety';
+DO $
+BEGIN
+ RAISE NOTICE 'PASS: finalized SKU correction, immutable receipts, SKIP-to-IN, stale fingerprint, admin, audit and sale safety';
+END $;
