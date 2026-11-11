@@ -1,0 +1,89 @@
+name: PR91 PR92 Approved SKU Production One-Shot
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/pr92-sku-production-one-shot.yml'
+permissions:
+  contents: read
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: "${{ github.event.head_commit.message == 'release(warehouse): approved PR91 PR92 production one-shot' }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PRODUCTION_URL: https://mynh-erp-v5.mynh-forwork.workers.dev
+      PRODUCTION_ALIAS: https://erp.mynh-forwork.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify reviewed merge, one-shot scope and protected feature
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD^)" = 'd7f1be65b9da4f19061f705ae6f6ee03421d90ff'
+          test "$(git diff --name-only HEAD^ HEAD)" = '.github/workflows/pr92-sku-production-one-shot.yml'
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -f supabase/migrations/0077_warehouse_add_variant_to_existing_sku.sql
+          test -f supabase/migrations/0078_sku_catalog_safe_merge.sql
+          grep -q '"ERP_WAREHOUSE_V2_LIVE": "true"' wrangler.jsonc
+          grep -q '"ERP_SKU_CATALOG_LIVE": "false"' wrangler.jsonc
+          echo 'Migration 0077 independently applied and verified; 0078 intentionally not applied.'
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Warehouse, SKU and cross-module contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/sku-catalog-contract-qa.mjs
+          node scripts/warehouse-intake-preview-contract-qa.mjs
+          node scripts/warehouse-sku-suggestion-qa.mjs
+          node scripts/warehouse-bulk-action-qa.mjs
+          node --experimental-strip-types scripts/returned-shipment-cancellation-qa.mjs
+          node --experimental-strip-types scripts/notification-order-presentation-qa.mjs
+          node scripts/remediation-static-qa.mjs
+          npm run typecheck
+      - name: Build and deploy only MYNH ERP V5
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx opennextjs-cloudflare build
+          npx opennextjs-cloudflare deploy
+      - name: Production and alias HTTP smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          for base in "$PRODUCTION_URL" "$PRODUCTION_ALIAS"; do
+            curl -fsS --retry 5 --retry-delay 3 --max-time 30 "$base/api/health" > health.json
+            grep -q '"ok":true' health.json
+            code="$(curl -sS -o login.html -w '%{http_code}' --max-time 30 "$base/login")"
+            test "$code" = "200"
+            grep -q 'MYNH ERP' login.html
+          done
+          code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "$PRODUCTION_URL/api/alerts/in-app")"
+          test "$code" = 401
+      - name: Release evidence
+        shell: bash
+        run: |
+          {
+            echo '## MYNH ERP V5 SKU production release'
+            echo "- Deployed main: $GITHUB_SHA"
+            echo '- Merged PR #91: 2772495e9e5b508331d0a108bd1d8c9654257657'
+            echo '- Merged PR #92: d7f1be65b9da4f19061f705ae6f6ee03421d90ff'
+            echo '- Supabase migration 0077 previously applied and verified independently'
+            echo '- SQL 0078 not deployed and SKU edit/merge flag remains OFF'
+            echo '- Only mynh-erp-v5 Worker deployed; tracking/notifications/proxy unchanged'
+            echo '- Static QA, typecheck, build, main and alias smoke PASS'
+            echo '- Preview removal handled only after verified Production smoke'
+          } >> "$GITHUB_STEP_SUMMARY"
