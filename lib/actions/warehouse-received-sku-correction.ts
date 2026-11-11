@@ -3,7 +3,7 @@
 import {revalidatePath} from 'next/cache'
 import {requireUser} from '@/lib/supabase/auth'
 
-const uuid=/^[a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}$/i
+const uuid=/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i
 function validate(itemId:string,targetId:string,multiplier:number){
   if(!uuid.test(itemId)||!uuid.test(targetId)){
     throw new Error('Chọn sản phẩm và phân loại SKU hợp lệ')
