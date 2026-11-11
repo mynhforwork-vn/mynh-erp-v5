@@ -271,3 +271,19 @@
 .warehouse-detail-v2-sku-results button:disabled{opacity:.65;cursor:not-allowed}
 .warehouse-detail-v2-sku-results button:focus-visible,.warehouse-detail-v2-abc button:focus-visible{
   outline:2px solid #438b82;outline-offset:1px}
+
+
+/* In "Thêm phân loại", show the chosen SKU as one compact line.
+   The alphabetical list expands on demand, inside the existing slidebar. */
+.warehouse-detail-v2-product-selected{display:flex;align-items:center;justify-content:space-between;
+  gap:7px;min-width:0;padding:7px 8px;border:1px solid #dbe6eb;background:#f7faf9;border-radius:5px}
+.warehouse-detail-v2-product-summary{display:flex;align-items:baseline;gap:6px;min-width:0;flex:1}
+.warehouse-detail-v2-product-summary b{flex:0 0 auto;font-size:10.5px;color:#305769}
+.warehouse-detail-v2-product-summary small{font-size:9px;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;color:#687d8c}
+.warehouse-detail-v2-product-selected>button{flex:0 0 auto;border:0;background:none;
+  color:#286f75;cursor:pointer;padding:4px;font-size:9.5px;font-weight:700}
+.warehouse-detail-v2-browser-compact .warehouse-detail-v2-sku-results{max-height:112px;gap:3px}
+.warehouse-detail-v2-browser-compact .warehouse-detail-v2-sku-results button{padding:6px 7px}
+.warehouse-detail-v2-browser-compact .warehouse-detail-v2-sku-results button small{display:none}
+.warehouse-detail-v2-browser-compact .warehouse-detail-v2-abc button{min-height:22px;min-width:22px;padding:2px 4px}
