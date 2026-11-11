@@ -386,7 +386,9 @@ export function WarehouseIntakeDetailPreview({
               <b title={item.product_name}>{index+1}. {item.product_name}</b>
               <small>SL {item.quantity} · {item.sku||'Chưa có SKU mua'}</small>
             </span>
-            <span className={'warehouse-detail-v2-product-state '+(choices[item.id]?'chosen':'')}>
+            <span className={'warehouse-detail-v2-product-state '+(choices[item.id]
+              ?(choices[item.id].action==='IN'?'state-in':'state-skip')
+              :item.product_variant_id?'state-mapped':'state-unmapped')}>
               {choices[item.id]?(choices[item.id].action==='IN'?(simulate?'Dự kiến nhập':'Đã chọn nhập'):(simulate?'Dự kiến bỏ':'Đã chọn bỏ'))
                 :item.product_variant_id?'Đã ghép SKU':'Chưa bóc tách'}
             </span>
