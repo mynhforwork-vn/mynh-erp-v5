@@ -82,3 +82,92 @@ jobs:
           path: received-sku-correction-qa.log
           if-no-files-found: ignore
           retention-days: 7
+
+  preview:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify preview-only flags and credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/feat/warehouse-post-receipt-sku-correction-20261111
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          node - <<'NODE'
+          const cfg=JSON.parse(require('fs').readFileSync('wrangler.jsonc','utf8'))
+          if(cfg.name!=='mynh-erp-v5'||cfg.previews.vars.ERP_WAREHOUSE_V2_LIVE!=='false'||
+             cfg.previews.vars.ERP_SKU_CATALOG_LIVE!=='false'||
+             cfg.previews.vars.ERP_POST_RECEIPT_SKU_LIVE!=='false'||
+             cfg.previews.vars.ERP_POST_RECEIPT_SKU_PREVIEW_UI!=='true'||
+             cfg.vars.ERP_POST_RECEIPT_SKU_LIVE!=='false'){
+            throw Error('Preview write protection not configured as expected')
+          }
+          console.log('PASS: Preview UI is visible, but every warehouse and catalog write is disabled')
+          NODE
+      - name: Build read-only Preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npx opennextjs-cloudflare build
+      - name: Deploy only PR95 isolated Preview, never Production
+        id: publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler preview --name feat-warehouse-post-receipt-sku-correction-20261111 \
+            --worker-name mynh-erp-v5 \
+            --message "PR95 safe read-only SKU correction UI at $GITHUB_SHA" \
+            --json > pr95-preview.json
+          node - <<'NODE'
+          const fs=require('fs')
+          const raw=fs.readFileSync('pr95-preview.json','utf8')
+          const data=JSON.parse(raw.slice(raw.indexOf('{'),raw.lastIndexOf('}')+1))
+          const urls=[]
+          function collect(x){
+            if(typeof x==='string'&&x.startsWith('https://'))urls.push(x)
+            else if(Array.isArray(x))x.forEach(collect)
+            else if(x&&typeof x==='object')Object.values(x).forEach(collect)
+          }
+          collect(data)
+          const u=urls.find(u=>u.includes('feat-warehouse-post-receipt-sku-correction-20261111')&&u.includes('workers.dev'))
+          if(!u)throw Error('Expected read-only Preview URL not found')
+          fs.appendFileSync(process.env.GITHUB_OUTPUT,'url='+u+'\n')
+          console.log('PR95 read-only Preview: '+u)
+          NODE
+      - name: Read-only Preview HTTP smoke
+        env:
+          URL: ${{ steps.publish.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 5 --retry-delay 3 "$URL/api/health" > health.json
+          grep -q '"ok":true' health.json
+          for endpoint in /login /warehouse/receive?state=done; do
+            code="$(curl -sSL -o /dev/null -w '%{http_code}' --max-time 35 "$URL$endpoint")"
+            echo "Preview $endpoint HTTP=$code"
+            test "$code" = 200
+          done
+      - name: Preview evidence and outstanding authenticated QA gate
+        env:
+          URL: ${{ steps.publish.outputs.url }}
+        shell: bash
+        run: |
+          {
+            echo '## PR95 Warehouse SKU correction: read-only Preview'
+            echo "- Commit: $GITHUB_SHA"
+            echo "- URL: $URL"
+            echo '- UI visible to logged-in Admin; all mutation RPCs blocked in Preview'
+            echo '- Isolated PostgreSQL ledger, permission and browser QA passed before this job'
+            echo '- NOT an authenticated write E2E; SQL 0079 NOT applied to Production'
+            echo '- No merge, no Production deployment and no inventory writes'
+          } >> "$GITHUB_STEP_SUMMARY"
