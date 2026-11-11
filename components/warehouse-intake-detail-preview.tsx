@@ -435,7 +435,7 @@ export function WarehouseIntakeDetailPreview({
                     <b>{selectedSkuProduct.sku}</b><small>{selectedSkuProduct.name}</small>
                   </span>
                   <button type="button" disabled={processed||isReadOnly||busy}
-                    aria-label="Đổi SKU sản phẩm" onClick={()=>setSkuBrowseOpen(true)}>Đổi SKU</button>
+                    aria-label="Đổi SKU sản phẩm" onClick={()=>{setSkuBrowseOpen(true);change({variantId:'',salePrice:''})}}>Đổi SKU</button>
                 </div>:
                 <>
                   <label className="warehouse-detail-v2-field"><span>Tìm SKU theo mã hoặc tên</span>
@@ -461,7 +461,7 @@ export function WarehouseIntakeDetailPreview({
                     {matchingSkuProducts.length===0&&<small>Không tìm thấy SKU sản phẩm.</small>}
                   </div>
                 </>}
-              {selectedSkuProduct&&<>
+              {selectedSkuProduct&&!skuBrowseOpen&&<>
                 <div className="warehouse-sku-step-caption">Bước 2 · Chọn phân loại của {selectedSkuProduct.sku}</div>
                 <div className="warehouse-detail-v2-sku-results warehouse-detail-v2-classification-results"
                   role="group" aria-label="Phân loại của SKU đã chọn">
