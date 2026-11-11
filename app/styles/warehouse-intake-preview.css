@@ -1082,3 +1082,28 @@
 .warehouse-sku-browser-results p{margin:6px 0;color:#637f8c}
 .warehouse-sku-browser-results button:focus-visible,.warehouse-sku-alphabet button:focus-visible{
   outline:2px solid #438b82;outline-offset:1px}
+
+
+/* Adding a classification: keep selected product to one row and show ABC
+   catalog only while choosing/changing a product. */
+.warehouse-inline-sku-variant-compact{display:flex;flex-direction:column;gap:7px;min-width:0}
+.warehouse-inline-sku-variant-compact>label{margin-top:0}
+.warehouse-sku-product-selected{display:flex;align-items:center;justify-content:space-between;
+  min-width:0;gap:8px;padding:7px 8px;border:1px solid #dce7e8;background:#f7faf9;border-radius:5px}
+.warehouse-sku-product-summary{display:flex;min-width:0;flex:1;align-items:baseline;gap:6px}
+.warehouse-sku-product-summary b{flex:0 0 auto;font-size:11px;color:#2e5967}
+.warehouse-sku-product-summary small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#667f8b;font-size:10px}
+.warehouse-sku-product-selected>button{flex:0 0 auto;background:none;border:0;
+  color:#247b72;font-size:10px;font-weight:700;cursor:pointer;padding:5px}
+.warehouse-sku-browser-compact{gap:5px}
+.warehouse-sku-browser-compact>label{display:flex;flex-direction:column;gap:4px;
+  font-size:10px;color:#496c7c}
+.warehouse-sku-browser-compact .warehouse-sku-alphabet{gap:3px}
+.warehouse-sku-browser-compact .warehouse-sku-alphabet button{min-height:23px;min-width:23px;font-size:9px;padding:2px 4px}
+.warehouse-sku-browser-compact .warehouse-sku-browser-results{max-height:116px;gap:2px}
+.warehouse-sku-browser-compact .warehouse-sku-browser-results button{
+  padding:6px 7px;grid-template-columns:minmax(65px,auto) minmax(0,1fr)}
+.warehouse-sku-browser-compact .warehouse-sku-browser-results button b{font-size:10.5px}
+.warehouse-sku-browser-compact .warehouse-sku-browser-results button span{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.warehouse-sku-browser-compact>small{font-size:9px;color:#667f8b}
