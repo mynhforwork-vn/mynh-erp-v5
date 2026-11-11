@@ -1052,7 +1052,14 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await picker.getByRole('button',{name:'Thêm phân loại'}).click()
   assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'',
     'new classification cannot inherit a different classification price '+width)
+  if(await picker.getByRole('button',{name:'Đổi SKU gốc'}).count()){
+    assert.equal(await picker.locator('.warehouse-sku-product-selected').count(),1,
+      'selected SKU uses compact one-line summary')
+    await picker.getByRole('button',{name:'Đổi SKU gốc'}).click()
+  }
   await picker.locator('.warehouse-sku-browser-results button').filter({hasText:'TEST-01'}).first().click()
+  assert.equal(await picker.locator('.warehouse-sku-product-selected').count(),1,
+    'product list collapses after selection')
   await picker.getByLabel('Tên phân loại mới của SKU cũ').fill('Mẫu')
   assert.match(await picker.getByRole('alert').innerText(),/Phân loại này đã tồn tại/,
     'duplicate classification warned at source '+width)
@@ -1077,7 +1084,14 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await page.locator('.warehouse-inline-sku-trigger:not(.warehouse-inline-sku-edit-trigger)').first().click()
   const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
   await picker.getByRole('button',{name:'Thêm phân loại'}).click()
+  if(await picker.getByRole('button',{name:'Đổi SKU gốc'}).count()){
+    assert.equal(await picker.locator('.warehouse-sku-product-selected').count(),1,
+      'selected SKU uses compact one-line summary')
+    await picker.getByRole('button',{name:'Đổi SKU gốc'}).click()
+  }
   await picker.locator('.warehouse-sku-browser-results button').filter({hasText:'TEST-01'}).first().click()
+  assert.equal(await picker.locator('.warehouse-sku-product-selected').count(),1,
+    'product list collapses after selection')
   await picker.getByLabel('Tên phân loại mới của SKU cũ').fill('Màu xanh')
   await picker.getByLabel('Giá bán ghép nhanh').fill('159000')
   await picker.getByRole('button',{name:'Nhập kho',exact:true}).click()
@@ -1109,7 +1123,11 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   const detail=page.locator('aside.warehouse-intake-panel')
   await detail.waitFor()
   await detail.getByRole('button',{name:'Thêm phân loại'}).click()
+  if(await detail.getByRole('button',{name:'Đổi SKU gốc'}).count())
+    await detail.getByRole('button',{name:'Đổi SKU gốc'}).click()
   await detail.locator('.warehouse-detail-v2-sku-results button').filter({hasText:'TEST-01'}).first().click()
+  assert.equal(await detail.locator('.warehouse-detail-v2-product-selected').count(),1,
+    'order detail collapses selected SKU into a single line')
   await detail.getByLabel('Nhập phân loại mới của SKU cũ').fill('Size XL')
   const fields=detail.locator('.warehouse-detail-v2-numeric input')
   await fields.first().fill('179000')
