@@ -322,7 +322,17 @@ export function WarehouseInlineSkuHistoryPicker({
                   <b>{catalogSelectedProduct.sku}</b><small>{catalogSelectedProduct.name}</small>
                 </span>
                 <button type="button" disabled={busy} aria-label="Đổi SKU sản phẩm"
-                  onClick={()=>{setCatalogProductBrowserOpen(true);setVariantId('');setSalePrice('')}}>Đổi SKU</button>
+                  onClick={()=>{
+                    // Explicitly clear parent and child selection together.
+                    // The classification list must disappear until Step 1
+                    // chooses a new product, including in saved-remap mode.
+                    setCatalogProductId('')
+                    setCatalogProductBrowserOpen(true)
+                    setVariantId('')
+                    setSalePrice('')
+                    setMultiplier('1')
+                    setError('')
+                  }}>Đổi SKU</button>
               </div>:
               <>
                 <label className="warehouse-inline-sku-history-catalog">Tìm SKU sản phẩm
