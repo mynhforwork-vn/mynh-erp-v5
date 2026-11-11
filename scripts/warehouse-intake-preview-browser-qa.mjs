@@ -1309,17 +1309,15 @@ console.log('PASS inline SKU draft · one-click confirmation · new SKU · alter
     'history suggestions must not auto-open details')
   await page.locator('.warehouse-unified-table tbody tr').first().locator('button.table-link').click()
   const panel=page.locator('.warehouse-intake-panel')
-  const history=panel.locator('.warehouse-detail-v2-suggestion')
-  await history.waitFor()
-  assert.equal(await history.locator('.warehouse-detail-v2-suggestion-entry').count(),2,
-    'multiple historically mapped SKU variants must be offered separately')
-  assert.match(await history.innerText(),/3 đơn trước đã ghép/)
-  assert.match(await history.innerText(),/1 đơn trước đã ghép/)
-  assert.match(await history.innerText(),/nhiều SKU/)
+  await panel.locator('.warehouse-detail-v2-product-results').waitFor()
+  assert.equal(await panel.locator('.warehouse-detail-v2-classification-results').count(),0,
+    'historical classifications remain hidden until parent SKU is chosen')
+  assert.match(await panel.locator('.warehouse-detail-v2-product-results').innerText(),
+    /Đã có gợi ý ghép từ lịch sử/, 'history markers are shown on parent SKUs')
   assert.match(await panel.locator('.warehouse-detail-v2-progress').innerText(),/0\/2 đã có quyết định SKU\/kho/)
-  await history.getByRole('button',{name:'Chọn gợi ý ALT-02'}).click()
-  assert.match(await panel.locator('.warehouse-detail-v2-sku-results button.active').first().innerText(),/ALT-02/,
-    'explicit history suggestion should select its exact variant ID')
+  await pickDetailClassification(panel,'ALT-02')
+  assert.match(await panel.locator('.warehouse-detail-v2-classification-results button.active').first().innerText(),
+    /ALT-02[\s\S]*1 đơn trước đã ghép/, 'history is scoped to selected product classification')
   assert.equal(await panel.getByLabel('Hệ số quy đổi').inputValue(),'1',
     'suggestion should carry prior saved conversion multiplier')
   assert.equal(await panel.getByLabel('Giá bán (sửa được)').inputValue(),'65000',
