@@ -407,7 +407,7 @@ export function WarehouseIntakeDetailPreview({
           {processed&&<div className="warehouse-detail-v2-processed" role="status">
             Đơn đã xử lý kho. Thông tin gốc chỉ đọc; muốn đổi SKU phải có phiếu điều chỉnh tồn.
           </div>}
-          {processed&&canCorrectFinalizedSku&&!previewOnly&&
+          {processed&&canCorrectFinalizedSku&&
             itemDecisions[selected.id]?.processing_state==='FINALIZED'&&
             <WarehouseReceivedSkuCorrection key={selected.id}
               orderItemId={selected.id}
@@ -415,6 +415,7 @@ export function WarehouseIntakeDetailPreview({
                 ?itemDecisions[selected.id].product_variant_id:null}
               previousMultiplier={Number(itemDecisions[selected.id].multiplier??1)}
               products={skuProducts} variants={variants}
+              previewOnly={previewOnly||simulate}
               onSuccess={result=>{
                 const target=variants.find(v=>v.id===result.targetVariantId)
                 setChoices(current=>({...current,[selected.id]:{
