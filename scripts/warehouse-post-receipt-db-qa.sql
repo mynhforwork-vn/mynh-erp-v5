@@ -58,12 +58,21 @@ BEGIN
    'e1000000-0000-4000-8000-000000000001',
    'b0000000-0000-4000-8000-000000000002',1);
  IF NOT (snapshot->>'can_correct')::boolean
+  OR snapshot->>'warehouse_code'<>'BG'
   OR (snapshot->>'old_quantity')::integer<>2
   OR (snapshot->>'new_quantity')::integer<>2
   OR (snapshot->>'source_balance')::integer<>6
   OR snapshot->>'new_sku'<>'SKU-NEW' THEN
    RAISE EXCEPTION 'FAIL incorrect receipt correction preview %',snapshot;
  END IF;
+ BEGIN
+   PERFORM public.preview_received_sku_correction(
+    'e1000000-0000-4000-8000-000000000001',
+    'b0000000-0000-4000-8000-000000000001',1);
+   RAISE EXCEPTION 'FAIL same SKU and factor accepted';
+ EXCEPTION WHEN OTHERS THEN
+   IF SQLERRM='FAIL same SKU and factor accepted' THEN RAISE; END IF;
+ END;
  BEGIN
   PERFORM public.confirm_received_sku_correction(
    'e1000000-0000-4000-8000-000000000001',
