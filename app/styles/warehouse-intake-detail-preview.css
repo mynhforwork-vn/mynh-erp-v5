@@ -309,3 +309,47 @@
 .warehouse-detail-v2-classification-actions button{border:0;background:transparent;
   padding:4px;color:#2d7470;font-size:10px;font-weight:650;cursor:pointer}
 .warehouse-detail-v2-classification-actions button:focus-visible{outline:2px solid #438b82}
+
+
+/* Post-receipt adjustment stays inside the order detail slidebar (not a popup). */
+.warehouse-received-sku-correction{display:flex;flex-direction:column;gap:7px;min-width:0}
+.warehouse-received-sku-toggle{align-self:flex-start;padding:6px 9px;border:1px solid #91bbaf;
+  background:#f0f8f3;color:#276350;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer}
+.warehouse-received-sku-body{display:flex;flex-direction:column;gap:8px;min-width:0;
+  padding:10px;border:1px solid #d9e6e7;background:#fafcfc;border-radius:6px}
+.warehouse-received-sku-body>p{font-size:10px;line-height:1.4;margin:0;color:#596e7b}
+.warehouse-received-sku-step{font-size:10.5px;color:#365d70}
+.warehouse-received-sku-body input,.warehouse-received-sku-body textarea{
+  width:100%;min-width:0;max-width:100%;box-sizing:border-box;border:1px solid #c8d8e2;
+  border-radius:5px;background:#fff;padding:7px 9px;font-size:11px;color:#304c61}
+.warehouse-received-sku-selected{display:flex;align-items:center;justify-content:space-between;gap:7px;
+  min-width:0;padding:7px;border:1px solid #d7e7e4;border-radius:5px;background:#f4f9f7}
+.warehouse-received-sku-selected span{font-size:10px;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.warehouse-received-sku-selected button{flex:0 0 auto;border:0;background:none;color:#276d65;
+  padding:4px;font-size:10px;font-weight:700;cursor:pointer}
+.warehouse-received-sku-letters{display:flex;flex-wrap:wrap;gap:3px}
+.warehouse-received-sku-letters button{border:1px solid #dae5eb;border-radius:4px;background:#f7fafc;
+  min-width:24px;min-height:24px;font-size:9px;color:#516b7b;padding:3px 5px;cursor:pointer}
+.warehouse-received-sku-letters button.active{background:#e6f3ee;color:#246350;border-color:#91baa7}
+.warehouse-received-sku-results{display:flex;flex-direction:column;gap:3px;min-width:0;max-height:130px;
+  overflow-y:auto;overscroll-behavior:contain}
+.warehouse-received-sku-results button{display:flex;align-items:center;justify-content:space-between;
+  gap:8px;min-width:0;width:100%;padding:7px 9px;text-align:left;border:1px solid #e1e9ed;
+  border-radius:5px;background:#fff;color:#34566a;font-size:10px;cursor:pointer}
+.warehouse-received-sku-results button.active,.warehouse-received-sku-results button[aria-pressed="true"]{
+  border-color:#8ac0a9;background:#eef8f3}
+.warehouse-received-sku-results button small,.warehouse-received-sku-results>small{
+  font-size:9px;color:#708392}
+.warehouse-received-sku-inputs{display:flex;flex-direction:column;gap:7px}
+.warehouse-received-sku-inputs label{display:flex;flex-direction:column;gap:4px;
+  min-width:0;font-size:10px;font-weight:650;color:#446577}
+.warehouse-received-sku-inputs .button,.warehouse-received-sku-review .button{
+  align-self:flex-end}
+.warehouse-received-sku-review{display:flex;flex-direction:column;gap:5px;padding:9px;
+  border:1px solid #b5d6ca;border-radius:5px;background:#f5faf8;font-size:10px;color:#43616c}
+.warehouse-received-sku-review b{font-size:11px;color:#265b50}
+.warehouse-received-sku-review strong{color:#9a4234}
+.warehouse-received-sku-error{color:#a34139!important}
+.warehouse-received-sku-body button:focus-visible{outline:2px solid #448f85;outline-offset:1px}
+.warehouse-received-sku-body button:disabled{cursor:not-allowed;opacity:.55}
+@media(max-width:390px){.warehouse-received-sku-body{padding:7px}.warehouse-received-sku-results{max-height:108px}}
