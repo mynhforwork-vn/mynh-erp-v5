@@ -1076,14 +1076,18 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await page.locator('.warehouse-inline-sku-trigger:not(.warehouse-inline-sku-edit-trigger)').first().click()
   const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
   await picker.getByRole('button',{name:'Thêm phân loại'}).click()
-  assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'',
-    'new classification cannot inherit a different classification price '+width)
+  await picker.getByLabel('Giá bán ghép nhanh').waitFor({state:'hidden',timeout:8000})
+  assert.equal(await picker.getByLabel('Tên phân loại mới của SKU cũ').count(),0,
+    'classification step is hidden until SKU selected '+width)
   if(await picker.getByRole('button',{name:'Đổi SKU gốc'}).count()){
     assert.equal(await picker.locator('.warehouse-sku-product-selected').count(),1,
       'selected SKU uses compact one-line summary')
     await picker.getByRole('button',{name:'Đổi SKU gốc'}).click()
   }
   await picker.locator('.warehouse-sku-browser-results button').filter({hasText:'TEST-01'}).first().click()
+  await picker.getByLabel('Giá bán ghép nhanh').waitFor({state:'visible',timeout:8000})
+  assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'',
+    'new classification price must not inherit old SKU variant price')
   assert.equal(await picker.locator('.warehouse-sku-product-selected').count(),1,
     'product list collapses after selection')
   await picker.getByLabel('Tên phân loại mới của SKU cũ').fill('Mẫu')
@@ -1116,6 +1120,9 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
     await picker.getByRole('button',{name:'Đổi SKU gốc'}).click()
   }
   await picker.locator('.warehouse-sku-browser-results button').filter({hasText:'TEST-01'}).first().click()
+  await picker.getByLabel('Giá bán ghép nhanh').waitFor({state:'visible',timeout:8000})
+  assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'',
+    'new classification price must not inherit old SKU variant price')
   assert.equal(await picker.locator('.warehouse-sku-product-selected').count(),1,
     'product list collapses after selection')
   await picker.getByLabel('Tên phân loại mới của SKU cũ').fill('Màu xanh')
@@ -1149,6 +1156,7 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   const detail=page.locator('aside.warehouse-intake-panel')
   await detail.waitFor()
   await detail.getByRole('button',{name:'Thêm phân loại'}).click()
+  await detail.getByLabel('Nhập phân loại mới của SKU cũ').waitFor({state:'hidden',timeout:8000})
   if(await detail.getByRole('button',{name:'Đổi SKU gốc'}).count())
     await detail.getByRole('button',{name:'Đổi SKU gốc'}).click()
   await detail.locator('.warehouse-detail-v2-sku-results button').filter({hasText:'TEST-01'}).first().click()
