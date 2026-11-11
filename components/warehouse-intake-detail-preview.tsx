@@ -211,7 +211,7 @@ export function WarehouseIntakeDetailPreview({
   const totalChoices=Object.keys(choices).length
   const activeShipment=order.shipments?.find(s=>s.is_active)??order.shipments?.[0]??null
   const warehouse=batchOf(order)?.warehouses
-  const selectedSkuId=draft?.productId||selectedVariant?.products?.id||''
+  const selectedSkuId=selectedVariant?.products?.id||draft?.productId||''
   const selectedSkuProduct=availableProducts.find(p=>p.id===selectedSkuId)
   const skuProductLetters=[...new Set(availableProducts.map(p=>
     normalizeSku(p.sku).charAt(0)||'#'))].sort((a,b)=>a.localeCompare(b,'en'))
@@ -427,28 +427,6 @@ export function WarehouseIntakeDetailPreview({
               onClick={()=>change({mode:'new',variantId:'',salePrice:'',multiplier:'1'})}>Tạo SKU mới</button>
           </div>
           {draft.mode==='existing'?<div className="warehouse-detail-v2-fields">
-            {suggestionOptions.length>0&&<div className="warehouse-detail-v2-suggestion" aria-label="Gợi ý SKU từ lịch sử ghép">
-              <span>GỢI Ý SKU TỪ LỊCH SỬ ĐÃ LƯU</span>
-              <small>{suggestionOptions.length>1
-                ?'Đã từng ghép với nhiều SKU. Hãy đối chiếu trước khi chọn.'
-                :'Gợi ý tham khảo, chưa tự động ghép SKU hoặc thay đổi tồn kho.'}</small>
-              <div className="warehouse-detail-v2-suggestion-list">
-                {suggestionOptions.map((option,index)=><div className="warehouse-detail-v2-suggestion-entry" key={option.variant_id}>
-                  <div className="warehouse-detail-v2-suggestion-detail">
-                    <b>{index+1}. {option.sku||'SKU bán'} · {option.product_name||''}</b>
-                    <small>{option.variant_name||'Mặc định'} · quy đổi ×{option.multiplier}</small>
-                    <small>{option.history_count} đơn trước đã ghép · {option.match_kind==='exact'
-                      ?'Khớp mã, tên và phân loại'
-                      :option.match_kind==='sku_variant'?'Khớp mã SKU mua và phân loại'
-                      :'Khớp tên và phân loại'}</small>
-                  </div>
-                  <button type="button" onClick={()=>applySuggestion(option)}
-                    disabled={processed||isReadOnly||busy} aria-label={'Chọn gợi ý '+(option.sku??option.product_name??option.variant_id)}>
-                    Chọn
-                  </button>
-                </div>)}
-              </div>
-            </div>}
             <div className="warehouse-detail-v2-browser" aria-label="Chọn SKU bán theo ABC">
               <div className="warehouse-sku-step-caption">Bước 1 · Chọn SKU sản phẩm</div>
               {selectedSkuProduct&&!skuBrowseOpen?
@@ -477,6 +455,8 @@ export function WarehouseIntakeDetailPreview({
                       disabled={processed||isReadOnly||busy}
                       onClick={()=>{change({productId:p.id,variantId:'',salePrice:'',query:'',multiplier:'1'});setSkuBrowseOpen(false)}}>
                       <b>{p.sku}</b><span>{p.name}</span>
+                      {suggestionOptions.some(o=>variants.some(v=>v.id===o.variant_id&&v.products?.id===p.id))&&
+                        <small>Đã có gợi ý ghép từ lịch sử</small>}
                     </button>)}
                     {matchingSkuProducts.length===0&&<small>Không tìm thấy SKU sản phẩm.</small>}
                   </div>
@@ -485,12 +465,17 @@ export function WarehouseIntakeDetailPreview({
                 <div className="warehouse-sku-step-caption">Bước 2 · Chọn phân loại của {selectedSkuProduct.sku}</div>
                 <div className="warehouse-detail-v2-sku-results warehouse-detail-v2-classification-results"
                   role="group" aria-label="Phân loại của SKU đã chọn">
-                  {matchVariants.map(v=><button key={v.id} type="button"
-                    className={draft.variantId===v.id?'active':''} aria-pressed={draft.variantId===v.id}
-                    disabled={processed||isReadOnly||busy} onClick={()=>chooseVariant(v.id)}>
-                    <b>{v.products?.sku||selectedSkuProduct.sku}</b><span>{v.variant_name}</span>
-                    <small>{v.sale_price!=null?formatMoney(v.sale_price):'Chưa có giá bán'}</small>
-                  </button>)}
+                  {matchVariants.map(v=>{
+                    const history=suggestionOptions.find(option=>option.variant_id===v.id)
+                    return <button key={v.id} type="button"
+                      className={draft.variantId===v.id?'active':''} aria-pressed={draft.variantId===v.id}
+                      disabled={processed||isReadOnly||busy}
+                      onClick={()=>history?applySuggestion(history):chooseVariant(v.id)}>
+                      <b>{v.products?.sku||selectedSkuProduct.sku}</b><span>{v.variant_name}</span>
+                      <small>{v.sale_price!=null?formatMoney(v.sale_price):'Chưa có giá bán'}
+                        {history?' · '+history.history_count+' đơn trước đã ghép · Quy đổi ×'+history.multiplier:''}</small>
+                    </button>
+                  })}
                   {matchVariants.length===0&&<small>SKU này chưa có phân loại. Chuyển sang Thêm phân loại để tạo.</small>}
                 </div>
               </>}
@@ -553,7 +538,7 @@ export function WarehouseIntakeDetailPreview({
               <input disabled={processed||isReadOnly||busy} value={draft.newVariant} onChange={e=>change({newVariant:e.target.value})}/>
             </label>
           </div>}
-          {(draft.mode!=='variant'||!!variantProduct)&&<div className="warehouse-detail-v2-pair warehouse-detail-v2-numeric">
+          {(draft.mode==='new'||draft.mode==='variant'&&!!variantProduct||draft.mode==='existing'&&!!selectedVariant)&&<div className="warehouse-detail-v2-pair warehouse-detail-v2-numeric">
             <label className="warehouse-detail-v2-field"><span>Giá bán (sửa được)</span>
               <input type="number" disabled={processed||isReadOnly||busy} min="0" step="1" value={draft.salePrice}
                 onChange={e=>change({salePrice:e.target.value})}/>
@@ -563,12 +548,12 @@ export function WarehouseIntakeDetailPreview({
                 onChange={e=>change({multiplier:e.target.value})}/>
             </label>
           </div>}
-          {(draft.mode!=='variant'||!!variantProduct)&&<div className="warehouse-detail-v2-conversion">Số lượng nhập dự kiến:
+          {(draft.mode==='new'||draft.mode==='variant'&&!!variantProduct||draft.mode==='existing'&&!!selectedVariant)&&<div className="warehouse-detail-v2-conversion">Số lượng nhập dự kiến:
             <b>{Number.isInteger(Number(draft.multiplier))&&Number(draft.multiplier)>0
               ?Number(selected.quantity)*Number(draft.multiplier):'—'}</b>
           </div>}
-          {(draft.mode!=='variant'||!!variantProduct)&&<div className="warehouse-detail-v2-section-title">Quyết định kho theo sản phẩm</div>}
-          {(draft.mode!=='variant'||!!variantProduct)&&<div className="warehouse-detail-v2-switch warehouse-detail-v2-decisions">
+          {(draft.mode==='new'||draft.mode==='variant'&&!!variantProduct||draft.mode==='existing'&&!!selectedVariant)&&<div className="warehouse-detail-v2-section-title">Quyết định kho theo sản phẩm</div>}
+          {(draft.mode==='new'||draft.mode==='variant'&&!!variantProduct||draft.mode==='existing'&&!!selectedVariant)&&<div className="warehouse-detail-v2-switch warehouse-detail-v2-decisions">
             <button type="button" disabled={processed||isReadOnly||busy} className={draft.decision==='IN'?'active':''}
               onClick={()=>change({decision:'IN',reason:''})}>Nhập kho</button>
             <button type="button" disabled={processed||isReadOnly||busy} className={draft.decision==='SKIP'?'active':''}
@@ -579,7 +564,7 @@ export function WarehouseIntakeDetailPreview({
               onChange={e=>change({reason:e.target.value})} placeholder="Nhập lý do bỏ qua"/>
           </label>}
           {notice&&<div className="warehouse-detail-v2-notice" role="status">{notice}</div>}
-          {(draft.mode!=='variant'||!!variantProduct)&&<button type="button" className="button primary warehouse-detail-v2-record"
+          {(draft.mode==='new'||draft.mode==='variant'&&!!variantProduct||draft.mode==='existing'&&!!selectedVariant)&&<button type="button" className="button primary warehouse-detail-v2-record"
             onClick={recordChoice} disabled={processed||isReadOnly||busy}>
             {busy?'Đang xử lý…':simulate?'Ghi nhận lựa chọn thử':'Lưu bóc tách và quyết định'}
           </button>}
