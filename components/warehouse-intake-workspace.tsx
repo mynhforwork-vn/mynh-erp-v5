@@ -728,14 +728,26 @@ export function WarehouseIntakeWorkspace({
               return <td key={col} {...attributes} className="warehouse-unified-status">
                 {row.order_items.map(item=>{
                   const saved=itemDecisions[item.id]
-                  const status=saved?.decision==='SKIP'?(isDone(row)?'Bỏ qua kho':'Dự kiến bỏ qua'):
-                    saved?.decision==='IN'?(isDone(row)?'Nhập kho':'Dự kiến nhập'):
-                    isDone(row)?phaseLabel(row,itemDecisions):
+                  // A finalized order can contain BOTH incoming and skipped items.
+                  // Derive the badge from each item's decision, not the entire
+                  // order's completion status (which previously painted SKIP green).
+                  const finalized=isDone(row)
+                  const status=saved?.decision==='SKIP'?(finalized?'Bỏ qua kho':'Dự kiến bỏ qua'):
+                    saved?.decision==='IN'?(finalized?'Đã nhập kho':'Dự kiến nhập'):
+                    finalized?phaseLabel(row,itemDecisions):
                     item.product_variant_id?'Dự kiến nhập':'Chưa ghép'
+                  const tone=saved?.decision==='SKIP'
+                    ?(finalized?'skipped':'planned-skip'):
+                    saved?.decision==='IN'
+                      ?(finalized?'received':'planned-in'):
+                    row.warehouse_status==='WAREHOUSE_SKIPPED'?'skipped':
+                    row.warehouse_status==='WAREHOUSE_RECEIVED'?'received':
+                    row.warehouse_status==='WAREHOUSE_MIXED'?'mixed':
+                    item.product_variant_id?'planned-in':'unmapped'
                   return <div key={item.id} className="warehouse-unified-product-line"
                     title={saved?status+' · Đã lưu quyết định'+(saved.skip_reason?' · '+saved.skip_reason:''):status}>
-                    <span className={'status-pill '+(saved?.decision==='IN'||isDone(row)?'green':
-                      saved?.decision==='SKIP'?'status-muted':'orange')}>{status}</span>
+                    <span data-warehouse-status={tone}
+                      className={'status-pill warehouse-status-'+tone}>{status}</span>
                   </div>
                 })}
               </td>
