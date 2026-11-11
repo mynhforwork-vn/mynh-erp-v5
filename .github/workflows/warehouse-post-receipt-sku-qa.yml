@@ -104,7 +104,8 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           node - <<'NODE'
           const cfg=JSON.parse(require('fs').readFileSync('wrangler.jsonc','utf8'))
-          if(cfg.name!=='mynh-erp-v5'||cfg.previews.vars.ERP_WAREHOUSE_V2_LIVE!=='false'||
+          if(cfg.name!=='mynh-erp-v5'||cfg.vars.ERP_SKU_CATALOG_LIVE!=='true'||
+             cfg.previews.vars.ERP_WAREHOUSE_V2_LIVE!=='false'||
              cfg.previews.vars.ERP_SKU_CATALOG_LIVE!=='false'||
              cfg.previews.vars.ERP_POST_RECEIPT_SKU_LIVE!=='false'||
              cfg.previews.vars.ERP_POST_RECEIPT_SKU_PREVIEW_UI!=='true'||
