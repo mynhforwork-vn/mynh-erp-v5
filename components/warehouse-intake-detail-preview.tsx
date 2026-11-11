@@ -77,7 +77,6 @@ type Draft={
   salePrice:string
   newSku:string
   productId:string
-  productQuery:string
   newName:string
   newVariant:string
   multiplier:string
@@ -120,7 +119,7 @@ function initialDraft(item:Item,saved?:ItemDecision):Draft{
     mode:'existing',variantId:saved?.product_variant_id??item.product_variant_id??'',query:'',
     salePrice:saved?String(saved.sale_price):item.product_variants?.sale_price===null||item.product_variants?.sale_price===undefined
       ?'':String(item.product_variants.sale_price),
-    newSku:'',productId:item.product_variants?.products?.id??'',productQuery:'',
+    newSku:'',productId:item.product_variants?.products?.id??'',
     newName:item.product_name,newVariant:item.variant??'Mặc định',
     multiplier:String(saved?.multiplier??item.inventory_multiplier??1),
     decision:saved?.decision??'IN',reason:saved?.skip_reason??'',
@@ -151,8 +150,6 @@ export function WarehouseIntakeDetailPreview({
   const [tab,setTab]=useState<Tab>('products')
   const [skuLetter,setSkuLetter]=useState('Tất cả')
   const [skuBrowseOpen,setSkuBrowseOpen]=useState(false)
-  const [productLetter,setProductLetter]=useState('Tất cả')
-  const [productBrowserOpen,setProductBrowserOpen]=useState(false)
   const [focusedId,setFocusedId]=useState<string>(
     order.order_items.find(item=>!item.product_variant_id)?.id??order.order_items[0]?.id??''
   )
@@ -194,14 +191,6 @@ export function WarehouseIntakeDetailPreview({
       id:v.products!.id!,sku:String(v.products?.sku??''),name:String(v.products?.name??'')
     }])).values()]
   const variantProduct=availableProducts.find(p=>p.id===draft?.productId)
-  const skuLookup=normalizeSku(String(draft?.productQuery??''))
-  const productLetters=[...new Set(availableProducts.map(p=>
-    normalizeSku(p.sku).charAt(0)||'#'))].sort((a,b)=>a.localeCompare(b,'en'))
-  const matchingProducts=availableProducts.filter(p=>
-    (productLetter==='Tất cả'||(normalizeSku(p.sku).charAt(0)||'#')===productLetter)&&
-    normalizeSku([p.sku,p.name].join(' ')).includes(skuLookup))
-    .sort((a,b)=>normalizeSku(a.sku).localeCompare(normalizeSku(b.sku),'en'))
-    .slice(0,80)
   const duplicatedClassification=!!variantProduct&&variants.some(v=>
     v.products?.id===variantProduct.id&&
     v.variant_name.trim().toLocaleLowerCase('vi')===
@@ -236,7 +225,6 @@ export function WarehouseIntakeDetailPreview({
   },[onClose])
 
   function focus(item:Item){
-    setProductBrowserOpen(false)
     setSkuBrowseOpen(false)
     setFocusedId(item.id)
     setNotice('')
@@ -482,7 +470,6 @@ export function WarehouseIntakeDetailPreview({
                 <button type="button" className="warehouse-detail-v2-add-classification"
                   disabled={processed||isReadOnly||busy}
                   onClick={()=>{
-                    setProductBrowserOpen(false)
                     change({mode:'variant',productId:selectedSkuId,
                       variantId:'',newVariant:'',salePrice:'',multiplier:'1'})
                   }}>+ Thêm phân loại mới</button>
