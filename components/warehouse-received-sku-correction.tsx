@@ -20,7 +20,7 @@ export function WarehouseReceivedSkuCorrection({
 }:{
   orderItemId:string;previousVariantId:string|null;previousMultiplier:number
   products:Product[];variants:Variant[]
-  onSuccess:(result:{id:string,warehouse_status:string,old_quantity:number,new_quantity:number})=>void
+  onSuccess:(result:{id:string,warehouse_status:string,old_quantity:number,new_quantity:number,targetVariantId:string,multiplier:number})=>void
 }){
   const [open,setOpen]=useState(false)
   const [query,setQuery]=useState('')
@@ -63,7 +63,7 @@ export function WarehouseReceivedSkuCorrection({
         fingerprint:preview.fingerprint,reason:reason.trim()
       })
       setOpen(false);setPreview(null);setReason('')
-      onSuccess(result)
+      onSuccess({...result,targetVariantId:variantId,multiplier:factor})
     }catch(e){
       setPreview(null)
       setError(e instanceof Error?e.message:'Không thể điều chỉnh SKU đã nhập kho')
