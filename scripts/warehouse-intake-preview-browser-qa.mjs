@@ -1087,16 +1087,16 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await page.setContent(html,{waitUntil:'load'})
   await page.locator('.warehouse-inline-sku-trigger:not(.warehouse-inline-sku-edit-trigger)').first().click()
   const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
-  await picker.getByRole('button',{name:'Thêm phân loại'}).click()
-  await picker.getByLabel('Giá bán ghép nhanh').waitFor({state:'hidden',timeout:8000})
-  assert.equal(await picker.getByLabel('Tên phân loại mới của SKU cũ').count(),0,
-    'classification step is hidden until SKU selected '+width)
-  if(await picker.getByRole('button',{name:'Đổi SKU gốc'}).count()){
-    assert.equal(await picker.locator('.warehouse-sku-product-selected').count(),1,
-      'selected SKU uses compact one-line summary')
-    await picker.getByRole('button',{name:'Đổi SKU gốc'}).click()
-  }
-  await picker.locator('.warehouse-sku-browser-results button').filter({hasText:'TEST-01'}).first().click()
+  assert.equal(await picker.locator('.warehouse-inline-sku-history-modes button').count(),2,
+    'add classification is inside existing SKU, not a third top-level mode '+width)
+  assert.equal(await picker.getByRole('button',{name:'+ Thêm phân loại mới'}).count(),0,
+    'must choose parent SKU before offering a new classification '+width)
+  if(await picker.locator('.warehouse-sku-product-selected').count())
+    await picker.locator('.warehouse-sku-product-selected button').click()
+  await picker.locator('.warehouse-sku-sku-results button').filter({hasText:'TEST-01'}).first().click()
+  assert.equal(await picker.locator('.warehouse-sku-classification-results').count(),1,
+    'existing classifications are shown for the selected parent '+width)
+  await picker.getByRole('button',{name:'+ Thêm phân loại mới'}).click()
   await picker.getByLabel('Giá bán ghép nhanh').waitFor({state:'visible',timeout:8000})
   assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'',
     'new classification price must not inherit old SKU variant price')
@@ -1125,13 +1125,10 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await page.setContent(html.replace('<html lang="vi">','<html lang="vi" data-live="true">'),{waitUntil:'load'})
   await page.locator('.warehouse-inline-sku-trigger:not(.warehouse-inline-sku-edit-trigger)').first().click()
   const picker=page.getByRole('dialog',{name:'Ghép SKU nhanh'})
-  await picker.getByRole('button',{name:'Thêm phân loại'}).click()
-  if(await picker.getByRole('button',{name:'Đổi SKU gốc'}).count()){
-    assert.equal(await picker.locator('.warehouse-sku-product-selected').count(),1,
-      'selected SKU uses compact one-line summary')
-    await picker.getByRole('button',{name:'Đổi SKU gốc'}).click()
-  }
-  await picker.locator('.warehouse-sku-browser-results button').filter({hasText:'TEST-01'}).first().click()
+  if(await picker.locator('.warehouse-sku-product-selected').count())
+    await picker.locator('.warehouse-sku-product-selected button').click()
+  await picker.locator('.warehouse-sku-sku-results button').filter({hasText:'TEST-01'}).first().click()
+  await picker.getByRole('button',{name:'+ Thêm phân loại mới'}).click()
   await picker.getByLabel('Giá bán ghép nhanh').waitFor({state:'visible',timeout:8000})
   assert.equal(await picker.getByLabel('Giá bán ghép nhanh').inputValue(),'',
     'new classification price must not inherit old SKU variant price')
@@ -1167,11 +1164,13 @@ for(const [width,height] of [[320,568],[390,844],[768,1024],[1280,800]]){
   await page.locator('tbody tr').first().locator('button.table-link').click()
   const detail=page.locator('aside.warehouse-intake-panel')
   await detail.waitFor()
-  await detail.getByRole('button',{name:'Thêm phân loại'}).click()
-  await detail.getByLabel('Nhập phân loại mới của SKU cũ').waitFor({state:'hidden',timeout:8000})
-  if(await detail.getByRole('button',{name:'Đổi SKU gốc'}).count())
-    await detail.getByRole('button',{name:'Đổi SKU gốc'}).click()
-  await detail.locator('.warehouse-detail-v2-sku-results button').filter({hasText:'TEST-01'}).first().click()
+  assert.equal(await detail.locator('.warehouse-detail-v2-switch').first().locator('button').count(),2,
+    'classification must not be a top-level tab in order detail')
+  if(await detail.locator('.warehouse-detail-v2-product-selected').count())
+    await detail.locator('.warehouse-detail-v2-product-selected button').click()
+  await detail.locator('.warehouse-detail-v2-product-results button')
+    .filter({hasText:'TEST-01'}).first().click()
+  await detail.getByRole('button',{name:'+ Thêm phân loại mới'}).click()
   assert.equal(await detail.locator('.warehouse-detail-v2-product-selected').count(),1,
     'order detail collapses selected SKU into a single line')
   await detail.getByLabel('Nhập phân loại mới của SKU cũ').fill('Size XL')
