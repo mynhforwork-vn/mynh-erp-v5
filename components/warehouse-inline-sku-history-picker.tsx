@@ -197,17 +197,24 @@ export function WarehouseInlineSkuHistoryPicker({
     // Clicking a mapped SKU in a lower warehouse may auto-scroll the table
     // just before the portal mounts. Ignore that activation scroll, but
     // continue to dismiss the picker on subsequent intentional scrolling.
+    const debugClose=(reason:string)=>{
+      // CI fixture only; no production logging or user data.
+      if(window.location.protocol==='about:'){
+        (window as Window & {__skuDebugClose?:string}).__skuDebugClose=reason
+      }
+      onClose()
+    }
     const viewportWidth=window.innerWidth
     const viewportHeight=window.innerHeight
     const pointer=(event:PointerEvent)=>{
       if(busyRef.current||panelRef.current?.contains(event.target as Node))return
-      onClose()
+      debugClose('outside-pointer')
     }
     const escape=(event:KeyboardEvent)=>{
       if(event.key==='Escape'&&!busyRef.current){
         event.preventDefault()
         event.stopPropagation()
-        onClose()
+        debugClose('escape')
       }
     }
     // Changing the SKU expands its alphabetical list. Browser auto-scroll
@@ -215,7 +222,7 @@ export function WarehouseInlineSkuHistoryPicker({
     // Outside click/Esc still dismiss it; real viewport resizes do too.
     const resize=()=>{
       if(Math.abs(window.innerWidth-viewportWidth)>4||
-         Math.abs(window.innerHeight-viewportHeight)>4)onClose()
+         Math.abs(window.innerHeight-viewportHeight)>4)debugClose('viewport-resize')
     }
     document.addEventListener('pointerdown',pointer,true)
     document.addEventListener('keydown',escape,true)
