@@ -148,7 +148,7 @@ export function WarehouseInlineSkuHistoryPicker({
       setVariantId('')
       setSalePrice('')
       setMultiplier('1')
-      setDecision(null)
+      setDecision(target.isEditing?decision:null)
       setSkipReason('')
     }
     setCatalogProductId(id)
