@@ -1,0 +1,92 @@
+name: SKU Catalog 0078 - pre-production verification
+on:
+  push:
+    branches: [feat/sku-catalog-live-after-0078-20261111]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sku-catalog-0078-qa
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      PGPASSWORD: postgres
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify production opt-in and Preview read-only switches
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '"ERP_SKU_CATALOG_LIVE": "true"' wrangler.jsonc
+          node - <<'NODE'
+          const cfg=JSON.parse(require('fs').readFileSync('wrangler.jsonc','utf8'))
+          if(cfg.vars.ERP_SKU_CATALOG_LIVE!=='true'||
+             cfg.previews.vars.ERP_SKU_CATALOG_LIVE!=='false'||
+             cfg.previews.vars.ERP_WAREHOUSE_V2_LIVE!=='false'){
+            throw Error('Catalog Production/Preview feature gates are invalid')
+          }
+          console.log('PASS catalog gated writes in Production, Preview remains read-only')
+          NODE
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Contracts and TypeScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/sku-catalog-contract-qa.mjs
+          node scripts/warehouse-intake-preview-contract-qa.mjs
+          node scripts/warehouse-sku-suggestion-qa.mjs
+          node scripts/warehouse-bulk-action-qa.mjs
+          npm run typecheck
+      - name: Isolated PostgreSQL merge, permissions, two warehouses and audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+          psql -X -h 127.0.0.1 -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -f scripts/warehouse-item-level-db-fixture.sql \
+            -f supabase/migrations/0075_item_level_warehouse_decisions.sql \
+            -f supabase/migrations/0076_skip_unmapped_warehouse_item.sql \
+            -f supabase/migrations/0077_warehouse_add_variant_to_existing_sku.sql \
+            -f scripts/sku-catalog-db-fixture.sql \
+            -f supabase/migrations/0078_sku_catalog_safe_merge.sql \
+            -f scripts/sku-catalog-db-qa.sql 2>&1 | tee sku-catalog-0078.log
+          grep -q 'PASS: SKU edit, independent classification' sku-catalog-0078.log
+      - name: Playwright browser regression for catalog and receiving picker
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright esbuild --no-audit --no-fund
+          CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_PATH"
+          CHROME_BIN="$CHROME_PATH" node scripts/sku-catalog-browser-qa.mjs
+          CHROME_BIN="$CHROME_PATH" node scripts/warehouse-intake-preview-browser-qa.mjs
+      - name: Build, no deployment
+        run: npx opennextjs-cloudflare build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sku-0078-schema-and-browser-qa
+          path: sku-catalog-0078.log
+          if-no-files-found: ignore
+          retention-days: 7
