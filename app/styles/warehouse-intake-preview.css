@@ -862,7 +862,7 @@
 }
 /* Keep new/existing SKU workflows together: no slidebar required. */
 .warehouse-inline-sku-history-modes{
-  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;
   margin-bottom:10px;
 }
 .warehouse-inline-sku-history-modes button{
@@ -1118,8 +1118,7 @@
   grid-template-columns:minmax(55px,auto) minmax(0,1fr)}
 
 
-/* Two top-level flows: existing SKU (including new variant) / new SKU. */
-.warehouse-inline-sku-history-modes{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* In the existing SKU flow, adding a classification is a second-step action. */
 .warehouse-sku-add-classification{width:100%;min-height:29px;border:1px dashed #9bc9b5;
   background:#f4faf7;border-radius:5px;color:#25694f;font-size:10.5px;
   font-weight:650;text-align:left;padding:6px 9px;cursor:pointer}
