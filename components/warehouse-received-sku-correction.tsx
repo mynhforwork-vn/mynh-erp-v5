@@ -128,7 +128,7 @@ export function WarehouseReceivedSkuCorrection({
       </div>}
       {preview&&<div className="warehouse-received-sku-review" role="status">
         <b>Đối soát trước khi điều chỉnh</b>
-        <span>Kho thực nhận: {preview.warehouse_id}</span>
+        <span>Kho thực nhận: {preview.warehouse_code||preview.warehouse_id}</span>
         <span>SKU mới: {preview.new_sku} · {preview.new_variant_name}</span>
         <span>Số lượng rút khỏi SKU cũ: {preview.old_quantity}</span>
         <span>Số lượng chuyển vào SKU mới: {preview.new_quantity}</span>
