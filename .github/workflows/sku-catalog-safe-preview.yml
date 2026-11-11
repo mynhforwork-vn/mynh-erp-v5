@@ -73,6 +73,7 @@ jobs:
           CHROME_PATH="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
           test -n "$CHROME_PATH"
           CHROME_BIN="$CHROME_PATH" node scripts/warehouse-intake-preview-browser-qa.mjs
+          CHROME_BIN="$CHROME_PATH" node scripts/sku-catalog-browser-qa.mjs
       - name: Build OpenNext
         run: npx opennextjs-cloudflare build
       - uses: actions/upload-artifact@v4
