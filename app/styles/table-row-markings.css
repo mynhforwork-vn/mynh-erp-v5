@@ -81,3 +81,15 @@
   .table-row-marking-condition>*:nth-child(3){grid-column:1}
   .table-row-marking-condition>*:nth-child(4){grid-column:2;grid-row:1}
 }
+
+
+/* Purchase orders: same color language, existing status chips are untouched. */
+.order-table tbody tr[data-mark-color='yellow']>td{background:#fff8e3}
+.order-table tbody tr[data-mark-color='blue']>td{background:#eaf4ff}
+.order-table tbody tr[data-mark-color='green']>td{background:#eaf8ed}
+.order-table tbody tr[data-mark-color='purple']>td{background:#f2edff}
+.order-table tbody tr[data-mark-color='pink']>td{background:#fff0f6}
+.order-table tbody tr[data-mark-color]>td .status-pill{isolation:isolate}
+.p1-order-mark-icon{display:inline-block;margin-left:4px;font-size:11px}
+.p1-order-marking-checkbox{vertical-align:middle;margin-right:4px;width:12px;height:12px}
+.order-table-shell>.table-row-marking{margin:3px 0 6px}
