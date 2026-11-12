@@ -34,13 +34,13 @@ export function useTableRowMarking(
   const [rules,setRules]=useState<HighlightRule[]>([])
   const [busy,setBusy]=useState(false)
   const [message,setMessage]=useState<{error:boolean,text:string}|null>(null)
-  const ids=useMemo(()=>rows.map(row=>row.id).filter(id=>UUID.test(id)).slice(0,250),[rows])
+  const ids=useMemo(()=>rows.map(row=>row.id).filter(id=>UUID.test(id)).slice(0,1000),[rows])
   const identity=ids.join(',')
   const markMap=useMemo(()=>new Map(marks.map(x=>[x.row_key,x])),[marks])
   const flagMap=useMemo(()=>new Map(flags.map(x=>[x.row_key,x])),[flags])
   const markedSet=useMemo(()=>new Set(selected),[selected])
   const activeRows=useMemo(()=>new Map(rows.map(x=>[x.id,x.data])),[rows])
-  const notify=(text:string,error=false)=>setMessage({text,error})
+  const notify=(text:string,error=false)=>setMessage(text?{text,error}:null)
   const refresh=useCallback(async()=>{
     if(!enabled||readOnly){setMarks([]);setFlags([]);setRules([]);return}
     const all=await loadTableRowMarkings(scope,ids)
