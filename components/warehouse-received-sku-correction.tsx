@@ -81,8 +81,7 @@ export function WarehouseReceivedSkuCorrection({
     </button>
     {open&&<div role="region" aria-label="Điều chỉnh SKU của sản phẩm đã nhập kho"
       className="warehouse-received-sku-body">
-      <p>Điều chỉnh có kiểm soát. Hệ thống giữ nguyên phiếu nhập gốc, chỉ ghi chênh lệch tồn và lịch sử sửa.</p>
-      {previewOnly&&<p role="status">Chế độ thử: chọn SKU mới, xem đối soát và xác nhận thử. Không ghi kho, không cập nhật đơn hoặc lịch sử.</p>}
+      {previewOnly&&<small role="status">Thử · không lưu kho</small>}
       <b className="warehouse-received-sku-step">1. Chọn SKU sản phẩm</b>
       {product?<div className="warehouse-received-sku-selected">
         <span><b>{product.sku}</b> · {product.name}</span>
@@ -150,12 +149,9 @@ export function WarehouseReceivedSkuCorrection({
         </button>
       </div>}
       {simulated&&<div role="status" className="warehouse-received-sku-review">
-        <b>Đã hoàn tất thử thay đổi SKU — chưa lưu</b>
-        <span>Đơn và tồn kho thực tế vẫn giữ nguyên.</span>
-        <span>Dự kiến rút SKU cũ: {simulated.old_quantity}</span>
-        <span>Dự kiến thêm SKU mới: {simulated.new_quantity}</span>
-        <span>SKU dự kiến: {simulated.new_sku} · {simulated.new_variant_name}</span>
-        <small>Đóng slidebar hoặc tải lại trang sẽ xóa kết quả thử. Không phát sinh bút toán hay lịch sử.</small>
+        <b>Đã thử · chưa lưu</b>
+        <span>{simulated.new_sku} · {simulated.new_variant_name}</span>
+        <small>Không thay đổi tồn kho thực tế.</small>
         <button type="button" onClick={()=>{setSimulated(null);setPreview(null)}}>Thử phương án khác</button>
       </div>}
       {error&&<p role="alert" className="warehouse-received-sku-error">{error}</p>}

@@ -411,9 +411,6 @@ export function WarehouseIntakeDetailPreview({
             <div><span>Số lượng</span><b>{selected.quantity}</b></div>
           </div>
           <p className="warehouse-detail-v2-source">{selected.product_name} · {selected.variant||'Mặc định'}</p>
-          {processed&&<div className="warehouse-detail-v2-processed" role="status">
-            Đơn đã chốt kho. Chọn chỉnh sửa SKU bên dưới để đối soát và lập bút toán điều chỉnh; không nhập kho lại.
-          </div>}
           {processed&&canCorrectFinalizedSku&&
             itemDecisions[selected.id]?.processing_state==='FINALIZED'&&
             <WarehouseReceivedSkuCorrection key={selected.id}
@@ -660,8 +657,7 @@ export function WarehouseIntakeDetailPreview({
         </div>):<div className="empty compact">Chưa có lịch sử bóc tách của đơn.</div>}
       </div>}
     </div>
-    <footer className="warehouse-detail-v2-footer">
-      {processed?<p>{canCorrectFinalizedSku?'Đơn đã chốt. Chọn sản phẩm phía trên để chỉnh sửa SKU có đối soát và xem lịch sử.':'Đơn đã chốt. Dữ liệu chỉ đọc khi chưa được mở quyền điều chỉnh.'}</p>:<>
+    {!processed&&<footer className="warehouse-detail-v2-footer">
       {showSummary&&<div className="warehouse-detail-v2-summary" aria-label="Các lựa chọn dự kiến">
         <b>{simulate?'Danh sách lựa chọn dự kiến':'Danh sách quyết định kho'} ({totalChoices}/{order.order_items.length})</b>
         {order.order_items.map(item=><div key={item.id}>
@@ -683,11 +679,8 @@ export function WarehouseIntakeDetailPreview({
         </div>:<button type="button" className="button primary small" onClick={()=>{setShowSummary(true);setConfirmFinalize(true)}}>
           Chốt xử lý kho
         </button>)}
-      <p>{simulate?'Preview chỉ mô phỏng, chưa ghi dữ liệu kho':
-        processed?'Đơn đã được xử lý kho. Không nhập lại.':
-        isReadOnly?'Chỉ xem · không có quyền xử lý kho.':
-        'Lưu từng sản phẩm trước, sau đó xác nhận chốt kho một lần.'}</p>
-      </>}
-    </footer>
+      {isReadOnly&&<small>Chỉ xem</small>}
+      {simulate&&<small>Thử · không lưu kho</small>}
+    </footer>}
   </aside>
 }

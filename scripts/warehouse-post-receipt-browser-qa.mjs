@@ -97,21 +97,21 @@ try{
  await demo.setContent(html.replace('<script>'+script+'</script>',
   '<script>window.__previewOnly=true;</script><script>'+script+'</script>'),{waitUntil:'load'})
  await demo.getByRole('button',{name:'Chỉnh sửa SKU / phân loại đã chốt'}).click()
- await demo.getByText('Chế độ thử: chọn SKU mới').waitFor()
+ await demo.getByText('Thử · không lưu kho').waitFor()
  await demo.getByRole('group',{name:'Chọn SKU sản phẩm'}).getByRole('button',{name:/ABC-01/}).click()
  await demo.getByRole('group',{name:'Chọn phân loại SKU'}).getByRole('button',{name:/Đỏ/}).click()
  await demo.getByRole('button',{name:'Xem trước điều chỉnh'}).click()
  await demo.getByText('Đối soát trước khi điều chỉnh').waitFor()
  await demo.getByPlaceholder('Nêu nguyên nhân ghép sai SKU').fill('Thử điều chỉnh liên kết SKU đã nhập')
  await demo.getByRole('button',{name:'Xác nhận thử điều chỉnh SKU'}).click()
- await demo.getByText('Đã hoàn tất thử thay đổi SKU — chưa lưu').waitFor()
+ await demo.getByText('Đã thử · chưa lưu').waitFor()
  const demoCalls=await demo.evaluate(()=>window.__calls||[])
  assert.equal(demoCalls.filter(c=>c.name==='confirm').length,0,
   'trial must never call write RPC')
  assert.equal(demoCalls.filter(c=>c.name==='preview').length,1,
   'trial should inspect actual stock once')
  await demo.getByRole('button',{name:'Thử phương án khác'}).click()
- assert.equal(await demo.getByText('Đã hoàn tất thử thay đổi SKU — chưa lưu').count(),0)
+ assert.equal(await demo.getByText('Đã thử · chưa lưu').count(),0)
  await demo.close()
  console.log('PASS: received SKU correction 6 breakpoints, read-only trial, reason, blocked sales, live confirmation mock')
 }finally{await browser.close()}
