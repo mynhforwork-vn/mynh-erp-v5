@@ -142,7 +142,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     loadSkuProducts(),
     supabase.from('audit_logs')
       .select('id,entity_id,action,created_at,old_value,new_value')
-      .eq('module', 'WAREHOUSE').eq('entity_type', 'ORDER')
+      .eq('module', 'WAREHOUSE').in('entity_type', ['ORDER','ORDER_ITEM'])
       .order('created_at', { ascending: false }).limit(800),
     supabase.from('receive_batch_details')
       .select('order_id,receive_batch_id').limit(1500),
