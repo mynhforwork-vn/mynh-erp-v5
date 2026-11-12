@@ -380,7 +380,7 @@ export function WarehouseIntakeDetailPreview({
       {tab==='products'&&<div className="warehouse-detail-v2-content">
         <div className="warehouse-detail-v2-progress">
           <b>{countSaved}/{order.order_items.length} đã có quyết định SKU/kho</b>
-          <span>{totalChoices} lựa chọn thử</span>
+          {!processed&&<span>{totalChoices} {simulate?'lựa chọn dự kiến':'quyết định đang lưu'}</span>}
         </div>
         <div className="warehouse-detail-v2-products">
           {order.order_items.map((item,index)=><button type="button" key={item.id}
@@ -393,7 +393,9 @@ export function WarehouseIntakeDetailPreview({
             <span className={'warehouse-detail-v2-product-state '+(choices[item.id]
               ?(choices[item.id].action==='IN'?'state-in':'state-skip')
               :item.product_variant_id?'state-mapped':'state-unmapped')}>
-              {choices[item.id]?(choices[item.id].action==='IN'?(simulate?'Dự kiến nhập':'Đã chọn nhập'):(simulate?'Dự kiến bỏ':'Đã chọn bỏ'))
+              {processed&&itemDecisions[item.id]?.decision==='IN'?'Đã nhập kho':
+                processed&&itemDecisions[item.id]?.decision==='SKIP'?'Đã bỏ qua kho':
+                choices[item.id]?(choices[item.id].action==='IN'?(simulate?'Dự kiến nhập':'Đã chọn nhập'):(simulate?'Dự kiến bỏ':'Đã chọn bỏ'))
                 :item.product_variant_id?'Đã ghép SKU':'Chưa bóc tách'}
             </span>
           </button>)}
@@ -407,7 +409,7 @@ export function WarehouseIntakeDetailPreview({
           </div>
           <p className="warehouse-detail-v2-source">{selected.product_name} · {selected.variant||'Mặc định'}</p>
           {processed&&<div className="warehouse-detail-v2-processed" role="status">
-            Đơn đã xử lý kho. Thông tin gốc chỉ đọc; muốn đổi SKU phải có phiếu điều chỉnh tồn.
+            Đơn đã chốt kho. Chọn chỉnh sửa SKU bên dưới để đối soát và lập bút toán điều chỉnh; không nhập kho lại.
           </div>}
           {processed&&canCorrectFinalizedSku&&
             itemDecisions[selected.id]?.processing_state==='FINALIZED'&&
@@ -429,8 +431,11 @@ export function WarehouseIntakeDetailPreview({
                 setToast('Đã điều chỉnh SKU và tồn kho, có nhật ký đối soát.')
                 router.refresh()
               }}/>}
-          {processed&&!canCorrectFinalizedSku&&!previewOnly&&
-            <p className="warehouse-detail-v2-source">Điều chỉnh SKU sau nhập kho chưa được mở trên môi trường này.</p>}
+          {processed&&canCorrectFinalizedSku&&itemDecisions[selected.id]?.processing_state!=='FINALIZED'&&
+            <p className="warehouse-detail-v2-source">Sản phẩm này là dữ liệu xử lý lịch sử, chưa có quyết định SKU V2. Cần đối soát riêng trước khi cho phép chỉnh sửa tồn.</p>}
+          {processed&&!canCorrectFinalizedSku&&
+            <p className="warehouse-detail-v2-source">Chức năng chỉnh sửa sau nhập kho chưa mở cho tài khoản hoặc môi trường này.</p>}
+          {!processed&&<>
           <div className="warehouse-detail-v2-section-title">Ghép SKU bán và quyết định giá</div>
           <div className="warehouse-detail-v2-switch">
             <button type="button" disabled={processed||isReadOnly||busy}
@@ -574,6 +579,7 @@ export function WarehouseIntakeDetailPreview({
               :isReadOnly?'Bạn không có quyền chỉnh sửa kho'
               :'Lưu bóc tách chưa nhập tồn. Nhấn Chốt xử lý kho sau khi hoàn tất tất cả sản phẩm.'}
           </p>
+          </>}
         </section>}
       </div>}
       {tab==='info'&&<div className="warehouse-detail-v2-content warehouse-detail-v2-order-info">
@@ -652,6 +658,7 @@ export function WarehouseIntakeDetailPreview({
       </div>}
     </div>
     <footer className="warehouse-detail-v2-footer">
+      {processed?<p>{canCorrectFinalizedSku?'Đơn đã chốt. Chọn sản phẩm phía trên để chỉnh sửa SKU có đối soát và xem lịch sử.':'Đơn đã chốt. Dữ liệu chỉ đọc khi chưa được mở quyền điều chỉnh.'}</p>:<>
       {showSummary&&<div className="warehouse-detail-v2-summary" aria-label="Các lựa chọn dự kiến">
         <b>{simulate?'Danh sách lựa chọn dự kiến':'Danh sách quyết định kho'} ({totalChoices}/{order.order_items.length})</b>
         {order.order_items.map(item=><div key={item.id}>
@@ -677,6 +684,7 @@ export function WarehouseIntakeDetailPreview({
         processed?'Đơn đã được xử lý kho. Không nhập lại.':
         isReadOnly?'Chỉ xem · không có quyền xử lý kho.':
         'Lưu từng sản phẩm trước, sau đó xác nhận chốt kho một lần.'}</p>
+      </>}
     </footer>
   </aside>
 }

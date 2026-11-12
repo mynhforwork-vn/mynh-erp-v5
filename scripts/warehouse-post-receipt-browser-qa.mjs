@@ -54,7 +54,7 @@ try{
   const errors=[]
   page.on('pageerror',e=>errors.push(e.message))
   await page.setContent(html,{waitUntil:'load'})
-  await page.getByRole('button',{name:'Điều chỉnh SKU đã nhập kho'}).click()
+  await page.getByRole('button',{name:'Chỉnh sửa SKU / phân loại đã chốt'}).click()
   assert.equal(await page.getByRole('group',{name:'Chọn phân loại SKU'}).count(),0,
     'classification must wait for SKU selection '+width)
   await page.getByLabel('Tìm SKU sản phẩm để điều chỉnh').fill('ABC-01')
@@ -81,7 +81,7 @@ try{
  const blocked=await browser.newPage({viewport:{width:390,height:844}})
  await blocked.setContent(html,{waitUntil:'load'})
  await blocked.evaluate(()=>window.__blockSale=true)
- await blocked.getByRole('button',{name:'Điều chỉnh SKU đã nhập kho'}).click()
+ await blocked.getByRole('button',{name:'Chỉnh sửa SKU / phân loại đã chốt'}).click()
  await blocked.getByRole('group',{name:'Chọn SKU sản phẩm'}).getByRole('button',{name:/ABC-01/}).click()
  await blocked.getByRole('group',{name:'Chọn phân loại SKU'}).getByRole('button',{name:/Đỏ/}).click()
  await blocked.getByRole('button',{name:'Xem trước điều chỉnh'}).click()
@@ -92,14 +92,16 @@ try{
  const demo=await browser.newPage({viewport:{width:390,height:844}})
  await demo.setContent(html.replace('<script>'+script+'</script>',
   '<script>window.__previewOnly=true;</script><script>'+script+'</script>'),{waitUntil:'load'})
- await demo.getByRole('button',{name:'Điều chỉnh SKU đã nhập kho'}).click()
- await demo.getByText('Chế độ xem trước: chỉ thử chọn SKU và phân loại').waitFor()
+ await demo.getByRole('button',{name:'Chỉnh sửa SKU / phân loại đã chốt'}).click()
+ await demo.getByText('Preview chỉ xem đối soát thực tế').waitFor()
  await demo.getByRole('group',{name:'Chọn SKU sản phẩm'}).getByRole('button',{name:/ABC-01/}).click()
  await demo.getByRole('group',{name:'Chọn phân loại SKU'}).getByRole('button',{name:/Đỏ/}).click()
- assert.equal(await demo.getByRole('button',{name:'Xem trước điều chỉnh'}).isDisabled(),true,
-  'preview must not call production preview/confirmation RPC')
- assert.equal((await demo.evaluate(()=>window.__calls||[])).length,0,
-  'preview must not write or read live stock')
+ await demo.getByRole('button',{name:'Xem trước điều chỉnh'}).click()
+ await demo.getByText('Đối soát trước khi điều chỉnh').waitFor()
+ assert.equal(await demo.getByRole('button',{name:'Xác nhận điều chỉnh SKU'}).isDisabled(),true,
+  'read-only preview must block stock confirmation')
+ assert.equal((await demo.evaluate(()=>window.__calls||[])).filter(c=>c.name==='confirm').length,0,
+  'preview must never write stock')
  await demo.close()
  console.log('PASS: received SKU correction 6 breakpoints, SKU first, classification scope, preview-only lock, reason, blocked sales, mock confirmation')
 }finally{await browser.close()}

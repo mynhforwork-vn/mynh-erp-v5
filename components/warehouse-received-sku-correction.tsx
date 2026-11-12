@@ -47,7 +47,6 @@ export function WarehouseReceivedSkuCorrection({
   const hasActualChange=variantId!==previousVariantId||factor!==previousMultiplier
   function resetReview(){setPreview(null);setError('')}
   async function inspect(){
-    if(previewOnly){setError('Bản xem trước chỉ kiểm tra giao diện, không truy vấn hoặc ghi tồn kho.');return}
     if(!variantId||!validFactor||!hasActualChange||busy)return
     setBusy(true);resetReview()
     try{
@@ -74,12 +73,12 @@ export function WarehouseReceivedSkuCorrection({
   return <div className="warehouse-received-sku-correction">
     <button type="button" className="warehouse-received-sku-toggle"
       disabled={busy} aria-expanded={open} onClick={()=>{setOpen(x=>!x);resetReview()}}>
-      {open?'Thu gọn điều chỉnh SKU':'Điều chỉnh SKU đã nhập kho'}
+      {open?'Thu gọn chỉnh sửa SKU':'Chỉnh sửa SKU / phân loại đã chốt'}
     </button>
     {open&&<div role="region" aria-label="Điều chỉnh SKU của sản phẩm đã nhập kho"
       className="warehouse-received-sku-body">
       <p>Điều chỉnh có kiểm soát. Hệ thống giữ nguyên phiếu nhập gốc, chỉ ghi chênh lệch tồn và lịch sử sửa.</p>
-      {previewOnly&&<p role="status">Chế độ xem trước: chỉ thử chọn SKU và phân loại, không cho ghi tồn kho.</p>}
+      {previewOnly&&<p role="status">Preview chỉ xem đối soát thực tế; xác nhận ghi tồn chỉ thực hiện khi tính năng đã được phát hành.</p>}
       <b className="warehouse-received-sku-step">1. Chọn SKU sản phẩm</b>
       {product?<div className="warehouse-received-sku-selected">
         <span><b>{product.sku}</b> · {product.name}</span>
@@ -126,7 +125,7 @@ export function WarehouseReceivedSkuCorrection({
             placeholder="Nêu nguyên nhân ghép sai SKU"
             onChange={e=>setReason(e.target.value)}/>
         </label>
-        <button type="button" className="button small" disabled={previewOnly||busy||!validFactor||!hasActualChange}
+        <button type="button" className="button small" disabled={busy||!validFactor||!hasActualChange}
           onClick={()=>void inspect()}>{busy?'Đang kiểm tra…':'Xem trước điều chỉnh'}</button>
       </div>}
       {preview&&<div className="warehouse-received-sku-review" role="status">

@@ -12,8 +12,11 @@ function validate(itemId:string,targetId:string,multiplier:number){
     throw new Error('Hệ số quy đổi phải là số nguyên từ 1 đến 100.000')
   }
 }
-async function requireCorrectionAdmin(){
-  if(process.env.ERP_POST_RECEIPT_SKU_LIVE!=='true'){
+async function requireCorrectionAdmin(allowReadOnlyPreview=false){
+  const isLive=process.env.ERP_POST_RECEIPT_SKU_LIVE==='true'
+  const isReadOnlyPreview=process.env.ERP_WAREHOUSE_V2_LIVE!=='true'&&
+    process.env.ERP_POST_RECEIPT_SKU_PREVIEW_UI==='true'
+  if(!isLive&&!(allowReadOnlyPreview&&isReadOnlyPreview)){
     throw new Error('Điều chỉnh SKU sau nhập kho đang khóa; không ghi dữ liệu')
   }
   const {supabase,user}=await requireUser()
@@ -45,7 +48,7 @@ export async function previewReceivedSkuCorrection(
   orderItemId:string,targetVariantId:string,multiplier:number
 ):Promise<ReceivedSkuCorrectionPreview>{
   validate(orderItemId,targetVariantId,multiplier)
-  const supabase=await requireCorrectionAdmin()
+  const supabase=await requireCorrectionAdmin(true)
   const {data,error}=await supabase.rpc('preview_received_sku_correction',{
     p_order_item_id:orderItemId,p_target_variant_id:targetVariantId,p_multiplier:multiplier
   })
