@@ -1,0 +1,35 @@
+name: PR96 Table Highlight Read-Only Preview
+on:
+  push:
+    branches: [design/table-row-flags-highlights-20261111]
+    paths:
+      - '.github/workflows/table-row-highlights-preview.yml'
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify read-only switches
+        run: |
+          node - <<'NODE'
+          const c=JSON.parse(require('fs').readFileSync('wrangler.jsonc','utf8'))
+          if(c.name!=='mynh-erp-v5'||c.vars.ERP_TABLE_MARKINGS_LIVE!=='false'
+            ||c.previews.vars.ERP_TABLE_MARKINGS_LIVE!=='false'
+            ||c.previews.vars.ERP_TABLE_MARKINGS_PREVIEW_UI!=='true'
+            ||c.previews.vars.ERP_WAREHOUSE_V2_LIVE!=='false')throw Error('unsafe Preview')
+          NODE
+      - name: Build
+        run: |
+          npm install --no-audit --no-fund
+          npx opennextjs-cloudflare build
+      - name: Deploy read-only Preview
+        run: npx wrangler preview --name design-table-row-flags-highlights-20261111 --worker-name mynh-erp-v5 --message "PR96 highlight preview"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
