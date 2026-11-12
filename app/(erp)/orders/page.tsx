@@ -16,6 +16,7 @@ import { accountDeviceFields } from '@/lib/purchase-account-device-fields'
 import { orderIsCancelled } from '@/lib/purchase-order-cancellation'
 import { DestinationHubConfigModal } from '@/components/destination-hub-config-panel'
 import { suggestReceivingWarehouseId } from '@/lib/warehouse-routing'
+import '@/app/styles/table-row-markings.css'
 
 type RangeKey='today'|'week'|'month'|'custom'|'7d'|'30d'|'quarter'|'year'|'all'
 type SP={order?:string,receive?:string,mode?:string,tab?:string,q?:string,range?:RangeKey,from?:string,to?:string,tracking?:string,user?:string,settings?:string,archive?:string,account?:string,accountTab?:string,accountMode?:string,backUser?:string}
@@ -103,13 +104,16 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
   const {supabase,user}=await requireUser()
   const role=String(user.app_metadata?.role??'viewer')
   const canOperate=['admin','operator'].includes(role)
+  const markingEnabled=process.env.ERP_TABLE_MARKINGS_LIVE==='true'||
+    process.env.ERP_TABLE_MARKINGS_PREVIEW_UI==='true'
+  const markingReadOnly=process.env.ERP_TABLE_MARKINGS_LIVE!=='true'
 
   const range=resolveRange(sp)
   const queryText=String(sp.q??'').trim().toLowerCase()
   const archiveView=sp.archive==='archived'
 
   let orderListQuery=supabase.from('orders').select(
-    'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,prepaid_amount,prepaid_source_type,prepaid_source_label,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,archived_at,archived_by,erp_users(username,browser_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
+    'id,shopee_order_id,erp_user_id,order_date,area,shipping_service,express_shipper_name,express_shipper_phone,express_shipper_note,express_delivery_status,order_status,payment_status,prepaid_amount,prepaid_source_type,prepaid_source_label,recipient_name,recipient_phone,recipient_address,destination_hub,cod,receive_status,warehouse_status,created_at,archived_at,archived_by,erp_users(username,browser_name),shipments(id,tracking_number,carrier,current_tracking_status,is_active,tracking_enabled,next_track_at),order_items(product_name,variant,quantity,product_variant_id),order_vouchers(voucher_tag,voucher_type,voucher_code,voucher_name)'
   ).gte('order_date',range.start).lte('order_date',range.end)
   orderListQuery=archiveView
     ? orderListQuery.not('archived_at','is',null)
@@ -531,6 +535,7 @@ export default async function OrdersPage({searchParams}:{searchParams:Promise<SP
           baseQuery={returnQuery}
           canEdit={canOperate}
           carrierConfigs={carrierConfigs}
+          markingEnabled={markingEnabled} markingReadOnly={markingReadOnly}
         />
 
       </section>
