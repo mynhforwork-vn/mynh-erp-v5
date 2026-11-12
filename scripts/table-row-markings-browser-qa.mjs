@@ -85,11 +85,11 @@ const legacyStyles=readFileSync(path.join(root,'app/styles/p1-purchase-tables.cs
   '\n'+readFileSync(path.join(root,'app/styles/warehouse-intake-preview.css'),'utf8')
 const markingStyles=readFileSync(path.join(root,'app/styles/table-row-markings.css'),'utf8')
 const styles=legacyStyles+'\n'+markingStyles
-assert.match(styles,/display:table!important/,
+assert.match(markingStyles,/display:table!important/,
  'row marking styles must retain native table structure')
-assert.doesNotMatch(styles,/>tbody>tr\\{\\s*display:grid!important/,
+assert.doesNotMatch(markingStyles,/display:grid!important/,
  'row marking must not convert table rows to cards')
-assert.doesNotMatch(styles,/overflow-x:auto!important/,
+assert.doesNotMatch(markingStyles,/overflow-x:auto!important/,
  'row marking stylesheet must not add horizontal scrolling')
 const base='html,body{margin:0;max-width:100%;overflow-x:hidden;font-family:Arial,sans-serif;color:#365d70}main{max-width:970px;margin:auto;padding:10px}table{width:100%;table-layout:fixed;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #e6eef2;text-align:left}tr[data-mark-color=yellow]>td{background:#fff8e3}tr[data-mark-color=blue]>td{background:#eaf4ff}'
 const html=(readonly=false)=>'<html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+base+styles+'</style></head><body><div id="root"></div><script>window.__preview='+JSON.stringify(readonly)+';</script><script>'+script+'</script></body></html>'
