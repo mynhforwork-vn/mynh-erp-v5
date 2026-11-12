@@ -159,3 +159,30 @@
 .brand-shell-v1 .order-table-card .order-table.with-row-mark-actions td.p1-order-identity-cell .table-link{
   white-space:nowrap!important;
 }
+
+/* One-click highlight palette inside the existing icon popover. */
+.table-row-marking-swatches{display:inline-flex;align-items:center;gap:3px;flex-wrap:nowrap}
+.table-row-marking-swatches .table-row-mark-swatch{width:22px;height:22px;min-width:22px;
+  border:1px solid #c5d4dc;border-radius:4px;padding:0;cursor:pointer}
+.table-row-marking-swatches :is(button:hover,button:focus-visible){outline:2px solid #438d85;outline-offset:1px}
+.table-row-mark-swatch.tone-yellow{background:#fff1bf}
+.table-row-mark-swatch.tone-blue{background:#cfe8ff}
+.table-row-mark-swatch.tone-green{background:#daf3e0}
+.table-row-mark-swatch.tone-purple{background:#eae0ff}
+.table-row-mark-swatch.tone-pink{background:#ffe0eb}
+.table-row-mark-clear{width:22px;height:22px;min-width:22px;border:1px solid #d1dee5;
+  border-radius:4px;background:#fff;color:#637d8c;cursor:pointer}
+.table-row-marking-swatches button:disabled{opacity:.4;cursor:not-allowed}
+.table-row-marking-preview-note{display:inline-block;padding:2px 6px;margin:2px 0;
+  font-size:10px;color:#6e8391;background:transparent}
+/* Make manual/rule colors visible above legacy cell backgrounds; no structural changes. */
+.brand-shell-v1 .order-table tbody tr[data-mark-color='yellow']>td,
+.brand-shell-v1 .warehouse-unified-table tbody tr[data-mark-color='yellow']>td{background-color:#fff1c9!important}
+.brand-shell-v1 .order-table tbody tr[data-mark-color='blue']>td,
+.brand-shell-v1 .warehouse-unified-table tbody tr[data-mark-color='blue']>td{background-color:#dcedff!important}
+.brand-shell-v1 .order-table tbody tr[data-mark-color='green']>td,
+.brand-shell-v1 .warehouse-unified-table tbody tr[data-mark-color='green']>td{background-color:#def4e5!important}
+.brand-shell-v1 .order-table tbody tr[data-mark-color='purple']>td,
+.brand-shell-v1 .warehouse-unified-table tbody tr[data-mark-color='purple']>td{background-color:#ebe4ff!important}
+.brand-shell-v1 .order-table tbody tr[data-mark-color='pink']>td,
+.brand-shell-v1 .warehouse-unified-table tbody tr[data-mark-color='pink']>td{background-color:#ffe4ed!important}
