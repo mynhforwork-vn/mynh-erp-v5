@@ -162,7 +162,7 @@ export function useTableRowMarking(
     return action(()=>deleteTableHighlightRule(scope,id),'Đã xóa quy tắc')
   }
   function getDecoration(id:string){
-    const effective=draftPreview?[{...draftPreview,priority:0},...rules]:rules
+    const effective=draftPreview?[{...draftPreview,priority:1},...rules]:rules
     return getRowDecoration(scope,activeRows.get(id)??{},markMap.get(id),effective)
   }
   return {
@@ -198,7 +198,7 @@ export function TableMarkingToolbar({
     id:'preview',...draft,enabled:true
   }])!==null).length
   useEffect(()=>{
-    model.previewRule(expanded&&editingOpen?{id:'trial-current',...draft,priority:0}:null)
+    model.previewRule(expanded&&editingOpen?{id:'0-trial-current',...draft,priority:1}:null)
   },[expanded,editingOpen,draft])
   useEffect(()=>{
     const esc=(e:KeyboardEvent)=>{
@@ -259,25 +259,21 @@ export function TableMarkingToolbar({
       style={{top:position.top,right:position.right}}>
     <div className="table-row-marking-toolbar">
       <button type="button" aria-pressed={model.mode} className={model.mode?'active':''}
-        disabled={model.busy} onClick={()=>{model.toggleMode();setExpanded(false)}}>Đánh dấu dòng</button>
+        disabled={model.busy} onClick={()=>{model.toggleMode();setExpanded(false)}}>{model.mode?'Xong chọn':'Chọn dòng'}</button>
       <button type="button" aria-expanded={section==='rules'} onClick={openRules}
-        disabled={model.busy}>Quy tắc highlight ({model.rules.length})</button>
+        disabled={model.busy}>Quy tắc ({model.rules.length})</button>
       {model.mode&&<>
         <span className="table-row-marking-count">{model.selected.length} dòng đã chọn</span>
-        <label className="table-row-marking-color">
-          <span>Highlight</span>
-          <select aria-label="Chọn màu highlight cho các dòng đã chọn"
-            defaultValue="" disabled={!model.selected.length||model.busy}
-            onChange={e=>{
-              if(!e.target.value)return
-              void model.markColor(e.target.value==='remove'?null:e.target.value as RowColor)
-              e.target.value=''
-            }}>
-            <option value="">Chọn màu...</option>
-            {ROW_COLORS.map(color=><option value={color} key={color}>{ROW_COLOR_LABELS[color]}</option>)}
-            <option value="remove">Bỏ highlight</option>
-          </select>
-        </label>
+        <div className="table-row-marking-swatches" role="group" aria-label="Tô màu các dòng đã chọn">
+          {ROW_COLORS.map(color=><button type="button" key={color}
+            className={'table-row-mark-swatch tone-'+color}
+            aria-label={'Tô '+ROW_COLOR_LABELS[color]} title={ROW_COLOR_LABELS[color]}
+            disabled={!model.selected.length||model.busy}
+            onClick={()=>void model.markColor(color)}/>)}
+          <button type="button" className="table-row-mark-clear" aria-label="Bỏ màu highlight"
+            title="Bỏ màu" disabled={!model.selected.length||model.busy}
+            onClick={()=>void model.markColor(null)}>×</button>
+        </div>
         <button type="button" disabled={!model.selected.length||model.busy}
           onClick={()=>void model.pin(true)}>Ghim</button>
         <button type="button" disabled={!model.selected.length||model.busy}
@@ -290,11 +286,9 @@ export function TableMarkingToolbar({
         <button type="button" disabled={model.busy} onClick={model.clearSelected}>Bỏ chọn</button>
       </>}
     </div>
-    {model.readOnly&&<small className="table-row-marking-preview-note">
-      Chế độ xem trước: đánh dấu và quy tắc không ghi vào dữ liệu thật.
-    </small>}
+    {model.readOnly&&<small className="table-row-marking-preview-note">Thử · không lưu</small>}
     {section==='flag'&&model.mode&&<section className="table-row-marking-panel" aria-label="Gắn cờ các dòng">
-      <b>Gắn cờ cho {Math.min(25,model.selected.length)} dòng (tối đa 25/lượt)</b>
+      <b>Gắn cờ · {Math.min(25,model.selected.length)} dòng</b>
       <div className="table-row-marking-fields">
         <label>Loại cờ
           <select value={flagType} onChange={e=>setFlagType(e.target.value as typeof flagType)}>
@@ -313,7 +307,7 @@ export function TableMarkingToolbar({
     </section>}
     {section==='rules'&&<section className="table-row-marking-panel" aria-label="Quy tắc highlight bảng">
       <div className="table-row-marking-panel-head">
-        <b>Quy tắc highlight tự động</b>
+        <b>Quy tắc tô màu</b>
         <button type="button" onClick={()=>{setEditing(null);setDraft(emptyDraft(scope));setEditingOpen(x=>!x)}}>
           + Tạo quy tắc
         </button>
@@ -324,17 +318,17 @@ export function TableMarkingToolbar({
           <small>{rule.match_mode==='all'?'Tất cả điều kiện':'Một trong các điều kiện'} · Ưu tiên {rule.priority}</small>
         </span>
         <label className="table-row-rule-switch"><input type="checkbox" checked={rule.enabled}
-          disabled={model.busy||model.readOnly}
+          disabled={model.busy}
           onChange={()=>void model.saveRule({...rule,enabled:!rule.enabled},rule.id)}/> Bật</label>
         <button type="button" onClick={()=>{
           setEditing(rule.id);setDraft({title:rule.title,enabled:rule.enabled,
             priority:rule.priority,match_mode:rule.match_mode,conditions:rule.conditions,
             color:rule.color});setEditingOpen(true)
         }}>Sửa</button>
-        <button type="button" disabled={model.busy||model.readOnly}
+        <button type="button" disabled={model.busy}
           onClick={()=>void model.removeRule(rule.id)}>Xóa</button>
       </div>)}
-      {!model.rules.length&&<small>Chưa có quy tắc. Tạo điều kiện theo dữ liệu đang hiển thị.</small>}
+      {!model.rules.length&&<small>Chưa có quy tắc.</small>}
       {editingOpen&&<div className="table-row-marking-editor">
         <div className="table-row-marking-fields">
           <label className="wide">Tên quy tắc
@@ -389,9 +383,9 @@ export function TableMarkingToolbar({
             onClick={()=>setDraft(d=>({...d,conditions:[...d.conditions,{
               field:Object.keys(supported)[0],operator:'eq',value:''
             }]}))}>+ Thêm điều kiện</button>
-          <span>{previewMatches}/{rows.length} dòng đang tải khớp</span>
-          <button type="button" disabled={model.readOnly||model.busy||draft.title.trim().length<3}
-            onClick={()=>void save()}>{editing?'Lưu thay đổi':'Lưu quy tắc'}</button>
+          <span>{previewMatches}/{rows.length} dòng khớp</span>
+          <button type="button" disabled={model.busy||draft.title.trim().length<3}
+            onClick={()=>void save()}>{model.readOnly?'Áp dụng thử':editing?'Lưu thay đổi':'Lưu quy tắc'}</button>
           <button type="button" onClick={()=>setEditingOpen(false)}>Đóng</button>
         </div>
       </div>}
@@ -464,7 +458,7 @@ export function RowMarkingActions({model,rowId,label}:{
       style={{top:position.top,right:position.right}}>
       <strong>Cờ đơn {label}</strong>
       <label>Loại cờ
-        <select value={flagType} disabled={model.busy||model.readOnly}
+        <select value={flagType} disabled={model.busy}
           onChange={event=>setFlagType(event.target.value as typeof flagType)}>
           <option value="attention">Cần chú ý</option>
           <option value="urgent">Cần xử lý</option>
@@ -473,14 +467,13 @@ export function RowMarkingActions({model,rowId,label}:{
       </label>
       <label>Lý do
         <textarea rows={2} maxLength={300} value={reason}
-          disabled={model.busy||model.readOnly}
+          disabled={model.busy}
           onChange={event=>setReason(event.target.value)}/>
       </label>
-      {model.readOnly&&<small>Preview chỉ xem, không lưu cờ vào dữ liệu thật.</small>}
       <div className="table-row-flag-actions">
-        <button type="button" disabled={model.busy||model.readOnly||reason.trim().length<8}
+        <button type="button" disabled={model.busy||reason.trim().length<8}
           onClick={async()=>{if(await model.flagRow(rowId,flagType,reason))setOpen(false)}}>Lưu</button>
-        {flag&&<button type="button" disabled={model.busy||model.readOnly}
+        {flag&&<button type="button" disabled={model.busy}
           onClick={async()=>{if(await model.flagRow(rowId,null))setOpen(false)}}>Bỏ cờ</button>}
         <button type="button" onClick={()=>setOpen(false)}>Đóng</button>
       </div>
