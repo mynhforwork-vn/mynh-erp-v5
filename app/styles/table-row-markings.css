@@ -1,0 +1,83 @@
+/* Scoped row marking / highlight; never recolor business status badges. */
+.table-row-marking{min-width:0;position:relative;margin:0 0 5px}
+.table-row-marking-toolbar{display:flex;gap:5px;flex-wrap:wrap;align-items:center;
+  padding:6px 8px;background:#f7fafc;border-radius:5px}
+.table-row-marking-toolbar>button,
+.table-row-marking-toolbar select,
+.table-row-marking-panel button{border:1px solid #d7e2e8;background:#fff;color:#345667;
+  padding:5px 8px;border-radius:4px;font-size:10.5px;cursor:pointer;min-height:28px}
+.table-row-marking-toolbar>button.active{border-color:#76acaa;background:#e8f6f1;color:#226b58;font-weight:700}
+.table-row-marking-toolbar>button:hover:not(:disabled){background:#eef5f8}
+.table-row-marking-toolbar button:disabled,.table-row-marking-panel button:disabled{
+  opacity:.54;cursor:not-allowed}
+.table-row-marking-count{font-size:10.5px;font-weight:650;color:#446273;padding:0 4px}
+.table-row-marking-color{display:flex;align-items:center;gap:5px;color:#506c7a;font-size:10px}
+.table-row-marking-color select{max-width:136px;min-width:118px}
+.table-row-marking-notice{display:flex;gap:7px;align-items:center;justify-content:space-between;
+  font-size:10.5px;padding:6px 9px;color:#2b6d57;background:#edf8f2;border-radius:4px}
+.table-row-marking-notice.error{background:#fff0ee;color:#a34033}
+.table-row-marking-notice button{border:0;background:transparent;cursor:pointer;color:inherit}
+.table-row-marking-preview-note{display:block;padding:3px 8px;font-size:10px;color:#697f8d}
+.table-row-marking-panel{display:flex;flex-direction:column;gap:8px;padding:10px;
+  background:#fbfcfd;border:1px solid #e0e8ed;border-radius:5px}
+.table-row-marking-panel b{font-size:11px;color:#3b6071}
+.table-row-marking-panel small{font-size:10px;color:#6d8490}
+.table-row-marking-panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.table-row-marking-fields{display:flex;gap:7px;align-items:flex-end;flex-wrap:wrap}
+.table-row-marking-fields label{display:flex;min-width:108px;flex:0 1 145px;
+  flex-direction:column;gap:4px;font-size:10px;color:#526a7a;font-weight:650}
+.table-row-marking-fields label.wide{flex:1 1 180px}
+.table-row-marking-fields :is(input,select),
+.table-row-marking-condition :is(input,select){width:100%;min-width:0;
+  box-sizing:border-box;border:1px solid #d3dfe6;border-radius:4px;
+  min-height:30px;padding:5px 8px;background:#fff;color:#29495e;font-size:11px}
+.table-row-rule-row{display:flex;align-items:center;gap:8px;
+  padding:6px 0;border-bottom:1px solid #eef2f5}
+.table-row-rule-swatch{width:11px;height:11px;border:1px solid #cfdae3;
+  border-radius:3px;flex:0 0 auto}
+.table-row-rule-swatch.tone-yellow{background:#fff1bf}
+.table-row-rule-swatch.tone-blue{background:#e3f0ff}
+.table-row-rule-swatch.tone-green{background:#e2f5e7}
+.table-row-rule-swatch.tone-purple{background:#efe9ff}
+.table-row-rule-swatch.tone-pink{background:#ffebf2}
+.table-row-rule-text{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}
+.table-row-rule-text b{font-size:10.5px;overflow:hidden;text-overflow:ellipsis}
+.table-row-rule-switch{display:flex;align-items:center;gap:3px;font-size:10px;white-space:nowrap}
+.table-row-marking-editor{display:flex;flex-direction:column;gap:7px;
+  padding:8px;background:#f3f8fa;border-radius:4px}
+.table-row-marking-condition{display:grid;
+  grid-template-columns:minmax(95px,1.1fr) minmax(85px,1fr) minmax(95px,1.2fr) 29px;gap:5px}
+.table-row-marking-condition button{padding:4px;min-width:28px}
+.table-row-marking-empty{font-size:10px;padding:7px;color:#708793}
+.table-row-marking-editor-footer{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.table-row-marking-editor-footer>span{margin-right:auto;font-size:10px;color:#5c7985}
+.warehouse-mark-inline-icon{font-size:11px;line-height:1;flex:0 0 auto;white-space:nowrap}
+.warehouse-mark-select-control{margin-inline-end:3px}
+/* These only paint cells. Status pills retain their own semantic colors. */
+.warehouse-unified-table tbody tr[data-mark-color='yellow']>td{background:#fff8e3}
+.warehouse-unified-table tbody tr[data-mark-color='blue']>td{background:#eaf4ff}
+.warehouse-unified-table tbody tr[data-mark-color='green']>td{background:#eaf8ed}
+.warehouse-unified-table tbody tr[data-mark-color='purple']>td{background:#f2edff}
+.warehouse-unified-table tbody tr[data-mark-color='pink']>td{background:#fff0f6}
+.warehouse-unified-table tbody tr[data-mark-color]>td .status-pill{isolation:isolate}
+.warehouse-unified-table tbody tr[data-mark-color]:hover>td{filter:brightness(.99)}
+.table-row-marking :is(button,input,select):focus-visible{
+  outline:2px solid #448f85;outline-offset:1px}
+@media(max-width:600px){
+  .table-row-marking-toolbar{padding:5px 3px;gap:4px}
+  .table-row-marking-toolbar>button{padding:5px 6px;font-size:10px}
+  .table-row-marking-color{flex:1 1 135px}
+  .table-row-marking-color select{width:100%}
+  .table-row-marking-condition{grid-template-columns:1fr 1fr 28px}
+  .table-row-marking-condition>*:nth-child(3){grid-column:1 / 3}
+  .table-row-marking-condition>*:nth-child(4){grid-column:3;grid-row:1}
+  .table-row-rule-row{flex-wrap:wrap}
+}
+@media(max-width:360px){
+  .table-row-marking-fields label{flex-basis:100%}
+  .table-row-marking-condition{grid-template-columns:1fr 30px}
+  .table-row-marking-condition>*:first-child{grid-column:1}
+  .table-row-marking-condition>*:nth-child(2){grid-column:1}
+  .table-row-marking-condition>*:nth-child(3){grid-column:1}
+  .table-row-marking-condition>*:nth-child(4){grid-column:2;grid-row:1}
+}
