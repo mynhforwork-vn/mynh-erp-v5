@@ -62,7 +62,22 @@ CREATE POLICY row_flags_delete ON public.table_row_flags FOR DELETE TO authentic
 CREATE OR REPLACE FUNCTION private.audit_table_row_flag()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
 AS $fn$
+DECLARE
+  v_row_key uuid;
+  v_old jsonb;
+  v_new jsonb;
 BEGIN
+  IF TG_OP='INSERT' THEN
+    v_row_key:=NEW.row_key;
+    v_new:=to_jsonb(NEW);
+  ELSIF TG_OP='DELETE' THEN
+    v_row_key:=OLD.row_key;
+    v_old:=to_jsonb(OLD);
+  ELSE
+    v_row_key:=NEW.row_key;
+    v_old:=to_jsonb(OLD);
+    v_new:=to_jsonb(NEW);
+  END IF;
   INSERT INTO public.audit_logs
     (actor_user_id,module,action,entity_type,entity_id,old_value,new_value,source)
   VALUES
@@ -70,12 +85,9 @@ BEGIN
       CASE TG_OP WHEN 'INSERT' THEN 'FLAG_ROW'
                  WHEN 'DELETE' THEN 'UNFLAG_ROW'
                  ELSE 'UPDATE_ROW_FLAG' END,
-      'ORDER',
-      coalesce(NEW.row_key,OLD.row_key)::text,
-      CASE WHEN TG_OP='INSERT' THEN NULL ELSE to_jsonb(OLD) END,
-      CASE WHEN TG_OP='DELETE' THEN NULL ELSE to_jsonb(NEW) END,
-      'USER');
-  RETURN coalesce(NEW,OLD);
+      'ORDER',v_row_key::text,v_old,v_new,'USER');
+  IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
 END;
 $fn$;
 REVOKE ALL ON FUNCTION private.audit_table_row_flag() FROM PUBLIC,anon,authenticated;
