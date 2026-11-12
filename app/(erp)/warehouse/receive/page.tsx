@@ -7,6 +7,7 @@ import {indexHistoricalSkuMappings,suggestSkusFromHistory,type HistoricSkuMappin
   from '@/lib/warehouse-sku-suggestions'
 import '@/app/styles/warehouse-intake-preview.css'
 import '@/app/styles/warehouse-intake-detail-preview.css'
+import '@/app/styles/table-row-markings.css'
 
 function batchOf(row: any) {
   const detail = Array.isArray(row.receive_batch_details)
@@ -70,6 +71,9 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
   // enable writes, after the additive DB migration and release gates are met.
   const isLive=process.env.ERP_WAREHOUSE_V2_LIVE==='true'
   const canWrite=isLive&&['admin','operator'].includes(String(user.app_metadata?.role??'viewer'))
+  const markingEnabled=process.env.ERP_TABLE_MARKINGS_LIVE==='true'||
+    (!isLive&&process.env.ERP_TABLE_MARKINGS_PREVIEW_UI==='true')
+  const markingReadOnly=process.env.ERP_TABLE_MARKINGS_LIVE!=='true'||!isLive
   // Count every non-archived received order, including processed and skipped ones.
   // Paginate deterministically because Supabase/PostgREST caps each response.
   async function loadReceivedOrders(){
@@ -369,6 +373,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       simulate={!isLive}
       previewOnly={!canWrite}
       showProcessedOnly={currentStatus==='done'}
+      markingEnabled={markingEnabled} markingReadOnly={markingReadOnly}
     />
   </div>
 }
