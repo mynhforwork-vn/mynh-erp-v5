@@ -214,7 +214,7 @@ export function TableMarkingToolbar({
       style={{top:position.top,right:position.right}}>
     <div className="table-row-marking-toolbar">
       <button type="button" aria-pressed={model.mode} className={model.mode?'active':''}
-        disabled={model.busy} onClick={model.toggleMode}>Đánh dấu dòng</button>
+        disabled={model.busy} onClick={()=>{model.toggleMode();setExpanded(false)}}>Đánh dấu dòng</button>
       <button type="button" aria-expanded={section==='rules'} onClick={openRules}
         disabled={model.busy}>Quy tắc highlight ({model.rules.length})</button>
       {model.mode&&<>
