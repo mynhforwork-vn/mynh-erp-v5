@@ -256,7 +256,8 @@ export function TableMarkingToolbar({
     </button>
     {expanded&&typeof document!=='undefined'&&createPortal(<div ref={panelRef}
       className="table-row-marking-dropdown" role="dialog" aria-label="Highlight và đánh dấu bảng"
-      style={{top:position.top,right:position.right}}>
+      style={{top:position.top,right:position.right,
+        maxHeight:`calc(100dvh - ${position.top+8}px)`}}>
     <div className="table-row-marking-toolbar">
       <button type="button" aria-pressed={model.mode} className={model.mode?'active':''}
         disabled={model.busy} onClick={()=>{model.toggleMode();setExpanded(false)}}>{model.mode?'Xong chọn':'Chọn dòng'}</button>
