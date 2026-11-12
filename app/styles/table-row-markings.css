@@ -143,36 +143,51 @@
 }
 
 
-/* Marking tables: reserve width for the full 14-character Shopee order ID
-   and compact pin/flag icons. Unmarked tables keep their existing sizing. */
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table) col.p1-order-col-order{
-  width:196px!important;
+/* No horizontal scrolling or wrapping of order IDs on any viewport.
+   Compact responsive columns are chosen in components from measured lane width.
+   Preserve semantic columns, user preferences and the existing order slidebar. */
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table),
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table){
+  width:100%!important;min-width:0!important;max-width:100%!important;table-layout:fixed!important;
 }
-.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table) col.p1-order-col-order{
-  width:184px!important;
+.brand-shell-v1 .order-table-card:has(table.with-row-mark-actions){
+  overflow-x:hidden!important;max-width:100%!important;
 }
-@media(max-width:900px){
-  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table) col.p1-order-col-order{
-    width:184px!important;
-  }
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table) col[class*="p1-order-col-"]{
+  width:var(--p1-panel-col-width)!important;
 }
 .brand-shell-v1 .order-table-card .order-table.with-row-mark-actions td.p1-order-identity-cell .table-link{
-  flex:1 1 auto!important;min-width:0!important;max-width:none!important;
+  flex:1 0 auto!important;min-width:max-content!important;max-width:none!important;
+  overflow:visible!important;text-overflow:clip!important;white-space:nowrap!important;
 }
 .brand-shell-v1 .order-table-card .order-table.with-row-mark-actions td.p1-order-identity-cell .table-row-mark-inline-tools{
   flex:0 0 auto;
 }
-/* Scroll only the warehouse table when the slidebar or viewport is narrow;
-   preserve six table columns and the sticky header. */
+.brand-shell-v1 .order-table-card .order-table.with-row-mark-actions td.p1-order-identity-cell{
+  white-space:nowrap!important;
+}
 .brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table-wrap[data-row-marking="true"],
 .brand-shell-v1 .warehouse-receive-screen .warehouse-unified-group.open>.warehouse-unified-table-wrap[data-row-marking="true"]{
-  overflow-x:auto!important;overflow-y:auto!important;
-  max-width:100%!important;overscroll-behavior-x:contain;
+  overflow-x:hidden!important;overflow-y:auto!important;max-width:100%!important;
 }
 .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]{
-  width:max(100%,950px)!important;min-width:950px!important;max-width:none!important;
-  table-layout:fixed!important;
+  width:100%!important;min-width:0!important;max-width:100%!important;table-layout:fixed!important;
 }
-.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table[data-row-marking="true"] td[data-col='order'] .warehouse-unified-order-inline .table-link{
-  flex:1 1 auto;white-space:nowrap;min-width:0;
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table[data-row-marking="true"] td[data-col="order"] .warehouse-unified-order-inline .table-link{
+  flex:0 0 auto!important;min-width:max-content!important;
+  overflow:visible!important;text-overflow:clip!important;white-space:nowrap!important;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table[data-row-marking="true"] .warehouse-unified-order-inline{
+  flex-wrap:nowrap!important;white-space:nowrap!important;gap:2px;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table[data-row-marking="true"] td[data-col="order"]{
+  overflow:hidden!important;
+}
+@container warehouse-lane (max-width:475px){
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table[data-row-marking="true"] .warehouse-unified-order-inline .table-link{
+    font-size:9.5px!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table[data-row-marking="true"] .warehouse-unified-order{
+    gap:2px!important;
+  }
 }

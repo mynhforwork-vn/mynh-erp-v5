@@ -84,8 +84,12 @@ const script=readFileSync(bundle,'utf8')
 const styles=readFileSync(path.join(root,'app/styles/table-row-markings.css'),'utf8')
 assert.match(styles,/with-row-mark-actions[^\n]*col\.p1-order-col-order/,
  'purchase order width must be reserved for inline icons')
-assert.match(styles,/warehouse-unified-table-wrap\[data-row-marking/,
- 'warehouse table must scroll locally when lanes shrink')
+assert.match(styles,/overflow-x:hidden!important/,
+ 'warehouse and purchase tables must never scroll horizontally')
+assert.doesNotMatch(styles,/overflow-x:auto!important/,
+ 'highlight styles must not introduce horizontal scrolling')
+assert.match(styles,/white-space:nowrap!important/,
+ 'full order ID must stay on one line')
 const base='html,body{margin:0;max-width:100%;overflow-x:hidden;font-family:Arial,sans-serif;color:#365d70}main{max-width:970px;margin:auto;padding:10px}table{width:100%;table-layout:fixed;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #e6eef2;text-align:left}tr[data-mark-color=yellow]>td{background:#fff8e3}tr[data-mark-color=blue]>td{background:#eaf4ff}'
 const html=(readonly=false)=>'<html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+base+styles+'</style></head><body><div id="root"></div><script>window.__preview='+JSON.stringify(readonly)+';</script><script>'+script+'</script></body></html>'
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BIN,args:['--no-sandbox']})

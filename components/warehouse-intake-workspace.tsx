@@ -97,9 +97,8 @@ const COLUMN_GROW:Record<TableCol,number>={
   order:1.2,sku:3.1,product:4.0,purchase:0.7,sale:0.7,status:1,
 }
 function autoFitColumnWidths(columns:TableCol[], availableWidth:number,markingEnabled=false){
-  // Keep the full Shopee order ID visible alongside the two small row actions.
-  // Narrow lanes use table-only horizontal scroll rather than clipping text.
-  const width=Math.max(1,availableWidth,markingEnabled?950:1)
+  // The table always fits its lane: no horizontal scroll, including mobile and slidebar.
+  const width=Math.max(1,availableWidth)
   const base=columns.map(column=>column==='order'&&markingEnabled?220:COLUMN_BASE[column])
   const baseSum=base.reduce((sum,value)=>sum+value,0)
   const extra=Math.max(0,width-baseSum)
@@ -585,8 +584,14 @@ export function WarehouseIntakeWorkspace({
             // 0: hidden, 1–2: exact height of all listed orders, 3+: elastic.
             // Two dense warehouses share equal halves of the available lane.
             const groupRowMode=group.rows.length===1?'one':group.rows.length===2?'two':'many'
+            // Compact responsive columns rather than squeezing or scrolling all six.
+            // Other details remain accessible through the order detail slidebar.
+            const compactKeys:TableCol[]=laneWidth<625?['order','status']:['order','sku','status']
+            const displayColumns=markingEnabled&&laneWidth<950
+              ?tableColumns.visible.filter(col=>compactKeys.includes(col))
+              :tableColumns.visible
             const columnWidths=markingEnabled
-              ?autoFitColumnWidths(tableColumns.visible,laneWidth,true)
+              ?autoFitColumnWidths(displayColumns,laneWidth,true)
               :autoFitColumnWidths(tableColumns.visible,laneWidth)
             const cell=(row:Row,col:TableCol)=>{
               const attributes={'data-col':col,'data-label':TABLE_LABELS[col]}
@@ -832,9 +837,9 @@ export function WarehouseIntakeWorkspace({
                 <div className="warehouse-unified-table-wrap" data-row-marking={markingEnabled?"true":undefined}>
                   <table className="warehouse-unified-table" data-row-marking={markingEnabled?"true":undefined}
                     aria-label={'Danh sách Nhập kho '+group.code}>
-                    <colgroup>{tableColumns.visible.map((col,index)=><col key={col}
+                    <colgroup>{displayColumns.map((col,index)=><col key={col}
                       style={{width:columnWidths[index]+'%'}}/>)}</colgroup>
-                    <thead><tr>{tableColumns.visible.map(col=><th key={col} data-col={col}>
+                    <thead><tr>{displayColumns.map(col=><th key={col} data-col={col}>
                       {col==='order'?<div className="warehouse-unified-order-head">
                         {marking.mode?<label className="warehouse-bulk-select-control warehouse-mark-select-control">
                         <input type="checkbox" className="warehouse-bulk-select-checkbox"
@@ -857,9 +862,9 @@ export function WarehouseIntakeWorkspace({
                       ? sorted.map(row=><tr key={row.id}
                           data-mark-color={marking.getDecoration(row.id)??undefined}
                           className={activeId===row.id?'active-row':''}>
-                          {tableColumns.visible.map(col=>cell(row,col))}
+                          {displayColumns.map(col=>cell(row,col))}
                         </tr>)
-                      : <tr><td colSpan={tableColumns.visible.length} className="empty compact">Không có đơn phù hợp.</td></tr>}
+                      : <tr><td colSpan={displayColumns.length} className="empty compact">Không có đơn phù hợp.</td></tr>}
                     </tbody>
                   </table>
                 </div>
