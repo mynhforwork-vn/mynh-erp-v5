@@ -110,11 +110,12 @@ CREATE OR REPLACE FUNCTION private.audit_erp_row_flag()
    VALUES ((select auth.uid()),'WAREHOUSE',
      CASE WHEN TG_OP='INSERT' THEN 'FLAG_ROW' WHEN TG_OP='UPDATE' THEN 'UPDATE_ROW_FLAG'
           ELSE 'REMOVE_ROW_FLAG' END,
-     'ORDER',coalesce(NEW.row_id,OLD.row_id)::text,
+     'ORDER',(CASE WHEN TG_OP='DELETE' THEN OLD.row_id ELSE NEW.row_id END)::text,
      CASE WHEN TG_OP='INSERT' THEN NULL ELSE to_jsonb(OLD) END,
      CASE WHEN TG_OP='DELETE' THEN NULL ELSE to_jsonb(NEW) END,
      'USER');
-   RETURN COALESCE(NEW,OLD);
+   IF TG_OP='DELETE' THEN RETURN OLD; END IF;
+   RETURN NEW;
  END $$;
 REVOKE ALL ON FUNCTION private.audit_erp_row_flag() FROM PUBLIC,anon,authenticated;
 DROP TRIGGER IF EXISTS audit_erp_row_flag_changes ON public.erp_table_row_flags;
