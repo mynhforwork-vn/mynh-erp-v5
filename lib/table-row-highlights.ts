@@ -68,7 +68,11 @@ export function validateHighlightRule(scope:TableMarkScope,rule:Omit<HighlightRu
   if(!Array.isArray(rule.conditions)||rule.conditions.length<1||rule.conditions.length>6)
     throw new Error('Mỗi quy tắc cần từ 1 đến 6 điều kiện')
   for(const condition of rule.conditions){
-    const def=HIGHLIGHT_FIELDS[scope][condition.field]
+    const fields=HIGHLIGHT_FIELDS[scope]
+    // Never treat inherited JS object keys (__proto__, constructor, etc.)
+    // as whitelisted database fields.
+    const def=Object.prototype.hasOwnProperty.call(fields,condition.field)
+      ?fields[condition.field]:undefined
     if(!def||!MARK_OPERATORS.includes(condition.operator))throw new Error('Trường hoặc điều kiện chưa được hỗ trợ')
     if(def.type==='boolean'&&
        (!['eq','neq'].includes(condition.operator)||typeof condition.value!=='boolean'))
