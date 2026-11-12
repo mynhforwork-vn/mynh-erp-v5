@@ -81,7 +81,9 @@ export async function deleteTableHighlightRule(scope,id){
  }}]
 })
 const script=readFileSync(bundle,'utf8')
-const styles=readFileSync(path.join(root,'app/styles/table-row-markings.css'),'utf8')
+const legacyStyles=readFileSync(path.join(root,'app/styles/p1-purchase-tables.css'),'utf8')+
+  '\n'+readFileSync(path.join(root,'app/styles/warehouse-intake-preview.css'),'utf8')
+const styles=legacyStyles+'\n'+readFileSync(path.join(root,'app/styles/table-row-markings.css'),'utf8')
 assert.match(styles,/with-row-mark-actions/,
  'purchase order table must retain the inline icon layout')
 assert.match(styles,/@container marked-order-lane \(max-width:980px\)/,

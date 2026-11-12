@@ -143,6 +143,21 @@
 }
 
 
+/* Override historical fixed-width ERP table floors even when a right slidebar
+   is open. These selectors intentionally outrank the p1-purchase-tables rules. */
+.brand-shell-v1 .order-table-card table.table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table),
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table){
+  box-sizing:border-box!important;width:100%!important;min-width:0!important;
+  max-width:100%!important;table-layout:fixed!important;
+}
+@container marked-order-lane (max-width:980px){
+  .brand-shell-v1 .order-table-card table.table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table),
+  .brand-shell-v1 .order-workspace.with-panel .order-table-card table.table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table){
+    display:block!important;width:100%!important;min-width:0!important;
+    max-width:100%!important;table-layout:auto!important;
+  }
+}
+
 /* Full data is always rendered; only the visual layout changes.
    Table lanes use no horizontal scrolling. Each order code stays on one line. */
 .brand-shell-v1 .order-table-card:has(>table.with-row-mark-actions){
