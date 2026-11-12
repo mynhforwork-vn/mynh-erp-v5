@@ -829,8 +829,8 @@ export function WarehouseIntakeWorkspace({
                 </div>
               </div>
               {open&&<>
-                <div className={"warehouse-unified-table-wrap"+(markingEnabled?" warehouse-row-marking-scroll":"")}>
-                  <table className={"warehouse-unified-table"+(markingEnabled?" warehouse-row-marking-enabled":"")}
+                <div className="warehouse-unified-table-wrap" data-row-marking={markingEnabled?"true":undefined}>
+                  <table className="warehouse-unified-table" data-row-marking={markingEnabled?"true":undefined}
                     aria-label={'Danh sách Nhập kho '+group.code}>
                     <colgroup>{tableColumns.visible.map((col,index)=><col key={col}
                       style={{width:columnWidths[index]+'%'}}/>)}</colgroup>

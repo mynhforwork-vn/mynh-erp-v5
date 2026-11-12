@@ -164,15 +164,15 @@
 }
 /* Scroll only the warehouse table when the slidebar or viewport is narrow;
    preserve six table columns and the sticky header. */
-.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table-wrap.warehouse-row-marking-scroll,
-.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-group.open>.warehouse-unified-table-wrap.warehouse-row-marking-scroll{
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table-wrap[data-row-marking="true"],
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-group.open>.warehouse-unified-table-wrap[data-row-marking="true"]{
   overflow-x:auto!important;overflow-y:auto!important;
   max-width:100%!important;overscroll-behavior-x:contain;
 }
-.brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table.warehouse-row-marking-enabled{
+.brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]{
   width:max(100%,950px)!important;min-width:950px!important;max-width:none!important;
   table-layout:fixed!important;
 }
-.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table.warehouse-row-marking-enabled td[data-col='order'] .warehouse-unified-order-inline .table-link{
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table[data-row-marking="true"] td[data-col='order'] .warehouse-unified-order-inline .table-link{
   flex:1 1 auto;white-space:nowrap;min-width:0;
 }
