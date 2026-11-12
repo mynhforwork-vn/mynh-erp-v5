@@ -164,26 +164,10 @@ export function PurchaseOrderTable({
   const [menuPosition,setMenuPosition]=useState({top:64,right:8})
   const [sort,setSort]=useState<SortKey>('time_new')
   const [selected,setSelected]=useState<string[]>([])
-  const [tableLaneWidth,setTableLaneWidth]=useState(1280)
 
   const draggingRef=useRef<ColKey|null>(null)
   const tableWrapRef=useRef<HTMLDivElement|null>(null)
   const columnManagerRef=useRef<HTMLDivElement|null>(null)
-  // Derive visible columns from the actual lane; never require horizontal scroll.
-  useEffect(()=>{
-    if(!markingEnabled)return
-    const node=tableWrapRef.current
-    if(!node)return
-    const measure=()=>{
-      const width=Math.round(node.getBoundingClientRect().width)
-      if(width>0)setTableLaneWidth(previous=>previous===width?previous:width)
-    }
-    measure()
-    const observer=typeof ResizeObserver!=='undefined'?new ResizeObserver(measure):null
-    observer?.observe(node)
-    window.addEventListener('resize',measure)
-    return ()=>{observer?.disconnect();window.removeEventListener('resize',measure)}
-  },[markingEnabled])
   const columnMenuRef=useRef<HTMLDivElement|null>(null)
 
   useEffect(()=>{
@@ -396,15 +380,10 @@ export function PurchaseOrderTable({
   // Tracking/HUB sizing: minimum follows visible semantic IDs, not positions.
   const columnMinimums:Record<ColKey,number>={"number":28,"order":markingEnabled?196:134,"username":94,"device":128,"time":116,"product":149,"cod":76,"tracking":177,"voucher":69,"status":104}
   const panelMinimums:Record<ColKey,number>={"number":26,"order":markingEnabled?184:116,"username":84,"device":112,"time":106,"product":118,"cod":65,"tracking":150,"voucher":61,"status":92}
-  // Keep the full 14-character order number on one line at every breakpoint.
-  // Less important fields remain available in the detail slidebar.
-  const narrowKeys:ColKey[] = tableLaneWidth<410?['order','status']:
-    tableLaneWidth<740?['order','tracking','status']:
-    tableLaneWidth<1050?['order','username','product','tracking','status']:ALL
-  const shownColumns=columnOrder.filter(key=>
-    isVisible(key)&&(!markingEnabled||narrowKeys.includes(key)))
+  // Display every user-visible column. Responsive layouts move fields within the row.
+  const shownColumns=columnOrder.filter(isVisible)
   const panelFitWeights:Record<ColKey,number>={
-    number:20,order:markingEnabled?225:108,username:80,device:106,time:103,product:121,
+    number:20,order:markingEnabled?185:108,username:80,device:106,time:103,product:121,
     cod:60,tracking:145,voucher:57,status:91
   }
   const panelFitTotal=(canEdit?24:0)+shownColumns.reduce((sum,key)=>sum+panelFitWeights[key],0)

@@ -84,8 +84,10 @@ const script=readFileSync(bundle,'utf8')
 const styles=readFileSync(path.join(root,'app/styles/table-row-markings.css'),'utf8')
 assert.match(styles,/with-row-mark-actions/,
  'purchase order table must retain the inline icon layout')
-assert.match(styles,/col\[class\*="p1-order-col-"\]/,
- 'purchase order columns must fit the available lane')
+assert.match(styles,/@container marked-order-lane \(max-width:980px\)/,
+ 'narrow purchase lanes must render all cells as complete records')
+assert.match(styles,/@container warehouse-lane \(max-width:950px\)/,
+ 'narrow warehouse lanes must render all cells as complete records')
 assert.match(styles,/overflow-x:hidden!important/,
  'warehouse and purchase tables must never scroll horizontally')
 assert.doesNotMatch(styles,/overflow-x:auto!important/,

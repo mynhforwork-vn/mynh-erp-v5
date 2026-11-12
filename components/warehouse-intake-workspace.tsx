@@ -584,12 +584,8 @@ export function WarehouseIntakeWorkspace({
             // 0: hidden, 1–2: exact height of all listed orders, 3+: elastic.
             // Two dense warehouses share equal halves of the available lane.
             const groupRowMode=group.rows.length===1?'one':group.rows.length===2?'two':'many'
-            // Compact responsive columns rather than squeezing or scrolling all six.
-            // Other details remain accessible through the order detail slidebar.
-            const compactKeys:TableCol[]=laneWidth<625?['order','status']:['order','sku','status']
-            const displayColumns=markingEnabled&&laneWidth<950
-              ?tableColumns.visible.filter(col=>compactKeys.includes(col))
-              :tableColumns.visible
+            // Keep all user-visible columns: compact layout changes presentation, not data.
+            const displayColumns=tableColumns.visible
             const columnWidths=markingEnabled
               ?autoFitColumnWidths(displayColumns,laneWidth,true)
               :autoFitColumnWidths(tableColumns.visible,laneWidth)

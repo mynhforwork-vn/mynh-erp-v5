@@ -143,51 +143,190 @@
 }
 
 
-/* No horizontal scrolling or wrapping of order IDs on any viewport.
-   Compact responsive columns are chosen in components from measured lane width.
-   Preserve semantic columns, user preferences and the existing order slidebar. */
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table),
-.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table){
-  width:100%!important;min-width:0!important;max-width:100%!important;table-layout:fixed!important;
+/* Full data is always rendered; only the visual layout changes.
+   Table lanes use no horizontal scrolling. Each order code stays on one line. */
+.brand-shell-v1 .order-table-card:has(>table.with-row-mark-actions){
+  container:marked-order-lane / inline-size;
+  overflow-x:hidden!important;max-width:100%!important;min-width:0!important;
 }
-.brand-shell-v1 .order-table-card:has(table.with-row-mark-actions){
-  overflow-x:hidden!important;max-width:100%!important;
-}
-.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table) col[class*="p1-order-col-"]{
-  width:var(--p1-panel-col-width)!important;
-}
-.brand-shell-v1 .order-table-card .order-table.with-row-mark-actions td.p1-order-identity-cell .table-link{
-  flex:1 0 auto!important;min-width:max-content!important;max-width:none!important;
-  overflow:visible!important;text-overflow:clip!important;white-space:nowrap!important;
-}
-.brand-shell-v1 .order-table-card .order-table.with-row-mark-actions td.p1-order-identity-cell .table-row-mark-inline-tools{
-  flex:0 0 auto;
-}
-.brand-shell-v1 .order-table-card .order-table.with-row-mark-actions td.p1-order-identity-cell{
-  white-space:nowrap!important;
+.brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions{
+  box-sizing:border-box!important;width:100%!important;min-width:0!important;max-width:100%!important;
 }
 .brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table-wrap[data-row-marking="true"],
 .brand-shell-v1 .warehouse-receive-screen .warehouse-unified-group.open>.warehouse-unified-table-wrap[data-row-marking="true"]{
   overflow-x:hidden!important;overflow-y:auto!important;max-width:100%!important;
 }
 .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]{
-  width:100%!important;min-width:0!important;max-width:100%!important;table-layout:fixed!important;
+  width:100%!important;min-width:0!important;max-width:100%!important;
 }
-.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table[data-row-marking="true"] td[data-col="order"] .warehouse-unified-order-inline .table-link{
-  flex:0 0 auto!important;min-width:max-content!important;
-  overflow:visible!important;text-overflow:clip!important;white-space:nowrap!important;
+.brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions td.p1-order-identity-cell .table-link{
+  white-space:nowrap!important;text-overflow:clip!important;min-width:max-content!important;
+  overflow:visible!important;max-width:none!important;
 }
-.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table[data-row-marking="true"] .warehouse-unified-order-inline{
-  flex-wrap:nowrap!important;white-space:nowrap!important;gap:2px;
-}
-.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table[data-row-marking="true"] td[data-col="order"]{
-  overflow:hidden!important;
-}
-@container warehouse-lane (max-width:475px){
-  .brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table[data-row-marking="true"] .warehouse-unified-order-inline .table-link{
-    font-size:9.5px!important;
+/* A narrow lane (including a desktop side drawer) uses a full-field record
+   view, not a subset of the columns. Existing cells remain in the DOM. */
+@container marked-order-lane (max-width:980px){
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions{
+    display:block!important;table-layout:auto!important;border-collapse:separate!important;
+    width:100%!important;min-width:0!important;max-width:100%!important;
   }
-  .brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table[data-row-marking="true"] .warehouse-unified-order{
-    gap:2px!important;
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>colgroup{display:none!important}
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>thead{
+    display:block!important;position:relative!important;width:100%!important;
+    top:auto!important;max-width:100%!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>thead>tr{
+    display:flex!important;flex-wrap:wrap!important;gap:2px!important;width:100%!important;
+    padding:4px!important;box-sizing:border-box!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>thead>tr>th{
+    display:block!important;width:auto!important;min-width:0!important;max-width:100%!important;
+    flex:0 1 auto!important;border:0!important;padding:2px 4px!important;
+    height:auto!important;font-size:10px!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>thead>tr>th.bulk-select-col{
+    width:30px!important;flex:0 0 30px!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody{
+    display:block!important;width:100%!important;min-width:0!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody>tr{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:1px 10px!important;box-sizing:border-box!important;width:100%!important;
+    margin:0 0 4px!important;padding:7px 9px!important;
+    background:#fff;border-bottom:1px solid #e2eaf0!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody>tr>td{
+    position:relative!important;display:flex!important;flex-direction:column!important;
+    align-items:flex-start!important;justify-content:flex-start!important;
+    width:100%!important;min-width:0!important;max-width:none!important;
+    height:auto!important;padding:5px 2px!important;box-sizing:border-box!important;
+    overflow:visible!important;white-space:normal!important;text-overflow:clip!important;
+    border:0!important;overflow-wrap:anywhere!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody>tr>td[data-order-col]::before{
+    display:block;flex:0 0 auto;color:#73899a;font-size:9px;line-height:1.3;
+    font-weight:550;margin-bottom:3px;white-space:nowrap;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions td[data-order-col="number"]::before{content:"STT"}
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions td[data-order-col="order"]::before{content:"Mã đơn"}
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions td[data-order-col="username"]::before{content:"User"}
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions td[data-order-col="device"]::before{content:"Thiết bị"}
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions td[data-order-col="time"]::before{content:"Ngày đặt"}
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions td[data-order-col="product"]::before{content:"Sản phẩm"}
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions td[data-order-col="cod"]::before{content:"COD"}
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions td[data-order-col="tracking"]::before{content:"Vận chuyển"}
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions td[data-order-col="voucher"]::before{content:"Voucher"}
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions td[data-order-col="status"]::before{content:"Xử lý"}
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody>tr>td.p1-order-identity-cell{
+    display:grid!important;grid-column:1 / -1!important;
+    grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;
+    column-gap:4px!important;white-space:nowrap!important;overflow:visible!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody>tr>td.p1-order-identity-cell::before{
+    grid-column:1 / -1!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody>tr>td.p1-order-identity-cell .table-link{
+    display:inline-block!important;grid-column:1!important;min-width:0!important;
+    max-width:none!important;white-space:nowrap!important;overflow:visible!important;
+    text-overflow:clip!important;font-size:11px!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody>tr>td.p1-order-identity-cell .table-row-mark-inline-tools{
+    grid-column:2!important;justify-self:end!important;flex:0 0 auto!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody>tr>td.bulk-select-col{
+    grid-column:1 / -1!important;min-height:20px!important;padding:0 2px!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody>tr>td.empty{
+    grid-column:1 / -1!important;display:block!important;text-align:center!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody>tr>td .p1-product-lines,
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody>tr>td .p1-product-lines span,
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody>tr>td .p1-device-lines{
+    overflow:visible!important;white-space:normal!important;text-overflow:clip!important;
+    max-width:100%!important;
+  }
+}
+@container marked-order-lane (max-width:560px){
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody>tr{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody>tr>td.p1-order-identity-cell{
+    grid-column:1!important;
+  }
+  .brand-shell-v1 .order-table-card table.order-table.with-row-mark-actions>tbody>tr>td.bulk-select-col{
+    grid-column:1!important;
+  }
+}
+/* Warehouse keeps every chosen column. Compact lanes present the existing
+   six semantic cells vertically within each row instead of removing fields. */
+@container warehouse-lane (max-width:950px){
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]{
+    display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;
+    table-layout:auto!important;border-collapse:separate!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>colgroup{display:none!important}
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>thead{
+    display:block!important;position:relative!important;width:100%!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>thead>tr{
+    display:flex!important;flex-wrap:wrap!important;align-items:center!important;
+    box-sizing:border-box!important;gap:4px!important;width:100%!important;padding:4px!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>thead>tr>th{
+    display:flex!important;width:auto!important;max-width:100%!important;
+    min-width:0!important;height:auto!important;padding:3px 5px!important;
+    border:0!important;font-size:10px!important;flex:0 1 auto!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>tbody{
+    display:block!important;width:100%!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>tbody>tr{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    width:100%!important;box-sizing:border-box!important;gap:4px 10px!important;
+    padding:8px!important;border-bottom:1px solid #dae5ed!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>tbody>tr>td{
+    display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+    width:100%!important;min-width:0!important;max-width:100%!important;
+    box-sizing:border-box!important;height:auto!important;padding:5px 3px!important;
+    overflow:visible!important;white-space:normal!important;text-overflow:clip!important;
+    border:0!important;overflow-wrap:anywhere!important;vertical-align:top!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>tbody>tr>td::before{
+    display:block!important;content:attr(data-label)!important;font-size:9px!important;
+    line-height:1.3!important;color:#73899a!important;font-weight:550!important;
+    flex:0 0 auto!important;margin:0 0 4px!important;white-space:nowrap!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>tbody>tr>td[data-col="order"]{
+    grid-column:1 / -1!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>tbody>tr>td[data-col="order"] .warehouse-unified-order{
+    width:100%!important;max-width:100%!important;min-width:0!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>tbody>tr>td[data-col="order"] .warehouse-unified-order-inline{
+    flex-wrap:nowrap!important;white-space:nowrap!important;gap:3px!important;
+    max-width:100%!important;min-width:0!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>tbody>tr>td[data-col="order"] .table-link{
+    flex:1 1 auto!important;min-width:0!important;max-width:none!important;
+    white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important;
+    font-size:11px!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>tbody>tr>td .warehouse-unified-product-line,
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>tbody>tr>td .warehouse-unified-product-name{
+    display:block!important;white-space:normal!important;overflow:visible!important;
+    max-width:100%!important;text-overflow:clip!important;overflow-wrap:anywhere!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>tbody>tr>td .status-pill{
+    max-width:100%!important;overflow:visible!important;text-overflow:clip!important;
+  }
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>tbody>tr>td.empty{
+    grid-column:1 / -1!important;display:block!important;
+  }
+}
+@container warehouse-lane (max-width:560px){
+  .brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table[data-row-marking="true"]>tbody>tr{
+    grid-template-columns:minmax(0,1fr)!important;
   }
 }
