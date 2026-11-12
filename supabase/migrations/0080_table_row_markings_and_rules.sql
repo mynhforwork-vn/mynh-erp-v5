@@ -177,4 +177,64 @@ CREATE POLICY highlight_rules_delete ON public.user_table_highlight_rules FOR DE
   USING (user_id=(select auth.uid()) AND
          (select public.current_erp_role()) IN ('admin','operator','viewer'));
 
+-- Bounded shared flag mutations: the only write entry points for the UI.
+CREATE OR REPLACE FUNCTION public.save_table_row_flags(
+  p_scope text,p_row_keys uuid[],p_flag_type text,p_reason text
+) RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
+AS $fn$
+DECLARE
+  row_id uuid;
+  rows_count integer;
+  updated_count integer:=0;
+BEGIN
+  PERFORM private.assert_operator();
+  rows_count:=coalesce(array_length(p_row_keys,1),0);
+  IF p_scope NOT IN ('warehouse_receive','purchase_orders')
+     OR rows_count NOT BETWEEN 1 AND 25
+     OR (SELECT count(DISTINCT x) FROM unnest(p_row_keys) x)<>rows_count
+     OR p_flag_type NOT IN ('attention','urgent','follow_up')
+     OR length(btrim(coalesce(p_reason,''))) NOT BETWEEN 8 AND 300 THEN
+    RAISE EXCEPTION 'Thao tác gắn cờ không hợp lệ (tối đa 25 dòng)';
+  END IF;
+  FOREACH row_id IN ARRAY p_row_keys LOOP
+    IF row_id IS NULL OR NOT EXISTS(SELECT 1 FROM public.orders WHERE id=row_id) THEN
+      RAISE EXCEPTION 'Không tìm thấy đơn để gắn cờ';
+    END IF;
+    INSERT INTO public.table_row_flags
+      (scope,row_key,flag_type,reason,created_by,updated_by)
+    VALUES(p_scope,row_id,p_flag_type,btrim(p_reason),auth.uid(),auth.uid())
+    ON CONFLICT (scope,row_key) DO UPDATE
+      SET flag_type=excluded.flag_type,reason=excluded.reason,
+          updated_by=auth.uid(),updated_at=now();
+    updated_count:=updated_count+1;
+  END LOOP;
+  RETURN updated_count;
+END;
+$fn$;
+
+CREATE OR REPLACE FUNCTION public.clear_table_row_flags(
+  p_scope text,p_row_keys uuid[]
+) RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
+AS $fn$
+DECLARE
+  row_count integer;
+BEGIN
+  PERFORM private.assert_operator();
+  IF p_scope NOT IN ('warehouse_receive','purchase_orders') OR
+     coalesce(array_length(p_row_keys,1),0) NOT BETWEEN 1 AND 25 OR
+     (SELECT count(DISTINCT x) FROM unnest(p_row_keys) x)<>array_length(p_row_keys,1)
+  THEN
+    RAISE EXCEPTION 'Không thể bỏ cờ với danh sách đơn không hợp lệ';
+  END IF;
+  DELETE FROM public.table_row_flags
+    WHERE scope=p_scope AND row_key=ANY(p_row_keys);
+  GET DIAGNOSTICS row_count=ROW_COUNT;
+  RETURN row_count;
+END;
+$fn$;
+REVOKE ALL ON FUNCTION public.save_table_row_flags(text,uuid[],text,text) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.clear_table_row_flags(text,uuid[]) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.save_table_row_flags(text,uuid[],text,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.clear_table_row_flags(text,uuid[]) TO authenticated;
+
 COMMIT;
