@@ -12,7 +12,7 @@ import { saveWarehouseItemDecision } from '@/lib/actions/warehouse-item-decision
 import { WarehouseIntakeDetailPreview } from '@/components/warehouse-intake-detail-preview'
 import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
 import type {HistoricalSuggestion} from '@/lib/warehouse-sku-suggestions'
-import {TableMarkingToolbar,useTableRowMarking} from '@/components/table-row-marking'
+import {TableMarkingToolbar,RowMarkingActions,useTableRowMarking} from '@/components/table-row-marking'
 
 type SkuProduct={id:string;sku:string;name:string}
 type Variant={
@@ -526,8 +526,6 @@ export function WarehouseIntakeWorkspace({
         <button type="button" aria-label="Đóng thông báo nhập nhanh"
           onClick={()=>setQuickNotice(null)}>×</button>
       </div>}
-      {markingEnabled&&<TableMarkingToolbar model={marking}
-        scope="warehouse_receive" rows={markingRows}/>}
       {bulkFeedback&&<div className="warehouse-bulk-feedback" role="status">
         <div>
           <b>{bulkFeedback.succeeded.length} đơn đã xử lý thành công · {bulkFeedback.failed.length} đơn chưa xử lý</b>
@@ -543,7 +541,7 @@ export function WarehouseIntakeWorkspace({
           : rows.length
             ? 'Các kho đã hết đơn cần xử lý. Chọn KPI Đã xử lý để xem những đơn đã hoàn tất.'
             : 'Không có đơn cần xử lý trong khoảng thời gian và trạng thái đang chọn.'}</div>
-        : groups.map(group=>{
+        : groups.map((group,groupIndex)=>{
             const open=openGroups.includes(group.id)
             const waiting=group.rows.filter(row=>!isDone(row))
             const splitRows=waiting.filter(row=>!isComplete(row,itemDecisions))
@@ -612,11 +610,8 @@ export function WarehouseIntakeWorkspace({
                         onClick={event=>{event.stopPropagation();setActiveId(row.id)}}>
                         {row.shopee_order_id??row.id.slice(0,8)}
                       </button>
-                      {marking.markMap.get(row.id)?.pinned&&<span className="warehouse-mark-inline-icon"
-                        role="img" aria-label="Đã ghim" title="Đơn đã ghim">📌</span>}
-                      {marking.flagMap.get(row.id)&&<span className="warehouse-mark-inline-icon"
-                        role="img" aria-label="Đã gắn cờ"
-                        title={'Cờ: '+(marking.flagMap.get(row.id)?.reason??'')}>⚑</span>}
+                      {markingEnabled&&<RowMarkingActions model={marking} rowId={row.id}
+                        label={String(row.shopee_order_id??row.id)}/>}
                       {!showProcessedOnly&&!!bulkPreview(row,itemDecisions)&&
                         <button type="button" className="warehouse-order-quick-receive"
                           title={previewOnly?'Preview chỉ xem, không ghi tồn kho':'Nhập nhanh đơn '+(row.shopee_order_id??row.id)}
@@ -810,6 +805,8 @@ export function WarehouseIntakeWorkspace({
                   <span className="money"><b>{formatMoney(totalCod)}</b> COD</span>
                 </div>
                 <div className="warehouse-unified-group-column-control">
+                  {groupIndex===0&&markingEnabled&&<TableMarkingToolbar model={marking}
+                    scope="warehouse_receive" rows={markingRows}/>}
                   {!showProcessedOnly&&<button type="button"
                     className="button small warehouse-bulk-shortcut"
                     disabled={!readyIds.length}

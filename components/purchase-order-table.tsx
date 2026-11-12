@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
 import { orderIsCancelled, trackingNumberMeansCancelled } from '@/lib/purchase-order-cancellation'
-import {TableMarkingToolbar,useTableRowMarking} from '@/components/table-row-marking'
+import {TableMarkingToolbar,RowMarkingActions,useTableRowMarking} from '@/components/table-row-marking'
 import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
 import {
   archiveOrdersBulk,
@@ -418,8 +418,7 @@ export function PurchaseOrderTable({
         checked={marking.selectedSet.has(String(o.id))}
         onChange={()=>marking.toggle(String(o.id))}/>}
       <Link className="table-link" prefetch={false} href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link>
-      {marking.markMap.get(String(o.id))?.pinned&&<span className="p1-order-mark-icon" title="Đã ghim" aria-label="Đã ghim">📌</span>}
-      {marking.flagMap.get(String(o.id))&&<span className="p1-order-mark-icon" title={'Cờ: '+(marking.flagMap.get(String(o.id))?.reason??'')} aria-label="Đã gắn cờ">⚑</span>}
+      {markingEnabled&&<RowMarkingActions model={marking} rowId={String(o.id)} label={String(o.shopee_order_id??o.id)}/>}
     </td>
     if(key==='username')return <td key={key} data-order-col={key} className="p1-order-user-cell" title={o.erp_users?.username??undefined}>
       {o.erp_user_id&&o.erp_users?.username
@@ -509,6 +508,7 @@ export function PurchaseOrderTable({
           <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>}
+    {markingEnabled&&<TableMarkingToolbar model={marking} scope="purchase_orders" rows={markingRows}/>}
     <div className="p1-order-column-manager managed-column-wrap" ref={columnManagerRef}>
       <button className="icon-button managed-column-button" type="button"
         onClick={event=>{
@@ -604,8 +604,6 @@ export function PurchaseOrderTable({
     </div>
     </div>
 
-    {markingEnabled&&<TableMarkingToolbar model={marking}
-      scope="purchase_orders" rows={markingRows}/>}
     <div className="card table-card order-table-card" ref={tableWrapRef}>
       {error
         ? <div className="error-text order-table-error" role="alert">{error}</div>

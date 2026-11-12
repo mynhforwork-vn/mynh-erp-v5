@@ -93,3 +93,48 @@
 .p1-order-mark-icon{display:inline-block;margin-left:4px;font-size:11px}
 .p1-order-marking-checkbox{vertical-align:middle;margin-right:4px;width:12px;height:12px}
 .order-table-shell>.table-row-marking{margin:3px 0 6px}
+
+
+/* Compact row actions: no second toolbar row, always available on touch screens. */
+.table-row-marking{display:inline-flex;align-items:center;flex:0 0 auto;margin:0;min-width:0;position:relative}
+.table-row-marking-trigger,.table-row-mark-icon{
+  width:24px;height:24px;display:inline-grid;place-items:center;padding:3px;
+  border:1px solid transparent;border-radius:4px;background:transparent;color:#55727e;
+  cursor:pointer;vertical-align:middle;flex:0 0 auto
+}
+.table-row-marking-trigger:hover,.table-row-mark-icon:hover{background:#e9f3f5;border-color:#c5dce0}
+.table-row-marking-trigger[aria-expanded="true"],.table-row-mark-icon.active{
+  background:#e5f3ef;color:#19705b
+}
+.table-row-mark-icon.flagged{color:#a46b23;background:#fff5e4}
+.table-row-mark-inline-tools{display:inline-flex;align-items:center;gap:1px;margin-inline-start:3px;
+  vertical-align:middle;white-space:nowrap}
+.table-row-marking-dropdown,.table-row-flag-editor{
+  position:fixed;z-index:3200;width:min(365px,calc(100vw - 16px));
+  max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain;
+  background:#fff;color:#375b6e;border:1px solid #d4e0e7;border-radius:7px;
+  box-shadow:0 12px 34px rgba(28,57,72,.17);padding:9px;box-sizing:border-box
+}
+.table-row-marking-dropdown .table-row-marking-toolbar{padding:5px;gap:4px}
+.table-row-marking-dropdown .table-row-marking-toolbar>button{font-size:10.5px}
+.table-row-marking-dropdown .table-row-marking-panel{padding:8px;margin-top:5px}
+.table-row-flag-editor{width:min(270px,calc(100vw - 16px));display:flex;flex-direction:column;gap:8px}
+.table-row-flag-editor strong{font-size:11px}
+.table-row-flag-editor label{display:flex;flex-direction:column;gap:3px;font-size:10px}
+.table-row-flag-editor :is(select,textarea){width:100%;min-width:0;box-sizing:border-box;
+  font-size:11px;border:1px solid #d4dfe7;border-radius:4px;padding:6px;resize:vertical}
+.table-row-flag-actions{display:flex;align-items:center;gap:5px}
+.table-row-flag-actions button{background:#f6f9fb;border:1px solid #d5e2e8;border-radius:4px;
+  color:#365d6d;padding:6px 8px;font-size:10.5px;cursor:pointer}
+.table-row-flag-actions button:disabled{opacity:.5;cursor:not-allowed}
+.table-row-flag-editor small{font-size:10px;color:#8a5a2f}
+.table-row-marking-notice{position:fixed;right:16px;top:16px;z-index:3600;
+  width:min(330px,calc(100vw - 32px));box-shadow:0 8px 24px rgba(28,57,72,.14)}
+.table-row-mark-icon:focus-visible,.table-row-marking-trigger:focus-visible{
+  outline:2px solid #438d85;outline-offset:2px
+}
+@media(max-width:390px){
+  .table-row-mark-icon,.table-row-marking-trigger{width:22px;height:24px;padding:2px}
+  .table-row-mark-inline-tools{margin-inline-start:1px;gap:0}
+  .table-row-marking-notice{right:8px;top:8px}
+}

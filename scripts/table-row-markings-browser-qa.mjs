@@ -9,7 +9,7 @@ const root=process.cwd(),tmp=mkdtempSync(path.join(os.tmpdir(),'mark-rows-'))
 const input=path.join(tmp,'app.tsx'),bundle=path.join(tmp,'bundle.js')
 const markup=String.raw`import React from 'react'
 import {createRoot} from 'react-dom/client'
-import {TableMarkingToolbar,useTableRowMarking} from '${root}/components/table-row-marking'
+import {TableMarkingToolbar,RowMarkingActions,useTableRowMarking} from '${root}/components/table-row-marking'
 const orderIds=[
   'e2000000-0000-4000-8000-000000000001',
   'e2000000-0000-4000-8000-000000000002',
@@ -33,8 +33,7 @@ function Screen(){
        onChange={()=>marks.toggle(row.id)}/>}</td>
      <td><button type="button" onClick={()=>window.__opened=(window.__opened||0)+1}>
        {row.id.slice(-4)}</button>
-       {marks.markMap.get(row.id)?.pinned&&<span aria-label="Đã ghim">📌</span>}
-       {marks.flagMap.get(row.id)&&<span aria-label="Đã gắn cờ">⚑</span>}</td>
+       <RowMarkingActions model={marks} rowId={row.id} label={row.id.slice(-4)}/></td>
      <td>{row.data.status}</td>
    </tr>)}</tbody>
   </table>
@@ -92,6 +91,7 @@ try{
   const errors=[]
   page.on('pageerror',e=>errors.push(e.message))
   await page.setContent(html(),{waitUntil:'load'})
+  await page.getByRole('button',{name:'Mở highlight và quy tắc'}).click()
   await page.getByRole('button',{name:'Đánh dấu dòng'}).click()
   await page.getByRole('checkbox',{name:'Đánh dấu dòng 1'}).check()
   await page.getByRole('checkbox',{name:'Đánh dấu dòng 2'}).check()
@@ -101,7 +101,7 @@ try{
   const calls=await page.evaluate(()=>window.__markStore?.calls||[])
   assert.deepEqual(calls.filter(c=>c.name==='marks')[0]?.ids.length,2)
   await page.getByRole('button',{name:'Ghim',exact:true}).click()
-  await page.waitForFunction(()=>document.querySelectorAll('span[aria-label="Đã ghim"]').length===2)
+  await page.waitForFunction(()=>document.querySelectorAll('button.table-row-mark-icon.active').length===2)
   await page.getByRole('button',{name:'Quy tắc highlight (0)'}).click()
   await page.getByRole('button',{name:'+ Tạo quy tắc'}).click()
   await page.getByPlaceholder('Ví dụ: Đơn bỏ qua kho').fill('Ưu tiên kho BG')
@@ -118,6 +118,7 @@ try{
  }
  const readonly=await browser.newPage({viewport:{width:375,height:812}})
  await readonly.setContent(html(true),{waitUntil:'load'})
+ await readonly.getByRole('button',{name:'Mở highlight và quy tắc'}).click()
  await readonly.getByRole('button',{name:'Đánh dấu dòng'}).click()
  await readonly.getByRole('checkbox',{name:'Đánh dấu dòng 1'}).check()
  assert.equal(await readonly.getByRole('button',{name:'Ghim',exact:true}).isDisabled(),false)

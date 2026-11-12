@@ -1,6 +1,7 @@
 'use client'
 
-import {useCallback,useEffect,useMemo,useState} from 'react'
+import {useCallback,useEffect,useMemo,useRef,useState} from 'react'
+import {createPortal} from 'react-dom'
 import {
   batchSetTableRowMarks,batchSetTableRowFlags,loadTableRowMarkings,
   saveTableHighlightRule,deleteTableHighlightRule
@@ -95,14 +96,22 @@ export function useTableRowMarking(
       color?'Đã tô màu '+selected.length+' dòng':'Đã bỏ highlight '+selected.length+' dòng')
   }
   async function pin(pinned:boolean){
-    if(!selected.length)return
-    await action(()=>batchSetTableRowMarks(scope,selected,{pinned}),
+    if(!selected.length)return false
+    return action(()=>batchSetTableRowMarks(scope,selected,{pinned}),
       (pinned?'Đã ghim ':'Đã bỏ ghim ')+selected.length+' dòng')
   }
+  async function pinRow(id:string,pinned:boolean){
+    return action(()=>batchSetTableRowMarks(scope,[id],{pinned}),
+      pinned?'Đã ghim đơn':'Đã bỏ ghim đơn')
+  }
   async function flag(type:'attention'|'urgent'|'follow_up'|null,reason=''){
-    if(!selected.length)return
-    await action(()=>batchSetTableRowFlags(scope,selected.slice(0,25),type,reason),
+    if(!selected.length)return false
+    return action(()=>batchSetTableRowFlags(scope,selected.slice(0,25),type,reason),
       (type?'Đã gắn cờ ':'Đã bỏ cờ ')+Math.min(25,selected.length)+' dòng')
+  }
+  async function flagRow(id:string,type:'attention'|'urgent'|'follow_up'|null,reason=''){
+    return action(()=>batchSetTableRowFlags(scope,[id],type,reason),
+      type?'Đã gắn cờ đơn':'Đã bỏ cờ đơn')
   }
   async function saveRule(rule:RuleDraft,id?:string){
     return action(()=>saveTableHighlightRule(scope,rule,id),
@@ -116,7 +125,7 @@ export function useTableRowMarking(
   }
   return {
     enabled,readOnly,mode,selected,busy,message,marks,flags,rules,markMap,flagMap,
-    selectedSet:markedSet,toggleMode,toggle,toggleAll,markColor,pin,flag,
+    selectedSet:markedSet,toggleMode,toggle,toggleAll,markColor,pin,pinRow,flag,flagRow,
     saveRule,removeRule,getDecoration,clearSelected:()=>setSelected([]),
     notice:notify
   }
@@ -126,6 +135,10 @@ export type TableMarkingModel=ReturnType<typeof useTableRowMarking>
 export function TableMarkingToolbar({
   model,scope,rows
 }:{model:TableMarkingModel,scope:TableMarkScope,rows:SourceRow[]}){
+  const [expanded,setExpanded]=useState(false)
+  const [position,setPosition]=useState({top:38,right:8})
+  const anchorRef=useRef<HTMLDivElement|null>(null)
+  const panelRef=useRef<HTMLDivElement|null>(null)
   const [section,setSection]=useState<'none'|'flag'|'rules'>('none')
   const [flagType,setFlagType]=useState<'attention'|'urgent'|'follow_up'>('attention')
   const [flagReason,setFlagReason]=useState('')
@@ -144,12 +157,34 @@ export function TableMarkingToolbar({
   }])!==null).length
   useEffect(()=>{
     const esc=(e:KeyboardEvent)=>{
-      if(e.key==='Escape'){setSection('none');setEditingOpen(false)}
+      if(e.key==='Escape'){setSection('none');setEditingOpen(false);setExpanded(false)}
     }
     window.addEventListener('keydown',esc)
     return ()=>window.removeEventListener('keydown',esc)
   },[])
+  useEffect(()=>{
+    if(!expanded)return
+    const onOutside=(event:PointerEvent)=>{
+      if(!anchorRef.current?.contains(event.target as Node)&&
+         !panelRef.current?.contains(event.target as Node)){
+        setExpanded(false);setSection('none');setEditingOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown',onOutside)
+    return ()=>document.removeEventListener('pointerdown',onOutside)
+  },[expanded])
   if(!model.enabled)return null
+  function toggleExpanded(){
+    if(!expanded){
+      const rect=anchorRef.current?.getBoundingClientRect()
+      if(rect){
+        const top=Math.max(8,Math.min(rect.bottom+6,Math.max(8,window.innerHeight-230)))
+        const right=Math.max(8,Math.min(window.innerWidth-308,window.innerWidth-rect.right))
+        setPosition({top,right})
+      }
+    }
+    setExpanded(value=>!value)
+  }
   function editCondition(index:number,patch:Partial<HighlightCondition>){
     setDraft(current=>({...current,conditions:current.conditions.map((x,i)=>i===index?{...x,...patch}:x)}))
   }
@@ -164,7 +199,19 @@ export function TableMarkingToolbar({
       setEditing(null);setEditingOpen(false)
     }
   }
-  return <div className="table-row-marking">
+  return <div className="table-row-marking" ref={anchorRef}>
+    <button type="button" className="table-row-marking-trigger" title="Highlight, chọn nhiều dòng và quy tắc"
+      aria-label="Mở highlight và quy tắc" aria-expanded={expanded} aria-haspopup="dialog"
+      onClick={event=>{event.stopPropagation();toggleExpanded()}}>
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+        strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 21h16M14 3l7 7-9.5 9.5a3 3 0 0 1-4.2 0l-3-3a3 3 0 0 1 0-4.2L14 3Z"/>
+        <path d="m12 5 7 7"/>
+      </svg>
+    </button>
+    {expanded&&typeof document!=='undefined'&&createPortal(<div ref={panelRef}
+      className="table-row-marking-dropdown" role="dialog" aria-label="Highlight và đánh dấu bảng"
+      style={{top:position.top,right:position.right}}>
     <div className="table-row-marking-toolbar">
       <button type="button" aria-pressed={model.mode} className={model.mode?'active':''}
         disabled={model.busy} onClick={model.toggleMode}>Đánh dấu dòng</button>
@@ -201,11 +248,6 @@ export function TableMarkingToolbar({
     {model.readOnly&&<small className="table-row-marking-preview-note">
       Chế độ xem trước: đánh dấu và quy tắc không ghi vào dữ liệu thật.
     </small>}
-    {model.message&&<div className={'table-row-marking-notice '+(model.message.error?'error':'success')}
-      role={model.message.error?'alert':'status'}>
-      <span>{model.message.text}</span>
-      <button type="button" aria-label="Đóng thông báo" onClick={()=>model.notice('')}>×</button>
-    </div>}
     {section==='flag'&&model.mode&&<section className="table-row-marking-panel" aria-label="Gắn cờ các dòng">
       <b>Gắn cờ cho {Math.min(25,model.selected.length)} dòng (tối đa 25/lượt)</b>
       <div className="table-row-marking-fields">
@@ -221,7 +263,7 @@ export function TableMarkingToolbar({
             placeholder="Lý do gắn cờ (từ 8 ký tự)" onChange={e=>setFlagReason(e.target.value)}/>
         </label>
         <button type="button" disabled={model.busy||flagReason.trim().length<8}
-          onClick={async()=>{await model.flag(flagType,flagReason);setSection('none')}}>Lưu cờ</button>
+          onClick={async()=>{if(await model.flag(flagType,flagReason))setSection('none')}}>Lưu cờ</button>
       </div>
     </section>}
     {section==='rules'&&<section className="table-row-marking-panel" aria-label="Quy tắc highlight bảng">
@@ -309,5 +351,94 @@ export function TableMarkingToolbar({
         </div>
       </div>}
     </section>}
+    </div>,document.body)}
+    {model.message&&typeof document!=='undefined'&&createPortal(
+      <div className={'table-row-marking-notice '+(model.message.error?'error':'success')}
+        role={model.message.error?'alert':'status'}>
+        <span>{model.message.text}</span>
+        <button type="button" aria-label="Đóng thông báo" onClick={()=>model.notice('')}>×</button>
+      </div>,document.body)}
   </div>
+}
+
+export function RowMarkingActions({model,rowId,label}:{
+  model:TableMarkingModel;rowId:string;label:string
+}){
+  const mark=model.markMap.get(rowId), flag=model.flagMap.get(rowId)
+  const [open,setOpen]=useState(false)
+  const [flagType,setFlagType]=useState<'attention'|'urgent'|'follow_up'>('attention')
+  const [reason,setReason]=useState('')
+  const [position,setPosition]=useState({top:40,right:8})
+  const flagButton=useRef<HTMLButtonElement|null>(null)
+  const editor=useRef<HTMLDivElement|null>(null)
+  useEffect(()=>{
+    if(!open)return
+    const outside=(event:PointerEvent)=>{
+      if(!flagButton.current?.contains(event.target as Node)&&
+         !editor.current?.contains(event.target as Node))setOpen(false)
+    }
+    const escape=(event:KeyboardEvent)=>{if(event.key==='Escape')setOpen(false)}
+    document.addEventListener('pointerdown',outside)
+    window.addEventListener('keydown',escape)
+    return ()=>{document.removeEventListener('pointerdown',outside);window.removeEventListener('keydown',escape)}
+  },[open])
+  function editFlag(){
+    if(!open){
+      setFlagType(flag?.flag_type??'attention')
+      setReason(flag?.reason??'')
+      const rect=flagButton.current?.getBoundingClientRect()
+      if(rect)setPosition({
+        top:Math.max(8,Math.min(rect.bottom+5,Math.max(8,window.innerHeight-230))),
+        right:Math.max(8,Math.min(window.innerWidth-270,window.innerWidth-rect.right))
+      })
+    }
+    setOpen(value=>!value)
+  }
+  return <span className="table-row-mark-inline-tools">
+    <button type="button" className={'table-row-mark-icon'+(mark?.pinned?' active':'')}
+      disabled={model.busy} aria-label={(mark?.pinned?'Bỏ ghim ':'Ghim ')+label}
+      aria-pressed={Boolean(mark?.pinned)} title={mark?.pinned?'Bỏ ghim đơn':'Ghim đơn'}
+      onClick={event=>{event.stopPropagation();void model.pinRow(rowId,!mark?.pinned)}}>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+        strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M16 3 8 3l1 5-3 4v2h12v-2l-3-4 1-5ZM12 14v7"/>
+      </svg>
+    </button>
+    <button type="button" ref={flagButton}
+      className={'table-row-mark-icon'+(flag?' flagged':'')}
+      aria-label={'Gắn cờ '+label} aria-expanded={open} aria-haspopup="dialog"
+      title={flag?'Cờ: '+flag.reason:'Gắn cờ / ghi lý do'}
+      onClick={event=>{event.stopPropagation();editFlag()}}>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+        strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M5 21V4M5 5c4-3 6 3 10 0l4-2v12c-4 2-7-2-14 0"/>
+      </svg>
+    </button>
+    {open&&typeof document!=='undefined'&&createPortal(<div className="table-row-flag-editor"
+      ref={editor} role="dialog" aria-label={'Chỉnh cờ cho '+label}
+      style={{top:position.top,right:position.right}}>
+      <strong>Cờ đơn {label}</strong>
+      <label>Loại cờ
+        <select value={flagType} disabled={model.busy||model.readOnly}
+          onChange={event=>setFlagType(event.target.value as typeof flagType)}>
+          <option value="attention">Cần chú ý</option>
+          <option value="urgent">Cần xử lý</option>
+          <option value="follow_up">Theo dõi</option>
+        </select>
+      </label>
+      <label>Lý do
+        <textarea rows={2} maxLength={300} value={reason}
+          disabled={model.busy||model.readOnly}
+          onChange={event=>setReason(event.target.value)}/>
+      </label>
+      {model.readOnly&&<small>Preview chỉ xem, không lưu cờ vào dữ liệu thật.</small>}
+      <div className="table-row-flag-actions">
+        <button type="button" disabled={model.busy||model.readOnly||reason.trim().length<8}
+          onClick={async()=>{if(await model.flagRow(rowId,flagType,reason))setOpen(false)}}>Lưu</button>
+        {flag&&<button type="button" disabled={model.busy||model.readOnly}
+          onClick={async()=>{if(await model.flagRow(rowId,null))setOpen(false)}}>Bỏ cờ</button>}
+        <button type="button" onClick={()=>setOpen(false)}>Đóng</button>
+      </div>
+    </div>,document.body)}
+  </span>
 }
