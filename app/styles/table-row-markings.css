@@ -186,3 +186,16 @@
 .brand-shell-v1 .warehouse-unified-table tbody tr[data-mark-color='purple']>td{background-color:#ebe4ff!important}
 .brand-shell-v1 .order-table tbody tr[data-mark-color='pink']>td,
 .brand-shell-v1 .warehouse-unified-table tbody tr[data-mark-color='pink']>td{background-color:#ffe4ed!important}
+
+/* Keep the color palette near the top of the popover on narrow viewports. */
+.table-row-marking-dropdown .table-row-marking-toolbar{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:center;gap:5px;
+}
+.table-row-marking-dropdown .table-row-marking-toolbar>button{
+  min-width:0;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.table-row-marking-dropdown .table-row-marking-count,
+.table-row-marking-dropdown .table-row-marking-swatches{
+  grid-column:1/-1;
+}
+.table-row-marking-dropdown .table-row-marking-swatches{justify-content:flex-start}
