@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { formatDateTime, formatMoney, statusLabel } from '@/lib/format'
 import { VoucherTags } from '@/components/voucher-tags'
 import { orderIsCancelled, trackingNumberMeansCancelled } from '@/lib/purchase-order-cancellation'
+import {TableMarkingToolbar,useTableRowMarking} from '@/components/table-row-marking'
 import { normalizeLegacyVisibleColumns,normalizeLegacyColumnOrder } from '@/lib/table-column-preferences'
 import {
   archiveOrdersBulk,
@@ -144,6 +145,8 @@ export function PurchaseOrderTable({
   carrierConfigs=[],
   toolbar,
   error,
+  markingEnabled=false,
+  markingReadOnly=true,
 }:{
   rows:Row[]
   selectedId?:string|null
@@ -152,6 +155,8 @@ export function PurchaseOrderTable({
   carrierConfigs?:CarrierConfig[]
   toolbar:ReactNode
   error?:string|null
+  markingEnabled?:boolean
+  markingReadOnly?:boolean
 }){
   const [visible,setVisible]=useState<ColKey[]>(ALL)
   const [columnOrder,setColumnOrder]=useState<ColKey[]>(ALL)
@@ -310,9 +315,26 @@ export function PurchaseOrderTable({
   }
   function isVisible(key:ColKey){return visible.includes(key)}
 
+  const markingRows=useMemo(()=>rows.map(row=>({
+    id:String(row.id),data:{
+      order_status:statusLabel(row.order_status),
+      carrier:String(activeShipment(row)?.carrier??row.shipping_service??''),
+      sku_mapped:(row.order_items??[]).length>0&&
+        (row.order_items??[]).every((item:any)=>Boolean(item.product_variant_id)),
+      quantity:(row.order_items??[]).reduce((sum:number,item:any)=>
+        sum+Number(item.quantity??0),0),
+      order_date:String(row.order_date??'').slice(0,10),
+    }
+  })),[rows])
+  const marking=useTableRowMarking('purchase_orders',markingRows,
+    markingEnabled,markingReadOnly)
+  useEffect(()=>{if(marking.mode)setSelected([])},[marking.mode])
   const sorted=useMemo(()=>{
     const next=[...rows]
     next.sort((a,b)=>{
+      const pinDiff=Number(Boolean(marking.markMap.get(String(b.id))?.pinned))-
+        Number(Boolean(marking.markMap.get(String(a.id))?.pinned))
+      if(pinDiff!==0)return pinDiff
       if(sort==='order_asc')return String(a.shopee_order_id??'').localeCompare(String(b.shopee_order_id??''),'vi')
       if(sort==='order_desc')return String(b.shopee_order_id??'').localeCompare(String(a.shopee_order_id??''),'vi')
       if(sort==='username_asc')return String(a.erp_users?.username??'').localeCompare(String(b.erp_users?.username??''),'vi')
@@ -325,7 +347,7 @@ export function PurchaseOrderTable({
       return new Date(b.order_date??0).getTime()-new Date(a.order_date??0).getTime()
     })
     return next
-  },[rows,sort])
+  },[rows,sort,marking.markMap])
 
   useEffect(()=>{
     const valid=new Set(rows.map((x:any)=>String(x.id)))
@@ -390,7 +412,15 @@ export function PurchaseOrderTable({
   function renderCell(key:ColKey,o:any,i:number){
     const s=activeShipment(o)
     if(key==='number')return <td key={key} data-order-col={key}>{i+1}</td>
-    if(key==='order')return <td key={key} data-order-col={key} className="p1-order-identity-cell"><Link className="table-link" prefetch={false} href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link></td>
+    if(key==='order')return <td key={key} data-order-col={key} className="p1-order-identity-cell">
+      {marking.mode&&!canEdit&&<input type="checkbox"
+        className="p1-order-marking-checkbox" aria-label={'Chọn để đánh dấu '+(o.shopee_order_id??o.id)}
+        checked={marking.selectedSet.has(String(o.id))}
+        onChange={()=>marking.toggle(String(o.id))}/>}
+      <Link className="table-link" prefetch={false} href={hrefFor(o.id)}>{o.shopee_order_id??o.id.slice(0,8)}</Link>
+      {marking.markMap.get(String(o.id))?.pinned&&<span className="p1-order-mark-icon" title="Đã ghim" aria-label="Đã ghim">📌</span>}
+      {marking.flagMap.get(String(o.id))&&<span className="p1-order-mark-icon" title={'Cờ: '+(marking.flagMap.get(String(o.id))?.reason??'')} aria-label="Đã gắn cờ">⚑</span>}
+    </td>
     if(key==='username')return <td key={key} data-order-col={key} className="p1-order-user-cell" title={o.erp_users?.username??undefined}>
       {o.erp_user_id&&o.erp_users?.username
         ? <Link className="p1-order-username-link" prefetch={false} href={hrefForUser(String(o.erp_user_id))}
@@ -458,7 +488,7 @@ export function PurchaseOrderTable({
       {toolbar}
       <div className="p1-order-toolbar-actions">
         <div className="p1-order-table-actions">
-      {canEdit&&selected.length>0&&<div className="p1-order-bulk-icons" aria-label={selected.length+' đơn đã chọn'}>
+      {canEdit&&!marking.mode&&selected.length>0&&<div className="p1-order-bulk-icons" aria-label={selected.length+' đơn đã chọn'}>
         <span className="p1-order-selected-count" title={selected.length+' đơn đã chọn'}>{selected.length}</span>
         {selectedArchived
           ? <form action={restoreOrdersBulk} className="order-bulk-form">
@@ -574,6 +604,8 @@ export function PurchaseOrderTable({
     </div>
     </div>
 
+    {markingEnabled&&<TableMarkingToolbar model={marking}
+      scope="purchase_orders" rows={markingRows}/>}
     <div className="card table-card order-table-card" ref={tableWrapRef}>
       {error
         ? <div className="error-text order-table-error" role="alert">{error}</div>
@@ -586,9 +618,11 @@ export function PurchaseOrderTable({
           {canEdit&&<th className="bulk-select-col">
             <input
               type="checkbox"
-              aria-label="Chọn tối đa 200 đơn"
-              checked={allSelected}
-              onChange={toggleSelectAll}
+              aria-label={marking.mode?'Chọn các dòng hiển thị để đánh dấu':'Chọn tối đa 200 đơn'}
+               checked={marking.mode
+                 ?sorted.length>0&&sorted.slice(0,100).every(row=>marking.selectedSet.has(String(row.id)))
+                 :allSelected}
+               onChange={marking.mode?()=>marking.toggleAll(sorted.map(row=>String(row.id))):toggleSelectAll}
               disabled={!sorted.length}
             />
           </th>}
@@ -598,13 +632,15 @@ export function PurchaseOrderTable({
           {!sorted.length
             ? <tr><td colSpan={colSpan} className="empty">Không có đơn phù hợp với bộ lọc hiện tại.</td></tr>
             : sorted.map((o:any,i:number)=>{
-                return <tr key={o.id} data-selected={selectedId===o.id?'true':undefined} className={selectedId===o.id?'selected-row':''}>
+                return <tr key={o.id} data-selected={selectedId===o.id?'true':undefined}
+                  data-mark-color={marking.getDecoration(String(o.id))??undefined}
+                  className={selectedId===o.id?'selected-row':''}>
                   {canEdit&&<td className="bulk-select-col">
                     <input
                       type="checkbox"
-                      aria-label={'Chọn '+(o.shopee_order_id??o.id)}
-                      checked={selectedSet.has(String(o.id))}
-                      onChange={()=>toggleSelect(String(o.id))}
+                      aria-label={(marking.mode?'Chọn để đánh dấu ':'Chọn ')+(o.shopee_order_id??o.id)}
+                       checked={marking.mode?marking.selectedSet.has(String(o.id)):selectedSet.has(String(o.id))}
+                       onChange={marking.mode?()=>marking.toggle(String(o.id)):()=>toggleSelect(String(o.id))}
                     />
                   </td>}
                   {columnOrder.filter(isVisible).map(k=>renderCell(k,o,i))}
