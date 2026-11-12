@@ -244,12 +244,11 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
   const decisionSourceRows = currentStatus==='done' ? done :
     currentStatus==='all' ? rows : pending
 
-  // Read persistent decisions only in live mode (Preview targets the same
-  // Supabase project but must remain read-only before the migration).
-  // Query only relevant orders in bounded chunks for PostgREST limits.
+  // On an Admin Preview, SELECT actual finalized decisions (RLS applies).
+  // This does not enable any inventory mutation.
   const decisionList:any[]=[]
   let decisionError:{message:string}|null=null
-  if(isLive){
+  if(isLive||canCorrectFinalizedSku){
     // Supabase/PostgREST may cap individual responses below requested limits;
     // paginate every order chunk so no persisted item decision is silently lost.
     for(let offset=0;offset<decisionSourceRows.length&&!decisionError;offset+=100){

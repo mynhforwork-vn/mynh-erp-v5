@@ -154,7 +154,10 @@ export function WarehouseIntakeDetailPreview({
   const [skuLetter,setSkuLetter]=useState('Tất cả')
   const [skuBrowseOpen,setSkuBrowseOpen]=useState(false)
   const [focusedId,setFocusedId]=useState<string>(
-    order.order_items.find(item=>!item.product_variant_id)?.id??order.order_items[0]?.id??''
+    (handled.has(order.warehouse_status??'')
+      ?order.order_items.find(item=>itemDecisions[item.id]?.processing_state==='FINALIZED')
+      :order.order_items.find(item=>!item.product_variant_id)
+    )?.id??order.order_items[0]?.id??''
   )
   const router=useRouter()
   const [drafts,setDrafts]=useState<Record<string,Draft>>({})

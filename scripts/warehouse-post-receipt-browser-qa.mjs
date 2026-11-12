@@ -8,6 +8,10 @@ import os from 'node:os'
 const root=process.cwd(),tmp=mkdtempSync(path.join(os.tmpdir(),'receipt-sku-ui-'))
 const entry=path.join(tmp,'app.tsx'),outfile=path.join(tmp,'bundle.js')
 const component=path.join(root,'components/warehouse-received-sku-correction.tsx')
+const source=readFileSync(component,'utf8')
+const pageSource=readFileSync(path.join(root,'app/(erp)/warehouse/receive/page.tsx'),'utf8')
+assert.match(pageSource,/if\(isLive\|\|canCorrectFinalizedSku\)/,'Preview must read finalized decisions')
+assert.match(source,/if\(previewOnly\)\{[\s\S]*?setSimulated/,'Trial must remain local')
 writeFileSync(entry,[
  "import React from 'react'",
  "import {createRoot} from 'react-dom/client'",
@@ -93,15 +97,21 @@ try{
  await demo.setContent(html.replace('<script>'+script+'</script>',
   '<script>window.__previewOnly=true;</script><script>'+script+'</script>'),{waitUntil:'load'})
  await demo.getByRole('button',{name:'Chỉnh sửa SKU / phân loại đã chốt'}).click()
- await demo.getByText('Preview chỉ xem đối soát thực tế').waitFor()
+ await demo.getByText('Chế độ thử: chọn SKU mới').waitFor()
  await demo.getByRole('group',{name:'Chọn SKU sản phẩm'}).getByRole('button',{name:/ABC-01/}).click()
  await demo.getByRole('group',{name:'Chọn phân loại SKU'}).getByRole('button',{name:/Đỏ/}).click()
  await demo.getByRole('button',{name:'Xem trước điều chỉnh'}).click()
  await demo.getByText('Đối soát trước khi điều chỉnh').waitFor()
- assert.equal(await demo.getByRole('button',{name:'Xác nhận điều chỉnh SKU'}).isDisabled(),true,
-  'read-only preview must block stock confirmation')
- assert.equal((await demo.evaluate(()=>window.__calls||[])).filter(c=>c.name==='confirm').length,0,
-  'preview must never write stock')
+ await demo.getByPlaceholder('Nêu nguyên nhân ghép sai SKU').fill('Thử điều chỉnh liên kết SKU đã nhập')
+ await demo.getByRole('button',{name:'Xác nhận thử điều chỉnh SKU'}).click()
+ await demo.getByText('Đã hoàn tất thử thay đổi SKU — chưa lưu').waitFor()
+ const demoCalls=await demo.evaluate(()=>window.__calls||[])
+ assert.equal(demoCalls.filter(c=>c.name==='confirm').length,0,
+  'trial must never call write RPC')
+ assert.equal(demoCalls.filter(c=>c.name==='preview').length,1,
+  'trial should inspect actual stock once')
+ await demo.getByRole('button',{name:'Thử phương án khác'}).click()
+ assert.equal(await demo.getByText('Đã hoàn tất thử thay đổi SKU — chưa lưu').count(),0)
  await demo.close()
- console.log('PASS: received SKU correction 6 breakpoints, SKU first, classification scope, preview-only lock, reason, blocked sales, mock confirmation')
+ console.log('PASS: received SKU correction 6 breakpoints, read-only trial, reason, blocked sales, live confirmation mock')
 }finally{await browser.close()}

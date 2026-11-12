@@ -30,6 +30,7 @@ export function WarehouseReceivedSkuCorrection({
   const [multiplier,setMultiplier]=useState(String(previousMultiplier||1))
   const [reason,setReason]=useState('')
   const [preview,setPreview]=useState<ReceivedSkuCorrectionPreview|null>(null)
+  const [simulated,setSimulated]=useState<ReceivedSkuCorrectionPreview|null>(null)
   const [busy,setBusy]=useState(false)
   const [error,setError]=useState('')
   const product=products.find(p=>p.id===productId)
@@ -45,7 +46,7 @@ export function WarehouseReceivedSkuCorrection({
   const factor=Number(multiplier)
   const validFactor=Number.isInteger(factor)&&factor>=1&&factor<=100000
   const hasActualChange=variantId!==previousVariantId||factor!==previousMultiplier
-  function resetReview(){setPreview(null);setError('')}
+  function resetReview(){setPreview(null);setSimulated(null);setError('')}
   async function inspect(){
     if(!variantId||!validFactor||!hasActualChange||busy)return
     setBusy(true);resetReview()
@@ -55,8 +56,11 @@ export function WarehouseReceivedSkuCorrection({
     finally{setBusy(false)}
   }
   async function confirm(){
-    if(previewOnly)return
     if(!preview?.can_correct||!variantId||!validFactor||busy||reason.trim().length<8)return
+    if(previewOnly){
+      // Trial only: show the expected stock delta without calling the write RPC.
+      setSimulated({...preview});setError('');return
+    }
     setBusy(true);setError('')
     try{
       const result=await confirmReceivedSkuCorrection({
@@ -78,7 +82,7 @@ export function WarehouseReceivedSkuCorrection({
     {open&&<div role="region" aria-label="Điều chỉnh SKU của sản phẩm đã nhập kho"
       className="warehouse-received-sku-body">
       <p>Điều chỉnh có kiểm soát. Hệ thống giữ nguyên phiếu nhập gốc, chỉ ghi chênh lệch tồn và lịch sử sửa.</p>
-      {previewOnly&&<p role="status">Preview chỉ xem đối soát thực tế; xác nhận ghi tồn chỉ thực hiện khi tính năng đã được phát hành.</p>}
+      {previewOnly&&<p role="status">Chế độ thử: chọn SKU mới, xem đối soát và xác nhận thử. Không ghi kho, không cập nhật đơn hoặc lịch sử.</p>}
       <b className="warehouse-received-sku-step">1. Chọn SKU sản phẩm</b>
       {product?<div className="warehouse-received-sku-selected">
         <span><b>{product.sku}</b> · {product.name}</span>
@@ -140,10 +144,19 @@ export function WarehouseReceivedSkuCorrection({
           :null}
         {!preview.can_correct&&<strong>Không đủ điều kiện đối soát; không được ghi tồn.</strong>}
         <button type="button" className="button primary small"
-          disabled={previewOnly||busy||!preview.can_correct||reason.trim().length<8}
+          disabled={busy||!preview.can_correct||reason.trim().length<8}
           onClick={()=>void confirm()}>
-          {busy?'Đang lưu…':'Xác nhận điều chỉnh SKU'}
+          {busy?'Đang xử lý…':previewOnly?'Xác nhận thử điều chỉnh SKU':'Xác nhận điều chỉnh SKU'}
         </button>
+      </div>}
+      {simulated&&<div role="status" className="warehouse-received-sku-review">
+        <b>Đã hoàn tất thử thay đổi SKU — chưa lưu</b>
+        <span>Đơn và tồn kho thực tế vẫn giữ nguyên.</span>
+        <span>Dự kiến rút SKU cũ: {simulated.old_quantity}</span>
+        <span>Dự kiến thêm SKU mới: {simulated.new_quantity}</span>
+        <span>SKU dự kiến: {simulated.new_sku} · {simulated.new_variant_name}</span>
+        <small>Đóng slidebar hoặc tải lại trang sẽ xóa kết quả thử. Không phát sinh bút toán hay lịch sử.</small>
+        <button type="button" onClick={()=>{setSimulated(null);setPreview(null)}}>Thử phương án khác</button>
       </div>}
       {error&&<p role="alert" className="warehouse-received-sku-error">{error}</p>}
     </div>}
