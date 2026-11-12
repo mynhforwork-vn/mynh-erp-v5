@@ -138,9 +138,6 @@ export function TableMarkingToolbar({
     return MARK_OPERATORS.filter(op=>type==='boolean'?['eq','neq'].includes(op):
       type==='number'?!['contains'].includes(op):!['gt','lt'].includes(op))
   }
-  const matched=rows.filter(row=>({
-    id:'preview',...draft
-  } satisfies HighlightRule)&&false).length
   // Evaluate exactly the visible loaded data, not an estimated server-wide count.
   const previewMatches=rows.filter(row=>getRowDecoration(scope,row.data,undefined,[{
     id:'preview',...draft,enabled:true
