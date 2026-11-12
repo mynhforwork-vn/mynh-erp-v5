@@ -113,6 +113,21 @@ try{
   await page.getByRole('checkbox',{name:'Đánh dấu dòng 2'}).check()
   await page.getByRole('button',{name:'Mở highlight và quy tắc'}).click()
   assert.equal(await page.getByText('2 dòng đã chọn').count(),1)
+  const layout=await page.getByRole('button',{name:'Tô Vàng nhạt'}).evaluate(node=>{
+    const swatch=node.getBoundingClientRect()
+    const dropdown=node.closest('.table-row-marking-dropdown')
+    const menu=dropdown?.getBoundingClientRect()
+    const group=node.closest('.table-row-marking-toolbar')?.getBoundingClientRect()
+    return {
+      viewport:{w:innerWidth,h:innerHeight},
+      swatch:{x:swatch.x,y:swatch.y,width:swatch.width,height:swatch.height},
+      menu:menu?{x:menu.x,y:menu.y,width:menu.width,height:menu.height,scrollHeight:dropdown?.scrollHeight,scrollTop:dropdown?.scrollTop}:null,
+      group:group?{x:group.x,y:group.y,width:group.width,height:group.height}:null
+    }
+  })
+  assert.ok(layout.swatch.x>=0&&layout.swatch.x+layout.swatch.width<=layout.viewport.w&&
+    layout.swatch.y>=0&&layout.swatch.y+layout.swatch.height<=layout.viewport.h,
+    'color palette must be clickable at '+width+' '+JSON.stringify(layout))
   await page.getByRole('button',{name:'Tô Vàng nhạt'}).click()
   await page.waitForFunction(()=>document.querySelectorAll('tr[data-mark-color="yellow"]').length===2)
   const calls=await page.evaluate(()=>window.__markStore?.calls||[])
