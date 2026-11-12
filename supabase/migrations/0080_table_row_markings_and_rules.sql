@@ -46,18 +46,11 @@ CREATE TABLE public.table_row_flags (
 CREATE INDEX table_row_flags_key_idx ON public.table_row_flags(row_key);
 ALTER TABLE public.table_row_flags ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.table_row_flags FROM PUBLIC,anon,authenticated;
-GRANT SELECT,INSERT,UPDATE,DELETE ON public.table_row_flags TO authenticated;
+-- Shared flags are read-only through the Data API. Mutations are exclusively
+-- handled by guarded RPCs to prevent spoofing created_by or bypassing the audit.
+GRANT SELECT ON public.table_row_flags TO authenticated;
 CREATE POLICY row_flags_select ON public.table_row_flags FOR SELECT TO authenticated
   USING ((select public.current_erp_role()) IN ('admin','operator','viewer'));
-CREATE POLICY row_flags_insert ON public.table_row_flags FOR INSERT TO authenticated
-  WITH CHECK ((select public.current_erp_role()) IN ('admin','operator') AND
-              created_by=(select auth.uid()) AND updated_by=(select auth.uid()));
-CREATE POLICY row_flags_update ON public.table_row_flags FOR UPDATE TO authenticated
-  USING ((select public.current_erp_role()) IN ('admin','operator'))
-  WITH CHECK ((select public.current_erp_role()) IN ('admin','operator') AND
-              updated_by=(select auth.uid()));
-CREATE POLICY row_flags_delete ON public.table_row_flags FOR DELETE TO authenticated
-  USING ((select public.current_erp_role()) IN ('admin','operator'));
 
 CREATE OR REPLACE FUNCTION private.audit_table_row_flag()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
