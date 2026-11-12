@@ -612,6 +612,11 @@ export function WarehouseIntakeWorkspace({
                         onClick={event=>{event.stopPropagation();setActiveId(row.id)}}>
                         {row.shopee_order_id??row.id.slice(0,8)}
                       </button>
+                      {marking.markMap.get(row.id)?.pinned&&<span className="warehouse-mark-inline-icon"
+                        role="img" aria-label="Đã ghim" title="Đơn đã ghim">📌</span>}
+                      {marking.flagMap.get(row.id)&&<span className="warehouse-mark-inline-icon"
+                        role="img" aria-label="Đã gắn cờ"
+                        title={'Cờ: '+(marking.flagMap.get(row.id)?.reason??'')}>⚑</span>}
                       {!showProcessedOnly&&!!bulkPreview(row,itemDecisions)&&
                         <button type="button" className="warehouse-order-quick-receive"
                           title={previewOnly?'Preview chỉ xem, không ghi tồn kho':'Nhập nhanh đơn '+(row.shopee_order_id??row.id)}
