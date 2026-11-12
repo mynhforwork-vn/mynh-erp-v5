@@ -33,3 +33,15 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Smoke Preview without authentication
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=https://design-table-row-flags-highlights-20261111-mynh-erp-v5.mynh-forwork.workers.dev
+          for endpoint in /api/health /login /warehouse/receive /purchase/orders; do
+            code="$(curl -sSL --retry 5 --retry-delay 3 -o /tmp/highlight-preview-body -w '%{http_code}' --max-time 35 "$base$endpoint")"
+            echo "Preview $endpoint HTTP=$code"
+            test "$code" = 200
+            if test "$endpoint" = /api/health; then grep -q '"ok":true' /tmp/highlight-preview-body; fi
+          done
