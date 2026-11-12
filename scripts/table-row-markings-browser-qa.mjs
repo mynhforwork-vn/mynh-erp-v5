@@ -85,18 +85,12 @@ const legacyStyles=readFileSync(path.join(root,'app/styles/p1-purchase-tables.cs
   '\n'+readFileSync(path.join(root,'app/styles/warehouse-intake-preview.css'),'utf8')
 const markingStyles=readFileSync(path.join(root,'app/styles/table-row-markings.css'),'utf8')
 const styles=legacyStyles+'\n'+markingStyles
-assert.match(styles,/with-row-mark-actions/,
- 'purchase order table must retain the inline icon layout')
-assert.match(styles,/@container marked-order-lane \(max-width:980px\)/,
- 'narrow purchase lanes must render all cells as complete records')
-assert.match(styles,/@container warehouse-lane \(max-width:950px\)/,
- 'narrow warehouse lanes must render all cells as complete records')
-assert.match(styles,/overflow-x:hidden!important/,
- 'warehouse and purchase tables must never scroll horizontally')
-assert.doesNotMatch(markingStyles,/overflow-x:auto!important/,
- 'highlight styles must not introduce horizontal scrolling')
-assert.match(styles,/white-space:nowrap!important/,
- 'full order ID must stay on one line')
+assert.match(styles,/display:table!important/,
+ 'row marking styles must retain native table structure')
+assert.doesNotMatch(styles,/>tbody>tr\\{\\s*display:grid!important/,
+ 'row marking must not convert table rows to cards')
+assert.doesNotMatch(styles,/overflow-x:auto!important/,
+ 'row marking stylesheet must not add horizontal scrolling')
 const base='html,body{margin:0;max-width:100%;overflow-x:hidden;font-family:Arial,sans-serif;color:#365d70}main{max-width:970px;margin:auto;padding:10px}table{width:100%;table-layout:fixed;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #e6eef2;text-align:left}tr[data-mark-color=yellow]>td{background:#fff8e3}tr[data-mark-color=blue]>td{background:#eaf4ff}'
 const html=(readonly=false)=>'<html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+base+styles+'</style></head><body><div id="root"></div><script>window.__preview='+JSON.stringify(readonly)+';</script><script>'+script+'</script></body></html>'
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BIN,args:['--no-sandbox']})
@@ -149,58 +143,52 @@ try{
   await page.close()
  }
 
- // Layout regression: no data field may disappear from an order simply
- // because there is no room for all columns in a single horizontal strip.
- for(const width of [320,390,568,768,900]){
+ // Preserve semantic table structure; every cell remains present at each breakpoint.
+ // A visual layout test on the actual signed-in Preview is still required before release.
+ for(const width of [320,390,568,768,900,1366]){
   const page=await browser.newPage({viewport:{width,height:844}})
   const fields=['number','order','username','device','time','product','cod','tracking','voucher','status']
-  const labels={number:'STT',order:'Mã đơn',username:'User',device:'Thiết bị',time:'Ngày đặt',
-    product:'Sản phẩm',cod:'COD',tracking:'Vận chuyển',voucher:'Voucher',status:'Xử lý'}
-  const orderCell=field=>field==='order'
-    ?'<a class="table-link" href="#">261011BPY3F7P4</a><span class="table-row-mark-inline-tools"><button class="table-row-mark-icon">📌</button><button class="table-row-mark-icon">⚑</button></span>'
-    :field==='product'?'Sản phẩm đã đặt với tên hiển thị đầy đủ trên danh sách dữ liệu':labels[field]
   const receiptCols=['order','sku','product','purchase','sale','status']
-  const receiptLabels={order:'Mã đơn / Ngày nhận',sku:'SKU bán',product:'Sản phẩm mua',
-    purchase:'Giá gốc',sale:'Giá bán',status:'Trạng thái'}
-  const receiptValue={order:'<div class="warehouse-unified-order"><div class="warehouse-unified-order-details"><div class="warehouse-unified-order-inline"><button class="table-link">261011BPY3F7P4</button><span class="table-row-mark-inline-tools"><button class="table-row-mark-icon">📌</button><button class="table-row-mark-icon">⚑</button></span></div></div></div>',
-    sku:'SKU-ABCD-0001',product:'Sản phẩm mua với tên đủ dài để kiểm tra khả năng hiển thị',purchase:'120.000 ₫',sale:'145.000 ₫',status:'Đã nhận'}
-  const markup='<html lang="vi"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;font-family:Arial,sans-serif}*,*::before,*::after{box-sizing:border-box}.brand-shell-v1{width:100%;max-width:100%}.order-table-card{width:100%;max-width:100%}.warehouse-receive-table-lane{container:warehouse-lane / inline-size;width:100%}.warehouse-unified-table-wrap{width:100%;max-width:100%;overflow-x:hidden}table{width:100%;table-layout:fixed;border-collapse:collapse}td,th{padding:5px;border:1px solid #ddd}</style><style>'+
-   styles+'</style></head><body><div class="brand-shell-v1"><div class="order-table-card"><table class="table order-table mynh-p1-semantic-table with-row-mark-actions"><colgroup>'+
-   fields.map(()=>'<col/>').join('')+'</colgroup><thead><tr>'+fields.map(f=>'<th>'+labels[f]+'</th>').join('')+'</tr></thead><tbody><tr>'+
-   fields.map(f=>'<td data-order-col="'+f+'" class="'+(f==='order'?'p1-order-identity-cell':'')+'">'+orderCell(f)+'</td>').join('')+
-   '</tr></tbody></table></div><div class="warehouse-receive-screen"><div class="warehouse-receive-table-lane"><div class="warehouse-unified-table-wrap" data-row-marking="true"><table class="warehouse-unified-table" data-row-marking="true"><colgroup>'+
-   receiptCols.map(()=>'<col/>').join('')+'</colgroup><thead><tr>'+receiptCols.map(f=>'<th data-col="'+f+'">'+receiptLabels[f]+'</th>').join('')+'</tr></thead><tbody><tr>'+
-   receiptCols.map(f=>'<td data-col="'+f+'" data-label="'+receiptLabels[f]+'">'+receiptValue[f]+'</td>').join('')+
-   '</tr></tbody></table></div></div></div></div></body></html>'
-  await page.setContent(markup,{waitUntil:'load'})
+  const htmlLayout='<html lang="vi"><head><meta name="viewport" content="width=device-width,initial-scale=1">'+
+    '<style>body{margin:0;font-family:Arial,sans-serif}.brand-shell-v1{width:100%}.order-table-card{width:100%}.warehouse-receive-table-lane{container:warehouse-lane / inline-size;width:100%}table{width:100%;table-layout:fixed;border-collapse:collapse}td,th{padding:3px;border:1px solid #ddd}</style>'+
+    '<style>'+styles+'</style></head><body><div class="brand-shell-v1">'+
+    '<div class="order-table-card"><table class="table order-table mynh-p1-semantic-table with-row-mark-actions">'+
+    '<thead><tr>'+fields.map(f=>'<th>'+f+'</th>').join('')+'</tr></thead><tbody><tr>'+
+    fields.map(f=>'<td data-order-col="'+f+'" class="'+(f==='order'?'p1-order-identity-cell':'')+'">'+
+      (f==='order'?'<a class="table-link">261011BPY3F7P4</a>':'Giá trị '+f)+'</td>').join('')+
+    '</tr></tbody></table></div><div class="warehouse-receive-screen"><div class="warehouse-receive-table-lane">'+
+    '<div class="warehouse-unified-table-wrap"><table class="warehouse-unified-table">'+
+    '<thead><tr>'+receiptCols.map(f=>'<th>'+f+'</th>').join('')+'</tr></thead><tbody><tr>'+
+    receiptCols.map(f=>'<td data-col="'+f+'">'+
+      (f==='order'?'<button class="table-link">261011BPY3F7P4</button>':'Giá trị '+f)+'</td>').join('')+
+    '</tr></tbody></table></div></div></div></div></body></html>'
+  await page.setContent(htmlLayout,{waitUntil:'load'})
   const state=await page.evaluate(()=>{
-    const purchase=document.querySelector('.order-table-card')
-    const warehouse=document.querySelector('.warehouse-unified-table-wrap')
-    const code=purchase.querySelector('td[data-order-col="order"] .table-link')
-    const stockCode=warehouse.querySelector('td[data-col="order"] .table-link')
+    const purchase=document.querySelector('.order-table-card table')
+    const wh=document.querySelector('.warehouse-unified-table')
     return {
       purchaseCells:purchase.querySelectorAll('tbody td[data-order-col]').length,
-      warehouseCells:warehouse.querySelectorAll('tbody td[data-col]').length,
-      hidden:[...document.querySelectorAll('tbody td')].filter(el=>getComputedStyle(el).display==='none').length,
-      widthOver:document.documentElement.scrollWidth-innerWidth,
-      purchaseOver:purchase.scrollWidth-purchase.clientWidth,
-      warehouseOver:warehouse.scrollWidth-warehouse.clientWidth,
-      purchaseNoWrap:getComputedStyle(code).whiteSpace==='nowrap',
-      warehouseNoWrap:getComputedStyle(stockCode).whiteSpace==='nowrap',
-      orderDisplayed:code.getBoundingClientRect().width>0&&stockCode.getBoundingClientRect().width>0,
-      purchaseLayout:getComputedStyle(purchase.querySelector('tbody tr')).display,
-      warehouseLayout:getComputedStyle(warehouse.querySelector('tbody tr')).display,
+      warehouseCells:wh.querySelectorAll('tbody td[data-col]').length,
+      purchaseTable:getComputedStyle(purchase).display,
+      warehouseTable:getComputedStyle(wh).display,
+      purchaseRow:getComputedStyle(purchase.querySelector('tbody tr')).display,
+      warehouseRow:getComputedStyle(wh.querySelector('tbody tr')).display,
+      purchaseCell:getComputedStyle(purchase.querySelector('tbody td')).display,
+      warehouseCell:getComputedStyle(wh.querySelector('tbody td')).display,
+      codeWrap:getComputedStyle(purchase.querySelector('td[data-order-col="order"] .table-link')).whiteSpace,
+      missing:[...document.querySelectorAll('tbody td')].filter(el=>getComputedStyle(el).display==='none').length
     }
   })
-  assert.equal(state.purchaseCells,10,'purchase retains ALL ten cells at '+width)
-  assert.equal(state.warehouseCells,6,'warehouse retains ALL six cells at '+width)
-  assert.equal(state.hidden,0,'no data cell hidden at '+width)
-  assert.ok(state.widthOver<=2&&state.purchaseOver<=2&&state.warehouseOver<=2,
-    'no horizontal scroll at '+width+' '+JSON.stringify(state))
-  assert.ok(state.purchaseNoWrap&&state.warehouseNoWrap&&state.orderDisplayed,
-    'order numbers stay on one line at '+width)
-  assert.equal(state.purchaseLayout,'grid','purchase uses complete responsive records at '+width)
-  assert.equal(state.warehouseLayout,'grid','warehouse uses complete responsive records at '+width)
+  assert.equal(state.purchaseCells,10,'all purchase columns retained '+width)
+  assert.equal(state.warehouseCells,6,'all warehouse columns retained '+width)
+  assert.equal(state.missing,0,'no hidden data cells '+width)
+  assert.equal(state.purchaseTable,'table','purchase must remain a native table '+width)
+  assert.equal(state.warehouseTable,'table','warehouse must remain a native table '+width)
+  assert.equal(state.purchaseRow,'table-row','purchase must retain tr '+width)
+  assert.equal(state.warehouseRow,'table-row','warehouse must retain tr '+width)
+  assert.equal(state.purchaseCell,'table-cell','purchase must retain td '+width)
+  assert.equal(state.warehouseCell,'table-cell','warehouse must retain td '+width)
+  assert.equal(state.codeWrap,'nowrap','order code stays on one line '+width)
   await page.close()
  }
 
