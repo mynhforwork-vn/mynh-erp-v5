@@ -70,6 +70,9 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
   // enable writes, after the additive DB migration and release gates are met.
   const isLive=process.env.ERP_WAREHOUSE_V2_LIVE==='true'
   const canWrite=isLive&&['admin','operator'].includes(String(user.app_metadata?.role??'viewer'))
+  const canCorrectFinalizedSku=String(user.app_metadata?.role??'viewer')==='admin'&&
+    ((isLive&&process.env.ERP_POST_RECEIPT_SKU_LIVE==='true')||
+      (!isLive&&process.env.ERP_POST_RECEIPT_SKU_PREVIEW_UI==='true'))
   // Count every non-archived received order, including processed and skipped ones.
   // Paginate deterministically because Supabase/PostgREST caps each response.
   async function loadReceivedOrders(){
@@ -139,7 +142,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
     loadSkuProducts(),
     supabase.from('audit_logs')
       .select('id,entity_id,action,created_at,old_value,new_value')
-      .eq('module', 'WAREHOUSE').eq('entity_type', 'ORDER')
+      .eq('module', 'WAREHOUSE').in('entity_type', ['ORDER','ORDER_ITEM'])
       .order('created_at', { ascending: false }).limit(800),
     supabase.from('receive_batch_details')
       .select('order_id,receive_batch_id').limit(1500),
@@ -241,12 +244,11 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
   const decisionSourceRows = currentStatus==='done' ? done :
     currentStatus==='all' ? rows : pending
 
-  // Read persistent decisions only in live mode (Preview targets the same
-  // Supabase project but must remain read-only before the migration).
-  // Query only relevant orders in bounded chunks for PostgREST limits.
+  // On an Admin Preview, SELECT actual finalized decisions (RLS applies).
+  // This does not enable any inventory mutation.
   const decisionList:any[]=[]
   let decisionError:{message:string}|null=null
-  if(isLive){
+  if(isLive||canCorrectFinalizedSku){
     // Supabase/PostgREST may cap individual responses below requested limits;
     // paginate every order chunk so no persisted item decision is silently lost.
     for(let offset=0;offset<decisionSourceRows.length&&!decisionError;offset+=100){
@@ -369,6 +371,7 @@ export default async function WarehouseReceivePage({ searchParams }: { searchPar
       simulate={!isLive}
       previewOnly={!canWrite}
       showProcessedOnly={currentStatus==='done'}
+      canCorrectFinalizedSku={canCorrectFinalizedSku}
     />
   </div>
 }
