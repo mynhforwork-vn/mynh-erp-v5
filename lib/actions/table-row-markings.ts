@@ -41,29 +41,34 @@ export async function loadTableRowMarkings(
   scope:TableMarkScope,rowKeys:string[]
 ):Promise<TableMarkingSnapshot>{
   scopeOK(scope)
-  if(!rowKeys.length)return {marks:[],flags:[],rules:[]}
-  keysOK(rowKeys,250)
-  // Read-only Preview does not touch Production's mark tables.
+  if(rowKeys.length)keysOK(rowKeys,1000)
   if(process.env.ERP_TABLE_MARKINGS_LIVE!=='true')
     return {marks:[],flags:[],rules:[]}
   const {supabase,user}=await context()
-  const [marks,flags,rules]=await Promise.all([
-    supabase.from('user_table_row_marks')
-      .select('row_key,pinned,color').eq('user_id',user.id).eq('scope',scope).in('row_key',rowKeys),
-    supabase.from('table_row_flags')
-      .select('row_key,flag_type,reason').eq('scope',scope).in('row_key',rowKeys),
-    supabase.from('user_table_highlight_rules')
-      .select('id,title,enabled,priority,match_mode,conditions,color')
-      .eq('user_id',user.id).eq('scope',scope).order('priority',{ascending:true}).limit(20),
-  ])
-  fail(marks.error,'Không tải được ghim và highlight')
-  fail(flags.error,'Không tải được cờ cần chú ý')
+  // Split large filtered tables into bounded queries. Rules still load when
+  // the current filter yields zero orders.
+  const chunks:string[][]=[]
+  for(let i=0;i<rowKeys.length;i+=100)chunks.push(rowKeys.slice(i,i+100))
+  const ruleQuery=supabase.from('user_table_highlight_rules')
+    .select('id,title,enabled,priority,match_mode,conditions,color')
+    .eq('user_id',user.id).eq('scope',scope).order('priority',{ascending:true}).limit(20)
+  const rules=await ruleQuery
   fail(rules.error,'Không tải được quy tắc highlight')
-  return {
-    marks:(marks.data??[]) as RowMark[],
-    flags:(flags.data??[]) as RowFlag[],
-    rules:(rules.data??[]) as HighlightRule[]
+  const marks:RowMark[]=[],flags:RowFlag[]=[]
+  // Sequential batches avoid a burst of Supabase queries for large tables.
+  for(const chunk of chunks){
+    const [personal,shared]=await Promise.all([
+      supabase.from('user_table_row_marks').select('row_key,pinned,color')
+        .eq('user_id',user.id).eq('scope',scope).in('row_key',chunk),
+      supabase.from('table_row_flags').select('row_key,flag_type,reason')
+        .eq('scope',scope).in('row_key',chunk),
+    ])
+    fail(personal.error,'Không tải được ghim và highlight')
+    fail(shared.error,'Không tải được cờ cần chú ý')
+    marks.push(...(personal.data??[]) as RowMark[])
+    flags.push(...(shared.data??[]) as RowFlag[])
   }
+  return {marks,flags,rules:(rules.data??[]) as HighlightRule[]}
 }
 export async function batchSetTableRowMarks(
   scope:TableMarkScope,rowKeys:string[],change:{pinned?:boolean,color?:RowColor|null}
