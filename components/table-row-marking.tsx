@@ -224,7 +224,9 @@ export function TableMarkingToolbar({
       const rect=anchorRef.current?.getBoundingClientRect()
       if(rect){
         const top=Math.max(8,Math.min(rect.bottom+6,Math.max(8,window.innerHeight-230)))
-        const right=Math.max(8,Math.min(window.innerWidth-308,window.innerWidth-rect.right))
+        const popupWidth=Math.min(365,Math.max(0,window.innerWidth-16))
+        const maxRight=Math.max(8,window.innerWidth-popupWidth-8)
+        const right=Math.max(8,Math.min(maxRight,window.innerWidth-rect.right))
         setPosition({top,right})
       }
     }
@@ -429,7 +431,7 @@ export function RowMarkingActions({model,rowId,label}:{
       const rect=flagButton.current?.getBoundingClientRect()
       if(rect)setPosition({
         top:Math.max(8,Math.min(rect.bottom+5,Math.max(8,window.innerHeight-230))),
-        right:Math.max(8,Math.min(window.innerWidth-270,window.innerWidth-rect.right))
+        right:Math.max(8,Math.min(Math.max(8,window.innerWidth-Math.min(270,window.innerWidth-16)-8),window.innerWidth-rect.right))
       })
     }
     setOpen(value=>!value)
