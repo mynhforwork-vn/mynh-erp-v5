@@ -82,6 +82,10 @@ export async function deleteTableHighlightRule(scope,id){
 })
 const script=readFileSync(bundle,'utf8')
 const styles=readFileSync(path.join(root,'app/styles/table-row-markings.css'),'utf8')
+assert.match(styles,/with-row-mark-actions[^\n]*col\.p1-order-col-order/,
+ 'purchase order width must be reserved for inline icons')
+assert.match(styles,/warehouse-row-marking-scroll/,
+ 'warehouse table must scroll locally when lanes shrink')
 const base='html,body{margin:0;max-width:100%;overflow-x:hidden;font-family:Arial,sans-serif;color:#365d70}main{max-width:970px;margin:auto;padding:10px}table{width:100%;table-layout:fixed;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #e6eef2;text-align:left}tr[data-mark-color=yellow]>td{background:#fff8e3}tr[data-mark-color=blue]>td{background:#eaf4ff}'
 const html=(readonly=false)=>'<html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+base+styles+'</style></head><body><div id="root"></div><script>window.__preview='+JSON.stringify(readonly)+';</script><script>'+script+'</script></body></html>'
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_BIN,args:['--no-sandbox']})
@@ -91,6 +95,13 @@ try{
   const errors=[]
   page.on('pageerror',e=>errors.push(e.message))
   await page.setContent(html(),{waitUntil:'load'})
+  const iconSize=await page.getByRole('button',{name:'Ghim 0001'}).evaluate(node=>{
+    const rect=node.getBoundingClientRect()
+    const svg=node.querySelector('svg')?.getBoundingClientRect()
+    return {buttonWidth:rect.width,buttonHeight:rect.height,svgWidth:svg?.width||0}
+  })
+  assert.ok(iconSize.buttonWidth<=20&&iconSize.buttonHeight<=22&&iconSize.svgWidth<=11,
+    'row pin/flag icon must remain compact '+width+' '+JSON.stringify(iconSize))
   await page.getByRole('button',{name:'Mở highlight và quy tắc'}).click()
   await page.getByRole('button',{name:'Đánh dấu dòng'}).click()
   await page.getByRole('checkbox',{name:'Đánh dấu dòng 1'}).check()

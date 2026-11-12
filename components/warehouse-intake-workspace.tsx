@@ -96,9 +96,11 @@ const COLUMN_BASE:Record<TableCol,number>={
 const COLUMN_GROW:Record<TableCol,number>={
   order:1.2,sku:3.1,product:4.0,purchase:0.7,sale:0.7,status:1,
 }
-function autoFitColumnWidths(columns:TableCol[], availableWidth:number){
-  const width=Math.max(1,availableWidth)
-  const base=columns.map(column=>COLUMN_BASE[column])
+function autoFitColumnWidths(columns:TableCol[], availableWidth:number,markingEnabled=false){
+  // Keep the full Shopee order ID visible alongside the two small row actions.
+  // Narrow lanes use table-only horizontal scroll rather than clipping text.
+  const width=Math.max(1,availableWidth,markingEnabled?950:1)
+  const base=columns.map(column=>column==='order'&&markingEnabled?220:COLUMN_BASE[column])
   const baseSum=base.reduce((sum,value)=>sum+value,0)
   const extra=Math.max(0,width-baseSum)
   const weightTotal=columns.reduce((sum,column)=>sum+COLUMN_GROW[column],0)
@@ -583,7 +585,7 @@ export function WarehouseIntakeWorkspace({
             // 0: hidden, 1–2: exact height of all listed orders, 3+: elastic.
             // Two dense warehouses share equal halves of the available lane.
             const groupRowMode=group.rows.length===1?'one':group.rows.length===2?'two':'many'
-            const columnWidths=autoFitColumnWidths(tableColumns.visible,laneWidth)
+            const columnWidths=autoFitColumnWidths(tableColumns.visible,laneWidth,markingEnabled)
             const cell=(row:Row,col:TableCol)=>{
               const attributes={'data-col':col,'data-label':TABLE_LABELS[col]}
               if(col==='order')return <td key={col} {...attributes}>
@@ -825,8 +827,8 @@ export function WarehouseIntakeWorkspace({
                 </div>
               </div>
               {open&&<>
-                <div className="warehouse-unified-table-wrap">
-                  <table className="warehouse-unified-table"
+                <div className={"warehouse-unified-table-wrap"+(markingEnabled?" warehouse-row-marking-scroll":"")}>
+                  <table className={"warehouse-unified-table"+(markingEnabled?" warehouse-row-marking-enabled":"")}
                     aria-label={'Danh sách Nhập kho '+group.code}>
                     <colgroup>{tableColumns.visible.map((col,index)=><col key={col}
                       style={{width:columnWidths[index]+'%'}}/>)}</colgroup>

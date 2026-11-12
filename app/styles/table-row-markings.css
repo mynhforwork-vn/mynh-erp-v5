@@ -98,7 +98,7 @@
 /* Compact row actions: no second toolbar row, always available on touch screens. */
 .table-row-marking{display:inline-flex;align-items:center;flex:0 0 auto;margin:0;min-width:0;position:relative}
 .table-row-marking-trigger,.table-row-mark-icon{
-  width:24px;height:24px;display:inline-grid;place-items:center;padding:3px;
+  width:20px;height:20px;display:inline-grid;place-items:center;padding:2px;
   border:1px solid transparent;border-radius:4px;background:transparent;color:#55727e;
   cursor:pointer;vertical-align:middle;flex:0 0 auto
 }
@@ -107,7 +107,8 @@
   background:#e5f3ef;color:#19705b
 }
 .table-row-mark-icon.flagged{color:#a46b23;background:#fff5e4}
-.table-row-mark-inline-tools{display:inline-flex;align-items:center;gap:1px;margin-inline-start:3px;
+.table-row-mark-icon svg{width:11px;height:11px}
+.table-row-mark-inline-tools{display:inline-flex;align-items:center;gap:0;margin-inline-start:2px;
   vertical-align:middle;white-space:nowrap}
 .table-row-marking-dropdown,.table-row-flag-editor{
   position:fixed;z-index:3200;width:min(365px,calc(100vw - 16px));
@@ -134,7 +135,44 @@
   outline:2px solid #438d85;outline-offset:2px
 }
 @media(max-width:390px){
-  .table-row-mark-icon,.table-row-marking-trigger{width:22px;height:24px;padding:2px}
+  .table-row-mark-icon{width:18px;height:20px;padding:1px}
+  .table-row-marking-trigger{width:22px;height:24px;padding:2px}
+  .table-row-mark-icon svg{width:10px;height:10px}
   .table-row-mark-inline-tools{margin-inline-start:1px;gap:0}
   .table-row-marking-notice{right:8px;top:8px}
+}
+
+
+/* Marking tables: reserve width for the full 14-character Shopee order ID
+   and compact pin/flag icons. Unmarked tables keep their existing sizing. */
+.brand-shell-v1 .order-table-card table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table) col.p1-order-col-order{
+  width:196px!important;
+}
+.brand-shell-v1 .order-workspace.with-panel .order-table-card table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table) col.p1-order-col-order{
+  width:184px!important;
+}
+@media(max-width:900px){
+  .brand-shell-v1 .order-workspace .order-table-card table.order-table.mynh-p1-semantic-table.with-row-mark-actions:not(.mynh-resizable-table) col.p1-order-col-order{
+    width:184px!important;
+  }
+}
+.brand-shell-v1 .order-table-card .order-table.with-row-mark-actions td.p1-order-identity-cell .table-link{
+  flex:1 1 auto!important;min-width:0!important;max-width:none!important;
+}
+.brand-shell-v1 .order-table-card .order-table.with-row-mark-actions td.p1-order-identity-cell .table-row-mark-inline-tools{
+  flex:0 0 auto;
+}
+/* Scroll only the warehouse table when the slidebar or viewport is narrow;
+   preserve six table columns and the sticky header. */
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table-wrap.warehouse-row-marking-scroll,
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-group.open>.warehouse-unified-table-wrap.warehouse-row-marking-scroll{
+  overflow-x:auto!important;overflow-y:auto!important;
+  max-width:100%!important;overscroll-behavior-x:contain;
+}
+.brand-shell-v1 .warehouse-receive-screen table.warehouse-unified-table.warehouse-row-marking-enabled{
+  width:max(100%,950px)!important;min-width:950px!important;max-width:none!important;
+  table-layout:fixed!important;
+}
+.brand-shell-v1 .warehouse-receive-screen .warehouse-unified-table.warehouse-row-marking-enabled td[data-col='order'] .warehouse-unified-order-inline .table-link{
+  flex:1 1 auto;white-space:nowrap;min-width:0;
 }

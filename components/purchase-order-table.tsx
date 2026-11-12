@@ -378,11 +378,11 @@ export function PurchaseOrderTable({
   }
 
   // Tracking/HUB sizing: minimum follows visible semantic IDs, not positions.
-  const columnMinimums:Record<ColKey,number>={"number":28,"order":134,"username":94,"device":128,"time":116,"product":149,"cod":76,"tracking":177,"voucher":69,"status":104}
-  const panelMinimums:Record<ColKey,number>={"number":26,"order":116,"username":84,"device":112,"time":106,"product":118,"cod":65,"tracking":150,"voucher":61,"status":92}
+  const columnMinimums:Record<ColKey,number>={"number":28,"order":markingEnabled?196:134,"username":94,"device":128,"time":116,"product":149,"cod":76,"tracking":177,"voucher":69,"status":104}
+  const panelMinimums:Record<ColKey,number>={"number":26,"order":markingEnabled?184:116,"username":84,"device":112,"time":106,"product":118,"cod":65,"tracking":150,"voucher":61,"status":92}
   const shownColumns=columnOrder.filter(isVisible)
   const panelFitWeights:Record<ColKey,number>={
-    number:20,order:108,username:80,device:106,time:103,product:121,
+    number:20,order:markingEnabled?180:108,username:80,device:106,time:103,product:121,
     cod:60,tracking:145,voucher:57,status:91
   }
   const panelFitTotal=(canEdit?24:0)+shownColumns.reduce((sum,key)=>sum+panelFitWeights[key],0)
@@ -607,7 +607,7 @@ export function PurchaseOrderTable({
     <div className="card table-card order-table-card" ref={tableWrapRef}>
       {error
         ? <div className="error-text order-table-error" role="alert">{error}</div>
-        : <table className="table order-table mynh-p1-semantic-table" style={tableWidths}>
+        : <table className={"table order-table mynh-p1-semantic-table"+(markingEnabled?" with-row-mark-actions":"")} style={tableWidths}>
         <colgroup>
           {canEdit&&<col className="p1-order-col-select" style={panelShare(24)}/>}
           {shownColumns.map(k=><col key={k} className={'p1-order-col-'+k} style={panelShare(panelFitWeights[k])}/>)}

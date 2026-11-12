@@ -399,7 +399,7 @@ export function RowMarkingActions({model,rowId,label}:{
       disabled={model.busy} aria-label={(mark?.pinned?'Bỏ ghim ':'Ghim ')+label}
       aria-pressed={Boolean(mark?.pinned)} title={mark?.pinned?'Bỏ ghim đơn':'Ghim đơn'}
       onClick={event=>{event.stopPropagation();void model.pinRow(rowId,!mark?.pinned)}}>
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+      <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor"
         strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M16 3 8 3l1 5-3 4v2h12v-2l-3-4 1-5ZM12 14v7"/>
       </svg>
@@ -409,7 +409,7 @@ export function RowMarkingActions({model,rowId,label}:{
       aria-label={'Gắn cờ '+label} aria-expanded={open} aria-haspopup="dialog"
       title={flag?'Cờ: '+flag.reason:'Gắn cờ / ghi lý do'}
       onClick={event=>{event.stopPropagation();editFlag()}}>
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+      <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor"
         strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M5 21V4M5 5c4-3 6 3 10 0l4-2v12c-4 2-7-2-14 0"/>
       </svg>
