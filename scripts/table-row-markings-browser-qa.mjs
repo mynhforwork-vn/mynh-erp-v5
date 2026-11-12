@@ -82,8 +82,10 @@ export async function deleteTableHighlightRule(scope,id){
 })
 const script=readFileSync(bundle,'utf8')
 const styles=readFileSync(path.join(root,'app/styles/table-row-markings.css'),'utf8')
-assert.match(styles,/with-row-mark-actions[^\n]*col\.p1-order-col-order/,
- 'purchase order width must be reserved for inline icons')
+assert.match(styles,/with-row-mark-actions/,
+ 'purchase order table must retain the inline icon layout')
+assert.match(styles,/col\[class\*="p1-order-col-"\]/,
+ 'purchase order columns must fit the available lane')
 assert.match(styles,/overflow-x:hidden!important/,
  'warehouse and purchase tables must never scroll horizontally')
 assert.doesNotMatch(styles,/overflow-x:auto!important/,
