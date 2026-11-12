@@ -12,6 +12,7 @@ import { saveWarehouseItemDecision } from '@/lib/actions/warehouse-item-decision
 import { WarehouseIntakeDetailPreview } from '@/components/warehouse-intake-detail-preview'
 import { ManagedColumnsMenu,SortableHeader,useManagedColumns,useManagedSort } from '@/components/managed-table-columns'
 import type {HistoricalSuggestion} from '@/lib/warehouse-sku-suggestions'
+import {TableMarkingToolbar,useTableRowMarking} from '@/components/table-row-marking'
 
 type SkuProduct={id:string;sku:string;name:string}
 type Variant={
@@ -196,6 +197,8 @@ export function WarehouseIntakeWorkspace({
   simulate=true,
   previewOnly=false,
   showProcessedOnly=false,
+  markingEnabled=false,
+  markingReadOnly=true,
 }:{
   rows:Row[]
   variants:Variant[]
@@ -206,6 +209,8 @@ export function WarehouseIntakeWorkspace({
   simulate?:boolean
   previewOnly?:boolean
   showProcessedOnly?:boolean
+  markingEnabled?:boolean
+  markingReadOnly?:boolean
 }){
   const catalogProducts=useMemo(()=>skuProducts.length?skuProducts:
     [...new Map(variants.filter(v=>v.products?.id).map(v=>[v.products!.id!,{
@@ -242,6 +247,21 @@ export function WarehouseIntakeWorkspace({
   },[rows,showProcessedOnly])
 
   const visibleRows=useMemo(()=>groups.flatMap(group=>group.rows),[groups])
+  const markingRows=useMemo(()=>groups.flatMap(group=>group.rows.map(row=>{
+    const actualWarehouse=batchOf(row)?.warehouses?.code??group.code
+    const mapped=row.order_items.length>0&&row.order_items.every(item=>
+      !!(itemDecisions[item.id]?.product_variant_id??item.product_variant_id))
+    return {id:row.id,data:{
+      warehouse:String(actualWarehouse),
+      status:phaseLabel(row,itemDecisions),
+      sku_mapped:mapped,
+      quantity:row.order_items.reduce((sum,item)=>sum+Number(item.quantity||0),0),
+      order_date:String(receivedAt(row)??'').slice(0,10),
+    }}
+  })),[groups,itemDecisions])
+  // Separate selection mode: these checkboxes are NOT warehouse bulk receipt.
+  const marking=useTableRowMarking('warehouse_receive',markingRows,markingEnabled,markingReadOnly)
+
   // Detail slidebar is opt-in: only an explicit order-code click opens it.
   const [activeId,setActiveId]=useState<string|null>(null)
   const [openGroups,setOpenGroups]=useState<string[]>(()=>groups.map(group=>group.id))
@@ -506,6 +526,8 @@ export function WarehouseIntakeWorkspace({
         <button type="button" aria-label="Đóng thông báo nhập nhanh"
           onClick={()=>setQuickNotice(null)}>×</button>
       </div>}
+      {markingEnabled&&<TableMarkingToolbar model={marking}
+        scope="warehouse_receive" rows={markingRows}/>}
       {bulkFeedback&&<div className="warehouse-bulk-feedback" role="status">
         <div>
           <b>{bulkFeedback.succeeded.length} đơn đã xử lý thành công · {bulkFeedback.failed.length} đơn chưa xử lý</b>
@@ -532,6 +554,9 @@ export function WarehouseIntakeWorkspace({
             const tableColumns=group.code==='BG'?bgColumns:group.code==='HN'?hnColumns:otherColumns
             const tableSort=group.code==='BG'?bgSort:group.code==='HN'?hnSort:otherSort
             const sorted=[...group.rows].sort((left,right)=>{
+              const pinned=Number(marking.markMap.get(right.id)?.pinned)-
+                Number(marking.markMap.get(left.id)?.pinned)
+              if(pinned!==0)return pinned
               const key=(row:Row,col:TableCol):number|string=>{
                 if(col==='order')return new Date(receivedAt(row)??0).getTime()
                 if(col==='sku')return String(row.order_items[0]?.product_variants?.products?.sku??'')
@@ -565,7 +590,14 @@ export function WarehouseIntakeWorkspace({
               const attributes={'data-col':col,'data-label':TABLE_LABELS[col]}
               if(col==='order')return <td key={col} {...attributes}>
                 <div className="warehouse-unified-order">
-                  {readyIds.length>0&&(!!bulkPreview(row,itemDecisions)
+                  {marking.mode?<label className="warehouse-bulk-select-control warehouse-mark-select-control"
+                    onClick={event=>event.stopPropagation()}>
+                    <input type="checkbox" className="warehouse-bulk-select-checkbox"
+                      checked={marking.selectedSet.has(row.id)}
+                      onChange={()=>marking.toggle(row.id)}
+                      aria-label={'Chọn để đánh dấu '+(row.shopee_order_id??row.id)}/>
+                    <span className="warehouse-bulk-select-mark" aria-hidden="true"/>
+                  </label>:readyIds.length>0&&(!!bulkPreview(row,itemDecisions)
                     ?<label className="warehouse-bulk-select-control" onClick={event=>event.stopPropagation()}>
                       <input type="checkbox" className="warehouse-bulk-select-checkbox"
                         checked={selectedGroup===group.id&&selectedSet.has(row.id)}
@@ -798,7 +830,13 @@ export function WarehouseIntakeWorkspace({
                       style={{width:columnWidths[index]+'%'}}/>)}</colgroup>
                     <thead><tr>{tableColumns.visible.map(col=><th key={col} data-col={col}>
                       {col==='order'?<div className="warehouse-unified-order-head">
-                        {readyIds.length>0&&<label className="warehouse-bulk-select-control">
+                        {marking.mode?<label className="warehouse-bulk-select-control warehouse-mark-select-control">
+                        <input type="checkbox" className="warehouse-bulk-select-checkbox"
+                          checked={sorted.length>0&&sorted.every(row=>marking.selectedSet.has(row.id))}
+                          aria-label={'Chọn các dòng hiển thị kho '+group.code+' để đánh dấu'}
+                          onChange={()=>marking.toggleAll(sorted.map(row=>row.id))}/>
+                        <span className="warehouse-bulk-select-mark" aria-hidden="true"/>
+                      </label>:readyIds.length>0&&<label className="warehouse-bulk-select-control">
                           <input type="checkbox" className="warehouse-bulk-select-checkbox"
                             checked={allReadySelected} data-partial={partiallyReadySelected?'true':undefined}
                             aria-checked={partiallyReadySelected?'mixed':allReadySelected}
@@ -810,7 +848,9 @@ export function WarehouseIntakeWorkspace({
                       </div>:<SortableHeader column={col} label={TABLE_LABELS[col]} sort={tableSort} onSort={tableSort.toggle}/>}
                     </th>)}</tr></thead>
                     <tbody>{sorted.length
-                      ? sorted.map(row=><tr key={row.id} className={activeId===row.id?'active-row':''}>
+                      ? sorted.map(row=><tr key={row.id}
+                          data-mark-color={marking.getDecoration(row.id)??undefined}
+                          className={activeId===row.id?'active-row':''}>
                           {tableColumns.visible.map(col=>cell(row,col))}
                         </tr>)
                       : <tr><td colSpan={tableColumns.visible.length} className="empty compact">Không có đơn phù hợp.</td></tr>}
