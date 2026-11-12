@@ -4,6 +4,15 @@ on:
     branches: [design/table-row-flags-highlights-20261111]
     paths:
       - '.github/workflows/table-row-highlights-preview.yml'
+      - 'components/table-row-marking.tsx'
+      - 'components/purchase-order-table.tsx'
+      - 'components/warehouse-intake-workspace.tsx'
+      - 'app/styles/table-row-markings.css'
+      - 'app/(erp)/orders/page.tsx'
+      - 'app/(erp)/warehouse/receive/page.tsx'
+      - 'lib/actions/table-row-markings.ts'
+      - 'lib/table-row-highlights.ts'
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
