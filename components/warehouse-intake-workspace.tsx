@@ -585,7 +585,9 @@ export function WarehouseIntakeWorkspace({
             // 0: hidden, 1–2: exact height of all listed orders, 3+: elastic.
             // Two dense warehouses share equal halves of the available lane.
             const groupRowMode=group.rows.length===1?'one':group.rows.length===2?'two':'many'
-            const columnWidths=autoFitColumnWidths(tableColumns.visible,laneWidth,markingEnabled)
+            const columnWidths=markingEnabled
+              ?autoFitColumnWidths(tableColumns.visible,laneWidth,true)
+              :autoFitColumnWidths(tableColumns.visible,laneWidth)
             const cell=(row:Row,col:TableCol)=>{
               const attributes={'data-col':col,'data-label':TABLE_LABELS[col]}
               if(col==='order')return <td key={col} {...attributes}>
