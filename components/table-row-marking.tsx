@@ -8,7 +8,7 @@ import {
 } from '@/lib/actions/table-row-markings'
 import {
   HIGHLIGHT_FIELDS,MARK_OPERATOR_LABELS,MARK_OPERATORS,ROW_COLORS,ROW_COLOR_LABELS,
-  getRowDecoration,type TableMarkScope,type RowData,type RowColor,type HighlightRule,
+  getRowDecoration,validateHighlightRule,type TableMarkScope,type RowData,type RowColor,type HighlightRule,
   type HighlightCondition,type RowMark,type RowFlag
 } from '@/lib/table-row-highlights'
 
@@ -33,6 +33,8 @@ export function useTableRowMarking(
   const [marks,setMarks]=useState<RowMark[]>([])
   const [flags,setFlags]=useState<RowFlag[]>([])
   const [rules,setRules]=useState<HighlightRule[]>([])
+  const [draftPreview,setDraftPreview]=useState<HighlightRule|null>(null)
+  const trialSeq=useRef(0)
   const [busy,setBusy]=useState(false)
   const [message,setMessage]=useState<{error:boolean,text:string}|null>(null)
   const ids=useMemo(()=>rows.map(row=>row.id).filter(id=>UUID.test(id)).slice(0,1000),[rows])
@@ -43,7 +45,7 @@ export function useTableRowMarking(
   const activeRows=useMemo(()=>new Map(rows.map(x=>[x.id,x.data])),[rows])
   const notify=(text:string,error=false)=>setMessage(text?{text,error}:null)
   const refresh=useCallback(async()=>{
-    if(!enabled||readOnly){setMarks([]);setFlags([]);setRules([]);return}
+    if(!enabled||readOnly)return
     const all=await loadTableRowMarkings(scope,ids)
     setMarks(all.marks);setFlags(all.flags);setRules(all.rules)
   },[scope,identity,enabled,readOnly])
@@ -90,43 +92,83 @@ export function useTableRowMarking(
       return false
     }finally{setBusy(false)}
   }
+  function localMark(keys:string[],change:{pinned?:boolean,color?:RowColor|null}){
+    setMarks(current=>{
+      const map=new Map(current.map(mark=>[mark.row_key,mark]))
+      for(const row_key of keys){
+        const prior=map.get(row_key)
+        const next:RowMark={row_key,pinned:change.pinned??prior?.pinned??false,
+          color:change.color===undefined?prior?.color??null:change.color}
+        if(next.pinned||next.color)map.set(row_key,next)
+        else map.delete(row_key)
+      }
+      return [...map.values()]
+    })
+  }
+  function localFlag(keys:string[],type:'attention'|'urgent'|'follow_up'|null,reason:string){
+    setFlags(current=>{
+      const map=new Map(current.map(flag=>[flag.row_key,flag]))
+      for(const row_key of keys){
+        if(type)map.set(row_key,{row_key,flag_type:type,reason})
+        else map.delete(row_key)
+      }
+      return [...map.values()]
+    })
+  }
   async function markColor(color:RowColor|null){
-    if(!selected.length)return
-    await action(()=>batchSetTableRowMarks(scope,selected,{color}),
+    if(!selected.length)return false
+    if(readOnly){localMark(selected,{color});notify((color?'Đã tô thử ':'Đã bỏ màu thử ')+selected.length+' dòng');return true}
+    return action(()=>batchSetTableRowMarks(scope,selected,{color}),
       color?'Đã tô màu '+selected.length+' dòng':'Đã bỏ highlight '+selected.length+' dòng')
   }
   async function pin(pinned:boolean){
     if(!selected.length)return false
+    if(readOnly){localMark(selected,{pinned});return true}
     return action(()=>batchSetTableRowMarks(scope,selected,{pinned}),
       (pinned?'Đã ghim ':'Đã bỏ ghim ')+selected.length+' dòng')
   }
   async function pinRow(id:string,pinned:boolean){
+    if(readOnly){localMark([id],{pinned});return true}
     return action(()=>batchSetTableRowMarks(scope,[id],{pinned}),
       pinned?'Đã ghim đơn':'Đã bỏ ghim đơn')
   }
   async function flag(type:'attention'|'urgent'|'follow_up'|null,reason=''){
     if(!selected.length)return false
+    if(readOnly){localFlag(selected.slice(0,25),type,reason);return true}
     return action(()=>batchSetTableRowFlags(scope,selected.slice(0,25),type,reason),
       (type?'Đã gắn cờ ':'Đã bỏ cờ ')+Math.min(25,selected.length)+' dòng')
   }
   async function flagRow(id:string,type:'attention'|'urgent'|'follow_up'|null,reason=''){
+    if(readOnly){localFlag([id],type,reason);return true}
     return action(()=>batchSetTableRowFlags(scope,[id],type,reason),
       type?'Đã gắn cờ đơn':'Đã bỏ cờ đơn')
   }
   async function saveRule(rule:RuleDraft,id?:string){
+    if(readOnly){
+      try{validateHighlightRule(scope,rule)}
+      catch(e){notify(e instanceof Error?e.message:'Quy tắc chưa hợp lệ',true);return false}
+      setRules(current=>{
+        const key=id??'trial-'+(++trialSeq.current)
+        return [...current.filter(item=>item.id!==key),{...rule,id:key}]
+      })
+      notify('Đã áp dụng thử quy tắc')
+      return true
+    }
     return action(()=>saveTableHighlightRule(scope,rule,id),
       id?'Đã cập nhật quy tắc':'Đã lưu quy tắc highlight')
   }
   async function removeRule(id:string){
+    if(readOnly){setRules(current=>current.filter(rule=>rule.id!==id));return true}
     return action(()=>deleteTableHighlightRule(scope,id),'Đã xóa quy tắc')
   }
   function getDecoration(id:string){
-    return getRowDecoration(scope,activeRows.get(id)??{},markMap.get(id),rules)
+    const effective=draftPreview?[{...draftPreview,priority:0},...rules]:rules
+    return getRowDecoration(scope,activeRows.get(id)??{},markMap.get(id),effective)
   }
   return {
     enabled,readOnly,mode,selected,busy,message,marks,flags,rules,markMap,flagMap,
     selectedSet:markedSet,toggleMode,toggle,toggleAll,markColor,pin,pinRow,flag,flagRow,
-    saveRule,removeRule,getDecoration,clearSelected:()=>setSelected([]),
+    saveRule,removeRule,getDecoration,previewRule:setDraftPreview,clearSelected:()=>setSelected([]),
     notice:notify
   }
 }
@@ -155,6 +197,9 @@ export function TableMarkingToolbar({
   const previewMatches=rows.filter(row=>getRowDecoration(scope,row.data,undefined,[{
     id:'preview',...draft,enabled:true
   }])!==null).length
+  useEffect(()=>{
+    model.previewRule(expanded&&editingOpen?{id:'trial-current',...draft,priority:0}:null)
+  },[expanded,editingOpen,draft])
   useEffect(()=>{
     const esc=(e:KeyboardEvent)=>{
       if(e.key==='Escape'){setSection('none');setEditingOpen(false);setExpanded(false)}
